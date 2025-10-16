@@ -4,7 +4,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { ClientPage0 } from './client-page.js'
 import { ServerPage0 } from './server-page.js'
-import type { EmptyCtx, EmptyData } from './shared.js'
+import type { EmptyCtx, EmptyData } from './types.js'
 
 describe('ClientPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')

@@ -1,5 +1,15 @@
 import { Route0 } from '@devp0nt/route0'
-import type { Ctx, Data, RequiredCtx, UndefinedCtx, EmptyCtx, EmptyData } from './shared.js'
+import type {
+  Ctx,
+  Data,
+  RequiredCtx,
+  UndefinedCtx,
+  EmptyCtx,
+  EmptyData,
+  ExtendFnRecord,
+  CtxFn,
+  LoaderFn,
+} from './types.js'
 
 export class ServerPage0<
   TCtxRequired extends RequiredCtx = UndefinedCtx,
@@ -27,6 +37,7 @@ export class ServerPage0<
     newServerPage0.extendFns.push(...this.extendFns, { type: 'loader', fn: loaderFn as never })
     return newServerPage0
   }
+
   async prepare(
     ...args: TCtxRequired extends Ctx ? [url: string, ctx: TCtxRequired] : [url: string]
   ): Promise<PreapreFnResult<TCtxOutput, TDataOutput>> {
@@ -65,53 +76,6 @@ export type AnyServerPage0<
   TCtxOutput extends Ctx = Ctx,
   TDataOutput extends Data = Data,
 > = ServerPage0<TCtxRequired, TCtxOutput, TDataOutput>
-
-export type CtxFnProps<
-  TCtxInput extends Ctx = Ctx,
-  TData extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-> = {
-  ctx: TCtxInput
-  data: TData
-  location: Route0.Location<TRoute0>
-}
-export type CtxFn<
-  TCtxInput extends Ctx = Ctx,
-  TData extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-  TCtxOutput extends Ctx = Ctx,
-> = (props: CtxFnProps<TCtxInput, TData, TRoute0>) => Promise<TCtxOutput> | TCtxOutput
-export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
-export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
-
-export type LoaderFnProps<
-  TCtx extends Ctx = Ctx,
-  TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-> = {
-  ctx: TCtx
-  data: TDataInput
-  location: Route0.Location<TRoute0>
-}
-export type LoaderFn<
-  TCtx extends Ctx = Ctx,
-  TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-  TDataOutput extends Data = Data,
-> = (props: LoaderFnProps<TCtx, TDataInput, TRoute0>) => Promise<TDataOutput> | TDataOutput
-export type LoaderFnOutput<TLoader extends LoaderFn> = Awaited<ReturnType<TLoader>>
-
-export type ExtendFnRecord<
-  TType extends 'ctx' | 'loader' = 'ctx' | 'loader',
-  TCtxInput extends Ctx = Ctx,
-  TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-  TOutput extends Ctx | Data = Ctx | Data,
-> = TType extends 'ctx'
-  ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute0, TOutput> }
-  : TType extends 'loader'
-    ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TOutput> }
-    : never
 
 export type ResultSuccess<TOutput> = {
   error: undefined

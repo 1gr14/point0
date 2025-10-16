@@ -299,3 +299,9 @@ describe('Page0', () => {
 //     />
 //   )
 // }
+
+//         const renderedPage0 = renderServerPage0({ url, pages })
+//         const stream = await renderToReadableStream(renderedPage0)
+//         return new Response(stream, {
+//           headers: { 'Content-Type': 'text/html' },
+//         })

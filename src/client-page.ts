@@ -1,6 +1,6 @@
 import type { Route0 } from '@devp0nt/route0'
 import type { AnyServerPage0, InferServerPageCtxOutput, InferServerPageDataOutput } from './server-page.js'
-import type { Ctx, Data } from './shared.js'
+import type { Ctx, Data, ExtendFnRecord, CtxFn, LoaderFn } from './types.js'
 
 export class ClientPage0<
   TServerPage0 extends AnyServerPage0,
@@ -87,79 +87,26 @@ export class ClientPage0<
   }
 }
 
+export type AnyClientPage0<
+  TServerPage0 extends AnyServerPage0 = AnyServerPage0,
+  TCtxOutput extends Ctx = Ctx,
+  TDataOutput extends Data = Data,
+  TAssignedRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0> = ClientPageComponent<
+    TDataOutput,
+    TAssignedRoute0
+  >,
+> = ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TComponent>
+
 export type ClientPageComponentProps<
   TDataOutput extends Data = Data,
   TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
 > = { data: TDataOutput; location: Route0.Location<CurrentRoute<TAssignedRoute0>> }
 export type ClientPageComponent<
   TDataOutput extends Data = Data,
-  TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
+  TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
 > = React.ComponentType<ClientPageComponentProps<TDataOutput, TAssignedRoute0>>
 export type UndefinedClientPageComponent = undefined
 export type UndefinedRoute = undefined
 export type CurrentRoute<TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute> =
   TAssignedRoute0 extends Route0.AnyRoute ? TAssignedRoute0 : Route0.AnyRoute
-export type CtxFnProps<
-  TCtxInput extends Ctx = Ctx,
-  TData extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-> = {
-  ctx: TCtxInput
-  data: TData
-  location: Route0.Location<TRoute0>
-}
-export type CtxFn<
-  TCtxInput extends Ctx = Ctx,
-  TData extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-  TCtxOutput extends Ctx = Ctx,
-> = (props: CtxFnProps<TCtxInput, TData, TRoute0>) => Promise<TCtxOutput> | TCtxOutput
-export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
-export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
-
-export type LoaderFnProps<
-  TCtx extends Ctx = Ctx,
-  TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-> = {
-  ctx: TCtx
-  data: TDataInput
-  location: Route0.Location<TRoute0>
-}
-export type LoaderFn<
-  TCtx extends Ctx = Ctx,
-  TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-  TDataOutput extends Data = Data,
-> = (props: LoaderFnProps<TCtx, TDataInput, TRoute0>) => Promise<TDataOutput> | TDataOutput
-export type LoaderFnOutput<TLoader extends LoaderFn> = Awaited<ReturnType<TLoader>>
-
-export type ExtendFnRecord<
-  TType extends 'ctx' | 'loader' = 'ctx' | 'loader',
-  TCtxInput extends Ctx = Ctx,
-  TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
-  TOutput extends Ctx | Data = Ctx | Data,
-> = TType extends 'ctx'
-  ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute0, TOutput> }
-  : TType extends 'loader'
-    ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TOutput> }
-    : never
-
-export type ResultSuccess<TOutput> = {
-  error: undefined
-  output: TOutput
-}
-export type ResultError = {
-  error: Error
-  output: undefined
-}
-export type Result<TOutput> = ResultSuccess<TOutput> | ResultError
-
-export type PreapreFnOutput<TCtxOutput extends Ctx = Ctx, TDataOutput extends Data = Data> = {
-  ctx: TCtxOutput
-  data: TDataOutput
-}
-export type PreapreFnResult<TCtxOutput extends Ctx = Ctx, TDataOutput extends Data = Data> = Result<
-  PreapreFnOutput<TCtxOutput, TDataOutput>
->

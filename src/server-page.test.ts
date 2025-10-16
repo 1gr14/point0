@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import type { UndefinedCtx, EmptyData, EmptyCtx } from './shared.js'
+import type { UndefinedCtx, EmptyData, EmptyCtx } from './types.js'
 import { ServerPage0 } from './server-page.js'
 
 describe('ServerPage0', () => {
