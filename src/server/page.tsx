@@ -9,10 +9,12 @@ import type {
   EmptyData,
   ExtendFnRecord,
   LoaderFn,
+  ReadableStreamRenderer,
   RequiredCtx,
+  StaticRenderer,
   UndefinedCtx,
 } from '../shared/types.js'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderDocumentHtml } from './html.js'
 
 export class ServerPage0<
   TCtxRequired extends RequiredCtx = UndefinedCtx,
@@ -47,12 +49,12 @@ export class ServerPage0<
     requiredCtx,
   }: {
     location: Route0.Location
-    clientPage0: AnyClientPage0
+    clientPage0?: AnyClientPage0 | undefined
     requiredCtx?: Ctx
   }): Promise<{ ctx: TCtxOutput; data: TDataOutput }> {
     let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
-    const extendFns = [...this._extendFns, ...clientPage0.getExtendFns()]
+    const extendFns = [...this._extendFns, ...(clientPage0?.getExtendFns() ?? [])]
 
     for (const extendFn of extendFns) {
       switch (extendFn.type) {
@@ -62,7 +64,7 @@ export class ServerPage0<
         case 'loader':
           dataOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location })
           break
-
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         default:
           throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
       }
@@ -71,29 +73,7 @@ export class ServerPage0<
     return { ctx: ctxOutput as TCtxOutput, data: dataOutput as TDataOutput }
   }
 
-  async _getReactNode({
-    location,
-    clientPage0,
-    requiredCtx,
-  }: {
-    location: Route0.Location
-    clientPage0: AnyClientPage0
-    requiredCtx?: Ctx | UndefinedCtx
-  }): Promise<{ data: TDataOutput; ctx: TCtxOutput; reactNode: React.ReactNode }> {
-    // TODO: what to do with ctx? Can I pass it to the component?
-    // If there prisma for exmaple, but make it available only during server rendering?
-    // Maybe first run with ctx, then get all data of useCtx returns, and then run again with just data outputs
-
-    const { data, ctx } = await this._runCtxAndLoaderFns({
-      location,
-      clientPage0,
-      requiredCtx,
-    })
-    const PageComponent = clientPage0.getComponent()
-    return { data, ctx, reactNode: <PageComponent data={data} location={location} /> }
-  }
-
-  async _getSuitableReactNode({
+  async _getSuitableNode({
     url,
     clientPages0,
     requiredCtx,
@@ -101,41 +81,75 @@ export class ServerPage0<
     url: string
     clientPages0: ClientPages0
     requiredCtx?: Ctx | UndefinedCtx
-  }): Promise<{ data: TDataOutput; ctx: TCtxOutput; reactNode: React.ReactNode }> {
-    for (const [route, clientPage0Getter] of clientPages0) {
-      const match = route.match(url)
-      if (!match.exact) {
-        continue
+  }): Promise<{
+    data: TDataOutput
+    ctx: TCtxOutput
+    reactNode: React.ReactNode
+    location: Route0.Location
+    clientPage0: AnyClientPage0 | undefined
+  }> {
+    const { location, clientPage0 } = await ClientPage0._getSuitable({ url, clientPages0 })
+    const { data, ctx } = await this._runCtxAndLoaderFns({
+      location,
+      clientPage0,
+      requiredCtx,
+    })
+    const reactNode = (() => {
+      if (!clientPage0) {
+        return undefined
       }
-      const clientPage0 = clientPage0Getter instanceof ClientPage0 ? clientPage0Getter : await clientPage0Getter()
-      return await this._getReactNode({ location: match.location, clientPage0, requiredCtx })
-    }
-    throw new Error(`Page not found for url: ${url}`)
+      const PageComponent = clientPage0.getComponent()
+      return <PageComponent data={data} location={location} />
+    })()
+    return { data, ctx, reactNode, location, clientPage0 }
   }
 
-  async render({
+  async renderStatic({
     url,
     clientPages0,
-    requiredCtx,
-  }: TCtxRequired extends Ctx
-    ? {
-        url: string
-        clientPages0: ClientPages0
-        requiredCtx: TCtxRequired
-      }
-    : {
-        url: string
-        clientPages0: ClientPages0
-        requiredCtx?: undefined
-      }): Promise<{
+    renderer,
+    ...restProps
+  }: { renderer: StaticRenderer; url: string; clientPages0: ClientPages0 } & WithRequiredCtx<TCtxRequired>): Promise<{
     html: string
     data: TDataOutput
     ctx: TCtxOutput
   }> {
-    const { reactNode, data, ctx } = await this._getSuitableReactNode({ url, clientPages0, requiredCtx })
-    return { html: renderToStaticMarkup(reactNode), data, ctx }
-    // TODO: I DO NOT WHAT TO DO NEXT? I THINK I NEED ANOTHER FILE FOR FINAL SSR RENDERING
-    // AND BUN TESTS
+    const { data, ctx, reactNode, location } = await this._getSuitableNode({
+      url,
+      clientPages0,
+      requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
+    })
+    const html = renderer(reactNode)
+    const payload = { location, data }
+
+    const doc = renderDocumentHtml({ head, html, payload, clientBundlePath })
+
+    return { documentHtml: doc, data, ctx }
+  }
+
+  async renderReadableStream({
+    url,
+    clientPages0,
+    renderer,
+    ...restProps
+  }: {
+    renderer: ReadableStreamRenderer
+    url: string
+    clientPages0: ClientPages0
+  } & WithRequiredCtx<TCtxRequired>): Promise<{
+    readableStream: ReadableStream<string>
+    data: TDataOutput
+    ctx: TCtxOutput
+  }> {
+    const { data, ctx, reactNode } = await this._getSuitableNode({
+      url,
+      clientPages0,
+      requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
+    })
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const readableStream = renderer(reactNode)
+    // TODO: figure out how to render readable stream
+    throw new Error('Not implemented')
   }
 }
 
@@ -145,23 +159,11 @@ export type AnyServerPage0<
   TDataOutput extends Data = Data,
 > = ServerPage0<TCtxRequired, TCtxOutput, TDataOutput>
 
-export type ResultSuccess<TOutput> = {
-  error: undefined
-  output: TOutput
-}
-export type ResultError = {
-  error: Error
-  output: undefined
-}
-export type Result<TOutput> = ResultSuccess<TOutput> | ResultError
-
-export type PreapreFnOutput<TCtxOutput extends Ctx = Ctx, TDataOutput extends Data = Data> = {
-  ctx: TCtxOutput
-  data: TDataOutput
-}
-export type PreapreFnResult<TCtxOutput extends Ctx = Ctx, TDataOutput extends Data = Data> = Result<
-  PreapreFnOutput<TCtxOutput, TDataOutput>
->
+export type WithRequiredCtx<TCtxRequired extends RequiredCtx> = TCtxRequired extends Ctx
+  ? {
+      requiredCtx: TCtxRequired
+    }
+  : Record<string, undefined>
 
 export type InferServerPageCtxOutput<TServerPage0 extends AnyServerPage0> =
   TServerPage0 extends AnyServerPage0<any, infer TCtxOutput, any> ? TCtxOutput : never

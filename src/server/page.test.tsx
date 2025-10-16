@@ -201,36 +201,6 @@ describe('ServerPage0', () => {
     })
   })
 
-  it('getReactNode', async () => {
-    const serverPage0 = new ServerPage0()
-    const url = '/z/x/c'
-    const serverPage01 = serverPage0.ctx(() => ({
-      a: 1,
-      b: 2,
-      sum: (a: number, b: number) => a + b,
-      sub: async (a: number, b: number) => a - b,
-    }))
-    const clientPage01 = new ClientPage0<typeof serverPage01>()
-      .route(Route0.create('/z/x/c'))
-      .loader(async ({ ctx }) => ({
-        x: ctx.sum(ctx.a, ctx.b),
-        y: await ctx.sub(ctx.a, ctx.b),
-      }))
-      .component(({ data }) => (
-        <div>
-          X: {data.x}, Y: {data.y}
-        </div>
-      ))
-    const { reactNode } = await serverPage01._getReactNode({
-      location: Route0.getLocation(url),
-      clientPage0: clientPage01,
-      requiredCtx: undefined,
-    })
-    expect(React.isValidElement(reactNode)).toBe(true)
-    const html = renderToStaticMarkup(reactNode)
-    expect(html).toBe('<div>X: 3, Y: -1</div>')
-  })
-
   it('getSuitableReactNode', async () => {
     const serverPage0 = new ServerPage0()
     const clientPage1 = new ClientPage0<typeof serverPage0>()
@@ -243,11 +213,11 @@ describe('ServerPage0', () => {
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],
     ]
-    const { reactNode: reactNode1 } = await serverPage0._getSuitableReactNode({ url: '/hello/world', clientPages0 })
+    const { reactNode: reactNode1 } = await serverPage0._getSuitableNode({ url: '/hello/world', clientPages0 })
     expect(React.isValidElement(reactNode1)).toBe(true)
     const html1 = renderToStaticMarkup(reactNode1 as React.ReactElement)
     expect(html1).toBe('<div>Hello, world</div>')
-    const { reactNode: reactNode2 } = await serverPage0._getSuitableReactNode({ url: '/bye/bye', clientPages0 })
+    const { reactNode: reactNode2 } = await serverPage0._getSuitableNode({ url: '/bye/bye', clientPages0 })
     expect(React.isValidElement(reactNode2)).toBe(true)
     const html2 = renderToStaticMarkup(reactNode2 as React.ReactElement)
     expect(html2).toBe('<div>Bye, bye</div>')

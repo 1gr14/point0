@@ -56,3 +56,7 @@ export type ExtendFnRecord<
   : TType extends 'loader'
     ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TOutput> }
     : never
+
+export type StaticRenderer = (reactNode: React.ReactNode) => string
+export type ReadableStreamRenderer = (reactNode: React.ReactNode) => ReadableStream<string>
+export type Payload = { location: Route0.Location; data: Record<string, any> }

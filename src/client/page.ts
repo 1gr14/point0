@@ -1,6 +1,6 @@
-import type { Route0 } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import type { AnyServerPage0, InferServerPageCtxOutput, InferServerPageDataOutput } from '../server/page.js'
-import type { Ctx, Data, ExtendFnRecord, CtxFn, LoaderFn } from '../shared/types.js'
+import type { Ctx, CtxFn, Data, ExtendFnRecord, LoaderFn } from '../shared/types.js'
 
 export class ClientPage0<
   TServerPage0 extends AnyServerPage0,
@@ -84,6 +84,26 @@ export class ClientPage0<
 
   getExtendFns(): ExtendFnRecord[] {
     return this._extendFns
+  }
+
+  // helpers
+  static async _getSuitable({
+    url,
+    clientPages0,
+  }: {
+    url: string
+    clientPages0: ClientPages0
+  }): Promise<{ clientPage0: AnyClientPage0 | undefined; location: Route0.Location }> {
+    const location = Route0.getLocation(url)
+    for (const [route, clientPage0Getter] of clientPages0) {
+      const match = Route0.getMatch(route, location)
+      if (!match.exact) {
+        continue
+      }
+      const clientPage0 = clientPage0Getter instanceof ClientPage0 ? clientPage0Getter : await clientPage0Getter()
+      return { clientPage0, location: match.location }
+    }
+    return { clientPage0: undefined, location }
   }
 }
 
