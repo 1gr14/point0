@@ -97,6 +97,7 @@
     "@semantic-release/npm": "^12.0.2",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "@types/react-dom": "^19.2.2",
     "cross-env": "^10.0.0",
     "elysia": "^1.4.12",
     "esbuild-fix-imports-plugin": "^1.0.22",

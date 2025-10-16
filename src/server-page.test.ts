@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import type { NeverCtx, EmptyData } from './server-page.js'
+import type { UndefinedCtx, EmptyData, EmptyCtx } from './server-page.js'
 import { ServerPage0 } from './server-page.js'
 
 describe('ServerPage0', () => {
@@ -21,7 +21,7 @@ describe('ServerPage0', () => {
     expect(serverPage0).toBeInstanceOf(ServerPage0)
     expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0>()
 
-    expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0<NeverCtx, EmptyData>>()
+    expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, EmptyData>>()
     expect(serverPage0.extendFns).toEqual([])
   })
 
@@ -33,7 +33,7 @@ describe('ServerPage0', () => {
     }))
     expect(serverPage01).toBeInstanceOf(ServerPage0)
 
-    expectTypeOf(serverPage01).toEqualTypeOf<ServerPage0<NeverCtx, { a: number; b: number }, EmptyData>>()
+    expectTypeOf(serverPage01).toEqualTypeOf<ServerPage0<UndefinedCtx, { a: number; b: number }, EmptyData>>()
     expect(serverPage01.extendFns).toHaveLength(1)
     // not modified original serverPage0
     expect(serverPage0.extendFns).toHaveLength(0)
@@ -44,7 +44,9 @@ describe('ServerPage0', () => {
     }))
     expect(serverPage02).toBeInstanceOf(ServerPage0)
 
-    expectTypeOf(serverPage02).toEqualTypeOf<ServerPage0<NeverCtx, { a: number; b: number; c: number }, EmptyData>>()
+    expectTypeOf(serverPage02).toEqualTypeOf<
+      ServerPage0<UndefinedCtx, { a: number; b: number; c: number }, EmptyData>
+    >()
     expect(serverPage02.extendFns).toHaveLength(2)
     // not modified original serverPage01
     expect(serverPage01.extendFns).toHaveLength(1)
@@ -59,7 +61,7 @@ describe('ServerPage0', () => {
       b: 2,
     }))
     expect(serverPage01).toBeInstanceOf(ServerPage0)
-    expectTypeOf(serverPage01).toEqualTypeOf<ServerPage0<NeverCtx, NeverCtx, { a: number; b: number }>>()
+    expectTypeOf(serverPage01).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, { a: number; b: number }>>()
     expect(serverPage01.extendFns).toHaveLength(1)
     // not modified original serverPage0
     expect(serverPage0.extendFns).toHaveLength(0)
@@ -69,7 +71,7 @@ describe('ServerPage0', () => {
       c: 4,
     }))
     expect(serverPage02).toBeInstanceOf(ServerPage0)
-    expectTypeOf(serverPage02).toEqualTypeOf<ServerPage0<NeverCtx, NeverCtx, { a: number; b: number; c: number }>>()
+    expectTypeOf(serverPage02).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, { a: number; b: number; c: number }>>()
     expect(serverPage02.extendFns).toHaveLength(2)
     // not modified original serverPage01
     expect(serverPage01.extendFns).toHaveLength(1)
@@ -116,6 +118,58 @@ describe('ServerPage0', () => {
     expect(await serverPage03.prepare(url)).toEqual({
       output: {
         ctx: {
+          c: 5,
+        },
+        data: {},
+      },
+      error: undefined,
+    })
+  })
+
+  it('extract ctx with required ctx input', async () => {
+    const serverPage0 = new ServerPage0<{ r: string }>()
+    const url = '/z/x/c'
+    const serverPage01 = serverPage0.ctx(({ ctx }) => ({
+      ...ctx,
+      a: 1,
+      b: 2,
+    }))
+    expect(await serverPage01.prepare(url, { r: 'str' })).toEqual({
+      output: {
+        ctx: {
+          r: 'str',
+          a: 1,
+          b: 2,
+        },
+        data: {},
+      },
+      error: undefined,
+    })
+    const serverPage02 = serverPage01.ctx(({ ctx }) => ({
+      ...ctx,
+      a: 3,
+      c: 4,
+    }))
+    expect(await serverPage02.prepare(url, { r: 'str' })).toEqual({
+      output: {
+        ctx: {
+          r: 'str',
+          a: 3,
+          b: 2,
+          c: 4,
+        },
+        data: {},
+      },
+      error: undefined,
+    })
+    const serverPage03 = serverPage01.ctx(({ ctx }) => ({
+      r: ctx.r,
+      c: 5,
+    }))
+    expect(await serverPage03.prepare(url, { r: 'str' })).toEqual({
+      output: {
+        ctx: {
+          r: 'str',
           c: 5,
         },
         data: {},
