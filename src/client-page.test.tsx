@@ -4,7 +4,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { ClientPage0 } from './client-page.js'
 import { ServerPage0 } from './server-page.js'
-import type { EmptyCtx, EmptyData, UndefinedCtx } from './shared.js'
+import type { EmptyCtx, EmptyData } from './shared.js'
 
 describe('ClientPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')
@@ -19,15 +19,12 @@ describe('ClientPage0', () => {
 
   it('creates an empty instance', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const serverPage0 = new ServerPage0().ctx(() => ({
-      a: 1,
-      b: 2,
-    }))
+    const serverPage0 = new ServerPage0()
     const clientPage0 = new ClientPage0<typeof serverPage0>()
     expect(clientPage0).toBeInstanceOf(ClientPage0)
-    expectTypeOf(clientPage0).toEqualTypeOf<ClientPage0>()
-    expectTypeOf(clientPage0).toEqualTypeOf<ClientPage0<UndefinedCtx, EmptyCtx, EmptyData>>()
-    expect(clientPage0.extendFns).toEqual([])
+    expectTypeOf(clientPage0).toEqualTypeOf<ClientPage0<typeof serverPage0>>()
+    expectTypeOf(clientPage0).toEqualTypeOf<ClientPage0<typeof serverPage0, EmptyCtx, EmptyData>>()
+    expect(clientPage0._extendFns).toEqual([])
   })
 
   it('creates ready page', () => {
@@ -36,13 +33,13 @@ describe('ClientPage0', () => {
       .ctx(() => ({
         a: 1,
         b: 2,
-        say: (text: string) => `server says ${text}!`,
+        say: async (text: string) => `server says ${text}!`,
         hello: (name: string) => `server says hello to ${name}!`,
       }))
-      .loader(({ data }) => ({
-        preloadedServer: 'something',
+      .loader(({ data, ctx }) => ({
+        preloadedServer: 10,
       }))
-    const clientPage0 = new ClientPage0<typeof serverPage0, { r: number }>()
+    const clientPage0 = new ClientPage0<typeof serverPage0>()
       // ctx is client only in ctx fns
       .ctx(({ ctx }) => ({
         ...ctx,
@@ -55,10 +52,10 @@ describe('ClientPage0', () => {
         sum: async (a: number, b: number) => a + b,
       }))
       // but in loaders ctx is both server and client
-      .loader(async ({ ctx, data }) => ({
+      .loader(async ({ ctx, data, location }) => ({
         ...data,
         preloadedClient: 'something',
-        preloadedClientFromServer: await ctx.server.say('something good'),
+        preloadedClientFromServer: await ctx.say('something good'),
       }))
     const routeX = Route0.create('/my/:id')
     const pageX = clientPage0
@@ -71,8 +68,22 @@ describe('ClientPage0', () => {
         ...data,
         loadedDataAfterRoute: `something: ${location.params.id}`,
       }))
-      .component(({ data }) => {
-        return <pre>{JSON.stringify(data, null, 2)}</pre>
+      .component(({ data, location }) => {
+        expectTypeOf(location).toEqualTypeOf<Route0.Location<typeof routeX>>()
+        expectTypeOf(data).toEqualTypeOf<{
+          loadedDataAfterRoute: string
+          preloadedClient: string
+          preloadedClientFromServer: string
+          preloadedServer: number
+        }>()
+        return (
+          <div>
+            <pre>DATA: {JSON.stringify(data, null, 2)}</pre>
+            <pre>LOCATION: {JSON.stringify(location, null, 2)}</pre>
+          </div>
+        )
       })
+    expect(pageX.getRoute()).toEqual(routeX)
+    expect(pageX.getComponent()).toEqual(expect.any(Function))
   })
 })
