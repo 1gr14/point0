@@ -57,6 +57,3 @@ export type ExtendFnRecord<
   : TType extends 'loader'
     ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TOutput> }
     : never
-
-// TODO: add layouts here
-export type Pages0 = Array<[Route0.AnyRoute, () => Promise<AnyClientPage0>]>

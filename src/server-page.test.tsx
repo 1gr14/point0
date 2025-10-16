@@ -4,6 +4,8 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import type { UndefinedCtx, EmptyData, EmptyCtx } from './types.js'
 import { ServerPage0 } from './server-page.js'
+import { ClientPage0 } from './client-page.js'
+import { Route0 } from '@devp0nt/route0'
 
 describe('ServerPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')
@@ -21,7 +23,7 @@ describe('ServerPage0', () => {
     expect(serverPage0).toBeInstanceOf(ServerPage0)
     expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0>()
     expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, EmptyData>>()
-    expect(serverPage0.extendFns).toEqual([])
+    expect(serverPage0._extendFns).toEqual([])
   })
 
   it('extends with ctx fn', () => {
@@ -33,9 +35,9 @@ describe('ServerPage0', () => {
     expect(serverPage01).toBeInstanceOf(ServerPage0)
 
     expectTypeOf(serverPage01).toEqualTypeOf<ServerPage0<UndefinedCtx, { a: number; b: number }, EmptyData>>()
-    expect(serverPage01.extendFns).toHaveLength(1)
+    expect(serverPage01._extendFns).toHaveLength(1)
     // not modified original serverPage0
-    expect(serverPage0.extendFns).toHaveLength(0)
+    expect(serverPage0._extendFns).toHaveLength(0)
     const serverPage02 = serverPage01.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
@@ -46,11 +48,11 @@ describe('ServerPage0', () => {
     expectTypeOf(serverPage02).toEqualTypeOf<
       ServerPage0<UndefinedCtx, { a: number; b: number; c: number }, EmptyData>
     >()
-    expect(serverPage02.extendFns).toHaveLength(2)
+    expect(serverPage02._extendFns).toHaveLength(2)
     // not modified original serverPage01
-    expect(serverPage01.extendFns).toHaveLength(1)
+    expect(serverPage01._extendFns).toHaveLength(1)
     // not modified original serverPage0
-    expect(serverPage0.extendFns).toHaveLength(0)
+    expect(serverPage0._extendFns).toHaveLength(0)
   })
 
   it('extends with loader fn', () => {
@@ -61,9 +63,9 @@ describe('ServerPage0', () => {
     }))
     expect(serverPage01).toBeInstanceOf(ServerPage0)
     expectTypeOf(serverPage01).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, { a: number; b: number }>>()
-    expect(serverPage01.extendFns).toHaveLength(1)
+    expect(serverPage01._extendFns).toHaveLength(1)
     // not modified original serverPage0
-    expect(serverPage0.extendFns).toHaveLength(0)
+    expect(serverPage0._extendFns).toHaveLength(0)
     const serverPage02 = serverPage01.loader(({ data }) => ({
       ...data,
       a: 3,
@@ -71,57 +73,67 @@ describe('ServerPage0', () => {
     }))
     expect(serverPage02).toBeInstanceOf(ServerPage0)
     expectTypeOf(serverPage02).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, { a: number; b: number; c: number }>>()
-    expect(serverPage02.extendFns).toHaveLength(2)
+    expect(serverPage02._extendFns).toHaveLength(2)
     // not modified original serverPage01
-    expect(serverPage01.extendFns).toHaveLength(1)
+    expect(serverPage01._extendFns).toHaveLength(1)
     // not modified original serverPage0
-    expect(serverPage0.extendFns).toHaveLength(0)
+    expect(serverPage0._extendFns).toHaveLength(0)
   })
 
-  it('extract ctx', async () => {
+  it('runCtxAndLoaderFns without required ctx', async () => {
     const serverPage0 = new ServerPage0()
     const url = '/z/x/c'
     const serverPage01 = serverPage0.ctx(() => ({
       a: 1,
       b: 2,
     }))
-    expect(await serverPage01.prepare(url)).toEqual({
-      output: {
-        ctx: {
-          a: 1,
-          b: 2,
-        },
-        data: {},
+    const clientPage01 = new ClientPage0<typeof serverPage01>().component(() => <div>Hello</div>)
+    expect(
+      await serverPage01._runCtxAndLoaderFns({
+        location: Route0.getLocation(url),
+        clientPage0: clientPage01,
+        requiredCtx: undefined,
+      }),
+    ).toEqual({
+      ctx: {
+        a: 1,
+        b: 2,
       },
-      error: undefined,
+      data: {},
     })
     const serverPage02 = serverPage01.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
       c: 4,
     }))
-    expect(await serverPage02.prepare(url)).toEqual({
-      output: {
-        ctx: {
-          a: 3,
-          b: 2,
-          c: 4,
-        },
-        data: {},
+    expect(
+      await serverPage02._runCtxAndLoaderFns({
+        location: Route0.getLocation(url),
+        clientPage0: clientPage01,
+        requiredCtx: undefined,
+      }),
+    ).toEqual({
+      ctx: {
+        a: 3,
+        b: 2,
+        c: 4,
       },
-      error: undefined,
+      data: {},
     })
     const serverPage03 = serverPage01.ctx(({ ctx }) => ({
       c: 5,
     }))
-    expect(await serverPage03.prepare(url)).toEqual({
-      output: {
-        ctx: {
-          c: 5,
-        },
-        data: {},
+    expect(
+      await serverPage03._runCtxAndLoaderFns({
+        location: Route0.getLocation(url),
+        clientPage0: clientPage01,
+        requiredCtx: undefined,
+      }),
+    ).toEqual({
+      ctx: {
+        c: 5,
       },
-      error: undefined,
+      data: {},
     })
   })
 
@@ -133,47 +145,57 @@ describe('ServerPage0', () => {
       a: 1,
       b: 2,
     }))
-    expect(await serverPage01.prepare(url, { r: 'str' })).toEqual({
-      output: {
-        ctx: {
-          r: 'str',
-          a: 1,
-          b: 2,
-        },
-        data: {},
+    const clientPage01 = new ClientPage0<typeof serverPage01>().component(() => <div>Hello</div>)
+    expect(
+      await serverPage01._runCtxAndLoaderFns({
+        location: Route0.getLocation(url),
+        clientPage0: clientPage01,
+        requiredCtx: { r: 'str' },
+      }),
+    ).toEqual({
+      ctx: {
+        r: 'str',
+        a: 1,
+        b: 2,
       },
-      error: undefined,
+      data: {},
     })
     const serverPage02 = serverPage01.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
       c: 4,
     }))
-    expect(await serverPage02.prepare(url, { r: 'str' })).toEqual({
-      output: {
-        ctx: {
-          r: 'str',
-          a: 3,
-          b: 2,
-          c: 4,
-        },
-        data: {},
+    expect(
+      await serverPage02._runCtxAndLoaderFns({
+        location: Route0.getLocation(url),
+        clientPage0: clientPage01,
+        requiredCtx: { r: 'str' },
+      }),
+    ).toEqual({
+      ctx: {
+        r: 'str',
+        a: 3,
+        b: 2,
+        c: 4,
       },
-      error: undefined,
+      data: {},
     })
     const serverPage03 = serverPage01.ctx(({ ctx }) => ({
       r: ctx.r,
       c: 5,
     }))
-    expect(await serverPage03.prepare(url, { r: 'str' })).toEqual({
-      output: {
-        ctx: {
-          r: 'str',
-          c: 5,
-        },
-        data: {},
+    expect(
+      await serverPage03._runCtxAndLoaderFns({
+        location: Route0.getLocation(url),
+        clientPage0: clientPage01,
+        requiredCtx: { r: 'str' },
+      }),
+    ).toEqual({
+      ctx: {
+        r: 'str',
+        c: 5,
       },
-      error: undefined,
+      data: {},
     })
   })
 })

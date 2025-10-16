@@ -91,7 +91,7 @@ export type AnyClientPage0<
   TServerPage0 extends AnyServerPage0 = AnyServerPage0,
   TCtxOutput extends Ctx = Ctx,
   TDataOutput extends Data = Data,
-  TAssignedRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0> = ClientPageComponent<
     TDataOutput,
     TAssignedRoute0
@@ -110,3 +110,6 @@ export type UndefinedClientPageComponent = undefined
 export type UndefinedRoute = undefined
 export type CurrentRoute<TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute> =
   TAssignedRoute0 extends Route0.AnyRoute ? TAssignedRoute0 : Route0.AnyRoute
+
+// TODO: add layouts here
+export type ClientPages0 = Array<[Route0.AnyRoute, AnyClientPage0 | (() => Promise<AnyClientPage0> | AnyClientPage0)]>
