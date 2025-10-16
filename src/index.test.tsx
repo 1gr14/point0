@@ -272,13 +272,12 @@ describe('Page0', () => {
 
   //   // server/index.ts
   //   // import { pages } from 'client/lib/pages.ts'
-  //   // import { App } from 'client/index.ts'
-  //   serverPage0.pages(pages)
   //   serve({
   //     port: process.env.PORT,
   //     routes: {
   //       '/*': async ({ url }) => {
-  //         const pageRendered = serverPage0.render(App, url)
+  //
+  //         const pageRendered = serverPage0.render({url, pages})
   //         const stream = await renderToReadableStream(pageRendered)
   //         return new Response(stream, {
   //           headers: { 'Content-Type': 'text/html' },

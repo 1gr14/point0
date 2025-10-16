@@ -1,0 +1,9 @@
+export type UnknownCtx = Record<string, unknown>
+export type EmptyCtx = Record<string, never>
+export type UndefinedCtx = undefined
+export type RequiredCtx = UnknownCtx | UndefinedCtx
+export type Ctx = UnknownCtx | EmptyCtx
+export type UnknownData = Record<string, unknown>
+export type EmptyData = Record<string, never>
+export type UndefinedData = undefined
+export type Data = UnknownData | EmptyData

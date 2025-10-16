@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import type { UndefinedCtx, EmptyData, EmptyCtx } from './server-page.js'
+import type { UndefinedCtx, EmptyData, EmptyCtx } from './shared.js'
 import { ServerPage0 } from './server-page.js'
 
 describe('ServerPage0', () => {
@@ -20,7 +20,6 @@ describe('ServerPage0', () => {
     const serverPage0 = new ServerPage0()
     expect(serverPage0).toBeInstanceOf(ServerPage0)
     expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0>()
-
     expectTypeOf(serverPage0).toEqualTypeOf<ServerPage0<UndefinedCtx, EmptyCtx, EmptyData>>()
     expect(serverPage0.extendFns).toEqual([])
   })
