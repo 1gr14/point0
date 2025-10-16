@@ -12,7 +12,6 @@ import type {
   RequiredCtx,
   UndefinedCtx,
 } from './types.js'
-import { renderToReadableStream } from 'react-dom/server'
 
 export class ServerPage0<
   TCtxRequired extends RequiredCtx = UndefinedCtx,
@@ -41,26 +40,6 @@ export class ServerPage0<
     return newServerPage0
   }
 
-  async render({
-    url,
-    clientPages0,
-    requiredCtx,
-  }: {
-    url: string
-    clientPages0: ClientPages0
-    requiredCtx: TCtxRequired extends Ctx ? TCtxRequired : undefined
-  }) {
-    for (const [route, clientPage0Getter] of clientPages0) {
-      const parseResult = route.parse(url)
-      if (!parseResult.match) {
-        continue
-      }
-      const clientPage0 = clientPage0Getter instanceof ClientPage0 ? clientPage0Getter : await clientPage0Getter()
-      return await this._getReactNode({ location: parseResult.location, clientPage0, requiredCtx })
-    }
-    throw new Error(`Page not found for url: ${url}`)
-  }
-
   async _runCtxAndLoaderFns({
     location,
     clientPage0,
@@ -68,12 +47,13 @@ export class ServerPage0<
   }: {
     location: Route0.Location
     clientPage0: AnyClientPage0
-    requiredCtx: TCtxRequired extends Ctx ? TCtxRequired : undefined
+    requiredCtx?: Ctx
   }): Promise<{ ctx: TCtxOutput; data: TDataOutput }> {
-    let ctxOutput: Ctx = requiredCtx || {}
+    let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
+    const extendFns = [...this._extendFns, ...clientPage0.getExtendFns()]
 
-    for (const extendFn of this._extendFns) {
+    for (const extendFn of extendFns) {
       switch (extendFn.type) {
         case 'ctx':
           ctxOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location })
@@ -97,11 +77,12 @@ export class ServerPage0<
   }: {
     location: Route0.Location
     clientPage0: AnyClientPage0
-    requiredCtx: TCtxRequired extends Ctx ? TCtxRequired : undefined
+    requiredCtx?: Ctx | UndefinedCtx
   }): Promise<React.ReactNode> {
     // TODO: what to do with ctx? Can I pass it to the component?
     // If there prisma for exmaple, but make it available only during server rendering?
     // Maybe first run with ctx, then get all data of useCtx returns, and then run again with just data outputs
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, ctx } = await this._runCtxAndLoaderFns({
       location,
       clientPage0,
@@ -109,6 +90,46 @@ export class ServerPage0<
     })
     const PageComponent = clientPage0.getComponent()
     return <PageComponent data={data} location={location} />
+  }
+
+  async _getSuitableReactNode({
+    url,
+    clientPages0,
+    requiredCtx,
+  }: {
+    url: string
+    clientPages0: ClientPages0
+    requiredCtx?: Ctx | UndefinedCtx
+  }): Promise<React.ReactNode> {
+    for (const [route, clientPage0Getter] of clientPages0) {
+      const parseResult = route.parse(url)
+      if (!parseResult.match) {
+        continue
+      }
+      const clientPage0 = clientPage0Getter instanceof ClientPage0 ? clientPage0Getter : await clientPage0Getter()
+      return await this._getReactNode({ location: parseResult.location, clientPage0, requiredCtx })
+    }
+    throw new Error(`Page not found for url: ${url}`)
+  }
+
+  async render({
+    url,
+    clientPages0,
+    requiredCtx,
+  }: TCtxRequired extends Ctx
+    ? {
+        url: string
+        clientPages0: ClientPages0
+        requiredCtx: TCtxRequired
+      }
+    : {
+        url: string
+        clientPages0: ClientPages0
+        requiredCtx?: undefined
+      }): Promise<React.ReactNode> {
+    const reactNode = await this._getSuitableReactNode({ url, clientPages0, requiredCtx })
+    // TODO: I DO NOT WHAT TO DO NEXT? I THINK I NEED ANOTHER FILE FOR FINAL SSR RENDERING
+    // AND BUN TESTS
   }
 }
 
