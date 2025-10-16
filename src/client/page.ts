@@ -1,6 +1,6 @@
 import type { Route0 } from '@devp0nt/route0'
-import type { AnyServerPage0, InferServerPageCtxOutput, InferServerPageDataOutput } from './server-page.js'
-import type { Ctx, Data, ExtendFnRecord, CtxFn, LoaderFn } from './types.js'
+import type { AnyServerPage0, InferServerPageCtxOutput, InferServerPageDataOutput } from '../server/page.js'
+import type { Ctx, Data, ExtendFnRecord, CtxFn, LoaderFn } from '../shared/types.js'
 
 export class ClientPage0<
   TServerPage0 extends AnyServerPage0,

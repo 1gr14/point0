@@ -5,10 +5,10 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { ClientPages0 } from './client-page.js'
-import { ClientPage0 } from './client-page.js'
-import { ServerPage0 } from './server-page.js'
-import type { EmptyCtx, EmptyData, UndefinedCtx } from './types.js'
+import type { ClientPages0 } from '../client/page.js'
+import { ClientPage0 } from '../client/page.js'
+import { ServerPage0 } from './page.js'
+import type { EmptyCtx, EmptyData, UndefinedCtx } from '../shared/types.js'
 
 describe('ServerPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')

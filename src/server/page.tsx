@@ -1,6 +1,6 @@
 import type { Route0 } from '@devp0nt/route0'
-import type { AnyClientPage0, ClientPages0 } from './client-page.js'
-import { ClientPage0 } from './client-page.js'
+import type { AnyClientPage0, ClientPages0 } from '../client/page.js'
+import { ClientPage0 } from '../client/page.js'
 import type {
   Ctx,
   CtxFn,
@@ -11,7 +11,7 @@ import type {
   LoaderFn,
   RequiredCtx,
   UndefinedCtx,
-} from './types.js'
+} from '../shared/types.js'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 export class ServerPage0<
@@ -62,7 +62,7 @@ export class ServerPage0<
         case 'loader':
           dataOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location })
           break
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
         default:
           throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
       }

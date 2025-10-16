@@ -1,5 +1,5 @@
 {
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/.bak/index.test.tsx", "src/.bak/index.ts", "src/.bak/page.test.ts", "src/.bak/page.ts"],
   "exclude": ["dist/**/*", "node_modules/**/*"],
   "compilerOptions": {
     "rootDir": "./src",

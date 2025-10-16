@@ -2,9 +2,9 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { ClientPage0 } from './client-page.js'
-import { ServerPage0 } from './server-page.js'
-import type { EmptyCtx, EmptyData } from './types.js'
+import { ClientPage0 } from './page.js'
+import { ServerPage0 } from '../server/page.js'
+import type { EmptyCtx, EmptyData } from '../shared/types.js'
 
 describe('ClientPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')
