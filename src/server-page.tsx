@@ -12,6 +12,7 @@ import type {
   RequiredCtx,
   UndefinedCtx,
 } from './types.js'
+import { renderToStaticMarkup } from 'react-dom/server'
 
 export class ServerPage0<
   TCtxRequired extends RequiredCtx = UndefinedCtx,
@@ -78,18 +79,18 @@ export class ServerPage0<
     location: Route0.Location
     clientPage0: AnyClientPage0
     requiredCtx?: Ctx | UndefinedCtx
-  }): Promise<React.ReactNode> {
+  }): Promise<{ data: TDataOutput; ctx: TCtxOutput; reactNode: React.ReactNode }> {
     // TODO: what to do with ctx? Can I pass it to the component?
     // If there prisma for exmaple, but make it available only during server rendering?
     // Maybe first run with ctx, then get all data of useCtx returns, and then run again with just data outputs
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { data, ctx } = await this._runCtxAndLoaderFns({
       location,
       clientPage0,
       requiredCtx,
     })
     const PageComponent = clientPage0.getComponent()
-    return <PageComponent data={data} location={location} />
+    return { data, ctx, reactNode: <PageComponent data={data} location={location} /> }
   }
 
   async _getSuitableReactNode({
@@ -100,7 +101,7 @@ export class ServerPage0<
     url: string
     clientPages0: ClientPages0
     requiredCtx?: Ctx | UndefinedCtx
-  }): Promise<React.ReactNode> {
+  }): Promise<{ data: TDataOutput; ctx: TCtxOutput; reactNode: React.ReactNode }> {
     for (const [route, clientPage0Getter] of clientPages0) {
       const parseResult = route.parse(url)
       if (!parseResult.match) {
@@ -126,8 +127,13 @@ export class ServerPage0<
         url: string
         clientPages0: ClientPages0
         requiredCtx?: undefined
-      }): Promise<React.ReactNode> {
-    const reactNode = await this._getSuitableReactNode({ url, clientPages0, requiredCtx })
+      }): Promise<{
+    html: string
+    data: TDataOutput
+    ctx: TCtxOutput
+  }> {
+    const { reactNode, data, ctx } = await this._getSuitableReactNode({ url, clientPages0, requiredCtx })
+    return { html: renderToStaticMarkup(reactNode), data, ctx }
     // TODO: I DO NOT WHAT TO DO NEXT? I THINK I NEED ANOTHER FILE FOR FINAL SSR RENDERING
     // AND BUN TESTS
   }

@@ -220,13 +220,13 @@ describe('ServerPage0', () => {
           X: {data.x}, Y: {data.y}
         </div>
       ))
-    const node = await serverPage01._getReactNode({
+    const { reactNode } = await serverPage01._getReactNode({
       location: Route0.getLocation(url),
       clientPage0: clientPage01,
       requiredCtx: undefined,
     })
-    expect(React.isValidElement(node)).toBe(true)
-    const html = renderToStaticMarkup(node as React.ReactElement)
+    expect(React.isValidElement(reactNode)).toBe(true)
+    const html = renderToStaticMarkup(reactNode)
     expect(html).toBe('<div>X: 3, Y: -1</div>')
   })
 
