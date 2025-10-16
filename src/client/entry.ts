@@ -16,6 +16,7 @@ export type AfterHydrateFnProps = {
   clientPage0: AnyClientPage0
   location: Route0.Location
   rootEl: HTMLElement
+  reactEl: React.ReactNode
 }
 export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
 
@@ -34,15 +35,15 @@ export async function hydrate({ pages, after }: { pages: ClientPages0; after?: A
   if (!rootEl) {
     throw new Error('Element #root not found')
   }
-  const el = React.createElement(PageComponent, { data: payload.data, location })
+  const reactEl = React.createElement(PageComponent, { data: payload.data, location })
 
   if (rootEl.hasChildNodes()) {
-    hydrateRoot(rootEl, el)
+    hydrateRoot(rootEl, reactEl)
   } else {
-    createRoot(rootEl).render(el)
+    createRoot(rootEl).render(reactEl)
   }
 
   if (after) {
-    await after({ payload, clientPage0, location, rootEl })
+    await after({ payload, clientPage0, location, rootEl, reactEl })
   }
 }

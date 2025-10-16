@@ -15,6 +15,7 @@ import type {
   UndefinedCtx,
 } from '../shared/types.js'
 import { renderDocumentHtml } from './html.js'
+import { renderToStaticMarkup } from 'react-dom/server'
 
 export class ServerPage0<
   TCtxRequired extends RequiredCtx = UndefinedCtx,
@@ -107,18 +108,22 @@ export class ServerPage0<
   async renderStatic({
     path,
     clientPages0,
-    renderer,
+    renderer = renderToStaticMarkup,
     clientBundlePath,
     ...restProps
-  }: {
-    renderer: StaticRenderer
-    path: string
-    clientPages0: ClientPages0
-    clientBundlePath: string
-  } & WithRequiredCtx<TCtxRequired>): Promise<string> {
+  }: WithRequiredCtx<
+    TCtxRequired,
+    {
+      renderer?: StaticRenderer
+      path: string
+      clientPages0: ClientPages0
+      clientBundlePath: string
+    }
+  >): Promise<string> {
     let location: Route0.Location | undefined
     let clientPage0: AnyClientPage0 | undefined
     let data: Data = {}
+    // eslint-disable-next-line no-useless-catch
     try {
       const suitable = await ClientPage0._getSuitable({ path, clientPages0 })
       location = suitable.location
@@ -126,7 +131,7 @@ export class ServerPage0<
       const runResult = await this._runCtxAndLoaderFns({
         location,
         clientPage0,
-        requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
+        requiredCtx: restProps.requiredCtx,
       })
       data = runResult.data
       const reactNode = (() => {
@@ -142,14 +147,16 @@ export class ServerPage0<
       // TODO: use provided meta
       return renderDocumentHtml({ meta: { title: 'Hello, world!' }, pageHtml, payload, clientBundlePath })
     } catch (error) {
+      throw error
       // TODO: use provided errors
-      const pageHtml = renderer(<div>Error: {(error as any).message}</div>)
-      return renderDocumentHtml({
-        meta: { title: 'Hello, world!' },
-        pageHtml,
-        payload: { location: location as never, data },
-        clientBundlePath,
-      })
+      // console.error(error)
+      // const pageHtml = renderer(<div>Error: {(error as any).message}</div>)
+      // return renderDocumentHtml({
+      //   meta: { title: 'Hello, world!' },
+      //   pageHtml,
+      //   payload: { location: location as never, data },
+      //   clientBundlePath,
+      // })
     }
   }
 
@@ -185,11 +192,11 @@ export type AnyServerPage0<
   TDataOutput extends Data = Data,
 > = ServerPage0<TCtxRequired, TCtxOutput, TDataOutput>
 
-export type WithRequiredCtx<TCtxRequired extends RequiredCtx> = TCtxRequired extends Ctx
+export type WithRequiredCtx<TCtxRequired extends RequiredCtx, TRest> = TCtxRequired extends Ctx
   ? {
       requiredCtx: TCtxRequired
-    }
-  : Record<string, undefined>
+    } & TRest
+  : { requiredCtx?: undefined } & TRest
 
 export type InferServerPageCtxOutput<TServerPage0 extends AnyServerPage0> =
   TServerPage0 extends AnyServerPage0<any, infer TCtxOutput, any> ? TCtxOutput : never

@@ -82,7 +82,7 @@
     "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
   },
   "dependencies": {
-    "@devp0nt/route0": "^1.0.0-next.14",
+    "@devp0nt/route0": "^1.0.0-next.16",
     "@unhead/react": "^2.0.19"
   },
   "peerDependencies": {
@@ -115,6 +115,9 @@
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
   },
+  "workspaces": [
+    "examples/*"
+  ],
   "engines": {
     "node": ">=18.0.0",
     "bun": ">=1.0.0"

@@ -35,6 +35,7 @@ export default defineConfig([
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 
       // disable
+      'no-console': 'off',
       'max-lines': 'off',
       'no-lonely-if': 'off',
       'no-negated-condition': 'off',
