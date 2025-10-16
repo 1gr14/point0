@@ -1,5 +1,4 @@
 import type { Route0 } from '@devp0nt/route0'
-import type { AnyClientPage0 } from './client-page.js'
 
 export type UnknownCtx = Record<string, unknown>
 export type EmptyCtx = Record<string, never>

@@ -87,16 +87,17 @@ export class ClientPage0<
   }
 }
 
-export type AnyClientPage0<
-  TServerPage0 extends AnyServerPage0 = AnyServerPage0,
-  TCtxOutput extends Ctx = Ctx,
-  TDataOutput extends Data = Data,
-  TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-  TComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0> = ClientPageComponent<
-    TDataOutput,
-    TAssignedRoute0
-  >,
-> = ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TComponent>
+// export type AnyClientPage0<
+//   TServerPage0 extends AnyServerPage0 = AnyServerPage0,
+//   TCtxOutput extends Ctx = Ctx,
+//   TDataOutput extends Data = Data,
+//   TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+//   TComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0> = ClientPageComponent<
+//     TDataOutput,
+//     TAssignedRoute0
+//   >,
+// > = ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TComponent>
+export type AnyClientPage0 = ClientPage0<any, any, any, any, any>
 
 export type ClientPageComponentProps<
   TDataOutput extends Data = Data,
@@ -112,4 +113,7 @@ export type CurrentRoute<TAssignedRoute0 extends Route0.AnyRoute | UndefinedRout
   TAssignedRoute0 extends Route0.AnyRoute ? TAssignedRoute0 : Route0.AnyRoute
 
 // TODO: add layouts here
-export type ClientPages0 = Array<[Route0.AnyRoute, AnyClientPage0 | (() => Promise<AnyClientPage0> | AnyClientPage0)]>
+export type ClientPageLayout = React.ComponentType<{ children: React.ReactNode }>
+export type ClientPages0 = Array<
+  [Route0.AnyRoute, AnyClientPage0 | (() => Promise<AnyClientPage0> | AnyClientPage0), ...ClientPageLayout[]]
+>

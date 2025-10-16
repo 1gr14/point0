@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-arguments */
+import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
-import React from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import type { UndefinedCtx, EmptyData, EmptyCtx } from './types.js'
-import { ServerPage0 } from './server-page.js'
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import type { ClientPages0 } from './client-page.js'
 import { ClientPage0 } from './client-page.js'
-import { Route0 } from '@devp0nt/route0'
+import { ServerPage0 } from './server-page.js'
+import type { EmptyCtx, EmptyData, UndefinedCtx } from './types.js'
 
 describe('ServerPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')
@@ -211,6 +211,7 @@ describe('ServerPage0', () => {
       sub: async (a: number, b: number) => a - b,
     }))
     const clientPage01 = new ClientPage0<typeof serverPage01>()
+      .route(Route0.create('/z/x/c'))
       .loader(async ({ ctx }) => ({
         x: ctx.sum(ctx.a, ctx.b),
         y: await ctx.sub(ctx.a, ctx.b),
@@ -242,9 +243,13 @@ describe('ServerPage0', () => {
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],
     ]
-    const node = await serverPage0._getSuitableReactNode({ url: '/hello/world', clientPages0 })
-    expect(React.isValidElement(node)).toBe(true)
-    const html = renderToStaticMarkup(node as React.ReactElement)
-    expect(html).toBe('<div>Hello</div>')
+    const { reactNode: reactNode1 } = await serverPage0._getSuitableReactNode({ url: '/hello/world', clientPages0 })
+    expect(React.isValidElement(reactNode1)).toBe(true)
+    const html1 = renderToStaticMarkup(reactNode1 as React.ReactElement)
+    expect(html1).toBe('<div>Hello, world</div>')
+    const { reactNode: reactNode2 } = await serverPage0._getSuitableReactNode({ url: '/bye/bye', clientPages0 })
+    expect(React.isValidElement(reactNode2)).toBe(true)
+    const html2 = renderToStaticMarkup(reactNode2 as React.ReactElement)
+    expect(html2).toBe('<div>Bye, bye</div>')
   })
 })

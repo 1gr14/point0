@@ -103,12 +103,12 @@ export class ServerPage0<
     requiredCtx?: Ctx | UndefinedCtx
   }): Promise<{ data: TDataOutput; ctx: TCtxOutput; reactNode: React.ReactNode }> {
     for (const [route, clientPage0Getter] of clientPages0) {
-      const parseResult = route.parse(url)
-      if (!parseResult.match) {
+      const match = route.match(url)
+      if (!match.exact) {
         continue
       }
       const clientPage0 = clientPage0Getter instanceof ClientPage0 ? clientPage0Getter : await clientPage0Getter()
-      return await this._getReactNode({ location: parseResult.location, clientPage0, requiredCtx })
+      return await this._getReactNode({ location: match.location, clientPage0, requiredCtx })
     }
     throw new Error(`Page not found for url: ${url}`)
   }
