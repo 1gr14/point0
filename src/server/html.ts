@@ -1,4 +1,4 @@
-import type { MetaMap } from '../shared/meta.js'
+import type { MetaMap, MetaMapValue } from '../shared/meta.js'
 import type { Payload } from '../shared/types.js'
 
 export function escapeForInlineJSON(json: string) {
@@ -17,9 +17,14 @@ export const metaMapToHtml = (metaMap: MetaMap | MetaMap[]) => {
   let headHtml = ''
   let bodyAttrs = ''
   let htmlAttrs = ''
-  const toHtmlAttrs = (value: Record<string, string | boolean | number>) => {
+  const toHtmlAttrs = (value: MetaMapValue) => {
+    if (typeof value !== 'object' || value === null || typeof value === 'undefined') {
+      return ''
+    }
     return Object.entries(value)
-      .map(([key, value]) => (value === true ? key : value === false ? '' : `${key}="${value}"`))
+      .map(([key, value]) =>
+        value === true ? key : value === false ? '' : value === null || value === undefined ? '' : `${key}="${value}"`,
+      )
       .filter(Boolean)
       .join(' ')
   }
@@ -33,7 +38,14 @@ export const metaMapToHtml = (metaMap: MetaMap | MetaMap[]) => {
       } else if (key === 'body') {
         bodyAttrs += toHtmlAttrs(value)
       } else {
-        headHtml += `<${key} ${toHtmlAttrs(value)} />`
+        if (value === null || value === undefined || value === false) {
+          continue
+        }
+        if (typeof value === 'object') {
+          headHtml += `<${key} ${toHtmlAttrs(value)} />`
+          continue
+        }
+        headHtml += `<${key}>${value}</${key}>`
       }
     }
   }
@@ -46,12 +58,12 @@ export const metaMapToHtml = (metaMap: MetaMap | MetaMap[]) => {
 
 export function renderDocumentHtml({
   meta,
-  html,
+  pageHtml,
   payload,
   clientBundlePath,
 }: {
   meta: MetaMap | MetaMap[]
-  html: string
+  pageHtml: string
   payload: Payload
   clientBundlePath: string
 }) {
@@ -65,7 +77,7 @@ export function renderDocumentHtml({
 ${headHtml}
 </head>
 <body${bodyAttrs}>
-<div id="root">${html}</div>
+<div id="root">${pageHtml}</div>
 <script id="__PAGE0_PAYLOAD__" type="application/json">${serializedPayload}</script>
 <script src="${clientBundlePath}" defer></script>
 </body>

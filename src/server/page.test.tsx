@@ -213,11 +213,11 @@ describe('ServerPage0', () => {
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],
     ]
-    const { reactNode: reactNode1 } = await serverPage0._getSuitableNode({ url: '/hello/world', clientPages0 })
+    const { reactNode: reactNode1 } = await serverPage0._getSuitableNode({ path: '/hello/world', clientPages0 })
     expect(React.isValidElement(reactNode1)).toBe(true)
     const html1 = renderToStaticMarkup(reactNode1 as React.ReactElement)
     expect(html1).toBe('<div>Hello, world</div>')
-    const { reactNode: reactNode2 } = await serverPage0._getSuitableNode({ url: '/bye/bye', clientPages0 })
+    const { reactNode: reactNode2 } = await serverPage0._getSuitableNode({ path: '/bye/bye', clientPages0 })
     expect(React.isValidElement(reactNode2)).toBe(true)
     const html2 = renderToStaticMarkup(reactNode2 as React.ReactElement)
     expect(html2).toBe('<div>Bye, bye</div>')

@@ -88,13 +88,13 @@ export class ClientPage0<
 
   // helpers
   static async _getSuitable({
-    url,
+    path,
     clientPages0,
   }: {
-    url: string
+    path: string
     clientPages0: ClientPages0
   }): Promise<{ clientPage0: AnyClientPage0 | undefined; location: Route0.Location }> {
-    const location = Route0.getLocation(url)
+    const location = Route0.getLocation(path)
     for (const [route, clientPage0Getter] of clientPages0) {
       const match = Route0.getMatch(route, location)
       if (!match.exact) {

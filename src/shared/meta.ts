@@ -37,4 +37,7 @@
 
 // too much
 
-export type MetaMap = Record<string, Record<string, string | boolean | number>>
+export type MetaMapPrimitiveValue = string | boolean | number | null | undefined
+export type MetaMapRecordValue = Record<string, MetaMapPrimitiveValue>
+export type MetaMapValue = MetaMapPrimitiveValue | MetaMapRecordValue
+export type MetaMap = Record<string, MetaMapValue>

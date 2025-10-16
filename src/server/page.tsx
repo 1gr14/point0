@@ -9,7 +9,7 @@ import type {
   EmptyData,
   ExtendFnRecord,
   LoaderFn,
-  ReadableStreamRenderer,
+  // ReadableStreamRenderer,
   RequiredCtx,
   StaticRenderer,
   UndefinedCtx,
@@ -74,11 +74,11 @@ export class ServerPage0<
   }
 
   async _getSuitableNode({
-    url,
+    path,
     clientPages0,
     requiredCtx,
   }: {
-    url: string
+    path: string
     clientPages0: ClientPages0
     requiredCtx?: Ctx | UndefinedCtx
   }): Promise<{
@@ -88,7 +88,7 @@ export class ServerPage0<
     location: Route0.Location
     clientPage0: AnyClientPage0 | undefined
   }> {
-    const { location, clientPage0 } = await ClientPage0._getSuitable({ url, clientPages0 })
+    const { location, clientPage0 } = await ClientPage0._getSuitable({ path, clientPages0 })
     const { data, ctx } = await this._runCtxAndLoaderFns({
       location,
       clientPage0,
@@ -105,52 +105,78 @@ export class ServerPage0<
   }
 
   async renderStatic({
-    url,
+    path,
     clientPages0,
     renderer,
-    ...restProps
-  }: { renderer: StaticRenderer; url: string; clientPages0: ClientPages0 } & WithRequiredCtx<TCtxRequired>): Promise<{
-    html: string
-    data: TDataOutput
-    ctx: TCtxOutput
-  }> {
-    const { data, ctx, reactNode, location } = await this._getSuitableNode({
-      url,
-      clientPages0,
-      requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
-    })
-    const html = renderer(reactNode)
-    const payload = { location, data }
-
-    const doc = renderDocumentHtml({ head, html, payload, clientBundlePath })
-
-    return { documentHtml: doc, data, ctx }
-  }
-
-  async renderReadableStream({
-    url,
-    clientPages0,
-    renderer,
+    clientBundlePath,
     ...restProps
   }: {
-    renderer: ReadableStreamRenderer
-    url: string
+    renderer: StaticRenderer
+    path: string
     clientPages0: ClientPages0
-  } & WithRequiredCtx<TCtxRequired>): Promise<{
-    readableStream: ReadableStream<string>
-    data: TDataOutput
-    ctx: TCtxOutput
-  }> {
-    const { data, ctx, reactNode } = await this._getSuitableNode({
-      url,
-      clientPages0,
-      requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
-    })
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const readableStream = renderer(reactNode)
-    // TODO: figure out how to render readable stream
-    throw new Error('Not implemented')
+    clientBundlePath: string
+  } & WithRequiredCtx<TCtxRequired>): Promise<string> {
+    let location: Route0.Location | undefined
+    let clientPage0: AnyClientPage0 | undefined
+    let data: Data = {}
+    try {
+      const suitable = await ClientPage0._getSuitable({ path, clientPages0 })
+      location = suitable.location
+      clientPage0 = suitable.clientPage0
+      const runResult = await this._runCtxAndLoaderFns({
+        location,
+        clientPage0,
+        requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
+      })
+      data = runResult.data
+      const reactNode = (() => {
+        if (!clientPage0) {
+          // TODO: use provided errors
+          return <div>Page not found</div>
+        }
+        const PageComponent = clientPage0.getComponent()
+        return <PageComponent data={data} location={location} />
+      })()
+      const pageHtml = renderer(reactNode)
+      const payload = { location, data }
+      // TODO: use provided meta
+      return renderDocumentHtml({ meta: { title: 'Hello, world!' }, pageHtml, payload, clientBundlePath })
+    } catch (error) {
+      // TODO: use provided errors
+      const pageHtml = renderer(<div>Error: {(error as any).message}</div>)
+      return renderDocumentHtml({
+        meta: { title: 'Hello, world!' },
+        pageHtml,
+        payload: { location: location as never, data },
+        clientBundlePath,
+      })
+    }
   }
+
+  // TODO: figure out how to render readable stream
+  // async renderReadableStream({
+  //   url,
+  //   clientPages0,
+  //   renderer,
+  //   ...restProps
+  // }: {
+  //   renderer: ReadableStreamRenderer
+  //   url: string
+  //   clientPages0: ClientPages0
+  // } & WithRequiredCtx<TCtxRequired>): Promise<{
+  //   readableStream: ReadableStream<string>
+  //   data: TDataOutput
+  //   ctx: TCtxOutput
+  // }> {
+  //   const { data, ctx, reactNode } = await this._getSuitableNode({
+  //     url,
+  //     clientPages0,
+  //     requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
+  //   })
+  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //   const readableStream = renderer(reactNode)
+  //   throw new Error('Not implemented')
+  // }
 }
 
 export type AnyServerPage0<

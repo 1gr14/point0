@@ -1,55 +1,48 @@
 import React from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { ClientPages0 } from '../client/page.js'
+import type { AnyClientPage0, ClientPages0 } from '../client/page.js'
 import { ClientPage0 } from '../client/page.js'
+import type { Payload } from '../shared/types.js'
+import type { Route0 } from '@devp0nt/route0'
 
 declare global {
-  const window: Window & typeof globalThis
   interface Window {
-    __PAGE0_PAYLOAD__?: { url: string; data: any; ctx: any }
+    __PAGE0_PAYLOAD__?: Payload
   }
 }
 
-export async function hydrate({ pages }: { pages: ClientPages0 }) {
+export type AfterHydrateFnProps = {
+  payload: Payload
+  clientPage0: AnyClientPage0
+  location: Route0.Location
+  rootEl: HTMLElement
+}
+export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
+
+export async function hydrate({ pages, after }: { pages: ClientPages0; after?: AfterHydrateFn }) {
   const payload = window.__PAGE0_PAYLOAD__
   if (!payload) {
-    console.error('Missing __PAGE0_PAYLOAD__')
-    return
+    throw new Error('Missing __PAGE0_PAYLOAD__')
   }
 
-  const url = payload.url
-  let matchedPage: ClientPage0<any> | undefined
-  let location: any
-
-  for (const [route, getPage] of pages) {
-    const match = route.match(url)
-    if (match.exact) {
-      matchedPage = getPage instanceof ClientPage0 ? getPage : await getPage()
-      location = match.location
-      break
-    }
+  const { clientPage0, location } = await ClientPage0._getSuitable({ path: payload.location.href, clientPages0: pages })
+  if (!clientPage0) {
+    throw new Error(`Page not found`)
   }
-
-  if (!matchedPage) {
-    console.error('No matching page for', url)
-    return
+  const PageComponent = clientPage0.getComponent()
+  const rootEl = document.getElementById('root')
+  if (!rootEl) {
+    throw new Error('Element #root not found')
   }
+  const el = React.createElement(PageComponent, { data: payload.data, location })
 
-  const Component = matchedPage.getComponent()
-  const rootElem = document.getElementById('root')!
-  const el = React.createElement(Component as any, { data: boot.data, location })
-
-  if (rootElem.hasChildNodes()) {
-    hydrateRoot(rootElem, el)
+  if (rootEl.hasChildNodes()) {
+    hydrateRoot(rootEl, el)
   } else {
-    createRoot(rootElem).render(el)
+    createRoot(rootEl).render(el)
   }
 
-  // 🔥 HMR hook (Bun 1.3)
-  if (import.meta.hot) {
-    import.meta.hot.accept(() => {
-      console.log('[HMR] React page reloaded')
-      createRoot(rootElem).render(el)
-    })
+  if (after) {
+    await after({ payload, clientPage0, location, rootEl })
   }
 }
