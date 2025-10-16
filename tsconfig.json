@@ -1,0 +1,31 @@
+{
+  "include": ["src/**/*"],
+  "exclude": ["dist/**/*", "node_modules/**/*"],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": ["node", "bun-types"],
+    "outDir": "./dist/esm",
+    "module": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": false,
+    "isolatedModules": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "useUnknownInCatchVariables": true,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

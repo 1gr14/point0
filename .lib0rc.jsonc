@@ -1,4 +1,26 @@
 {
   "repoName": "page10",
-  "packageName": "@devp0nt/page10"
+  "packageName": "@devp0nt/page10",
+  "jsx": true,
+  "disableTemplates": [
+    ".github/workflows/ci.yml.yml",
+    ".husky/commit-msg.txt",
+    ".husky/pre-commit.txt",
+    ".vscode.dir/settings.json.jsonc",
+    "src/index.test.ts.txt'",
+    "src/index.ts.txt'",
+    ".commitlintrc.js.js",
+    ".gitignore.ejs",
+    ".releaserc.mjs.txt",
+    "biome.jsonc.jsonc",
+    "eslint.config.js.js",
+    ".lintstagedrc.mjs.mjs",
+    ".prettierrc.json.json",
+    ".prettierignore.txt",
+    "LICENSE.ejs",
+    "tsconfig.build.test.json.json",
+    "tsconfig.build.json.json",
+    "tsconfig.json.ts",
+    "tsup.config.ts.ejs"
+  ]
 }
