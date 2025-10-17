@@ -1,26 +1,31 @@
 wrapper for bun helpers
+example idea, example idea new
 test for ready server
+example general
 not ClientPages, but PagesCollection
 remove 0 suffix everywhere
 just page0, first generic not Page0 but _Infer (or just _) holder or ctx itself
 render fns to another module
-two porcess
 .end
-const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
-const {data, meta, res} = await somePage.fetch({ id: 123 }) // where res is component or json depends on this page .env response
-so we need base path setted in routes or page sttings itselfwq  q1  q1~q
-.component, should not recall already called middlewares
-.require(<>)
-.clientCtx
-.clientLoader, after call do not allow usual loader
-.useLoader ? hmr ok ?
-htmlRewriter fall back on no bun
+layouts
+
 error handling
 Error0
-index file with __OUTLET__
+
+.clientCtx
+.clientLoader, after call do not allow usual loader
+
+const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
+const {data, meta, res} = await somePage.fetch({ id: 123 }) // where res is component or json depends on this page .env response
+so we need base path setted in routes or page sttings itself
+.component, should not recall already called middlewares
+? .require(<>)
+
+? .useLoader ? hmr ok ?
+
+htmlRewriter fall back on no bun
 hydrate react query and others
 .before, .after
-layouts
 <Router />
 client only page
 client only routing
@@ -42,6 +47,7 @@ remove 0 from suffixes where it needed
 .end(() => [404, <div />])
 .end(() => [404, {any: "json"}])
 .json(() => [200, {any: "json"}]).end(() => <div />)
+
 
 example bun
 example vite
