@@ -8,7 +8,7 @@ export default page0
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas }
   })
-  .render(({ data }) => {
+  .end(({ data }) => {
     const [count, setCount] = useState(0)
     return (
       <div>

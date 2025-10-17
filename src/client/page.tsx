@@ -1,6 +1,6 @@
 import { Route0 } from '@devp0nt/route0'
 import type { AnyServerPage0, InferServerPageCtxOutput, InferServerPageDataOutput } from '../server/page.js'
-import type { Ctx, CtxFn, Data, ExtendFnRecord, LoaderFn } from '../shared/types.js'
+import type { Ctx, CtxFn, Data, ExtendFnRecord, LoaderFn, Payload } from '../shared/types.js'
 
 export class ClientPage0<
   TServerPage0 extends AnyServerPage0,
@@ -62,7 +62,7 @@ export class ClientPage0<
     return newClientPage0
   }
 
-  render<TNewComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0>>(
+  end<TNewComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0>>(
     component: TNewComponent,
   ): ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TNewComponent> {
     const newClientPage0 = new ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TNewComponent>()
@@ -93,19 +93,67 @@ export class ClientPage0<
   }: {
     pages: PagesCollection
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
-    clientPage0: AnyClientPage0 | undefined
+    page: AnyClientPage0 | undefined
     location: Route0.Location
   }> {
     const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
-    for (const [route, clientPage0Getter] of pages) {
+    for (const [route, getPage] of pages) {
       const match = Route0.getMatch(route, location)
       if (!match.exact) {
         continue
       }
-      const clientPage0 = clientPage0Getter instanceof ClientPage0 ? clientPage0Getter : await clientPage0Getter()
-      return { clientPage0, location: match.location }
+      const page = getPage instanceof ClientPage0 ? getPage : await getPage()
+      return { page, location: match.location }
     }
-    return { clientPage0: undefined, location }
+    return { page: undefined, location }
+  }
+
+  static async fillElement({
+    page0,
+    page,
+    payload,
+    ...restProps
+  }: {
+    page0?: AnyClientPage0 | undefined // should be required
+    page: AnyClientPage0 | undefined
+    payload: Payload
+  } & ({ routePath: string } | { location: Route0.Location })): Promise<{
+    element: React.ReactElement
+    status: number
+    error: unknown
+    location: Route0.Location
+  }> {
+    const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
+    const PageComponent = page?.getComponent()
+    if (!PageComponent) {
+      // TODO: use provided errors
+      const element = <div>Page not found</div>
+      return { element, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
+    }
+    const element = <PageComponent data={payload.data} location={payload.location} />
+    // TODO: use provided meta
+    return { element, error: undefined, status: 200, location }
+  }
+
+  static async fillSuitableElement({
+    page0,
+    pages,
+    payload,
+    ...restProps
+  }: {
+    page0?: AnyClientPage0
+    pages: PagesCollection
+    payload: Payload
+  } & ({ routePath: string } | { location: Route0.Location })): Promise<{
+    element: React.ReactElement
+    status: number
+    error: unknown
+    location: Route0.Location
+    page: AnyClientPage0 | undefined
+  }> {
+    const { page, location } = await ClientPage0.getSuitable({ pages, ...restProps })
+    const { element, error, status } = await ClientPage0.fillElement({ page0, page, payload, location })
+    return { element, error, status, location, page }
   }
 }
 

@@ -9,7 +9,7 @@ export default page0
     })
     return { idea }
   })
-  .render(({ data }) => {
+  .end(({ data }) => {
     return (
       <div>
         <h1>{data.idea.title}</h1>

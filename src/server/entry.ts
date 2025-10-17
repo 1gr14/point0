@@ -1,5 +1,6 @@
+import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
 import type { MetaMap, MetaMapValue } from '../shared/meta.js'
-import type { Payload } from '../shared/types.js'
+import type { Payload, ReadableStreamRenderer, StaticRenderer } from '../shared/types.js'
 
 export function escapeForInlineJSON(json: string) {
   return json
@@ -84,38 +85,43 @@ export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) 
 </html>`
 }
 
-export type DocumentHtmlResult = {
+export type DocumentHtmlResult<TContent extends string | undefined> = {
   prefix: string
-  content: string
+  content: TContent
   suffix: string
   html: string
 }
 
-export function renderDocumentHtml({
+export function renderDocumentHtml<TContent extends string | undefined = undefined>({
   content,
   payload,
   clientBundlePath,
+  originalHtml,
 }: {
-  content: string
+  content?: TContent
   payload: Payload
   clientBundlePath?: string
-}): DocumentHtmlResult {
+  originalHtml?: string
+}): DocumentHtmlResult<TContent> {
+  if (originalHtml) {
+    return overrideDocumentHtml({ originalHtml, content, payload, clientBundlePath })
+  }
   const prefix = renderDocumentHtmlPrefix({ payload })
   const suffix = renderDocumentHtmlSuffix({ clientBundlePath })
-  return { prefix, content, suffix, html: `${prefix}${content}${suffix}` }
+  return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
 }
 
-export function overrideDocumentHtml({
+export function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalHtml,
   content,
   payload,
   clientBundlePath,
 }: {
   originalHtml: string
-  content?: string
+  content?: TContent
   payload: Payload
   clientBundlePath?: string
-}): DocumentHtmlResult {
+}): DocumentHtmlResult<TContent> {
   const { meta } = payload
   const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
   const serializedPayload = serializePayload(payload)
@@ -185,7 +191,7 @@ export function overrideDocumentHtml({
   const htmlWithTarget = rewriter.transform(originalHtml)
   if (htmlWithTarget.includes('<!-- __PAGE0_TARGET__ -->')) {
     const [prefix, suffix] = htmlWithTarget.split('<!-- __PAGE0_TARGET__ -->')
-    return { prefix, content: '', suffix, html: `${prefix}${suffix}` }
+    return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
   } else if (
     htmlWithTarget.includes('<!-- __PAGE0_TARGET_START__ -->') &&
     htmlWithTarget.includes('<!-- __PAGE0_TARGET_END__ -->')
@@ -197,8 +203,72 @@ export function overrideDocumentHtml({
       .replace(suffix, '')
       .replace('<!-- __PAGE0_TARGET_START__ -->', '')
       .replace('<!-- __PAGE0_TARGET_END__ -->', '')
-    return { prefix, content, suffix, html: `${prefix}${content}${suffix}` }
+    return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
   } else {
     throw new Error('<!-- __PAGE0_TARGET__ --> not found')
   }
+}
+
+export function renderStatic({
+  element,
+  payload,
+  renderer = renderToStaticMarkup,
+  clientBundlePath,
+  originalHtml,
+}: {
+  element: React.ReactElement
+  payload: Payload
+  renderer?: StaticRenderer
+  clientBundlePath: string
+  originalHtml?: string
+}): string {
+  return renderDocumentHtml({ content: renderer(element), payload, clientBundlePath, originalHtml }).html
+}
+
+export async function getReadableStreamWithWrapper({
+  element,
+  prefix,
+  suffix,
+  renderer = renderToReadableStream,
+  clientBundlePath,
+}: {
+  element: React.ReactElement
+  suffix?: string
+  prefix?: string
+  clientBundlePath?: string
+  renderer?: ReadableStreamRenderer
+}) {
+  const encoder = new TextEncoder()
+  const transform = new TransformStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(prefix))
+    },
+    transform(chunk, controller) {
+      controller.enqueue(chunk)
+    },
+    flush(controller) {
+      controller.enqueue(encoder.encode(suffix))
+    },
+  })
+  const reactStream = await renderer(element, {
+    ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
+  })
+  return reactStream.pipeThrough(transform)
+}
+
+export async function renderReadableStream({
+  element,
+  payload,
+  clientBundlePath,
+  renderer = renderToReadableStream,
+  originalHtml,
+}: {
+  element: React.ReactElement
+  payload: Payload
+  renderer?: ReadableStreamRenderer
+  clientBundlePath?: string
+  originalHtml?: string
+}): Promise<ReadableStream> {
+  const { prefix, suffix } = renderDocumentHtml({ originalHtml, payload })
+  return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
 }

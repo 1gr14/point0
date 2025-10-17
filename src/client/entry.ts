@@ -1,5 +1,5 @@
 import type { Route0 } from '@devp0nt/route0'
-import React from 'react'
+import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { AnyClientPage0, PagesCollection } from '../client/page.js'
@@ -14,46 +14,60 @@ declare global {
 
 export type AfterHydrateFnProps = {
   payload: Payload
-  clientPage0: AnyClientPage0
+  page: AnyClientPage0 | undefined
   location: Route0.Location
-  rootEl: HTMLElement
-  reactEl: React.ReactNode
+  rootElement: HTMLElement
+  element: React.ReactElement
 }
 export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
 
 let root: Root | null = null
 let hasHydrated = false
 
-export async function hydrate({ pages, after }: { pages: PagesCollection; after?: AfterHydrateFn }) {
+export async function hydrate({
+  page0,
+  pages,
+  after,
+}: {
+  page0?: AnyClientPage0 | undefined // should be required
+  pages: PagesCollection
+  after?: AfterHydrateFn
+}) {
   const payloadEl = document.getElementById('__PAGE0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) throw new Error('Missing __PAGE0_PAYLOAD__')
+  const payload: Payload = (() => {
+    try {
+      return JSON.parse(payloadContent)
+    } catch (error) {
+      throw new Error('Invalid __PAGE0_PAYLOAD__', { cause: error })
+    }
+  })()
 
-  const payload: Payload = JSON.parse(payloadContent)
+  const rootElement = document.getElementById('root')
+  if (!rootElement) throw new Error('Element #root not found')
 
-  const { clientPage0, location } = await ClientPage0.getSuitable({
+  const { element, error, page, location } = await ClientPage0.fillSuitableElement({
     routePath: payload.location.href,
+    page0,
     pages,
+    payload,
   })
-  if (!clientPage0) throw new Error(`Page not found`)
-
-  const PageComponent = clientPage0.getComponent()
-  const rootEl = document.getElementById('root')
-  if (!rootEl) throw new Error('Element #root not found')
-
-  const reactEl = React.createElement(PageComponent, { data: payload.data, location })
+  if (error) {
+    console.error(error)
+  }
 
   // 🟢 Hydrate only once (initial load)
-  if (!hasHydrated && rootEl.hasChildNodes()) {
-    root = hydrateRoot(rootEl, reactEl)
+  if (!hasHydrated && rootElement.hasChildNodes()) {
+    root = hydrateRoot(rootElement, element)
     hasHydrated = true
   } else {
     // 🟢 For HMR (subsequent calls), just re-render client-side
-    root ||= createRoot(rootEl)
-    root.render(reactEl)
+    root ||= createRoot(rootElement)
+    root.render(element)
   }
 
   if (after) {
-    await after({ payload, clientPage0, location, rootEl, reactEl })
+    await after({ payload, page, location, rootElement, element })
   }
 }

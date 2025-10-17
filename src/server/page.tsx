@@ -1,5 +1,11 @@
-import type { Route0 } from '@devp0nt/route0'
-import type { AnyClientPage0, InferClientPageCtxOutput, InferClientPageDataOutput } from '../client/page.js'
+import { Route0 } from '@devp0nt/route0'
+import type {
+  AnyClientPage0,
+  InferClientPageCtxOutput,
+  InferClientPageDataOutput,
+  PagesCollection,
+} from '../client/page.js'
+import { ClientPage0 } from '../client/page.js'
 import type {
   Ctx,
   CtxFn,
@@ -8,6 +14,7 @@ import type {
   EmptyData,
   ExtendFnRecord,
   LoaderFn,
+  Payload,
   RequiredCtx,
   UndefinedCtx,
 } from '../shared/types.js'
@@ -48,13 +55,13 @@ export class ServerPage0<
           : AnyClientPage0 | undefined) = undefined,
   >({
     location,
-    serverPage0,
-    clientPage0,
+    page0,
+    page,
     requiredCtx,
   }: {
     location: Route0.Location
-    serverPage0?: TServerPage0
-    clientPage0?: TClientPage0
+    page0?: TServerPage0
+    page: TClientPage0
     // TODO: make it really required by types
     requiredCtx?: Ctx
   }): Promise<
@@ -66,7 +73,7 @@ export class ServerPage0<
   > {
     let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
-    const extendFns = [...(serverPage0?._extendFns ?? []), ...(clientPage0?.getExtendFns() ?? [])]
+    const extendFns = [...(page0?._extendFns ?? []), ...(page?.getExtendFns() ?? [])]
 
     for (const extendFn of extendFns) {
       switch (extendFn.type) {
@@ -83,6 +90,75 @@ export class ServerPage0<
     }
 
     return { ctx: ctxOutput, data: dataOutput } as never
+  }
+
+  static async extractElement({
+    requiredCtx,
+    page0,
+    page,
+    ...restProps
+  }: {
+    page0?: AnyServerPage0
+    requiredCtx?: Ctx | UndefinedCtx
+    page?: AnyClientPage0 | undefined
+  } & ({ routePath: string } | { location: Route0.Location })): Promise<{
+    element: React.ReactElement
+    status: number
+    payload: Payload
+    error: unknown
+    location: Route0.Location
+  }> {
+    const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
+    let data: Data = {}
+    try {
+      const runResult = await ServerPage0.extract({
+        location,
+        page0,
+        page,
+        requiredCtx,
+      })
+      data = runResult.data
+      const payload = { location, data, meta: { title: 'Hello, world!' } }
+      // TODO: add correct errornames, like no pacge compoentn, no end callback, etc
+      const ClientPageComponent = page?.getComponent()
+      const ServerPageComponent = undefined // serverPage0?.getComponent() TODO: combine them
+      const PageComponent = ClientPageComponent ?? ServerPageComponent
+      if (!PageComponent) {
+        // TODO: use provided errors
+        const element = <div>Page not found</div>
+        return { element, payload, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
+      }
+      const element = <PageComponent data={data} location={location} />
+      // TODO: use provided meta
+      return { element, payload, error: undefined, status: 200, location }
+    } catch (error) {
+      // TODO: use provided errors
+      const element = <div>Error: {(error as any).message}</div>
+      const payload = { location, data, meta: { title: 'Error' } }
+      return { element, payload, error, status: 500, location }
+    }
+  }
+
+  static async extractSuitableElement({
+    requiredCtx,
+    page0,
+    pages,
+    ...restProps
+  }: {
+    page0?: AnyServerPage0
+    requiredCtx?: Ctx | UndefinedCtx
+    pages: PagesCollection
+  } & ({ routePath: string } | { location: Route0.Location })): Promise<{
+    element: React.ReactElement
+    status: number
+    payload: Payload
+    error: unknown
+    location: Route0.Location
+    page: AnyClientPage0 | undefined
+  }> {
+    const { page, location } = await ClientPage0.getSuitable({ pages, ...restProps })
+    const { element, payload, error, status } = await ServerPage0.extractElement({ page0, page, requiredCtx, location })
+    return { element, payload, error, status, location, page }
   }
 }
 

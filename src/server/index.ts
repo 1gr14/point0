@@ -1,2 +1,2 @@
 export * from './page.js'
-export * from './html.js'
+export * from './entry.js'
