@@ -1,8 +1,23 @@
+two porcess
+.require(<>)
 .clientCtx
+.useLoader
 error handling
+Error0
+index file with __OUTLET__
 hydrate react query and others
-useServerCtx
+.before, .after
 .component() for compontnts returns React.FC, and .render() for usual pages
 layouts
 <Router />
+ensure layout not rerender, and scroll position ok
 <Link />
+hide methods after .route() called, etc
+meta, title
+.plugin, .use(plugin)
+html template parsing
+adapters, bun, and importRenderer inside 
+serve public dir
+auto find pages, sort by no params to params routes, save to file
+remove 0 from suffixes where it needed
+.expose

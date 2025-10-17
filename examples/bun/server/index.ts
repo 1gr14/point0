@@ -16,6 +16,10 @@ await Bun.build({
   outdir: 'dist/client',
 })
 
+const INDEX_HTML_SRC_REL_PATH = '../client/index.html'
+
+const indexHtml = await import('../client/index.html')
+
 serve({
   development: {
     hmr: true,
@@ -60,3 +64,33 @@ serve({
 })
 
 console.log(`🚀 server is running at http://localhost:${PORT}`)
+
+// const rewriter = new HTMLRewriter()
+//           .on('head', {
+//             element(element) {
+//               // Inject meta tags at the end of head
+//               if (metaHtml) {
+//                 element.append(metaHtml, { html: true })
+//               }
+//             },
+//           })
+//           .on('body', {
+//             element(element) {
+//               // Inject payload script at the beginning of body
+//               element.prepend(`<script id="__PAGE0_PAYLOAD__" type="application/json">${serializedPayload}</script>`, {
+//                 html: true,
+//               })
+//             },
+//           })
+//           .on('#root', {
+//             element(element) {
+//               // Inject rendered page HTML into root div
+//               element.setInnerContent(pageHtml, { html: true })
+//             },
+//           })
+//           .on('script[src*="index.ts"]', {
+//             element(element) {
+//               // Update script src to point to built bundle
+//               element.setAttribute('src', CLIENT_ENTRY_DIST_ROUTE)
+//             },
+//           })
