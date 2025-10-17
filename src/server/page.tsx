@@ -138,7 +138,7 @@ export class ServerPage0<
       if (!clientPage0) {
         // TODO: use provided errors
         const node = <div>Page not found</div>
-        return { node, payload, clientPage0, error: new Error('Page not found') }
+        return { node, payload, clientPage0, error: new Error(`Page not found: ${location.pathname}`) }
       }
       const PageComponent = clientPage0.getComponent()
       const node = <PageComponent data={data} location={location} />

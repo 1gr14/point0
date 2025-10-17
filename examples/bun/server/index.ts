@@ -4,7 +4,7 @@ import { clientPages } from '../client/pages/index.js'
 import { serverPage0 } from './page0.js'
 
 const PORT = process.env.PORT ?? '3000'
-const CLIENT_ENTRY_SRC_ROUTE = '/client/index.js'
+// const CLIENT_ENTRY_SRC_ROUTE = '/client/index.js'
 const CLIENT_ENTRY_SRC_REL_PATH = '../client/index.ts'
 const CLIENT_ENTRY_SRC_ABS_PATH = nodePath.resolve(__dirname, CLIENT_ENTRY_SRC_REL_PATH)
 const CLIENT_ENTRY_DIST_ROUTE = '/dist/client/index.js'
@@ -23,13 +23,6 @@ serve({
   },
   port: PORT,
   routes: {
-    [CLIENT_ENTRY_SRC_ROUTE]: async () => {
-      return new Response(Bun.file(CLIENT_ENTRY_SRC_ABS_PATH), {
-        headers: {
-          'Content-Type': 'application/javascript',
-        },
-      })
-    },
     [CLIENT_ENTRY_DIST_ROUTE]: async () => {
       return new Response(Bun.file(CLIENT_ENTRY_DIST_ABS_PATH), {
         headers: {
