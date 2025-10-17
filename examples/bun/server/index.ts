@@ -1,26 +1,26 @@
 import { serve } from 'bun'
 import nodePath from 'node:path'
-import { clientPages } from '../client/pages/index.js'
 import { serverPage0 } from './page0.js'
+import type { ClientPages } from '@devp0nt/page0/client'
+// import type originalClientPages from '../client/pages/index.js'
 
 const isDev = import.meta.env.NODE_ENV !== 'production'
 const PORT = process.env.PORT ?? '3000'
 // const CLIENT_ENTRY_SRC_ROUTE = '/client/index.js'
-const CLIENT_ENTRY_SRC_FILE_PATH = nodePath.resolve(__dirname, '../client/index.ts')
+// const CLIENT_ENTRY_SRC_FILE_PATH = nodePath.resolve(__dirname, '../client/index.ts')
 const CLIENT_ENTRY_DIST_DIR_PATH = nodePath.resolve(__dirname, '../dist/client')
+const CLIENT_PAGES_DIST_FILE_PATH = nodePath.resolve(CLIENT_ENTRY_DIST_DIR_PATH, 'pages/index.js')
+const CLIENT_ENTRY_DIST_FILE_PATH = nodePath.resolve(CLIENT_ENTRY_DIST_DIR_PATH, 'index.js')
 const CLIENT_ENTRY_DIST_DIR_ROUTE = '/dist/client'
 const CLIENT_ENTRY_DIST_FILE_ROUTE = nodePath.resolve(CLIENT_ENTRY_DIST_DIR_ROUTE, 'index.js')
 
-if (isDev) {
-  await Bun.build({
-    entrypoints: [CLIENT_ENTRY_SRC_FILE_PATH],
-    outdir: CLIENT_ENTRY_DIST_DIR_PATH,
-    splitting: true,
-  })
-}
-const INDEX_HTML_SRC_REL_PATH = '../client/index.html'
-
-const indexHtml = await import('../client/index.html')
+// if (isDev) {
+//   await Bun.build({
+//     entrypoints: [CLIENT_ENTRY_SRC_FILE_PATH],
+//     outdir: CLIENT_ENTRY_DIST_DIR_PATH,
+//     splitting: true,
+//   })
+// }
 
 serve({
   development: {
@@ -55,6 +55,9 @@ serve({
     '/*': async (request) => {
       try {
         const url = new URL(request.url)
+        console.log(123, CLIENT_ENTRY_DIST_FILE_PATH)
+        const clientPages = (await import(`${CLIENT_PAGES_DIST_FILE_PATH}?fresh=${Date.now()}`)).default as ClientPages
+        console.log(3434, clientPages.length)
         const { readableStream, clientPage0, error } = await serverPage0.renderReadableStream({
           routePath: url.pathname,
           clientPages,
@@ -83,6 +86,8 @@ serve({
 
 console.log(`🚀 server is running at http://localhost:${PORT}`)
 
+// const INDEX_HTML_SRC_REL_PATH = '../client/index.html'
+// const indexHtml = await import('../client/index.html')
 // const rewriter = new HTMLRewriter()
 //           .on('head', {
 //             element(element) {

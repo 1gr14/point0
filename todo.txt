@@ -10,6 +10,8 @@ hydrate react query and others
 .component() for compontnts returns React.FC, and .render() for usual pages
 layouts
 <Router />
+client only page
+client only routing
 ensure layout not rerender, and scroll position ok
 <Link />
 hide methods after .route() called, etc

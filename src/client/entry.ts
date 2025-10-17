@@ -20,7 +20,7 @@ export type AfterHydrateFnProps = {
 }
 export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
 
-export async function hydrate({ pages, after }: { pages: ClientPages; after?: AfterHydrateFn }) {
+export async function hydrate({ clientPages, after }: { clientPages: ClientPages; after?: AfterHydrateFn }) {
   const payload = (() => {
     const payloadEl = document.getElementById('__PAGE0_PAYLOAD__')
     const payloadContent = payloadEl?.textContent
@@ -35,7 +35,7 @@ export async function hydrate({ pages, after }: { pages: ClientPages; after?: Af
 
   const { clientPage0, location } = await ClientPage0._getSuitable({
     routePath: payload.location.href,
-    clientPages: pages,
+    clientPages,
   })
   if (!clientPage0) {
     throw new Error(`Page not found`)

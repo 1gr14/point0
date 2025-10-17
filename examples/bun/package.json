@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development bun run --hot ./server/index.ts",
-    "build:client": "cross-env NODE_ENV=production bun build ./client/index.ts --outdir dist/client --splitting",
     "build:server": "cross-env NODE_ENV=production bun build ./server/index.ts --outdir dist/server --target bun",
+    "build:client": "cross-env NODE_ENV=production bun build ./client/index.ts --outdir dist/client --splitting",
     "build": "bun run build:client && bun run build:server",
+    "dev:client": "cross-env NODE_ENV=development bun build --watch --hot ./client/index.ts ./client/pages/index.ts --outdir dist/client --splitting --no-clear-screen",
+    "dev:server": "cross-env NODE_ENV=development bun run --hot ./server/index.ts --no-clear-screen",
+    "dev": "concurrently 'bun run dev:client' 'bun run dev:server' --names 'client,server'",
     "start": "cross-env NODE_ENV=production bun run server/index.ts",
     "compile": "cross-env NODE_ENV=production bun build --compile ./server/index.ts --outfile ideanick-app"
   },
