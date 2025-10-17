@@ -21,7 +21,7 @@ examples/elysia-vite/
 │   ├── home.tsx      # Home page
 │   ├── ideas.tsx     # Ideas list page
 │   ├── idea.tsx      # Individual idea page
-│   ├── index.ts      # ClientPages0 array with dynamic imports
+│   ├── index.ts      # ClientPages array with dynamic imports
 │   └── pages.test.tsx # Client tests
 ├── server/           # Server-side code
 │   ├── index.ts      # Elysia server with Vite middleware

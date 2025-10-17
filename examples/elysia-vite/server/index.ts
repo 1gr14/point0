@@ -1,7 +1,7 @@
 import { staticPlugin } from '@elysiajs/static'
 import { Elysia } from 'elysia'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { clientPages0 } from '../pages/index'
+import { clientPages } from '../pages/index'
 import { serverPage0 } from './page0'
 
 const isDev = import.meta.env.NODE_ENV === 'development'
@@ -22,7 +22,6 @@ const app = new Elysia()
   .get('/*', async ({ request }) => {
     const url = new URL(request.url)
     const path = url.pathname
-    console.log(3334, path)
     if (path === '/entry-client.tsx') {
       return undefined
     }
@@ -31,9 +30,9 @@ const app = new Elysia()
     }
 
     try {
-      const html = await serverPage0.renderStatic({
-        path: url.pathname,
-        clientPages0,
+      const { html } = await serverPage0.renderStatic({
+        routePath: url.pathname,
+        clientPages,
         renderer: renderToStaticMarkup,
         clientBundlePath,
       })

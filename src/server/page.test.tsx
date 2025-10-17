@@ -5,7 +5,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { ClientPages0 } from '../client/page.js'
+import type { ClientPages } from '../client/page.js'
 import { ClientPage0 } from '../client/page.js'
 import { ServerPage0 } from './page.js'
 import type { EmptyCtx, EmptyData, UndefinedCtx } from '../shared/types.js'
@@ -209,15 +209,15 @@ describe('ServerPage0', () => {
     const clientPage2 = new ClientPage0<typeof serverPage0>()
       .route(Route0.create('/bye/:name'))
       .render(({ location }) => <div>Bye, {location.params.name}</div>)
-    const clientPages0: ClientPages0 = [
+    const clientPages: ClientPages = [
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],
     ]
-    const { reactNode: reactNode1 } = await serverPage0._getSuitableNode({ path: '/hello/world', clientPages0 })
+    const { reactNode: reactNode1 } = await serverPage0._getSuitableNode({ routePath: '/hello/world', clientPages })
     expect(React.isValidElement(reactNode1)).toBe(true)
     const html1 = renderToStaticMarkup(reactNode1 as React.ReactElement)
     expect(html1).toBe('<div>Hello, world</div>')
-    const { reactNode: reactNode2 } = await serverPage0._getSuitableNode({ path: '/bye/bye', clientPages0 })
+    const { reactNode: reactNode2 } = await serverPage0._getSuitableNode({ routePath: '/bye/bye', clientPages })
     expect(React.isValidElement(reactNode2)).toBe(true)
     const html2 = renderToStaticMarkup(reactNode2 as React.ReactElement)
     expect(html2).toBe('<div>Bye, bye</div>')

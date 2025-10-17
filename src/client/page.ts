@@ -88,16 +88,16 @@ export class ClientPage0<
 
   // helpers
   static async _getSuitable({
-    clientPages0,
+    clientPages,
     ...restProps
   }: {
-    clientPages0: ClientPages0
-  } & ({ path: string } | { location: Route0.Location })): Promise<{
+    clientPages: ClientPages
+  } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     clientPage0: AnyClientPage0 | undefined
     location: Route0.Location
   }> {
-    const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.path)
-    for (const [route, clientPage0Getter] of clientPages0) {
+    const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
+    for (const [route, clientPage0Getter] of clientPages) {
       const match = Route0.getMatch(route, location)
       if (!match.exact) {
         continue
@@ -136,6 +136,6 @@ export type CurrentRoute<TAssignedRoute0 extends Route0.AnyRoute | UndefinedRout
 
 // TODO: add layouts here
 export type ClientPageLayout = React.ComponentType<{ children: React.ReactNode }>
-export type ClientPages0 = Array<
+export type ClientPages = Array<
   [Route0.AnyRoute, AnyClientPage0 | (() => Promise<AnyClientPage0> | AnyClientPage0), ...ClientPageLayout[]]
 >

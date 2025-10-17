@@ -1,7 +1,7 @@
 import type { Route0 } from '@devp0nt/route0'
 import React from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { AnyClientPage0, ClientPages0 } from '../client/page.js'
+import type { AnyClientPage0, ClientPages } from '../client/page.js'
 import { ClientPage0 } from '../client/page.js'
 import type { Payload } from '../shared/types.js'
 
@@ -20,7 +20,7 @@ export type AfterHydrateFnProps = {
 }
 export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
 
-export async function hydrate({ pages, after }: { pages: ClientPages0; after?: AfterHydrateFn }) {
+export async function hydrate({ pages, after }: { pages: ClientPages; after?: AfterHydrateFn }) {
   const payload = (() => {
     const payloadEl = document.getElementById('__PAGE0_PAYLOAD__')
     const payloadContent = payloadEl?.textContent
@@ -32,9 +32,11 @@ export async function hydrate({ pages, after }: { pages: ClientPages0; after?: A
   if (!payload) {
     throw new Error('Missing __PAGE0_PAYLOAD__')
   }
-  console.log(1238888, payload)
 
-  const { clientPage0, location } = await ClientPage0._getSuitable({ path: payload.location.href, clientPages0: pages })
+  const { clientPage0, location } = await ClientPage0._getSuitable({
+    routePath: payload.location.href,
+    clientPages: pages,
+  })
   if (!clientPage0) {
     throw new Error(`Page not found`)
   }

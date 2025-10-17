@@ -10,17 +10,15 @@ export default page0
   })
   .render(({ data }) => {
     const [count, setCount] = useState(0)
-    console.log(123, data.ideasCount)
     return (
       <div>
         <h1>Ideas</h1>
         <p
           onClick={() => {
-            console.log(456, count)
             setCount(count + 1)
           }}
         >
-          Here are all the amazing ideas shared by our community: {data.ideasCount}
+          Here are all the amazing ideas shared by our community: {data.ideasCount + count}
         </p>
         <div>
           {data.ideas.map((idea) => (

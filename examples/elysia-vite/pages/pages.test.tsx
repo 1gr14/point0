@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { ClientPage0 } from '@devp0nt/page0/client'
 import type { serverPage0 } from '../server/page0.js'
 import { homeRoute, ideasRoute, ideaRoute } from '../shared/routes.js'
-import { clientPages0 } from './index.js'
+import { clientPages } from './index.js'
 
 describe('Client Pages', () => {
   it('should create home page with correct route', () => {
@@ -44,10 +44,10 @@ describe('Client Pages', () => {
     expect(ideaPage.getExtendFns()[0].type).toBe('loader')
   })
 
-  it('should export clientPages0 array with all routes', () => {
-    expect(clientPages0).toHaveLength(3)
+  it('should export clientPages array with all routes', () => {
+    expect(clientPages).toHaveLength(3)
 
-    const routes = clientPages0.map(([route]) => route)
+    const routes = clientPages.map(([route]) => route)
     expect(routes).toContain(homeRoute)
     expect(routes).toContain(ideasRoute)
     expect(routes).toContain(ideaRoute)
@@ -56,7 +56,7 @@ describe('Client Pages', () => {
   it('should have correct route matching for home page', async () => {
     const { clientPage0, location } = await ClientPage0._getSuitable({
       path: '/',
-      clientPages0,
+      clientPages,
     })
 
     expect(clientPage0).toBeDefined()
@@ -66,7 +66,7 @@ describe('Client Pages', () => {
   it('should have correct route matching for ideas page', async () => {
     const { clientPage0, location } = await ClientPage0._getSuitable({
       path: '/ideas',
-      clientPages0,
+      clientPages,
     })
 
     expect(clientPage0).toBeDefined()
@@ -76,7 +76,7 @@ describe('Client Pages', () => {
   it('should have correct route matching for idea detail page', async () => {
     const { clientPage0, location } = await ClientPage0._getSuitable({
       path: '/ideas/1',
-      clientPages0,
+      clientPages,
     })
 
     expect(clientPage0).toBeDefined()
@@ -87,7 +87,7 @@ describe('Client Pages', () => {
   it('should return undefined for non-matching routes', async () => {
     const { clientPage0 } = await ClientPage0._getSuitable({
       path: '/nonexistent',
-      clientPages0,
+      clientPages,
     })
 
     expect(clientPage0).toBeUndefined()
