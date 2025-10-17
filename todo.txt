@@ -1,0 +1,8 @@
+.clientCtx
+error handling
+hydrate react query and others
+useServerCtx
+.component() for compontnts returns React.FC, and .render() for usual pages
+layouts
+<Router />
+<Link />

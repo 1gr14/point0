@@ -1,35 +1,41 @@
 # IdeaNick - Elysia + Vite + Bun Example
 
-A complete example of using `@devp0nt/page0` with Elysia server, Vite client build, and Bun runtime.
+A complete example of using `@devp0nt/page0` with Elysia server, Vite SSR, and Bun runtime featuring automatic code splitting and unified development workflow.
 
 ## Features
 
-- **Server-Side Rendering (SSR)** with Elysia
+- **Server-Side Rendering (SSR)** with Elysia and Vite
 - **Client-Side Hydration** with React
 - **Type-Safe Routing** with `@devp0nt/route0`
 - **Fake Database** with Prisma-like API
 - **Three Pages**: Home, Ideas List, Individual Idea
+- **Code Splitting** - Each page in separate bundle
+- **Unified Dev Server** - Single process for frontend and backend
 - **Comprehensive Tests** for both server and client
 
 ## Project Structure
 
 ```
 examples/elysia-vite/
-├── client/           # Client-side code
-│   ├── index.tsx     # Hydration entry point
-│   ├── pages.ts      # Page definitions
+├── pages/            # Page components (code-split)
+│   ├── home.tsx      # Home page
+│   ├── ideas.tsx     # Ideas list page
+│   ├── idea.tsx      # Individual idea page
+│   ├── index.ts      # ClientPages0 array with dynamic imports
 │   └── pages.test.tsx # Client tests
 ├── server/           # Server-side code
-│   ├── index.ts      # Elysia server
-│   ├── page.ts       # ServerPage0 setup
+│   ├── index.ts      # Elysia server with Vite middleware
+│   ├── page0.ts      # ServerPage0 setup
 │   └── index.test.ts # Server tests
 ├── shared/           # Shared code
 │   ├── data.ts       # Fake ideas data
 │   ├── prisma.ts     # Fake Prisma client
 │   └── routes.ts     # Route definitions
+├── entry-client.tsx  # Client-side hydration entry
+├── entry-server.tsx  # Server-side rendering entry
 ├── package.json      # Dependencies and scripts
 ├── tsconfig.json     # TypeScript config
-├── vite.config.ts    # Vite build config
+├── vite.config.ts    # Vite SSR config
 └── README.md         # This file
 ```
 
@@ -42,16 +48,16 @@ examples/elysia-vite/
    bun install
    ```
 
-2. **Build the client:**
+2. **Build for production:**
 
    ```bash
    bun run build
    ```
 
-3. **Run the server:**
+3. **Run development server:**
 
    ```bash
-   bun run dev:server
+   bun run dev
    ```
 
 4. **Open your browser:**
@@ -59,7 +65,7 @@ examples/elysia-vite/
 
 ## Development
 
-- **Run both client and server in watch mode:**
+- **Run development server with HMR:**
 
   ```bash
   bun run dev
@@ -72,8 +78,14 @@ examples/elysia-vite/
   ```
 
 - **Run tests in watch mode:**
+
   ```bash
   bun run test:watch
+  ```
+
+- **Run production server:**
+  ```bash
+  bun run start
   ```
 
 ## Pages
@@ -84,10 +96,12 @@ examples/elysia-vite/
 
 ## How It Works
 
-1. **Server**: Elysia handles all routes and uses `ServerPage0.renderStatic()` to generate HTML
-2. **Client**: Vite builds the client bundle, which hydrates the server-rendered HTML
-3. **Data Flow**: Server loaders fetch data, client loaders can extend or override it
-4. **Routing**: `@devp0nt/route0` provides type-safe route matching
+1. **Unified Dev Server**: Single process runs Elysia server with Vite dev middleware
+2. **SSR**: Vite's `ssrLoadModule` loads entry-server.tsx in development, pre-built bundles in production
+3. **Code Splitting**: Each page is in a separate file, enabling automatic code splitting
+4. **Client Hydration**: Vite builds client bundle with entry-client.tsx for hydration
+5. **Data Flow**: Server loaders fetch data, client loaders can extend or override it
+6. **Routing**: `@devp0nt/route0` provides type-safe route matching with dynamic imports
 
 ## Testing
 

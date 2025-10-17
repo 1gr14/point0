@@ -1,4 +1,4 @@
-import type { Route0 } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import type { AnyClientPage0, ClientPages0 } from '../client/page.js'
 import { ClientPage0 } from '../client/page.js'
 import type {
@@ -9,13 +9,19 @@ import type {
   EmptyData,
   ExtendFnRecord,
   LoaderFn,
+  Payload,
+  ReadableStreamRenderer,
   // ReadableStreamRenderer,
   RequiredCtx,
   StaticRenderer,
   UndefinedCtx,
 } from '../shared/types.js'
-import { renderDocumentHtml } from './html.js'
-import { renderToStaticMarkup } from 'react-dom/server'
+// import { renderDocumentHtml } from './html.js'
+// import { renderToStaticMarkup } from 'react-dom/server'
+import type { ReactDOMServerReadableStream } from 'react-dom/server'
+import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
+import type { MetaMap } from '../shared/meta.js'
+import { renderDocumentHtml } from './render.js'
 
 export class ServerPage0<
   TCtxRequired extends RequiredCtx = UndefinedCtx,
@@ -105,36 +111,35 @@ export class ServerPage0<
     return { data, ctx, reactNode, location, clientPage0 }
   }
 
-  async renderStatic({
+  async renderNode({
     path,
     clientPages0,
-    renderer = renderToStaticMarkup,
-    clientBundlePath,
-    ...restProps
+    requiredCtx,
   }: WithRequiredCtx<
     TCtxRequired,
     {
-      renderer?: StaticRenderer
       path: string
       clientPages0: ClientPages0
-      clientBundlePath: string
     }
-  >): Promise<string> {
-    let location: Route0.Location | undefined
+  >): Promise<{
+    node: React.ReactNode
+    payload: Payload
+    meta: MetaMap | MetaMap[]
+    clientPage0: AnyClientPage0 | undefined
+  }> {
+    const location = Route0.getLocation(path)
     let clientPage0: AnyClientPage0 | undefined
     let data: Data = {}
-    // eslint-disable-next-line no-useless-catch
     try {
-      const suitable = await ClientPage0._getSuitable({ path, clientPages0 })
-      location = suitable.location
-      clientPage0 = suitable.clientPage0
+      const suitable = await ClientPage0._getSuitable({ location, clientPages0 })
+      clientPage0 = suitable.clientPage0 // may be undefined if not found
       const runResult = await this._runCtxAndLoaderFns({
         location,
         clientPage0,
-        requiredCtx: restProps.requiredCtx,
+        requiredCtx,
       })
       data = runResult.data
-      const reactNode = (() => {
+      const node = (() => {
         if (!clientPage0) {
           // TODO: use provided errors
           return <div>Page not found</div>
@@ -142,48 +147,72 @@ export class ServerPage0<
         const PageComponent = clientPage0.getComponent()
         return <PageComponent data={data} location={location} />
       })()
-      const pageHtml = renderer(reactNode)
       const payload = { location, data }
       // TODO: use provided meta
-      return renderDocumentHtml({ meta: { title: 'Hello, world!' }, pageHtml, payload, clientBundlePath })
+      return { node, payload, meta: { title: 'Hello, world!' }, clientPage0 }
     } catch (error) {
-      throw error
       // TODO: use provided errors
-      // console.error(error)
-      // const pageHtml = renderer(<div>Error: {(error as any).message}</div>)
-      // return renderDocumentHtml({
-      //   meta: { title: 'Hello, world!' },
-      //   pageHtml,
-      //   payload: { location: location as never, data },
-      //   clientBundlePath,
-      // })
+      const node = <div>Error: {(error as any).message}</div>
+      const payload = { location, data }
+      return { node, payload, meta: { title: 'Hello, world!' }, clientPage0 }
     }
   }
 
-  // TODO: figure out how to render readable stream
-  // async renderReadableStream({
-  //   url,
-  //   clientPages0,
-  //   renderer,
-  //   ...restProps
-  // }: {
-  //   renderer: ReadableStreamRenderer
-  //   url: string
-  //   clientPages0: ClientPages0
-  // } & WithRequiredCtx<TCtxRequired>): Promise<{
-  //   readableStream: ReadableStream<string>
-  //   data: TDataOutput
-  //   ctx: TCtxOutput
-  // }> {
-  //   const { data, ctx, reactNode } = await this._getSuitableNode({
-  //     url,
-  //     clientPages0,
-  //     requiredCtx: 'requiredCtx' in restProps ? restProps.requiredCtx : undefined,
-  //   })
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //   const readableStream = renderer(reactNode)
-  //   throw new Error('Not implemented')
-  // }
+  async renderStatic({
+    path,
+    clientPages0,
+    renderer = renderToStaticMarkup,
+    clientBundlePath,
+    requiredCtx,
+  }: WithRequiredCtx<
+    TCtxRequired,
+    {
+      renderer?: StaticRenderer
+      path: string
+      clientPages0: ClientPages0
+      clientBundlePath?: string
+    }
+  >): Promise<{
+    html: string
+    payload: Payload
+    meta: MetaMap | MetaMap[]
+    node: React.ReactNode
+    clientPage0: AnyClientPage0 | undefined
+  }> {
+    const { node, payload, meta, clientPage0 } = await this.renderNode({
+      path,
+      clientPages0,
+      requiredCtx,
+    } as WithRequiredCtx<TCtxRequired, { path: string; clientPages0: ClientPages0 }>)
+    const pageHtml = renderer(node)
+    const html = renderDocumentHtml({ meta, pageHtml, payload, clientBundlePath })
+    return { html, payload, meta, node, clientPage0 }
+  }
+
+  async renderReadableStream({
+    path,
+    clientPages0,
+    renderer = renderToReadableStream,
+    clientBundlePath,
+    requiredCtx,
+  }: WithRequiredCtx<
+    TCtxRequired,
+    {
+      renderer?: ReadableStreamRenderer
+      path: string
+      clientPages0: ClientPages0
+      clientBundlePath?: string
+    }
+  >): Promise<ReactDOMServerReadableStream> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { node, payload, meta } = await this.renderNode({ path, clientPages0, requiredCtx } as WithRequiredCtx<
+      TCtxRequired,
+      { path: string; clientPages0: ClientPages0 }
+    >)
+    const readableStream = await renderer(node)
+    // TODO: figure out how to render readable stream with html
+    return readableStream
+  }
 }
 
 export type AnyServerPage0<

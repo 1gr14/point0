@@ -1,0 +1,24 @@
+{
+  "name": "ideanick-bun-fullstack",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot ./server/index.ts",
+    "build": "bun build ./entry-client.tsx --outdir dist/client --jsx-import-source react && bun run server/index.ts",
+    "start": "NODE_ENV=production bun run server/index.ts",
+    "compile": "bun build --compile ./server/index.ts --outfile ideanick-app",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "dependencies": {
+    "@devp0nt/route0": "^1.0.0-next.16",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.0.0"
+  }
+}

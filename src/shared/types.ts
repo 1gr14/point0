@@ -1,4 +1,5 @@
 import type { Route0 } from '@devp0nt/route0'
+import type { ReactDOMServerReadableStream } from 'react-dom/server'
 
 export type UnknownCtx = Record<string, unknown>
 export type EmptyCtx = Record<string, never>
@@ -58,5 +59,5 @@ export type ExtendFnRecord<
     : never
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
-export type ReadableStreamRenderer = (reactNode: React.ReactNode) => ReadableStream<string>
+export type ReadableStreamRenderer = (reactNode: React.ReactNode) => Promise<ReactDOMServerReadableStream>
 export type Payload = { location: Route0.Location; data: Record<string, any> }

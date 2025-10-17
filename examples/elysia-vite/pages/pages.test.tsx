@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { ClientPage0 } from '@devp0nt/page0/client'
-import type { serverPage0 } from '../server/page.js'
+import type { serverPage0 } from '../server/page0.js'
 import { homeRoute, ideasRoute, ideaRoute } from '../shared/routes.js'
-import { clientPages0 } from './pages.js'
+import { clientPages0 } from './index.js'
 
 describe('Client Pages', () => {
   it('should create home page with correct route', () => {

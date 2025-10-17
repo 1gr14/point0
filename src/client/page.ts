@@ -62,7 +62,7 @@ export class ClientPage0<
     return newClientPage0
   }
 
-  component<TNewComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0>>(
+  render<TNewComponent extends ClientPageComponent<TDataOutput, TAssignedRoute0>>(
     component: TNewComponent,
   ): ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TNewComponent> {
     const newClientPage0 = new ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TNewComponent>()
@@ -88,13 +88,15 @@ export class ClientPage0<
 
   // helpers
   static async _getSuitable({
-    path,
     clientPages0,
+    ...restProps
   }: {
-    path: string
     clientPages0: ClientPages0
-  }): Promise<{ clientPage0: AnyClientPage0 | undefined; location: Route0.Location }> {
-    const location = Route0.getLocation(path)
+  } & ({ path: string } | { location: Route0.Location })): Promise<{
+    clientPage0: AnyClientPage0 | undefined
+    location: Route0.Location
+  }> {
+    const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.path)
     for (const [route, clientPage0Getter] of clientPages0) {
       const match = Route0.getMatch(route, location)
       if (!match.exact) {

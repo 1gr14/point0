@@ -90,7 +90,7 @@ describe('ServerPage0', () => {
       a: 1,
       b: 2,
     }))
-    const clientPage01 = new ClientPage0<typeof serverPage01>().component(() => <div>Hello</div>)
+    const clientPage01 = new ClientPage0<typeof serverPage01>().render(() => <div>Hello</div>)
     expect(
       await serverPage01._runCtxAndLoaderFns({
         location: Route0.getLocation(url),
@@ -147,7 +147,7 @@ describe('ServerPage0', () => {
       a: 1,
       b: 2,
     }))
-    const clientPage01 = new ClientPage0<typeof serverPage01>().component(() => <div>Hello</div>)
+    const clientPage01 = new ClientPage0<typeof serverPage01>().render(() => <div>Hello</div>)
     expect(
       await serverPage01._runCtxAndLoaderFns({
         location: Route0.getLocation(url),
@@ -205,10 +205,10 @@ describe('ServerPage0', () => {
     const serverPage0 = new ServerPage0()
     const clientPage1 = new ClientPage0<typeof serverPage0>()
       .route(Route0.create('/hello/:name'))
-      .component(({ location }) => <div>Hello, {location.params.name}</div>)
+      .render(({ location }) => <div>Hello, {location.params.name}</div>)
     const clientPage2 = new ClientPage0<typeof serverPage0>()
       .route(Route0.create('/bye/:name'))
-      .component(({ location }) => <div>Bye, {location.params.name}</div>)
+      .render(({ location }) => <div>Bye, {location.params.name}</div>)
     const clientPages0: ClientPages0 = [
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],

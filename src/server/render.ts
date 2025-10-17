@@ -65,7 +65,7 @@ export function renderDocumentHtml({
   meta: MetaMap | MetaMap[]
   pageHtml: string
   payload: Payload
-  clientBundlePath: string
+  clientBundlePath?: string
 }) {
   const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
   const serializedPayload = serializePayload(payload)
@@ -77,9 +77,9 @@ export function renderDocumentHtml({
 ${headHtml}
 </head>
 <body${bodyAttrs}>
-<div id="root">${pageHtml}</div>
 <script id="__PAGE0_PAYLOAD__" type="application/json">${serializedPayload}</script>
-<script src="${clientBundlePath}" defer></script>
+<div id="root">${pageHtml}</div>
+${clientBundlePath && `<script src="${clientBundlePath}" defer></script>`}
 </body>
 </html>`
 }

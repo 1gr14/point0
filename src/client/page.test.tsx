@@ -68,7 +68,7 @@ describe('ClientPage0', () => {
         ...data,
         loadedDataAfterRoute: `something: ${location.params.id}`,
       }))
-      .component(({ data, location }) => {
+      .render(({ data, location }) => {
         expectTypeOf(location).toEqualTypeOf<Route0.Location<typeof routeX>>()
         expectTypeOf(data).toEqualTypeOf<{
           loadedDataAfterRoute: string

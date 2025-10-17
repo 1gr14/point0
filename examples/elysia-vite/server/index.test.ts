@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { serverPage0 } from './page.js'
-import { clientPages0 } from '../client/pages.js'
+import { serverPage0 } from './page0.js'
+import { clientPages0 } from '../pages/index.js'
 
 describe('Server SSR', () => {
   it('should render home page HTML', async () => {
