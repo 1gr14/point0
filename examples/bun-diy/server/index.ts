@@ -2,10 +2,10 @@ import { serve } from 'bun'
 import nodePath from 'node:path'
 import { serverPage0 } from './page0'
 import { overrideDocumentHtml } from '@devp0nt/page0/server'
-import clientPages from '../client/pages/index.js'
-// import type originalClientPages from '../client/pages/index.js'
+import pages from '../client/pages/index.js'
+// import type originalPagesCollection from '../client/pages/index.js'
 import indexHtml from '../client/index.html'
-import type { ClientPages } from '@devp0nt/page0/client'
+import type { PagesCollection } from '@devp0nt/page0/client'
 import type { ServerPage0 } from '@devp0nt/page0/server'
 
 // TODO: movehelpers to lib
@@ -70,10 +70,10 @@ serve({
       try {
         const url = new URL(request.url)
         const originalHtml = await (await fetch(`${url.origin}/index.html`)).text()
-        // const clientPages = (await import(`${CLIENT_PAGES_SRC_FILE_PATH}?fresh=${Date.now()}`)).default as ClientPages
+        // const pages = (await import(`${CLIENT_PAGES_SRC_FILE_PATH}?fresh=${Date.now()}`)).default as PagesCollection
         // const serverPage0 = (await import(`${SERVER_PAGE0_FILE_PATH}?fresh=${Date.now()}`)).serverPage0 as ServerPage0
         const { clientPage0, node, payload, error } = await serverPage0.renderNode({
-          clientPages,
+          pages,
           routePath: url.pathname,
           requiredCtx: undefined, // can be headers here for example
         })
@@ -103,11 +103,11 @@ serve({
     //   try {
     //     const url = new URL(request.url)
     //     console.log(123, CLIENT_ENTRY_DIST_FILE_PATH)
-    //     const clientPages = (await import(`${CLIENT_PAGES_DIST_FILE_PATH}?fresh=${Date.now()}`)).default as ClientPages
-    //     console.log(3434, clientPages.length)
+    //     const pages = (await import(`${CLIENT_PAGES_DIST_FILE_PATH}?fresh=${Date.now()}`)).default as PagesCollection
+    //     console.log(3434, pages.length)
     //     const { readableStream, clientPage0, error } = await serverPage0.renderReadableStream({
     //       routePath: url.pathname,
-    //       clientPages,
+    //       pages,
     //       clientBundlePath: CLIENT_ENTRY_DIST_FILE_ROUTE,
     //       requiredCtx: undefined, // can be headers here for example
     //     })

@@ -2,7 +2,7 @@ wrapper for bun helpers
 example idea, example idea new
 test for ready server
 example general
-not ClientPages, but PagesCollection
+not PagesCollection, but PagesCollection
 remove 0 suffix everywhere
 just page0, first generic not Page0 but _Infer (or just _) holder or ctx itself
 render fns to another module

@@ -1,5 +1,6 @@
 {
-  "name": "ideanick-elysia-vite",
+  "name": "@example/vite",
+  "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {

@@ -84,31 +84,38 @@ export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) 
 </html>`
 }
 
+export type DocumentHtmlResult = {
+  prefix: string
+  content: string
+  suffix: string
+  html: string
+}
+
 export function renderDocumentHtml({
-  pageHtml,
+  content,
   payload,
   clientBundlePath,
 }: {
-  pageHtml: string
+  content: string
   payload: Payload
   clientBundlePath?: string
-}) {
+}): DocumentHtmlResult {
   const prefix = renderDocumentHtmlPrefix({ payload })
   const suffix = renderDocumentHtmlSuffix({ clientBundlePath })
-  return `${prefix}${pageHtml}${suffix}`
+  return { prefix, content, suffix, html: `${prefix}${content}${suffix}` }
 }
 
 export function overrideDocumentHtml({
   originalHtml,
-  pageHtml,
+  content,
   payload,
   clientBundlePath,
 }: {
   originalHtml: string
-  pageHtml?: string
+  content?: string
   payload: Payload
   clientBundlePath?: string
-}) {
+}): DocumentHtmlResult {
   const { meta } = payload
   const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
   const serializedPayload = serializePayload(payload)
@@ -164,9 +171,9 @@ export function overrideDocumentHtml({
     })
     .on('#root', {
       element(element) {
-        if (pageHtml) {
+        if (content) {
           // Inject rendered page HTML into root div
-          element.setInnerContent(`'<!-- __PAGE0_TARGET_START__ -->'${pageHtml}<!-- __PAGE0_TARGET_END__ -->'`, {
+          element.setInnerContent(`'<!-- __PAGE0_TARGET_START__ -->'${content}<!-- __PAGE0_TARGET_END__ -->'`, {
             html: true,
           })
         } else {
@@ -178,19 +185,19 @@ export function overrideDocumentHtml({
   const htmlWithTarget = rewriter.transform(originalHtml)
   if (htmlWithTarget.includes('<!-- __PAGE0_TARGET__ -->')) {
     const [prefix, suffix] = htmlWithTarget.split('<!-- __PAGE0_TARGET__ -->')
-    return { prefix, html: '', suffix }
+    return { prefix, content: '', suffix, html: `${prefix}${suffix}` }
   } else if (
     htmlWithTarget.includes('<!-- __PAGE0_TARGET_START__ -->') &&
     htmlWithTarget.includes('<!-- __PAGE0_TARGET_END__ -->')
   ) {
     const prefix = htmlWithTarget.split('<!-- __PAGE0_TARGET_START__ -->')[0]
     const suffix = htmlWithTarget.split('<!-- __PAGE0_TARGET_END__ -->')[1]
-    const html = htmlWithTarget
+    const content = htmlWithTarget
       .replace(prefix, '')
       .replace(suffix, '')
       .replace('<!-- __PAGE0_TARGET_START__ -->', '')
       .replace('<!-- __PAGE0_TARGET_END__ -->', '')
-    return { prefix, html, suffix }
+    return { prefix, content, suffix, html: `${prefix}${content}${suffix}` }
   } else {
     throw new Error('<!-- __PAGE0_TARGET__ --> not found')
   }

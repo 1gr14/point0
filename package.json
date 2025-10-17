@@ -118,7 +118,7 @@
   },
   "workspaces": {
     "packages": [
-      "examples/elysia-vite"
+      "examples/*"
     ]
   },
   "engines": {

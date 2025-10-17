@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { serverPage0 } from './page0.js'
-import { clientPages } from '../pages/index.js'
+import { pages } from '../pages/index.js'
 
 describe('Server SSR', () => {
   it('should render home page HTML', async () => {
     const html = await serverPage0.renderStatic({
       path: '/',
-      clientPages,
+      pages,
       renderer: renderToStaticMarkup,
       clientBundlePath: '/assets/main.js',
     })
@@ -22,7 +22,7 @@ describe('Server SSR', () => {
   it('should render ideas list page HTML', async () => {
     const html = await serverPage0.renderStatic({
       path: '/ideas',
-      clientPages,
+      pages,
       renderer: renderToStaticMarkup,
       clientBundlePath: '/assets/main.js',
     })
@@ -37,7 +37,7 @@ describe('Server SSR', () => {
   it('should render individual idea page HTML', async () => {
     const html = await serverPage0.renderStatic({
       path: '/ideas/1',
-      clientPages,
+      pages,
       renderer: renderToStaticMarkup,
       clientBundlePath: '/assets/main.js',
     })
@@ -52,7 +52,7 @@ describe('Server SSR', () => {
   it('should handle 404 for non-existent idea', async () => {
     const html = await serverPage0.renderStatic({
       path: '/ideas/999',
-      clientPages,
+      pages,
       renderer: renderToStaticMarkup,
       clientBundlePath: '/assets/main.js',
     })
@@ -65,7 +65,7 @@ describe('Server SSR', () => {
   it('should embed payload with correct data structure', async () => {
     const html = await serverPage0.renderStatic({
       path: '/ideas/1',
-      clientPages,
+      pages,
       renderer: renderToStaticMarkup,
       clientBundlePath: '/assets/main.js',
     })

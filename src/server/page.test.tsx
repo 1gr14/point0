@@ -5,10 +5,11 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { ClientPages } from '../client/page.js'
+import type { PagesCollection } from '../client/page.js'
 import { ClientPage0 } from '../client/page.js'
 import { ServerPage0 } from './page.js'
 import type { EmptyCtx, EmptyData, UndefinedCtx } from '../shared/types.js'
+import { renderSuitableNode } from './render.js'
 
 describe('ServerPage0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')
@@ -83,7 +84,7 @@ describe('ServerPage0', () => {
     expect(serverPage0._extendFns).toHaveLength(0)
   })
 
-  it('runCtxAndLoaderFns without required ctx', async () => {
+  it('extract without required ctx', async () => {
     const serverPage0 = new ServerPage0()
     const url = '/z/x/c'
     const serverPage01 = serverPage0.ctx(() => ({
@@ -92,8 +93,9 @@ describe('ServerPage0', () => {
     }))
     const clientPage01 = new ClientPage0<typeof serverPage01>().render(() => <div>Hello</div>)
     expect(
-      await serverPage01._runCtxAndLoaderFns({
+      await ServerPage0.extract({
         location: Route0.getLocation(url),
+        serverPage0: serverPage01,
         clientPage0: clientPage01,
         requiredCtx: undefined,
       }),
@@ -109,10 +111,12 @@ describe('ServerPage0', () => {
       a: 3,
       c: 4,
     }))
+    const clientPage02 = new ClientPage0<typeof serverPage02>().render(() => <div>Hello</div>)
     expect(
-      await serverPage02._runCtxAndLoaderFns({
+      await ServerPage0.extract({
+        serverPage0: serverPage02,
+        clientPage0: clientPage02,
         location: Route0.getLocation(url),
-        clientPage0: clientPage01,
         requiredCtx: undefined,
       }),
     ).toEqual({
@@ -126,10 +130,12 @@ describe('ServerPage0', () => {
     const serverPage03 = serverPage01.ctx(({ ctx }) => ({
       c: 5,
     }))
+    const clientPage03 = new ClientPage0<typeof serverPage03>().render(() => <div>Hello</div>)
     expect(
-      await serverPage03._runCtxAndLoaderFns({
+      await ServerPage0.extract({
+        serverPage0: serverPage03,
+        clientPage0: clientPage03,
         location: Route0.getLocation(url),
-        clientPage0: clientPage01,
       }),
     ).toEqual({
       ctx: {
@@ -149,7 +155,8 @@ describe('ServerPage0', () => {
     }))
     const clientPage01 = new ClientPage0<typeof serverPage01>().render(() => <div>Hello</div>)
     expect(
-      await serverPage01._runCtxAndLoaderFns({
+      await ServerPage0.extract({
+        serverPage0: serverPage01,
         location: Route0.getLocation(url),
         clientPage0: clientPage01,
         requiredCtx: { r: 'str' },
@@ -167,10 +174,12 @@ describe('ServerPage0', () => {
       a: 3,
       c: 4,
     }))
+    const clientPage02 = new ClientPage0<typeof serverPage02>().render(() => <div>Hello</div>)
     expect(
-      await serverPage02._runCtxAndLoaderFns({
+      await ServerPage0.extract({
+        serverPage0: serverPage02,
         location: Route0.getLocation(url),
-        clientPage0: clientPage01,
+        clientPage0: clientPage02,
         requiredCtx: { r: 'str' },
       }),
     ).toEqual({
@@ -186,10 +195,12 @@ describe('ServerPage0', () => {
       r: ctx.r,
       c: 5,
     }))
+    const clientPage03 = new ClientPage0<typeof serverPage03>().render(() => <div>Hello</div>)
     expect(
-      await serverPage03._runCtxAndLoaderFns({
+      await ServerPage0.extract({
+        serverPage0: serverPage03,
         location: Route0.getLocation(url),
-        clientPage0: clientPage01,
+        clientPage0: clientPage03,
         requiredCtx: { r: 'str' },
       }),
     ).toEqual({
@@ -202,6 +213,7 @@ describe('ServerPage0', () => {
   })
 
   it('getSuitableReactNode', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const serverPage0 = new ServerPage0()
     const clientPage1 = new ClientPage0<typeof serverPage0>()
       .route(Route0.create('/hello/:name'))
@@ -209,15 +221,15 @@ describe('ServerPage0', () => {
     const clientPage2 = new ClientPage0<typeof serverPage0>()
       .route(Route0.create('/bye/:name'))
       .render(({ location }) => <div>Bye, {location.params.name}</div>)
-    const clientPages: ClientPages = [
+    const pages: PagesCollection = [
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],
     ]
-    const { reactNode: reactNode1 } = await serverPage0._getSuitableNode({ routePath: '/hello/world', clientPages })
+    const { node: reactNode1 } = await renderSuitableNode({ routePath: '/hello/world', pages })
     expect(React.isValidElement(reactNode1)).toBe(true)
     const html1 = renderToStaticMarkup(reactNode1 as React.ReactElement)
     expect(html1).toBe('<div>Hello, world</div>')
-    const { reactNode: reactNode2 } = await serverPage0._getSuitableNode({ routePath: '/bye/bye', clientPages })
+    const { node: reactNode2 } = await renderSuitableNode({ routePath: '/bye/bye', pages })
     expect(React.isValidElement(reactNode2)).toBe(true)
     const html2 = renderToStaticMarkup(reactNode2 as React.ReactElement)
     expect(html2).toBe('<div>Bye, bye</div>')

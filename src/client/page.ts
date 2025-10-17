@@ -87,17 +87,17 @@ export class ClientPage0<
   }
 
   // helpers
-  static async _getSuitable({
-    clientPages,
+  static async getSuitable({
+    pages,
     ...restProps
   }: {
-    clientPages: ClientPages
+    pages: PagesCollection
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     clientPage0: AnyClientPage0 | undefined
     location: Route0.Location
   }> {
     const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
-    for (const [route, clientPage0Getter] of clientPages) {
+    for (const [route, clientPage0Getter] of pages) {
       const match = Route0.getMatch(route, location)
       if (!match.exact) {
         continue
@@ -119,7 +119,13 @@ export class ClientPage0<
 //     TAssignedRoute0
 //   >,
 // > = ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TComponent>
-export type AnyClientPage0 = ClientPage0<any, any, any, any, any>
+export type AnyClientPage0<
+  TServerPage0 extends AnyServerPage0 = AnyServerPage0,
+  TCtxOutput extends Ctx = Ctx,
+  TDataOutput extends Data = Data,
+  TAssignedRoute0 extends Route0.AnyRoute | UndefinedRoute = any,
+  TComponent extends React.ComponentType<any> = React.ComponentType<any>,
+> = ClientPage0<TServerPage0, TCtxOutput, TDataOutput, TAssignedRoute0, TComponent>
 
 export type ClientPageComponentProps<
   TDataOutput extends Data = Data,
@@ -136,6 +142,11 @@ export type CurrentRoute<TAssignedRoute0 extends Route0.AnyRoute | UndefinedRout
 
 // TODO: add layouts here
 export type ClientPageLayout = React.ComponentType<{ children: React.ReactNode }>
-export type ClientPages = Array<
+export type PagesCollection = Array<
   [Route0.AnyRoute, AnyClientPage0 | (() => Promise<AnyClientPage0> | AnyClientPage0), ...ClientPageLayout[]]
 >
+
+export type InferClientPageCtxOutput<TClientPage0 extends AnyClientPage0> =
+  TClientPage0 extends AnyClientPage0<any, infer TCtxOutput, any, any, any> ? TCtxOutput : never
+export type InferClientPageDataOutput<TClientPage0 extends AnyClientPage0> =
+  TClientPage0 extends AnyClientPage0<any, any, infer TDataOutput, any, any> ? TDataOutput : never

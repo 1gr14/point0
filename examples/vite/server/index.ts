@@ -1,7 +1,7 @@
 import { staticPlugin } from '@elysiajs/static'
 import { Elysia } from 'elysia'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { clientPages } from '../pages/index'
+import { pages } from '../pages/index'
 import { serverPage0 } from './page0'
 
 const isDev = import.meta.env.NODE_ENV === 'development'
@@ -32,7 +32,7 @@ const app = new Elysia()
     try {
       const { html } = await serverPage0.renderStatic({
         routePath: url.pathname,
-        clientPages,
+        pages,
         renderer: renderToStaticMarkup,
         clientBundlePath,
       })
