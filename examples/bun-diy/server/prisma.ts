@@ -8,7 +8,7 @@ export const prisma = {
     findMany: async (): Promise<Idea[]> => {
       // Simulate async database call
       await new Promise((resolve) => setTimeout(resolve, 10))
-      return [...fakeIdeas]
+      return [...fakeIdeas].reverse()
     },
 
     findUniqueOrThrow: async ({ where }: { where: { id: number } }): Promise<Idea> => {

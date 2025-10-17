@@ -183,6 +183,37 @@ export class ServerPage0<
     return { html, payload, node, clientPage0, error }
   }
 
+  async getReadableStreamWithWrapper({
+    node,
+    prefix,
+    suffix,
+    renderer = renderToReadableStream,
+    clientBundlePath,
+  }: {
+    node: React.ReactNode
+    suffix?: string
+    prefix?: string
+    clientBundlePath?: string
+    renderer?: ReadableStreamRenderer
+  }) {
+    const encoder = new TextEncoder()
+    const transform = new TransformStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(prefix))
+      },
+      transform(chunk, controller) {
+        controller.enqueue(chunk)
+      },
+      flush(controller) {
+        controller.enqueue(encoder.encode(suffix))
+      },
+    })
+    const reactStream = await renderer(node, {
+      ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
+    })
+    return reactStream.pipeThrough(transform)
+  }
+
   async renderReadableStream({
     routePath,
     clientPages,
@@ -211,23 +242,7 @@ export class ServerPage0<
     } as WithRequiredCtx<TCtxRequired, { routePath: string; clientPages: ClientPages }>)
     const prefix = renderDocumentHtmlPrefix({ payload })
     const suffix = renderDocumentHtmlSuffix({ clientBundlePath: undefined })
-    const encoder = new TextEncoder()
-    const transform = new TransformStream({
-      start(controller) {
-        controller.enqueue(encoder.encode(prefix))
-      },
-      transform(chunk, controller) {
-        controller.enqueue(chunk)
-      },
-      flush(controller) {
-        controller.enqueue(encoder.encode(suffix))
-      },
-    })
-    // const reactStream = await renderer(node)
-    const reactStream = await renderer(node, {
-      bootstrapModules: [clientBundlePath],
-    })
-    const readableStream = reactStream.pipeThrough(transform)
+    const readableStream = await this.getReadableStreamWithWrapper({ node, prefix, suffix, renderer, clientBundlePath })
     return { readableStream, payload, node, clientPage0, error }
   }
 }

@@ -9,6 +9,7 @@
     "dev:client": "cross-env NODE_ENV=development bun build --watch --hot ./client/index.ts ./client/pages/index.ts --outdir dist/client --splitting --no-clear-screen",
     "dev:server": "cross-env NODE_ENV=development bun run --hot ./server/index.ts --no-clear-screen",
     "dev": "concurrently 'bun run dev:client' 'bun run dev:server' --names 'client,server'",
+    "dev1": "cross-env NODE_ENV=development bun --no-clear-screen --hot ./server/index.ts",
     "start": "cross-env NODE_ENV=production bun run server/index.ts",
     "compile": "cross-env NODE_ENV=production bun build --compile ./server/index.ts --outfile ideanick-app"
   },
