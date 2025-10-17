@@ -74,8 +74,12 @@ ${headHtml}
 
 export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) {
   const { clientBundlePath } = props ?? {}
-  return `</div>
-${clientBundlePath && `<script src="${clientBundlePath}" defer></script>`}
+  return `</div>${
+    clientBundlePath
+      ? `
+<script src="${clientBundlePath}" defer></script>`
+      : ''
+  }
 </body>
 </html>`
 }

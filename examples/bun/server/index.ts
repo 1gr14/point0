@@ -3,19 +3,21 @@ import nodePath from 'node:path'
 import { clientPages } from '../client/pages/index.js'
 import { serverPage0 } from './page0.js'
 
+const isDev = import.meta.env.NODE_ENV !== 'production'
 const PORT = process.env.PORT ?? '3000'
 // const CLIENT_ENTRY_SRC_ROUTE = '/client/index.js'
-const CLIENT_ENTRY_SRC_REL_PATH = '../client/index.ts'
-const CLIENT_ENTRY_SRC_ABS_PATH = nodePath.resolve(__dirname, CLIENT_ENTRY_SRC_REL_PATH)
-const CLIENT_ENTRY_DIST_ROUTE = '/dist/client/index.js'
-const CLIENT_ENTRY_DIST_REL_PATH = '../dist/client/index.js'
-const CLIENT_ENTRY_DIST_ABS_PATH = nodePath.resolve(__dirname, CLIENT_ENTRY_DIST_REL_PATH)
+const CLIENT_ENTRY_SRC_FILE_PATH = nodePath.resolve(__dirname, '../client/index.ts')
+const CLIENT_ENTRY_DIST_DIR_PATH = nodePath.resolve(__dirname, '../dist/client')
+const CLIENT_ENTRY_DIST_DIR_ROUTE = '/dist/client'
+const CLIENT_ENTRY_DIST_FILE_ROUTE = nodePath.resolve(CLIENT_ENTRY_DIST_DIR_ROUTE, 'index.js')
 
-await Bun.build({
-  entrypoints: [CLIENT_ENTRY_SRC_ABS_PATH],
-  outdir: 'dist/client',
-})
-
+if (isDev) {
+  await Bun.build({
+    entrypoints: [CLIENT_ENTRY_SRC_FILE_PATH],
+    outdir: CLIENT_ENTRY_DIST_DIR_PATH,
+    splitting: true,
+  })
+}
 const INDEX_HTML_SRC_REL_PATH = '../client/index.html'
 
 const indexHtml = await import('../client/index.html')
@@ -27,11 +29,27 @@ serve({
   },
   port: PORT,
   routes: {
-    [CLIENT_ENTRY_DIST_ROUTE]: async () => {
-      return new Response(Bun.file(CLIENT_ENTRY_DIST_ABS_PATH), {
+    [`${CLIENT_ENTRY_DIST_DIR_ROUTE}/**`]: async (req) => {
+      const reqPath = new URL(req.url).pathname
+      const filePathRel = reqPath.replace(new RegExp(`^${CLIENT_ENTRY_DIST_DIR_ROUTE}/`), '')
+      const filePathAbs = nodePath.resolve(CLIENT_ENTRY_DIST_DIR_PATH, filePathRel)
+      if (!filePathAbs.startsWith(CLIENT_ENTRY_DIST_DIR_PATH)) {
+        return new Response('Not Found', { status: 404 })
+      }
+      return new Response(Bun.file(filePathAbs), {
         headers: {
           'Content-Type': 'application/javascript',
         },
+      })
+    },
+    '/robots.txt': async () => {
+      return new Response('User-agent: *\nDisallow: /', {
+        headers: { 'Content-Type': 'text/plain' },
+      })
+    },
+    '/.well-known/appspecific/com.chrome.devtools.json': async () => {
+      return new Response('{}', {
+        headers: { 'Content-Type': 'application/json' },
       })
     },
     '/*': async (request) => {
@@ -40,7 +58,7 @@ serve({
         const { readableStream, clientPage0, error } = await serverPage0.renderReadableStream({
           routePath: url.pathname,
           clientPages,
-          clientBundlePath: CLIENT_ENTRY_DIST_REL_PATH,
+          clientBundlePath: CLIENT_ENTRY_DIST_FILE_ROUTE,
           requiredCtx: undefined, // can be headers here for example
         })
         if (error) {

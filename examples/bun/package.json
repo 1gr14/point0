@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development bun run --hot ./server/index.ts",
-    "build": "cross-env NODE_ENV=production bun build ./entry-client.tsx --outdir dist/client --jsx-import-source react && bun run server/index.ts",
+    "build:client": "cross-env NODE_ENV=production bun build ./client/index.ts --outdir dist/client --splitting",
+    "build:server": "cross-env NODE_ENV=production bun build ./server/index.ts --outdir dist/server --target bun",
+    "build": "bun run build:client && bun run build:server",
     "start": "cross-env NODE_ENV=production bun run server/index.ts",
     "compile": "cross-env NODE_ENV=production bun build --compile ./server/index.ts --outfile ideanick-app"
   },

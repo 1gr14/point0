@@ -195,7 +195,7 @@ export class ServerPage0<
       renderer?: ReadableStreamRenderer
       routePath: string
       clientPages: ClientPages
-      clientBundlePath?: string
+      clientBundlePath: string
     }
   >): Promise<{
     readableStream: ReadableStream
@@ -210,7 +210,7 @@ export class ServerPage0<
       requiredCtx,
     } as WithRequiredCtx<TCtxRequired, { routePath: string; clientPages: ClientPages }>)
     const prefix = renderDocumentHtmlPrefix({ payload })
-    const suffix = renderDocumentHtmlSuffix({ clientBundlePath })
+    const suffix = renderDocumentHtmlSuffix({ clientBundlePath: undefined })
     const encoder = new TextEncoder()
     const transform = new TransformStream({
       start(controller) {
@@ -223,7 +223,10 @@ export class ServerPage0<
         controller.enqueue(encoder.encode(suffix))
       },
     })
-    const reactStream = await renderer(node)
+    // const reactStream = await renderer(node)
+    const reactStream = await renderer(node, {
+      bootstrapModules: [clientBundlePath],
+    })
     const readableStream = reactStream.pipeThrough(transform)
     return { readableStream, payload, node, clientPage0, error }
   }
