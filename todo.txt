@@ -1,5 +1,3 @@
-v1
-
 client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
 <App /> becouse it can be client only app and we can figure out how work with it
 error handling, just catch it in <App><ErrorBoundary></App>
@@ -9,7 +7,6 @@ example general layout, idea layout, idea news page
 
 .page(() => [201, <div />]).page(() => [404, <div />])
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
-extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
 const {data, meta, res} = await somePage.fetch({ id: 123 }).json() or .html() // where res is component or json depends on this page .env response
 .input<T>({params:...,query:...,body:...,headers:...}) or .params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
 
@@ -33,6 +30,9 @@ cli for simplify commands, like build with bun: point0 build
 points collection generator, auto find points [Page$, Endpoint$], sort by no params to params routes, save to file
 
 const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
+
+extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
+.loader(...).component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extendFns
 
 example expo
 example vite-hono
@@ -65,16 +65,13 @@ npm point0
 
 ---
 
-v2
 const x = await point.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
 add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
 .useStaticLoader((props) => ) only server rendering
 .useLoader(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
 react query plugin wraps .useLoader and provide useQueryLoader and hydration out of the box
 .res(({req}) => { req.json() }) || .res(() => [404, {any: "json"}]) || .res(() => [200, {any: "json"}]).page(() => <div />)
-
 .component() has hidden route and can have fetcher
 .component, should not recall already called middlewares
 
----
 
