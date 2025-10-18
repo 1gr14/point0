@@ -15,7 +15,7 @@ describe('Server SSR', () => {
     expect(html).toContain('<!doctype html>')
     expect(html).toContain('Welcome to IdeaNick')
     expect(html).toContain('Discover and share innovative ideas')
-    expect(html).toContain('__PAGE0_PAYLOAD__')
+    expect(html).toContain('__POINT0_PAYLOAD__')
     expect(html).toContain('/assets/main.js')
   })
 
@@ -30,7 +30,7 @@ describe('Server SSR', () => {
     expect(html).toContain('<!doctype html>')
     expect(html).toContain('Ideas')
     expect(html).toContain('amazing ideas shared by our community')
-    expect(html).toContain('__PAGE0_PAYLOAD__')
+    expect(html).toContain('__POINT0_PAYLOAD__')
     expect(html).toContain('/assets/main.js')
   })
 
@@ -45,7 +45,7 @@ describe('Server SSR', () => {
     expect(html).toContain('<!doctype html>')
     expect(html).toContain('AI-Powered Code Review Assistant')
     expect(html).toContain('An intelligent tool that automatically reviews code')
-    expect(html).toContain('__PAGE0_PAYLOAD__')
+    expect(html).toContain('__POINT0_PAYLOAD__')
     expect(html).toContain('/assets/main.js')
   })
 
@@ -58,7 +58,7 @@ describe('Server SSR', () => {
     })
 
     expect(html).toContain('<!doctype html>')
-    expect(html).toContain('__PAGE0_PAYLOAD__')
+    expect(html).toContain('__POINT0_PAYLOAD__')
     expect(html).toContain('/assets/main.js')
   })
 
@@ -71,7 +71,7 @@ describe('Server SSR', () => {
     })
 
     // Extract payload from HTML
-    const payloadMatch = /<script id="__PAGE0_PAYLOAD__" type="application\/json">(.*?)<\/script>/.exec(html)
+    const payloadMatch = /<script id="__POINT0_PAYLOAD__" type="application\/json">(.*?)<\/script>/.exec(html)
     expect(payloadMatch).toBeTruthy()
 
     if (payloadMatch) {

@@ -1,3 +1,4 @@
+Point0.client(), Point0.server()
 wrapper for bun helpers
 .create
 page finder
@@ -47,6 +48,8 @@ remove 0 from suffixes where it needed
 .end(() => [404, <div />])
 .end(() => [404, {any: "json"}])
 .json(() => [200, {any: "json"}]).end(() => <div />)
+
+.input().method().query().body().contentType().headers()
 
 
 example bun

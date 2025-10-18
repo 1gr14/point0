@@ -1,18 +1,18 @@
 {
-  "name": "@devp0nt/page10",
+  "name": "@devp0nt/point0",
   "version": "0.1.0",
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
     "url": "https://p0nt.dev"
   },
-  "homepage": "https://github.com/devp0nt/page10#readme",
+  "homepage": "https://github.com/devp0nt/point0#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devp0nt/page10.git"
+    "url": "git+https://github.com/devp0nt/point0.git"
   },
   "bugs": {
-    "url": "https://github.com/devp0nt/page10/issues"
+    "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
   "types": "./dist/esm/index.d.ts",

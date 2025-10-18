@@ -7,7 +7,7 @@ import { Point0 } from './index.js'
 
 declare global {
   interface Window {
-    __PAGE0_PAYLOAD__?: Payload
+    __POINT0_PAYLOAD__?: Payload
   }
 }
 
@@ -24,14 +24,14 @@ let root: Root | null = null
 let hasHydrated = false
 
 export async function hydrate({ pages, after }: { pages: PagesCollection; after?: AfterHydrateFn }) {
-  const payloadEl = document.getElementById('__PAGE0_PAYLOAD__')
+  const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
-  if (!payloadContent) throw new Error('Missing __PAGE0_PAYLOAD__')
+  if (!payloadContent) throw new Error('Missing __POINT0_PAYLOAD__')
   const payload: Payload = (() => {
     try {
       return JSON.parse(payloadContent)
     } catch (error) {
-      throw new Error('Invalid __PAGE0_PAYLOAD__', { cause: error })
+      throw new Error('Invalid __POINT0_PAYLOAD__', { cause: error })
     }
   })()
 

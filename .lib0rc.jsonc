@@ -1,6 +1,6 @@
 {
-  "repoName": "page10",
-  "packageName": "@devp0nt/page10",
+  "repoName": "point0",
+  "packageName": "@devp0nt/point0",
   "jsx": true,
   "disableTemplates": [
     ".github/workflows/ci.yml.yml",

@@ -68,7 +68,7 @@ export function renderDocumentHtmlPrefix({ payload }: { payload: Payload }) {
 ${headHtml}
 </head>
 <body${bodyAttrs}>
-<script id="__PAGE0_PAYLOAD__" type="application/json">${serializedPayload}</script>
+<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>
 <div id="root">`
 }
 
@@ -164,7 +164,7 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
         }
 
         // Inject payload script at the beginning of body
-        element.prepend(`<script id="__PAGE0_PAYLOAD__" type="application/json">${serializedPayload}</script>`, {
+        element.prepend(`<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>`, {
           html: true,
         })
 
@@ -178,33 +178,33 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
       element(element) {
         if (content) {
           // Inject rendered page HTML into root div
-          element.setInnerContent(`'<!-- __PAGE0_TARGET_START__ -->'${content}<!-- __PAGE0_TARGET_END__ -->'`, {
+          element.setInnerContent(`'<!-- __POINT0_TARGET_START__ -->'${content}<!-- __POINT0_TARGET_END__ -->'`, {
             html: true,
           })
         } else {
-          element.setInnerContent('<!-- __PAGE0_TARGET__ -->', { html: true })
+          element.setInnerContent('<!-- __POINT0_TARGET__ -->', { html: true })
         }
       },
     })
 
   const htmlWithTarget = rewriter.transform(originalHtml)
-  if (htmlWithTarget.includes('<!-- __PAGE0_TARGET__ -->')) {
-    const [prefix, suffix] = htmlWithTarget.split('<!-- __PAGE0_TARGET__ -->')
+  if (htmlWithTarget.includes('<!-- __POINT0_TARGET__ -->')) {
+    const [prefix, suffix] = htmlWithTarget.split('<!-- __POINT0_TARGET__ -->')
     return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
   } else if (
-    htmlWithTarget.includes('<!-- __PAGE0_TARGET_START__ -->') &&
-    htmlWithTarget.includes('<!-- __PAGE0_TARGET_END__ -->')
+    htmlWithTarget.includes('<!-- __POINT0_TARGET_START__ -->') &&
+    htmlWithTarget.includes('<!-- __POINT0_TARGET_END__ -->')
   ) {
-    const prefix = htmlWithTarget.split('<!-- __PAGE0_TARGET_START__ -->')[0]
-    const suffix = htmlWithTarget.split('<!-- __PAGE0_TARGET_END__ -->')[1]
+    const prefix = htmlWithTarget.split('<!-- __POINT0_TARGET_START__ -->')[0]
+    const suffix = htmlWithTarget.split('<!-- __POINT0_TARGET_END__ -->')[1]
     const content = htmlWithTarget
       .replace(prefix, '')
       .replace(suffix, '')
-      .replace('<!-- __PAGE0_TARGET_START__ -->', '')
-      .replace('<!-- __PAGE0_TARGET_END__ -->', '')
+      .replace('<!-- __POINT0_TARGET_START__ -->', '')
+      .replace('<!-- __POINT0_TARGET_END__ -->', '')
     return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
   } else {
-    throw new Error('<!-- __PAGE0_TARGET__ --> not found')
+    throw new Error('<!-- __POINT0_TARGET__ --> not found')
   }
 }
 
