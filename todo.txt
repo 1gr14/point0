@@ -4,7 +4,7 @@ renderByReq({url})
 bun prod
 bun plugin
 
-App.tsx wrapper
+App.tsx wrapper, or maybe mot. Why we cannot just use layouts for everything.
 index.html always served not only in dev, but in prod mode serve it from dist, but I think if we use server as only one entry, everything will be so we do not nned build separate
 html template parsing just by provided data from endpoint or force provided vars
 
