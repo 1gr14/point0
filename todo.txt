@@ -1,23 +1,21 @@
 v1
 
 client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
-createBunClient({ErrorBoundary, ErrorPageComponent})
-createBunServer
 <App /> becouse it can be client only app and we can figure out how work with it
-meta, title
 error handling, just catch it in <App><ErrorBoundary></App>
 
 layouts, ensure layout not rerender, and scroll position ok
 example general layout, idea layout, idea news page
 
 .page(() => [201, <div />]).page(() => [404, <div />])
-extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
+extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
 const {data, meta, res} = await somePage.fetch({ id: 123 }).json() or .html() // where res is component or json depends on this page .env response
 .input<T>({params:...,query:...,body:...,headers:...}) or .params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
 
 .before, .after
 hydrate react query and others
+auth
 
 .exposeCtx, add value to __PAGE0_EXPOSED_CTX__ as usual javascript, it can even have await import('...') inside. Or maybe it returns not result, but array of extend fns itself, to be called in client right before calling .clientCtx fns
 .uesExposedCtx
@@ -28,19 +26,21 @@ router0: <Router /><Link />
 client only page
 client only routing
 
+createBunClient({ErrorBoundary, ErrorPageComponent})
+createBunServer
 config for generation, entry files, pages file
 cli for simplify commands, like build with bun: point0 build
 points collection generator, auto find points [Page$, Endpoint$], sort by no params to params routes, save to file
 
 const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
 
-example bun, monorepo woth references
-example auth
 example expo
+example vite-hono
+example elysia
 
+meta, title
 test for units
 html template parsing just by provided data from endpoint or force provided vars
-example vite-hono
 test for server
 server0.routes({})
 .route(string)
