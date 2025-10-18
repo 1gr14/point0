@@ -1,5 +1,5 @@
-import { routes } from '../../src/lib/routes.js'
-import { client } from '../../src/lib/client.js'
+import { routes } from '../lib/routes.js'
+import { client } from '../lib/client.js'
 
 export default client
   .route(routes.idea)

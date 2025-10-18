@@ -271,6 +271,3 @@ export async function renderReadableStream({
   const { prefix, suffix } = renderDocumentHtml({ originalHtml, payload })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
 }
-
-const nested = { a: { b: { c: { d: 'deep' } } } }
-console.log(nested)
