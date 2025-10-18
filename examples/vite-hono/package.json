@@ -1,5 +1,5 @@
 {
-  "name": "@example/vite",
+  "name": "@point0/example-vite-hono",
   "private": true,
   "version": "1.0.0",
   "type": "module",
