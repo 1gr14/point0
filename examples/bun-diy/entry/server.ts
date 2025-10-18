@@ -1,5 +1,5 @@
-import { renderReadableStream } from 'point0/entry-server.js'
-import { Point0 } from 'point0/index'
+import { renderReadableStream } from 'point0/server/render.js'
+import { Point0 } from 'point0/core/index.js'
 import { serve } from 'bun'
 import nodePath from 'node:path'
 import { server } from '../src/lib/server.js'

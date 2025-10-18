@@ -17,8 +17,8 @@ import type { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { AnyPoint, Payload, PointsCollection } from './index.js'
-import { Point0 } from './index.js'
+import type { AnyPoint, Payload, PointsCollection } from '../core/index.js'
+import { Point0 } from '../core/index.js'
 
 declare global {
   interface Window {

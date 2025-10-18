@@ -1,5 +1,5 @@
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
-import type { MetaMap, MetaMapValue, Payload, ReadableStreamRenderer, StaticRenderer } from './index.js'
+import type { MetaMap, MetaMapValue, Payload, ReadableStreamRenderer, StaticRenderer } from '../core/index.js'
 
 export function escapeForInlineJSON(json: string) {
   return json

@@ -1,9 +1,13 @@
 v1
 
-renderByReq({url})
-bun prod
+client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
+createBunClient({ErrorBoundary, ErrorPageComponent})
+createBunServer
+<App />
+meta, title
+error handling, just catch it in <App><ErrorBoundary></App>
+
 bun plugin
-wrapper for bun helpers, like bun provider, vite provider, hono provider
 config for generation, entry files, pages file
 cli for simplify commands, like build with bun
 points collection generator
@@ -16,8 +20,7 @@ layouts, ensure layout not rerender, and scroll position ok
 example general layout, idea layout, idea news page
 
 .route(string)
-meta, title
-error handling, just catch it in <App><ErrorBoundary></App>
+
 
 .page(() => [201, <div />]).page(() => [404, <div />])
 extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling

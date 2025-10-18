@@ -13,4 +13,4 @@ export async function render(url: string, clientBundlePathOverride?: string) {
     clientBundlePath: clientBundlePathOverride ?? clientBundlePath,
   })
   return html
-}
+} // TODO: remove this file
