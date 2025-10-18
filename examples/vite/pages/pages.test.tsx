@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'bun:test'
-import { ClientPage0 } from '@devp0nt/page0/client'
-import type { serverPage0 } from '../server/page0.js'
+import { ClientPoint0 } from '@devp0nt/point0/client'
+import type { serverPoint0 } from '../server/point0.js'
 import { homeRoute, ideasRoute, ideaRoute } from '../shared/routes.js'
 import { pages } from './index.js'
 
 describe('Client Pages', () => {
   it('should create home page with correct route', () => {
-    const homePage = new ClientPage0<typeof serverPage0>().route(homeRoute).component(() => <div>Home</div>)
+    const homePage = new ClientPoint0<typeof serverPoint0>().route(homeRoute).component(() => <div>Home</div>)
 
     expect(homePage.getRoute()).toEqual(homeRoute)
     expect(homePage.getComponent()).toBeDefined()
   })
 
   it('should create ideas page with loader', () => {
-    const ideasPage = new ClientPage0<typeof serverPage0>()
+    const ideasPage = new ClientPoint0<typeof serverPoint0>()
       .route(ideasRoute)
       .loader(async ({ ctx }) => {
         const ideas = await ctx.prisma.idea.findMany()
@@ -28,7 +28,7 @@ describe('Client Pages', () => {
   })
 
   it('should create idea detail page with route params', () => {
-    const ideaPage = new ClientPage0<typeof serverPage0>()
+    const ideaPage = new ClientPoint0<typeof serverPoint0>()
       .route(ideaRoute)
       .loader(async ({ ctx, location }) => {
         const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -54,42 +54,42 @@ describe('Client Pages', () => {
   })
 
   it('should have correct route matching for home page', async () => {
-    const { clientPage0, location } = await ClientPage0._getSuitable({
+    const { clientPoint0, location } = await ClientPoint0._getSuitable({
       path: '/',
       pages,
     })
 
-    expect(clientPage0).toBeDefined()
+    expect(clientPoint0).toBeDefined()
     expect(location.href).toBe('/')
   })
 
   it('should have correct route matching for ideas page', async () => {
-    const { clientPage0, location } = await ClientPage0._getSuitable({
+    const { clientPoint0, location } = await ClientPoint0._getSuitable({
       path: '/ideas',
       pages,
     })
 
-    expect(clientPage0).toBeDefined()
+    expect(clientPoint0).toBeDefined()
     expect(location.href).toBe('/ideas')
   })
 
   it('should have correct route matching for idea detail page', async () => {
-    const { clientPage0, location } = await ClientPage0._getSuitable({
+    const { clientPoint0, location } = await ClientPoint0._getSuitable({
       path: '/ideas/1',
       pages,
     })
 
-    expect(clientPage0).toBeDefined()
+    expect(clientPoint0).toBeDefined()
     expect(location.href).toBe('/ideas/1')
     expect(location.params).toHaveProperty('id', '1')
   })
 
   it('should return undefined for non-matching routes', async () => {
-    const { clientPage0 } = await ClientPage0._getSuitable({
+    const { clientPoint0 } = await ClientPoint0._getSuitable({
       path: '/nonexistent',
       pages,
     })
 
-    expect(clientPage0).toBeUndefined()
+    expect(clientPoint0).toBeUndefined()
   })
 })

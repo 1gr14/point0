@@ -1,7 +1,6 @@
-import type { PagesCollection } from '@devp0nt/page0/client'
-import { homeRoute, ideasRoute, ideaRoute } from '../lib/routes.js'
+import type { PagesCollection } from '@devp0nt/point0/index'
+import { homeRoute, ideaRoute, ideasRoute } from '../lib/routes.js'
 
-// TODO: names export
 export default [
   [homeRoute, async () => (await import('./home.js')).default],
   [ideasRoute, async () => (await import('./ideas.js')).default],

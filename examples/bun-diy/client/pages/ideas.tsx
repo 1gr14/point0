@@ -1,14 +1,14 @@
 import { ideasRoute } from '../lib/routes.js'
-import { page0 } from '../lib/page0.js'
+import { point0 } from '../lib/point0.js'
 import { useState } from 'react'
 
-export default page0
+export default point0
   .route(ideasRoute)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas }
   })
-  .end(({ data }) => {
+  .page(({ data }) => {
     const [count, setCount] = useState(0)
     return (
       <div>

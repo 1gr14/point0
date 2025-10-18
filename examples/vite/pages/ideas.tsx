@@ -1,8 +1,8 @@
-import { ClientPage0 } from '@devp0nt/page0/client'
-import type { serverPage0 } from '../server/page0.js'
+import { ClientPoint0 } from '@devp0nt/point0/client'
+import type { serverPoint0 } from '../server/point0.js'
 import { ideasRoute } from '../shared/routes.js'
 
-export const ideasPage = new ClientPage0<typeof serverPage0>()
+export const ideasPage = new ClientPoint0<typeof serverPoint0>()
   .route(ideasRoute)
   .loader(async ({ ctx }) => {
     const ideas = await ctx.prisma.idea.findMany()

@@ -14,11 +14,10 @@
     "skipLibCheck": true,
     "types": ["bun-types"],
     "paths": {
-      "@devp0nt/page0/client": ["../../src/client/index.ts"],
-      "@devp0nt/page0/server": ["../../src/server/index.ts"],
-      "@devp0nt/page0/shared": ["../../src/shared/index.ts"]
+      "@devp0nt/point0": ["../../src/index.ts"],
+      "@devp0nt/point0/*": ["../../src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "server/page0.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "server/point0.ts"],
   "exclude": ["node_modules", "dist"]
 }

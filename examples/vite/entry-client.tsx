@@ -1,5 +1,5 @@
 import React from 'react'
-import { hydrate } from '@devp0nt/page0/client'
+import { hydrate } from '@devp0nt/point0/client'
 import { pages } from './pages/index.js'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 

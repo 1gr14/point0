@@ -1,4 +1,4 @@
-import type { PagesCollection } from '@devp0nt/page0/client'
+import type { PagesCollection } from '@devp0nt/point0/client'
 import { homeRoute, ideasRoute, ideaRoute } from '../shared/routes.js'
 
 export const pages: PagesCollection = [

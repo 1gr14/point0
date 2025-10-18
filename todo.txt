@@ -1,12 +1,13 @@
 wrapper for bun helpers
+.create
+page finder
 example idea, example idea new
 test for ready server
 example general
 not PagesCollection, but PagesCollection
 remove 0 suffix everywhere
-just page0, first generic not Page0 but _Infer (or just _) holder or ctx itself
+just point0, first generic not Point0 but _Infer (or just _) holder or ctx itself
 render fns to another module
-.end
 layouts
 
 error handling
@@ -19,19 +20,18 @@ const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: current
 const {data, meta, res} = await somePage.fetch({ id: 123 }) // where res is component or json depends on this page .env response
 so we need base path setted in routes or page sttings itself
 .component, should not recall already called middlewares
-? .require(<>)
+.require(<>)
 
 ? .useLoader ? hmr ok ?
 
 htmlRewriter fall back on no bun
 hydrate react query and others
 .before, .after
-<Router />
+router0: <Router /><Link />
 client only page
 client only routing
 server only page so it is usual backend route
 ensure layout not rerender, and scroll position ok
-<Link />
 hide methods after .route() called, etc
 meta, title
 .plugin, .use(plugin)
@@ -55,7 +55,7 @@ example elysia
 example auth
 example expo
 
-npm @devp0nt/page0
+npm @devp0nt/point0
 superjson
 
 ---

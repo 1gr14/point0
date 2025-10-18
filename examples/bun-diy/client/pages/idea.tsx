@@ -1,7 +1,7 @@
 import { ideaRoute } from '../lib/routes.js'
-import { page0 } from '../lib/page0.js'
+import { point0 } from '../lib/point0.js'
 
-export default page0
+export default point0
   .route(ideaRoute)
   .loader(async ({ ctx, location }) => {
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -9,7 +9,7 @@ export default page0
     })
     return { idea }
   })
-  .end(({ data }) => {
+  .page(({ data }) => {
     return (
       <div>
         <h1>{data.idea.title}</h1>

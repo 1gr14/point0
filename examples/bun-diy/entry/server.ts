@@ -1,9 +1,10 @@
-import { renderReadableStream, ServerPage0 } from '@devp0nt/page0/server'
+import { renderReadableStream } from '@devp0nt/point0/entry-server.js'
 import { serve } from 'bun'
 import nodePath from 'node:path'
 import indexHtml from '../client/index.html'
 import pages from '../client/pages/index.js'
-import { serverPage0 } from '../server/page0.js'
+import { serverPoint0 } from '../server/point0.js'
+import { Point0 } from '@devp0nt/point0/index'
 
 const isDev = import.meta.env.NODE_ENV !== 'production'
 const PORT = process.env.PORT ?? '3000'
@@ -46,12 +47,12 @@ serve({
         return new Response('{}', { headers: { 'Content-Type': 'application/json' } })
       }
 
-      // page0
+      // point0
       try {
         const url = new URL(request.url)
         const originalHtml = isDev ? await (await fetch(`${url.origin}/index.html`)).text() : INDEX_FILE_CONTENT
-        const { element, payload, status, error } = await ServerPage0.extractSuitableElement({
-          page0: serverPage0,
+        const { element, payload, status, error } = await Point0.extractSuitablePageElement({
+          server: serverPoint0,
           pages,
           routePath: url.pathname,
           requiredCtx: undefined, // can be headers here for example

@@ -1,6 +1,6 @@
 # IdeaNick - Elysia + Vite + Bun Example
 
-A complete example of using `@devp0nt/page0` with Elysia server, Vite SSR, and Bun runtime featuring automatic code splitting and unified development workflow.
+A complete example of using `@devp0nt/point0` with Elysia server, Vite SSR, and Bun runtime featuring automatic code splitting and unified development workflow.
 
 ## Features
 
@@ -25,7 +25,7 @@ examples/elysia-vite/
 │   └── pages.test.tsx # Client tests
 ├── server/           # Server-side code
 │   ├── index.ts      # Elysia server with Vite middleware
-│   ├── page0.ts      # ServerPage0 setup
+│   ├── point0.ts      # ServerPoint0 setup
 │   └── index.test.ts # Server tests
 ├── shared/           # Shared code
 │   ├── data.ts       # Fake ideas data

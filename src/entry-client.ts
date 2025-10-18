@@ -2,9 +2,8 @@ import type { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { AnyClientPage0, PagesCollection } from '../client/page.js'
-import { ClientPage0 } from '../client/page.js'
-import type { Payload } from '../shared/types.js'
+import type { PagePoint, PagesCollection, Payload } from './index.js'
+import { Point0 } from './index.js'
 
 declare global {
   interface Window {
@@ -14,7 +13,7 @@ declare global {
 
 export type AfterHydrateFnProps = {
   payload: Payload
-  page: AnyClientPage0 | undefined
+  page: PagePoint | undefined
   location: Route0.Location
   rootElement: HTMLElement
   element: React.ReactElement
@@ -24,15 +23,7 @@ export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
 let root: Root | null = null
 let hasHydrated = false
 
-export async function hydrate({
-  page0,
-  pages,
-  after,
-}: {
-  page0?: AnyClientPage0 | undefined // should be required
-  pages: PagesCollection
-  after?: AfterHydrateFn
-}) {
+export async function hydrate({ pages, after }: { pages: PagesCollection; after?: AfterHydrateFn }) {
   const payloadEl = document.getElementById('__PAGE0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) throw new Error('Missing __PAGE0_PAYLOAD__')
@@ -47,9 +38,8 @@ export async function hydrate({
   const rootElement = document.getElementById('root')
   if (!rootElement) throw new Error('Element #root not found')
 
-  const { element, error, page, location } = await ClientPage0.fillSuitableElement({
+  const { element, error, page, location } = await Point0.fillSuitablePageElement({
     routePath: payload.location.href,
-    page0,
     pages,
     payload,
   })

@@ -1,8 +1,8 @@
-import { ClientPage0 } from '@devp0nt/page0/client'
-import type { serverPage0 } from '../server/page0.js'
+import { ClientPoint0 } from '@devp0nt/point0/client'
+import type { serverPoint0 } from '../server/point0.js'
 import { homeRoute } from '../shared/routes.js'
 
-export const homePage = new ClientPage0<typeof serverPage0>().route(homeRoute).component(() => (
+export const homePage = new ClientPoint0<typeof serverPoint0>().route(homeRoute).component(() => (
   <div>
     <h1>Welcome to IdeaNick</h1>
     <p>Discover and share innovative ideas that can change the world!</p>

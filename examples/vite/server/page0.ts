@@ -1,6 +1,6 @@
-import { ServerPage0 } from '@devp0nt/page0/server'
+import { ServerPoint0 } from '@devp0nt/point0/server'
 import { prisma } from '../shared/prisma.js'
 
-export const serverPage0 = new ServerPage0().ctx(() => ({
+export const serverPoint0 = new ServerPoint0().ctx(() => ({
   prisma,
 }))
