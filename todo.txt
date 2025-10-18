@@ -1,67 +1,72 @@
+v1
+
+generic TIsServer
+App.tsx wrapper
+index.html always served not only in dev, but in prod mode serve it from dist, but I think if we use server as only one entry, everything will be so we do not nned build separate
+html template parsing just by provided data from endpoint or force provided vars
 Point0.client(), Point0.server()
-wrapper for bun helpers
-.create
-page finder
-example idea, example idea new
+wrapper for bun helpers, like bun provider, vite provider, hono provider
+points collection generator
+layouts, ensure layout not rerender, and scroll position ok
+example general layout, idea layout, idea news page
 test for ready server
-example general
-not PagesCollection, but PagesCollection
-remove 0 suffix everywhere
-just point0, first generic not Point0 but _Infer (or just _) holder or ctx itself
-render fns to another module
-layouts
+.route(string)
+meta, title
+error handling, just catch it in <App><ErrorBoundary></App>
 
-error handling
-Error0
-
-.clientCtx
-.clientLoader, after call do not allow usual loader
-
+.page(() => [201, <div />]).page(() => [404, <div />])
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
-const {data, meta, res} = await somePage.fetch({ id: 123 }) // where res is component or json depends on this page .env response
-so we need base path setted in routes or page sttings itself
-.component, should not recall already called middlewares
-.require(<>)
+const {data, meta, res} = await somePage.fetch({ id: 123 }).json() or .html() // where res is component or json depends on this page .env response
+.input<T>({params:...,query:...,body:...,headers:...}) or .params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
 
-? .useLoader ? hmr ok ?
-
-htmlRewriter fall back on no bun
-hydrate react query and others
 .before, .after
+hydrate react query and others
+
+.exposeCtx, add value to __PAGE0_EXPOSED_CTX__ as usual javascript, it can even have await import('...') inside
+.uesExposedCtx
+.clientLoader, after call do not allow usual loader another
+.clientCtx, has access to exposeCtx,  just add  and there real javascript, can have usual useHooks (useEffect etc) will be called only on client
+
 router0: <Router /><Link />
 client only page
 client only routing
-server only page so it is usual backend route
-ensure layout not rerender, and scroll position ok
-hide methods after .route() called, etc
-meta, title
-.plugin, .use(plugin)
-html template parsing
-adapters, bun, and importRenderer inside 
-serve public dir
-auto find pages, sort by no params to params routes, save to file
-remove 0 from suffixes where it needed
-.expose
-.component() for compontnts returns React.FC, and .render() for usual pages, on render page should find components inside
-.end((req) => { req.json() })
-.end(() => [404, <div />])
-.end(() => [404, <div />])
-.end(() => [404, {any: "json"}])
-.json(() => [200, {any: "json"}]).end(() => <div />)
-
-.input().method().query().body().contentType().headers()
-
 
 example bun
-example vite
 example elysia
 example auth
 example expo
 
-npm @devp0nt/point0
+auto find pages, sort by no params to params routes, save to file
+const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
+
+split index.ts code
+htmlRewriter fall back on no bun
+hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
+Error0 as serializeError and deserializeError provider
 superjson
+on client build remove unused code when NODE_ENV=production
+example vite-hono
+generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
+Record<string, never> & {}
+docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
+
+override last commit message on each file
+choose license
+npm @devp0nt/point0 or point0
 
 ---
 
-await import inside .exposeCtx fns
-docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
+v2
+
+const x = await point.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
+add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
+.useStaticLoader((props) => ) only server rendering
+.useLoader(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
+react query plugin wraps .useLoader and provide useQueryLoader and hydration out of the box
+.res(({req}) => { req.json() }) || .res(() => [404, {any: "json"}]) || .res(() => [200, {any: "json"}]).page(() => <div />)
+
+.component() has hidden route and can have fetcher
+.component, should not recall already called middlewares
+
+---
+
