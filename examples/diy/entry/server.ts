@@ -2,14 +2,15 @@ import { renderReadableStream } from '@devp0nt/point0/entry-server.js'
 import { Point0 } from '@devp0nt/point0/index'
 import { serve } from 'bun'
 import nodePath from 'node:path'
-import indexHtml from '../client/index.html'
+import indexHtml from '../src/index.html'
 import { server } from '../src/lib/server.js'
 import { points } from './points.js'
 
 const isDev = import.meta.env.NODE_ENV !== 'production'
 const PORT = process.env.PORT ?? '3000'
+// TODO: serve in prod
 const PUBLIC_DIR_PATH = nodePath.resolve(__dirname, '../public')
-const INDEX_FILE_PATH = nodePath.resolve(__dirname, '../client/index.html')
+const INDEX_FILE_PATH = nodePath.resolve(__dirname, '../src/index.html')
 const INDEX_FILE_CONTENT = isDev ? undefined : await Bun.file(INDEX_FILE_PATH).text()
 
 serve({

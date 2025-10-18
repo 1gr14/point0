@@ -55,6 +55,7 @@ export async function hydrate({ points, after }: { points: PointsCollection; aft
     // 🟢 For HMR (subsequent calls), just re-render client-side
     root ||= createRoot(rootElement)
     root.render(element)
+    // TODO: check why state reset on HMR
   }
 
   if (after) {

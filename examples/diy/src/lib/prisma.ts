@@ -1,4 +1,5 @@
-import 'server-only'
+// TODO: create guard for server-only
+// import 'server-only'
 
 export const prisma = {
   idea: {
