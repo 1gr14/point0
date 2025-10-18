@@ -1,9 +1,9 @@
 v1
 
-generic TIsServer
-.ctx({})
 renderByReq({url})
-server0.routes({})
+bun prod
+bun plugin
+
 App.tsx wrapper
 index.html always served not only in dev, but in prod mode serve it from dist, but I think if we use server as only one entry, everything will be so we do not nned build separate
 html template parsing just by provided data from endpoint or force provided vars
@@ -46,7 +46,8 @@ example expo
 
 test for units
 test for server
-name pattern correctly, maybe Point0.consumer(), Point0.provider(), but it is not provider and consumer
+server0.routes({})
+name pattern correctly, maybe Point0.consumer(), Point0.provider(), but it is not provider and consumer. eversion. context eversion, di, ... oh...
 split index.ts code
 htmlRewriter fall back on no bun
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)

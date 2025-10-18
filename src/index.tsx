@@ -3,28 +3,64 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 
 export class Point0<
   TServer extends Server | UndefinedServer = UndefinedServer,
+  TIsClient extends IsClient = false,
   TRequiredCtx extends RequiredCtx = UndefinedCtx,
   TOutputCtx extends Ctx = InferOutputCtx<TServer>,
   TOutputData extends Data = InferOutputData<TServer>,
   TRoute extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
-  THasPage extends HasPage = HasPageNo,
+  THasPage extends HasPage = HasPageFalse,
 > {
-  Infer: Infer<TServer, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> = {} as never
+  Infer: Infer<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> = {} as never
 
   _extendFns: ExtendFnRecord[]
   _route: TRoute
   _page: THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined
 
-  constructor() {
-    this._extendFns = []
-    this._route = undefined as TRoute
-    this._page = undefined as never
+  private constructor(props?: {
+    _extendFns?: ExtendFnRecord[]
+    _route?: TRoute
+    _page?: THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined
+  }) {
+    this._extendFns = props?._extendFns ?? []
+    this._route = props?._route ?? (undefined as TRoute)
+    this._page = props?._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
+  }
+
+  _clone<
+    TServer extends Server | UndefinedServer,
+    TIsClient extends IsClient,
+    TRequiredCtx extends RequiredCtx,
+    TOutputCtx extends Ctx,
+    TOutputData extends Data,
+    TRoute extends Route0.AnyRoute | UndefinedRoute,
+    THasPage extends HasPage,
+  >(overrides?: {
+    _extendFns?: ExtendFnRecord[]
+    _route?: Route0.AnyRoute | UndefinedRoute
+    _page?: PageComponent | UndefinedPageComponent
+  }): Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return new Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _extendFns: overrides?._extendFns ?? this._extendFns,
+      _route: (overrides?._route ?? this._route) as TRoute,
+      _page: (overrides?._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
+    })
+  }
+
+  // base
+
+  static client<TServer extends Server | UndefinedServer = UndefinedServer>(): Point0<TServer, true> {
+    return new Point0<TServer, true>()
+  }
+
+  static server(): Point0<UndefinedServer, false> {
+    return new Point0<UndefinedServer, false>()
   }
 
   // setters
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
     TServer,
+    TIsClient,
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TOutputCtx, TExtraRequiredCtx>,
     TOutputData,
@@ -33,6 +69,7 @@ export class Point0<
   > {
     const newPoint = new Point0<
       TServer,
+      TIsClient,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TOutputCtx, TExtraRequiredCtx>,
       TOutputData,
@@ -47,42 +84,41 @@ export class Point0<
 
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctxFn: CtxFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TNewOutputCtx>,
-  ): Point0<TServer, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage> {
-    const newPoint = new Point0<TServer, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>()
-    newPoint._extendFns.push(...this._extendFns, { type: 'ctx', fn: ctxFn as never })
-    newPoint._route = this._route
-    newPoint._page = this._page
-    return newPoint
+  ): Point0<TServer, TIsClient, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>
+  ctx<TNewOutputCtx extends Ctx = Ctx>(
+    ctx: TNewOutputCtx,
+  ): Point0<TServer, TIsClient, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>
+  ctx<TNewOutputCtx extends Ctx = Ctx>(
+    ctxOrFn: TNewOutputCtx,
+  ): Point0<TServer, TIsClient, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage> {
+    const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : () => ctxOrFn
+    return this._clone<TServer, TIsClient, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>({
+      _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn }],
+    } as never)
   }
 
   loader<TNewOutputData extends Data = Data>(
     loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TNewOutputData>,
-  ): Point0<TServer, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage> {
-    const newPoint = new Point0<TServer, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage>()
-    newPoint._extendFns.push(...this._extendFns, { type: 'loader', fn: loaderFn as never })
-    newPoint._route = this._route
-    newPoint._page = this._page as never
-    return newPoint
+  ): Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage> {
+    return this._clone<TServer, TIsClient, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage>({
+      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }],
+    } as never)
   }
 
   route<TNewRoute0 extends Route0.AnyRoute>(
     route: TNewRoute0,
-  ): Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage> {
-    const newPoint = new Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage>()
-    newPoint._extendFns.push(...this._extendFns)
-    newPoint._route = route
-    newPoint._page = this._page
-    return newPoint
+  ): Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage> {
+    return this._clone<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage>({
+      _route: route,
+    } as never)
   }
 
   page<TPage extends PageComponent<TOutputData, TRoute>>(
     page: TPage,
-  ): Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true> {
-    const newPoint = new Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true>()
-    newPoint._extendFns.push(...this._extendFns)
-    newPoint._route = this._route as never
-    newPoint._page = page
-    return newPoint
+  ): Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true> {
+    return this._clone<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true>({
+      _page: page,
+    } as never)
   }
 
   // getters
@@ -128,6 +164,7 @@ export class Point0<
     point,
     requiredCtx,
   }: WithServerRequiredCtx<InferServer<TPoint>> & {
+    // TODO: location | routePath
     location: Route0.Location
     point?: TPoint
     server?: InferServer<TPoint>
@@ -286,13 +323,15 @@ export class Point0<
 
 type Infer<
   TServer extends Server | UndefinedServer = UndefinedServer,
+  TIsClient extends IsClient = IsClient,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
-  THasPage extends HasPage = HasPageNo,
+  THasPage extends HasPage = HasPageFalse,
 > = {
   Server: TServer
+  IsClient: TIsClient
   RequiredCtx: TRequiredCtx
   OutputCtx: TOutputCtx
   OutputData: TOutputData
@@ -300,54 +339,60 @@ type Infer<
   HasPage: THasPage
 }
 
-export type HasPageYes = true
-export type HasPageNo = false
+export type HasPageTure = true
+export type HasPageFalse = false
 export type HasPage = boolean
+export type IsClientTrue = true
+export type IsClientFalse = false
+export type IsClient = boolean
 
 export type AnyPoint<
   TServer extends Server | UndefinedServer = Server | UndefinedServer,
+  TIsClient extends IsClient = IsClient,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   THasPage extends HasPage = HasPage,
-> = Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+> = Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
 export type ReadyPoint<
   TServer extends Server | UndefinedServer = Server | UndefinedServer,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   THasPage extends HasPage = HasPage,
-> = AnyPoint<TServer, any, any, any, TRoute, THasPage>
+> = AnyPoint<TServer, any, any, any, any, TRoute, THasPage>
 
 export type PagePoint<
   TServer extends Server | UndefinedServer = Server | UndefinedServer,
+  TIsClient extends IsClient = IsClient,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
-  THasPage extends HasPage = HasPageYes,
-> = Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  THasPage extends HasPage = HasPageTure,
+> = Point0<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
 
 export type Server<
   TServer extends UndefinedServer = UndefinedServer,
+  TIsClient extends IsClient = IsClient,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
-  THasPage extends HasPage = HasPageNo,
+  THasPage extends HasPage = HasPageFalse,
 > = {
-  Infer: Infer<TServer, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  Infer: Infer<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
   _extendFns: ExtendFnRecord[]
 }
 export type UndefinedServer = undefined
 
 export type InferOutputCtx<TPoint extends AnyPoint | Server | undefined> =
-  TPoint extends AnyPoint<any, any, infer TOutputCtx, any, any, any>
+  TPoint extends AnyPoint<any, any, any, infer TOutputCtx, any, any, any>
     ? TOutputCtx
     : TPoint extends Server
       ? TPoint['Infer']['OutputCtx']
       : EmptyCtx
 export type InferOutputData<TPoint extends AnyPoint | Server | undefined> =
-  TPoint extends AnyPoint<any, any, any, infer TOutputData, any, any>
+  TPoint extends AnyPoint<any, any, any, any, infer TOutputData, any, any>
     ? TOutputData
     : TPoint extends Server
       ? TPoint['Infer']['OutputData']
@@ -357,7 +402,7 @@ export type InferOutputData<TPoint extends AnyPoint | Server | undefined> =
 export type InferServer<TPoint extends AnyPoint | undefined> =
   TPoint extends AnyPoint<infer TServer> ? TServer : undefined
 export type InferExtractResult<TPoint extends AnyPoint | undefined = undefined> =
-  TPoint extends AnyPoint<any, any, infer TOutputCtx, infer TOutputData, any, any>
+  TPoint extends AnyPoint<any, any, any, infer TOutputCtx, infer TOutputData, any, any>
     ? { ctx: TOutputCtx; data: TOutputData }
     : { ctx: EmptyCtx; data: EmptyData }
 export type InferServerFromPointsCollection<TPointsCollection extends PointsCollection> =
@@ -389,6 +434,7 @@ export type PageComponent<
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
 > = React.ComponentType<PageComponentProps<TOutputData, TRoute>>
+export type UndefinedPageComponent = undefined
 
 export type CurrentRoute<TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute> =
   TRoute extends Route0.AnyRoute ? TRoute : Route0.AnyRoute
@@ -399,8 +445,10 @@ export type PagesCollection<TServer extends Server | undefined = Server | undefi
   [
     Route0.AnyRoute,
     (
-      | PagePoint<TServer, any, any, any, any, true>
-      | (() => Promise<PagePoint<TServer, any, any, any, any, true>> | PagePoint<TServer, any, any, any, any, true>)
+      | PagePoint<TServer, any, any, any, any, any, true>
+      | (() =>
+          | Promise<PagePoint<TServer, any, any, any, any, any, true>>
+          | PagePoint<TServer, any, any, any, any, any, true>)
     ),
   ]
 >
@@ -448,16 +496,16 @@ export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer
 export type LoaderFnProps<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
 > = {
   ctx: TCtx
   data: TDataInput
-  location: Route0.Location<TRoute0>
+  location: Route0.Location<CurrentRoute<TRoute0>>
 }
 export type LoaderFn<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TDataOutput extends Data = Data,
 > = (props: LoaderFnProps<TCtx, TDataInput, TRoute0>) => Promise<TDataOutput> | TDataOutput
 export type LoaderFnOutput<TLoader extends LoaderFn> = Awaited<ReturnType<TLoader>>
