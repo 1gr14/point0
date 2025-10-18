@@ -1,4 +1,4 @@
-import type { PointsCollection } from '@devp0nt/point0/index'
+import type { PointsCollection } from 'point0/index'
 import { routes } from '../src/lib/routes.js'
 
 export const points: PointsCollection = [

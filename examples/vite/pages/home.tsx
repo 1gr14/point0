@@ -1,4 +1,4 @@
-import { ClientPoint0 } from '@devp0nt/point0/client'
+import { ClientPoint0 } from 'point0/client'
 import type { serverPoint0 } from '../server/point0.js'
 import { homeRoute } from '../shared/routes.js'
 

@@ -14,8 +14,8 @@
     "skipLibCheck": true,
     "types": ["bun-types"],
     "paths": {
-      "@devp0nt/point0": ["../../src/index.ts"],
-      "@devp0nt/point0/*": ["../../src/*"]
+      "point0": ["../../src/index.ts"],
+      "point0/*": ["../../src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "server/point0.ts"],

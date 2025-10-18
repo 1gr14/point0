@@ -14,9 +14,9 @@
     "skipLibCheck": true,
     "types": ["bun-types"],
     "paths": {
-      "@devp0nt/point0/client": ["../../src/client/index.ts"],
-      "@devp0nt/point0/server": ["../../src/server/index.ts"],
-      "@devp0nt/point0/shared": ["../../src/shared/index.ts"]
+      "point0/client": ["../../src/client/index.ts"],
+      "point0/server": ["../../src/server/index.ts"],
+      "point0/shared": ["../../src/shared/index.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "server/point0.ts"],

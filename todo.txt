@@ -1,11 +1,8 @@
 v1
 
-Point0.client(), Point0.server()
-example like server and client separation does not exists
 generic TIsServer
 .ctx({})
 renderByReq({url})
-rename to point0
 server0.routes({})
 App.tsx wrapper
 index.html always served not only in dev, but in prod mode serve it from dist, but I think if we use server as only one entry, everything will be so we do not nned build separate
@@ -16,12 +13,13 @@ config for generation, entry files, pages file
 points collection generator
 layouts, ensure layout not rerender, and scroll position ok
 example general layout, idea layout, idea news page
-test for ready server
+
 .route(string)
 meta, title
 error handling, just catch it in <App><ErrorBoundary></App>
 
 .page(() => [201, <div />]).page(() => [404, <div />])
+extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
 const {data, meta, res} = await somePage.fetch({ id: 123 }).json() or .html() // where res is component or json depends on this page .env response
 .input<T>({params:...,query:...,body:...,headers:...}) or .params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
@@ -29,7 +27,7 @@ const {data, meta, res} = await somePage.fetch({ id: 123 }).json() or .html() //
 .before, .after
 hydrate react query and others
 
-.exposeCtx, add value to __PAGE0_EXPOSED_CTX__ as usual javascript, it can even have await import('...') inside
+.exposeCtx, add value to __PAGE0_EXPOSED_CTX__ as usual javascript, it can even have await import('...') inside. Or maybe it returns not result, but array of extend fns itself, to be called in client right before calling .clientCtx fns
 .uesExposedCtx
 .clientLoader, after call do not allow usual loader another
 .clientCtx, has access to exposeCtx,  just add  and there real javascript, can have usual useHooks (useEffect etc) will be called only on client
@@ -38,14 +36,17 @@ router0: <Router /><Link />
 client only page
 client only routing
 
-example bun
+auto find pages, sort by no params to params routes, save to file
+const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
+
+example bun, monorepo woth references
 example elysia
 example auth
 example expo
 
-auto find pages, sort by no params to params routes, save to file
-const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
-
+test for units
+test for server
+name pattern correctly, maybe Point0.consumer(), Point0.provider(), but it is not provider and consumer
 split index.ts code
 htmlRewriter fall back on no bun
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
@@ -57,6 +58,7 @@ example vite-hono
 generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
 Record<string, never> & {}
 docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
+.ctx(true, {}) for for assign ctx
 
 override last commit message on each file
 choose license

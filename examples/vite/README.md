@@ -1,6 +1,6 @@
 # IdeaNick - Elysia + Vite + Bun Example
 
-A complete example of using `@devp0nt/point0` with Elysia server, Vite SSR, and Bun runtime featuring automatic code splitting and unified development workflow.
+A complete example of using `point0` with Elysia server, Vite SSR, and Bun runtime featuring automatic code splitting and unified development workflow.
 
 ## Features
 

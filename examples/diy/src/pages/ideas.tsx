@@ -6,13 +6,14 @@ export default client
   .route(routes.ideas)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
-    return { ...data, ideas }
+    return { ...data, ideas, env: ctx.env.NODE_ENV }
   })
   .page(({ data }) => {
     const [count, setCount] = useState(0)
     return (
       <div>
         <h1>Ideas</h1>
+        <p>Environment: {data.env}</p>
         <p
           onClick={() => {
             setCount(count + 1)

@@ -16,13 +16,13 @@ export default defineConfig({
         assetFileNames: 'assets/[name].[ext]',
         // manualChunks: {
         //   vendor: ['react', 'react-dom'],
-        //   point0: ['@devp0nt/point0/client', '@devp0nt/route0'],
+        //   point0: ['point0/client', '@devp0nt/route0'],
         // },
       },
     },
   },
   // ssr: {
-  //   noExternal: ['@devp0nt/point0', '@devp0nt/route0'],
+  //   noExternal: ['point0', '@devp0nt/route0'],
   // },
   server: {
     port: 5173,
