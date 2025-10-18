@@ -1,5 +1,6 @@
 {
-  "name": "@examples/bun-diy",
+  "name": "@point0/example-diy",
+  "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -7,7 +8,8 @@
     "build:client": "cross-env NODE_ENV=production bun build ./entry/client.ts --outdir dist/client --splitting",
     "build": "bun run build:client && bun run build:server",
     "dev": "cross-env NODE_ENV=development bun --no-clear-screen --hot ./entry/server.ts",
-    "start": "cross-env NODE_ENV=production bun run dist/server/index.js"
+    "start": "cross-env NODE_ENV=production bun run dist/server/index.js",
+    "types": "tsc --noEmit"
   },
   "dependencies": {
     "@devp0nt/route0": "^1.0.0-next.16",

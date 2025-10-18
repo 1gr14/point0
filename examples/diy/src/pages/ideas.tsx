@@ -1,9 +1,9 @@
-import { ideasRoute } from '../lib/routes.js'
-import { point0 } from '../lib/point0.js'
 import { useState } from 'react'
+import { routes } from '../../src/lib/routes.js'
+import { client } from '../lib/client.js'
 
-export default point0
-  .route(ideasRoute)
+export default client
+  .route(routes.ideas)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas }

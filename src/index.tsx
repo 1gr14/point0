@@ -41,7 +41,7 @@ export class Point0<
     >()
     newPoint._extendFns.push(...this._extendFns)
     newPoint._route = this._route
-    newPoint._page = this._page as never
+    newPoint._page = this._page
     return newPoint
   }
 
@@ -51,7 +51,7 @@ export class Point0<
     const newPoint = new Point0<TServer, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>()
     newPoint._extendFns.push(...this._extendFns, { type: 'ctx', fn: ctxFn as never })
     newPoint._route = this._route
-    newPoint._page = this._page as never
+    newPoint._page = this._page
     return newPoint
   }
 
@@ -81,7 +81,7 @@ export class Point0<
     const newPoint = new Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true>()
     newPoint._extendFns.push(...this._extendFns)
     newPoint._route = this._route as never
-    newPoint._page = page as never
+    newPoint._page = page
     return newPoint
   }
 
@@ -92,7 +92,7 @@ export class Point0<
   }
 
   getPageComponent(): THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined {
-    return this._page as never
+    return this._page
   }
 
   getExtendFns(): ExtendFnRecord[] {
@@ -117,7 +117,7 @@ export class Point0<
         continue
       }
       const point = getPage instanceof Point0 ? getPage : await getPage()
-      return { point: point as never, location: match.location }
+      return { point: point as InferPointFromPointsCollection<TPointsCollection> | undefined, location: match.location }
     }
     return { point: undefined, location }
   }
@@ -150,18 +150,18 @@ export class Point0<
       }
     }
 
-    return { ctx: ctxOutput, data: dataOutput } as never
+    return { ctx: ctxOutput, data: dataOutput } as InferExtractResult<TPoint>
   }
 
-  static async extractPageElement<TPagePoint extends PagePoint | undefined = undefined>({
+  static async extractPageElement<TPoint extends AnyPoint | undefined = undefined>({
     requiredCtx,
     server,
-    page,
+    point,
     ...restProps
-  }: WithServerRequiredCtx<InferServer<TPagePoint>> & {
-    server?: InferServer<TPagePoint> | UndefinedServer
+  }: WithServerRequiredCtx<InferServer<TPoint>> & {
+    server?: InferServer<TPoint> | UndefinedServer
     // base?: AnyPoint | undefined // TODO: use it to get Error components and other settings, or may be we can set them in another level
-    page?: TPagePoint | undefined
+    point?: TPoint | undefined
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     element: React.ReactElement
     status: number
@@ -175,18 +175,19 @@ export class Point0<
       const runResult = await Point0.extract({
         location,
         server,
-        point: page,
+        point,
         requiredCtx,
-      } as WithServerRequiredCtx<InferServer<TPagePoint>> & {
+      } as WithServerRequiredCtx<InferServer<TPoint>> & {
         location: Route0.Location
-        point?: TPagePoint
-        server?: InferServer<TPagePoint>
+        point?: TPoint
+        server?: InferServer<TPoint>
         requiredCtx?: Ctx
       })
       data = runResult.data
       const payload = { location, data, meta: { title: 'Hello, world!' } }
-      const PageComponent = page?.getPageComponent()
+      const PageComponent = point?.getPageComponent()
       if (!PageComponent) {
+        // TODO: if pint not found then one error, if pageComponent not found then antoher
         // TODO: use provided errors
         // TODO: return undefined element
         const element = <div>Page not found</div>
@@ -203,40 +204,40 @@ export class Point0<
     }
   }
 
-  static async extractSuitablePageElement<TPagesCollection extends PagesCollection>({
+  static async extractSuitablePageElement<TPointsCollection extends PointsCollection>({
     requiredCtx,
     server,
-    pages,
+    points,
     ...restProps
-  }: WithServerRequiredCtx<InferServerFromPointsCollection<TPagesCollection>> & {
-    server?: InferServerFromPointsCollection<TPagesCollection> | undefined
-    pages: TPagesCollection
+  }: WithServerRequiredCtx<InferServerFromPointsCollection<TPointsCollection>> & {
+    server?: InferServerFromPointsCollection<TPointsCollection> | undefined
+    points: TPointsCollection
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     element: React.ReactElement
     status: number
     payload: Payload
     error: unknown
     location: Route0.Location
-    page: InferPagePointFromPagesCollection<TPagesCollection>
+    point: InferPointFromPointsCollection<TPointsCollection> | undefined
   }> {
-    const { point: page, location } = await Point0.getSuitable({ points: pages, ...restProps })
+    const { point, location } = await Point0.getSuitable({ points, ...restProps })
     const { element, payload, error, status } = await Point0.extractPageElement({
-      server: server as never,
-      page: page as never,
-      requiredCtx,
+      server,
+      point,
+      requiredCtx: requiredCtx as never,
       location,
-    } as never) // TODO: remove never
-    return { element, payload, error, status, location, page: page as never }
+    })
+    return { element, payload, error, status, location, point }
   }
 
-  static async fillPageElement<TPagePoint extends PagePoint | undefined = undefined>({
+  static async fillPageElement<TPoint extends AnyPoint | undefined = undefined>({
     server,
-    page,
+    point,
     payload,
     ...restProps
   }: {
-    server?: InferServer<TPagePoint> | undefined
-    page: TPagePoint | undefined
+    server?: InferServer<TPoint> | undefined
+    point: TPoint | undefined
     payload: Payload
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     element: React.ReactElement
@@ -245,7 +246,7 @@ export class Point0<
     location: Route0.Location
   }> {
     const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
-    const PageComponent = page?.getPageComponent()
+    const PageComponent = point?.getPageComponent()
     if (!PageComponent) {
       // TODO: use provided errors
       const element = <div>Page not found</div>
@@ -256,30 +257,30 @@ export class Point0<
     return { element, error: undefined, status: 200, location }
   }
 
-  static async fillSuitablePageElement<TPagesCollection extends PagesCollection>({
+  static async fillSuitablePageElement<TPointsCollection extends PointsCollection>({
     server,
-    pages,
+    points,
     payload,
     ...restProps
   }: {
-    server?: InferServerFromPointsCollection<TPagesCollection> | undefined
-    pages: TPagesCollection
+    server?: InferServerFromPointsCollection<TPointsCollection> | undefined
+    points: TPointsCollection
     payload: Payload
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     element: React.ReactElement
     status: number
     error: unknown
     location: Route0.Location
-    page: InferPagePointFromPagesCollection<TPagesCollection> | undefined
+    point: InferPointFromPointsCollection<TPointsCollection> | undefined
   }> {
-    const { point: page, location } = await Point0.getSuitable({ points: pages, ...restProps })
+    const { point, location } = await Point0.getSuitable({ points, ...restProps })
     const { element, error, status } = await Point0.fillPageElement({
-      server: server as never,
-      page: page as never,
+      server,
+      point,
       payload,
       location,
     })
-    return { element, error, status, location, page: page as never }
+    return { element, error, status, location, point }
   }
 }
 
@@ -311,6 +312,11 @@ export type AnyPoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   THasPage extends HasPage = HasPage,
 > = Point0<TServer, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+export type ReadyPoint<
+  TServer extends Server | UndefinedServer = Server | UndefinedServer,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
+  THasPage extends HasPage = HasPage,
+> = AnyPoint<TServer, any, any, any, TRoute, THasPage>
 
 export type PagePoint<
   TServer extends Server | UndefinedServer = Server | UndefinedServer,
@@ -358,8 +364,8 @@ export type InferServerFromPointsCollection<TPointsCollection extends PointsColl
   TPointsCollection extends PointsCollection<infer TServer> ? TServer : UndefinedServer
 export type InferPointFromPointsCollection<TPointsCollection extends PointsCollection> =
   TPointsCollection extends PointsCollection<infer TServer> ? AnyPoint<TServer> : undefined
-export type InferPagePointFromPagesCollection<TPagesCollection extends PagesCollection> =
-  TPagesCollection extends PagesCollection<infer TServer> ? PagePoint<TServer> : undefined
+export type InferPagePointFromPointsCollection<TPointsCollection extends PointsCollection> =
+  TPointsCollection extends PointsCollection<infer TServer> ? PagePoint<TServer> : undefined
 
 export type WithRequiredCtx<TRequiredCtx extends RequiredCtx> = TRequiredCtx extends Ctx
   ? {
@@ -399,7 +405,7 @@ export type PagesCollection<TServer extends Server | undefined = Server | undefi
   ]
 >
 export type PointsCollection<TServer extends Server | undefined = Server | undefined> = Array<
-  [Route0.AnyRoute, AnyPoint<TServer> | (() => Promise<AnyPoint<TServer>> | AnyPoint<TServer>)]
+  [Route0.AnyRoute, ReadyPoint<TServer> | (() => Promise<ReadyPoint<TServer>> | ReadyPoint<TServer>)]
 >
 
 // TODO: unknown and undefined objects

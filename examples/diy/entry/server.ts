@@ -1,10 +1,10 @@
 import { renderReadableStream } from '@devp0nt/point0/entry-server.js'
+import { Point0 } from '@devp0nt/point0/index'
 import { serve } from 'bun'
 import nodePath from 'node:path'
 import indexHtml from '../client/index.html'
-import pages from '../client/pages/index.js'
-import { serverPoint0 } from '../server/point0.js'
-import { Point0 } from '@devp0nt/point0/index'
+import { server } from '../src/lib/server.js'
+import { points } from './points.js'
 
 const isDev = import.meta.env.NODE_ENV !== 'production'
 const PORT = process.env.PORT ?? '3000'
@@ -52,8 +52,8 @@ serve({
         const url = new URL(request.url)
         const originalHtml = isDev ? await (await fetch(`${url.origin}/index.html`)).text() : INDEX_FILE_CONTENT
         const { element, payload, status, error } = await Point0.extractSuitablePageElement({
-          server: serverPoint0,
-          pages,
+          server,
+          points,
           routePath: url.pathname,
           requiredCtx: undefined, // can be headers here for example
         })

@@ -1,11 +1,18 @@
 v1
 
+Point0.client(), Point0.server()
+example like server and client separation does not exists
 generic TIsServer
+.ctx({})
+renderByReq({url})
+rename to point0
+server0.routes({})
 App.tsx wrapper
 index.html always served not only in dev, but in prod mode serve it from dist, but I think if we use server as only one entry, everything will be so we do not nned build separate
 html template parsing just by provided data from endpoint or force provided vars
-Point0.client(), Point0.server()
+
 wrapper for bun helpers, like bun provider, vite provider, hono provider
+config for generation, entry files, pages file
 points collection generator
 layouts, ensure layout not rerender, and scroll position ok
 example general layout, idea layout, idea news page
@@ -44,7 +51,8 @@ htmlRewriter fall back on no bun
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
 Error0 as serializeError and deserializeError provider
 superjson
-on client build remove unused code when NODE_ENV=production
+on client build remove server code
+add guard to not allow server code in client bundle with s and c wrappers
 example vite-hono
 generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
 Record<string, never> & {}
@@ -52,12 +60,14 @@ docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
 
 override last commit message on each file
 choose license
-npm @devp0nt/point0 or point0
+site
+npm point0
 
 ---
 
 v2
 
+@server, @client decorators for usual fns
 const x = await point.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
 add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
 .useStaticLoader((props) => ) only server rendering

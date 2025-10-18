@@ -221,15 +221,15 @@ describe('Point0', () => {
     const clientPage2 = new Point0<typeof serverPoint0>()
       .route(Route0.create('/bye/:name'))
       .page(({ location }) => <div>Bye, {location.params.name}</div>)
-    const pages: PagesCollection = [
+    const points: PagesCollection = [
       [clientPage1.getRoute(), async () => clientPage1],
       [clientPage2.getRoute(), clientPage2],
     ]
-    const { element: reactEl1 } = await Point0.extractSuitablePageElement({ routePath: '/hello/world', pages })
+    const { element: reactEl1 } = await Point0.extractSuitablePageElement({ routePath: '/hello/world', points })
     expect(React.isValidElement(reactEl1)).toBe(true)
     const html1 = renderToStaticMarkup(reactEl1)
     expect(html1).toBe('<div>Hello, world</div>')
-    const { element: reactEl2 } = await Point0.extractSuitablePageElement({ routePath: '/bye/bye', pages })
+    const { element: reactEl2 } = await Point0.extractSuitablePageElement({ routePath: '/bye/bye', points })
     expect(React.isValidElement(reactEl2)).toBe(true)
     const html2 = renderToStaticMarkup(reactEl2)
     expect(html2).toBe('<div>Bye, bye</div>')
