@@ -3,24 +3,12 @@ v1
 client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
 createBunClient({ErrorBoundary, ErrorPageComponent})
 createBunServer
-<App />
+<App /> becouse it can be client only app and we can figure out how work with it
 meta, title
 error handling, just catch it in <App><ErrorBoundary></App>
 
-bun plugin
-config for generation, entry files, pages file
-cli for simplify commands, like build with bun
-points collection generator
-
-App.tsx wrapper, or maybe mot. Why we cannot just use layouts for everything.
-index.html always served not only in dev, but in prod mode serve it from dist, but I think if we use server as only one entry, everything will be so we do not nned build separate
-html template parsing just by provided data from endpoint or force provided vars
-
 layouts, ensure layout not rerender, and scroll position ok
 example general layout, idea layout, idea news page
-
-.route(string)
-
 
 .page(() => [201, <div />]).page(() => [404, <div />])
 extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling
@@ -40,26 +28,30 @@ router0: <Router /><Link />
 client only page
 client only routing
 
-auto find pages, sort by no params to params routes, save to file
+config for generation, entry files, pages file
+cli for simplify commands, like build with bun: point0 build
+points collection generator, auto find points [Page$, Endpoint$], sort by no params to params routes, save to file
+
 const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
 
 example bun, monorepo woth references
-example elysia
 example auth
 example expo
 
 test for units
+html template parsing just by provided data from endpoint or force provided vars
+example vite-hono
 test for server
 server0.routes({})
+.route(string)
 name pattern correctly, maybe Point0.consumer(), Point0.provider(), but it is not provider and consumer. eversion. context eversion, di, ... oh...
 split index.ts code
 htmlRewriter fall back on no bun
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
 Error0 as serializeError and deserializeError provider
 superjson
-on client build remove server code
+on client build remove server code, just force to rebuild @point0/core package and there have if (process.env.IS_CLIENT === true) {retrun undefined}
 add guard to not allow server code in client bundle with s and c wrappers
-example vite-hono
 generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
 Record<string, never> & {}
 docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
@@ -74,7 +66,6 @@ npm point0
 ---
 
 v2
-@server, @client decorators for usual fns
 const x = await point.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
 add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
 .useStaticLoader((props) => ) only server rendering
