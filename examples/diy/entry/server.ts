@@ -8,10 +8,9 @@ import { points } from './points.js'
 
 const isDev = import.meta.env.NODE_ENV !== 'production'
 const PORT = process.env.PORT ?? '3000'
-// TODO: serve in prod
 const PUBLIC_DIR_PATH = nodePath.resolve(__dirname, '../public')
-const INDEX_FILE_PATH = nodePath.resolve(__dirname, '../src/index.html')
-const INDEX_FILE_CONTENT = isDev ? undefined : await Bun.file(INDEX_FILE_PATH).text()
+const INDEX_FILE_DIST_PATH = nodePath.resolve(__dirname, '../dist/index.html')
+let originalHtml: string | undefined = undefined
 
 serve({
   development: isDev
@@ -51,7 +50,9 @@ serve({
       // point0
       try {
         const url = new URL(request.url)
-        const originalHtml = isDev ? await (await fetch(`${url.origin}/index.html`)).text() : INDEX_FILE_CONTENT
+        originalHtml ||= isDev
+          ? await (await fetch(`${url.origin}/index.html`)).text()
+          : await Bun.file(INDEX_FILE_DIST_PATH).text()
         const { element, payload, status, error } = await Point0.extractSuitablePageElement({
           server,
           points,

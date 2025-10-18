@@ -12,7 +12,7 @@ export default client
     const [count, setCount] = useState(0)
     return (
       <div>
-        <h1>Ideas</h1>
+        <h1>Ideasxx xx x</h1>
         <p>Environment: {data.env}</p>
         <p
           onClick={() => {
