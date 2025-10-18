@@ -66,13 +66,13 @@ export const fakeIdeas: Idea[] = [
     content:
       'This system would analyze spending patterns, market trends, and personal goals to automatically rebalance portfolios, suggest investment opportunities, and help users achieve their financial objectives with minimal manual intervention.',
   },
-  {
-    id: 6,
-    title: 'Sustainable Food Production System',
-    description: 'Vertical farming solution that maximizes yield while minimizing environmental impact',
-    content:
-      'Using advanced hydroponics, LED lighting, and climate control, this system would produce fresh vegetables year-round in urban environments. It would use AI to optimize growing conditions and reduce water and energy consumption.',
-  },
+  // {
+  //   id: 6,
+  //   title: 'Sustainable Food Production System',
+  //   description: 'Vertical farming solution that maximizes yield while minimizing environmental impact',
+  //   content:
+  //     'Using advanced hydroponics, LED lighting, and climate control, this system would produce fresh vegetables year-round in urban environments. It would use AI to optimize growing conditions and reduce water and energy consumption.',
+  // },
   {
     id: 7,
     title: 'Mental Health Companion App',

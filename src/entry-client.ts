@@ -23,8 +23,6 @@ import { Point0 } from './index.js'
 declare global {
   interface Window {
     __POINT0_PAYLOAD__?: Payload
-    // If you want to re-use the same routes on HMR (see optional block below):
-    __POINT0_POINTS__?: PointsCollection
   }
 }
 
@@ -40,13 +38,7 @@ export type AfterHydrateFn = (props: AfterHydrateFnProps) => any
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
 
-// Keep the last args so the OPTIONAL HMR bridge can re-run hydrate with the same inputs.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by commented out HMR "bridge" in end of this file
-let lastArgs: { points: PointsCollection; after?: AfterHydrateFn } | null = null
-
 export async function hydrate({ points, after }: { points: PointsCollection; after?: AfterHydrateFn }) {
-  lastArgs = { points, after }
-
   // 1) Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
@@ -97,26 +89,3 @@ export async function hydrate({ points, after }: { points: PointsCollection; aft
     await after({ payload, point, location, rootElement, element })
   }
 }
-
-/* -----------------------------------------------------------------------------
-   OPTIONAL: HMR "bridge"
-   - Use this if your bundler doesn’t automatically re-run your entry on module updates
-     and you want to re-invoke `hydrate()` with the same arguments upon HMR.
-   - If you’re on Vite with @vitejs/plugin-react (Fast Refresh), you can KEEP this or REMOVE it.
-     Fast Refresh already patches components in place; this bridge just ensures `hydrate`
-     is called again when this module is hot-updated so your route tree is rebuilt.
-   - If you remove it and everything still hot-updates fine with state preserved, great —
-     you don’t need it in your setup.
------------------------------------------------------------------------------ */
-// if (typeof import.meta !== 'undefined' && (import.meta as any).hot) {
-//   ;(import.meta as any).hot.accept((newModule: any) => {
-//     const args = lastArgs ?? ((window as any).__POINT0_POINTS__ && { points: (window as any).__POINT0_POINTS__ })
-//     if (args && typeof newModule?.hydrate === 'function') {
-//       // Re-run hydrate using the latest module code but SAME root, preserving state.
-//       newModule.hydrate(args)
-//     } else if (args) {
-//       // Fallback: re-run our own hydrate if the binding wasn’t replaced.
-//       void hydrate(args as { points: PointsCollection; after?: AfterHydrateFn })
-//     }
-//   })
-// }

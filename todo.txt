@@ -60,6 +60,7 @@ generic as object with not required fields, undefined itself we can do by "typeo
 Record<string, never> & {}
 docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
 .ctx(true, {}) for for assign ctx
+own HMR implementation. We need at first wait for server hmr, and send request to client if it needs hmr
 
 override last commit message on each file
 choose license
