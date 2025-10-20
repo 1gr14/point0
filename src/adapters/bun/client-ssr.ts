@@ -1,15 +1,9 @@
 import type { HydrateResult, HydrateInput } from '../../client/hydrate.js'
 import { hydrate } from '../../client/hydrate.js'
 
-export const clientSsrEntry = async ({
-  hmr = true,
-  ...hydrateInput
-}: { hmr?: boolean } & HydrateInput): Promise<HydrateResult> => {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (import.meta.hot && hmr && process.env.NODE_ENV !== 'production') {
-    import.meta.hot.accept()
-  }
-
+// Yeah, it is just wrapper around hydrate, but I am prepearing to do smae for vite, and maybe there should be some addtional props
+// I want same style, like import @point0/adapter_name/client-ssr.js
+export const clientSsrEntry = async ({ ...hydrateInput }: {} & HydrateInput): Promise<HydrateResult> => {
   return await hydrate(hydrateInput)
 }
 

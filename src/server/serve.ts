@@ -55,12 +55,11 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     if (!client) {
       throw new Error('To serve client you should provide client instance')
     }
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV !== 'production') {
       if (!clientSrcEntry) {
         throw new Error('To serve client in development mode you should provide clientSrcEntry')
       }
-    }
-    if (process.env.NODE_ENV === 'production') {
+    } else {
       if (!clientDistDir) {
         throw new Error('To serve client in production mode you should provide clientDistDir')
       }

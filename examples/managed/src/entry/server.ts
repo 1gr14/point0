@@ -9,7 +9,7 @@ void getBunServer({
   points,
   port: 3000,
   basepath: __dirname, // all paths will be relative to it. it is optional, you may pass all paths as absolute
-  publicDir: '../public', // used in both NODE_ENV. Here you may be want do somthing like process.env.NODE_NEV === production ? 'one/path' : 'another/path'
+  publicDir: process.env.NODE_NEV === 'production' ? '../public' : '../../public',
   clientServe: 'ssr',
   clientDistDir: '../client', // only when NODE_NEV=production
   clientDistRoute: '/dist/client', // only when NODE_NEV=production

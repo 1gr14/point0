@@ -95,15 +95,15 @@ export function renderDocumentHtml<TContent extends string | undefined = undefin
   content,
   payload,
   clientBundlePath,
-  originalHtml,
+  originalIndexHtml,
 }: {
   content?: TContent
   payload: Payload
   clientBundlePath?: string
-  originalHtml?: string
+  originalIndexHtml?: string
 }): DocumentHtmlResult<TContent> {
-  if (originalHtml) {
-    return overrideDocumentHtml({ originalHtml, content, payload, clientBundlePath })
+  if (originalIndexHtml) {
+    return overrideDocumentHtml({ originalIndexHtml, content, payload, clientBundlePath })
   }
   const prefix = renderDocumentHtmlPrefix({ payload })
   const suffix = renderDocumentHtmlSuffix({ clientBundlePath })
@@ -111,12 +111,12 @@ export function renderDocumentHtml<TContent extends string | undefined = undefin
 }
 
 export function overrideDocumentHtml<TContent extends string | undefined = undefined>({
-  originalHtml,
+  originalIndexHtml,
   content,
   payload,
   clientBundlePath,
 }: {
-  originalHtml: string
+  originalIndexHtml: string
   content?: TContent
   payload: Payload
   clientBundlePath?: string
@@ -187,7 +187,7 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
       },
     })
 
-  const htmlWithTarget = rewriter.transform(originalHtml)
+  const htmlWithTarget = rewriter.transform(originalIndexHtml)
   if (htmlWithTarget.includes('<!-- __POINT0_TARGET__ -->')) {
     const [prefix, suffix] = htmlWithTarget.split('<!-- __POINT0_TARGET__ -->')
     return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
@@ -213,15 +213,15 @@ export function renderStatic({
   payload,
   renderer = renderToStaticMarkup,
   clientBundlePath,
-  originalHtml,
+  originalIndexHtml,
 }: {
   element: React.ReactElement
   payload: Payload
   renderer?: StaticRenderer
   clientBundlePath: string
-  originalHtml?: string
+  originalIndexHtml?: string
 }): string {
-  return renderDocumentHtml({ content: renderer(element), payload, clientBundlePath, originalHtml }).html
+  return renderDocumentHtml({ content: renderer(element), payload, clientBundlePath, originalIndexHtml }).html
 }
 
 export async function getReadableStreamWithWrapper({
@@ -260,14 +260,14 @@ export async function renderReadableStream({
   payload,
   clientBundlePath,
   renderer = renderToReadableStream,
-  originalHtml,
+  originalIndexHtml,
 }: {
   element: React.ReactElement
   payload: Payload
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
-  originalHtml?: string
+  originalIndexHtml?: string
 }): Promise<ReadableStream> {
-  const { prefix, suffix } = renderDocumentHtml({ originalHtml, payload })
+  const { prefix, suffix } = renderDocumentHtml({ originalIndexHtml, payload })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
 }

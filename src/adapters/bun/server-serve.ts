@@ -54,13 +54,14 @@ export const getBunServer = async (props: ServeServerInput) => {
       }
     } catch (error) {
       // publicDir doesn't exist or is not accessible
-      logger.info(`Could not scan public directory: ${publicDir}`)
+      logger.info(`🔴 Please, fix path of publicDir provided to getBunServer: ${publicDir}`)
+      throw error
     }
   }
 
   // dev serve client index.html
   const devClientSsrRoutes: Record<string, any> = await (async () => {
-    if (process.env.NODE_ENV === 'development' && clientSrcEntry && clientServe) {
+    if (process.env.NODE_ENV !== 'production' && clientSrcEntry && clientServe) {
       if (!(await Bun.file(clientSrcEntry).exists())) {
         throw new Error(`clientSrcEntry file "${clientSrcEntry}" not found`)
       }
@@ -96,7 +97,7 @@ export const getBunServer = async (props: ServeServerInput) => {
 
         try {
           // dev preset index.html with correct entry.js inserted ho have hml in client
-          if (process.env.NODE_ENV === 'development' && clientServe && !originalIndexHtml) {
+          if (process.env.NODE_ENV !== 'production' && clientServe && !originalIndexHtml) {
             originalIndexHtml = await (await fetch(`${url.origin}/development.index.html`)).text()
           }
 
@@ -172,11 +173,26 @@ export const getBunServer = async (props: ServeServerInput) => {
             if (extractError || fillError) {
               logger.error(extractError || fillError)
             }
-            const readableStream = await renderReadableStream({ element, payload, originalHtml: originalIndexHtml })
-            return new Response(readableStream, {
-              headers: { 'Content-Type': 'text/html' },
-              status,
-            })
+            try {
+              const readableStream = await renderReadableStream({
+                element,
+                payload,
+                originalIndexHtml,
+              })
+              return new Response(readableStream, {
+                headers: { 'Content-Type': 'text/html' },
+                status,
+              })
+            } catch (error) {
+              if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
+                logger.error(error)
+                return new Response(originalIndexHtml, {
+                  headers: { 'Content-Type': 'text/html' },
+                  status,
+                })
+              }
+              throw error
+            }
           }
 
           // else we try to get endpoint json

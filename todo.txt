@@ -1,5 +1,4 @@
-server entry settings ssr and stanalone different
-for ssr {client:{},server:{}}
+react query replace data
 
 client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
 <App /> becouse it can be client only app and we can figure out how work with it
@@ -13,7 +12,7 @@ inject react query, queryClient to Point0.client({ queryClient })
 const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
 on client before calling .page() we should useReactQuery(route{saerchParams, headers})
 .page(queryOptions, () => <div />) to provide options for this query
-.input<T>({params:...,query:...,body:...,headers:...}) or .params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
+.restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
 .endpoint() → just another loader but should be last
 
 .before, .after
@@ -45,7 +44,8 @@ createBunClient({ErrorBoundary, ErrorPageComponent})
 createBunServer
 entryInput should be gettable from client and server itslef
 we alway should pass client, but we can pass server as client. {server, client: server}
-config for generation points file
+config for generation points file: [point]
+config for generation pages file [route, () => page, ...layout]
 config for generation server entry, client entry, ot at least forward settings to them
 env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 cli for simplify commands, like build with bun: point0 build
@@ -74,6 +74,7 @@ htmlRewriter fall back on no bun
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
 Error0 as serializeError and deserializeError provider
 superjson
+.loaderComponent, .pageLoaderComponent, .layoutLoaderComponent, .componentLoaderComponent
 on client build remove server code, just force to rebuild @point0/core package and there have if (process.env.IS_CLIENT === true) {retrun undefined}
 add guard to not allow server code in client bundle with s and c wrappers
 generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
@@ -84,6 +85,7 @@ own HMR implementation. We need at first wait for server hmr, and send request t
 combine .route().route()
 analyze if there same id points
 openapi plugin
+? create ClientPoint0 and ServerPoint0 extends Point0, becouse clientPoint0 may have useQuery, layout etc. but server not. But why not... idk
 
 override last commit message on each file
 choose license
@@ -103,3 +105,12 @@ react query plugin wraps .useLoader and provide useQueryLoader and hydration out
 .component, should not recall already called middlewares
 
 
+---
+
+Инпут отдельно рестинпут отдельно, парамс параллельно для трансформации и валидации
+Эндпоинтс коллекшен это метод, роут, поинт. А пейджес коллекшен это роут, элемент
+А лэйоут просто функция такая же как пейдж, и после неё нельзя менять дата, и в лэйоуте просто поступит что надо как пропсы
+Точка лэйоут это отдельная сущность, он по сути как страница, но имеет чилдрен и ве лэйоуты вставляются друг в друга
+тчк isSuitable для возможного исправления
+тчк wrapper то же самое что и лэйоут но без ладера, зачем тогда вообще нужно
+До Компонента может быть указан инпут, потом лоадеры, и тогда вернётся реакт компонент, который может принимать этот инпут в качестве пропсов

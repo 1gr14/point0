@@ -2,9 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import React from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
-import type { EmptyCtx, EmptyData, PagesCollection, UndefinedCtx } from './index.js'
+import type { EmptyCtx, EmptyData, UndefinedCtx } from './index.js'
 import { Point0 } from './index.js'
 
 describe('Point0', () => {
