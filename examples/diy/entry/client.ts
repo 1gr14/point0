@@ -1,8 +1,5 @@
-import { entry } from 'point0/client/entry.js'
+import { clientSsrEntry } from 'point0/adapters/bun/client-ssr.js'
 import { points } from './points.js'
 import { client } from '../src/lib/client.js'
 
-import.meta.hot.accept()
-void entry({ points, client })
-
-// TODO: createBunClient()
+void clientSsrEntry({ points, client })

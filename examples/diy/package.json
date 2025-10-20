@@ -6,7 +6,7 @@
   "scripts": {
     "build:server": "bun build ./entry/server.ts --outdir dist/server --target bun --production --sourcemap=external",
     "build:client": "bun build ./src/index.html --outdir dist/client --splitting --production --sourcemap=external --public-path /dist/client/",
-    "build": "bun run clean && bun run build:client && bun run build:server",
+    "build": "bun run clean && bun run build:client && bun run build:server && ncp ./src/public ./dist/public",
     "dev": "cross-env NODE_ENV=development bun --no-clear-screen --hot ./entry/server.ts",
     "start": "cross-env NODE_ENV=production bun run dist/server/server.js",
     "clean": "rimraf dist",

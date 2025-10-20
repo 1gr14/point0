@@ -143,6 +143,7 @@ export class Point0<
     ...restProps
   }: {
     points: TPointsCollection
+    // TODO: | { id: string }
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
     point: InferPointFromPointsCollection<TPointsCollection> | undefined
     location: Route0.Location

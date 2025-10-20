@@ -2,10 +2,9 @@ import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import { Point0 } from '../../core/index.js'
+import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
-import type { ToJsonErrorResponseInput } from '../../server/error.js'
-import { parseError, toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 
 // TODO: const {routes} = createPointsGenerator({})
 // TODO: const {routes} = createBunAdapter({})
