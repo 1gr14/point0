@@ -21,16 +21,16 @@ export type ServeServerInput<TServer extends AnyServer = AnyServer> = {
 
 export type ServeServerInputParsed<TServer extends AnyServer = AnyServer> = {
   server: TServer
-  client?: AnyClient<TServer> | undefined
+  client: AnyClient<TServer> | undefined
   points: PointsCollection<TServer | UndefinedServer>
   port: number | string | undefined
   logger: ServeLogger
-  basepath?: string
+  basepath: string | undefined
   publicDir: string | undefined
   clientServe: 'ssr' | 'static' | false
-  clientSrcEntry?: string // for development
-  clientDistDir?: string // for production
-  clientDistRoute?: string // for production
+  clientSrcEntry: string | undefined // for development
+  clientDistDir: string | undefined // for production
+  clientDistRoute: string | undefined // for production
 }
 export type ServeServerResult = {
   fetch: any
@@ -38,7 +38,7 @@ export type ServeServerResult = {
 
 // TODO: extract input from server and client itself
 export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
-  const { basepath, port, points, server } = input
+  const { basepath, port, points, server, client } = input
   const clientSrcEntry = absPath(basepath, input.clientSrcEntry)
   const clientDistDir = absPath(basepath, input.clientDistDir)
   const clientDistRoute = input.clientDistRoute
@@ -52,6 +52,9 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     error: console.error.bind(console),
   }
   if (clientServe) {
+    if (!client) {
+      throw new Error('To serve client you should provide client instance')
+    }
     if (process.env.NODE_ENV === 'development') {
       if (!clientSrcEntry) {
         throw new Error('To serve client in development mode you should provide clientSrcEntry')
@@ -73,6 +76,7 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     logger,
     basepath,
     publicDir,
+    client,
     clientServe,
     clientSrcEntry,
     clientDistDir,

@@ -135,6 +135,7 @@ export class Point0<
     return this._extendFns
   }
 
+  // TODO: move to eversion.ts
   // helpers
 
   static async getSuitable<TPointsCollection extends PointsCollection>({
@@ -190,26 +191,26 @@ export class Point0<
     return { ctx: ctxOutput, data: dataOutput } as InferExtractResult<TPoint>
   }
 
-  static async extractPageElement<TPoint extends AnyPoint | undefined = undefined>({
+  static async extractEndpoint<TPoint extends AnyPoint | undefined = undefined>({
     requiredCtx,
     server,
+    client,
     point,
     ...restProps
   }: WithServerRequiredCtx<InferServer<TPoint>> & {
     server?: InferServer<TPoint> | UndefinedServer
-    // base?: AnyPoint | undefined // TODO: use it to get Error components and other settings, or may be we can set them in another level
+    client?: AnyClient<InferServer<TPoint>>
     point?: TPoint | undefined
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
-    element: React.ReactElement
     status: number
-    payload: Payload
+    data: Data | undefined
     error: unknown
     location: Route0.Location
   }> {
     const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
     let data: Data = {}
     try {
-      const runResult = await Point0.extract({
+      const extractResult = await Point0.extract({
         location,
         server,
         point,
@@ -220,60 +221,83 @@ export class Point0<
         server?: InferServer<TPoint>
         requiredCtx?: Ctx
       })
-      data = runResult.data
-      const payload = { location, data, meta: { title: 'Hello, world!' } }
-      const PageComponent = point?.getPageComponent()
-      if (!PageComponent) {
-        // TODO: if pint not found then one error, if pageComponent not found then antoher
-        // TODO: use provided errors
-        // TODO: return undefined element
-        const element = <div>Page not found</div>
-        return { element, payload, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
+      data = extractResult.data
+      if (!point) {
+        return { data, error: new Error(`Endpoint Not Found: ${location.pathname}`), status: 404, location }
       }
-      const element = <PageComponent data={data} location={location} />
-      // TODO: use provided meta
-      return { element, payload, error: undefined, status: 200, location }
+      return { data, error: undefined, status: 200, location }
     } catch (error) {
-      // TODO: use provided errors
-      const element = <div>Error: {(error as any).message}</div>
-      const payload = { location, data, meta: { title: 'Error' } }
-      return { element, payload, error, status: 500, location }
+      return { data, error, status: 500, location }
     }
   }
 
-  static async extractSuitablePageElement<TPointsCollection extends PointsCollection>({
+  static async extractPage<TPoint extends AnyPoint | undefined = undefined>({
     requiredCtx,
     server,
-    points,
+    client,
+    point,
     ...restProps
-  }: WithServerRequiredCtx<InferServerFromPointsCollection<TPointsCollection>> & {
-    server?: InferServerFromPointsCollection<TPointsCollection> | undefined
-    points: TPointsCollection
+  }: WithServerRequiredCtx<InferServer<TPoint>> & {
+    server?: InferServer<TPoint> | UndefinedServer
+    client?: AnyClient<InferServer<TPoint>>
+    point?: TPoint | undefined
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
-    element: React.ReactElement
     status: number
     payload: Payload
     error: unknown
     location: Route0.Location
-    point: InferPointFromPointsCollection<TPointsCollection> | undefined
   }> {
-    const { point, location } = await Point0.getSuitable({ points, ...restProps })
-    const { element, payload, error, status } = await Point0.extractPageElement({
-      server,
-      point,
-      requiredCtx: requiredCtx as never,
-      location,
-    })
-    return { element, payload, error, status, location, point }
+    const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
+    let data: Data = {}
+    try {
+      // TODO: make run result for each layout first, and then rend each one to each one
+      // TODO: here
+      // const payloads = []
+      // for (const layout of point.layouts) {
+      //   payloads.push( layout payload )
+      // }
+      const extractResult = await Point0.extract({
+        location,
+        server,
+        point,
+        requiredCtx,
+      } as WithServerRequiredCtx<InferServer<TPoint>> & {
+        location: Route0.Location
+        point?: TPoint
+        server?: InferServer<TPoint>
+        requiredCtx?: Ctx
+      })
+      data = extractResult.data
+      const payload = { location, data, meta: { title: 'Hello, world!' } }
+      // TODO: payloads.push( page payload )
+      if (!point) {
+        return { payload, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
+      }
+      const PageComponent = point.getPageComponent()
+      if (!PageComponent) {
+        // TODO: use provided errors
+        // TODO: return undefined element
+        return { payload, error: new Error(`Endpoint has no page elemnt`), status: 404, location }
+      }
+      // TODO: <Layout1 data location><Layout2 data location><PageComponent data={data} location={location} /></Layout2></Layout1>
+      // TODO: use provided meta
+      return { payload, error: undefined, status: 200, location }
+    } catch (error) {
+      // TODO: use provided errors
+      const payload = { location, data, meta: { title: 'Error' } }
+      return { payload, error, status: 500, location }
+    }
   }
 
-  static async fillPageElement<TPoint extends AnyPoint | undefined = undefined>({
+  static async fillPage<TPoint extends AnyPoint | undefined = undefined>({
     server,
+    client,
     point,
     payload,
     ...restProps
   }: {
     server?: InferServer<TPoint> | undefined
+    client: AnyClient<InferServer<TPoint>>
     point: TPoint | undefined
     payload: Payload
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{
@@ -283,41 +307,20 @@ export class Point0<
     location: Route0.Location
   }> {
     const location = 'location' in restProps ? restProps.location : Route0.getLocation(restProps.routePath)
-    const PageComponent = point?.getPageComponent()
-    if (!PageComponent) {
+    if (!point) {
       // TODO: use provided errors
       const element = <div>Page not found</div>
       return { element, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
     }
+    const PageComponent = point.getPageComponent()
+    if (!PageComponent) {
+      // TODO: use provided errors
+      const element = <div>Endpoint has no page elemnt</div>
+      return { element, error: new Error(`Endpoint has no page elemnt`), status: 404, location }
+    }
     const element = <PageComponent data={payload.data} location={payload.location} />
     // TODO: use provided meta
     return { element, error: undefined, status: 200, location }
-  }
-
-  static async fillSuitablePageElement<TPointsCollection extends PointsCollection>({
-    server,
-    points,
-    payload,
-    ...restProps
-  }: {
-    server?: InferServerFromPointsCollection<TPointsCollection> | undefined
-    points: TPointsCollection
-    payload: Payload
-  } & ({ routePath: string } | { location: Route0.Location })): Promise<{
-    element: React.ReactElement
-    status: number
-    error: unknown
-    location: Route0.Location
-    point: InferPointFromPointsCollection<TPointsCollection> | undefined
-  }> {
-    const { point, location } = await Point0.getSuitable({ points, ...restProps })
-    const { element, error, status } = await Point0.fillPageElement({
-      server,
-      point,
-      payload,
-      location,
-    })
-    return { element, error, status, location, point }
   }
 }
 
@@ -383,7 +386,7 @@ export type PagePoint<
 
 export type Server<
   TServer extends UndefinedServer = UndefinedServer,
-  TIsClient extends IsClient = IsClient,
+  TIsClient extends IsClientFalse = IsClientFalse,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = Data,

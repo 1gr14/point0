@@ -47,7 +47,7 @@ export async function hydrate({
     await before({ points, client })
   }
 
-  // 1) Read payload from the DOM (SSR embeds this as a script tag with this id).
+  // Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) {
@@ -63,24 +63,26 @@ export async function hydrate({
     }
   })()
 
-  // 2) Find the SSR container.
+  // Find the SSR container.
   const rootElement = document.getElementById(rootId)
   if (!rootElement) {
     throw new Error(`Element #${rootId} not found`)
   }
 
-  // 3) Ask point0 to build the correct page element for the current route.
-  const { element, error, point, location } = await Point0.fillSuitablePageElement({
-    routePath: payload.location.href,
-    points,
+  // Ask point0 to build the correct page element for the current route.
+  const { point, location } = await Point0.getSuitable({ routePath: payload.location.href, points })
+  const { element, error } = await Point0.fillPage({
+    client,
+    point,
     payload,
+    location,
   })
   if (error) {
     // Log but don’t crash the app on route resolution issues.
     console.error(error)
   }
 
-  // 4) First invocation: create the root once.
+  // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.
   //    - If not, do a client-side mount.
   if (!root) {
@@ -99,7 +101,7 @@ export async function hydrate({
 
   const result = { payload, point, location, rootElement, element }
 
-  // 5) Post-hook (optional per-call logic your app wants to run).
+  // Post-hook (optional per-call logic your app wants to run).
   if (after) {
     await after(result)
   }

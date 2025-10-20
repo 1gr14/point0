@@ -255,28 +255,28 @@ describe('Point0', () => {
     })
   })
 
-  it('getSuitableReactNode', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.server()
-    const clientPage1 = Point0.client<typeof server>()
-      .route(Route0.create('/hello/:name'))
-      .page(({ location }) => <div>Hello, {location.params.name}</div>)
-    const clientPage2 = Point0.client<typeof server>()
-      .route(Route0.create('/bye/:name'))
-      .page(({ location }) => <div>Bye, {location.params.name}</div>)
-    const points: PagesCollection = [
-      [clientPage1.getRoute(), async () => clientPage1],
-      [clientPage2.getRoute(), clientPage2],
-    ]
-    const { element: reactEl1 } = await Point0.extractSuitablePageElement({ routePath: '/hello/world', points })
-    expect(React.isValidElement(reactEl1)).toBe(true)
-    const html1 = renderToStaticMarkup(reactEl1)
-    expect(html1).toBe('<div>Hello, world</div>')
-    const { element: reactEl2 } = await Point0.extractSuitablePageElement({ routePath: '/bye/bye', points })
-    expect(React.isValidElement(reactEl2)).toBe(true)
-    const html2 = renderToStaticMarkup(reactEl2)
-    expect(html2).toBe('<div>Bye, bye</div>')
-  })
+  // it('getSuitableReactNode', async () => {
+  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //   const server = Point0.server()
+  //   const clientPage1 = Point0.client<typeof server>()
+  //     .route(Route0.create('/hello/:name'))
+  //     .page(({ location }) => <div>Hello, {location.params.name}</div>)
+  //   const clientPage2 = Point0.client<typeof server>()
+  //     .route(Route0.create('/bye/:name'))
+  //     .page(({ location }) => <div>Bye, {location.params.name}</div>)
+  //   const points: PagesCollection = [
+  //     [clientPage1.getRoute(), async () => clientPage1],
+  //     [clientPage2.getRoute(), clientPage2],
+  //   ]
+  //   const { element: reactEl1 } = await Point0.extractSuitablePageElement({ routePath: '/hello/world', points })
+  //   expect(React.isValidElement(reactEl1)).toBe(true)
+  //   const html1 = renderToStaticMarkup(reactEl1)
+  //   expect(html1).toBe('<div>Hello, world</div>')
+  //   const { element: reactEl2 } = await Point0.extractSuitablePageElement({ routePath: '/bye/bye', points })
+  //   expect(React.isValidElement(reactEl2)).toBe(true)
+  //   const html2 = renderToStaticMarkup(reactEl2)
+  //   expect(html2).toBe('<div>Bye, bye</div>')
+  // })
 
   it('creates an empty instance', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

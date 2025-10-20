@@ -25,16 +25,26 @@ auth
 .clientLoader, after call do not allow usual loader another
 .clientCtx, has access to exposeCtx,  just add  and there real javascript, can have usual useHooks (useEffect etc) will be called only on client
 
-wouter wrapper
+react router helper
+expo router helper
 .loaderComponent
 client only page
 client only routing
 
-layouts, ensure layout not rerender, and scroll position ok
+
+.route( * will be used as is in fetch request ).id().loader().layout(() = <>{children}</>) standalone
+.loader().id().layout(() = <>{children}</>).route(here id resets to route path).loader().page() connected to page
+find suiatble layouts, find suitable page. Extract each layout payload, extract page payload. Render <Layout1 data={data1}><Layout2 data={data2}><Page data={data3} /></></>. __PAYLOAD_0__=data1 __PAYLOAD_1__=data2 __PAYLOAD_2__
+layoutsCollection
+pagesCollection
+endpointsCollection
+layout scroll position ok
 example general layout, idea layout, idea news page
 
 createBunClient({ErrorBoundary, ErrorPageComponent})
 createBunServer
+entryInput should be gettable from client and server itslef
+we alway should pass client, but we can pass server as client. {server, client: server}
 config for generation points file
 config for generation server entry, client entry, ot at least forward settings to them
 env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
@@ -72,6 +82,7 @@ docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
 .ctx(true, {}) for for assign ctx
 own HMR implementation. We need at first wait for server hmr, and send request to client if it needs hmr
 combine .route().route()
+analyze if there same id points
 openapi plugin
 
 override last commit message on each file

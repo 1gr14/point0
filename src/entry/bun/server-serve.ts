@@ -4,6 +4,8 @@ import * as nodePath from 'node:path'
 import { Point0 } from '../../core/index.js'
 import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
+import type { ToJsonErrorResponseInput } from '../../server/error.js'
+import { parseError, toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 
 // TODO: const {routes} = createPointsGenerator({})
 // TODO: const {routes} = createBunAdapter({})
@@ -91,20 +93,7 @@ export const getBunServer = async (props: ServeServerInput) => {
         const url = new URL(request.url)
         const pathname = url.pathname
         const pathnameAsRelPath = pathname.replace(/^\//, '')
-        const isJsonRequested = request.headers.get('Accept')?.includes('application/json')
-        const createErrorResponse = (message: string, status: number) => {
-          if (isJsonRequested) {
-            return new Response(JSON.stringify({ error: message }), {
-              status: 404,
-              headers: { 'Content-Type': 'application/json' },
-            })
-          } else {
-            return new Response(message, {
-              status: 500,
-              headers: { 'Content-Type': 'text/html' },
-            })
-          }
-        }
+        const isJsonAcceptable = request.headers.get('Accept')?.includes('application/json')
 
         try {
           // dev preset index.html with correct entry.js inserted ho have hml in client
@@ -153,26 +142,36 @@ export const getBunServer = async (props: ServeServerInput) => {
             return new Response('{}', { headers: { 'Content-Type': 'application/json' } })
           }
 
-          // TODO: serve client with ssr or not
-          // TODO: if request type json then json, else if ssr or not
+          // TODO: getSuitableLayouts, getSuitablePage, getSuitableEndpoint
           const { point, location } = await Point0.getSuitable({
             points,
             routePath: pathname,
           })
           if (!point) {
-            return createErrorResponse('Not Found', 404)
+            return toSuitableErrorResponse({ message: 'Not Found', status: 404 })
           }
 
-          if (clientServe === 'ssr' && !isJsonRequested) {
-            // so we just render page
-            const { element, payload, error, status } = await Point0.extractPageElement({
+          if (client && clientServe === 'ssr' && !isJsonAcceptable) {
+            // so we render page wrapped with layouts
+            const {
+              payload,
+              error: extractError,
+              status,
+            } = await Point0.extractPage({
               server,
+              client,
               point,
               location,
               requiredCtx: undefined, // can be headers here for example
             })
-            if (error) {
-              logger.error(error)
+            const { element, error: fillError } = await Point0.fillPage({
+              client,
+              point,
+              payload,
+              location,
+            })
+            if (extractError || fillError) {
+              logger.error(extractError || fillError)
             }
             const readableStream = await renderReadableStream({ element, payload, originalHtml: originalIndexHtml })
             return new Response(readableStream, {
@@ -182,8 +181,9 @@ export const getBunServer = async (props: ServeServerInput) => {
           }
 
           // else we try to get endpoint json
-          const { data, error, status } = await Point0.extractEndpointResponse({
+          const { data, error, status } = await Point0.extractEndpoint({
             server,
+            client,
             point,
             location,
             requiredCtx: undefined, // can be headers here for example
@@ -192,24 +192,18 @@ export const getBunServer = async (props: ServeServerInput) => {
             logger.error(error)
           }
           if (data) {
-            return new Response(data, {
+            return new Response(JSON.stringify(data), {
               headers: { 'Content-Type': 'application/json' },
               status,
             })
           } else if (error) {
-            return new Response(data, {
-              headers: { 'Content-Type': 'application/json' },
-              status,
-            })
+            return toJsonErrorResponse({ error, status, data })
           } else {
-            return new Response(JSON.stringify({ error: 'Endpoint return nothing, no error, no data' }), {
-              headers: { 'Content-Type': 'application/json' },
-              status,
-            })
+            return toJsonErrorResponse({ message: 'Endpoint return nothing, no error, no data', status, data })
           }
         } catch (error) {
           logger.error(error)
-          return createErrorResponse('Internal Server Error', 500)
+          return toSuitableErrorResponse({ error, prefix: 'Fatal Error' })
         }
       },
     },
