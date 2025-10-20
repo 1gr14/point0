@@ -8,7 +8,7 @@ export class Point0<
   TOutputCtx extends Ctx = InferOutputCtx<TServer>,
   TOutputData extends Data = InferOutputData<TServer>,
   TRoute extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
-  THasPage extends HasPage = HasPageFalse,
+  THasPage extends HasPage = HasPageFalse, // TODO: replace with end type and it will be 'endpoint' ro 'page'
 > {
   Infer: Infer<TServer, TIsClient, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> = {} as never
 
@@ -360,6 +360,16 @@ export type ReadyPoint<
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   THasPage extends HasPage = HasPage,
 > = AnyPoint<TServer, any, any, any, any, TRoute, THasPage>
+export type AnyClient<TServer extends AnyServer | UndefinedServer = AnyServer | UndefinedServer> = AnyPoint<
+  TServer,
+  true,
+  any,
+  any,
+  any,
+  any,
+  any
+>
+export type AnyServer = Server<any, false, any, any, any, any, any>
 
 export type PagePoint<
   TServer extends Server | UndefinedServer = Server | UndefinedServer,
