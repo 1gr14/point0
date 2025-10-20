@@ -11,12 +11,11 @@ declare global {
   }
 }
 
-export type HydrateBeforeCallbackInput = {
+export type HydrateInput = {
+  rootElement?: HTMLElement
   points: PointsCollection
   client: AnyClient
 }
-export type HydrateBeforeCallback = (props: HydrateBeforeCallbackInput) => any
-
 export type HydrateResult = {
   payload: Payload
   point: AnyPoint | undefined
@@ -24,29 +23,10 @@ export type HydrateResult = {
   rootElement: HTMLElement
   element: React.ReactElement
 }
-export type HydrateAfterCallback = (props: HydrateResult) => any
-
-export type HydrateInput = {
-  rootId?: string
-  points: PointsCollection
-  client: AnyClient
-  before?: HydrateBeforeCallback
-  after?: HydrateAfterCallback
-}
 
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
-export async function hydrate({
-  rootId = 'root',
-  points,
-  client,
-  before,
-  after,
-}: HydrateInput): Promise<HydrateResult> {
-  if (before) {
-    await before({ points, client })
-  }
-
+export async function hydrate({ points, client, ...input }: HydrateInput): Promise<HydrateResult> {
   // Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
@@ -64,9 +44,11 @@ export async function hydrate({
   })()
 
   // Find the SSR container.
-  const rootElement = document.getElementById(rootId)
+  const rootElement = input.rootElement || document.getElementById('root')
   if (!rootElement) {
-    throw new Error(`Element #${rootId} not found`)
+    throw new Error(
+      `Element #root not found, please provide rootElement in input or add #root element to the index.html`,
+    )
   }
 
   // Ask point0 to build the correct page element for the current route.
@@ -99,12 +81,5 @@ export async function hydrate({
     root.render(element)
   }
 
-  const result = { payload, point, location, rootElement, element }
-
-  // Post-hook (optional per-call logic your app wants to run).
-  if (after) {
-    await after(result)
-  }
-
-  return result
+  return { payload, point, location, rootElement, element }
 }

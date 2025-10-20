@@ -5,43 +5,15 @@ import { Point0 } from '../../core/index.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
+import { isPathnameUnderBasepath } from '../../server/utils.js'
 
-// TODO: const {routes} = createPointsGenerator({})
-// TODO: const {routes} = createBunAdapter({})
-// index:
-//   path: src/index.html
-// points:
-//   path: node_modules/@point0/points.ts
-//   generate: true
-// public:
-//   path: public
-//   enabled: true
-// client:
-//   entry: node_modules/@point0/entry-client.ts
-//   dist: dist/client
-//   generate: true
-// server:
-//   entry: node_modules/@point0/entry-server.ts
-//   dist: dist/server
-//   generate: true
-//   port: 'env.PORT' # true for auto port, string for manual port, number for port, false for no port so u can serve via somethig else manually
-// )
+// TODO: {points, clients: {points}}
+// TODO: {base, clients: {base}}
+// TODO: allow public dir per each client also
+// TODO: allow special origin per each client also
 
-// TODO: cache bun check results
-
-export const getBunServer = async (props: ServeServerInput) => {
-  const {
-    points,
-    port,
-    publicDir,
-    server,
-    client,
-    logger,
-    clientServe,
-    clientDistDir,
-    clientDistRoute,
-    clientSrcEntry,
-  } = parseServeInput(props)
+export const createBunServer = async (props: ServeServerInput) => {
+  const { points, port, publicDir, server, client, logger, clients } = parseServeInput(props)
 
   // cache public files paths
   const publicFilesPaths = new Map<string, string>()
@@ -61,28 +33,45 @@ export const getBunServer = async (props: ServeServerInput) => {
 
   // dev serve client index.html
   const devClientSsrRoutes: Record<string, any> = await (async () => {
-    if (process.env.NODE_ENV !== 'production' && clientSrcEntry && clientServe) {
-      if (!(await Bun.file(clientSrcEntry).exists())) {
-        throw new Error(`clientSrcEntry file "${clientSrcEntry}" not found`)
-      }
-      return {
-        '/development.index.html': (await import(clientSrcEntry)).default,
-      }
+    if (process.env.NODE_ENV !== 'production') {
+      return Object.fromEntries(
+        await Promise.all(
+          clients.map(async (client, index) => {
+            if (!client.srcEntry) {
+              throw new Error(`srcEntry is required for client in development mode at index ${index}`)
+            }
+            if (!(await Bun.file(client.srcEntry).exists())) {
+              throw new Error(`srcEntry file "${client.srcEntry}" not found in development mode at index ${index}`)
+            }
+            return [`/client-development-${index}.index.html`, (await import(client.srcEntry)).default]
+          }),
+        ),
+      )
     }
     return {}
   })()
 
   // prod serve client index.html from dist
   // dev serve index.html from '/development.index.html', will be set below on first request
-  let originalIndexHtml: string | undefined = await (async () => {
-    if (process.env.NODE_ENV === 'production' && clientDistDir && clientServe) {
-      const clientDistIndexHtmlPath = nodePath.resolve(clientDistDir, 'index.html')
-      if (!(await Bun.file(clientDistIndexHtmlPath).exists())) {
-        throw new Error(`"${clientDistIndexHtmlPath}" not found`)
-      }
-      return await Bun.file(clientDistIndexHtmlPath).text()
+  const originalIndexHtmls: string[] = await (async () => {
+    if (process.env.NODE_ENV === 'production') {
+      return await Promise.all(
+        clients.map(async (client, index) => {
+          if (!client.distDir) {
+            throw new Error(`distDir is required for client in production mode at index ${index}`)
+          }
+          if (!client.distRoute) {
+            throw new Error(`distRoute is required for client in production mode at index ${index}`)
+          }
+          const clientDistIndexHtmlPath = nodePath.resolve(client.distDir, client.distRoute, 'index.html')
+          if (!(await Bun.file(clientDistIndexHtmlPath).exists())) {
+            throw new Error(`"${clientDistIndexHtmlPath}" not found in production mode at index ${index}`)
+          }
+          return await Bun.file(clientDistIndexHtmlPath).text()
+        }),
+      )
     }
-    return undefined
+    return []
   })()
 
   const bunServer = serve({
@@ -96,21 +85,17 @@ export const getBunServer = async (props: ServeServerInput) => {
         const isJsonAcceptable = request.headers.get('Accept')?.includes('application/json')
 
         try {
-          // dev preset index.html with correct entry.js inserted ho have hml in client
-          if (process.env.NODE_ENV !== 'production' && clientServe && !originalIndexHtml) {
-            originalIndexHtml = await (await fetch(`${url.origin}/development.index.html`)).text()
-          }
-
           // serve client dist dir for production
-          if (process.env.NODE_ENV === 'production' && clientServe && clientDistDir && clientDistRoute) {
-            const distDirFixed = clientDistDir.replace(/\/$/, '') + '/'
-            const distRouteFixed = clientDistRoute.replace(/^\//, '').replace(/\/$/, '') + '/'
-            if (pathnameAsRelPath.startsWith(distRouteFixed)) {
+          if (process.env.NODE_ENV === 'production') {
+            const relatedClient = clients
+              .map((client, index) => ({ index, ...client }))
+              .find((client) => isPathnameUnderBasepath(pathname, client.distRoute))
+            if (relatedClient?.distDir && relatedClient.distRoute && pathname.startsWith(relatedClient.distRoute)) {
               const clientFilePathAbs = nodePath.resolve(
-                distDirFixed,
-                pathnameAsRelPath.replace(new RegExp(`^${distRouteFixed}`), ''),
+                relatedClient.distDir,
+                pathname.replace(new RegExp(`^${relatedClient.distRoute}`), ''),
               )
-              if (clientFilePathAbs.startsWith(distDirFixed)) {
+              if (clientFilePathAbs.startsWith(relatedClient.distDir)) {
                 const clientFile = Bun.file(clientFilePathAbs)
                 if (await clientFile.exists()) {
                   return new Response(Bun.file(clientFilePathAbs))
@@ -151,7 +136,20 @@ export const getBunServer = async (props: ServeServerInput) => {
             return toSuitableErrorResponse({ message: 'Not Found', status: 404 })
           }
 
-          if (client && clientServe === 'ssr' && !isJsonAcceptable) {
+          const relatedClient = clients
+            .map((client, index) => ({ index, ...client }))
+            .find((client) => isPathnameUnderBasepath(pathname, client.basepath))
+
+          if (relatedClient && relatedClient.ssr && !isJsonAcceptable) {
+            if (process.env.NODE_ENV !== 'production') {
+              originalIndexHtmls[relatedClient.index] = await (
+                await fetch(
+                  `${url.origin}${relatedClient.basepath}client-development-${relatedClient.index}.index.html`,
+                )
+              ).text()
+            }
+            const originalIndexHtml = originalIndexHtmls[relatedClient.index]
+
             // so we render page wrapped with layouts
             const {
               payload,
@@ -174,6 +172,8 @@ export const getBunServer = async (props: ServeServerInput) => {
               logger.error(extractError || fillError)
             }
             try {
+              // dev preset index.html with correct entry.js inserted ho have hml in client
+
               const readableStream = await renderReadableStream({
                 element,
                 payload,
@@ -224,11 +224,9 @@ export const getBunServer = async (props: ServeServerInput) => {
     },
   })
 
-  if (port && process.env.NODE_ENV !== 'production') {
-    logger.info(`🚀 running at http://localhost:${port}`)
-  }
+  logger.info(`🚀 running at http://localhost:${bunServer.port}`)
 
   return bunServer
 }
 
-export default getBunServer
+export default createBunServer

@@ -298,7 +298,7 @@ export class Point0<
     ...restProps
   }: {
     server?: InferServer<TPoint> | undefined
-    client: AnyClient<InferServer<TPoint>>
+    client?: AnyClient<InferServer<TPoint>>
     point: TPoint | undefined
     payload: Payload
   } & ({ routePath: string } | { location: Route0.Location })): Promise<{

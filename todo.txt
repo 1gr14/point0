@@ -86,6 +86,8 @@ combine .route().route()
 analyze if there same id points
 openapi plugin
 ? create ClientPoint0 and ServerPoint0 extends Point0, becouse clientPoint0 may have useQuery, layout etc. but server not. But why not... idk
+superjson
+persistent zustand store
 
 override last commit message on each file
 choose license

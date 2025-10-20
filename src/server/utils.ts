@@ -8,41 +8,41 @@ export const toPathsOrUndefined = (path: string | string[] | undefined): string[
   return Array.isArray(path) ? path : [path]
 }
 
-export const absPath = (basepath: string | undefined, path: string | undefined): string | undefined => {
+export const absPath = (dirname: string | undefined, path: string | undefined): string | undefined => {
   if (!path) {
     return undefined
   }
-  if (!basepath) {
+  if (!dirname) {
     if (!nodePath.isAbsolute(path)) {
       throw new Error(`Path "${path}" is not absolute, but should be`)
     }
     return path
   }
-  if (!nodePath.isAbsolute(basepath)) {
-    throw new Error(`Basepath "${basepath}" is not absolute, but should be`)
+  if (!nodePath.isAbsolute(dirname)) {
+    throw new Error(`Basepath "${dirname}" is not absolute, but should be`)
   }
-  return nodePath.resolve(basepath, path)
+  return nodePath.resolve(dirname, path)
 }
 
-export const relPath = (basepath: string | undefined, path: string | undefined): string | undefined => {
+export const relPath = (dirname: string | undefined, path: string | undefined): string | undefined => {
   if (!path) {
     return undefined
   }
-  if (!basepath) {
+  if (!dirname) {
     return path
   }
-  if (!nodePath.isAbsolute(basepath)) {
-    throw new Error(`Basepath "${basepath}" is not absolute, but should be`)
+  if (!nodePath.isAbsolute(dirname)) {
+    throw new Error(`Basepath "${dirname}" is not absolute, but should be`)
   }
-  return nodePath.relative(basepath, path)
+  return nodePath.relative(dirname, path)
 }
 
-export const parsePaths = (basepath: string | undefined, path: string[] | string | undefined): string[] => {
+export const parsePaths = (dirname: string | undefined, path: string[] | string | undefined): string[] => {
   if (!path) {
     return []
   }
   const paths = Array.isArray(path) ? path : [path]
-  return paths.flatMap((path) => absPath(basepath, path) ?? [])
+  return paths.flatMap((path) => absPath(dirname, path) ?? [])
 }
 
 export const findFirstExistsFilePath = (path: string[] | string | undefined): string | undefined => {
@@ -56,4 +56,42 @@ export const findFirstExistsFilePath = (path: string[] | string | undefined): st
     }
   }
   return undefined
+}
+
+export const pickNonUniqArrayElements = (array: Array<string | undefined>) => {
+  const uniqElements: { [element: string]: number } = {}
+  const nonUniqElements: { [element: string]: number } = {}
+  for (const [index, element] of array.entries()) {
+    if (uniqElements[element || 'undefined']) {
+      nonUniqElements[element || 'undefined'] = index
+    } else {
+      uniqElements[element || 'undefined'] = index
+    }
+  }
+  return nonUniqElements
+}
+
+export const throwOnNonUniqueArrayElements = (array: Array<string | undefined>, message: string) => {
+  const nonUniqElements = pickNonUniqArrayElements(array)
+  if (Object.keys(nonUniqElements).length > 0) {
+    throw new Error(
+      `${message}: ${Object.entries(nonUniqElements)
+        .map(([element, index]) => `${element} at index ${index}`)
+        .join(', ')}`,
+    )
+  }
+}
+
+export const prependAndAppendSlash = <T extends string | undefined>(path: T): T => {
+  if (!path) {
+    return undefined as T
+  }
+  return path.replace(/^\//, '').replace(/\/$/, '').replace(/\/\/+/g, '/') as T
+}
+
+export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {
+  if (!basepath) {
+    return false
+  }
+  return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
 }

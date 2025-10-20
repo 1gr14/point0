@@ -1,9 +1,16 @@
 import type { AnyClient, AnyServer, PointsCollection, UndefinedServer } from '../core/index.js'
-import { absPath } from './utils.js'
+import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type ServeLogger = {
   info: (message: string) => any
   error: (error: unknown) => any
+}
+export type ServeClientInput = {
+  ssr?: boolean
+  basepath?: string
+  distDir?: string
+  distRoute?: string
+  srcEntry?: string
 }
 export type ServeServerInput<TServer extends AnyServer = AnyServer> = {
   server: TServer
@@ -11,74 +18,98 @@ export type ServeServerInput<TServer extends AnyServer = AnyServer> = {
   points: PointsCollection<TServer | UndefinedServer>
   port?: number | string | undefined // TODO: add "true" auto choose option
   logger?: ServeLogger
-  basepath?: string
+  dirname?: string
   publicDir?: string
-  clientServe?: 'ssr' | 'static' | false | undefined
-  clientDistDir?: string // prod
-  clientDistRoute?: string // prod
-  clientSrcEntry?: string // dev
+  clients?: ServeClientInput[] | undefined
 }
 
+export type ServeClientInputParsed = {
+  ssr: boolean
+  basepath: string
+  distDir: string | undefined
+  distRoute: string | undefined
+  srcEntry: string | undefined
+}
 export type ServeServerInputParsed<TServer extends AnyServer = AnyServer> = {
   server: TServer
   client: AnyClient<TServer> | undefined
   points: PointsCollection<TServer | UndefinedServer>
   port: number | string | undefined
   logger: ServeLogger
-  basepath: string | undefined
+  dirname: string | undefined
   publicDir: string | undefined
-  clientServe: 'ssr' | 'static' | false
-  clientSrcEntry: string | undefined // for development
-  clientDistDir: string | undefined // for production
-  clientDistRoute: string | undefined // for production
+  clients: ServeClientInputParsed[]
 }
 export type ServeServerResult = {
   fetch: any
 }
 
 // TODO: extract input from server and client itself
-export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
-  const { basepath, port, points, server, client } = input
-  const clientSrcEntry = absPath(basepath, input.clientSrcEntry)
-  const clientDistDir = absPath(basepath, input.clientDistDir)
-  const clientDistRoute = input.clientDistRoute
-  if (clientDistRoute !== 'undefined' && (clientDistRoute === '' || clientDistRoute === '/')) {
+const parseServeClientInput = (
+  index: number,
+  input: ServeClientInput,
+  dirname: string | undefined,
+): ServeClientInputParsed => {
+  const srcEntry = absPath(dirname, input.srcEntry)
+  const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
+  const basepath = prependAndAppendSlash(input.basepath) || '/'
+  const distRoute = prependAndAppendSlash(input.distRoute)
+  if (distRoute !== 'undefined' && (distRoute === '' || distRoute === '/')) {
     throw new Error('clientDistRoute cannot be empty or root')
   }
-  const publicDir = absPath(basepath, input.publicDir)
-  const clientServe = input.clientServe || false
+  const ssr = input.ssr ?? true
+  if (process.env.NODE_ENV !== 'production') {
+    if (!srcEntry) {
+      throw new Error(`To serve client in development mode you should provide srcEntry for client at index ${index}`)
+    }
+  } else {
+    if (!distDir) {
+      throw new Error(`To serve client in production mode you should provide distDir for client at index ${index}`)
+    }
+    if (!distRoute) {
+      throw new Error(`To serve client in production mode you should provide distRoute for client at index ${index}`)
+    }
+  }
+  return {
+    ssr,
+    basepath,
+    distDir,
+    distRoute,
+    srcEntry,
+  }
+}
+export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
+  const { dirname, port, points, server, client } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
   }
-  if (clientServe) {
-    if (!client) {
-      throw new Error('To serve client you should provide client instance')
-    }
-    if (process.env.NODE_ENV !== 'production') {
-      if (!clientSrcEntry) {
-        throw new Error('To serve client in development mode you should provide clientSrcEntry')
-      }
-    } else {
-      if (!clientDistDir) {
-        throw new Error('To serve client in production mode you should provide clientDistDir')
-      }
-      if (!clientDistRoute) {
-        throw new Error('To serve client in production mode you should provide clientDistRoute')
-      }
-    }
+  const publicDir = absPath(dirname, input.publicDir)
+  const clients: ServeClientInputParsed[] =
+    input.clients?.map((clientInput, index) => parseServeClientInput(index, clientInput, dirname)) ?? []
+  if (process.env.NODE_ENV === 'production') {
+    throwOnNonUniqueArrayElements(
+      clients.map((client) => client.distDir),
+      'each client distDir must be unique',
+    )
+    throwOnNonUniqueArrayElements(
+      clients.map((client) => client.distRoute),
+      'each client distRoute must be unique',
+    )
+  } else {
+    throwOnNonUniqueArrayElements(
+      clients.map((client) => client.srcEntry),
+      'each client srcEntry must be unique',
+    )
   }
   return {
     server,
     points,
     port,
     logger,
-    basepath,
+    dirname,
     publicDir,
     client,
-    clientServe,
-    clientSrcEntry,
-    clientDistDir,
-    clientDistRoute,
+    clients,
   }
 }
