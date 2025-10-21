@@ -2,22 +2,22 @@ import type { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { AnyClient, AnyPoint, Payload, PointsCollection } from '../core/index.js'
+import type { ExtendedPoint, AnyPoint, PagePayload, PointsCollection } from '../core/index.js'
 import { Point0 } from '../core/index.js'
 
 declare global {
   interface Window {
-    __POINT0_PAYLOAD__?: Payload
+    __POINT0_PAYLOAD__?: PagePayload
   }
 }
 
 export type HydrateInput = {
   rootElement?: HTMLElement
   points: PointsCollection
-  client: AnyClient
+  base: ExtendedPoint
 }
 export type HydrateResult = {
-  payload: Payload
+  payload: PagePayload
   point: AnyPoint | undefined
   location: Route0.Location
   rootElement: HTMLElement
@@ -26,7 +26,7 @@ export type HydrateResult = {
 
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
-export async function hydrate({ points, client, ...input }: HydrateInput): Promise<HydrateResult> {
+export async function hydrate({ points, base, ...input }: HydrateInput): Promise<HydrateResult> {
   // Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
@@ -35,7 +35,7 @@ export async function hydrate({ points, client, ...input }: HydrateInput): Promi
     throw new Error('Missing __POINT0_PAYLOAD__')
   }
 
-  const payload: Payload = (() => {
+  const payload: PagePayload = (() => {
     try {
       return JSON.parse(payloadContent)
     } catch (error) {
@@ -52,9 +52,9 @@ export async function hydrate({ points, client, ...input }: HydrateInput): Promi
   }
 
   // Ask point0 to build the correct page element for the current route.
-  const { point, location } = await Point0.getSuitable({ routePath: payload.location.href, points })
+  const { point, location } = await Point0.getSuitable({ method: 'get', path: payload.location.href, points })
   const { element, error } = await Point0.fillPage({
-    client,
+    base,
     point,
     payload,
     location,

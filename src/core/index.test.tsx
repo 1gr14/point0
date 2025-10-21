@@ -5,6 +5,8 @@ import * as nodePath from 'node:path'
 import type { EmptyCtx, EmptyData, UndefinedCtx } from './index.js'
 import { Point0 } from './index.js'
 
+// TODO: move all tests to separate files in test dir and refactor it
+
 describe('Point0', () => {
   const testDir = nodePath.join(__dirname, 'test-temp')
 
@@ -17,22 +19,22 @@ describe('Point0', () => {
   })
 
   it('creates an empty instance', () => {
-    const server = Point0.server()
+    const server = Point0.create()
     expect(server).toBeInstanceOf(Point0)
     expectTypeOf(server).toEqualTypeOf<Point0>()
-    expectTypeOf(server).toEqualTypeOf<Point0<undefined, false, UndefinedCtx, EmptyCtx, EmptyData>>()
+    expectTypeOf(server).toEqualTypeOf<Point0<undefined, UndefinedCtx, EmptyCtx, EmptyData>>()
     expect(server._extendFns).toEqual([])
   })
 
   it('extends with ctx fn', () => {
-    const server = Point0.server()
+    const server = Point0.create()
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
     }))
     expect(server1).toBeInstanceOf(Point0)
 
-    expectTypeOf(server1).toEqualTypeOf<Point0<undefined, false, UndefinedCtx, { a: number; b: number }, EmptyData>>()
+    expectTypeOf(server1).toEqualTypeOf<Point0<undefined, UndefinedCtx, { a: number; b: number }, EmptyData>>()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
     expect(server._extendFns).toHaveLength(0)
@@ -43,9 +45,7 @@ describe('Point0', () => {
     }))
     expect(server2).toBeInstanceOf(Point0)
 
-    expectTypeOf(server2).toEqualTypeOf<
-      Point0<undefined, false, undefined, { a: number; b: number; c: number }, EmptyData>
-    >()
+    expectTypeOf(server2).toEqualTypeOf<Point0<undefined, undefined, { a: number; b: number; c: number }, EmptyData>>()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
     expect(server1._extendFns).toHaveLength(1)
@@ -54,14 +54,14 @@ describe('Point0', () => {
   })
 
   it('override ctx with {}', async () => {
-    const server = Point0.server()
+    const server = Point0.create()
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
     }))
     expect(server1).toBeInstanceOf(Point0)
 
-    expectTypeOf(server1).toEqualTypeOf<Point0<undefined, false, UndefinedCtx, { a: number; b: number }, EmptyData>>()
+    expectTypeOf(server1).toEqualTypeOf<Point0<undefined, UndefinedCtx, { a: number; b: number }, EmptyData>>()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
     expect(server._extendFns).toHaveLength(0)
@@ -71,7 +71,7 @@ describe('Point0', () => {
     })
     expect(server2).toBeInstanceOf(Point0)
 
-    expectTypeOf(server2).toEqualTypeOf<Point0<undefined, false, undefined, { a: number; c: number }, EmptyData>>()
+    expectTypeOf(server2).toEqualTypeOf<Point0<undefined, undefined, { a: number; c: number }, EmptyData>>()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
     expect(server1._extendFns).toHaveLength(1)
@@ -88,19 +88,21 @@ describe('Point0', () => {
         a: 3,
         c: 4,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation('/') },
+      error: undefined,
+      status: 200,
     })
   })
 
   it('extends with loader fn', () => {
-    const server = Point0.server()
+    const server = Point0.create()
     const server1 = server.loader(() => ({
       a: 1,
       b: 2,
     }))
     expect(server1).toBeInstanceOf(Point0)
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<undefined, false, undefined, EmptyCtx, { a: number; b: number }, undefined, false>
+      Point0<undefined, undefined, EmptyCtx, { a: number; b: number }, undefined, false>
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -112,7 +114,7 @@ describe('Point0', () => {
     }))
     expect(server2).toBeInstanceOf(Point0)
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<undefined, false, undefined, EmptyCtx, { a: number; b: number; c: number }, undefined, false>
+      Point0<undefined, undefined, EmptyCtx, { a: number; b: number; c: number }, undefined, false>
     >()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
@@ -122,20 +124,20 @@ describe('Point0', () => {
   })
 
   it('extract without required ctx', async () => {
-    const server = Point0.server()
+    const server = Point0.create()
     const url = '/z/x/c'
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
     }))
-    const clientPoint01 = Point0.client<typeof server1>()
+    const clientPoint01 = Point0.extend<typeof server1>()
       .route(Route0.create('/'))
       .page((x) => <div>Hello</div>)
     expect(
       await Point0.extract({
         location: Route0.getLocation(url),
         point: clientPoint01,
-        server: server1,
+        parent: server1,
         requiredCtx: undefined,
       }),
     ).toEqual({
@@ -143,18 +145,20 @@ describe('Point0', () => {
         a: 1,
         b: 2,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation(url) },
+      error: undefined,
+      status: 200,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.client<typeof server2>().page(() => <div>Hello</div>)
+    const clientPoint02 = Point0.extend<typeof server2>().page(() => <div>Hello</div>)
     expect(
       await Point0.extract({
         point: clientPoint02,
-        server: server2,
+        parent: server2,
         location: Route0.getLocation(url),
         requiredCtx: undefined,
       }),
@@ -164,15 +168,17 @@ describe('Point0', () => {
         b: 2,
         c: 4,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation(url) },
+      error: undefined,
+      status: 200,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
     }))
-    const clientPoint03 = Point0.client<typeof server3>().page(() => <div>Hello</div>)
+    const clientPoint03 = Point0.extend<typeof server3>().page(() => <div>Hello</div>)
     expect(
       await Point0.extract({
-        server: server3,
+        parent: server3,
         point: clientPoint03,
         location: Route0.getLocation(url),
       }),
@@ -180,26 +186,28 @@ describe('Point0', () => {
       ctx: {
         c: 5,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation(url) },
+      error: undefined,
+      status: 200,
     })
   })
 
   it('extract ctx with required ctx input', async () => {
-    const server = Point0.server().requireCtx<{ r: string }>()
+    const server = Point0.create().requireCtx<{ r: string }>()
     const url = '/z/x/c'
     const server1 = server.ctx(({ ctx }) => ({
       ...ctx,
       a: 1,
       b: 2,
     }))
-    const clientPoint01 = Point0.client<typeof server1>()
+    const clientPoint01 = Point0.extend<typeof server1>()
       .route(Route0.create('/'))
       .page(() => <div>Hello</div>)
     expect(
       await Point0.extract({
-        server: server1,
-        location: Route0.getLocation(url),
         point: clientPoint01,
+        parent: server1,
+        location: Route0.getLocation(url),
         requiredCtx: { r: 'str' },
       }),
     ).toEqual({
@@ -208,17 +216,19 @@ describe('Point0', () => {
         a: 1,
         b: 2,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation(url) },
+      error: undefined,
+      status: 200,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.client<typeof server2>().page(() => <div>Hello</div>)
+    const clientPoint02 = Point0.extend<typeof server2>().page(() => <div>Hello</div>)
     expect(
       await Point0.extract({
-        server: server2,
+        parent: server2,
         location: Route0.getLocation(url),
         point: clientPoint02,
         requiredCtx: { r: 'str' },
@@ -230,16 +240,18 @@ describe('Point0', () => {
         b: 2,
         c: 4,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation(url) },
+      error: undefined,
+      status: 200,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       r: ctx.r,
       c: 5,
     }))
-    const clientPoint03 = Point0.client<typeof server3>().page(() => <div>Hello</div>)
+    const clientPoint03 = Point0.extend<typeof server3>().page(() => <div>Hello</div>)
     expect(
       await Point0.extract({
-        server: server3,
+        parent: server3,
         location: Route0.getLocation(url),
         point: clientPoint03,
         requiredCtx: { r: 'str' },
@@ -249,7 +261,9 @@ describe('Point0', () => {
         r: 'str',
         c: 5,
       },
-      data: {},
+      payload: { data: {}, meta: { title: 'Hello, world!' }, location: Route0.getLocation(url) },
+      error: undefined,
+      status: 200,
     })
   })
 
@@ -278,17 +292,17 @@ describe('Point0', () => {
 
   it('creates an empty instance', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.server()
-    const clientPoint0 = Point0.client<typeof server>()
+    const server = Point0.create()
+    const clientPoint0 = Point0.extend<typeof server>()
     expect(clientPoint0).toBeInstanceOf(Point0)
-    expectTypeOf(clientPoint0).toEqualTypeOf<Point0<typeof server, true>>()
-    expectTypeOf(clientPoint0).toEqualTypeOf<Point0<typeof server, true, UndefinedCtx, EmptyCtx, EmptyData>>()
+    expectTypeOf(clientPoint0).toEqualTypeOf<Point0<typeof server>>()
+    expectTypeOf(clientPoint0).toEqualTypeOf<Point0<typeof server, UndefinedCtx, EmptyCtx, EmptyData>>()
     expect(clientPoint0._extendFns).toEqual([])
   })
 
   it('creates ready page', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.server()
+    const server = Point0.create()
       .ctx(() => ({
         a: 1,
         b: 2,
@@ -298,7 +312,7 @@ describe('Point0', () => {
       .loader(({ data, ctx }) => ({
         preloadedServer: 10,
       }))
-    const clientPoint0 = Point0.client<typeof server>()
+    const clientPoint0 = Point0.extend<typeof server>()
       // ctx is client only in ctx fns
       .ctx(({ ctx }) => ({
         ...ctx,

@@ -1,6 +1,7 @@
 import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
+import type { Method } from '../../core/index.js'
 import { Point0 } from '../../core/index.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
@@ -13,7 +14,7 @@ import { isPathnameUnderBasepath } from '../../server/utils.js'
 // TODO: allow special origin per each client also
 
 export const createBunServer = async (props: ServeServerInput) => {
-  const { points, port, publicDir, server, client, logger, clients } = parseServeInput(props)
+  const { points, port, publicDir, base, logger, clients } = parseServeInput(props)
 
   // cache public files paths
   const publicFilesPaths = new Map<string, string>()
@@ -128,10 +129,14 @@ export const createBunServer = async (props: ServeServerInput) => {
           }
 
           // TODO: getSuitableLayouts, getSuitablePage, getSuitableEndpoint
+          console.log('method', request.method)
           const { point, location } = await Point0.getSuitable({
             points,
-            routePath: pathname,
+            method: request.method as Method,
+            path: pathname,
           })
+
+          // TODO: hydrate query response with error 404 if page not found, and do it not here, but in ssr section, and then under in endpoint section
           if (!point) {
             return toSuitableErrorResponse({ message: 'Not Found', status: 404 })
           }
@@ -139,6 +144,16 @@ export const createBunServer = async (props: ServeServerInput) => {
           const relatedClient = clients
             .map((client, index) => ({ index, ...client }))
             .find((client) => isPathnameUnderBasepath(pathname, client.basepath))
+          const {
+            error: extractError,
+            payload,
+            status,
+          } = await Point0.extract({
+            parent: relatedClient ? base : undefined, // if it is client, then server base is his parent. If it is not client, so it is server which has no parent
+            point,
+            location,
+            requiredCtx: undefined, // TODO: pass ban request
+          })
 
           if (relatedClient && relatedClient.ssr && !isJsonAcceptable) {
             if (process.env.NODE_ENV !== 'production') {
@@ -151,29 +166,18 @@ export const createBunServer = async (props: ServeServerInput) => {
             const originalIndexHtml = originalIndexHtmls[relatedClient.index]
 
             // so we render page wrapped with layouts
-            const {
+            const { element, error: fillError } = await Point0.fillPage({
+              base: relatedClient.base,
+              point,
               payload,
+              location,
               error: extractError,
               status,
-            } = await Point0.extractPage({
-              server,
-              client,
-              point,
-              location,
-              requiredCtx: undefined, // can be headers here for example
-            })
-            const { element, error: fillError } = await Point0.fillPage({
-              client,
-              point,
-              payload,
-              location,
             })
             if (extractError || fillError) {
               logger.error(extractError || fillError)
             }
             try {
-              // dev preset index.html with correct entry.js inserted ho have hml in client
-
               const readableStream = await renderReadableStream({
                 element,
                 payload,
@@ -184,6 +188,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                 status,
               })
             } catch (error) {
+              // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
               if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
                 logger.error(error)
                 return new Response(originalIndexHtml, {
@@ -196,25 +201,23 @@ export const createBunServer = async (props: ServeServerInput) => {
           }
 
           // else we try to get endpoint json
-          const { data, error, status } = await Point0.extractEndpoint({
-            server,
-            client,
-            point,
-            location,
-            requiredCtx: undefined, // can be headers here for example
-          })
-          if (error) {
-            logger.error(error)
+          if (extractError) {
+            logger.error(extractError)
+            return toJsonErrorResponse({ error: extractError, status, data: payload.data })
           }
-          if (data) {
-            return new Response(JSON.stringify(data), {
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (point?.getPageComponent()) {
+            // page in spa mode, it requests full payload, not just data
+            return new Response(JSON.stringify(payload), {
               headers: { 'Content-Type': 'application/json' },
               status,
             })
-          } else if (error) {
-            return toJsonErrorResponse({ error, status, data })
           } else {
-            return toJsonErrorResponse({ message: 'Endpoint return nothing, no error, no data', status, data })
+            // this is usual endpoint request, return just data
+            return new Response(JSON.stringify(payload.data), {
+              headers: { 'Content-Type': 'application/json' },
+              status,
+            })
           }
         } catch (error) {
           logger.error(error)

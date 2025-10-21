@@ -1,4 +1,4 @@
-import type { AnyClient, AnyServer, PointsCollection, UndefinedServer } from '../core/index.js'
+import type { AnyPoint, InitialPoint, PointsCollection } from '../core/index.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type ServeLogger = {
@@ -7,16 +7,16 @@ export type ServeLogger = {
 }
 export type ServeClientInput = {
   ssr?: boolean
+  base: AnyPoint
   basepath?: string
   distDir?: string
   distRoute?: string
   srcEntry?: string
 }
-export type ServeServerInput<TServer extends AnyServer = AnyServer> = {
-  server: TServer
-  client?: AnyClient<TServer> | undefined
-  points: PointsCollection<TServer | UndefinedServer>
-  port?: number | string | undefined // TODO: add "true" auto choose option
+export type ServeServerInput = {
+  base: InitialPoint
+  points: PointsCollection
+  port?: number | string | undefined
   logger?: ServeLogger
   dirname?: string
   publicDir?: string
@@ -25,15 +25,15 @@ export type ServeServerInput<TServer extends AnyServer = AnyServer> = {
 
 export type ServeClientInputParsed = {
   ssr: boolean
+  base: AnyPoint
   basepath: string
   distDir: string | undefined
   distRoute: string | undefined
   srcEntry: string | undefined
 }
-export type ServeServerInputParsed<TServer extends AnyServer = AnyServer> = {
-  server: TServer
-  client: AnyClient<TServer> | undefined
-  points: PointsCollection<TServer | UndefinedServer>
+export type ServeServerInputParsed = {
+  base: InitialPoint
+  points: PointsCollection
   port: number | string | undefined
   logger: ServeLogger
   dirname: string | undefined
@@ -72,6 +72,7 @@ const parseServeClientInput = (
   }
   return {
     ssr,
+    base: input.base,
     basepath,
     distDir,
     distRoute,
@@ -79,7 +80,7 @@ const parseServeClientInput = (
   }
 }
 export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
-  const { dirname, port, points, server, client } = input
+  const { dirname, port, points, base } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
@@ -103,13 +104,12 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     )
   }
   return {
-    server,
     points,
     port,
     logger,
     dirname,
     publicDir,
-    client,
+    base,
     clients,
   }
 }

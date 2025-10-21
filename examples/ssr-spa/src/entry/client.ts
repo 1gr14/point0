@@ -3,4 +3,4 @@ import { points } from './points.js'
 import { client } from '../lib/client.js'
 
 import.meta.hot.accept()
-void hydrate({ client, points })
+void hydrate({ base: client, points })
