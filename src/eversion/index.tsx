@@ -328,7 +328,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
   // but for now we use it only in hidration where all pages in root eversion
   async getSuitablePageComponent({ ...locationProps }: {} & LocationInput): Promise<
     | {
-        PageComponent: PageComponent
+        component: PageComponent
         location: Route0.Location
         eversion: Eversion0<TRequiredCtx>
       }
@@ -338,8 +338,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
     for (const record of this.pages) {
       const match = Route0.getMatch(record.route, location)
       if (match.exact) {
-        const PageComponent = 'component' in record ? record.component : await record.lazy()
-        return { PageComponent, location: match.location, eversion: this }
+        const component = 'component' in record ? record.component : await record.lazy()
+        return { component, location: match.location, eversion: this }
       }
     }
     return undefined
@@ -349,6 +349,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
   // not async getSuitablePage(), becouse we here check only by route and it is work with pages collection not points collection
 
   fillPage<TPoint extends AnyPoint | undefined = undefined>({
+    component,
     point,
     // TODO: use provided error to show correct page
     error,
@@ -356,7 +357,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
     payload,
     ...locationProps
   }: {
-    point: TPoint | undefined
+    component?: PageComponent | undefined
+    point?: TPoint | undefined
     payload: Payload
     error?: unknown
     status?: number | undefined
@@ -371,20 +373,38 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
       const element = <div>Error: {(error as Error).message}</div>
       return { element, error, status, location }
     }
-    if (!point) {
-      // TODO: use provided errors
-      const element = <div>Page not found</div>
-      return { element, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
+    if (point) {
+      const componentFromPoint = point.getPageComponent()
+      if (!componentFromPoint) {
+        // TODO: use provided errors
+        return {
+          element: <div>Point has no page element</div>,
+          error: new Error(`Point has no page element`),
+          status: 404,
+          location,
+        }
+      } else {
+        return {
+          element: React.createElement(componentFromPoint, { data: payload.data, location }),
+          error: new Error(`Point has no page element`),
+          status: 404,
+          location,
+        }
+      }
+    } else if (component) {
+      return {
+        element: React.createElement(component, { data: payload.data, location }),
+        error: undefined,
+        status,
+        location,
+      }
     }
-    const PageComponent = point.getPageComponent()
-    if (!PageComponent) {
-      // TODO: use provided errors
-      const element = <div>Point has no page element</div>
-      return { element, error: new Error(`Point has no page element`), status: 404, location }
+    return {
+      element: <div>Page not found</div>,
+      error: new Error(`Page not found: ${location.pathname}`),
+      status: 404,
+      location,
     }
-    const element = <PageComponent data={payload.data} location={location} />
-    // TODO: use provided meta
-    return { element, error: undefined, status, location }
   }
 
   async fillSuitablePage({
@@ -408,8 +428,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
         location,
       }
     }
-    const element = <suitable.PageComponent data={payload.data} location={location} />
-    return { element, error: undefined, location }
+    return {
+      element: React.createElement(suitable.component, { data: payload.data, location }),
+      error: undefined,
+      location,
+    }
   }
 }
 

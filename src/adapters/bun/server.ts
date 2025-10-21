@@ -133,7 +133,7 @@ export const createBunServer = async (props: ServeServerInput) => {
           }
 
           // TODO: getSuitableLayouts, getSuitablePage, getSuitableEndpoint
-          const suitable = await eversion.getSuitable({
+          const suitable = eversion.getSuitable({
             method: request.method as Method,
             path: pathname,
           })
@@ -167,7 +167,7 @@ export const createBunServer = async (props: ServeServerInput) => {
             const originalIndexHtml = originalIndexHtmls[relatedClient.index]
 
             // so we render page wrapped with layouts
-            const { element, error: fillError } = await suitable.eversion.fillPage({
+            const { element, error: fillError } = suitable.eversion.fillPage({
               point: suitable.point,
               payload,
               location: suitable.location,
