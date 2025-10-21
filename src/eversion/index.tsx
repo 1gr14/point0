@@ -11,16 +11,17 @@ import type {
   Method,
   PageComponent,
   ReadyPoint,
+  RequiredCtx,
   UndefinedCtx,
 } from '../core/index.js'
 
-export class Eversion0 {
+export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
   id: string | number | undefined
-  base: InitialBasePoint | ExtendedBasePoint
-  parent: Eversion0 | undefined
+  base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
+  parent: Eversion0<TRequiredCtx> | undefined
   points: PointsCollection
   pages: PagesCollection
-  children: Eversion0[]
+  children: Array<Eversion0<TRequiredCtx>>
 
   private constructor({
     id,
@@ -31,11 +32,11 @@ export class Eversion0 {
     children,
   }: {
     id: string | number | undefined
-    base: InitialBasePoint | ExtendedBasePoint
-    parent?: Eversion0 | undefined
+    base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
+    parent?: Eversion0<TRequiredCtx> | undefined
     points?: PointsCollection
     pages?: PagesCollection
-    children?: Eversion0[]
+    children?: Array<Eversion0<TRequiredCtx>>
   }) {
     this.id = id
     this.base = base
@@ -45,12 +46,15 @@ export class Eversion0 {
     this.parent = parent
   }
 
-  static create({ id, base, points, pages }: CreateEversionInput): Eversion0 {
-    return new Eversion0({ id, base, points, pages })
+  static create<
+    TBasePoint extends InitialBasePoint,
+    TRequiredCtx extends RequiredCtx = TBasePoint['Infer']['RequiredCtx'],
+  >({ id, base, points, pages }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
+    return new Eversion0<TRequiredCtx>({ id, base, points, pages })
   }
 
-  addChild(input: CreateEversionInput) {
-    const child = new Eversion0({
+  addChild(input: CreateEversionInput<TRequiredCtx>) {
+    const child = new Eversion0<TRequiredCtx>({
       id: input.id,
       base: input.base,
       points: input.points,
@@ -62,7 +66,7 @@ export class Eversion0 {
 
   getParents(): [InitialBasePoint, ...ExtendedBasePoint[]] | [] {
     const parents: Array<InitialBasePoint | ExtendedBasePoint> = []
-    let current: Eversion0 | undefined = this.parent
+    let current: Eversion0<TRequiredCtx> | undefined = this.parent
     while (current) {
       parents.push(current.base)
       current = current.parent
@@ -95,7 +99,7 @@ export class Eversion0 {
     | {
         point: ReadyPoint
         location: Route0.Location
-        eversion: Eversion0
+        eversion: Eversion0<TRequiredCtx>
       }
     | undefined {
     const location = this.normalizeLocation(locationProps)
@@ -116,7 +120,7 @@ export class Eversion0 {
     | {
         point: ReadyPoint
         location: Route0.Location
-        eversion: Eversion0
+        eversion: Eversion0<TRequiredCtx>
       }
     | undefined {
     const location = this.normalizeLocation(locationProps)
@@ -145,7 +149,7 @@ export class Eversion0 {
     | {
         point: ReadyPoint
         location: Route0.Location
-        eversion: Eversion0
+        eversion: Eversion0<TRequiredCtx>
       }
     | undefined {
     const location = this.normalizeLocation(locationProps)
@@ -167,7 +171,7 @@ export class Eversion0 {
   }: {
     method: Method
     force?: boolean
-  } & LocationInput): TForce extends true ? Eversion0 : Eversion0 | undefined {
+  } & LocationInput): TForce extends true ? Eversion0<TRequiredCtx> : Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
     for (const child of this.children) {
       const result = child.getSuitableEversion({ method: providedMethod, location, force })
@@ -187,7 +191,7 @@ export class Eversion0 {
   }: {
     method: Method
     force?: TForce
-  } & LocationInput): TForce extends true ? Eversion0 : Eversion0 | undefined {
+  } & LocationInput): TForce extends true ? Eversion0<TRequiredCtx> : Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
     const route = this.base.getRoute()
     if (!route) {
@@ -209,7 +213,7 @@ export class Eversion0 {
   }: {
     method: Method
     force?: boolean
-  } & LocationInput): TForce extends true ? Eversion0 : Eversion0 | undefined {
+  } & LocationInput): TForce extends true ? Eversion0<TRequiredCtx> : Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
     const suitableChildEversion = this._getSuitableChildEversion({ method: providedMethod, location })
     if (suitableChildEversion) {
@@ -240,13 +244,13 @@ export class Eversion0 {
     ? {
         point: ReadyPoint
         location: Route0.Location
-        eversion: Eversion0
+        eversion: Eversion0<TRequiredCtx>
       }
     :
         | {
             point: ReadyPoint | undefined
             location: Route0.Location
-            eversion: Eversion0 | undefined
+            eversion: Eversion0<TRequiredCtx> | undefined
           }
         | undefined {
     const location = this.normalizeLocation(locationProps)
@@ -265,12 +269,16 @@ export class Eversion0 {
     point,
     requiredCtx,
     ...locationProps
-  }: WithRequiredCtx & {
+  }: WithRequiredCtx<TRequiredCtx> & {
     point?: AnyPoint | undefined
   } & LocationInput): Promise<ExtractResult> {
     let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
-    const extendFns = [...this.getParents().flatMap((parent) => parent.getExtendFns()), ...(point?._extendFns ?? [])]
+    const extendFns = [
+      ...this.getParents().flatMap((parent) => parent.getExtendFns()),
+      ...this.base.getExtendFns(),
+      ...(point?._extendFns ?? []),
+    ]
     const location = this.normalizeLocation(locationProps)
     // TODO: get real meta
     const meta = { title: 'Hello, world!' }
@@ -303,6 +311,19 @@ export class Eversion0 {
     } catch (error) {
       return { ctx: ctxOutput, payload: { data: dataOutput, meta, location }, error, status: 500 }
     }
+  }
+
+  async extractSuitable({
+    method: providedMethod,
+    requiredCtx,
+    ...locationProps
+  }: WithRequiredCtx<TRequiredCtx> & {
+    method: Method
+    point?: AnyPoint | undefined
+  } & LocationInput): Promise<ExtractResult> {
+    const location = this.normalizeLocation(locationProps)
+    const suitable = this.getSuitable({ method: providedMethod, location, force: true })
+    return await this.extract({ point: suitable.point, requiredCtx, location: suitable.location } as never)
   }
 
   // TODO
@@ -347,9 +368,9 @@ export class Eversion0 {
   }
 }
 
-export type CreateEversionInput = {
+export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
   id: string | number | undefined
-  base: InitialBasePoint | ExtendedBasePoint
+  base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
   parent?: null
   points?: PointsCollection
   pages?: PagesCollection
@@ -369,14 +390,25 @@ export type PagesCollection = PagesCollectionRecord[]
 
 export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }
 
-export type WithRequiredCtx<TBasePoint extends AnyPoint = AnyPoint<any, Ctx> | AnyPoint<any, UndefinedCtx>> =
-  TBasePoint extends AnyPoint
-    ? TBasePoint['Infer']['RequiredCtx'] extends Ctx
-      ? {
-          requiredCtx: TBasePoint['Infer']['RequiredCtx']
-        }
-      : { requiredCtx?: undefined }
-    : { requiredCtx?: undefined }
+// export type WithRequiredCtx<TBasePoint extends AnyPoint = AnyPoint<any, Ctx> | AnyPoint<any, UndefinedCtx>> =
+//   TBasePoint extends AnyPoint
+//     ? TBasePoint['Infer']['RequiredCtx'] extends Ctx
+//       ? {
+//           requiredCtx: TBasePoint['Infer']['RequiredCtx']
+//         }
+//       : { requiredCtx?: undefined }
+//     : { requiredCtx?: undefined }
+// export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
+//   ? {
+//       requiredCtx: TRequiredCtx
+//     }
+//   : { requiredCtx?: undefined }
+
+export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
+  ? {
+      requiredCtx: TRequiredCtx
+    }
+  : { requiredCtx?: undefined }
 
 export type Payload<TData extends Data = Data> = { location: Route0.Location; data: TData; meta: MetaMap | MetaMap[] }
 export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {

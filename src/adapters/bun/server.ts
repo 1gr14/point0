@@ -133,7 +133,6 @@ export const createBunServer = async (props: ServeServerInput) => {
           }
 
           // TODO: getSuitableLayouts, getSuitablePage, getSuitableEndpoint
-          console.log('method', request.method)
           const suitable = await eversion.getSuitable({
             method: request.method as Method,
             path: pathname,

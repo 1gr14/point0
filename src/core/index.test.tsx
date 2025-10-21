@@ -78,10 +78,14 @@ describe('Point0', () => {
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
     expect(server._extendFns).toHaveLength(0)
+    const clientPoint02 = Point0.extend<typeof server2>()
+      .route(Route0.create('/'))
+      .page((x) => <div>Hello</div>)
     const eversion2 = Eversion0.create({ id: 'test', base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation('/'),
+        point: clientPoint02,
         requiredCtx: undefined,
       }),
     ).toEqual({
@@ -139,7 +143,6 @@ describe('Point0', () => {
       await eversion1.extract({
         location: Route0.getLocation(url),
         point: clientPoint01,
-        requiredCtx: undefined,
       }),
     ).toEqual({
       ctx: {
@@ -182,6 +185,7 @@ describe('Point0', () => {
       await eversion3.extract({
         point: clientPoint03,
         location: Route0.getLocation(url),
+        // requiredCtx: undefined,
       }),
     ).toEqual({
       ctx: {
