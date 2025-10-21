@@ -3,7 +3,7 @@
 import { Point0 } from 'point0/core/index.js'
 import { prisma } from './prisma.js'
 
-export const server = Point0.create()
+export const server = Point0.create({ id: 'server' })
   .ctx(() => ({
     prisma,
     env: process.env,

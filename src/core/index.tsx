@@ -10,27 +10,30 @@ export class Point0<
 > {
   Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData> = {} as never
 
-  _isInitialBase: TParent extends UndefinedParent ? true : false
+  _baseId: BaseId
+  _hasParent: TParent extends UndefinedParent ? false : true
   _extendFns: ExtendFnRecord[]
   _route: TRoute
   _page: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
   _id: Id | UndefinedId
   _method: Method | UndefinedMethod
 
-  private constructor(props?: {
-    _isInitialBase?: TParent extends UndefinedParent ? true : false
+  private constructor(props: {
+    _baseId: BaseId
+    _hasParent?: TParent extends UndefinedParent ? false : true
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
     _page?: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
   }) {
-    this._isInitialBase = (props?._isInitialBase ?? false) as TParent extends UndefinedParent ? true : false
-    this._extendFns = props?._extendFns ?? []
-    this._route = props?._route ?? (undefined as TRoute)
-    this._page = props?._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
-    this._id = props?._id
-    this._method = props?._method ?? (undefined as Method | UndefinedMethod)
+    this._baseId = props._baseId
+    this._hasParent = props._hasParent as TParent extends UndefinedParent ? false : true
+    this._extendFns = props._extendFns ?? []
+    this._route = props._route ?? (undefined as TRoute)
+    this._page = props._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
+    this._id = props._id
+    this._method = props._method ?? (undefined as Method | UndefinedMethod)
   }
 
   _clone<
@@ -48,7 +51,8 @@ export class Point0<
     _method?: Method | UndefinedMethod
   }): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     return new Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
-      _isInitialBase: this._isInitialBase as TParent extends UndefinedParent ? true : false,
+      _baseId: this._baseId,
+      _hasParent: this._hasParent as TParent extends UndefinedParent ? false : true,
       _extendFns: overrides?._extendFns ?? this._extendFns,
       _route: (overrides?._route ?? this._route) as TRoute,
       _page: (overrides?._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
@@ -59,18 +63,19 @@ export class Point0<
 
   // base
 
-  static create(): Point0 {
-    return new Point0({ _isInitialBase: true })
+  static create(props: { id: BaseId }): Point0 {
+    return new Point0({ _hasParent: false, _baseId: props.id })
   }
 
-  static extend<TParent extends ParentPoint>(): Point0<TParent, TParent['Infer']['RequiredCtx']> {
-    return new Point0<TParent, TParent['Infer']['RequiredCtx']>()
+  static extend<TParent extends ParentPoint>(props: { id: BaseId }): Point0<TParent, TParent['Infer']['RequiredCtx']> {
+    return new Point0<TParent, TParent['Infer']['RequiredCtx']>({ _hasParent: true as never, _baseId: props.id })
   }
 
   // setters
 
   id(id: Id): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      // TODO: extends - by default, if provide true in end, then will override previous
       _id: id,
     } as never)
   }
@@ -83,18 +88,14 @@ export class Point0<
     TRoute,
     THasPage
   > {
-    const newPoint = new Point0<
+    return this._clone<
       TParent,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TOutputCtx, TExtraRequiredCtx>,
       TOutputData,
       TRoute,
       THasPage
-    >()
-    newPoint._extendFns.push(...this._extendFns)
-    newPoint._route = this._route
-    newPoint._page = this._page
-    return newPoint
+    >({} as never)
   }
 
   ctx<TNewOutputCtx extends Ctx = Ctx>(
@@ -199,6 +200,8 @@ export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | '
 export type UndefinedMethod = undefined
 export type Id = string
 export type UndefinedId = undefined
+export type BaseId = string
+export type UndefinedBaseId = undefined
 
 export type AnyPoint<
   TParent extends ParentPoint | UndefinedParent = ParentPoint | UndefinedParent,

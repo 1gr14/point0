@@ -1,5 +1,5 @@
-import type { ExtendedBasePoint, InitialBasePoint } from '../core/index.js'
-import type { PagesCollection, PointsCollection } from '../eversion/index.js'
+import type { BaseId, ExtendedBasePoint, InitialBasePoint } from '../core/index.js'
+import type { PagesCollection, PointsCollection } from '../eversion/runtime.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type ServeLogger = {
@@ -15,6 +15,7 @@ export type ServeClientInput = {
   distDir?: string
   distRoute?: string
   srcEntry?: string
+  distEntry?: string
 }
 export type ServeServerInput = {
   base: InitialBasePoint
@@ -24,6 +25,7 @@ export type ServeServerInput = {
   logger?: ServeLogger
   dirname?: string
   publicDir?: string
+  fallbackBaseId?: BaseId | undefined
   clients?: ServeClientInput[] | undefined
 }
 
@@ -36,6 +38,8 @@ export type ServeClientInputParsed = {
   distDir: string | undefined
   distRoute: string | undefined
   srcEntry: string | undefined
+  distEntry: string | undefined
+  index: number
 }
 export type ServeServerInputParsed = {
   base: InitialBasePoint
@@ -45,6 +49,7 @@ export type ServeServerInputParsed = {
   logger: ServeLogger
   dirname: string | undefined
   publicDir: string | undefined
+  fallbackBaseId: BaseId | undefined
   clients: ServeClientInputParsed[]
 }
 export type ServeServerResult = {
@@ -59,24 +64,13 @@ const parseServeClientInput = (
 ): ServeClientInputParsed => {
   const srcEntry = absPath(dirname, input.srcEntry)
   const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
+  const distEntry = absPath(dirname, input.distEntry)
   const basepath = prependAndAppendSlash(input.basepath) || '/'
   const distRoute = prependAndAppendSlash(input.distRoute)
   if (distRoute !== 'undefined' && (distRoute === '' || distRoute === '/')) {
     throw new Error('clientDistRoute cannot be empty or root')
   }
   const ssr = input.ssr ?? true
-  if (process.env.NODE_ENV !== 'production') {
-    if (!srcEntry) {
-      throw new Error(`To serve client in development mode you should provide srcEntry for client at index ${index}`)
-    }
-  } else {
-    if (!distDir) {
-      throw new Error(`To serve client in production mode you should provide distDir for client at index ${index}`)
-    }
-    if (!distRoute) {
-      throw new Error(`To serve client in production mode you should provide distRoute for client at index ${index}`)
-    }
-  }
   return {
     ssr,
     points: input.points ?? [],
@@ -86,6 +80,8 @@ const parseServeClientInput = (
     distDir,
     distRoute,
     srcEntry,
+    distEntry,
+    index,
   }
 }
 export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
@@ -120,6 +116,7 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     dirname,
     publicDir,
     base,
+    fallbackBaseId: input.fallbackBaseId,
     clients,
   }
 }

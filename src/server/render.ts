@@ -1,7 +1,7 @@
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
 import type { MetaMap, MetaMapValue } from '../core/index.js'
-import type { Payload } from '../eversion/index.js'
+import type { Payload } from '../eversion/runtime.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (

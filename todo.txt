@@ -98,6 +98,7 @@ npm point0
 
 ---
 
+make components and pages named in react dev tools
 easy ast parese and expot point.load thats all const x = await base.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
 add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
 .useStaticLoader((props) => ) only server rendering

@@ -1,5 +1,5 @@
-import type { PointsCollection } from 'point0/eversion/index.js'
-import { routes } from '../lib/routes.js'
+import type { PointsCollection } from 'point0/eversion/runtime.js'
+import { routes } from './routes.js'
 
 export const points: PointsCollection = [
   // should be generated automatically

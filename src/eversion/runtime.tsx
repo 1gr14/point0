@@ -2,6 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import * as React from 'react'
 import type {
   AnyPoint,
+  BaseId,
   Ctx,
   Data,
   EmptyCtx,
@@ -18,7 +19,7 @@ import type {
 
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
 // so remove force
-export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
+export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
   parent: Eversion0<TRequiredCtx> | undefined
   points: PointsCollection
@@ -88,32 +89,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
     throw new Error('location or path or id is required')
   }
 
-  _getSuitableChildPoint({
-    method: providedMethod,
-    ...locationProps
-  }: {
-    method: Method
-  } & LocationInput):
-    | {
-        point: ReadyPoint
-        location: Route0.Location
-        eversion: Eversion0<TRequiredCtx>
-      }
-    | undefined {
-    const location = this.normalizeLocation(locationProps)
-    for (const child of this.children) {
-      const result = child.getSuitablePoint({ method: providedMethod, location })
-      if (result) {
-        return result
-      }
-    }
-    return undefined
-  }
   _getSuitableSelfPoint({
     method: providedMethod,
+    baseId,
     ...locationProps
   }: {
     method: Method
+    baseId?: BaseId
   } & LocationInput):
     | {
         point: ReadyPoint
@@ -121,6 +103,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
         eversion: Eversion0<TRequiredCtx>
       }
     | undefined {
+    if (baseId && this.base.getId() !== baseId) {
+      return undefined
+    }
     const location = this.normalizeLocation(locationProps)
     for (const { method, route, point } of this.points) {
       if (providedMethod.toLowerCase() !== method.toLowerCase()) {
@@ -140,127 +125,131 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
   }
   getSuitablePoint({
     method: providedMethod,
+    baseId,
     ...locationProps
   }: {
     method: Method
-  } & LocationInput):
-    | {
-        point: ReadyPoint
-        location: Route0.Location
-        eversion: Eversion0<TRequiredCtx>
-      }
-    | undefined {
+    baseId?: BaseId
+  } & LocationInput): GetSuitablePointResult<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const suitableChildPoint = this._getSuitableChildPoint({ method: providedMethod, location })
-    if (suitableChildPoint) {
-      return suitableChildPoint
-    }
-    const suitableSelfPoint = this._getSuitableSelfPoint({ method: providedMethod, location })
+    const suitableSelfPoint = this._getSuitableSelfPoint({ method: providedMethod, location, baseId })
     if (suitableSelfPoint) {
       return suitableSelfPoint
+    }
+    const suitableChildPoint = (() => {
+      for (const child of this.children) {
+        const result = child.getSuitablePoint({ method: providedMethod, location, baseId })
+        if (result) {
+          return result
+        }
+      }
+      return undefined
+    })()
+    if (suitableChildPoint) {
+      return suitableChildPoint
     }
     return undefined
   }
 
-  _getSuitableChildEversion<TForce extends boolean = false>({
+  _getSuitableSelfEversion({
     method: providedMethod,
-    force = false,
+    baseId,
     ...locationProps
   }: {
     method: Method
-    force?: boolean
-  } & LocationInput): TForce extends true ? Eversion0<TRequiredCtx> : Eversion0<TRequiredCtx> | undefined {
-    const location = this.normalizeLocation(locationProps)
-    for (const child of this.children) {
-      const result = child.getSuitableEversion({ method: providedMethod, location, force })
-      if (result) {
-        return result
-      }
-    }
-    if (force) {
-      return this
-    }
-    return undefined as never
-  }
-  _getSuitableSelfEversion<TForce extends boolean = false>({
-    method: providedMethod,
-    force = false as TForce,
-    ...locationProps
-  }: {
-    method: Method
-    force?: TForce
-  } & LocationInput): TForce extends true ? Eversion0<TRequiredCtx> : Eversion0<TRequiredCtx> | undefined {
+    baseId?: BaseId | undefined
+  } & LocationInput): Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
     const route = this.base.getRoute()
     if (!route) {
-      if (force) {
-        return this
-      }
-      return undefined as never
+      return undefined
     }
     const match = Route0.getMatch(route, location)
     if (match.parent || match.exact) {
       return this
     }
-    return undefined as never
+    return undefined
   }
-  getSuitableEversion<TForce extends boolean = false>({
+
+  _getSuitableEversion(
+    props: {
+      method: Method
+      baseId?: BaseId | undefined
+      force: true
+      fallbackBaseId?: BaseId
+    } & LocationInput,
+  ): Eversion0<TRequiredCtx>
+  _getSuitableEversion(
+    props: {
+      method: Method
+      baseId?: BaseId | undefined
+      force?: boolean
+      fallbackBaseId?: BaseId
+    } & LocationInput,
+  ): Eversion0<TRequiredCtx> | undefined
+  _getSuitableEversion({
     method: providedMethod,
-    force = false,
+    baseId,
+    fallbackBaseId,
+    force,
     ...locationProps
   }: {
     method: Method
+    baseId?: BaseId | undefined
     force?: boolean
-  } & LocationInput): TForce extends true ? Eversion0<TRequiredCtx> : Eversion0<TRequiredCtx> | undefined {
+    fallbackBaseId?: BaseId
+  } & LocationInput): Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const suitableChildEversion = this._getSuitableChildEversion({ method: providedMethod, location })
-    if (suitableChildEversion) {
-      return suitableChildEversion
-    }
-    const suitableSelfEversion = this._getSuitableSelfEversion({ method: providedMethod, location })
+    const suitableSelfEversion = this._getSuitableSelfEversion({ method: providedMethod, location, baseId })
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
-    if (force) {
-      const suitableChildEversion = this._getSuitableChildEversion({ method: providedMethod, location, force: true })
-      if (suitableChildEversion) {
-        return suitableChildEversion
+    const suitableChildEversion = (() => {
+      for (const child of this.children) {
+        const result = child._getSuitableEversion({ method: providedMethod, location, baseId })
+        if (result) {
+          return result
+        }
       }
-      return this
+      return undefined
+    })()
+    if (suitableChildEversion) {
+      return suitableChildEversion
     }
-    return undefined as never
+    if (fallbackBaseId) {
+      return this._getSuitableEversion({ method: providedMethod, location, baseId: fallbackBaseId })
+    }
+    if (force) {
+      throw new Error(
+        `No suitable eversion found for method "${providedMethod}" at location "${location.pathname}" and base id "${baseId}" and fallback base id "${fallbackBaseId}"`,
+      )
+    }
+    return undefined
   }
 
-  getSuitable<TForce extends boolean = false>({
+  getSuitable({
     method: providedMethod,
-    force = false as TForce, // return self (if no children) or first child eversion without nested child, if no one suitable found
+    baseId,
+    fallbackBaseId,
     ...locationProps
   }: {
     method: Method
-    force?: TForce
-  } & LocationInput): TForce extends true
-    ? {
-        point: ReadyPoint
-        location: Route0.Location
-        eversion: Eversion0<TRequiredCtx>
-      }
-    :
-        | {
-            point: ReadyPoint | undefined
-            location: Route0.Location
-            eversion: Eversion0<TRequiredCtx> | undefined
-          }
-        | undefined {
+    baseId?: BaseId
+    fallbackBaseId: BaseId
+  } & LocationInput): GetSuitableResult<TRequiredCtx> {
     const location = this.normalizeLocation(locationProps)
-    const suitablePoint = this.getSuitablePoint({ method: providedMethod, location })
+    const suitablePoint = this.getSuitablePoint({ method: providedMethod, location, baseId })
     if (suitablePoint) {
       return suitablePoint
     }
-    const suitableEversion = this.getSuitableEversion({ method: providedMethod, location, force })
-    if (suitableEversion) {
-      return { point: undefined, location, eversion: suitableEversion } as never
-    }
-    return undefined as never
+    const suitableEversion = this._getSuitableEversion({
+      method: providedMethod,
+      location,
+      baseId,
+      fallbackBaseId,
+      force: true,
+    })
+    return { point: undefined, location, eversion: suitableEversion }
   }
 
   async extract({
@@ -297,43 +286,66 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
         }
       }
       if (point) {
-        return { ctx: ctxOutput, payload: { data: dataOutput, meta, location }, error: undefined, status: 200 }
+        return {
+          ctx: ctxOutput,
+          payload: { data: dataOutput, meta, location },
+          pageComponent: point.getPageComponent(),
+          error: undefined,
+          status: 200,
+          base: this.base,
+          eversion: this,
+        }
       } else {
         return {
           ctx: ctxOutput,
           payload: { data: dataOutput, meta, location },
+          pageComponent: undefined,
           error: new Error(`Point Not Found: ${location.pathname}`),
           status: 404,
+          base: this.base,
+          eversion: this,
         }
       }
     } catch (error) {
-      return { ctx: ctxOutput, payload: { data: dataOutput, meta, location }, error, status: 500 }
+      return {
+        ctx: ctxOutput,
+        payload: { data: dataOutput, meta, location },
+        pageComponent: undefined,
+        error,
+        status: 500,
+        base: this.base,
+        eversion: this,
+      }
     }
   }
 
   async extractSuitable({
     method: providedMethod,
     requiredCtx,
+    baseId,
+    fallbackBaseId,
     ...locationProps
   }: WithRequiredCtx<TRequiredCtx> & {
     method: Method
+    baseId?: BaseId | undefined
+    fallbackBaseId: BaseId
     point?: AnyPoint | undefined
   } & LocationInput): Promise<ExtractResult> {
     const location = this.normalizeLocation(locationProps)
-    const suitable = this.getSuitable({ method: providedMethod, location, force: true })
+    const suitable = this.getSuitable({ method: providedMethod, location, baseId, fallbackBaseId })
     return await this.extract({ point: suitable.point, requiredCtx, location: suitable.location } as never)
   }
 
-  // TODO: make it also work for nested children
+  // TODO: make it also work for nested children, and respect base id
   // but for now we use it only in hidration where all pages in root eversion
-  async getSuitablePageComponent({ ...locationProps }: {} & LocationInput): Promise<
-    | {
-        component: PageComponent
-        location: Route0.Location
-        eversion: Eversion0<TRequiredCtx>
-      }
-    | undefined
-  > {
+  async getSuitablePageComponent({
+    baseId,
+    fallbackBaseId,
+    ...locationProps
+  }: {
+    baseId?: BaseId | undefined
+    fallbackBaseId?: BaseId | undefined
+  } & LocationInput): Promise<GetSuitablePageComponentResult | undefined> {
     const location = this.normalizeLocation(locationProps)
     for (const record of this.pages) {
       const match = Route0.getMatch(record.route, location)
@@ -342,96 +354,90 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
         return { component, location: match.location, eversion: this }
       }
     }
-    return undefined
+    return undefined as never
   }
-
-  // TODO
-  // not async getSuitablePage(), becouse we here check only by route and it is work with pages collection not points collection
 
   fillPage<TPoint extends AnyPoint | undefined = undefined>({
     component,
     point,
-    // TODO: use provided error to show correct page
     error,
     status,
     payload,
-    ...locationProps
   }: {
     component?: PageComponent | undefined
     point?: TPoint | undefined
-    payload: Payload
+    payload?: Payload
     error?: unknown
     status?: number | undefined
-  } & LocationInput): {
-    element: React.ReactElement
-    status: number | undefined
-    error: unknown
-    location: Route0.Location
-  } {
-    const location = this.normalizeLocation(locationProps)
+  }): FillPageResult {
+    // TODO: use provided errors
     if (error) {
       const element = <div>Error: {(error as Error).message}</div>
-      return { element, error, status, location }
+      return { element, error, status }
+    }
+    if (!payload) {
+      return {
+        element: <div>No payload</div>,
+        error: new Error(`No payload`),
+        status: 500,
+      }
+    }
+    if (component) {
+      return {
+        element: React.createElement(component, { data: payload.data, location: payload.location }),
+        error: undefined,
+        status,
+      }
     }
     if (point) {
       const componentFromPoint = point.getPageComponent()
-      if (!componentFromPoint) {
-        // TODO: use provided errors
+      if (componentFromPoint) {
+        return {
+          element: React.createElement(componentFromPoint, { data: payload.data, location: payload.location }),
+          error: undefined,
+          status,
+        }
+      } else {
         return {
           element: <div>Point has no page element</div>,
           error: new Error(`Point has no page element`),
           status: 404,
-          location,
         }
-      } else {
-        return {
-          element: React.createElement(componentFromPoint, { data: payload.data, location }),
-          error: new Error(`Point has no page element`),
-          status: 404,
-          location,
-        }
-      }
-    } else if (component) {
-      return {
-        element: React.createElement(component, { data: payload.data, location }),
-        error: undefined,
-        status,
-        location,
       }
     }
     return {
       element: <div>Page not found</div>,
-      error: new Error(`Page not found: ${location.pathname}`),
+      error: new Error(`Page not found: ${payload.location.pathname}`),
       status: 404,
-      location,
     }
   }
 
+  // TODO: respect base id and children
   async fillSuitablePage({
     payload,
     error,
+    baseId,
+    fallbackBaseId,
     ...locationProps
   }: {
     payload: Payload
     error?: unknown
-  } & LocationInput): Promise<{
-    element: React.ReactElement
-    error: unknown
-    location: Route0.Location
-  }> {
+    baseId?: BaseId | undefined
+    fallbackBaseId?: BaseId | undefined
+  } & LocationInput): Promise<FillPageResult> {
     const location = this.normalizeLocation(locationProps)
-    const suitable = await this.getSuitablePageComponent({ location })
+    const suitable = await this.getSuitablePageComponent({ location, baseId, fallbackBaseId })
     if (!suitable) {
       return {
         element: <div>Page not found</div>,
         error: new Error(`Page not found: ${location.pathname}`),
-        location,
+        status: 404,
       }
     }
     return {
-      element: React.createElement(suitable.component, { data: payload.data, location }),
+      element: React.createElement(suitable.component, { data: payload.data, location: payload.location }),
       error: undefined,
-      location,
+      status: 200,
     }
   }
 }
@@ -441,6 +447,27 @@ export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
   parent?: null
   points?: PointsCollection
   pages?: PagesCollection
+}
+
+export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  point: ReadyPoint
+  location: Route0.Location
+  eversion: Eversion0<TRequiredCtx>
+}
+export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  point: ReadyPoint | undefined
+  location: Route0.Location
+  eversion: Eversion0<TRequiredCtx>
+}
+export type GetSuitablePageComponentResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  component: PageComponent
+  location: Route0.Location
+  eversion: Eversion0<TRequiredCtx>
+}
+export type FillPageResult = {
+  element: React.ReactElement
+  error: unknown
+  status: number | undefined
 }
 
 export type PointsCollectionRecord = {
@@ -456,20 +483,6 @@ export type PagesCollection = PagesCollectionRecord[]
 
 export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }
 
-// export type WithRequiredCtx<TBasePoint extends AnyPoint = AnyPoint<any, Ctx> | AnyPoint<any, UndefinedCtx>> =
-//   TBasePoint extends AnyPoint
-//     ? TBasePoint['Infer']['RequiredCtx'] extends Ctx
-//       ? {
-//           requiredCtx: TBasePoint['Infer']['RequiredCtx']
-//         }
-//       : { requiredCtx?: undefined }
-//     : { requiredCtx?: undefined }
-// export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
-//   ? {
-//       requiredCtx: TRequiredCtx
-//     }
-//   : { requiredCtx?: undefined }
-
 export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
   ? {
       requiredCtx: TRequiredCtx
@@ -481,7 +494,10 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   ctx: TOutputCtx
   payload: Payload<TOutputData>
   error: unknown
-  status: number | undefined
+  status: number
+  base: InitialBasePoint | ExtendedBasePoint
+  pageComponent: PageComponent | undefined
+  eversion: Eversion0
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
   TPoint extends AnyPoint<any, any, infer TOutputCtx, infer TOutputData, any, any>

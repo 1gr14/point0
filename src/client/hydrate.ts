@@ -3,8 +3,8 @@ import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { ExtendedBasePoint } from '../core/index.js'
-import type { PagesCollection, Payload } from '../eversion/index.js'
-import { Eversion0 } from '../eversion/index.js'
+import type { PagesCollection, Payload } from '../eversion/runtime.js'
+import { Eversion0 } from '../eversion/runtime.js'
 
 declare global {
   interface Window {
@@ -26,7 +26,7 @@ export type HydrateResult = {
 
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
-export async function hydrate({ pages, base, ...input }: HydrateInput): Promise<HydrateResult> {
+export async function hydrate({ pages, base, rootElement: providedRootElement }: HydrateInput): Promise<HydrateResult> {
   // Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
@@ -44,7 +44,7 @@ export async function hydrate({ pages, base, ...input }: HydrateInput): Promise<
   })()
 
   // Find the SSR container.
-  const rootElement = input.rootElement || document.getElementById('root')
+  const rootElement = providedRootElement || document.getElementById('root')
   if (!rootElement) {
     throw new Error(
       `Element #root not found, please provide rootElement in input or add #root element to the index.html`,
@@ -55,6 +55,7 @@ export async function hydrate({ pages, base, ...input }: HydrateInput): Promise<
   const eversion = Eversion0.create({ base, pages })
   // TODO: get provided 404 error from eversion
   const { element, error } = await eversion.fillSuitablePage({
+    baseId: base._id,
     payload,
     location: payload.location,
   })
