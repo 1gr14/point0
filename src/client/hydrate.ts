@@ -2,22 +2,23 @@ import type { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { ExtendedPoint, AnyPoint, PagePayload, PointsCollection } from '../core/index.js'
-import { Point0 } from '../core/index.js'
+import type { AnyPoint, ExtendedBasePoint } from '../core/index.js'
+import type { PagesCollection, Payload } from '../eversion/index.js'
+import { Eversion0 } from '../eversion/index.js'
 
 declare global {
   interface Window {
-    __POINT0_PAYLOAD__?: PagePayload
+    __POINT0_PAYLOAD__?: Payload
   }
 }
 
 export type HydrateInput = {
   rootElement?: HTMLElement
-  points: PointsCollection
-  base: ExtendedPoint
+  pages: PagesCollection
+  base: ExtendedBasePoint
 }
 export type HydrateResult = {
-  payload: PagePayload
+  payload: Payload
   point: AnyPoint | undefined
   location: Route0.Location
   rootElement: HTMLElement
@@ -26,7 +27,7 @@ export type HydrateResult = {
 
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
-export async function hydrate({ points, base, ...input }: HydrateInput): Promise<HydrateResult> {
+export async function hydrate({ pages, base, ...input }: HydrateInput): Promise<HydrateResult> {
   // Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
@@ -35,7 +36,7 @@ export async function hydrate({ points, base, ...input }: HydrateInput): Promise
     throw new Error('Missing __POINT0_PAYLOAD__')
   }
 
-  const payload: PagePayload = (() => {
+  const payload: Payload = (() => {
     try {
       return JSON.parse(payloadContent)
     } catch (error) {
@@ -52,12 +53,12 @@ export async function hydrate({ points, base, ...input }: HydrateInput): Promise
   }
 
   // Ask point0 to build the correct page element for the current route.
-  const { point, location } = await Point0.getSuitable({ method: 'get', path: payload.location.href, points })
-  const { element, error } = await Point0.fillPage({
-    base,
-    point,
+  const eversion = Eversion0.create({ id: 'client', base, pages })
+  const suitable = await eversion.getSuitable({ method: 'get', path: payload.location.href, force: true })
+  const { element, error } = await suitable.eversion.fillPage({
+    point: suitable.point,
     payload,
-    location,
+    location: suitable.location,
   })
   if (error) {
     // Log but don’t crash the app on route resolution issues.
@@ -81,5 +82,5 @@ export async function hydrate({ points, base, ...input }: HydrateInput): Promise
     root.render(element)
   }
 
-  return { payload, point, location, rootElement, element }
+  return { payload, point: suitable.point, location: suitable.location, rootElement, element }
 }

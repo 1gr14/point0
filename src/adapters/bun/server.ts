@@ -2,7 +2,7 @@ import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import type { Method } from '../../core/index.js'
-import { Point0 } from '../../core/index.js'
+import { Eversion0 } from '../../eversion/index.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
@@ -14,7 +14,11 @@ import { isPathnameUnderBasepath } from '../../server/utils.js'
 // TODO: allow special origin per each client also
 
 export const createBunServer = async (props: ServeServerInput) => {
-  const { points, port, publicDir, base, logger, clients } = parseServeInput(props)
+  const { points, pages, port, publicDir, base, logger, clients } = parseServeInput(props)
+  const eversion = Eversion0.create({ id: 'server', base, points, pages })
+  for (const [index, client] of clients.entries()) {
+    eversion.addChild({ id: `client-${index}`, base: client.base, points: client.points, pages: client.pages })
+  }
 
   // cache public files paths
   const publicFilesPaths = new Map<string, string>()
@@ -130,14 +134,13 @@ export const createBunServer = async (props: ServeServerInput) => {
 
           // TODO: getSuitableLayouts, getSuitablePage, getSuitableEndpoint
           console.log('method', request.method)
-          const { point, location } = await Point0.getSuitable({
-            points,
+          const suitable = await eversion.getSuitable({
             method: request.method as Method,
             path: pathname,
           })
 
           // TODO: hydrate query response with error 404 if page not found, and do it not here, but in ssr section, and then under in endpoint section
-          if (!point) {
+          if (!suitable?.point || !suitable.eversion) {
             return toSuitableErrorResponse({ message: 'Not Found', status: 404 })
           }
 
@@ -148,10 +151,9 @@ export const createBunServer = async (props: ServeServerInput) => {
             error: extractError,
             payload,
             status,
-          } = await Point0.extract({
-            parent: relatedClient ? base : undefined, // if it is client, then server base is his parent. If it is not client, so it is server which has no parent
-            point,
-            location,
+          } = await suitable.eversion.extract({
+            point: suitable.point,
+            location: suitable.location,
             requiredCtx: undefined, // TODO: pass ban request
           })
 
@@ -166,11 +168,10 @@ export const createBunServer = async (props: ServeServerInput) => {
             const originalIndexHtml = originalIndexHtmls[relatedClient.index]
 
             // so we render page wrapped with layouts
-            const { element, error: fillError } = await Point0.fillPage({
-              base: relatedClient.base,
-              point,
+            const { element, error: fillError } = await suitable.eversion.fillPage({
+              point: suitable.point,
               payload,
-              location,
+              location: suitable.location,
               error: extractError,
               status,
             })
@@ -205,20 +206,10 @@ export const createBunServer = async (props: ServeServerInput) => {
             logger.error(extractError)
             return toJsonErrorResponse({ error: extractError, status, data: payload.data })
           }
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          if (point?.getPageComponent()) {
-            // page in spa mode, it requests full payload, not just data
-            return new Response(JSON.stringify(payload), {
-              headers: { 'Content-Type': 'application/json' },
-              status,
-            })
-          } else {
-            // this is usual endpoint request, return just data
-            return new Response(JSON.stringify(payload.data), {
-              headers: { 'Content-Type': 'application/json' },
-              status,
-            })
-          }
+          return new Response(JSON.stringify(payload.data), {
+            headers: { 'Content-Type': 'application/json' },
+            status,
+          })
         } catch (error) {
           logger.error(error)
           return toSuitableErrorResponse({ error, prefix: 'Fatal Error' })

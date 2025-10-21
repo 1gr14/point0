@@ -4,6 +4,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EmptyCtx, EmptyData, UndefinedCtx } from './index.js'
 import { Point0 } from './index.js'
+import { Eversion0 } from '../eversion/index.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -77,9 +78,9 @@ describe('Point0', () => {
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
     expect(server._extendFns).toHaveLength(0)
+    const eversion2 = Eversion0.create({ id: 'test', base: server2 })
     expect(
-      await Point0.extract({
-        point: server2,
+      await eversion2.extract({
         location: Route0.getLocation('/'),
         requiredCtx: undefined,
       }),
@@ -133,11 +134,11 @@ describe('Point0', () => {
     const clientPoint01 = Point0.extend<typeof server1>()
       .route(Route0.create('/'))
       .page((x) => <div>Hello</div>)
+    const eversion1 = Eversion0.create({ id: 'test', base: server1 })
     expect(
-      await Point0.extract({
+      await eversion1.extract({
         location: Route0.getLocation(url),
         point: clientPoint01,
-        parent: server1,
         requiredCtx: undefined,
       }),
     ).toEqual({
@@ -155,10 +156,10 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.extend<typeof server2>().page(() => <div>Hello</div>)
+    const eversion2 = Eversion0.create({ id: 'test', base: server2 })
     expect(
-      await Point0.extract({
+      await eversion2.extract({
         point: clientPoint02,
-        parent: server2,
         location: Route0.getLocation(url),
         requiredCtx: undefined,
       }),
@@ -176,9 +177,9 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.extend<typeof server3>().page(() => <div>Hello</div>)
+    const eversion3 = Eversion0.create({ id: 'test', base: server3 })
     expect(
-      await Point0.extract({
-        parent: server3,
+      await eversion3.extract({
         point: clientPoint03,
         location: Route0.getLocation(url),
       }),
@@ -203,10 +204,10 @@ describe('Point0', () => {
     const clientPoint01 = Point0.extend<typeof server1>()
       .route(Route0.create('/'))
       .page(() => <div>Hello</div>)
+    const eversion1 = Eversion0.create({ id: 'test', base: server1 })
     expect(
-      await Point0.extract({
+      await eversion1.extract({
         point: clientPoint01,
-        parent: server1,
         location: Route0.getLocation(url),
         requiredCtx: { r: 'str' },
       }),
@@ -226,9 +227,9 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.extend<typeof server2>().page(() => <div>Hello</div>)
+    const eversion2 = Eversion0.create({ id: 'test', base: server2 })
     expect(
-      await Point0.extract({
-        parent: server2,
+      await eversion2.extract({
         location: Route0.getLocation(url),
         point: clientPoint02,
         requiredCtx: { r: 'str' },
@@ -249,9 +250,9 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.extend<typeof server3>().page(() => <div>Hello</div>)
+    const eversion3 = Eversion0.create({ id: 'test', base: server3 })
     expect(
-      await Point0.extract({
-        parent: server3,
+      await eversion3.extract({
         location: Route0.getLocation(url),
         point: clientPoint03,
         requiredCtx: { r: 'str' },

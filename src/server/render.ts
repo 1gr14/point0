@@ -1,6 +1,7 @@
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
-import type { MetaMap, MetaMapValue, PagePayload } from '../core/index.js'
+import type { MetaMap, MetaMapValue } from '../core/index.js'
+import type { Payload } from '../eversion/index.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -15,7 +16,7 @@ export function escapeForInlineJSON(json: string) {
     .replace(/<\/script/gi, '\\u003C/script')
 }
 
-export function serializePayload(payload: PagePayload) {
+export function serializePayload(payload: Payload) {
   return escapeForInlineJSON(JSON.stringify(payload))
 }
 
@@ -63,7 +64,7 @@ export const metaMapToHtml = (metaMap: MetaMap | MetaMap[]) => {
   }
 }
 
-export function renderDocumentHtmlPrefix({ payload }: { payload: PagePayload }) {
+export function renderDocumentHtmlPrefix({ payload }: { payload: Payload }) {
   const { meta } = payload
   const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
   const serializedPayload = serializePayload(payload)
@@ -105,7 +106,7 @@ export function renderDocumentHtml<TContent extends string | undefined = undefin
   originalIndexHtml,
 }: {
   content?: TContent
-  payload: PagePayload
+  payload: Payload
   clientBundlePath?: string
   originalIndexHtml?: string
 }): DocumentHtmlResult<TContent> {
@@ -125,7 +126,7 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
 }: {
   originalIndexHtml: string
   content?: TContent
-  payload: PagePayload
+  payload: Payload
   clientBundlePath?: string
 }): DocumentHtmlResult<TContent> {
   const { meta } = payload
@@ -223,7 +224,7 @@ export function renderStatic({
   originalIndexHtml,
 }: {
   element: React.ReactElement
-  payload: PagePayload
+  payload: Payload
   renderer?: StaticRenderer
   clientBundlePath: string
   originalIndexHtml?: string
@@ -270,7 +271,7 @@ export async function renderReadableStream({
   originalIndexHtml,
 }: {
   element: React.ReactElement
-  payload: PagePayload
+  payload: Payload
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml?: string

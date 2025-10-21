@@ -1,0 +1,391 @@
+import { Route0 } from '@devp0nt/route0'
+import type {
+  AnyPoint,
+  Ctx,
+  Data,
+  EmptyCtx,
+  EmptyData,
+  ExtendedBasePoint,
+  InitialBasePoint,
+  MetaMap,
+  Method,
+  PageComponent,
+  ReadyPoint,
+  UndefinedCtx,
+} from '../core/index.js'
+
+export class Eversion0 {
+  id: string | number | undefined
+  base: InitialBasePoint | ExtendedBasePoint
+  parent: Eversion0 | undefined
+  points: PointsCollection
+  pages: PagesCollection
+  children: Eversion0[]
+
+  private constructor({
+    id,
+    base,
+    parent,
+    points,
+    pages,
+    children,
+  }: {
+    id: string | number | undefined
+    base: InitialBasePoint | ExtendedBasePoint
+    parent?: Eversion0 | undefined
+    points?: PointsCollection
+    pages?: PagesCollection
+    children?: Eversion0[]
+  }) {
+    this.id = id
+    this.base = base
+    this.points = points ?? []
+    this.pages = pages ?? []
+    this.children = children ?? []
+    this.parent = parent
+  }
+
+  static create({ id, base, points, pages }: CreateEversionInput): Eversion0 {
+    return new Eversion0({ id, base, points, pages })
+  }
+
+  addChild(input: CreateEversionInput) {
+    const child = new Eversion0({
+      id: input.id,
+      base: input.base,
+      points: input.points,
+      pages: input.pages,
+      parent: input.parent === null ? undefined : this,
+    })
+    this.children.push(child)
+  }
+
+  getParents(): [InitialBasePoint, ...ExtendedBasePoint[]] | [] {
+    const parents: Array<InitialBasePoint | ExtendedBasePoint> = []
+    let current: Eversion0 | undefined = this.parent
+    while (current) {
+      parents.push(current.base)
+      current = current.parent
+    }
+    return parents.reverse() as [InitialBasePoint, ...ExtendedBasePoint[]] | []
+  }
+
+  idToLocation(id: string): Route0.Location {
+    return Route0.getLocation(`/endpoints/${id}`)
+  }
+
+  normalizeLocation(input: LocationInput): Route0.Location {
+    const location = 'location' in input ? input.location : 'path' in input ? Route0.getLocation(input.path) : undefined
+    if (location) {
+      return location
+    }
+    const id = 'id' in input ? input.id : undefined
+    if (id) {
+      return this.idToLocation(id)
+    }
+    throw new Error('location or path or id is required')
+  }
+
+  _getSuitableChildPoint({
+    method: providedMethod,
+    ...locationProps
+  }: {
+    method: Method
+  } & LocationInput):
+    | {
+        point: ReadyPoint
+        location: Route0.Location
+        eversion: Eversion0
+      }
+    | undefined {
+    const location = this.normalizeLocation(locationProps)
+    for (const child of this.children) {
+      const result = child.getSuitablePoint({ method: providedMethod, location })
+      if (result) {
+        return result
+      }
+    }
+    return undefined
+  }
+  _getSuitableSelfPoint({
+    method: providedMethod,
+    ...locationProps
+  }: {
+    method: Method
+  } & LocationInput):
+    | {
+        point: ReadyPoint
+        location: Route0.Location
+        eversion: Eversion0
+      }
+    | undefined {
+    const location = this.normalizeLocation(locationProps)
+    for (const { method, route, point } of this.points) {
+      if (providedMethod.toLowerCase() !== method.toLowerCase()) {
+        continue
+      }
+      const match = Route0.getMatch(route, location)
+      if (!match.exact) {
+        continue
+      }
+      return {
+        point,
+        location: match.location,
+        eversion: this,
+      }
+    }
+    return undefined
+  }
+  getSuitablePoint({
+    method: providedMethod,
+    ...locationProps
+  }: {
+    method: Method
+  } & LocationInput):
+    | {
+        point: ReadyPoint
+        location: Route0.Location
+        eversion: Eversion0
+      }
+    | undefined {
+    const location = this.normalizeLocation(locationProps)
+    const suitableChildPoint = this._getSuitableChildPoint({ method: providedMethod, location })
+    if (suitableChildPoint) {
+      return suitableChildPoint
+    }
+    const suitableSelfPoint = this._getSuitableSelfPoint({ method: providedMethod, location })
+    if (suitableSelfPoint) {
+      return suitableSelfPoint
+    }
+    return undefined
+  }
+
+  _getSuitableChildEversion<TForce extends boolean = false>({
+    method: providedMethod,
+    force = false,
+    ...locationProps
+  }: {
+    method: Method
+    force?: boolean
+  } & LocationInput): TForce extends true ? Eversion0 : Eversion0 | undefined {
+    const location = this.normalizeLocation(locationProps)
+    for (const child of this.children) {
+      const result = child.getSuitableEversion({ method: providedMethod, location, force })
+      if (result) {
+        return result
+      }
+    }
+    if (force) {
+      return this
+    }
+    return undefined as never
+  }
+  _getSuitableSelfEversion<TForce extends boolean = false>({
+    method: providedMethod,
+    force = false as TForce,
+    ...locationProps
+  }: {
+    method: Method
+    force?: TForce
+  } & LocationInput): TForce extends true ? Eversion0 : Eversion0 | undefined {
+    const location = this.normalizeLocation(locationProps)
+    const route = this.base.getRoute()
+    if (!route) {
+      if (force) {
+        return this
+      }
+      return undefined as never
+    }
+    const match = Route0.getMatch(route, location)
+    if (match.parent || match.exact) {
+      return this
+    }
+    return undefined as never
+  }
+  getSuitableEversion<TForce extends boolean = false>({
+    method: providedMethod,
+    force = false,
+    ...locationProps
+  }: {
+    method: Method
+    force?: boolean
+  } & LocationInput): TForce extends true ? Eversion0 : Eversion0 | undefined {
+    const location = this.normalizeLocation(locationProps)
+    const suitableChildEversion = this._getSuitableChildEversion({ method: providedMethod, location })
+    if (suitableChildEversion) {
+      return suitableChildEversion
+    }
+    const suitableSelfEversion = this._getSuitableSelfEversion({ method: providedMethod, location })
+    if (suitableSelfEversion) {
+      return suitableSelfEversion
+    }
+    if (force) {
+      const suitableChildEversion = this._getSuitableChildEversion({ method: providedMethod, location, force: true })
+      if (suitableChildEversion) {
+        return suitableChildEversion
+      }
+      return this
+    }
+    return undefined as never
+  }
+
+  getSuitable<TForce extends boolean = false>({
+    method: providedMethod,
+    force = false as TForce, // return self (if no children) or first child eversion without nested child, if no one suitable found
+    ...locationProps
+  }: {
+    method: Method
+    force?: TForce
+  } & LocationInput): TForce extends true
+    ? {
+        point: ReadyPoint
+        location: Route0.Location
+        eversion: Eversion0
+      }
+    :
+        | {
+            point: ReadyPoint | undefined
+            location: Route0.Location
+            eversion: Eversion0 | undefined
+          }
+        | undefined {
+    const location = this.normalizeLocation(locationProps)
+    const suitablePoint = this.getSuitablePoint({ method: providedMethod, location })
+    if (suitablePoint) {
+      return suitablePoint
+    }
+    const suitableEversion = this.getSuitableEversion({ method: providedMethod, location, force })
+    if (suitableEversion) {
+      return { point: undefined, location, eversion: suitableEversion } as never
+    }
+    return undefined as never
+  }
+
+  async extract({
+    point,
+    requiredCtx,
+    ...locationProps
+  }: WithRequiredCtx & {
+    point?: AnyPoint | undefined
+  } & LocationInput): Promise<ExtractResult> {
+    let ctxOutput: Ctx = requiredCtx ?? {}
+    let dataOutput: Data = {}
+    const extendFns = [...this.getParents().flatMap((parent) => parent.getExtendFns()), ...(point?._extendFns ?? [])]
+    const location = this.normalizeLocation(locationProps)
+    // TODO: get real meta
+    const meta = { title: 'Hello, world!' }
+    // TODO: get status from real point data
+
+    try {
+      for (const extendFn of extendFns) {
+        switch (extendFn.type) {
+          case 'ctx':
+            ctxOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location })
+            break
+          case 'loader':
+            dataOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location })
+            break
+          // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+          default:
+            throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
+        }
+      }
+      if (point) {
+        return { ctx: ctxOutput, payload: { data: dataOutput, meta, location }, error: undefined, status: 200 }
+      } else {
+        return {
+          ctx: ctxOutput,
+          payload: { data: dataOutput, meta, location },
+          error: new Error(`Point Not Found: ${location.pathname}`),
+          status: 404,
+        }
+      }
+    } catch (error) {
+      return { ctx: ctxOutput, payload: { data: dataOutput, meta, location }, error, status: 500 }
+    }
+  }
+
+  // TODO
+  // not async getSuitablePage(), becouse we here check only by route and it is work with pages collection not points collection
+
+  fillPage<TPoint extends AnyPoint | undefined = undefined>({
+    point,
+    error,
+    status,
+    payload,
+    ...locationProps
+  }: {
+    point: TPoint | undefined
+    payload: Payload
+    error?: unknown
+    status?: number | undefined
+  } & LocationInput): {
+    element: React.ReactElement
+    status: number | undefined
+    error: unknown
+    location: Route0.Location
+  } {
+    const location = this.normalizeLocation(locationProps)
+    if (error) {
+      const element = <div>Error: {(error as Error).message}</div>
+      return { element, error, status, location }
+    }
+    if (!point) {
+      // TODO: use provided errors
+      const element = <div>Page not found</div>
+      return { element, error: new Error(`Page not found: ${location.pathname}`), status: 404, location }
+    }
+    const PageComponent = point.getPageComponent()
+    if (!PageComponent) {
+      // TODO: use provided errors
+      const element = <div>Point has no page element</div>
+      return { element, error: new Error(`Point has no page element`), status: 404, location }
+    }
+    const element = <PageComponent data={payload.data} location={location} />
+    // TODO: use provided meta
+    return { element, error: undefined, status, location }
+  }
+}
+
+export type CreateEversionInput = {
+  id: string | number | undefined
+  base: InitialBasePoint | ExtendedBasePoint
+  parent?: null
+  points?: PointsCollection
+  pages?: PagesCollection
+}
+
+export type PointsCollectionRecord = {
+  method: Method
+  route: Route0.AnyRoute
+  point: ReadyPoint
+}
+export type PointsCollection = PointsCollectionRecord[]
+export type PagesCollectionRecord = {
+  route: Route0.AnyRoute
+  component: (() => Promise<PageComponent> | (() => PageComponent)) | PageComponent
+}
+export type PagesCollection = PagesCollectionRecord[]
+
+export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }
+
+export type WithRequiredCtx<TBasePoint extends AnyPoint = AnyPoint<any, Ctx> | AnyPoint<any, UndefinedCtx>> =
+  TBasePoint extends AnyPoint
+    ? TBasePoint['Infer']['RequiredCtx'] extends Ctx
+      ? {
+          requiredCtx: TBasePoint['Infer']['RequiredCtx']
+        }
+      : { requiredCtx?: undefined }
+    : { requiredCtx?: undefined }
+
+export type Payload<TData extends Data = Data> = { location: Route0.Location; data: TData; meta: MetaMap | MetaMap[] }
+export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {
+  ctx: TOutputCtx
+  payload: Payload<TOutputData>
+  error: unknown
+  status: number | undefined
+}
+export type InferExtractResult<TPoint extends AnyPoint> =
+  TPoint extends AnyPoint<any, any, infer TOutputCtx, infer TOutputData, any, any>
+    ? ExtractResult<TOutputCtx, TOutputData>
+    : ExtractResult<EmptyCtx, EmptyData>

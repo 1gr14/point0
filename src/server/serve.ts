@@ -1,4 +1,5 @@
-import type { AnyPoint, InitialPoint, PointsCollection } from '../core/index.js'
+import type { ExtendedBasePoint, InitialBasePoint } from '../core/index.js'
+import type { PagesCollection, PointsCollection } from '../eversion/index.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type ServeLogger = {
@@ -7,15 +8,18 @@ export type ServeLogger = {
 }
 export type ServeClientInput = {
   ssr?: boolean
-  base: AnyPoint
+  points?: PointsCollection
+  pages?: PagesCollection
+  base: InitialBasePoint | ExtendedBasePoint
   basepath?: string
   distDir?: string
   distRoute?: string
   srcEntry?: string
 }
 export type ServeServerInput = {
-  base: InitialPoint
-  points: PointsCollection
+  base: InitialBasePoint
+  points?: PointsCollection
+  pages?: PagesCollection
   port?: number | string | undefined
   logger?: ServeLogger
   dirname?: string
@@ -25,15 +29,18 @@ export type ServeServerInput = {
 
 export type ServeClientInputParsed = {
   ssr: boolean
-  base: AnyPoint
+  points: PointsCollection
+  pages: PagesCollection
+  base: InitialBasePoint | ExtendedBasePoint
   basepath: string
   distDir: string | undefined
   distRoute: string | undefined
   srcEntry: string | undefined
 }
 export type ServeServerInputParsed = {
-  base: InitialPoint
+  base: InitialBasePoint
   points: PointsCollection
+  pages: PagesCollection
   port: number | string | undefined
   logger: ServeLogger
   dirname: string | undefined
@@ -72,6 +79,8 @@ const parseServeClientInput = (
   }
   return {
     ssr,
+    points: input.points ?? [],
+    pages: input.pages ?? [],
     base: input.base,
     basepath,
     distDir,
@@ -80,7 +89,7 @@ const parseServeClientInput = (
   }
 }
 export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
-  const { dirname, port, points, base } = input
+  const { dirname, port, points, pages, base } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
@@ -104,7 +113,8 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     )
   }
   return {
-    points,
+    points: points ?? [],
+    pages: pages ?? [],
     port,
     logger,
     dirname,
