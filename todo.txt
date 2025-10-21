@@ -1,12 +1,13 @@
+.create({id}), .extends({id}) it is required. And it will be base name/id. .id used only for ready points
 react query replace data
 
 client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
-<App /> becouse it can be client only app and we can figure out how work with it
+<App /> becouse it can be client only app and we can figure out how work with it — hydrate({wrapper})
 error handling, just catch it in <App><ErrorBoundary></App>, or better .errorComponent()
 .route(string), points collection also [string, import]
-.ctx({}) just append, not replace
+.ctx({})
 
-.page(() => [201, <div />]).page(() => [404, <div />])
+.loader(() => [201, <div />]).loader(() => [404, <div />])
 
 inject react query, queryClient to Point0.client({ queryClient })
 const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
@@ -97,7 +98,7 @@ npm point0
 
 ---
 
-const x = await point.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
+easy ast parese and expot point.load thats all const x = await base.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
 add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
 .useStaticLoader((props) => ) only server rendering
 .useLoader(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
