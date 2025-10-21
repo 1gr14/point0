@@ -1,4 +1,5 @@
 import { Route0 } from '@devp0nt/route0'
+import * as React from 'react'
 import type {
   AnyPoint,
   Ctx,
@@ -15,8 +16,9 @@ import type {
   UndefinedCtx,
 } from '../core/index.js'
 
+// TODO: when find suitable allow porvide "baseId", then it will find only inside that
+// so remove force
 export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
-  id: string | number | undefined
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
   parent: Eversion0<TRequiredCtx> | undefined
   points: PointsCollection
@@ -24,21 +26,18 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
   children: Array<Eversion0<TRequiredCtx>>
 
   private constructor({
-    id,
     base,
     parent,
     points,
     pages,
     children,
   }: {
-    id: string | number | undefined
     base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
     parent?: Eversion0<TRequiredCtx> | undefined
     points?: PointsCollection
     pages?: PagesCollection
     children?: Array<Eversion0<TRequiredCtx>>
   }) {
-    this.id = id
     this.base = base
     this.points = points ?? []
     this.pages = pages ?? []
@@ -49,13 +48,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
   static create<
     TBasePoint extends InitialBasePoint,
     TRequiredCtx extends RequiredCtx = TBasePoint['Infer']['RequiredCtx'],
-  >({ id, base, points, pages }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
-    return new Eversion0<TRequiredCtx>({ id, base, points, pages })
+  >({ base, points, pages }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
+    return new Eversion0<TRequiredCtx>({ base, points, pages })
   }
 
   addChild(input: CreateEversionInput<TRequiredCtx>) {
     const child = new Eversion0<TRequiredCtx>({
-      id: input.id,
       base: input.base,
       points: input.points,
       pages: input.pages,
@@ -326,11 +324,33 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
     return await this.extract({ point: suitable.point, requiredCtx, location: suitable.location } as never)
   }
 
+  // TODO: make it also work for nested children
+  // but for now we use it only in hidration where all pages in root eversion
+  async getSuitablePageComponent({ ...locationProps }: {} & LocationInput): Promise<
+    | {
+        PageComponent: PageComponent
+        location: Route0.Location
+        eversion: Eversion0<TRequiredCtx>
+      }
+    | undefined
+  > {
+    const location = this.normalizeLocation(locationProps)
+    for (const record of this.pages) {
+      const match = Route0.getMatch(record.route, location)
+      if (match.exact) {
+        const PageComponent = 'component' in record ? record.component : await record.lazy()
+        return { PageComponent, location: match.location, eversion: this }
+      }
+    }
+    return undefined
+  }
+
   // TODO
   // not async getSuitablePage(), becouse we here check only by route and it is work with pages collection not points collection
 
   fillPage<TPoint extends AnyPoint | undefined = undefined>({
     point,
+    // TODO: use provided error to show correct page
     error,
     status,
     payload,
@@ -366,10 +386,34 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = UndefinedCtx> {
     // TODO: use provided meta
     return { element, error: undefined, status, location }
   }
+
+  async fillSuitablePage({
+    payload,
+    error,
+    ...locationProps
+  }: {
+    payload: Payload
+    error?: unknown
+  } & LocationInput): Promise<{
+    element: React.ReactElement
+    error: unknown
+    location: Route0.Location
+  }> {
+    const location = this.normalizeLocation(locationProps)
+    const suitable = await this.getSuitablePageComponent({ location })
+    if (!suitable) {
+      return {
+        element: <div>Page not found</div>,
+        error: new Error(`Page not found: ${location.pathname}`),
+        location,
+      }
+    }
+    const element = <suitable.PageComponent data={payload.data} location={location} />
+    return { element, error: undefined, location }
+  }
 }
 
 export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
-  id: string | number | undefined
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
   parent?: null
   points?: PointsCollection
@@ -384,8 +428,7 @@ export type PointsCollectionRecord = {
 export type PointsCollection = PointsCollectionRecord[]
 export type PagesCollectionRecord = {
   route: Route0.AnyRoute
-  component: (() => Promise<PageComponent> | (() => PageComponent)) | PageComponent
-}
+} & ({ component: PageComponent } | { lazy: () => Promise<PageComponent> })
 export type PagesCollection = PagesCollectionRecord[]
 
 export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }

@@ -81,7 +81,7 @@ describe('Point0', () => {
     const clientPoint02 = Point0.extend<typeof server2>()
       .route(Route0.create('/'))
       .page((x) => <div>Hello</div>)
-    const eversion2 = Eversion0.create({ id: 'test', base: server2 })
+    const eversion2 = Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation('/'),
@@ -138,7 +138,7 @@ describe('Point0', () => {
     const clientPoint01 = Point0.extend<typeof server1>()
       .route(Route0.create('/'))
       .page((x) => <div>Hello</div>)
-    const eversion1 = Eversion0.create({ id: 'test', base: server1 })
+    const eversion1 = Eversion0.create({ base: server1 })
     expect(
       await eversion1.extract({
         location: Route0.getLocation(url),
@@ -159,7 +159,7 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.extend<typeof server2>().page(() => <div>Hello</div>)
-    const eversion2 = Eversion0.create({ id: 'test', base: server2 })
+    const eversion2 = Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
         point: clientPoint02,
@@ -180,7 +180,7 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.extend<typeof server3>().page(() => <div>Hello</div>)
-    const eversion3 = Eversion0.create({ id: 'test', base: server3 })
+    const eversion3 = Eversion0.create({ base: server3 })
     expect(
       await eversion3.extract({
         point: clientPoint03,
@@ -208,7 +208,7 @@ describe('Point0', () => {
     const clientPoint01 = Point0.extend<typeof server1>()
       .route(Route0.create('/'))
       .page(() => <div>Hello</div>)
-    const eversion1 = Eversion0.create({ id: 'test', base: server1 })
+    const eversion1 = Eversion0.create({ base: server1 })
     expect(
       await eversion1.extract({
         point: clientPoint01,
@@ -231,7 +231,7 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.extend<typeof server2>().page(() => <div>Hello</div>)
-    const eversion2 = Eversion0.create({ id: 'test', base: server2 })
+    const eversion2 = Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation(url),
@@ -254,7 +254,7 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.extend<typeof server3>().page(() => <div>Hello</div>)
-    const eversion3 = Eversion0.create({ id: 'test', base: server3 })
+    const eversion3 = Eversion0.create({ base: server3 })
     expect(
       await eversion3.extract({
         location: Route0.getLocation(url),

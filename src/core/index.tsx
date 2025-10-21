@@ -10,6 +10,7 @@ export class Point0<
 > {
   Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData> = {} as never
 
+  _isInitialBase: TParent extends UndefinedParent ? true : false
   _extendFns: ExtendFnRecord[]
   _route: TRoute
   _page: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
@@ -17,12 +18,14 @@ export class Point0<
   _method: Method | UndefinedMethod
 
   private constructor(props?: {
+    _isInitialBase?: TParent extends UndefinedParent ? true : false
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
     _page?: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
   }) {
+    this._isInitialBase = (props?._isInitialBase ?? false) as TParent extends UndefinedParent ? true : false
     this._extendFns = props?._extendFns ?? []
     this._route = props?._route ?? (undefined as TRoute)
     this._page = props?._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
@@ -45,6 +48,7 @@ export class Point0<
     _method?: Method | UndefinedMethod
   }): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     return new Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _isInitialBase: this._isInitialBase as TParent extends UndefinedParent ? true : false,
       _extendFns: overrides?._extendFns ?? this._extendFns,
       _route: (overrides?._route ?? this._route) as TRoute,
       _page: (overrides?._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
@@ -56,7 +60,7 @@ export class Point0<
   // base
 
   static create(): Point0 {
-    return new Point0()
+    return new Point0({ _isInitialBase: true })
   }
 
   static extend<TParent extends ParentPoint>(): Point0<TParent, TParent['Infer']['RequiredCtx']> {
@@ -64,6 +68,12 @@ export class Point0<
   }
 
   // setters
+
+  id(id: Id): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _id: id,
+    } as never)
+  }
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
     TParent,

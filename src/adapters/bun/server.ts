@@ -15,9 +15,9 @@ import { isPathnameUnderBasepath } from '../../server/utils.js'
 
 export const createBunServer = async (props: ServeServerInput) => {
   const { points, pages, port, publicDir, base, logger, clients } = parseServeInput(props)
-  const eversion = Eversion0.create({ id: 'server', base, points, pages })
-  for (const [index, client] of clients.entries()) {
-    eversion.addChild({ id: `client-${index}`, base: client.base, points: client.points, pages: client.pages })
+  const eversion = Eversion0.create({ base, points, pages })
+  for (const client of clients) {
+    eversion.addChild({ base: client.base, points: client.points, pages: client.pages })
   }
 
   // cache public files paths

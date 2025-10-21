@@ -2,7 +2,7 @@ import type { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { AnyPoint, ExtendedBasePoint } from '../core/index.js'
+import type { ExtendedBasePoint } from '../core/index.js'
 import type { PagesCollection, Payload } from '../eversion/index.js'
 import { Eversion0 } from '../eversion/index.js'
 
@@ -19,7 +19,6 @@ export type HydrateInput = {
 }
 export type HydrateResult = {
   payload: Payload
-  point: AnyPoint | undefined
   location: Route0.Location
   rootElement: HTMLElement
   element: React.ReactElement
@@ -53,12 +52,11 @@ export async function hydrate({ pages, base, ...input }: HydrateInput): Promise<
   }
 
   // Ask point0 to build the correct page element for the current route.
-  const eversion = Eversion0.create({ id: 'client', base, pages })
-  const suitable = await eversion.getSuitable({ method: 'get', path: payload.location.href, force: true })
-  const { element, error } = await suitable.eversion.fillPage({
-    point: suitable.point,
+  const eversion = Eversion0.create({ base, pages })
+  // TODO: get provided 404 error from eversion
+  const { element, error } = await eversion.fillSuitablePage({
     payload,
-    location: suitable.location,
+    location: payload.location,
   })
   if (error) {
     // Log but don’t crash the app on route resolution issues.
@@ -82,5 +80,5 @@ export async function hydrate({ pages, base, ...input }: HydrateInput): Promise<
     root.render(element)
   }
 
-  return { payload, point: suitable.point, location: suitable.location, rootElement, element }
+  return { payload, location: payload.location, rootElement, element }
 }
