@@ -16,7 +16,7 @@ export default defineConfig([
       '**/.husky/**',
       '**/.git/**',
       '**/templates/**',
-      'point0.config.js',
+      '**/point0.config.js',
       'tsup.config.ts',
       'eslint.config.js',
       '.commitlintrc.js',

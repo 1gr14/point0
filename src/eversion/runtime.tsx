@@ -151,7 +151,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
 
-  _getSuitableSelfEversion({
+  _getSuitableSelfEversionByLocation({
     method: providedMethod,
     baseId,
     ...locationProps
@@ -170,43 +170,22 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     return undefined
   }
-
-  _getSuitableEversion(
-    props: {
-      method: Method
-      baseId?: BaseId | undefined
-      force: true
-      fallbackBaseId?: BaseId
-    } & LocationInput,
-  ): Eversion0<TRequiredCtx>
-  _getSuitableEversion(
-    props: {
-      method: Method
-      baseId?: BaseId | undefined
-      force?: boolean
-      fallbackBaseId?: BaseId
-    } & LocationInput,
-  ): Eversion0<TRequiredCtx> | undefined
-  _getSuitableEversion({
+  _getSuitableEversionByLocation({
     method: providedMethod,
     baseId,
-    fallbackBaseId,
-    force,
     ...locationProps
   }: {
     method: Method
     baseId?: BaseId | undefined
-    force?: boolean
-    fallbackBaseId?: BaseId
   } & LocationInput): Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const suitableSelfEversion = this._getSuitableSelfEversion({ method: providedMethod, location, baseId })
+    const suitableSelfEversion = this._getSuitableSelfEversionByLocation({ method: providedMethod, location, baseId })
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
     const suitableChildEversion = (() => {
       for (const child of this.children) {
-        const result = child._getSuitableEversion({ method: providedMethod, location, baseId })
+        const result = child._getSuitableEversionByLocation({ method: providedMethod, location, baseId })
         if (result) {
           return result
         }
@@ -216,15 +195,53 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (suitableChildEversion) {
       return suitableChildEversion
     }
-    if (fallbackBaseId) {
-      return this._getSuitableEversion({ method: providedMethod, location, baseId: fallbackBaseId })
+    return undefined
+  }
+  _getSuitableEversionByBaseId({ baseId }: { baseId: BaseId | undefined }): Eversion0<TRequiredCtx> | undefined {
+    const suitableSelfEversion = this.base._baseId === baseId ? this : undefined
+    if (suitableSelfEversion) {
+      return suitableSelfEversion
     }
-    if (force) {
-      throw new Error(
-        `No suitable eversion found for method "${providedMethod}" at location "${location.pathname}" and base id "${baseId}" and fallback base id "${fallbackBaseId}"`,
-      )
+    const suitableChildEversion = (() => {
+      for (const child of this.children) {
+        const result = child._getSuitableEversionByBaseId({ baseId })
+        if (result) {
+          return result
+        }
+      }
+      return undefined
+    })()
+    if (suitableChildEversion) {
+      return suitableChildEversion
     }
     return undefined
+  }
+  getSuitableEversionByLocation({
+    method: providedMethod,
+    baseId,
+    fallbackBaseId,
+    ...locationProps
+  }: {
+    method: Method
+    baseId?: BaseId | undefined
+    fallbackBaseId: BaseId | undefined
+  } & LocationInput): Eversion0<TRequiredCtx> {
+    const location = this.normalizeLocation(locationProps)
+    const suitableEversionByLoaction = this._getSuitableEversionByLocation({ method: providedMethod, location, baseId })
+    if (suitableEversionByLoaction) {
+      return suitableEversionByLoaction
+    }
+    const suitableEversionByBaseId = this._getSuitableEversionByBaseId({ baseId })
+    if (suitableEversionByBaseId) {
+      return suitableEversionByBaseId
+    }
+    const suitableEversionByFallbackBaseId = this._getSuitableEversionByBaseId({ baseId: fallbackBaseId })
+    if (suitableEversionByFallbackBaseId) {
+      return suitableEversionByFallbackBaseId
+    }
+    throw new Error(
+      `No suitable eversion found for method "${providedMethod}" at location "${location.pathname}" and base id "${baseId}" and fallback base id "${fallbackBaseId}"`,
+    )
   }
 
   getSuitable({
@@ -242,12 +259,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (suitablePoint) {
       return suitablePoint
     }
-    const suitableEversion = this._getSuitableEversion({
+    // TODO: allow find just by id
+    const suitableEversion = this.getSuitableEversionByLocation({
       method: providedMethod,
       location,
       baseId,
       fallbackBaseId,
-      force: true,
     })
     return { point: undefined, location, eversion: suitableEversion }
   }
@@ -333,7 +350,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & LocationInput): Promise<ExtractResult> {
     const location = this.normalizeLocation(locationProps)
     const suitable = this.getSuitable({ method: providedMethod, location, baseId, fallbackBaseId })
-    return await this.extract({ point: suitable.point, requiredCtx, location: suitable.location } as never)
+    return await suitable.eversion.extract({ point: suitable.point, requiredCtx, location: suitable.location } as never)
   }
 
   // TODO: make it also work for nested children, and respect base id
