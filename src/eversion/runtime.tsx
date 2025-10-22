@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
-import { dehydrate, QueryClient, useQuery } from '@tanstack/react-query'
+import { dehydrate, QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import type {
   AnyPoint,
@@ -19,6 +19,7 @@ import type {
   ReadyPoint,
   RequiredCtx,
   UndefinedCtx,
+  WrapperComponentType,
 } from '../core/index.js'
 
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
@@ -314,6 +315,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           error: undefined,
           status: 200,
           base: this.base,
+          wrapper: this.base._wrapper,
           eversion: this,
         })
       } else {
@@ -324,6 +326,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           error: new Error0(`Point Not Found: ${location.pathname}`),
           status: 404,
           base: this.base,
+          wrapper: this.base._wrapper,
           eversion: this,
         })
       }
@@ -335,6 +338,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         error,
         status: 500,
         base: this.base,
+        wrapper: this.base._wrapper,
         eversion: this,
       })
     }
@@ -378,20 +382,25 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined as never
   }
 
-  wrapWithQueryFetcher({
+  wrapWithReactQuery({
     type,
     location,
     component,
     wrapper,
     error,
+    queryClient,
   }: {
     type: DestinationComponentType
     location: Route0.Location
     component?: PageComponent
-    wrapper?: React.ComponentType<{ children: React.ReactNode }>
+    wrapper?: WrapperComponentType | undefined
     error?: unknown
+    queryClient: QueryClient
   }): React.ReactElement {
-    const QueryFetcherWrapper = () => {
+    const ReactQueryClientProvider = ({ children }: { children: React.ReactNode }) => {
+      return React.createElement(QueryClientProvider, { client: queryClient }, children)
+    }
+    const ReactQueryFetcher = () => {
       const result = useQuery<Payload>({
         queryKey: this.base.getQueryKey({ location }),
         queryFn: async () => await fetch(location.pathname, {}).then(async (res) => await res.json()),
@@ -416,9 +425,67 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return React.createElement(component, { data: result.data, location })
     }
     if (wrapper) {
-      return React.createElement(wrapper, { children: React.createElement(QueryFetcherWrapper) })
+      return React.createElement(wrapper, {
+        children: React.createElement(ReactQueryClientProvider, undefined, React.createElement(ReactQueryFetcher)),
+      })
     }
-    return React.createElement(QueryFetcherWrapper)
+    return React.createElement(ReactQueryClientProvider, undefined, React.createElement(ReactQueryFetcher))
+  }
+
+  notWrapWithReactQuery({
+    type,
+    location,
+    component,
+    payload,
+    wrapper,
+    error,
+  }: {
+    type: DestinationComponentType
+    location: Route0.Location
+    payload?: Payload
+    component?: PageComponent
+    wrapper?: WrapperComponentType | undefined
+    error?: unknown
+  }): React.ReactElement {
+    const errorComponent = this.base.getErrorComponent({ type })
+    const ComponentProvider = () => {
+      if (error) {
+        return React.createElement(errorComponent, { type, error: Error0.from(error), location })
+      }
+      if (!payload) {
+        return React.createElement(errorComponent, { type, error: new Error0('No payload'), location })
+      }
+      if (component) {
+        return React.createElement(component, { data: payload.data, location })
+      }
+      return React.createElement(errorComponent, { type, error: new Error0('No component'), location })
+    }
+    if (wrapper) {
+      return React.createElement(wrapper, { children: React.createElement(ComponentProvider) })
+    }
+    return React.createElement(ComponentProvider)
+  }
+
+  wrapOrNotWrapWithReactQuery({
+    type,
+    location,
+    payload,
+    component,
+    wrapper,
+    error,
+  }: {
+    type: DestinationComponentType
+    location: Route0.Location
+    payload?: Payload
+    component?: PageComponent
+    queryClient: QueryClient | undefined
+    wrapper?: WrapperComponentType | undefined
+    error?: unknown
+  }): React.ReactElement {
+    if (this.base._queryClient) {
+      return this.wrapWithReactQuery({ type, location, component, wrapper, error, queryClient: this.base._queryClient })
+    }
+    return this.notWrapWithReactQuery({ type, location, payload, component, wrapper, error })
   }
 
   withDehydratedState<T extends { payload: Payload; error: unknown }>(
@@ -454,7 +521,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     payload,
     location,
   }: {
-    wrapper?: React.ComponentType<{ children: React.ReactNode }>
+    wrapper?: WrapperComponentType | undefined
     component?: PageComponent | undefined
     point?: TPoint | undefined
     payload?: Payload
@@ -465,11 +532,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     // TODO: use provided errors
     if (error) {
       return {
-        element: this.wrapWithQueryFetcher({
+        element: this.wrapOrNotWrapWithReactQuery({
           type: 'page',
           location,
           error,
           wrapper,
+          queryClient: this.base._queryClient,
+          component,
+          payload,
         }),
         error,
         status,
@@ -478,11 +548,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (!payload) {
       const error = new Error0(`No payload`)
       return {
-        element: this.wrapWithQueryFetcher({
+        element: this.wrapOrNotWrapWithReactQuery({
           type: 'page',
           location,
           error,
           wrapper,
+          queryClient: this.base._queryClient,
+          component,
+          payload,
         }),
         error,
         status: 500,
@@ -490,11 +563,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     if (component) {
       return {
-        element: this.wrapWithQueryFetcher({
+        element: this.wrapOrNotWrapWithReactQuery({
           type: 'page',
           location: payload.location,
           component,
           wrapper,
+          queryClient: this.base._queryClient,
+          payload,
         }),
         error: undefined,
         status,
@@ -504,22 +579,26 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const componentFromPoint = point.getPageComponent()
       if (componentFromPoint) {
         return {
-          element: this.wrapWithQueryFetcher({
+          element: this.wrapOrNotWrapWithReactQuery({
             type: 'page',
             location: payload.location,
             component: componentFromPoint,
             wrapper,
+            queryClient: this.base._queryClient,
+            payload,
           }),
           error: undefined,
           status,
         }
       } else {
         return {
-          element: this.wrapWithQueryFetcher({
+          element: this.wrapOrNotWrapWithReactQuery({
             type: 'page',
             location: payload.location,
             error: new Error0(`Point has no page element`),
             wrapper,
+            queryClient: this.base._queryClient,
+            payload,
           }),
           error: new Error(`Point has no page element`),
           status: 404,
@@ -528,11 +607,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     const error1 = new Error0(`No compoentn, no point: ${payload.location.pathname}`)
     return {
-      element: this.wrapWithQueryFetcher({
+      element: this.wrapOrNotWrapWithReactQuery({
         type: 'page',
         location: payload.location,
         error: error1,
         wrapper,
+        queryClient: this.base._queryClient,
+        payload,
       }),
       error: error1,
       status: 404,
@@ -617,6 +698,7 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   base: InitialBasePoint | ExtendedBasePoint
   pageComponent: PageComponent | undefined
   eversion: Eversion0
+  wrapper: WrapperComponentType | undefined
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
   TPoint extends AnyPoint<any, any, infer TOutputCtx, infer TOutputData, any, any>

@@ -1,6 +1,7 @@
-import type { Route0 } from '@devp0nt/route0'
-import { DefaultErrorComponent, DefaultLoaderComponent } from '../adapters/react-dom/components.js'
 import type { Error0 } from '@devp0nt/error0'
+import type { Route0 } from '@devp0nt/route0'
+import type { QueryClient } from '@tanstack/react-query'
+import { DefaultErrorComponent, DefaultLoaderComponent } from '../adapters/react-dom/components.js'
 
 export class Point0<
   TParent extends ParentPoint | UndefinedParent = UndefinedParent,
@@ -18,6 +19,8 @@ export class Point0<
   static pointsCount = 0
 
   _baseId: BaseId
+  _queryClient: QueryClient | undefined
+  _wrapper: WrapperComponentType | undefined
   _hasParent: TParent extends UndefinedParent ? false : true
   _extendFns: ExtendFnRecord[]
   _route: TRoute
@@ -37,6 +40,8 @@ export class Point0<
 
   private constructor(props: {
     _baseId: BaseId
+    _queryClient?: QueryClient | undefined
+    _wrapper?: WrapperComponentType | undefined
     _hasParent?: TParent extends UndefinedParent ? false : true
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
@@ -56,6 +61,8 @@ export class Point0<
     this._baseId = props._baseId
 
     // overridable
+    this._wrapper = props._wrapper
+    this._queryClient = props._queryClient
     this._hasParent = props._hasParent as TParent extends UndefinedParent ? false : true
     this._extendFns = props._extendFns ?? []
     this._route = props._route ?? (undefined as TRoute)
@@ -83,6 +90,8 @@ export class Point0<
     TRoute extends Route0.AnyRoute | UndefinedRoute,
     THasPage extends HasPage,
   >(overrides?: {
+    _queryClient?: QueryClient | undefined
+    _wrapper?: WrapperComponentType | undefined
     _extendFns?: ExtendFnRecord[]
     _route?: Route0.AnyRoute | UndefinedRoute
     _page?: PageComponent | UndefinedPageComponent
@@ -102,6 +111,8 @@ export class Point0<
       _baseId: this._baseId,
 
       // overridable
+      _queryClient: overrides?._queryClient ?? this._queryClient,
+      _wrapper: overrides?._wrapper ?? this._wrapper,
       _hasParent: this._hasParent as TParent extends UndefinedParent ? false : true,
       _extendFns: overrides?._extendFns ?? this._extendFns,
       _route: (overrides?._route ?? this._route) as TRoute,
@@ -143,6 +154,12 @@ export class Point0<
   ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
+    })
+  }
+
+  wrapper(wrapper: WrapperComponentType): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _wrapper: wrapper,
     })
   }
 
@@ -471,6 +488,7 @@ export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer
 export type FetchOptionsFn = (location: Route0.Location) => RequestInit
 export type FetchOptionsOrFn = FetchOptionsFn | RequestInit
 
+export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 export type LoaderFnProps<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,

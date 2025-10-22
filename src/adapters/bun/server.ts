@@ -174,6 +174,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                 error: extractResult.error,
                 status: extractResult.status,
                 location: extractResult.payload.location,
+                wrapper: extractResult.wrapper,
               })
               if (extractResult.error || fillError) {
                 logger.error(extractResult.error || fillError)

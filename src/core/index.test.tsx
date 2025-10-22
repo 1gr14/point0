@@ -99,6 +99,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion2,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
   })
 
@@ -158,6 +159,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion1,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -185,6 +187,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion2,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
@@ -208,6 +211,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion3,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
   })
 
@@ -241,6 +245,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion1,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -269,6 +274,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion2,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       r: ctx.r,
@@ -294,6 +300,7 @@ describe('Point0', () => {
       pageComponent,
       eversion: eversion3,
       dehydratedState: expect.any(Object),
+      wrapper: undefined,
     })
   })
 
