@@ -1,4 +1,9 @@
+baseId string
+mount({ hydration: true })
+
 const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
+const {data, meta, res} = await someEndpoint.useFetch({ id: 123 }) → json
+form
 .loader(() => [201, <div />]).loader(() => [404, <div />])
 .endpoint({req} => Response(Bun.file))
 .restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
@@ -6,103 +11,76 @@ const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
 
 auth
 
-.useLoaderData
-.exposeCtx, add value to __PAGE0_EXPOSED_CTX__ as usual javascript, it can even have await import('...') inside. Or maybe it returns not result, but array of extend fns itself, to be called in client right before calling .clientCtx fns
-.uesExposedCtx
 .clientLoader, after call do not allow usual loader another
 .clientCtx, has access to exposeCtx,  just add  and there real javascript, can have usual useHooks (useEffect etc) will be called only on client
+.useClientCtx
 
 react router helper
 expo router helper
-.loaderComponent
-client only page
-client only routing
+base({useUrl: ...})
 
-
-.route( * will be used as is in fetch request ).id().loader().layout(() = <>{children}</>) standalone
-.loader().id().layout(() = <>{children}</>).route(here id resets to route path).loader().page() connected to page
-find suiatble layouts, find suitable page. Extract each layout payload, extract page payload. Render <Layout1 data={data1}><Layout2 data={data2}><Page data={data3} /></></>. __PAYLOAD_0__=data1 __PAYLOAD_1__=data2 __PAYLOAD_2__
-layoutsCollection
-pagesCollection
-endpointsCollection
-layout scroll position ok
+...? .route( * will be used as is in fetch request ).id().loader().layout(() = <>{children}</>) standalone
+...? .loader().id().layout(() = <>{children}</>).route(here id resets to route path).loader().page() connected to page
+...? find suiatble layouts, find suitable page. Extract each layout payload, extract page payload. Render <Layout1 data={data1}><Layout2 data={data2}><Page data={data3} /></></>. __PAYLOAD_0__=data1 __PAYLOAD_1__=data2 __PAYLOAD_2__
+.layout() maybe as destination type
+layout scroll position
 example general layout, idea layout, idea news page
 
-entryInput should be gettable from client and server itslef
-we alway should pass client, but we can pass server as client. {server, client: server}
-config for generation points file: [point]
-config for generation pages file [route, () => page, ...layout]
-config for generation server entry, client entry, ot at least forward settings to them
+points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
 .route(string), points collection also [string, import]
-env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
-cli for simplify commands, like build with bun: point0 build
-points collection generator, auto find points [Page$, Endpoint$], sort by no params to params routes, save to file: version with text anyze, version with parse code on exports with .page() or .endpoint() in the end
-.disable()
 
 extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
+
 const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
 ? .before, .after
 
-.loader(...).component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extendFns
+.component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extendFns
+.useLoad|.exec(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
+on client build remove server code, just force to rebuild @point0/core package and there have if (process.env.IS_CLIENT === true) {retrun undefined}
 
 example expo
 example vite-hono
 example elysia
 
-meta, title
-test for units
-html template parsing just by provided data from endpoint or force provided vars
-test for server
-server0.routes({})
+html template parsing just by force provided vars from
 
+config to forward settings to client and server
+env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
+? maybe move config to Point0.extend and Point0.create and extract it from there
+cli for simplify commands, like build with bun: point0 build
 
 split index.ts code
-htmlRewriter fall back on no bun
+.disable()
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
-Error0 as serializeError and deserializeError provider
 superjson
-.loaderComponent, .pageLoaderComponent, .layoutLoaderComponent, .componentLoaderComponent
-on client build remove server code, just force to rebuild @point0/core package and there have if (process.env.IS_CLIENT === true) {retrun undefined}
-add guard to not allow server code in client bundle with s and c wrappers
-generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
-Record<string, never> & {}
-docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
+route0 respect origin on match and try two clients with one server
 .ctx(true, {}) for for assign ctx
-own HMR implementation. We need at first wait for server hmr, and send request to client if it needs hmr
-combine .route().route()
-analyze if there same id points
-openapi plugin
-? create ClientPoint0 and ServerPoint0 extends Point0, becouse clientPoint0 may have useQuery, layout etc. but server not. But why not... idk
+.extendRoute()
+remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
+analyze if there same id points or route points
 superjson
-persistent zustand store
-отказаться от дата в пэйлоаде в случае, если работает реакт квери
+make components and pages named in react dev tools
+отказаться от дата в пэйлоаде в случае, если работает реакт квери, или вообще отказаться от этой дата
 
+test for units
+test for server
+
+workspace packages
 override last commit message on each file
 choose license
 site
 prepare start0 selling
-npm point0
+npm @point0
 
 ---
 
-make components and pages named in react dev tools
-easy ast parese and expot point.load thats all const x = await base.load(async ({ctx}) => ctx.prisma.x.findOne()) // or .exec ?
-add to poinets collection generator retrieving .load and .useLoader fns so they can be used in server
+openapi plugin
+persistent zustand store
+.isSuitable(() => boolean) to override default route suitable behaviour
+
+---
+
+generic as object with not required fields, undefined itself we can do by "typeof undefined symbol"
 .useStaticLoader((props) => ) only server rendering
-.useLoader(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
-react query plugin wraps .useLoader and provide useQueryLoader and hydration out of the box
-.res(({req}) => { req.json() }) || .res(() => [404, {any: "json"}]) || .res(() => [200, {any: "json"}]).page(() => <div />)
-.component() has hidden route and can have fetcher
-.component, should not recall already called middlewares
-
-
----
-
-Инпут отдельно рестинпут отдельно, парамс параллельно для трансформации и валидации
-Эндпоинтс коллекшен это метод, роут, поинт. А пейджес коллекшен это роут, элемент
-А лэйоут просто функция такая же как пейдж, и после неё нельзя менять дата, и в лэйоуте просто поступит что надо как пропсы
-Точка лэйоут это отдельная сущность, он по сути как страница, но имеет чилдрен и ве лэйоуты вставляются друг в друга
-тчк isSuitable для возможного исправления
-тчк wrapper то же самое что и лэйоут но без ладера, зачем тогда вообще нужно
-До Компонента может быть указан инпут, потом лоадеры, и тогда вернётся реакт компонент, который может принимать этот инпут в качестве пропсов
+docs my: ()=>'' favorite: ()=>'' client: ()=>'' fns: ()=>''
