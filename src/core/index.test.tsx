@@ -20,7 +20,7 @@ describe('Point0', () => {
   })
 
   it('creates an empty instance', () => {
-    const server = Point0.create({ id: 'server' })
+    const server = Point0.source('server')
     expect(server).toBeInstanceOf(Point0)
     expectTypeOf(server).toEqualTypeOf<Point0>()
     expectTypeOf(server).toEqualTypeOf<Point0<undefined, UndefinedCtx, EmptyCtx, EmptyData>>()
@@ -28,7 +28,7 @@ describe('Point0', () => {
   })
 
   it('extends with ctx fn', () => {
-    const server = Point0.create({ id: 'server' })
+    const server = Point0.source('server')
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
@@ -55,7 +55,7 @@ describe('Point0', () => {
   })
 
   it('extends with ctx with {}', async () => {
-    const server = Point0.create({ id: 'server' })
+    const server = Point0.source('server')
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
@@ -79,8 +79,8 @@ describe('Point0', () => {
     // not modified original server
     expect(server._extendFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
-    const clientPoint02 = Point0.extend<typeof server2>({ id: 'client' }).route(Route0.create('/')).page(pageComponent)
-    const eversion2 = Eversion0.create({ base: server2 })
+    const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
+    const eversion2 = Eversion0.source({ base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation('/'),
@@ -108,7 +108,7 @@ describe('Point0', () => {
   })
 
   it('extends with loader fn', () => {
-    const server = Point0.create({ id: 'server' })
+    const server = Point0.source('server')
     const server1 = server.loader(() => ({
       a: 1,
       b: 2,
@@ -137,15 +137,15 @@ describe('Point0', () => {
   })
 
   it('extract without required ctx', async () => {
-    const server = Point0.create({ id: 'server' })
+    const server = Point0.source('server')
     const url = '/z/x/c'
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
     }))
     const pageComponent = () => <div>Hello</div>
-    const clientPoint01 = Point0.extend<typeof server1>({ id: 'client' }).route(Route0.create('/')).page(pageComponent)
-    const eversion1 = Eversion0.create({ base: server1 })
+    const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
+    const eversion1 = Eversion0.source({ base: server1 })
     expect(
       await eversion1.extract({
         location: Route0.getLocation(url),
@@ -173,8 +173,8 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.extend<typeof server2>({ id: 'client' }).page(pageComponent)
-    const eversion2 = Eversion0.create({ base: server2 })
+    const clientPoint02 = Point0.connect<typeof server2>('client').page(pageComponent)
+    const eversion2 = Eversion0.source({ base: server2 })
     expect(
       await eversion2.extract({
         point: clientPoint02,
@@ -202,8 +202,8 @@ describe('Point0', () => {
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
     }))
-    const clientPoint03 = Point0.extend<typeof server3>({ id: 'client' }).page(pageComponent)
-    const eversion3 = Eversion0.create({ base: server3 })
+    const clientPoint03 = Point0.connect<typeof server3>('client').page(pageComponent)
+    const eversion3 = Eversion0.source({ base: server3 })
     expect(
       await eversion3.extract({
         point: clientPoint03,
@@ -229,7 +229,7 @@ describe('Point0', () => {
   })
 
   it('extract ctx with required ctx input', async () => {
-    const server = Point0.create({ id: 'server' }).requireCtx<{ r: string }>()
+    const server = Point0.source('server').requireCtx<{ r: string }>()
     const url = '/z/x/c'
     const server1 = server.ctx(({ ctx }) => ({
       ...ctx,
@@ -237,8 +237,8 @@ describe('Point0', () => {
       b: 2,
     }))
     const pageComponent = () => <div>Hello</div>
-    const clientPoint01 = Point0.extend<typeof server1>({ id: 'client' }).route(Route0.create('/')).page(pageComponent)
-    const eversion1 = Eversion0.create({ base: server1 })
+    const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
+    const eversion1 = Eversion0.source({ base: server1 })
     expect(
       await eversion1.extract({
         point: clientPoint01,
@@ -268,8 +268,8 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.extend<typeof server2>({ id: 'client' }).page(pageComponent)
-    const eversion2 = Eversion0.create({ base: server2 })
+    const clientPoint02 = Point0.connect<typeof server2>('client').page(pageComponent)
+    const eversion2 = Eversion0.source({ base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation(url),
@@ -299,8 +299,8 @@ describe('Point0', () => {
       r: ctx.r,
       c: 5,
     }))
-    const clientPoint03 = Point0.extend<typeof server3>({ id: 'client' }).page(pageComponent)
-    const eversion3 = Eversion0.create({ base: server3 })
+    const clientPoint03 = Point0.connect<typeof server3>('client').page(pageComponent)
+    const eversion3 = Eversion0.source({ base: server3 })
     expect(
       await eversion3.extract({
         location: Route0.getLocation(url),
@@ -351,8 +351,8 @@ describe('Point0', () => {
 
   it('creates an empty instance', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.create({ id: 'server' })
-    const clientPoint0 = Point0.extend<typeof server>({ id: 'client' })
+    const server = Point0.source('server')
+    const clientPoint0 = Point0.connect<typeof server>('client')
     expect(clientPoint0).toBeInstanceOf(Point0)
     expectTypeOf(clientPoint0).toEqualTypeOf<Point0<typeof server>>()
     expectTypeOf(clientPoint0).toEqualTypeOf<Point0<typeof server, UndefinedCtx, EmptyCtx, EmptyData>>()
@@ -361,7 +361,7 @@ describe('Point0', () => {
 
   it('creates ready page', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.create({ id: 'server' })
+    const server = Point0.source('server')
       .ctx(() => ({
         a: 1,
         b: 2,
@@ -371,7 +371,7 @@ describe('Point0', () => {
       .loader(({ data, ctx }) => ({
         preloadedServer: 10,
       }))
-    const clientPoint0 = Point0.extend<typeof server>({ id: 'client' })
+    const clientPoint0 = Point0.connect<typeof server>('client')
       // ctx is client only in ctx fns
       .ctx(({ ctx }) => ({
         ...ctx,

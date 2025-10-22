@@ -1,9 +1,7 @@
 import { Point0 } from 'point0/core/index.js'
 import type { server } from './server.js'
-import App from '../layouts/app.js'
-import { queryClient } from './react-query.js'
 
-export const client = Point0.extend<typeof server>({ id: 'client', queryClient, wrapper: App }).head({
+export const client = Point0.connect<typeof server>('client').head({
   title: 'IdeaNick',
   titleTemplate: '%s | IdeaNick',
   htmlAttrs: { lang: 'en' },

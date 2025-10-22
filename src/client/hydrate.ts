@@ -55,7 +55,7 @@ export async function hydrate({
   }
 
   // Ask point0 to build the correct page element for the current route.
-  const eversion = Eversion0.create({ base, points })
+  const eversion = Eversion0.source({ base, points })
   const location = Route0.getLocation(window.location.pathname)
   // TODO: get provided 404 error from eversion
   const { element, error } = await eversion.fillSuitablePageComponent({

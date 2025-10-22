@@ -36,51 +36,51 @@ import { mergeHeaders } from '../core/utils.js'
 // so remove force
 export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
-  parent: Eversion0<TRequiredCtx> | undefined
+  source: Eversion0<TRequiredCtx> | undefined
   points: PointsCollection
-  children: Array<Eversion0<TRequiredCtx>>
+  connections: Array<Eversion0<TRequiredCtx>>
 
   private constructor({
     base,
-    parent,
+    source,
     points,
-    children,
+    connections,
   }: {
     base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
-    parent?: Eversion0<TRequiredCtx> | undefined
+    source?: Eversion0<TRequiredCtx> | undefined
     points?: PointsCollection
-    children?: Array<Eversion0<TRequiredCtx>>
+    connections?: Array<Eversion0<TRequiredCtx>>
   }) {
     this.base = base
     this.points = points ?? []
-    this.children = children ?? []
-    this.parent = parent
+    this.connections = connections ?? []
+    this.source = source
   }
 
-  static create<
+  static source<
     TBasePoint extends InitialBasePoint,
     TRequiredCtx extends RequiredCtx = TBasePoint['Infer']['RequiredCtx'],
   >({ base, points }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
     return new Eversion0<TRequiredCtx>({ base, points })
   }
 
-  addChild(input: CreateEversionInput<TRequiredCtx>) {
-    const child = new Eversion0<TRequiredCtx>({
+  connect(input: CreateEversionInput<TRequiredCtx>) {
+    const connection = new Eversion0<TRequiredCtx>({
       base: input.base,
       points: input.points,
-      parent: input.parent === null ? undefined : this,
+      source: input.source === null ? undefined : this,
     })
-    this.children.push(child)
+    this.connections.push(connection)
   }
 
   getParents(): [InitialBasePoint, ...ExtendedBasePoint[]] | [] {
-    const parents: Array<InitialBasePoint | ExtendedBasePoint> = []
-    let current: Eversion0<TRequiredCtx> | undefined = this.parent
+    const sources: Array<InitialBasePoint | ExtendedBasePoint> = []
+    let current: Eversion0<TRequiredCtx> | undefined = this.source
     while (current) {
-      parents.push(current.base)
-      current = current.parent
+      sources.push(current.base)
+      current = current.source
     }
-    return parents.reverse() as [InitialBasePoint, ...ExtendedBasePoint[]] | []
+    return sources.reverse() as [InitialBasePoint, ...ExtendedBasePoint[]] | []
   }
 
   idToLocation(id: string): Route0.Location {
@@ -146,17 +146,17 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (suitableSelfPoint) {
       return suitableSelfPoint
     }
-    const suitableChildPoint = (() => {
-      for (const child of this.children) {
-        const result = child.getSuitablePoint({ method: providedMethod, location, baseId })
+    const suitableConnectionPoint = (() => {
+      for (const connection of this.connections) {
+        const result = connection.getSuitablePoint({ method: providedMethod, location, baseId })
         if (result) {
           return result
         }
       }
       return undefined
     })()
-    if (suitableChildPoint) {
-      return suitableChildPoint
+    if (suitableConnectionPoint) {
+      return suitableConnectionPoint
     }
     return undefined
   }
@@ -193,17 +193,17 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
-    const suitableChildEversion = (() => {
-      for (const child of this.children) {
-        const result = child._getSuitableEversionByLocation({ method: providedMethod, location, baseId })
+    const suitableConnectionEversion = (() => {
+      for (const connection of this.connections) {
+        const result = connection._getSuitableEversionByLocation({ method: providedMethod, location, baseId })
         if (result) {
           return result
         }
       }
       return undefined
     })()
-    if (suitableChildEversion) {
-      return suitableChildEversion
+    if (suitableConnectionEversion) {
+      return suitableConnectionEversion
     }
     return undefined
   }
@@ -212,17 +212,17 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
-    const suitableChildEversion = (() => {
-      for (const child of this.children) {
-        const result = child._getSuitableEversionByBaseId({ baseId })
+    const suitableConnectionEversion = (() => {
+      for (const connection of this.connections) {
+        const result = connection._getSuitableEversionByBaseId({ baseId })
         if (result) {
           return result
         }
       }
       return undefined
     })()
-    if (suitableChildEversion) {
-      return suitableChildEversion
+    if (suitableConnectionEversion) {
+      return suitableConnectionEversion
     }
     return undefined
   }
@@ -290,7 +290,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     let dataOutput: Data = {}
     const headOutput: ResolvableHead[] = []
     const extendFns = [
-      ...this.getParents().flatMap((parent) => parent._extendFns),
+      ...this.getParents().flatMap((source) => source._extendFns),
       ...this.base._extendFns,
       ...(point?._extendFns ?? []),
     ]
@@ -365,7 +365,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await suitable.eversion.extract({ point: suitable.point, requiredCtx, location: suitable.location } as never)
   }
 
-  // TODO: make it also work for nested children, and respect base id
+  // TODO: make it also work for nested connections, and respect base id
   // but for now we use it only in hidration where all pages in root eversion
   async getSuitablePagePoint({
     baseId,
@@ -640,7 +640,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }
 
-  // TODO: respect base id and children
+  // TODO: respect base id and connections
   async fillSuitablePageComponent({
     payload,
     error,
@@ -683,7 +683,7 @@ function useEversionContext(): EversionContextValue {
 
 export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
-  parent?: null
+  source?: null
   points?: PointsCollection
 }
 

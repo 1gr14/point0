@@ -46,7 +46,6 @@ export class Point0<
     _baseId: BaseId
     _wrapper?: WrapperComponentType | undefined
     _queryClient?: QueryClient | undefined
-
     _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
@@ -67,10 +66,10 @@ export class Point0<
   }) {
     // persistent
     this._baseId = props._baseId
-    this._wrapper = props._wrapper
-    this._queryClient = props._queryClient
 
     // overridable
+    this._wrapper = props._wrapper
+    this._queryClient = props._queryClient
     this._head = props._head ?? []
     this._queryOptions = props._queryOptions ?? {}
     this._pageQueryOptions = props._pageQueryOptions ?? {}
@@ -104,6 +103,7 @@ export class Point0<
     TRoute extends Route0.AnyRoute | UndefinedRoute,
     THasPage extends HasPage,
   >(overrides?: {
+    _queryClient?: QueryClient | undefined
     _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
@@ -125,10 +125,10 @@ export class Point0<
     return new Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
       // persistent
       _baseId: this._baseId,
-      _queryClient: this._queryClient,
-      _wrapper: this._wrapper,
 
       // overridable
+      _queryClient: overrides?._queryClient ?? this._queryClient,
+      _wrapper: overrides?._wrapper ?? this._wrapper,
       _head: [...this._head, ...(overrides?._head ?? [])],
       _queryOptions: { ...this._queryOptions, ...(overrides?._queryOptions ?? {}) },
       _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides?._pageQueryOptions ?? {}) },
@@ -151,21 +151,17 @@ export class Point0<
 
   // base
 
-  static create(props: BaseSettings): Point0 {
+  static source(baseId: string): Point0 {
     return new Point0({
       _hasParent: false,
-      _baseId: props.id,
-      _queryClient: props.queryClient,
-      _wrapper: props.wrapper,
+      _baseId: baseId,
     })
   }
 
-  static extend<TParent extends ParentPoint>(props: BaseSettings): Point0<TParent, TParent['Infer']['RequiredCtx']> {
+  static connect<TParent extends ParentPoint>(baseId: string): Point0<TParent, TParent['Infer']['RequiredCtx']> {
     return new Point0<TParent, TParent['Infer']['RequiredCtx']>({
       _hasParent: true as never,
-      _baseId: props.id,
-      _queryClient: props.queryClient,
-      _wrapper: props.wrapper,
+      _baseId: baseId,
     })
   }
 
@@ -363,16 +359,8 @@ export class Point0<
   hasHead(): boolean {
     return this._extendFns.some((fn) => fn.type === 'head')
   }
-
-  // TODO: move to eversion.ts
-  // TODO: not has page, but finish type
 }
 
-export type BaseSettings = {
-  id: BaseId
-  queryClient?: QueryClient
-  wrapper?: WrapperComponentType
-}
 export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>
 // used to avoid circular depedencies
 type Infer<
