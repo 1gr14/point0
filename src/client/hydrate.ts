@@ -5,6 +5,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { ExtendedBasePoint } from '../core/index.js'
 import type { PagesCollection, Payload } from '../eversion/runtime.js'
 import { Eversion0 } from '../eversion/runtime.js'
+import type { DehydratedState } from '@tanstack/react-query'
 
 declare global {
   interface Window {
@@ -34,12 +35,25 @@ export async function hydrate({ pages, base, rootElement: providedRootElement }:
     // TODO: throw only if ssr elnabled, else not throw
     throw new Error('Missing __POINT0_PAYLOAD__')
   }
-
   const payload: Payload = (() => {
     try {
       return JSON.parse(payloadContent)
     } catch (error) {
       throw new Error('Invalid __POINT0_PAYLOAD__', { cause: error })
+    }
+  })()
+
+  const dehydratedStateEl = document.getElementById('__POINT0_DEHYDRATED_STATE__')
+  const dehydratedStateContent = dehydratedStateEl?.textContent
+  if (!dehydratedStateContent) {
+    // TODO: throw only if ssr elnabled, else not throw
+    throw new Error('Missing __POINT0_DEHYDRATED_STATE__')
+  }
+  const dehydratedState: DehydratedState = (() => {
+    try {
+      return JSON.parse(dehydratedStateContent)
+    } catch (error) {
+      throw new Error('Invalid __POINT0_DEHYDRATED_STATE__', { cause: error })
     }
   })()
 
@@ -58,6 +72,7 @@ export async function hydrate({ pages, base, rootElement: providedRootElement }:
     wrapper: base._wrapper,
     baseId: base._id,
     payload,
+    dehydratedState,
     location: payload.location,
   })
   if (error) {

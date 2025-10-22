@@ -149,6 +149,12 @@ export class Point0<
     } as never)
   }
 
+  queryClient(queryClient: QueryClient): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _queryClient: queryClient,
+    })
+  }
+
   fetchOptions(
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
@@ -485,8 +491,9 @@ export type CtxFn<
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
 
-export type FetchOptionsFn = (location: Route0.Location) => RequestInit
-export type FetchOptionsOrFn = FetchOptionsFn | RequestInit
+export type FetchOptionsFn = (location: Route0.Location) => FetchOptions
+export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
+export type FetchOptions = RequestInit
 
 export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 export type LoaderFnProps<
