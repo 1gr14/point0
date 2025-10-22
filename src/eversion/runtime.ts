@@ -8,6 +8,7 @@ import {
   QueryClient,
   QueryClientProvider,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query'
 import * as React from 'react'
 import type {
@@ -438,8 +439,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     function PageComponent({ location }: { location: Route0.Location }): React.ReactElement {
       // TODO: get location from useLocation, which in ssr mode is useLoaderData().location else it is from expo or react router
       const { isInitialPage } = useEversionContext()
+      const queryClient = useQueryClient()
+      const cache = queryClient.getQueryCache()
+      const queryKey = point.getQueryKey({ location })
+      const query = cache.find({ queryKey })
       const result = useQuery<Payload['data']>({
-        queryKey: point.getQueryKey({ location }),
+        queryKey,
         queryFn: async () => {
           const fetchOptions = point._fetchOptions({ location })
           const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
@@ -455,15 +460,15 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             httpStatus: res.status,
           })
         },
-        enabled: !isInitialPage,
+        enabled: !isInitialPage || query?.state.status !== 'error',
       })
       const loaderComponent = point.getLoaderComponent({ type: 'page' })
       const errorComponent = point.getErrorComponent({ type: 'page' })
-      if (result.isLoading) {
-        return React.createElement(loaderComponent, { type: 'page', location })
-      }
       if (result.error) {
         return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
+      }
+      if (result.isLoading) {
+        return React.createElement(loaderComponent, { type: 'page', location })
       }
       if (!result.data) {
         return React.createElement(errorComponent, { type: 'page', error: new Error0('No data1'), location })
@@ -563,6 +568,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           fetchStatus: 'idle',
         })
       } else {
+        const query = queryClient.getQueryCache().build(queryClient, { queryKey, queryHash: hashKey(queryKey) })
         query.setState({
           data: input.payload.data,
           error: null,
