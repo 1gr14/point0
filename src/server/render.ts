@@ -109,7 +109,7 @@ export function renderDocumentHtml<TContent extends string | undefined = undefin
 }: {
   content?: TContent
   payload: Payload
-  dehydratedState: DehydratedState
+  dehydratedState?: DehydratedState
   clientBundlePath?: string
   originalIndexHtml?: string
 }): DocumentHtmlResult<TContent> {
@@ -132,13 +132,13 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
   content?: TContent
   // TODO: make it choosable by settings
   payload: Payload
-  dehydratedState: DehydratedState
+  dehydratedState?: DehydratedState
   clientBundlePath?: string
 }): DocumentHtmlResult<TContent> {
   const { meta } = payload
   const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
   const serializedPayload = serialize(payload)
-  const serializedDehydratedState = serialize(dehydratedState)
+  const serializedDehydratedState = dehydratedState ? serialize(dehydratedState) : ''
 
   const rewriter = new HTMLRewriter()
     .on('html', {
@@ -296,7 +296,7 @@ export async function renderReadableStream({
 }: {
   element: React.ReactElement
   payload: Payload
-  dehydratedState: DehydratedState
+  dehydratedState?: DehydratedState
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml?: string

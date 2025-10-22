@@ -168,7 +168,6 @@ export const createBunServer = async (props: ServeServerInput) => {
                 }
               }
               // so we render page wrapped with layouts
-              console.log('extractResult.error', extractResult.error)
               const { element, error: fillError } = extractResult.eversion.fillPageComponent({
                 dehydratedState: extractResult.dehydratedState,
                 point: extractResult.point,

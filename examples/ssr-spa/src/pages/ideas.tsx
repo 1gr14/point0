@@ -6,7 +6,7 @@ export default client
   .route(routes.ideas)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
-    return { ...data, ideas, env: ctx.env.NODE_ENV }
+    return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
   })
   // if you want to preserve state of "count" on HMR, you need to use this approach,
   // just return ready elemnt imported from another file
