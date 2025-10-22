@@ -1,3 +1,4 @@
+// TODO: use Error0
 export type ErrorParsed = {
   status: number
   message: string

@@ -168,11 +168,12 @@ export const createBunServer = async (props: ServeServerInput) => {
                 }
               }
               // so we render page wrapped with layouts
-              const { element, error: fillError } = extractResult.eversion.fillPage({
+              const { element, error: fillError } = extractResult.eversion.fillPageComponent({
                 component: extractResult.pageComponent,
                 payload: extractResult.payload,
                 error: extractResult.error,
                 status: extractResult.status,
+                location: extractResult.payload.location,
               })
               if (extractResult.error || fillError) {
                 logger.error(extractResult.error || fillError)
@@ -181,6 +182,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                 const readableStream = await renderReadableStream({
                   element,
                   payload: extractResult.payload,
+                  dehydratedState: extractResult.dehydratedState,
                   originalIndexHtml,
                 })
                 return new Response(readableStream, {

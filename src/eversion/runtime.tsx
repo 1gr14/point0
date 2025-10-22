@@ -1,10 +1,14 @@
+import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
+import type { DehydratedState } from '@tanstack/react-query'
+import { dehydrate, QueryClient, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import type {
   AnyPoint,
   BaseId,
   Ctx,
   Data,
+  DestinationComponentType,
   EmptyCtx,
   EmptyData,
   ExtendedBasePoint,
@@ -303,7 +307,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
       if (point) {
-        return {
+        return this.withDehydratedState({
           ctx: ctxOutput,
           payload: { data: dataOutput, meta, location },
           pageComponent: point.getPageComponent(),
@@ -311,20 +315,20 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 200,
           base: this.base,
           eversion: this,
-        }
+        })
       } else {
-        return {
+        return this.withDehydratedState({
           ctx: ctxOutput,
           payload: { data: dataOutput, meta, location },
           pageComponent: undefined,
-          error: new Error(`Point Not Found: ${location.pathname}`),
+          error: new Error0(`Point Not Found: ${location.pathname}`),
           status: 404,
           base: this.base,
           eversion: this,
-        }
+        })
       }
     } catch (error) {
-      return {
+      return this.withDehydratedState({
         ctx: ctxOutput,
         payload: { data: dataOutput, meta, location },
         pageComponent: undefined,
@@ -332,7 +336,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         status: 500,
         base: this.base,
         eversion: this,
-      }
+      })
     }
   }
 
@@ -374,34 +378,124 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined as never
   }
 
-  fillPage<TPoint extends AnyPoint | undefined = undefined>({
+  wrapWithQueryFetcher({
+    type,
+    location,
+    component,
+    wrapper,
+    error,
+  }: {
+    type: DestinationComponentType
+    location: Route0.Location
+    component?: PageComponent
+    wrapper?: React.ComponentType<{ children: React.ReactNode }>
+    error?: unknown
+  }): React.ReactElement {
+    const QueryFetcherWrapper = () => {
+      const result = useQuery<Payload>({
+        queryKey: this.base.getQueryKey({ location }),
+        queryFn: async () => await fetch(location.pathname, {}).then(async (res) => await res.json()),
+      })
+      const loaderComponent = this.base.getLoaderComponent({ type })
+      const errorComponent = this.base.getErrorComponent({ type })
+      if (error) {
+        return React.createElement(errorComponent, { type, error: Error0.from(error), location })
+      }
+      if (result.isLoading) {
+        return React.createElement(loaderComponent, { type, location })
+      }
+      if (result.error) {
+        return React.createElement(errorComponent, { type, error: Error0.from(result.error), location })
+      }
+      if (!result.data) {
+        return React.createElement(errorComponent, { type, error: new Error0('No data'), location })
+      }
+      if (!component) {
+        return React.createElement(errorComponent, { type, error: new Error0('No component'), location })
+      }
+      return React.createElement(component, { data: result.data, location })
+    }
+    if (wrapper) {
+      return React.createElement(wrapper, { children: React.createElement(QueryFetcherWrapper) })
+    }
+    return React.createElement(QueryFetcherWrapper)
+  }
+
+  withDehydratedState<T extends { payload: Payload; error: unknown }>(
+    input: T,
+  ): T & { dehydratedState: DehydratedState } {
+    const queryClient = new QueryClient()
+    const queryKey = this.base.getQueryKey({ location: input.payload.location })
+    queryClient.setQueryData(queryKey, input.payload)
+    const queryCache = queryClient.getQueryCache().find({ queryKey })
+    if (!queryCache) {
+      throw new Error('Query cache not found, it is unbelievable')
+    }
+    if (input.error) {
+      queryCache.state.error = { ...Error0.toJSON(input.error), name: 'Error0' }
+    }
+    queryCache.state.status = input.error ? 'error' : 'success'
+    const dehydratedState = dehydrate(queryClient)
+    return {
+      ...input,
+      payload: {
+        ...input.payload,
+      },
+      dehydratedState,
+    }
+  }
+
+  fillPageComponent<TPoint extends AnyPoint | undefined = undefined>({
+    wrapper,
     component,
     point,
     error,
     status,
     payload,
+    location,
   }: {
+    wrapper?: React.ComponentType<{ children: React.ReactNode }>
     component?: PageComponent | undefined
     point?: TPoint | undefined
     payload?: Payload
     error?: unknown
     status?: number | undefined
+    location: Route0.Location
   }): FillPageResult {
     // TODO: use provided errors
     if (error) {
-      const element = <div>Error: {(error as Error).message}</div>
-      return { element, error, status }
+      return {
+        element: this.wrapWithQueryFetcher({
+          type: 'page',
+          location,
+          error,
+          wrapper,
+        }),
+        error,
+        status,
+      }
     }
     if (!payload) {
+      const error = new Error0(`No payload`)
       return {
-        element: <div>No payload</div>,
-        error: new Error(`No payload`),
+        element: this.wrapWithQueryFetcher({
+          type: 'page',
+          location,
+          error,
+          wrapper,
+        }),
+        error,
         status: 500,
       }
     }
     if (component) {
       return {
-        element: React.createElement(component, { data: payload.data, location: payload.location }),
+        element: this.wrapWithQueryFetcher({
+          type: 'page',
+          location: payload.location,
+          component,
+          wrapper,
+        }),
         error: undefined,
         status,
       }
@@ -410,33 +504,51 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const componentFromPoint = point.getPageComponent()
       if (componentFromPoint) {
         return {
-          element: React.createElement(componentFromPoint, { data: payload.data, location: payload.location }),
+          element: this.wrapWithQueryFetcher({
+            type: 'page',
+            location: payload.location,
+            component: componentFromPoint,
+            wrapper,
+          }),
           error: undefined,
           status,
         }
       } else {
         return {
-          element: <div>Point has no page element</div>,
+          element: this.wrapWithQueryFetcher({
+            type: 'page',
+            location: payload.location,
+            error: new Error0(`Point has no page element`),
+            wrapper,
+          }),
           error: new Error(`Point has no page element`),
           status: 404,
         }
       }
     }
+    const error1 = new Error0(`No compoentn, no point: ${payload.location.pathname}`)
     return {
-      element: <div>Page not found</div>,
-      error: new Error(`Page not found: ${payload.location.pathname}`),
+      element: this.wrapWithQueryFetcher({
+        type: 'page',
+        location: payload.location,
+        error: error1,
+        wrapper,
+      }),
+      error: error1,
       status: 404,
     }
   }
 
   // TODO: respect base id and children
-  async fillSuitablePage({
+  async fillSuitablePageComponent({
+    wrapper,
     payload,
     error,
     baseId,
     fallbackBaseId,
     ...locationProps
   }: {
+    wrapper?: React.ComponentType<{ children: React.ReactNode }>
     payload: Payload
     error?: unknown
     baseId?: BaseId | undefined
@@ -444,18 +556,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & LocationInput): Promise<FillPageResult> {
     const location = this.normalizeLocation(locationProps)
     const suitable = await this.getSuitablePageComponent({ location, baseId, fallbackBaseId })
-    if (!suitable) {
-      return {
-        element: <div>Page not found</div>,
-        error: new Error(`Page not found: ${location.pathname}`),
-        status: 404,
-      }
-    }
-    return {
-      element: React.createElement(suitable.component, { data: payload.data, location: payload.location }),
-      error: undefined,
-      status: 200,
-    }
+    return this.fillPageComponent({ wrapper, component: suitable?.component, payload, error, location })
   }
 }
 
@@ -512,6 +613,7 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   payload: Payload<TOutputData>
   error: unknown
   status: number
+  dehydratedState: DehydratedState
   base: InitialBasePoint | ExtendedBasePoint
   pageComponent: PageComponent | undefined
   eversion: Eversion0

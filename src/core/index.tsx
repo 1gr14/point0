@@ -1,4 +1,6 @@
 import type { Route0 } from '@devp0nt/route0'
+import { DefaultErrorComponent, DefaultLoaderComponent } from '../adapters/react-dom/components.js'
+import type { Error0 } from '@devp0nt/error0'
 
 export class Point0<
   TParent extends ParentPoint | UndefinedParent = UndefinedParent,
@@ -10,13 +12,28 @@ export class Point0<
 > {
   Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData> = {} as never
 
+  // TODO: may it help somebody?
+  // static readyPoints: ReadyPoint[] = []
+  // static pagePoints: PagePoint[] = []
+  static pointsCount = 0
+
   _baseId: BaseId
   _hasParent: TParent extends UndefinedParent ? false : true
   _extendFns: ExtendFnRecord[]
   _route: TRoute
   _page: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
   _id: Id | UndefinedId
+  _index: number
   _method: Method | UndefinedMethod
+  _fetchOptions: FetchOptionsFn
+
+  _errorComponent: ErrorComponentType
+  _pageErrorComponent?: ErrorComponentType<'page'>
+  _componentErrorComponent?: ErrorComponentType<'component'>
+  _loaderComponent: LoaderComponentType
+  _pageLoaderComponent?: LoaderComponentType<'page'>
+  _componentLoaderComponent?: LoaderComponentType<'component'>
+  _appLoaderComponent?: LoaderComponentType<'app'>
 
   private constructor(props: {
     _baseId: BaseId
@@ -26,14 +43,36 @@ export class Point0<
     _page?: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
+    _fetchOptions?: FetchOptionsFn
+    _errorComponent?: ErrorComponentType
+    _pageErrorComponent?: ErrorComponentType<'page'>
+    _componentErrorComponent?: ErrorComponentType<'component'>
+    _loaderComponent?: LoaderComponentType
+    _pageLoaderComponent?: LoaderComponentType<'page'>
+    _componentLoaderComponent?: LoaderComponentType<'component'>
+    _appLoaderComponent?: LoaderComponentType<'app'>
   }) {
+    // persistent
     this._baseId = props._baseId
+
+    // overridable
     this._hasParent = props._hasParent as TParent extends UndefinedParent ? false : true
     this._extendFns = props._extendFns ?? []
     this._route = props._route ?? (undefined as TRoute)
     this._page = props._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
     this._id = props._id
     this._method = props._method ?? (undefined as Method | UndefinedMethod)
+    this._fetchOptions = props._fetchOptions ?? (() => ({}))
+    this._errorComponent = props._errorComponent ?? DefaultErrorComponent
+    this._pageErrorComponent = props._pageErrorComponent
+    this._componentErrorComponent = props._componentErrorComponent
+    this._pageLoaderComponent = props._pageLoaderComponent
+    this._loaderComponent = props._loaderComponent ?? DefaultLoaderComponent
+    this._componentLoaderComponent = props._componentLoaderComponent
+    this._appLoaderComponent = props._appLoaderComponent
+
+    // calculated
+    this._index = Point0.pointsCount++
   }
 
   _clone<
@@ -49,15 +88,34 @@ export class Point0<
     _page?: PageComponent | UndefinedPageComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
+    _fetchOptions?: FetchOptionsFn
+    _errorComponent?: ErrorComponentType
+    _pageErrorComponent?: ErrorComponentType<'page'>
+    _componentErrorComponent?: ErrorComponentType<'component'>
+    _loaderComponent?: LoaderComponentType
+    _pageLoaderComponent?: LoaderComponentType<'page'>
+    _componentLoaderComponent?: LoaderComponentType<'component'>
+    _appLoaderComponent?: LoaderComponentType<'app'>
   }): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     return new Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      // persistent
       _baseId: this._baseId,
+
+      // overridable
       _hasParent: this._hasParent as TParent extends UndefinedParent ? false : true,
       _extendFns: overrides?._extendFns ?? this._extendFns,
       _route: (overrides?._route ?? this._route) as TRoute,
       _page: (overrides?._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
       _id: overrides?._id ?? this._id,
       _method: overrides?._method ?? this._method,
+      _fetchOptions: overrides?._fetchOptions ?? this._fetchOptions,
+      _errorComponent: overrides?._errorComponent ?? this._errorComponent,
+      _pageErrorComponent: overrides?._pageErrorComponent ?? this._pageErrorComponent,
+      _componentErrorComponent: overrides?._componentErrorComponent ?? this._componentErrorComponent,
+      _loaderComponent: overrides?._loaderComponent ?? this._loaderComponent,
+      _pageLoaderComponent: overrides?._pageLoaderComponent ?? this._pageLoaderComponent,
+      _componentLoaderComponent: overrides?._componentLoaderComponent ?? this._componentLoaderComponent,
+      _appLoaderComponent: overrides?._appLoaderComponent ?? this._appLoaderComponent,
     })
   }
 
@@ -78,6 +136,70 @@ export class Point0<
       // TODO: extends - by default, if provide true in end, then will override previous
       _id: id,
     } as never)
+  }
+
+  fetchOptions(
+    fetchOptionsOrFn: FetchOptionsOrFn,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
+    })
+  }
+
+  errorComponent(
+    errorComponent: ErrorComponentType,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _errorComponent: errorComponent,
+    })
+  }
+
+  pageErrorComponent(
+    pageErrorComponent: ErrorComponentType<'page'>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _pageErrorComponent: pageErrorComponent,
+    })
+  }
+
+  componentErrorComponent(
+    componentErrorComponent: ErrorComponentType<'component'>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _componentErrorComponent: componentErrorComponent,
+    })
+  }
+
+  pageLoaderComponent(
+    pageLoaderComponent: LoaderComponentType<'page'>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _pageLoaderComponent: pageLoaderComponent,
+    })
+  }
+
+  componentLoaderComponent(
+    componentLoaderComponent: LoaderComponentType<'component'>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _componentLoaderComponent: componentLoaderComponent,
+    })
+  }
+
+  appLoaderComponent(
+    appLoaderComponent: LoaderComponentType<'app'>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _appLoaderComponent: appLoaderComponent,
+    })
+  }
+
+  loaderComponent(
+    loaderComponent: LoaderComponentType,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _loaderComponent: loaderComponent,
+    })
   }
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
@@ -107,17 +229,9 @@ export class Point0<
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctxOrFn: TNewOutputCtx,
   ): Point0<TParent, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage> {
-    const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : () => ctxOrFn
+    const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TOutputCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._clone<TParent, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>({
       _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn }],
-    } as never)
-  }
-
-  loader<TNewOutputData extends Data = Data>(
-    loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TNewOutputData>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage>({
-      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }],
     } as never)
   }
 
@@ -126,6 +240,14 @@ export class Point0<
   ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage> {
     return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage>({
       _route: route,
+    } as never)
+  }
+
+  loader<TNewOutputData extends Data = Data>(
+    loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TNewOutputData>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage> {
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage>({
+      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }],
     } as never)
   }
 
@@ -147,16 +269,28 @@ export class Point0<
     return this._id
   }
 
-  getLabel(): Id | UndefinedId {
-    const route = this.getRoute()
-    if (route) {
-      return route.getDefinition()
-    }
-    const id = this.getId()
-    if (id) {
-      return id
-    }
-    return 'unknown point'
+  getLabel(): string {
+    return this._id || this._route?.getDefinition() || `${this._baseId}-${this._index}`
+  }
+
+  getQueryKey({ location }: { location: Route0.Location }): readonly [string, ...string[]] {
+    return [this.getLabel(), ...Object.values(location.params)]
+  }
+
+  getErrorComponent<TType extends DestinationComponentType>({ type }: { type: TType }): ErrorComponentType<TType> {
+    return ({
+      app: this._errorComponent,
+      page: this._pageErrorComponent,
+      component: this._componentErrorComponent,
+    }[type] ?? this._errorComponent) as ErrorComponentType<TType>
+  }
+
+  getLoaderComponent<TType extends DestinationComponentType>({ type }: { type: TType }): LoaderComponentType<TType> {
+    return ({
+      app: this._loaderComponent,
+      page: this._pageLoaderComponent,
+      component: this._componentLoaderComponent,
+    }[type] ?? this._loaderComponent) as LoaderComponentType<TType>
   }
 
   getPageComponent(): THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined {
@@ -278,6 +412,22 @@ export type PageComponent<
 > = React.ComponentType<PageComponentProps<TOutputData, TRoute>>
 export type UndefinedPageComponent = undefined
 
+export type DestinationComponentType = 'app' | 'page' | 'component'
+export type ErrorComponentProps<TType extends DestinationComponentType = DestinationComponentType> = {
+  type: TType
+  error: Error0
+  location: Route0.Location
+}
+export type LoaderComponentProps<TType extends DestinationComponentType = DestinationComponentType> = {
+  type: TType
+  location: Route0.Location
+}
+export type LoaderComponentType<TType extends DestinationComponentType = DestinationComponentType> =
+  React.ComponentType<LoaderComponentProps<TType>>
+export type ErrorComponentType<TType extends DestinationComponentType = DestinationComponentType> = React.ComponentType<
+  ErrorComponentProps<TType>
+>
+
 export type CurrentRoute<TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute> =
   TRoute extends Route0.AnyRoute ? TRoute : Route0.AnyRoute
 
@@ -317,6 +467,9 @@ export type CtxFn<
 > = (props: CtxFnProps<TCtxInput, TData, TRoute0>) => Promise<TCtxOutput> | TCtxOutput
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
+
+export type FetchOptionsFn = (location: Route0.Location) => RequestInit
+export type FetchOptionsOrFn = FetchOptionsFn | RequestInit
 
 export type LoaderFnProps<
   TCtx extends Ctx = Ctx,

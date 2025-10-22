@@ -91,13 +91,14 @@
     "prepare": "husky",
     "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
   },
-  "dependencies": {
-    "@devp0nt/route0": "^1.0.0-next.17",
-    "@unhead/react": "^2.0.19"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "@devp0nt/error0": "^1.0.0-next.38",
+    "@devp0nt/route0": "^1.0.0-next.17",
+    "@unhead/react": "^2.0.19"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
@@ -106,6 +107,7 @@
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",
     "@semantic-release/npm": "^12.0.2",
+    "@tanstack/react-query": "^5.90.5",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "@types/react-dom": "^19.2.2",
