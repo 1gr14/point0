@@ -3,10 +3,10 @@ import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import type { Method } from '../../core/index.js'
 import { Eversion0 } from '../../eversion/runtime.js'
-import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
+import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 
 // TODO: {points, clients: {points}}
 // TODO: {base, clients: {base}}
@@ -14,11 +14,11 @@ import { isPathnameUnderBasepath } from '../../server/utils.js'
 // TODO: allow special origin per each client also
 
 export const createBunServer = async (props: ServeServerInput) => {
-  const { points, pages, port, publicDir, base, logger, clients } = parseServeInput(props)
+  const { points, port, publicDir, base, logger, clients } = parseServeInput(props)
   const fallbackBaseId = props.fallbackBaseId || clients.at(0)?.base._baseId || base._baseId
-  const eversion = Eversion0.create({ base, points, pages })
+  const eversion = Eversion0.create({ base, points })
   for (const client of clients) {
-    eversion.addChild({ base: client.base, points: client.points, pages: client.pages })
+    eversion.addChild({ base: client.base, points: client.points })
   }
 
   // cache public files paths
@@ -168,14 +168,15 @@ export const createBunServer = async (props: ServeServerInput) => {
                 }
               }
               // so we render page wrapped with layouts
+              console.log('extractResult.error', extractResult.error)
               const { element, error: fillError } = extractResult.eversion.fillPageComponent({
                 dehydratedState: extractResult.dehydratedState,
-                component: extractResult.pageComponent,
+                point: extractResult.point,
+                base: extractResult.base,
                 payload: extractResult.payload,
                 error: extractResult.error,
                 status: extractResult.status,
                 location: extractResult.payload.location,
-                wrapper: extractResult.wrapper,
               })
               if (extractResult.error || fillError) {
                 logger.error(extractResult.error || fillError)
@@ -213,11 +214,7 @@ export const createBunServer = async (props: ServeServerInput) => {
           // else we try to get endpoint json
           if (extractResult.error) {
             logger.error(extractResult.error)
-            return toJsonErrorResponse({
-              error: extractResult.error,
-              status: extractResult.status,
-              data: extractResult.payload.data,
-            })
+            return toJsonErrorResponse(extractResult.error, extractResult.status)
           }
           return new Response(JSON.stringify(extractResult.payload.data), {
             headers: { 'Content-Type': 'application/json' },
@@ -225,7 +222,7 @@ export const createBunServer = async (props: ServeServerInput) => {
           })
         } catch (error) {
           logger.error(error)
-          return toSuitableErrorResponse({ error, prefix: 'Fatal Error' })
+          return toSuitableErrorResponse(error, 500, request.headers.get('Accept'))
         }
       },
     },

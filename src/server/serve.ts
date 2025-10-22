@@ -1,5 +1,5 @@
 import type { BaseId, ExtendedBasePoint, InitialBasePoint } from '../core/index.js'
-import type { PagesCollection, PointsCollection } from '../eversion/runtime.js'
+import type { PointsCollection } from '../eversion/runtime.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type ServeLogger = {
@@ -9,7 +9,6 @@ export type ServeLogger = {
 export type ServeClientInput = {
   ssr?: boolean
   points?: PointsCollection
-  pages?: PagesCollection
   base: InitialBasePoint | ExtendedBasePoint
   basepath?: string
   distDir?: string
@@ -20,7 +19,6 @@ export type ServeClientInput = {
 export type ServeServerInput = {
   base: InitialBasePoint
   points?: PointsCollection
-  pages?: PagesCollection
   port?: number | string | undefined
   logger?: ServeLogger
   dirname?: string
@@ -32,7 +30,6 @@ export type ServeServerInput = {
 export type ServeClientInputParsed = {
   ssr: boolean
   points: PointsCollection
-  pages: PagesCollection
   base: InitialBasePoint | ExtendedBasePoint
   basepath: string
   distDir: string | undefined
@@ -44,7 +41,6 @@ export type ServeClientInputParsed = {
 export type ServeServerInputParsed = {
   base: InitialBasePoint
   points: PointsCollection
-  pages: PagesCollection
   port: number | string | undefined
   logger: ServeLogger
   dirname: string | undefined
@@ -74,7 +70,6 @@ const parseServeClientInput = (
   return {
     ssr,
     points: input.points ?? [],
-    pages: input.pages ?? [],
     base: input.base,
     basepath,
     distDir,
@@ -85,7 +80,7 @@ const parseServeClientInput = (
   }
 }
 export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
-  const { dirname, port, points, pages, base } = input
+  const { dirname, port, points, base } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
@@ -110,7 +105,6 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
   }
   return {
     points: points ?? [],
-    pages: pages ?? [],
     port,
     logger,
     dirname,

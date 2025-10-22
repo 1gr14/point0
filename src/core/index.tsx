@@ -1,6 +1,7 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { Route0 } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
+import type * as React from 'react'
 import { DefaultErrorComponent, DefaultLoaderComponent } from '../adapters/react-dom/components.js'
 
 export class Point0<
@@ -331,6 +332,10 @@ export class Point0<
     return this._extendFns
   }
 
+  hasLoaders(): boolean {
+    return this._extendFns.some((fn) => fn.type === 'loader')
+  }
+
   // TODO: move to eversion.ts
   // TODO: not has page, but finish type
 }
@@ -409,6 +414,8 @@ export type ParentPoint<
   _extendFns: ExtendFnRecord[]
 }
 export type UndefinedParent = undefined
+
+export type ReadyPointType = 'page' | 'component' | 'endpoint'
 
 export type InferOutputCtx<TPoint extends AnyPoint | ParentPoint | undefined> =
   TPoint extends AnyPoint<any, any, infer TOutputCtx, any, any, any>
@@ -491,7 +498,7 @@ export type CtxFn<
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
 
-export type FetchOptionsFn = (location: Route0.Location) => FetchOptions
+export type FetchOptionsFn = ({ location }: { location: Route0.Location }) => FetchOptions
 export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
 export type FetchOptions = RequestInit
 

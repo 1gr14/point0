@@ -3,7 +3,7 @@ import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { ExtendedBasePoint } from '../core/index.js'
-import type { PagesCollection, Payload } from '../eversion/runtime.js'
+import type { Payload, PointsCollection } from '../eversion/runtime.js'
 import { Eversion0 } from '../eversion/runtime.js'
 import type { DehydratedState } from '@tanstack/react-query'
 
@@ -15,7 +15,7 @@ declare global {
 
 export type HydrateInput = {
   rootElement?: HTMLElement
-  pages: PagesCollection
+  points: PointsCollection
   base: ExtendedBasePoint
 }
 export type HydrateResult = {
@@ -27,7 +27,11 @@ export type HydrateResult = {
 
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
-export async function hydrate({ pages, base, rootElement: providedRootElement }: HydrateInput): Promise<HydrateResult> {
+export async function hydrate({
+  points,
+  base,
+  rootElement: providedRootElement,
+}: HydrateInput): Promise<HydrateResult> {
   // Read payload from the DOM (SSR embeds this as a script tag with this id).
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
@@ -66,11 +70,9 @@ export async function hydrate({ pages, base, rootElement: providedRootElement }:
   }
 
   // Ask point0 to build the correct page element for the current route.
-  const eversion = Eversion0.create({ base, pages })
+  const eversion = Eversion0.create({ base, points })
   // TODO: get provided 404 error from eversion
   const { element, error } = await eversion.fillSuitablePageComponent({
-    wrapper: base._wrapper,
-    baseId: base._id,
     payload,
     dehydratedState,
     location: payload.location,

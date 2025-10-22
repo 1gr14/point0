@@ -1,27 +1,32 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
-import { dehydrate, HydrationBoundary, QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import {
+  dehydrate,
+  hashKey,
+  HydrationBoundary,
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query'
 import * as React from 'react'
 import type {
   AnyPoint,
   BaseId,
   Ctx,
   Data,
-  DestinationComponentType,
   EmptyCtx,
   EmptyData,
   ExtendedBasePoint,
-  FetchOptions,
-  FetchOptionsOrFn,
   InitialBasePoint,
   MetaMap,
   Method,
   PageComponent,
+  PagePoint,
   ReadyPoint,
+  ReadyPointType,
   RequiredCtx,
   UndefinedCtx,
-  WrapperComponentType,
 } from '../core/index.js'
 
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
@@ -30,25 +35,21 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
   parent: Eversion0<TRequiredCtx> | undefined
   points: PointsCollection
-  pages: PagesCollection
   children: Array<Eversion0<TRequiredCtx>>
 
   private constructor({
     base,
     parent,
     points,
-    pages,
     children,
   }: {
     base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
     parent?: Eversion0<TRequiredCtx> | undefined
     points?: PointsCollection
-    pages?: PagesCollection
     children?: Array<Eversion0<TRequiredCtx>>
   }) {
     this.base = base
     this.points = points ?? []
-    this.pages = pages ?? []
     this.children = children ?? []
     this.parent = parent
   }
@@ -56,15 +57,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   static create<
     TBasePoint extends InitialBasePoint,
     TRequiredCtx extends RequiredCtx = TBasePoint['Infer']['RequiredCtx'],
-  >({ base, points, pages }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
-    return new Eversion0<TRequiredCtx>({ base, points, pages })
+  >({ base, points }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
+    return new Eversion0<TRequiredCtx>({ base, points })
   }
 
   addChild(input: CreateEversionInput<TRequiredCtx>) {
     const child = new Eversion0<TRequiredCtx>({
       base: input.base,
       points: input.points,
-      pages: input.pages,
       parent: input.parent === null ? undefined : this,
     })
     this.children.push(child)
@@ -313,22 +313,20 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return this.withDehydratedState({
           ctx: ctxOutput,
           payload: { data: dataOutput, meta, location },
-          pageComponent: point.getPageComponent(),
+          point,
           error: undefined,
           status: 200,
           base: this.base,
-          wrapper: this.base._wrapper,
           eversion: this,
         })
       } else {
         return this.withDehydratedState({
           ctx: ctxOutput,
           payload: { data: dataOutput, meta, location },
-          pageComponent: undefined,
+          point: undefined,
           error: new Error0(`Point Not Found: ${location.pathname}`),
           status: 404,
           base: this.base,
-          wrapper: this.base._wrapper,
           eversion: this,
         })
       }
@@ -336,11 +334,10 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return this.withDehydratedState({
         ctx: ctxOutput,
         payload: { data: dataOutput, meta, location },
-        pageComponent: undefined,
+        point: undefined,
         error,
         status: 500,
         base: this.base,
-        wrapper: this.base._wrapper,
         eversion: this,
       })
     }
@@ -365,54 +362,58 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   // TODO: make it also work for nested children, and respect base id
   // but for now we use it only in hidration where all pages in root eversion
-  async getSuitablePageComponent({
+  async getSuitablePagePoint({
     baseId,
     fallbackBaseId,
     ...locationProps
   }: {
     baseId?: BaseId | undefined
-    fallbackBaseId?: BaseId | undefined
-  } & LocationInput): Promise<GetSuitablePageComponentResult | undefined> {
+    fallbackBaseId: BaseId | undefined
+  } & LocationInput): Promise<GetSuitablePageComponentResult<TRequiredCtx>> {
     const location = this.normalizeLocation(locationProps)
-    for (const record of this.pages) {
+    for (const record of this.points) {
+      if (record.type !== 'page') {
+        continue
+      }
       const match = Route0.getMatch(record.route, location)
       if (match.exact) {
-        const component = 'component' in record ? record.component : await record.lazy()
-        return { component, location: match.location, eversion: this }
+        return { point: record.point, base: this.base, location: match.location, eversion: this }
       }
     }
-    return undefined as never
+    return { point: undefined, base: this.base, location, eversion: this }
   }
 
-  wrapWithReactQuery({
-    type,
-    location,
-    component,
-    wrapper,
-    error,
-    fetchOptions,
+  // wrapWithInitialPageContext({ children }: { children: React.ReactNode }): React.ReactElement {
+  //   return React.createElement(InitialPageContext.Provider, { value: this }, children)
+  // }
+
+  wrapElementWithReactQueryProvider({
     queryClient,
     dehydratedState,
+    children,
   }: {
-    type: DestinationComponentType
-    location: Route0.Location
-    component?: PageComponent
-    wrapper?: WrapperComponentType | undefined
-    error?: unknown
-    fetchOptions?: FetchOptions
     queryClient: QueryClient
     dehydratedState?: DehydratedState
+    children: React.ReactNode
   }): React.ReactElement {
-    const ReactQueryHydrationBoundary = ({ children }: { children: React.ReactNode }) => {
-      return React.createElement(HydrationBoundary, { state: dehydratedState }, children)
-    }
-    const ReactQueryClientProvider = ({ children }: { children: React.ReactNode }) => {
-      return React.createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        React.createElement(ReactQueryHydrationBoundary, undefined, children),
-      )
-    }
+    return React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(HydrationBoundary, { state: dehydratedState }, children),
+    )
+  }
+
+  wrapComponentWithReactQueryFetcher({
+    component,
+    location,
+    point,
+    base,
+  }: {
+    component: PageComponent
+    location: Route0.Location
+    point: AnyPoint
+    base: InitialBasePoint | ExtendedBasePoint
+  }): PageComponent {
     function mergeHeaders(base?: HeadersInit, extra?: Record<string, string>): Headers {
       const merged = new Headers(base)
       if (extra) {
@@ -422,109 +423,126 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
       return merged
     }
-    const ReactQueryFetcher = () => {
+    const PageComponent: PageComponent = ({ location }) => {
+      // TODO: get location from useLocation, which in ssr mode is useLoaderData().location else it is from expo or react router
       const result = useQuery<Payload['data']>({
-        queryKey: this.base.getQueryKey({ location }),
+        queryKey: point.getQueryKey({ location }),
         queryFn: async () => {
-          const headers = mergeHeaders(fetchOptions?.headers, { Accept: 'application/json' })
-          return await fetch(location.pathname, {
+          const fetchOptions = point._fetchOptions({ location })
+          const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+          console.log('REAL FETCH')
+          const res = await fetch(location.pathname, {
             ...fetchOptions,
             headers,
-          }).then(async (res) => await res.json())
+          })
+          const json = await res.json()
+          if (res.ok) {
+            return json
+          }
+          throw Error0.from(json, {
+            httpStatus: res.status,
+          })
         },
+        initialData: undefined,
+        retry: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+        refetchIntervalInBackground: false,
+        refetchOnWindowFocus: false,
+        refetchInterval: false,
+        staleTime: Infinity,
+        // enabled: !isInitialPage,
       })
-      console.log(777, result)
-      const loaderComponent = this.base.getLoaderComponent({ type })
-      const errorComponent = this.base.getErrorComponent({ type })
-      if (error) {
-        return React.createElement(errorComponent, { type, error: Error0.from(error), location })
-      }
+      const loaderComponent = point.getLoaderComponent({ type: 'page' })
+      const errorComponent = point.getErrorComponent({ type: 'page' })
+      // if (providedError) {
+      //   return React.createElement(errorComponent, { type, error: Error0.from(providedError), location })
+      // }
       if (result.isLoading) {
-        return React.createElement(loaderComponent, { type, location })
+        return React.createElement(loaderComponent, { type: 'page', location })
       }
       if (result.error) {
-        return React.createElement(errorComponent, { type, error: Error0.from(result.error), location })
+        return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
       }
       if (!result.data) {
-        return React.createElement(errorComponent, { type, error: new Error0('No data'), location })
-      }
-      if (!component) {
-        return React.createElement(errorComponent, { type, error: new Error0('No component'), location })
+        return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
       }
       return React.createElement(component, { data: result.data, location })
     }
-    if (wrapper) {
-      return React.createElement(wrapper, {
-        children: React.createElement(ReactQueryClientProvider, undefined, React.createElement(ReactQueryFetcher)),
-      })
-    }
-    return React.createElement(ReactQueryClientProvider, undefined, React.createElement(ReactQueryFetcher))
+    return PageComponent
   }
 
-  notWrapWithReactQuery({
-    type,
+  getBasePageElement({
     location,
-    component,
+    pageComponent,
     payload,
-    wrapper,
     error,
   }: {
-    type: DestinationComponentType
     location: Route0.Location
     payload?: Payload
-    component?: PageComponent
-    wrapper?: WrapperComponentType | undefined
+    pageComponent?: PageComponent
     error?: unknown
   }): React.ReactElement {
-    const errorComponent = this.base.getErrorComponent({ type })
-    const ComponentProvider = () => {
-      if (error) {
-        return React.createElement(errorComponent, { type, error: Error0.from(error), location })
-      }
-      if (!payload) {
-        return React.createElement(errorComponent, { type, error: new Error0('No payload'), location })
-      }
-      if (component) {
-        return React.createElement(component, { data: payload.data, location })
-      }
-      return React.createElement(errorComponent, { type, error: new Error0('No component'), location })
+    const errorComponent = this.base.getErrorComponent({ type: 'page' })
+    if (error) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        error: Error0.from(error),
+        location,
+      })
     }
-    if (wrapper) {
-      return React.createElement(wrapper, { children: React.createElement(ComponentProvider) })
+    if (!payload) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        error: new Error0('No payload'),
+        location,
+      })
     }
-    return React.createElement(ComponentProvider)
+    if (pageComponent) {
+      return React.createElement(pageComponent, { data: payload.data, location })
+    }
+    return React.createElement(errorComponent, {
+      type: 'page',
+      error: new Error0('No component'),
+      location,
+    })
   }
 
-  wrapOrNotWrapWithReactQuery({
-    type,
+  getFullPageElement({
+    point,
+    base,
     location,
     payload,
-    component,
-    wrapper,
+    queryClient,
     error,
     dehydratedState,
   }: {
-    type: DestinationComponentType
+    point?: AnyPoint | undefined
+    base: InitialBasePoint | ExtendedBasePoint
     location: Route0.Location
     payload?: Payload
-    component?: PageComponent
     queryClient: QueryClient | undefined
-    wrapper?: WrapperComponentType | undefined
     error?: unknown
     dehydratedState?: DehydratedState
   }): React.ReactElement {
-    if (this.base._queryClient) {
-      return this.wrapWithReactQuery({
-        type,
-        location,
-        component,
-        wrapper,
-        error,
-        queryClient: this.base._queryClient,
-        dehydratedState,
-      })
+    const pageComponentRaw = point?.getPageComponent()
+    const pageComponent =
+      point?._queryClient && pageComponentRaw
+        ? this.wrapComponentWithReactQueryFetcher({ component: pageComponentRaw, location, point, base })
+        : undefined
+    let pageElement = this.getBasePageElement({
+      location,
+      payload,
+      pageComponent,
+      error,
+    })
+    if (queryClient) {
+      pageElement = this.wrapElementWithReactQueryProvider({ queryClient, dehydratedState, children: pageElement })
     }
-    return this.notWrapWithReactQuery({ type, location, payload, component, wrapper, error })
+    if (this.base._wrapper) {
+      pageElement = React.createElement(this.base._wrapper, { children: pageElement })
+    }
+    return pageElement
   }
 
   withDehydratedState<T extends { payload: Payload; error: unknown }>(
@@ -532,16 +550,28 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   ): T & { dehydratedState: DehydratedState } {
     const queryClient = new QueryClient()
     const queryKey = this.base.getQueryKey({ location: input.payload.location })
-    queryClient.setQueryData(queryKey, input.payload.data)
-    const queryCache = queryClient.getQueryCache().find({ queryKey })
-    if (!queryCache) {
-      throw new Error('Query cache not found, it is unbelievable')
-    }
+    const query = queryClient.getQueryCache().build(queryClient, { queryKey, queryHash: hashKey(queryKey) })
     if (input.error) {
-      queryCache.state.error = { ...Error0.toJSON(input.error), name: 'Error0' }
+      query.setState({
+        data: undefined,
+        error: { ...Error0.toJSON(input.error), name: 'Error0' },
+        status: 'error',
+        fetchStatus: 'idle',
+      })
+    } else {
+      query.setState({
+        data: input.payload.data,
+        error: null,
+        status: 'success',
+        fetchStatus: 'idle',
+      })
     }
-    queryCache.state.status = input.error ? 'error' : 'success'
-    const dehydratedState = dehydrate(queryClient)
+    const dehydratedState = dehydrate(queryClient, {
+      shouldDehydrateQuery: (query) => {
+        // This will include all queries, including failed ones
+        return true
+      },
+    })
     return {
       ...input,
       payload: {
@@ -552,18 +582,16 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   fillPageComponent<TPoint extends AnyPoint | undefined = undefined>({
-    wrapper,
-    component,
     point,
+    base,
     error,
     status,
     payload,
     location,
     dehydratedState,
   }: {
-    wrapper?: WrapperComponentType | undefined
-    component?: PageComponent | undefined
     point?: TPoint | undefined
+    base: InitialBasePoint | ExtendedBasePoint
     payload?: Payload
     error?: unknown
     status?: number | undefined
@@ -573,13 +601,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     // TODO: use provided errors
     if (error) {
       return {
-        element: this.wrapOrNotWrapWithReactQuery({
-          type: 'page',
+        element: this.getFullPageElement({
+          point,
+          base,
           location,
           error,
-          wrapper,
-          queryClient: this.base._queryClient,
-          component,
+          queryClient: base._queryClient,
           payload,
           dehydratedState,
         }),
@@ -587,89 +614,22 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         status,
       }
     }
-    if (!payload) {
-      const error = new Error0(`No payload`)
-      return {
-        element: this.wrapOrNotWrapWithReactQuery({
-          type: 'page',
-          location,
-          error,
-          wrapper,
-          queryClient: this.base._queryClient,
-          component,
-          payload,
-          dehydratedState,
-        }),
-        error,
-        status: 500,
-      }
-    }
-    if (component) {
-      return {
-        element: this.wrapOrNotWrapWithReactQuery({
-          type: 'page',
-          location: payload.location,
-          component,
-          wrapper,
-          queryClient: this.base._queryClient,
-          payload,
-          dehydratedState,
-        }),
-        error: undefined,
-        status,
-      }
-    }
-    if (point) {
-      const componentFromPoint = point.getPageComponent()
-      if (componentFromPoint) {
-        return {
-          element: this.wrapOrNotWrapWithReactQuery({
-            type: 'page',
-            location: payload.location,
-            component: componentFromPoint,
-            wrapper,
-            queryClient: this.base._queryClient,
-            payload,
-            dehydratedState,
-          }),
-          error: undefined,
-          status,
-        }
-      } else {
-        return {
-          element: this.wrapOrNotWrapWithReactQuery({
-            type: 'page',
-            location: payload.location,
-            error: new Error0(`Point has no page element`),
-            wrapper,
-            queryClient: this.base._queryClient,
-            payload,
-            dehydratedState,
-          }),
-          error: new Error(`Point has no page element`),
-          status: 404,
-        }
-      }
-    }
-    const error1 = new Error0(`No compoentn, no point: ${payload.location.pathname}`)
     return {
-      element: this.wrapOrNotWrapWithReactQuery({
-        type: 'page',
-        location: payload.location,
-        error: error1,
-        wrapper,
-        queryClient: this.base._queryClient,
+      element: this.getFullPageElement({
+        point,
+        base,
+        location,
+        queryClient: base._queryClient,
         payload,
         dehydratedState,
       }),
-      error: error1,
-      status: 404,
+      error: undefined,
+      status,
     }
   }
 
   // TODO: respect base id and children
   async fillSuitablePageComponent({
-    wrapper,
     payload,
     dehydratedState,
     error,
@@ -677,7 +637,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     fallbackBaseId,
     ...locationProps
   }: {
-    wrapper?: React.ComponentType<{ children: React.ReactNode }>
     payload: Payload
     dehydratedState: DehydratedState
     error?: unknown
@@ -685,13 +644,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     fallbackBaseId?: BaseId | undefined
   } & LocationInput): Promise<FillPageResult> {
     const location = this.normalizeLocation(locationProps)
-    const suitable = await this.getSuitablePageComponent({ location, baseId, fallbackBaseId })
+    const suitable = await this.getSuitablePagePoint({ location, baseId, fallbackBaseId })
     return this.fillPageComponent({
-      wrapper,
-      component: suitable?.component,
+      point: suitable.point,
+      base: suitable.base,
       payload,
       error,
-      location,
+      location: suitable.location,
       dehydratedState,
     })
   }
@@ -701,7 +660,6 @@ export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
   base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
   parent?: null
   points?: PointsCollection
-  pages?: PagesCollection
 }
 
 export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
@@ -715,7 +673,8 @@ export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = 
   eversion: Eversion0<TRequiredCtx>
 }
 export type GetSuitablePageComponentResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  component: PageComponent
+  point: PagePoint | undefined
+  base: InitialBasePoint | ExtendedBasePoint
   location: Route0.Location
   eversion: Eversion0<TRequiredCtx>
 }
@@ -726,15 +685,12 @@ export type FillPageResult = {
 }
 
 export type PointsCollectionRecord = {
+  type: ReadyPointType
   method: Method
   route: Route0.AnyRoute
   point: ReadyPoint
 }
 export type PointsCollection = PointsCollectionRecord[]
-export type PagesCollectionRecord = {
-  route: Route0.AnyRoute
-} & ({ component: PageComponent } | { lazy: () => Promise<PageComponent> })
-export type PagesCollection = PagesCollectionRecord[]
 
 export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }
 
@@ -752,9 +708,8 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   status: number
   dehydratedState: DehydratedState
   base: InitialBasePoint | ExtendedBasePoint
-  pageComponent: PageComponent | undefined
+  point: AnyPoint | undefined
   eversion: Eversion0
-  wrapper: WrapperComponentType | undefined
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
   TPoint extends AnyPoint<any, any, infer TOutputCtx, infer TOutputData, any, any>
