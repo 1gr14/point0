@@ -1,8 +1,7 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { Route0 } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
-import type * as React from 'react'
-import { DefaultErrorComponent, DefaultLoaderComponent } from '../adapters/react-dom/components.js'
+import * as React from 'react'
 
 export class Point0<
   TParent extends ParentPoint | UndefinedParent = UndefinedParent,
@@ -71,11 +70,14 @@ export class Point0<
     this._id = props._id
     this._method = props._method ?? (undefined as Method | UndefinedMethod)
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
-    this._errorComponent = props._errorComponent ?? DefaultErrorComponent
+    this._errorComponent =
+      props._errorComponent ??
+      ((({ error }) => React.createElement(React.Fragment, null, JSON.stringify(error.toJSON()))) as ErrorComponentType)
     this._pageErrorComponent = props._pageErrorComponent
     this._componentErrorComponent = props._componentErrorComponent
     this._pageLoaderComponent = props._pageLoaderComponent
-    this._loaderComponent = props._loaderComponent ?? DefaultLoaderComponent
+    this._loaderComponent =
+      props._loaderComponent ?? ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoaderComponentType)
     this._componentLoaderComponent = props._componentLoaderComponent
     this._appLoaderComponent = props._appLoaderComponent
 
