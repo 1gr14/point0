@@ -11,6 +11,9 @@ export default client
     })
     return { idea }
   })
+  .head(({ data: { idea } }) => ({
+    title: idea.title,
+  }))
   .page(({ data: { idea } }) => {
     // any hook or whatever here, it is just client code
     return (

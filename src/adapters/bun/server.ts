@@ -167,7 +167,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                 }
               }
               // so we render page wrapped with layouts
-              const { element, error: fillError } = extractResult.eversion.fillPageComponent({
+              const { element, error: fillError } = await extractResult.eversion.fillPageComponent({
                 point: extractResult.point,
                 base: extractResult.base,
                 payload: extractResult.payload,
@@ -183,6 +183,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                   element,
                   payload: extractResult.payload,
                   originalIndexHtml,
+                  rootElementId: relatedClient.rootElementId,
                 })
                 return new Response(readableStream, {
                   headers: { 'Content-Type': 'text/html' },

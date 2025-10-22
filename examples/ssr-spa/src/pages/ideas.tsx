@@ -8,6 +8,7 @@ export default client
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
   })
+  .title(({ data }) => `${data.ideasCount} ideas`)
   // if you want to preserve state of "count" on HMR, you need to use this approach,
   // just return ready elemnt imported from another file
   .page(({ data }) => <IdeasView data={data} />)

@@ -15,6 +15,7 @@ export type ServeClientInput = {
   distRoute?: string
   srcEntry?: string
   distEntry?: string
+  rootElementId?: string
 }
 export type ServeServerInput = {
   base: InitialBasePoint
@@ -37,6 +38,7 @@ export type ServeClientInputParsed = {
   srcEntry: string | undefined
   distEntry: string | undefined
   index: number
+  rootElementId: string | undefined
 }
 export type ServeServerInputParsed = {
   base: InitialBasePoint
@@ -77,6 +79,7 @@ const parseServeClientInput = (
     srcEntry,
     distEntry,
     index,
+    rootElementId: input.rootElementId,
   }
 }
 export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {

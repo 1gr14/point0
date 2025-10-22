@@ -1,8 +1,8 @@
+import type { DehydratedState } from '@tanstack/react-query'
+import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
-import type { MetaMap, MetaMapValue } from '../core/index.js'
 import type { Payload } from '../eversion/runtime.js'
-import type { DehydratedState } from '@tanstack/react-query'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -19,66 +19,6 @@ export function escapeForInlineJSON(json: string) {
 
 export function serialize(payload: Payload | DehydratedState) {
   return escapeForInlineJSON(JSON.stringify(payload))
-}
-
-export const metaMapToHtml = (metaMap: MetaMap | MetaMap[]) => {
-  const metaMaps = Array.isArray(metaMap) ? metaMap : [metaMap]
-  let headHtml = ''
-  let bodyAttrs = ''
-  let htmlAttrs = ''
-  const toHtmlAttrs = (value: MetaMapValue) => {
-    if (typeof value !== 'object' || value === null || typeof value === 'undefined') {
-      return ''
-    }
-    return Object.entries(value)
-      .map(([key, value]) =>
-        value === true ? key : value === false ? '' : value === null || value === undefined ? '' : `${key}="${value}"`,
-      )
-      .filter(Boolean)
-      .join(' ')
-  }
-  const withSpaceIfExists = (value: string) => {
-    return value.length > 0 ? ` ${value}` : ''
-  }
-  for (const metaMap of metaMaps) {
-    for (const [key, value] of Object.entries(metaMap)) {
-      if (key === 'html') {
-        htmlAttrs += toHtmlAttrs(value)
-      } else if (key === 'body') {
-        bodyAttrs += toHtmlAttrs(value)
-      } else {
-        if (value === null || value === undefined || value === false) {
-          continue
-        }
-        if (typeof value === 'object') {
-          headHtml += `<${key} ${toHtmlAttrs(value)} />`
-          continue
-        }
-        headHtml += `<${key}>${value}</${key}>`
-      }
-    }
-  }
-  return {
-    headHtml,
-    bodyAttrs: withSpaceIfExists(bodyAttrs),
-    htmlAttrs: withSpaceIfExists(htmlAttrs),
-  }
-}
-
-export function renderDocumentHtmlPrefix({ payload }: { payload: Payload }) {
-  const { meta } = payload
-  const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
-  const serializedPayload = serialize(payload)
-  return `<!doctype html>
-<html${htmlAttrs}>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-${headHtml}
-</head>
-<body${bodyAttrs}>
-<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>
-<div id="root">`
 }
 
 export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) {
@@ -100,114 +40,87 @@ export type DocumentHtmlResult<TContent extends string | undefined> = {
   html: string
 }
 
-export function renderDocumentHtml<TContent extends string | undefined = undefined>({
+export function fillRootElement({
+  html,
   content,
-  payload,
-  clientBundlePath,
-  originalIndexHtml,
+  rootElementId = 'root',
+  position = 'append',
 }: {
-  content?: TContent
-  payload: Payload
-  clientBundlePath?: string
-  originalIndexHtml?: string
-}): DocumentHtmlResult<TContent> {
-  if (originalIndexHtml) {
-    return overrideDocumentHtml({ originalIndexHtml, content, payload, clientBundlePath })
+  html: string
+  content: string
+  rootElementId?: string
+  position?: 'append' | 'prepend'
+}) {
+  // Match <div ... id="root" ...> ... </div> without eating siblings
+  const pattern = new RegExp(
+    `<div\\b([^>]*?)\\bid=["']${rootElementId}["']([^>]*)>(.*?)</div>`,
+    'is', // i = case-insensitive, s = dotAll (so . matches newlines)
+  )
+  const replacement = (_: string, before: string, after: string, inner: string) => {
+    const newInner = position === 'prepend' ? `${content}${inner}` : `${inner}${content}`
+    return `<div${before.trimEnd()} id="${rootElementId}"${after}>${newInner}</div>`
   }
-  const prefix = renderDocumentHtmlPrefix({ payload })
-  const suffix = renderDocumentHtmlSuffix({ clientBundlePath })
-  return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
+
+  return html.replace(pattern, replacement)
 }
 
-export function overrideDocumentHtml<TContent extends string | undefined = undefined>({
+function prependBodyElement({ html, content }: { html: string; content: string }) {
+  // Match the <body> tag and capture its existing content
+  const pattern = /<body\b[^>]*>([\s\S]*?)<\/body>/i
+
+  const replacement = (match: string, inner: string) => {
+    const newContent = `${content}${inner}` // prepend payload to the beginning of <body>
+    return match.replace(inner, newContent)
+  }
+
+  return html.replace(pattern, replacement)
+}
+
+export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,
   content,
   payload,
+  rootElementId,
   clientBundlePath,
 }: {
   originalIndexHtml: string
   content?: TContent
   // TODO: make it choosable by settings
   payload: Payload
+  rootElementId?: string
   clientBundlePath?: string
-}): DocumentHtmlResult<TContent> {
-  const { meta } = payload
-  const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
+}): Promise<DocumentHtmlResult<TContent>> {
+  const { head } = payload
   const serializedPayload = serialize(payload)
 
-  const rewriter = new HTMLRewriter()
-    .on('html', {
-      element(element) {
-        // Inject html attributes
-        if (htmlAttrs.trim()) {
-          for (const attr of htmlAttrs.trim().split(/\s+/)) {
-            const [name, value] = attr.split('=')
-            if (value) {
-              element.setAttribute(name, value.replace(/(^"|"$)/g, ''))
-            } else {
-              element.setAttribute(name, '')
-            }
-          }
-        }
-      },
+  let html = prependBodyElement({
+    content: `<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>`,
+    html: originalIndexHtml,
+  })
+  if (clientBundlePath) {
+    html = prependBodyElement({
+      content: `<script src="${clientBundlePath}" defer></script>`,
+      html,
     })
-    .on('head', {
-      element(element) {
-        // Inject meta tags at the end of head
-        if (headHtml) {
-          element.append(headHtml, { html: true })
-        }
-      },
-    })
-    .on('body', {
-      element(element) {
-        // Inject body attributes
-        if (bodyAttrs.trim()) {
-          for (const attr of bodyAttrs.trim().split(/\s+/)) {
-            const [name, value] = attr.split('=')
-            if (value) {
-              element.setAttribute(name, value.replace(/(^"|"$)/g, ''))
-            } else {
-              element.setAttribute(name, '')
-            }
-          }
-        }
+  }
+  html = fillRootElement({
+    content: content
+      ? `<!-- __POINT0_TARGET_START__ -->${content}<!-- __POINT0_TARGET_END__ -->`
+      : '<!-- __POINT0_TARGET__ -->',
+    html,
+    rootElementId,
+  })
+  if (head.length > 0) {
+    html = await transformHtmlTemplate(createHead({ init: head }), html)
+  }
 
-        // Inject payload script at the beginning of body
-        element.prepend(`<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>`, {
-          html: true,
-        })
-
-        // Inject client bundle if present
-        if (clientBundlePath) {
-          element.append(`<script src="${clientBundlePath}" defer></script>`, { html: true })
-        }
-      },
-    })
-    .on('#root', {
-      element(element) {
-        if (content) {
-          // Inject rendered page HTML into root div
-          element.setInnerContent(`'<!-- __POINT0_TARGET_START__ -->'${content}<!-- __POINT0_TARGET_END__ -->'`, {
-            html: true,
-          })
-        } else {
-          element.setInnerContent('<!-- __POINT0_TARGET__ -->', { html: true })
-        }
-      },
-    })
-
-  const htmlWithTarget = rewriter.transform(originalIndexHtml)
-  if (htmlWithTarget.includes('<!-- __POINT0_TARGET__ -->')) {
-    const [prefix, suffix] = htmlWithTarget.split('<!-- __POINT0_TARGET__ -->')
+  if (html.includes('<!-- __POINT0_TARGET__ -->')) {
+    const [prefix, suffix] = html.split('<!-- __POINT0_TARGET__ -->')
     return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
-  } else if (
-    htmlWithTarget.includes('<!-- __POINT0_TARGET_START__ -->') &&
-    htmlWithTarget.includes('<!-- __POINT0_TARGET_END__ -->')
-  ) {
-    const prefix = htmlWithTarget.split('<!-- __POINT0_TARGET_START__ -->')[0]
-    const suffix = htmlWithTarget.split('<!-- __POINT0_TARGET_END__ -->')[1]
-    const content = htmlWithTarget
+  } else if (html.includes('<!-- __POINT0_TARGET_START__ -->') && html.includes('<!-- __POINT0_TARGET_END__ -->')) {
+    const prefix = html.split('<!-- __POINT0_TARGET_START__ -->')[0]
+    const suffix = html.split('<!-- __POINT0_TARGET_END__ -->')[1]
+    const content = html
       .replace(prefix, '')
       .replace(suffix, '')
       .replace('<!-- __POINT0_TARGET_START__ -->', '')
@@ -218,25 +131,30 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
   }
 }
 
-export function renderStatic({
+export async function renderStatic({
   element,
   payload,
   renderer = renderToStaticMarkup,
   clientBundlePath,
   originalIndexHtml,
+  rootElementId,
 }: {
   element: React.ReactElement
   payload: Payload
   renderer?: StaticRenderer
   clientBundlePath: string
-  originalIndexHtml?: string
-}): string {
-  return renderDocumentHtml({
-    content: renderer(element),
-    payload,
-    clientBundlePath,
-    originalIndexHtml,
-  }).html
+  originalIndexHtml: string
+  rootElementId: string
+}): Promise<string> {
+  return (
+    await overrideDocumentHtml({
+      content: renderer(element),
+      payload,
+      clientBundlePath,
+      originalIndexHtml,
+      rootElementId,
+    })
+  ).html
 }
 
 export async function getReadableStreamWithWrapper({
@@ -276,13 +194,15 @@ export async function renderReadableStream({
   clientBundlePath,
   renderer = renderToReadableStream,
   originalIndexHtml,
+  rootElementId,
 }: {
   element: React.ReactElement
   payload: Payload
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
-  originalIndexHtml?: string
+  originalIndexHtml: string
+  rootElementId?: string
 }): Promise<ReadableStream> {
-  const { prefix, suffix } = renderDocumentHtml({ originalIndexHtml, payload })
+  const { prefix, suffix } = await overrideDocumentHtml({ originalIndexHtml, payload, rootElementId })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
 }

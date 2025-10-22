@@ -2,6 +2,7 @@ import type { Error0 } from '@devp0nt/error0'
 import type { Route0 } from '@devp0nt/route0'
 import type { QueryClient, QueryOptions } from '@tanstack/react-query'
 import * as React from 'react'
+import type { ResolvableHead } from 'unhead/types'
 
 export class Point0<
   TParent extends ParentPoint | UndefinedParent = UndefinedParent,
@@ -19,6 +20,7 @@ export class Point0<
   static pointsCount = 0
 
   _baseId: BaseId
+  _head: ResolvableHead[]
   _queryClient: QueryClient | undefined
   _queryOptions: QueryOptionsSettings
   _pageQueryOptions: QueryOptionsSettings
@@ -42,10 +44,12 @@ export class Point0<
 
   private constructor(props: {
     _baseId: BaseId
+    _wrapper?: WrapperComponentType | undefined
     _queryClient?: QueryClient | undefined
+
+    _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
-    _wrapper?: WrapperComponentType | undefined
     _hasParent?: TParent extends UndefinedParent ? false : true
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
@@ -63,10 +67,11 @@ export class Point0<
   }) {
     // persistent
     this._baseId = props._baseId
-
-    // overridable
     this._wrapper = props._wrapper
     this._queryClient = props._queryClient
+
+    // overridable
+    this._head = props._head ?? []
     this._queryOptions = props._queryOptions ?? {}
     this._pageQueryOptions = props._pageQueryOptions ?? {}
     this._hasParent = props._hasParent as TParent extends UndefinedParent ? false : true
@@ -99,6 +104,7 @@ export class Point0<
     TRoute extends Route0.AnyRoute | UndefinedRoute,
     THasPage extends HasPage,
   >(overrides?: {
+    _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
     _wrapper?: WrapperComponentType | undefined
@@ -123,6 +129,7 @@ export class Point0<
       _wrapper: this._wrapper,
 
       // overridable
+      _head: [...this._head, ...(overrides?._head ?? [])],
       _queryOptions: { ...this._queryOptions, ...(overrides?._queryOptions ?? {}) },
       _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides?._pageQueryOptions ?? {}) },
       _hasParent: this._hasParent as TParent extends UndefinedParent ? false : true,
@@ -284,6 +291,37 @@ export class Point0<
     } as never)
   }
 
+  head(
+    headFn: HeadFn<TOutputData, CurrentRoute<TRoute>>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  head(head: ResolvableHead): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  head(
+    headFnOrHead: HeadFn<TOutputData, CurrentRoute<TRoute>> | ResolvableHead,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    const headFn = typeof headFnOrHead === 'function' ? headFnOrHead : () => headFnOrHead
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }],
+    } as never)
+  }
+
+  title(
+    titleFn: TitleFn<TOutputData, CurrentRoute<TRoute>>,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  title(title: string): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  title(
+    titleFnOrTitle: TitleFn<TOutputData, CurrentRoute<TRoute>> | string,
+  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    const headFn =
+      typeof titleFnOrTitle === 'function'
+        ? async (props: HeadFnProps<TOutputData, TRoute>) => ({
+            title: await titleFnOrTitle(props),
+          })
+        : () => ({ title: titleFnOrTitle })
+    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }],
+    } as never)
+  }
+
   page<TPage extends PageComponent<TOutputData, TRoute>>(
     page: TPage,
   ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true> {
@@ -318,8 +356,12 @@ export class Point0<
     }[type] ?? this._loaderComponent) as LoaderComponentType<TType>
   }
 
-  hasLoaders(): boolean {
+  hasLoader(): boolean {
     return this._extendFns.some((fn) => fn.type === 'loader')
+  }
+
+  hasHead(): boolean {
+    return this._extendFns.some((fn) => fn.type === 'head')
   }
 
   // TODO: move to eversion.ts
@@ -465,6 +507,12 @@ export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 
+export type FetchOptionsFn = ({ location }: { location: Route0.Location }) => FetchOptions
+export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
+export type FetchOptions = RequestInit
+
+export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
+
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? Omit<TCtx, keyof TAppend> & TAppend
   : TAppend
@@ -490,11 +538,6 @@ export type CtxFn<
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
 
-export type FetchOptionsFn = ({ location }: { location: Route0.Location }) => FetchOptions
-export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
-export type FetchOptions = RequestInit
-
-export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 export type LoaderFnProps<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,
@@ -512,8 +555,26 @@ export type LoaderFn<
 > = (props: LoaderFnProps<TCtx, TDataInput, TRoute0>) => Promise<TDataOutput> | TDataOutput
 export type LoaderFnOutput<TLoader extends LoaderFn> = Awaited<ReturnType<TLoader>>
 
+export type HeadFnProps<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>> }
+export type HeadFn<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = (props: HeadFnProps<TOutputData, TRoute>) => Promise<ResolvableHead> | ResolvableHead
+
+export type TitleFnProps<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>> }
+export type TitleFn<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = (props: HeadFnProps<TOutputData, TRoute>) => Promise<string> | string
+
 export type ExtendFnRecord<
-  TType extends 'ctx' | 'loader' = 'ctx' | 'loader',
+  TType extends 'ctx' | 'loader' | 'head' = 'ctx' | 'loader' | 'head',
   TCtxInput extends Ctx = Ctx,
   TDataInput extends Data = Data,
   TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
@@ -522,9 +583,6 @@ export type ExtendFnRecord<
   ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute0, TOutput> }
   : TType extends 'loader'
     ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TOutput> }
-    : never
-
-export type MetaMapPrimitiveValue = string | boolean | number | null | undefined
-export type MetaMapRecordValue = Record<string, MetaMapPrimitiveValue>
-export type MetaMapValue = MetaMapPrimitiveValue | MetaMapRecordValue
-export type MetaMap = Record<string, MetaMapValue>
+    : TType extends 'head'
+      ? { type: 'head'; fn: HeadFn<TDataInput, TRoute0> }
+      : never

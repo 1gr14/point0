@@ -11,6 +11,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import * as React from 'react'
+import { useEffect } from 'react'
+import type { ResolvableHead } from 'unhead/types'
 import type {
   AnyPoint,
   BaseId,
@@ -20,7 +22,6 @@ import type {
   EmptyData,
   ExtendedBasePoint,
   InitialBasePoint,
-  MetaMap,
   Method,
   PageComponent,
   PagePoint,
@@ -29,7 +30,7 @@ import type {
   RequiredCtx,
   UndefinedCtx,
 } from '../core/index.js'
-import { useEffect } from 'react'
+import { mergeHeaders } from '../core/utils.js'
 
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
 // so remove force
@@ -287,14 +288,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & LocationInput): Promise<ExtractResult> {
     let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
+    const headOutput: ResolvableHead[] = []
     const extendFns = [
       ...this.getParents().flatMap((parent) => parent._extendFns),
       ...this.base._extendFns,
       ...(point?._extendFns ?? []),
     ]
     const location = this.normalizeLocation(locationProps)
-    // TODO: get real meta
-    const meta = { title: 'Hello, world!' }
     // TODO: get status from real point data
 
     try {
@@ -306,6 +306,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           case 'loader':
             dataOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location })
             break
+          case 'head':
+            headOutput.push(await extendFn.fn({ data: { ...dataOutput }, location }))
+            break
           // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
           default:
             throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
@@ -314,7 +317,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (point) {
         return this.withDehydratedState({
           ctx: ctxOutput,
-          payload: { data: dataOutput, meta, location },
+          payload: { data: dataOutput, head: headOutput, location },
           point,
           error: undefined,
           status: 200,
@@ -324,7 +327,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       } else {
         return this.withDehydratedState({
           ctx: ctxOutput,
-          payload: { data: dataOutput, meta, location },
+          payload: { data: dataOutput, head: headOutput, location },
           point,
           error: new Error0(`Point Not Found: ${location.pathname}`),
           status: 404,
@@ -335,7 +338,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     } catch (error) {
       return this.withDehydratedState({
         ctx: ctxOutput,
-        payload: { data: dataOutput, meta, location },
+        payload: { data: dataOutput, head: headOutput, location },
         point,
         error,
         status: 500,
@@ -417,6 +420,16 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
+  async wrapElementWithUnheadProvider({ children }: { children: React.ReactNode }) {
+    if (typeof window !== 'undefined') {
+      const { UnheadProvider, createHead } = await import('@unhead/react/client')
+      return React.createElement(UnheadProvider, { head: createHead(), children })
+    } else {
+      const { UnheadProvider, createHead } = await import('@unhead/react/server')
+      return React.createElement(UnheadProvider, { value: createHead(), children })
+    }
+  }
+
   wrapComponentWithReactQueryFetcher({
     component,
     point,
@@ -424,17 +437,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     component: PageComponent
     point: AnyPoint
   }): PageComponent {
-    if (!point.hasLoaders()) {
+    if (!point.hasLoader()) {
       return component
-    }
-    function mergeHeaders(base?: HeadersInit, extra?: Record<string, string>): Headers {
-      const merged = new Headers(base)
-      if (extra) {
-        for (const [key, value] of Object.entries(extra)) {
-          merged.set(key, value)
-        }
-      }
-      return merged
     }
     function PageComponent({ location }: { location: Route0.Location }): React.ReactElement {
       // TODO: get location from useLocation, which in ssr mode is useLoaderData().location else it is from expo or react router
@@ -516,7 +520,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  getFullPageElement({
+  async getFullPageElement({
     point,
     base,
     location,
@@ -528,7 +532,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     location: Route0.Location
     payload?: Payload
     error?: unknown
-  }): React.ReactElement {
+  }): Promise<React.ReactElement> {
     let pageComponent = point?._page
     pageComponent &&= this.wrapComponentEversionContextInitialPageWatcher(pageComponent)
     pageComponent =
@@ -541,6 +545,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pageComponent,
       error,
     })
+    if (base.hasHead()) {
+      pageElement = await this.wrapElementWithUnheadProvider({ children: pageElement })
+    }
     if (base._wrapper) {
       pageElement = React.createElement(base._wrapper, { children: pageElement })
     }
@@ -592,7 +599,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }
 
-  fillPageComponent<TPoint extends AnyPoint | undefined = undefined>({
+  async fillPageComponent<TPoint extends AnyPoint | undefined = undefined>({
     point,
     base,
     error,
@@ -606,11 +613,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     error?: unknown
     status?: number | undefined
     location: Route0.Location
-  }): FillPageResult {
+  }): Promise<FillPageResult> {
     // TODO: use provided errors
     if (error) {
       return {
-        element: this.getFullPageElement({
+        element: await this.getFullPageElement({
           point,
           base,
           location,
@@ -622,7 +629,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
     }
     return {
-      element: this.getFullPageElement({
+      element: await this.getFullPageElement({
         point,
         base,
         location,
@@ -648,7 +655,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & LocationInput): Promise<FillPageResult> {
     const location = payload?.location || this.normalizeLocation(locationProps)
     const suitable = await this.getSuitablePagePoint({ location, baseId, fallbackBaseId })
-    return this.fillPageComponent({
+    return await this.fillPageComponent({
       point: suitable.point,
       base: suitable.base,
       payload,
@@ -721,7 +728,7 @@ export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = T
 export type Payload<TData extends Data = Data> = {
   location: Route0.Location
   data: TData
-  meta: MetaMap | MetaMap[]
+  head: ResolvableHead[]
   dehydratedState?: DehydratedState
 }
 export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {

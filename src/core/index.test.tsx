@@ -95,7 +95,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation('/'),
         dehydratedState: expect.any(Object),
       },
@@ -158,7 +158,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation(url),
         dehydratedState: expect.any(Object),
       },
@@ -189,7 +189,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation(url),
         dehydratedState: expect.any(Object),
       },
@@ -216,7 +216,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation(url),
         dehydratedState: expect.any(Object),
       },
@@ -253,7 +253,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation(url),
         dehydratedState: expect.any(Object),
       },
@@ -285,7 +285,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation(url),
         dehydratedState: expect.any(Object),
       },
@@ -314,7 +314,7 @@ describe('Point0', () => {
       },
       payload: {
         data: {},
-        meta: { title: 'Hello, world!' },
+        head: [],
         location: Route0.getLocation(url),
         dehydratedState: expect.any(Object),
       },

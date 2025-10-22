@@ -3,4 +3,8 @@ import type { server } from './server.js'
 import App from '../layouts/app.js'
 import { queryClient } from './react-query.js'
 
-export const client = Point0.extend<typeof server>({ id: 'client', queryClient, wrapper: App })
+export const client = Point0.extend<typeof server>({ id: 'client', queryClient, wrapper: App }).head({
+  title: 'IdeaNick',
+  titleTemplate: '%s | IdeaNick',
+  htmlAttrs: { lang: 'en' },
+})
