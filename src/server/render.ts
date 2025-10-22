@@ -103,18 +103,16 @@ export type DocumentHtmlResult<TContent extends string | undefined> = {
 export function renderDocumentHtml<TContent extends string | undefined = undefined>({
   content,
   payload,
-  dehydratedState,
   clientBundlePath,
   originalIndexHtml,
 }: {
   content?: TContent
   payload: Payload
-  dehydratedState?: DehydratedState
   clientBundlePath?: string
   originalIndexHtml?: string
 }): DocumentHtmlResult<TContent> {
   if (originalIndexHtml) {
-    return overrideDocumentHtml({ originalIndexHtml, content, payload, dehydratedState, clientBundlePath })
+    return overrideDocumentHtml({ originalIndexHtml, content, payload, clientBundlePath })
   }
   const prefix = renderDocumentHtmlPrefix({ payload })
   const suffix = renderDocumentHtmlSuffix({ clientBundlePath })
@@ -125,20 +123,17 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
   originalIndexHtml,
   content,
   payload,
-  dehydratedState,
   clientBundlePath,
 }: {
   originalIndexHtml: string
   content?: TContent
   // TODO: make it choosable by settings
   payload: Payload
-  dehydratedState?: DehydratedState
   clientBundlePath?: string
 }): DocumentHtmlResult<TContent> {
   const { meta } = payload
   const { headHtml, bodyAttrs, htmlAttrs } = metaMapToHtml(meta)
   const serializedPayload = serialize(payload)
-  const serializedDehydratedState = dehydratedState ? serialize(dehydratedState) : ''
 
   const rewriter = new HTMLRewriter()
     .on('html', {
@@ -183,14 +178,6 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
           html: true,
         })
 
-        // Inject payload script at the beginning of body
-        element.prepend(
-          `<script id="__POINT0_DEHYDRATED_STATE__" type="application/json">${serializedDehydratedState}</script>`,
-          {
-            html: true,
-          },
-        )
-
         // Inject client bundle if present
         if (clientBundlePath) {
           element.append(`<script src="${clientBundlePath}" defer></script>`, { html: true })
@@ -234,14 +221,12 @@ export function overrideDocumentHtml<TContent extends string | undefined = undef
 export function renderStatic({
   element,
   payload,
-  dehydratedState,
   renderer = renderToStaticMarkup,
   clientBundlePath,
   originalIndexHtml,
 }: {
   element: React.ReactElement
   payload: Payload
-  dehydratedState: DehydratedState
   renderer?: StaticRenderer
   clientBundlePath: string
   originalIndexHtml?: string
@@ -249,7 +234,6 @@ export function renderStatic({
   return renderDocumentHtml({
     content: renderer(element),
     payload,
-    dehydratedState,
     clientBundlePath,
     originalIndexHtml,
   }).html
@@ -289,18 +273,16 @@ export async function getReadableStreamWithWrapper({
 export async function renderReadableStream({
   element,
   payload,
-  dehydratedState,
   clientBundlePath,
   renderer = renderToReadableStream,
   originalIndexHtml,
 }: {
   element: React.ReactElement
   payload: Payload
-  dehydratedState?: DehydratedState
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml?: string
 }): Promise<ReadableStream> {
-  const { prefix, suffix } = renderDocumentHtml({ originalIndexHtml, payload, dehydratedState })
+  const { prefix, suffix } = renderDocumentHtml({ originalIndexHtml, payload })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
 }

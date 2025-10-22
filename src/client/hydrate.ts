@@ -1,11 +1,10 @@
-import type { Route0 } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { ExtendedBasePoint } from '../core/index.js'
 import type { Payload, PointsCollection } from '../eversion/runtime.js'
 import { Eversion0 } from '../eversion/runtime.js'
-import type { DehydratedState } from '@tanstack/react-query'
 
 declare global {
   interface Window {
@@ -47,20 +46,6 @@ export async function hydrate({
     }
   })()
 
-  const dehydratedStateEl = document.getElementById('__POINT0_DEHYDRATED_STATE__')
-  const dehydratedStateContent = dehydratedStateEl?.textContent
-  if (!dehydratedStateContent) {
-    // TODO: throw only if ssr elnabled, else not throw
-    throw new Error('Missing __POINT0_DEHYDRATED_STATE__')
-  }
-  const dehydratedState: DehydratedState = (() => {
-    try {
-      return JSON.parse(dehydratedStateContent)
-    } catch (error) {
-      throw new Error('Invalid __POINT0_DEHYDRATED_STATE__', { cause: error })
-    }
-  })()
-
   // Find the SSR container.
   const rootElement = providedRootElement || document.getElementById('root')
   if (!rootElement) {
@@ -71,11 +56,11 @@ export async function hydrate({
 
   // Ask point0 to build the correct page element for the current route.
   const eversion = Eversion0.create({ base, points })
+  const location = Route0.getLocation(window.location.pathname)
   // TODO: get provided 404 error from eversion
   const { element, error } = await eversion.fillSuitablePageComponent({
     payload,
-    dehydratedState,
-    location: payload.location,
+    location,
   })
   if (error) {
     // Log but don’t crash the app on route resolution issues.

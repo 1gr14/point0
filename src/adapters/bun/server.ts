@@ -9,7 +9,6 @@ import { isPathnameUnderBasepath } from '../../server/utils.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 
 // TODO: {points, clients: {points}}
-// TODO: {base, clients: {base}}
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
 
@@ -169,7 +168,6 @@ export const createBunServer = async (props: ServeServerInput) => {
               }
               // so we render page wrapped with layouts
               const { element, error: fillError } = extractResult.eversion.fillPageComponent({
-                dehydratedState: extractResult.dehydratedState,
                 point: extractResult.point,
                 base: extractResult.base,
                 payload: extractResult.payload,
@@ -184,7 +182,6 @@ export const createBunServer = async (props: ServeServerInput) => {
                 const readableStream = await renderReadableStream({
                   element,
                   payload: extractResult.payload,
-                  dehydratedState: extractResult.dehydratedState,
                   originalIndexHtml,
                 })
                 return new Response(readableStream, {
@@ -227,8 +224,7 @@ export const createBunServer = async (props: ServeServerInput) => {
     },
   })
 
-  logger.info(`🚀 running at http://localhost:${bunServer.port}`)
-
+  logger.info(`server is running at http://localhost:${bunServer.port}`)
   return bunServer
 }
 

@@ -112,7 +112,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         eversion: Eversion0<TRequiredCtx>
       }
     | undefined {
-    if (baseId && this.base.getId() !== baseId) {
+    if (baseId && this.base._baseId !== baseId) {
       return undefined
     }
     const location = this.normalizeLocation(locationProps)
@@ -169,7 +169,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     baseId?: BaseId | undefined
   } & LocationInput): Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const route = this.base.getRoute()
+    const route = this.base._route
     if (!route) {
       return undefined
     }
@@ -288,8 +288,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
     const extendFns = [
-      ...this.getParents().flatMap((parent) => parent.getExtendFns()),
-      ...this.base.getExtendFns(),
+      ...this.getParents().flatMap((parent) => parent._extendFns),
+      ...this.base._extendFns,
       ...(point?._extendFns ?? []),
     ]
     const location = this.normalizeLocation(locationProps)
@@ -461,6 +461,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           })
         },
         enabled: !isInitialPage || query?.state.status !== 'error',
+        ...point._queryOptions,
+        ...point._pageQueryOptions,
       })
       const loaderComponent = point.getLoaderComponent({ type: 'page' })
       const errorComponent = point.getErrorComponent({ type: 'page' })
@@ -519,19 +521,15 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     base,
     location,
     payload,
-    queryClient,
     error,
-    dehydratedState,
   }: {
     point?: AnyPoint | undefined
     base: InitialBasePoint | ExtendedBasePoint
     location: Route0.Location
     payload?: Payload
-    queryClient: QueryClient | undefined
     error?: unknown
-    dehydratedState?: DehydratedState
   }): React.ReactElement {
-    let pageComponent = point?.getPageComponent()
+    let pageComponent = point?._page
     pageComponent &&= this.wrapComponentEversionContextInitialPageWatcher(pageComponent)
     pageComponent =
       point?._queryClient && pageComponent
@@ -543,19 +541,21 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pageComponent,
       error,
     })
-    if (this.base._wrapper) {
-      pageElement = React.createElement(this.base._wrapper, { children: pageElement })
+    if (base._wrapper) {
+      pageElement = React.createElement(base._wrapper, { children: pageElement })
     }
-    if (queryClient) {
-      pageElement = this.wrapElementWithReactQueryProvider({ queryClient, dehydratedState, children: pageElement })
+    if (base._queryClient) {
+      pageElement = this.wrapElementWithReactQueryProvider({
+        queryClient: base._queryClient,
+        dehydratedState: payload?.dehydratedState,
+        children: pageElement,
+      })
     }
     pageElement = this.wrapElementWithEversionContextProvider({ children: pageElement })
     return pageElement
   }
 
-  withDehydratedState<T extends { payload: Payload; error: unknown; point: AnyPoint | undefined }>(
-    input: T,
-  ): T & { dehydratedState: DehydratedState } {
+  withDehydratedState<T extends { payload: Payload; error: unknown; point: AnyPoint | undefined }>(input: T): T {
     const queryClient = new QueryClient()
     if (input.point) {
       const queryKey = input.point.getQueryKey({ location: input.payload.location })
@@ -587,8 +587,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       ...input,
       payload: {
         ...input.payload,
+        dehydratedState,
       },
-      dehydratedState,
     }
   }
 
@@ -599,7 +599,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     status,
     payload,
     location,
-    dehydratedState,
   }: {
     point?: TPoint | undefined
     base: InitialBasePoint | ExtendedBasePoint
@@ -607,7 +606,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     error?: unknown
     status?: number | undefined
     location: Route0.Location
-    dehydratedState?: DehydratedState
   }): FillPageResult {
     // TODO: use provided errors
     if (error) {
@@ -617,9 +615,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           base,
           location,
           error,
-          queryClient: base._queryClient,
           payload,
-          dehydratedState,
         }),
         error,
         status,
@@ -630,9 +626,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         point,
         base,
         location,
-        queryClient: base._queryClient,
         payload,
-        dehydratedState,
       }),
       error: undefined,
       status,
@@ -642,19 +636,17 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   // TODO: respect base id and children
   async fillSuitablePageComponent({
     payload,
-    dehydratedState,
     error,
     baseId,
     fallbackBaseId,
     ...locationProps
   }: {
-    payload: Payload
-    dehydratedState: DehydratedState
+    payload?: Payload
     error?: unknown
     baseId?: BaseId | undefined
     fallbackBaseId?: BaseId | undefined
   } & LocationInput): Promise<FillPageResult> {
-    const location = this.normalizeLocation(locationProps)
+    const location = payload?.location || this.normalizeLocation(locationProps)
     const suitable = await this.getSuitablePagePoint({ location, baseId, fallbackBaseId })
     return this.fillPageComponent({
       point: suitable.point,
@@ -662,7 +654,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       payload,
       error,
       location: suitable.location,
-      dehydratedState,
     })
   }
 }
@@ -727,13 +718,17 @@ export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = T
     }
   : { requiredCtx?: undefined }
 
-export type Payload<TData extends Data = Data> = { location: Route0.Location; data: TData; meta: MetaMap | MetaMap[] }
+export type Payload<TData extends Data = Data> = {
+  location: Route0.Location
+  data: TData
+  meta: MetaMap | MetaMap[]
+  dehydratedState?: DehydratedState
+}
 export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {
   ctx: TOutputCtx
   payload: Payload<TOutputData>
   error: unknown
   status: number
-  dehydratedState?: DehydratedState
   base: InitialBasePoint | ExtendedBasePoint
   point: AnyPoint | undefined
   eversion: Eversion0

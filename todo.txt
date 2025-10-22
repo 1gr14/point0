@@ -1,24 +1,12 @@
-react query replace data
-
-client/hydrate, client/components/ErrorBoundary, client/components/ErrorPage
-<App /> becouse it can be client only app and we can figure out how work with it — hydrate({wrapper})
-error handling, just catch it in <App><ErrorBoundary></App>, or better .errorComponent()
-.route(string), points collection also [string, import]
-.ctx({})
-
-.loader(() => [201, <div />]).loader(() => [404, <div />])
-
-inject react query, queryClient to Point0.client({ queryClient })
 const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
-on client before calling .page() we should useReactQuery(route{saerchParams, headers})
-.page(queryOptions, () => <div />) to provide options for this query
+.loader(() => [201, <div />]).loader(() => [404, <div />])
+.endpoint({req} => Response(Bun.file))
 .restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
 .endpoint() → just another loader but should be last
 
-.before, .after
-
 auth
 
+.useLoaderData
 .exposeCtx, add value to __PAGE0_EXPOSED_CTX__ as usual javascript, it can even have await import('...') inside. Or maybe it returns not result, but array of extend fns itself, to be called in client right before calling .clientCtx fns
 .uesExposedCtx
 .clientLoader, after call do not allow usual loader another
@@ -40,13 +28,12 @@ endpointsCollection
 layout scroll position ok
 example general layout, idea layout, idea news page
 
-createBunClient({ErrorBoundary, ErrorPageComponent})
-createBunServer
 entryInput should be gettable from client and server itslef
 we alway should pass client, but we can pass server as client. {server, client: server}
 config for generation points file: [point]
 config for generation pages file [route, () => page, ...layout]
 config for generation server entry, client entry, ot at least forward settings to them
+.route(string), points collection also [string, import]
 env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 cli for simplify commands, like build with bun: point0 build
 points collection generator, auto find points [Page$, Endpoint$], sort by no params to params routes, save to file: version with text anyze, version with parse code on exports with .page() or .endpoint() in the end
@@ -55,6 +42,7 @@ points collection generator, auto find points [Page$, Endpoint$], sort by no par
 extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
 const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
+? .before, .after
 
 .loader(...).component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extendFns
 
@@ -88,6 +76,7 @@ openapi plugin
 ? create ClientPoint0 and ServerPoint0 extends Point0, becouse clientPoint0 may have useQuery, layout etc. but server not. But why not... idk
 superjson
 persistent zustand store
+отказаться от дата в пэйлоаде в случае, если работает реакт квери
 
 override last commit message on each file
 choose license

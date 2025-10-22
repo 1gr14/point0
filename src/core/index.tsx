@@ -1,6 +1,6 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { Route0 } from '@devp0nt/route0'
-import type { QueryClient } from '@tanstack/react-query'
+import type { QueryClient, QueryOptions } from '@tanstack/react-query'
 import * as React from 'react'
 
 export class Point0<
@@ -20,6 +20,8 @@ export class Point0<
 
   _baseId: BaseId
   _queryClient: QueryClient | undefined
+  _queryOptions: QueryOptionsSettings
+  _pageQueryOptions: QueryOptionsSettings
   _wrapper: WrapperComponentType | undefined
   _hasParent: TParent extends UndefinedParent ? false : true
   _extendFns: ExtendFnRecord[]
@@ -41,6 +43,8 @@ export class Point0<
   private constructor(props: {
     _baseId: BaseId
     _queryClient?: QueryClient | undefined
+    _queryOptions?: QueryOptionsSettings | undefined
+    _pageQueryOptions?: QueryOptionsSettings | undefined
     _wrapper?: WrapperComponentType | undefined
     _hasParent?: TParent extends UndefinedParent ? false : true
     _extendFns?: ExtendFnRecord[]
@@ -63,6 +67,8 @@ export class Point0<
     // overridable
     this._wrapper = props._wrapper
     this._queryClient = props._queryClient
+    this._queryOptions = props._queryOptions ?? {}
+    this._pageQueryOptions = props._pageQueryOptions ?? {}
     this._hasParent = props._hasParent as TParent extends UndefinedParent ? false : true
     this._extendFns = props._extendFns ?? []
     this._route = props._route ?? (undefined as TRoute)
@@ -93,7 +99,8 @@ export class Point0<
     TRoute extends Route0.AnyRoute | UndefinedRoute,
     THasPage extends HasPage,
   >(overrides?: {
-    _queryClient?: QueryClient | undefined
+    _queryOptions?: QueryOptionsSettings | undefined
+    _pageQueryOptions?: QueryOptionsSettings | undefined
     _wrapper?: WrapperComponentType | undefined
     _extendFns?: ExtendFnRecord[]
     _route?: Route0.AnyRoute | UndefinedRoute
@@ -112,10 +119,12 @@ export class Point0<
     return new Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
       // persistent
       _baseId: this._baseId,
+      _queryClient: this._queryClient,
+      _wrapper: this._wrapper,
 
       // overridable
-      _queryClient: overrides?._queryClient ?? this._queryClient,
-      _wrapper: overrides?._wrapper ?? this._wrapper,
+      _queryOptions: { ...this._queryOptions, ...(overrides?._queryOptions ?? {}) },
+      _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides?._pageQueryOptions ?? {}) },
       _hasParent: this._hasParent as TParent extends UndefinedParent ? false : true,
       _extendFns: overrides?._extendFns ?? this._extendFns,
       _route: (overrides?._route ?? this._route) as TRoute,
@@ -135,12 +144,22 @@ export class Point0<
 
   // base
 
-  static create(props: { id: BaseId }): Point0 {
-    return new Point0({ _hasParent: false, _baseId: props.id })
+  static create(props: BaseSettings): Point0 {
+    return new Point0({
+      _hasParent: false,
+      _baseId: props.id,
+      _queryClient: props.queryClient,
+      _wrapper: props.wrapper,
+    })
   }
 
-  static extend<TParent extends ParentPoint>(props: { id: BaseId }): Point0<TParent, TParent['Infer']['RequiredCtx']> {
-    return new Point0<TParent, TParent['Infer']['RequiredCtx']>({ _hasParent: true as never, _baseId: props.id })
+  static extend<TParent extends ParentPoint>(props: BaseSettings): Point0<TParent, TParent['Infer']['RequiredCtx']> {
+    return new Point0<TParent, TParent['Infer']['RequiredCtx']>({
+      _hasParent: true as never,
+      _baseId: props.id,
+      _queryClient: props.queryClient,
+      _wrapper: props.wrapper,
+    })
   }
 
   // setters
@@ -152,23 +171,11 @@ export class Point0<
     } as never)
   }
 
-  queryClient(queryClient: QueryClient): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
-      _queryClient: queryClient,
-    })
-  }
-
   fetchOptions(
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
-    })
-  }
-
-  wrapper(wrapper: WrapperComponentType): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
-      _wrapper: wrapper,
     })
   }
 
@@ -287,14 +294,6 @@ export class Point0<
 
   // getters
 
-  getRoute(): TRoute {
-    return this._route
-  }
-
-  getId(): Id | UndefinedId {
-    return this._id
-  }
-
   getLabel(): string {
     return this._id || this._route?.getDefinition() || `${this._baseId}-${this._index}`
   }
@@ -319,21 +318,6 @@ export class Point0<
     }[type] ?? this._loaderComponent) as LoaderComponentType<TType>
   }
 
-  getPageComponent(): THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined {
-    return this._page
-  }
-
-  getAnyPageComponentOrThrow(): PageComponent {
-    if (!this._page) {
-      throw new Error(`Page component is not set for point "${this.getLabel()}"`)
-    }
-    return this._page as PageComponent
-  }
-
-  getExtendFns(): ExtendFnRecord[] {
-    return this._extendFns
-  }
-
   hasLoaders(): boolean {
     return this._extendFns.some((fn) => fn.type === 'loader')
   }
@@ -342,6 +326,12 @@ export class Point0<
   // TODO: not has page, but finish type
 }
 
+export type BaseSettings = {
+  id: BaseId
+  queryClient?: QueryClient
+  wrapper?: WrapperComponentType
+}
+export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>
 // used to avoid circular depedencies
 type Infer<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
