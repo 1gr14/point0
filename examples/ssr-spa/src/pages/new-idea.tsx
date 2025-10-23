@@ -12,7 +12,7 @@ export const createIdea = client
       content: z.string(),
     }),
   )
-  .mutation(async ({ input, ctx }) => {
+  .response(async ({ input, ctx }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })

@@ -30,6 +30,7 @@
         "tsc-watch": "^7.1.1",
         "tsup": "^8.0.0",
         "typescript": "^5.0.0",
+        "zod": "^4.1.12",
       },
       "peerDependencies": {
         "@devp0nt/error0": "^1.0.0-next.38",
@@ -38,6 +39,7 @@
         "@unhead/react": "^2.0.19",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
+        "zod": "^4.0.0",
       },
     },
     "examples/ssr-spa": {

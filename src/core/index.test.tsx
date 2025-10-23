@@ -24,7 +24,7 @@ describe('Point0', () => {
     expect(server).toBeInstanceOf(Point0)
     expectTypeOf(server).toEqualTypeOf<Point0>()
     expectTypeOf(server).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, EmptyCtx, EmptyData, undefined, false>
+      Point0<'middleware', undefined, UndefinedCtx, EmptyCtx, EmptyData, undefined, undefined, false>
     >()
     expect(server._extendFns).toEqual([])
   })
@@ -38,7 +38,7 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, { a: number; b: number }, EmptyData, undefined, false>
+      Point0<'middleware', undefined, UndefinedCtx, { a: number; b: number }, EmptyData, undefined, undefined, false>
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -51,7 +51,16 @@ describe('Point0', () => {
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, { a: number; b: number; c: number }, EmptyData, undefined, false>
+      Point0<
+        'middleware',
+        undefined,
+        undefined,
+        { a: number; b: number; c: number },
+        EmptyData,
+        undefined,
+        undefined,
+        false
+      >
     >()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
@@ -69,7 +78,7 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, { a: number; b: number }, EmptyData, undefined, false>
+      Point0<'middleware', undefined, UndefinedCtx, { a: number; b: number }, EmptyData, undefined, undefined, false>
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -81,7 +90,7 @@ describe('Point0', () => {
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, { a: number; c: number }, EmptyData, undefined, false>
+      Point0<'middleware', undefined, undefined, { a: number; c: number }, EmptyData, undefined, undefined, false>
     >()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
@@ -125,7 +134,7 @@ describe('Point0', () => {
     }))
     expect(server1).toBeInstanceOf(Point0)
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, EmptyCtx, { a: number; b: number }, undefined, false>
+      Point0<'middleware', undefined, undefined, EmptyCtx, { a: number; b: number }, undefined, undefined, false>
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -137,7 +146,16 @@ describe('Point0', () => {
     }))
     expect(server2).toBeInstanceOf(Point0)
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, EmptyCtx, { a: number; b: number; c: number }, undefined, false>
+      Point0<
+        'middleware',
+        undefined,
+        undefined,
+        EmptyCtx,
+        { a: number; b: number; c: number },
+        undefined,
+        undefined,
+        false
+      >
     >()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
