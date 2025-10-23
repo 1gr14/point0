@@ -2,6 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 
 const home = Route0.create('/')
 const ideas = home.extend('/ideas')
+const newIdea = ideas.extend('/new')
 const idea = ideas.extend('/:id')
 const ideaNews = idea.extend('/news')
 
@@ -10,4 +11,5 @@ export const routes = {
   ideas,
   idea,
   ideaNews,
+  newIdea,
 }

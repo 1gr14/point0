@@ -3,8 +3,6 @@ on .any() or else after .page() or else, set _prevReadyPoint = this
 .base() set _pointType = 'connected-base' | 'source-base'
 first generic <TPointType> page layout component endpoint base middle, and we do
 
-baseId string
-
 const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
 const {data, meta, res} = await someEndpoint.useFetch({ id: 123 }) → json
 form

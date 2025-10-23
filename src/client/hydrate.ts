@@ -2,7 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import type React from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { ExtendedBasePoint } from '../core/index.js'
+import type { BasePoint } from '../core/index.js'
 import type { Payload, PointsCollection } from '../eversion/runtime.js'
 import { Eversion0 } from '../eversion/runtime.js'
 
@@ -15,7 +15,7 @@ declare global {
 export type HydrateInput = {
   rootElement?: HTMLElement
   points: PointsCollection
-  base: ExtendedBasePoint
+  base: BasePoint
 }
 export type HydrateResult = {
   payload: Payload

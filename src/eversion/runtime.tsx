@@ -15,18 +15,19 @@ import { useEffect } from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
   AnyPoint,
+  BaseConnectionPoint,
   BaseId,
+  BasePoint,
+  BaseSourcePoint,
   Ctx,
   Data,
   EmptyCtx,
   EmptyData,
-  ExtendedBasePoint,
-  InitialBasePoint,
+  EndPoint,
+  EndPointType,
   Method,
   PageComponent,
   PagePoint,
-  ReadyPoint,
-  ReadyPointType,
   RequiredCtx,
   UndefinedCtx,
 } from '../core/index.js'
@@ -35,7 +36,7 @@ import { mergeHeaders } from '../core/utils.js'
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
 // so remove force
 export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
+  base: BasePoint<TRequiredCtx>
   source: Eversion0<TRequiredCtx> | undefined
   points: PointsCollection
   connections: Array<Eversion0<TRequiredCtx>>
@@ -46,7 +47,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     points,
     connections,
   }: {
-    base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
+    base: BasePoint<TRequiredCtx>
     source?: Eversion0<TRequiredCtx> | undefined
     points?: PointsCollection
     connections?: Array<Eversion0<TRequiredCtx>>
@@ -58,7 +59,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static source<
-    TBasePoint extends InitialBasePoint,
+    TBasePoint extends BaseSourcePoint,
     TRequiredCtx extends RequiredCtx = TBasePoint['Infer']['RequiredCtx'],
   >({ base, points }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
     return new Eversion0<TRequiredCtx>({ base, points })
@@ -73,14 +74,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.connections.push(connection)
   }
 
-  getParents(): [InitialBasePoint, ...ExtendedBasePoint[]] | [] {
-    const sources: Array<InitialBasePoint | ExtendedBasePoint> = []
+  getParents(): [BaseSourcePoint, ...BaseConnectionPoint[]] | [] {
+    const sources: Array<BaseSourcePoint | BaseConnectionPoint> = []
     let current: Eversion0<TRequiredCtx> | undefined = this.source
     while (current) {
       sources.push(current.base)
       current = current.source
     }
-    return sources.reverse() as [InitialBasePoint, ...ExtendedBasePoint[]] | []
+    return sources.reverse() as [BaseSourcePoint, ...BaseConnectionPoint[]] | []
   }
 
   idToLocation(id: string): Route0.Location {
@@ -108,7 +109,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     baseId?: BaseId
   } & LocationInput):
     | {
-        point: ReadyPoint
+        point: EndPoint
         location: Route0.Location
         eversion: Eversion0<TRequiredCtx>
       }
@@ -382,7 +383,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
       const match = Route0.getMatch(record.route, location)
       if (match.exact) {
-        return { point: record.point, base: this.base, location: match.location, eversion: this }
+        return { point: record.point as PagePoint, base: this.base, location: match.location, eversion: this }
       }
     }
     return { point: undefined, base: this.base, location, eversion: this }
@@ -528,7 +529,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     error,
   }: {
     point?: AnyPoint | undefined
-    base: InitialBasePoint | ExtendedBasePoint
+    base: BasePoint
     location: Route0.Location
     payload?: Payload
     error?: unknown
@@ -608,7 +609,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     location,
   }: {
     point?: TPoint | undefined
-    base: InitialBasePoint | ExtendedBasePoint
+    base: BasePoint
     payload?: Payload
     error?: unknown
     status?: number | undefined
@@ -682,24 +683,24 @@ function useEversionContext(): EversionContextValue {
 }
 
 export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
-  base: InitialBasePoint<undefined, TRequiredCtx> | ExtendedBasePoint<any, TRequiredCtx>
+  base: BasePoint<TRequiredCtx>
   source?: null
   points?: PointsCollection
 }
 
 export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  point: ReadyPoint
+  point: EndPoint
   location: Route0.Location
   eversion: Eversion0<TRequiredCtx>
 }
 export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  point: ReadyPoint | undefined
+  point: EndPoint | undefined
   location: Route0.Location
   eversion: Eversion0<TRequiredCtx>
 }
 export type GetSuitablePageComponentResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   point: PagePoint | undefined
-  base: InitialBasePoint | ExtendedBasePoint
+  base: BasePoint
   location: Route0.Location
   eversion: Eversion0<TRequiredCtx>
 }
@@ -710,10 +711,10 @@ export type FillPageResult = {
 }
 
 export type PointsCollectionRecord = {
-  type: ReadyPointType
+  type: EndPointType
   method: Method
   route: Route0.AnyRoute
-  point: ReadyPoint
+  point: EndPoint
 }
 export type PointsCollection = PointsCollectionRecord[]
 
@@ -736,11 +737,11 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   payload: Payload<TOutputData>
   error: unknown
   status: number
-  base: InitialBasePoint | ExtendedBasePoint
+  base: BasePoint
   point: AnyPoint | undefined
   eversion: Eversion0
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, infer TOutputCtx, infer TOutputData, any, any>
+  TPoint extends AnyPoint<any, any, any, infer TOutputCtx, infer TOutputData, any, any>
     ? ExtractResult<TOutputCtx, TOutputData>
     : ExtractResult<EmptyCtx, EmptyData>

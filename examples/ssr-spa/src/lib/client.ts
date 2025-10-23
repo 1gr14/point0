@@ -6,3 +6,5 @@ export const client = Point0.connect<typeof server>('client').head({
   titleTemplate: '%s | IdeaNick',
   htmlAttrs: { lang: 'en' },
 })
+
+export type Ctx = (typeof client)['Infer']['OutputCtx']

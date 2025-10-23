@@ -1,15 +1,26 @@
-import { routes } from '../lib/routes.js'
+import type { Ctx } from '../lib/client.js'
 import { client } from '../lib/client.js'
+import { routes } from '../lib/routes.js'
+
+export const getIdea = async (ctx: Ctx, id: number) => {
+  const idea = await ctx.prisma.idea.findUniqueOrThrow({
+    where: { id },
+  })
+  return { idea }
+}
 
 export default client
   .route(routes.idea)
   .loader(async ({ ctx, location }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
-    const idea = await ctx.prisma.idea.findUniqueOrThrow({
-      where: { id: parseInt(location.params.id) },
-    })
-    return { idea }
+
+    // const idea = await ctx.prisma.idea.findUniqueOrThrow({
+    //   where: { id: parseInt(location.params.id) },
+    // })
+    // return { idea }
+
+    return await getIdea(ctx, parseInt(location.params.id))
   })
   .head(({ data: { idea } }) => ({
     title: idea.title,

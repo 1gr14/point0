@@ -1,4 +1,4 @@
-import type { BaseId, ExtendedBasePoint, InitialBasePoint } from '../core/index.js'
+import type { BaseId, BasePoint } from '../core/index.js'
 import type { PointsCollection } from '../eversion/runtime.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
@@ -9,7 +9,7 @@ export type ServeLogger = {
 export type ServeClientInput = {
   ssr?: boolean
   points?: PointsCollection
-  base: InitialBasePoint | ExtendedBasePoint
+  base: BasePoint
   basepath?: string
   distDir?: string
   distRoute?: string
@@ -18,7 +18,7 @@ export type ServeClientInput = {
   rootElementId?: string
 }
 export type ServeServerInput = {
-  base: InitialBasePoint
+  base: BasePoint
   points?: PointsCollection
   port?: number | string | undefined
   logger?: ServeLogger
@@ -31,7 +31,7 @@ export type ServeServerInput = {
 export type ServeClientInputParsed = {
   ssr: boolean
   points: PointsCollection
-  base: InitialBasePoint | ExtendedBasePoint
+  base: BasePoint
   basepath: string
   distDir: string | undefined
   distRoute: string | undefined
@@ -41,7 +41,7 @@ export type ServeClientInputParsed = {
   rootElementId: string | undefined
 }
 export type ServeServerInputParsed = {
-  base: InitialBasePoint
+  base: BasePoint
   points: PointsCollection
   port: number | string | undefined
   logger: ServeLogger

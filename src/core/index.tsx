@@ -5,10 +5,13 @@ import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 
 export class Point0<
-  TParent extends ParentPoint | UndefinedParent = UndefinedParent,
+  TPointType extends PointType = 'middleware',
+  TConnectedSourceBasePoint extends
+    | ConnectedSourceBasePoint
+    | UndefinedConnectedSourceBasePoint = UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = UndefinedCtx,
-  TOutputCtx extends Ctx = InferOutputCtx<TParent>,
-  TOutputData extends Data = InferOutputData<TParent>,
+  TOutputCtx extends Ctx = InferOutputCtx<TConnectedSourceBasePoint>,
+  TOutputData extends Data = InferOutputData<TConnectedSourceBasePoint>,
   TRoute extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
   THasPage extends HasPage = HasPageFalse, // TODO: replace with end type and it will be 'endpoint' ro 'page' or 'layout' or 'component'
 > {
@@ -19,13 +22,14 @@ export class Point0<
   // static pagePoints: PagePoint[] = []
   static pointsCount = 0
 
+  _pointType: TPointType
   _baseId: BaseId
   _head: ResolvableHead[]
   _queryClient: QueryClient | undefined
   _queryOptions: QueryOptionsSettings
   _pageQueryOptions: QueryOptionsSettings
   _wrapper: WrapperComponentType | undefined
-  _hasParent: TParent extends UndefinedParent ? false : true
+  _hasSourceBase: TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true
   _extendFns: ExtendFnRecord[]
   _route: TRoute
   _page: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
@@ -43,13 +47,14 @@ export class Point0<
   _appLoaderComponent?: LoaderComponentType<'app'>
 
   private constructor(props: {
+    _pointType: TPointType
     _baseId: BaseId
     _wrapper?: WrapperComponentType | undefined
     _queryClient?: QueryClient | undefined
     _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
-    _hasParent?: TParent extends UndefinedParent ? false : true
+    _hasSourceBase?: TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
     _page?: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
@@ -68,12 +73,15 @@ export class Point0<
     this._baseId = props._baseId
 
     // overridable
+    this._pointType = props._pointType
     this._wrapper = props._wrapper
     this._queryClient = props._queryClient
     this._head = props._head ?? []
     this._queryOptions = props._queryOptions ?? {}
     this._pageQueryOptions = props._pageQueryOptions ?? {}
-    this._hasParent = props._hasParent as TParent extends UndefinedParent ? false : true
+    this._hasSourceBase = props._hasSourceBase as TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint
+      ? false
+      : true
     this._extendFns = props._extendFns ?? []
     this._route = props._route ?? (undefined as TRoute)
     this._page = props._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
@@ -96,13 +104,15 @@ export class Point0<
   }
 
   _clone<
-    TParent extends ParentPoint | UndefinedParent,
+    TPointType extends PointType,
+    TSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint,
     TRequiredCtx extends RequiredCtx,
     TOutputCtx extends Ctx,
     TOutputData extends Data,
     TRoute extends Route0.AnyRoute | UndefinedRoute,
     THasPage extends HasPage,
-  >(overrides?: {
+  >(overrides: {
+    _pointType: TPointType
     _queryClient?: QueryClient | undefined
     _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
@@ -121,31 +131,32 @@ export class Point0<
     _pageLoaderComponent?: LoaderComponentType<'page'>
     _componentLoaderComponent?: LoaderComponentType<'component'>
     _appLoaderComponent?: LoaderComponentType<'app'>
-  }): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return new Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  }): Point0<TPointType, TSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return new Point0<TPointType, TSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
       // persistent
       _baseId: this._baseId,
 
       // overridable
-      _queryClient: overrides?._queryClient ?? this._queryClient,
-      _wrapper: overrides?._wrapper ?? this._wrapper,
-      _head: [...this._head, ...(overrides?._head ?? [])],
-      _queryOptions: { ...this._queryOptions, ...(overrides?._queryOptions ?? {}) },
-      _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides?._pageQueryOptions ?? {}) },
-      _hasParent: this._hasParent as TParent extends UndefinedParent ? false : true,
-      _extendFns: overrides?._extendFns ?? this._extendFns,
-      _route: (overrides?._route ?? this._route) as TRoute,
-      _page: (overrides?._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
-      _id: overrides?._id ?? this._id,
-      _method: overrides?._method ?? this._method,
-      _fetchOptions: overrides?._fetchOptions ?? this._fetchOptions,
-      _errorComponent: overrides?._errorComponent ?? this._errorComponent,
-      _pageErrorComponent: overrides?._pageErrorComponent ?? this._pageErrorComponent,
-      _componentErrorComponent: overrides?._componentErrorComponent ?? this._componentErrorComponent,
-      _loaderComponent: overrides?._loaderComponent ?? this._loaderComponent,
-      _pageLoaderComponent: overrides?._pageLoaderComponent ?? this._pageLoaderComponent,
-      _componentLoaderComponent: overrides?._componentLoaderComponent ?? this._componentLoaderComponent,
-      _appLoaderComponent: overrides?._appLoaderComponent ?? this._appLoaderComponent,
+      _pointType: overrides._pointType,
+      _queryClient: overrides._queryClient ?? this._queryClient,
+      _wrapper: overrides._wrapper ?? this._wrapper,
+      _head: [...this._head, ...(overrides._head ?? [])],
+      _queryOptions: { ...this._queryOptions, ...(overrides._queryOptions ?? {}) },
+      _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides._pageQueryOptions ?? {}) },
+      _hasSourceBase: this._hasSourceBase as TSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true,
+      _extendFns: overrides._extendFns ?? this._extendFns,
+      _route: (overrides._route ?? this._route) as TRoute,
+      _page: (overrides._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
+      _id: overrides._id ?? this._id,
+      _method: overrides._method ?? this._method,
+      _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
+      _errorComponent: overrides._errorComponent ?? this._errorComponent,
+      _pageErrorComponent: overrides._pageErrorComponent ?? this._pageErrorComponent,
+      _componentErrorComponent: overrides._componentErrorComponent ?? this._componentErrorComponent,
+      _loaderComponent: overrides._loaderComponent ?? this._loaderComponent,
+      _pageLoaderComponent: overrides._pageLoaderComponent ?? this._pageLoaderComponent,
+      _componentLoaderComponent: overrides._componentLoaderComponent ?? this._componentLoaderComponent,
+      _appLoaderComponent: overrides._appLoaderComponent ?? this._appLoaderComponent,
     })
   }
 
@@ -153,93 +164,179 @@ export class Point0<
 
   static source(baseId: string): Point0 {
     return new Point0({
-      _hasParent: false,
+      _pointType: 'middleware',
+      _hasSourceBase: false,
       _baseId: baseId,
     })
   }
 
-  static connect<TParent extends ParentPoint>(baseId: string): Point0<TParent, TParent['Infer']['RequiredCtx']> {
-    return new Point0<TParent, TParent['Infer']['RequiredCtx']>({
-      _hasParent: true as never,
+  static connect<TConnectedSourceBasePoint extends ConnectedSourceBasePoint>(
+    baseId: string,
+  ): Point0<'middleware', TConnectedSourceBasePoint, TConnectedSourceBasePoint['Infer']['RequiredCtx']> {
+    return new Point0<'middleware', TConnectedSourceBasePoint, TConnectedSourceBasePoint['Infer']['RequiredCtx']>({
+      _pointType: 'middleware',
+      _hasSourceBase: true as never,
       _baseId: baseId,
     })
   }
 
-  // setters
+  // middlewares
 
-  id(id: Id): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  id(id: Id): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
       // TODO: extends - by default, if provide true in end, then will override previous
+      _pointType: 'middleware',
       _id: id,
-    } as never)
+    })
   }
 
   fetchOptions(
     fetchOptionsOrFn: FetchOptionsOrFn,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
     })
   }
 
   errorComponent(
     errorComponent: ErrorComponentType,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _errorComponent: errorComponent,
     })
   }
 
   pageErrorComponent(
     pageErrorComponent: ErrorComponentType<'page'>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _pageErrorComponent: pageErrorComponent,
     })
   }
 
   componentErrorComponent(
     componentErrorComponent: ErrorComponentType<'component'>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _componentErrorComponent: componentErrorComponent,
     })
   }
 
   pageLoaderComponent(
     pageLoaderComponent: LoaderComponentType<'page'>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _pageLoaderComponent: pageLoaderComponent,
     })
   }
 
   componentLoaderComponent(
     componentLoaderComponent: LoaderComponentType<'component'>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _componentLoaderComponent: componentLoaderComponent,
     })
   }
 
   appLoaderComponent(
     appLoaderComponent: LoaderComponentType<'app'>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _appLoaderComponent: appLoaderComponent,
     })
   }
 
   loaderComponent(
     loaderComponent: LoaderComponentType,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _loaderComponent: loaderComponent,
     })
   }
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
-    TParent,
+    'middleware',
+    TConnectedSourceBasePoint,
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TOutputCtx, TExtraRequiredCtx>,
     TOutputData,
@@ -247,83 +344,146 @@ export class Point0<
     THasPage
   > {
     return this._clone<
-      TParent,
+      'middleware',
+      TConnectedSourceBasePoint,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TOutputCtx, TExtraRequiredCtx>,
       TOutputData,
       TRoute,
       THasPage
-    >({} as never)
+    >({
+      _pointType: 'middleware',
+    })
   }
 
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctxFn: CtxFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TNewOutputCtx>,
-  ): Point0<TParent, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctx: TNewOutputCtx,
-  ): Point0<TParent, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctxOrFn: TNewOutputCtx,
-  ): Point0<TParent, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage> {
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage> {
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TOutputCtx }) => ({ ...ctx, ...ctxOrFn })
-    return this._clone<TParent, TRequiredCtx, TNewOutputCtx, TOutputData, TRoute, THasPage>({
-      _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn }],
-    } as never)
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TNewOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
+      _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn }] as never,
+    })
   }
 
   route<TNewRoute0 extends Route0.AnyRoute>(
     route: TNewRoute0,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage>({
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TNewRoute0, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TNewRoute0,
+      THasPage
+    >({
+      _pointType: 'middleware',
       _route: route,
-    } as never)
+    })
   }
 
   loader<TNewOutputData extends Data = Data>(
     loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TNewOutputData>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage>({
-      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }],
-    } as never)
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TNewOutputData, TRoute, THasPage> {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TNewOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
+      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }] as never,
+    })
   }
 
   head(
     headFn: HeadFn<TOutputData, CurrentRoute<TRoute>>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
-  head(head: ResolvableHead): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  head(
+    head: ResolvableHead,
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
   head(
     headFnOrHead: HeadFn<TOutputData, CurrentRoute<TRoute>> | ResolvableHead,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     const headFn = typeof headFnOrHead === 'function' ? headFnOrHead : () => headFnOrHead
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
-      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }],
-    } as never)
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
+      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }] as never,
+    })
   }
 
   title(
     titleFn: TitleFn<TOutputData, CurrentRoute<TRoute>>,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
-  title(title: string): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  title(
+    title: string,
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
   title(
     titleFnOrTitle: TitleFn<TOutputData, CurrentRoute<TRoute>> | string,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
+  ): Point0<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage> {
     const headFn =
       typeof titleFnOrTitle === 'function'
         ? async (props: HeadFnProps<TOutputData, TRoute>) => ({
             title: await titleFnOrTitle(props),
           })
         : () => ({ title: titleFnOrTitle })
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>({
-      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }],
-    } as never)
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      THasPage
+    >({
+      _pointType: 'middleware',
+      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }] as never,
+    })
   }
+
+  // end points
 
   page<TPage extends PageComponent<TOutputData, TRoute>>(
     page: TPage,
-  ): Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true> {
-    return this._clone<TParent, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true>({
-      _page: page,
-    } as never)
+  ): Point0<'page', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, CurrentRoute<TRoute>, true> {
+    return this._clone<
+      'page',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      CurrentRoute<TRoute>,
+      true
+    >({
+      _pointType: 'page',
+      _page: page as PageComponent<Data, CurrentRoute<TRoute>>,
+    })
   }
 
   // getters
@@ -388,46 +548,63 @@ export type BaseId = string
 export type UndefinedBaseId = undefined
 
 export type AnyPoint<
-  TParent extends ParentPoint | UndefinedParent = ParentPoint | UndefinedParent,
+  TPointType extends PointType = PointType,
+  TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
+    | ConnectedSourceBasePoint
+    | UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   THasPage extends HasPage = HasPage,
-> = Point0<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
-export type InitialBasePoint<
-  TParent extends UndefinedParent = UndefinedParent,
+> = Point0<TPointType, TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+export type BaseSourcePoint<
+  TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint = UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   THasPage extends HasPage = HasPage,
-> = AnyPoint<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
-export type ExtendedBasePoint<
-  TParent extends ParentPoint = ParentPoint,
+> = AnyPoint<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+export type BaseConnectionPoint<
+  TConnectedSourceBasePoint extends ConnectedSourceBasePoint = ConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   THasPage extends HasPage = HasPage,
-> = AnyPoint<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+> = AnyPoint<'middleware', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+export type BasePoint<
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TOutputCtx extends Ctx = Ctx,
+  TOutputData extends Data = any,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  THasPage extends HasPage = HasPage,
+> =
+  | BaseSourcePoint<UndefinedConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+  | BaseConnectionPoint<ConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
 export type PagePoint<
-  TParent extends ParentPoint | UndefinedParent = ParentPoint | UndefinedParent,
+  TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
+    | ConnectedSourceBasePoint
+    | UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   THasPage extends HasPageTure = HasPageTure,
-> = AnyPoint<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
-export type ReadyPoint<
-  TParent extends ParentPoint | UndefinedParent = ParentPoint | UndefinedParent,
+> = AnyPoint<'page', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+export type EndPoint<
+  TPointType extends EndPointType = EndPointType,
+  TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
+    | ConnectedSourceBasePoint
+    | UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   THasPage extends HasPageTure = HasPageTure,
-> = AnyPoint<TParent, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
-export type ParentPoint<
+> = AnyPoint<TPointType, TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, THasPage>
+export type ConnectedSourceBasePoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
@@ -435,24 +612,22 @@ export type ParentPoint<
   Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData>
   _extendFns: ExtendFnRecord[]
 }
-export type UndefinedParent = undefined
+export type UndefinedConnectedSourceBasePoint = undefined
 
-export type ReadyPointType = 'page' | 'component' | 'endpoint'
-
-export type InferOutputCtx<TPoint extends AnyPoint | ParentPoint | undefined> =
-  TPoint extends AnyPoint<any, any, infer TOutputCtx, any, any, any>
+export type InferOutputCtx<TPoint extends AnyPoint | ConnectedSourceBasePoint | undefined> =
+  TPoint extends AnyPoint<any, any, any, infer TOutputCtx, any, any, any>
     ? TOutputCtx
-    : TPoint extends ParentPoint
+    : TPoint extends ConnectedSourceBasePoint
       ? TPoint['Infer']['OutputCtx']
       : EmptyCtx
-export type InferOutputData<TPoint extends AnyPoint | ParentPoint | undefined> =
-  TPoint extends AnyPoint<any, any, any, infer TOutputData, any, any>
+export type InferOutputData<TPoint extends AnyPoint | ConnectedSourceBasePoint | undefined> =
+  TPoint extends AnyPoint<any, any, any, any, infer TOutputData, any, any>
     ? TOutputData
-    : TPoint extends ParentPoint
+    : TPoint extends ConnectedSourceBasePoint
       ? TPoint['Infer']['OutputData']
       : EmptyData
-export type InferParent<TPoint extends AnyPoint | undefined> =
-  TPoint extends AnyPoint<infer TParent> ? TParent : undefined
+export type InferSourceBase<TPoint extends AnyPoint | undefined> =
+  TPoint extends AnyPoint<infer TSourceBasePoint> ? TSourceBasePoint : undefined
 
 export type PageComponentProps<
   TOutputData extends Data = Data,
@@ -574,3 +749,6 @@ export type ExtendFnRecord<
     : TType extends 'head'
       ? { type: 'head'; fn: HeadFn<TDataInput, TRoute0> }
       : never
+
+export type PointType = 'page' | 'component' | 'query' | 'mutation' | 'layout' | 'middleware'
+export type EndPointType = Exclude<PointType, 'middleware'>
