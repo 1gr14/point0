@@ -2,9 +2,9 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
+import { Eversion0 } from '../eversion/runtime.js'
 import type { EmptyCtx, EmptyData, UndefinedCtx } from './index.js'
 import { Point0 } from './index.js'
-import { Eversion0 } from '../eversion/runtime.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -24,7 +24,7 @@ describe('Point0', () => {
     expect(server).toBeInstanceOf(Point0)
     expectTypeOf(server).toEqualTypeOf<Point0>()
     expectTypeOf(server).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, EmptyCtx, EmptyData, undefined, undefined, false>
+      Point0<'middleware', undefined, UndefinedCtx, EmptyCtx, EmptyData, undefined, undefined, undefined>
     >()
     expect(server._extendFns).toEqual([])
   })
@@ -38,7 +38,16 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, { a: number; b: number }, EmptyData, undefined, undefined, false>
+      Point0<
+        'middleware',
+        undefined,
+        UndefinedCtx,
+        { a: number; b: number },
+        EmptyData,
+        undefined,
+        undefined,
+        undefined
+      >
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -59,7 +68,7 @@ describe('Point0', () => {
         EmptyData,
         undefined,
         undefined,
-        false
+        undefined
       >
     >()
     expect(server2._extendFns).toHaveLength(2)
@@ -78,7 +87,16 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, { a: number; b: number }, EmptyData, undefined, undefined, false>
+      Point0<
+        'middleware',
+        undefined,
+        UndefinedCtx,
+        { a: number; b: number },
+        EmptyData,
+        undefined,
+        undefined,
+        undefined
+      >
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -90,7 +108,7 @@ describe('Point0', () => {
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, { a: number; c: number }, EmptyData, undefined, undefined, false>
+      Point0<'middleware', undefined, undefined, { a: number; c: number }, EmptyData, undefined, undefined, undefined>
     >()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
@@ -99,7 +117,7 @@ describe('Point0', () => {
     expect(server._extendFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = Eversion0.source({ base: server2 })
+    const eversion2 = Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation('/'),
@@ -134,7 +152,7 @@ describe('Point0', () => {
     }))
     expect(server1).toBeInstanceOf(Point0)
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, EmptyCtx, { a: number; b: number }, undefined, undefined, false>
+      Point0<'middleware', undefined, undefined, EmptyCtx, { a: number; b: number }, undefined, undefined, undefined>
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -154,7 +172,7 @@ describe('Point0', () => {
         { a: number; b: number; c: number },
         undefined,
         undefined,
-        false
+        undefined
       >
     >()
     expect(server2._extendFns).toHaveLength(2)
@@ -173,7 +191,7 @@ describe('Point0', () => {
     }))
     const pageComponent = () => <div>Hello</div>
     const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion1 = Eversion0.source({ base: server1 })
+    const eversion1 = Eversion0.create({ base: server1 })
     expect(
       await eversion1.extract({
         location: Route0.getLocation(url),
@@ -202,7 +220,7 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.connect<typeof server2>('client').page(pageComponent)
-    const eversion2 = Eversion0.source({ base: server2 })
+    const eversion2 = Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
         point: clientPoint02,
@@ -231,7 +249,7 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.connect<typeof server3>('client').page(pageComponent)
-    const eversion3 = Eversion0.source({ base: server3 })
+    const eversion3 = Eversion0.create({ base: server3 })
     expect(
       await eversion3.extract({
         point: clientPoint03,
@@ -266,7 +284,7 @@ describe('Point0', () => {
     }))
     const pageComponent = () => <div>Hello</div>
     const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion1 = Eversion0.source({ base: server1 })
+    const eversion1 = Eversion0.create({ base: server1 })
     expect(
       await eversion1.extract({
         point: clientPoint01,
@@ -297,7 +315,7 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.connect<typeof server2>('client').page(pageComponent)
-    const eversion2 = Eversion0.source({ base: server2 })
+    const eversion2 = Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation(url),
@@ -328,7 +346,7 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.connect<typeof server3>('client').page(pageComponent)
-    const eversion3 = Eversion0.source({ base: server3 })
+    const eversion3 = Eversion0.create({ base: server3 })
     expect(
       await eversion3.extract({
         location: Route0.getLocation(url),

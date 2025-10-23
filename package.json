@@ -91,7 +91,9 @@
     "prepare": "husky",
     "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
   },
-  "dependencies": {},
+  "dependencies": {
+    "safe-stable-stringify": "^2.5.0"
+  },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

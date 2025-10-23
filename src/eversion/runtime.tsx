@@ -58,20 +58,30 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.source = source
   }
 
-  static source<
-    TBasePoint extends BaseSourcePoint,
-    TRequiredCtx extends RequiredCtx = TBasePoint['Infer']['RequiredCtx'],
-  >({ base, points }: CreateEversionInput<TRequiredCtx>): Eversion0<TRequiredCtx> {
-    return new Eversion0<TRequiredCtx>({ base, points })
+  static create<TBasePoint extends BasePoint>({
+    base,
+    points,
+  }: {
+    base: TBasePoint
+    points?: PointsCollection
+  }): Eversion0<TBasePoint['Infer']['RequiredCtx']> {
+    return new Eversion0<TBasePoint['Infer']['RequiredCtx']>({ base, points })
   }
 
-  connect(input: CreateEversionInput<TRequiredCtx>) {
+  connect({
+    base,
+    points,
+  }: {
+    base: BaseConnectionPoint<any, TRequiredCtx>
+    points?: PointsCollection
+  }): Eversion0<TRequiredCtx> {
     const connection = new Eversion0<TRequiredCtx>({
-      base: input.base,
-      points: input.points,
-      source: input.source === null ? undefined : this,
+      base,
+      points,
+      source: this,
     })
     this.connections.push(connection)
+    return connection
   }
 
   getParents(): [BaseSourcePoint, ...BaseConnectionPoint[]] | [] {

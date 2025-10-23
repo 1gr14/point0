@@ -4,6 +4,7 @@ import type { QueryClient, QueryOptions } from '@tanstack/react-query'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type z from 'zod'
+import { stringify } from 'safe-stable-stringify'
 
 export class Point0<
   TPointType extends PointType = 'middleware',
@@ -15,7 +16,7 @@ export class Point0<
   TOutputData extends Data = InferOutputData<TConnectedSourceBasePoint>,
   TRoute extends Route0.AnyRoute | UndefinedRoute = UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPage = HasPageFalse, // TODO: replace with end type and it will be 'endpoint' ro 'page' or 'layout' or 'component'
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = UndefinedResponseOutput,
 > {
   Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData> = {} as never
 
@@ -26,6 +27,9 @@ export class Point0<
 
   _pointType: TPointType
   _inputSchema: TInputSchema
+  _responseFn: TResponseOutput extends ResponseOutput
+    ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
+    : undefined
   _baseId: BaseId
   _head: ResolvableHead[]
   _queryClient: QueryClient | undefined
@@ -35,7 +39,7 @@ export class Point0<
   _hasSourceBase: TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true
   _extendFns: ExtendFnRecord[]
   _route: TRoute
-  _page: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
+  _page: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
   _id: Id | UndefinedId
   _index: number
   _method: Method | UndefinedMethod
@@ -52,6 +56,9 @@ export class Point0<
   private constructor(props: {
     _pointType: TPointType
     _inputSchema?: TInputSchema
+    _responseFn?: TResponseOutput extends ResponseOutput
+      ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
+      : undefined
     _baseId: BaseId
     _wrapper?: WrapperComponentType | undefined
     _queryClient?: QueryClient | undefined
@@ -61,7 +68,7 @@ export class Point0<
     _hasSourceBase?: TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
-    _page?: THasPage extends true ? PageComponent<TOutputData, TRoute> : UndefinedPageComponent
+    _page?: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -78,6 +85,9 @@ export class Point0<
 
     // overridable
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
+    this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
+      ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
+      : undefined
     this._pointType = props._pointType
     this._wrapper = props._wrapper
     this._queryClient = props._queryClient
@@ -89,7 +99,7 @@ export class Point0<
       : true
     this._extendFns = props._extendFns ?? []
     this._route = props._route ?? (undefined as TRoute)
-    this._page = props._page ?? (undefined as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined)
+    this._page = props._page ?? undefined
     this._id = props._id
     this._method = props._method ?? (undefined as Method | UndefinedMethod)
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
@@ -116,10 +126,13 @@ export class Point0<
     TOutputData extends Data,
     TRoute extends Route0.AnyRoute | UndefinedRoute,
     TInputSchema extends InputSchema | UndefinedInputSchema,
-    THasPage extends HasPage,
+    TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   >(overrides: {
     _pointType: TPointType
     _inputSchema?: TInputSchema
+    _responseFn?: TResponseOutput extends ResponseOutput
+      ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
+      : undefined
     _queryClient?: QueryClient | undefined
     _head?: ResolvableHead[]
     _queryOptions?: QueryOptionsSettings | undefined
@@ -138,7 +151,16 @@ export class Point0<
     _pageLoaderComponent?: LoaderComponentType<'page'>
     _componentLoaderComponent?: LoaderComponentType<'component'>
     _appLoaderComponent?: LoaderComponentType<'app'>
-  }): Point0<TPointType, TSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, TInputSchema, THasPage> {
+  }): Point0<
+    TPointType,
+    TSourceBasePoint,
+    TRequiredCtx,
+    TOutputCtx,
+    TOutputData,
+    TRoute,
+    TInputSchema,
+    TResponseOutput
+  > {
     return new Point0<
       TPointType,
       TSourceBasePoint,
@@ -147,7 +169,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       // persistent
       _baseId: this._baseId,
@@ -155,6 +177,9 @@ export class Point0<
       // overridable
       _pointType: overrides._pointType,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
+      _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
+        ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
+        : undefined,
       _queryClient: overrides._queryClient ?? this._queryClient,
       _wrapper: overrides._wrapper ?? this._wrapper,
       _head: [...this._head, ...(overrides._head ?? [])],
@@ -163,7 +188,7 @@ export class Point0<
       _hasSourceBase: this._hasSourceBase as TSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true,
       _extendFns: overrides._extendFns ?? this._extendFns,
       _route: (overrides._route ?? this._route) as TRoute,
-      _page: (overrides._page ?? this._page) as THasPage extends true ? PageComponent<TOutputData, TRoute> : undefined,
+      _page: (overrides._page ?? this._page) as PageComponent<TOutputData, TRoute> | UndefinedPageComponent,
       _id: overrides._id ?? this._id,
       _method: overrides._method ?? this._method,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
@@ -209,7 +234,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -219,7 +244,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       // TODO: extends - by default, if provide true in end, then will override previous
       _pointType: 'middleware',
@@ -237,7 +262,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -247,7 +272,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
@@ -264,7 +289,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -274,7 +299,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _errorComponent: errorComponent,
@@ -291,7 +316,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -301,7 +326,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _pageErrorComponent: pageErrorComponent,
@@ -318,7 +343,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -328,7 +353,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _componentErrorComponent: componentErrorComponent,
@@ -345,7 +370,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -355,7 +380,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _pageLoaderComponent: pageLoaderComponent,
@@ -372,7 +397,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -382,7 +407,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _componentLoaderComponent: componentLoaderComponent,
@@ -399,7 +424,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -409,7 +434,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _appLoaderComponent: appLoaderComponent,
@@ -426,7 +451,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -436,7 +461,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _loaderComponent: loaderComponent,
@@ -451,7 +476,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -461,7 +486,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
     })
@@ -477,7 +502,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   >
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctx: TNewOutputCtx,
@@ -489,7 +514,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   >
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctxOrFn: TNewOutputCtx,
@@ -501,7 +526,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TOutputCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._clone<
@@ -512,7 +537,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn }] as never,
@@ -529,7 +554,7 @@ export class Point0<
     TOutputData,
     TNewRoute0,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -539,7 +564,7 @@ export class Point0<
       TOutputData,
       TNewRoute0,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _route: route,
@@ -556,7 +581,7 @@ export class Point0<
     TNewOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     return this._clone<
       'middleware',
@@ -566,7 +591,7 @@ export class Point0<
       TNewOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }] as never,
@@ -583,7 +608,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   >
   head(
     head: ResolvableHead,
@@ -595,7 +620,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   >
   head(
     headFnOrHead: HeadFn<TOutputData, CurrentRoute<TRoute>> | ResolvableHead,
@@ -607,7 +632,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     const headFn = typeof headFnOrHead === 'function' ? headFnOrHead : () => headFnOrHead
     return this._clone<
@@ -618,7 +643,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _extendFns: [...this._extendFns, { type: 'head', fn: headFn }] as never,
@@ -635,7 +660,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   >
   title(
     title: string,
@@ -647,7 +672,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   >
   title(
     titleFnOrTitle: TitleFn<TOutputData, CurrentRoute<TRoute>> | string,
@@ -659,7 +684,7 @@ export class Point0<
     TOutputData,
     TRoute,
     TInputSchema,
-    THasPage
+    TResponseOutput
   > {
     const headFn =
       typeof titleFnOrTitle === 'function'
@@ -675,7 +700,7 @@ export class Point0<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >({
       _pointType: 'middleware',
       _extendFns: [...this._extendFns, { type: 'head', fn: headFn }] as never,
@@ -694,7 +719,7 @@ export class Point0<
     TOutputData,
     CurrentRoute<TRoute>,
     TInputSchema,
-    true
+    TResponseOutput
   > {
     return this._clone<
       'page',
@@ -704,10 +729,39 @@ export class Point0<
       TOutputData,
       CurrentRoute<TRoute>,
       TInputSchema,
-      true
+      TResponseOutput
     >({
       _pointType: 'page',
       _page: page as PageComponent<Data, CurrentRoute<TRoute>>,
+    })
+  }
+
+  reponse<TResponseOutput extends ResponseOutput = ResponseOutput>(
+    reponseFn: ResponseFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TResponseOutput>,
+  ): Point0<
+    'response',
+    TConnectedSourceBasePoint,
+    TRequiredCtx,
+    TOutputCtx,
+    TOutputData,
+    TRoute,
+    TInputSchema,
+    TResponseOutput
+  > {
+    return this._clone<
+      'response',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      TInputSchema,
+      TResponseOutput
+    >({
+      _pointType: 'response',
+      _responseFn: reponseFn as TResponseOutput extends ResponseOutput
+        ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
+        : undefined,
     })
   }
 
@@ -717,8 +771,19 @@ export class Point0<
     return this._id || this._route?.getDefinition() || `${this._baseId}-${this._index}`
   }
 
-  getQueryKey({ location }: { location: Route0.Location }): readonly [string, ...string[]] {
-    return [this.getLabel(), ...Object.values(location.params)]
+  getQueryKey({
+    location,
+    input,
+  }: {
+    location: Route0.Location
+    input?: Input<TInputSchema>
+  }): readonly [string, ...string[]] {
+    const keyParts: [string, ...string[]] = [this.getLabel(), ...Object.values(location.params)]
+    if (input !== undefined) {
+      const serialized = stringify(input)
+      keyParts.push(serialized)
+    }
+    return keyParts
   }
 
   getErrorComponent<TType extends DestinationComponentType>({ type }: { type: TType }): ErrorComponentType<TType> {
@@ -778,20 +843,29 @@ export type AnyPoint<
     | ConnectedSourceBasePoint
     | UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TOutputCtx extends Ctx = Ctx,
+  TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPage = HasPage,
-> = Point0<TPointType, TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, TInputSchema, THasPage>
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+> = Point0<
+  TPointType,
+  TConnectedSourceBasePoint,
+  TRequiredCtx,
+  TOutputCtx,
+  TOutputData,
+  TRoute,
+  TInputSchema,
+  TResponseOutput
+>
 export type BaseSourcePoint<
   TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint = UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TOutputCtx extends Ctx = Ctx,
+  TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
-  TRoute extends UndefinedRoute = UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPage = HasPage,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
 > = AnyPoint<
   'middleware',
   TConnectedSourceBasePoint,
@@ -800,16 +874,16 @@ export type BaseSourcePoint<
   TOutputData,
   TRoute,
   TInputSchema,
-  THasPage
+  TResponseOutput
 >
 export type BaseConnectionPoint<
   TConnectedSourceBasePoint extends ConnectedSourceBasePoint = ConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = any,
-  TRoute extends UndefinedRoute = UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPage = HasPage,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
 > = AnyPoint<
   'middleware',
   TConnectedSourceBasePoint,
@@ -818,15 +892,15 @@ export type BaseConnectionPoint<
   TOutputData,
   TRoute,
   TInputSchema,
-  THasPage
+  TResponseOutput
 >
 export type BasePoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TOutputCtx extends Ctx = Ctx,
+  TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
-  TRoute extends UndefinedRoute = UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPage = HasPage,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
 > =
   | BaseSourcePoint<
       UndefinedConnectedSourceBasePoint,
@@ -835,31 +909,68 @@ export type BasePoint<
       TOutputData,
       TRoute,
       TInputSchema,
-      THasPage
+      TResponseOutput
     >
-  | BaseConnectionPoint<ConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, TInputSchema, THasPage>
+  | BaseConnectionPoint<
+      ConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      TInputSchema,
+      TResponseOutput
+    >
 export type PagePoint<
   TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
     | ConnectedSourceBasePoint
     | UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TOutputCtx extends Ctx = Ctx,
+  TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPageTure = HasPageTure,
-> = AnyPoint<'page', TConnectedSourceBasePoint, TRequiredCtx, TOutputCtx, TOutputData, TRoute, TInputSchema, THasPage>
+  TInputSchema extends UndefinedInputSchema = UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+> = AnyPoint<
+  'page',
+  TConnectedSourceBasePoint,
+  TRequiredCtx,
+  TOutputCtx,
+  TOutputData,
+  TRoute,
+  TInputSchema,
+  TResponseOutput
+>
+export type ResponsePoint<
+  TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
+    | ConnectedSourceBasePoint
+    | UndefinedConnectedSourceBasePoint,
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TOutputCtx extends Ctx = any,
+  TOutputData extends Data = any,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput = ResponseOutput,
+> = AnyPoint<
+  'response',
+  TConnectedSourceBasePoint,
+  TRequiredCtx,
+  TOutputCtx,
+  TOutputData,
+  TRoute,
+  TInputSchema,
+  TResponseOutput
+>
 export type EndPoint<
   TPointType extends EndPointType = EndPointType,
   TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
     | ConnectedSourceBasePoint
     | UndefinedConnectedSourceBasePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TOutputCtx extends Ctx = Ctx,
+  TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
-  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
-  THasPage extends HasPageTure = HasPageTure,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
 > = AnyPoint<
   TPointType,
   TConnectedSourceBasePoint,
@@ -868,11 +979,11 @@ export type EndPoint<
   TOutputData,
   TRoute,
   TInputSchema,
-  THasPage
+  TResponseOutput
 >
 export type ConnectedSourceBasePoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TOutputCtx extends Ctx = Ctx,
+  TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
 > = {
   Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData>
@@ -926,8 +1037,8 @@ export type CurrentRoute<TRoute extends Route0.AnyRoute | UndefinedRoute = Route
 
 // TODO: unknown and undefined objects
 export type UndefinedRoute = undefined
-export type UnknownCtx = Record<string, unknown>
 export type EmptyCtx = Record<string, unknown> // Record<string, never>
+export type UnknownCtx = Record<string, unknown>
 export type UndefinedCtx = undefined
 export type RequiredCtx = UnknownCtx | UndefinedCtx
 export type Ctx = UnknownCtx | EmptyCtx
@@ -947,6 +1058,28 @@ export type UndefinedInputSchema = undefined
 export type Input<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
   TInputSchema extends InputSchema ? z.infer<TInputSchema> : undefined
 export type UndefinedInput = undefined
+
+export type ResponseOutput = Data | Response
+export type UndefinedResponseOutput = undefined
+export type ResponseFnProps<
+  TCtx extends Ctx = Ctx,
+  TDataInput extends Data = Data,
+  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = {
+  ctx: TCtx
+  data: TDataInput
+  input: Input<TInputSchema>
+  location: Route0.Location<CurrentRoute<TRoute0>>
+}
+export type ResponseFn<
+  TCtx extends Ctx = Ctx,
+  TDataInput extends Data = Data,
+  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput = ResponseOutput,
+> = (props: ResponseFnProps<TCtx, TDataInput, TRoute0, TInputSchema>) => Promise<TResponseOutput> | TResponseOutput
+export type ResponseFnOutput<TResponseFn extends ResponseFn> = Awaited<ReturnType<TResponseFn>>
 
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? Omit<TCtx, keyof TAppend> & TAppend
@@ -988,7 +1121,6 @@ export type LoaderFn<
   TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TDataOutput extends Data = Data,
 > = (props: LoaderFnProps<TCtx, TDataInput, TRoute0>) => Promise<TDataOutput> | TDataOutput
-export type LoaderFnOutput<TLoader extends LoaderFn> = Awaited<ReturnType<TLoader>>
 
 export type HeadFnProps<
   TOutputData extends Data = Data,
