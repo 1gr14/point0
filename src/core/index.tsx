@@ -39,7 +39,7 @@ export class Point0<
     ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
     : undefined
   _baseId: BaseId
-  _head: ResolvableHead[]
+  _heads: HeadsCollection
   _queryClient: QueryClient | undefined
   _useLocation: () => Route0.Location<CurrentRoute<TRoute>>
   // TODO: add _pageQueryOptions
@@ -73,7 +73,7 @@ export class Point0<
     _baseId: BaseId
     _wrapper?: WrapperComponentType | undefined
     _queryClient?: QueryClient | undefined
-    _head?: ResolvableHead[]
+    _heads?: HeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
     _hasSourceBase?: TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true
@@ -106,7 +106,7 @@ export class Point0<
     this._pointType = props._pointType
     this._wrapper = props._wrapper
     this._queryClient = props._queryClient
-    this._head = props._head ?? []
+    this._heads = props._heads ?? []
     this._queryOptions = props._queryOptions ?? {}
     this._pageQueryOptions = props._pageQueryOptions ?? {}
     this._hasSourceBase = props._hasSourceBase as TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint
@@ -150,7 +150,7 @@ export class Point0<
       ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
       : undefined
     _queryClient?: QueryClient | undefined
-    _head?: ResolvableHead[]
+    _heads?: HeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
     _wrapper?: WrapperComponentType | undefined
@@ -199,7 +199,7 @@ export class Point0<
       _queryClient: overrides._queryClient ?? this._queryClient,
       _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
-      _head: [...this._head, ...(overrides._head ?? [])],
+      _heads: [...this._heads, ...(overrides._heads ?? [])],
       _queryOptions: { ...this._queryOptions, ...(overrides._queryOptions ?? {}) },
       _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides._pageQueryOptions ?? {}) },
       _hasSourceBase: this._hasSourceBase as TSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true,
@@ -707,7 +707,6 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    const headFn = typeof headFnOrHead === 'function' ? headFnOrHead : () => headFnOrHead
     return this._clone<
       'middleware',
       TConnectedSourceBasePoint,
@@ -719,7 +718,7 @@ export class Point0<
       TResponseOutput
     >({
       _pointType: 'middleware',
-      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }] as never,
+      _heads: [...this._heads, headFnOrHead],
     })
   }
 
@@ -761,10 +760,10 @@ export class Point0<
   > {
     const headFn =
       typeof titleFnOrTitle === 'function'
-        ? async (props: HeadFnProps<TOutputData, TRoute>) => ({
-            title: await titleFnOrTitle(props),
+        ? (props: HeadFnProps<TOutputData, TRoute>) => ({
+            title: titleFnOrTitle(props),
           })
-        : () => ({ title: titleFnOrTitle })
+        : { title: titleFnOrTitle }
     return this._clone<
       'middleware',
       TConnectedSourceBasePoint,
@@ -776,7 +775,7 @@ export class Point0<
       TResponseOutput
     >({
       _pointType: 'middleware',
-      _extendFns: [...this._extendFns, { type: 'head', fn: headFn }] as never,
+      _heads: [...this._heads, headFn],
     })
   }
 
@@ -914,10 +913,6 @@ export class Point0<
     return this._extendFns.some((fn) => fn.type === 'loader')
   }
 
-  _hasHead(): boolean {
-    return this._extendFns.some((fn) => fn.type === 'head')
-  }
-
   _getUnstableId(): Id {
     return this._id || `${this._baseId}-${this._index}`
   }
@@ -963,18 +958,32 @@ export class Point0<
     if (!point._hasLoader()) {
       function PageComponent(): React.ReactElement {
         const location = point._useLocation()
-        for (const head of point._head) {
-          useHead(head)
+        const data = {} as TOutputData
+        for (const head of point._heads) {
+          useHead(typeof head === 'function' ? head({ data, location }) : head)
         }
         if (!point._page) {
           return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
         }
-        return React.createElement(point._page, { data: {} as TOutputData, location })
+        return React.createElement(point._page, { data, location })
       }
       return PageComponent
     }
+    console.log(3343434, point)
+    console.log(343434, point._heads)
 
-    function PageComponent(): React.ReactElement {
+    function PageComponent({ data, location }: PageComponentProps<TOutputData, TRoute>): React.ReactElement {
+      console.log(1231232, point._heads)
+      for (const head of point._heads) {
+        useHead(typeof head === 'function' ? head({ data, location }) : head)
+      }
+      if (!point._page) {
+        return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
+      }
+      return React.createElement(point._page, { data, location })
+    }
+
+    function WrapperComponent(): React.ReactElement {
       const location = point._useLocation()
       // const { isInitialPage } = useEversionContext()
       // const queryClient = useQueryClient()
@@ -1012,12 +1021,9 @@ export class Point0<
       if (!result.data) {
         return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
       }
-      if (!point._page) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-      }
-      return React.createElement(point._page, { data: result.data, location })
+      return React.createElement(PageComponent, { data: result.data, location })
     }
-    return PageComponent
+    return WrapperComponent
   }
 
   fetch = (async (props: Record<string, any> = {}) => {
@@ -1422,30 +1428,17 @@ export type LoaderFn<
   TDataOutput extends Data = Data,
 > = (props: LoaderFnProps<TCtx, TDataInput, TRoute0, TInputSchema>) => Promise<TDataOutput> | TDataOutput
 
-export type HeadFnProps<
-  TOutputData extends Data = Data,
-  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>>; input: Input<TInputSchema> }
-export type HeadFn<
-  TOutputData extends Data = Data,
-  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = (props: HeadFnProps<TOutputData, TRoute, TInputSchema>) => Promise<ResolvableHead> | ResolvableHead
-
 export type TitleFnProps<
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>>; input: TInputSchema }
+> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>> }
 export type TitleFn<
   TOutputData extends Data = Data,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = (props: HeadFnProps<TOutputData, TRoute, TInputSchema>) => Promise<string> | string
+> = (props: HeadFnProps<TOutputData, TRoute>) => string
 
 export type ExtendFnRecord<
-  TType extends 'ctx' | 'loader' | 'head' = 'ctx' | 'loader' | 'head',
+  TType extends 'ctx' | 'loader' = 'ctx' | 'loader',
   TCtxInput extends Ctx = Ctx,
   TDataInput extends Data = Data,
   TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
@@ -1455,9 +1448,17 @@ export type ExtendFnRecord<
   ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute0, TInputSchema, TOutput> }
   : TType extends 'loader'
     ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TInputSchema, TOutput> }
-    : TType extends 'head'
-      ? { type: 'head'; fn: HeadFn<TDataInput, TRoute0, TInputSchema> }
-      : never
+    : never
+
+export type HeadFnProps<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>> }
+export type HeadFn<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = (props: HeadFnProps<TOutputData, TRoute>) => ResolvableHead
+export type HeadsCollection = Array<ResolvableHead | HeadFn<any, any>>
 
 export type PointType = 'page' | 'component' | 'response' | 'json' | 'layout' | 'middleware'
 export type EndPointType = Exclude<PointType, 'middleware'>

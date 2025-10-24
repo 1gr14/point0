@@ -396,6 +396,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       ...this.base._extendFns,
       ...(point?._extendFns ?? []),
     ]
+    const heads = [
+      ...this.getParents().flatMap((source) => source._heads),
+      ...this.base._heads,
+      ...(point?._heads ?? []),
+    ]
     const location = this.normalizeLocation(locationProps)
     // TODO: get status from real point data
 
@@ -408,13 +413,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           case 'loader':
             dataOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location, input })
             break
-          case 'head':
-            headOutput.push(await extendFn.fn({ data: { ...dataOutput }, location, input }))
-            break
           // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
           default:
             throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
         }
+      }
+      for (const head of heads) {
+        headOutput.push(typeof head === 'function' ? head({ data: { ...dataOutput }, location }) : head)
       }
       if (point) {
         return {
