@@ -29,7 +29,7 @@ import type {
 export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   base: BasePoint<TRequiredCtx>
   source: Eversion0<TRequiredCtx> | undefined
-  points: PointsCollection
+  points: LoadedPointsCollection
   connections: Array<Eversion0<TRequiredCtx>>
 
   private constructor({
@@ -40,7 +40,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     base: BasePoint<TRequiredCtx>
     source?: Eversion0<TRequiredCtx> | undefined
-    points?: PointsCollection
+    points?: LoadedPointsCollection
     connections?: Array<Eversion0<TRequiredCtx>>
   }) {
     this.base = base
@@ -49,26 +49,37 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.source = source
   }
 
-  static create<TBasePoint extends BasePoint>({
+  static async create<TBasePoint extends BasePoint>({
     base,
     points,
   }: {
     base: TBasePoint
-    points?: PointsCollection
-  }): Eversion0<TBasePoint['Infer']['RequiredCtx']> {
-    return new Eversion0<TBasePoint['Infer']['RequiredCtx']>({ base, points })
+    points?: PointsCollectionRecord[]
+  }): Promise<Eversion0<TBasePoint['Infer']['RequiredCtx']>> {
+    return new Eversion0<TBasePoint['Infer']['RequiredCtx']>({
+      base,
+      points: await Eversion0.toLoadedPointsCollection(points),
+    })
   }
 
-  connect({
+  static async toLoadedPointsCollection(points?: PointsCollection): Promise<LoadedPointsCollection> {
+    return await Promise.all(
+      points?.map(async (record) => {
+        return { ...record, point: typeof record.point === 'function' ? await record.point() : record.point }
+      }) ?? [],
+    )
+  }
+
+  async connect({
     base,
     points,
   }: {
     base: BaseConnectionPoint<any, TRequiredCtx>
     points?: PointsCollection
-  }): Eversion0<TRequiredCtx> {
+  }): Promise<Eversion0<TRequiredCtx>> {
     const connection = new Eversion0<TRequiredCtx>({
       base,
-      points,
+      points: await Eversion0.toLoadedPointsCollection(points),
       source: this,
     })
     this.connections.push(connection)
@@ -789,9 +800,16 @@ export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPoint
   type: TEndPointType
   method: Method
   route: Route0.AnyRoute
-  point: EndPoint<TEndPointType>
+  point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
 }
 export type PointsCollection = PointsCollectionRecord[]
+export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
+  type: TEndPointType
+  method: Method
+  route: Route0.AnyRoute
+  point: EndPoint<TEndPointType>
+}
+export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
 
 export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }
 

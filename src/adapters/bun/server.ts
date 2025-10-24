@@ -16,9 +16,9 @@ import { createElement } from 'react'
 export const createBunServer = async (props: ServeServerInput) => {
   const { points, port, publicDir, base, logger, clients } = parseServeInput(props)
   const fallbackBaseId = props.fallbackBaseId || clients.at(0)?.base._baseId || base._baseId
-  const eversion = Eversion0.create({ base, points })
+  const eversion = await Eversion0.create({ base, points })
   for (const client of clients) {
-    eversion.connect({ base: client.base, points: client.points })
+    await eversion.connect({ base: client.base, points: client.points })
   }
 
   // cache public files paths
