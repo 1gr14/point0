@@ -1,9 +1,9 @@
-// import { useLocation } from 'point0/adapters/wouter'
+import { useLocation } from './router.js'
 import { Point0 } from 'point0/core/index.js'
 import type { server } from './server.js'
 
 export const client = Point0.connect<typeof server>('client')
-  // .setUseLocation(useLocation)
+  .setUseLocation(useLocation)
   .head({
     title: 'IdeaNick',
     titleTemplate: '%s | IdeaNick',

@@ -967,7 +967,7 @@ export class Point0<
       // const { isInitialPage } = useEversionContext()
       // const queryClient = useQueryClient()
       // const cache = queryClient.getQueryCache()
-      const queryKey = point.getQueryKey(location.params as never)
+      const queryKey = point.getQueryKey({ ...location.params, query: location.query } as never)
       // const query = cache.find({ queryKey })
       const result = useQuery<TOutputData>({
         queryKey,

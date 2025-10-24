@@ -1,8 +1,10 @@
+import type { DehydratedState } from '@tanstack/react-query'
 import type React from 'react'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { Payload } from '../eversion/runtime.js'
+import type { Route0 } from '@devp0nt/route0'
 
 declare global {
   interface Window {
@@ -15,9 +17,20 @@ export type MountResult = {
   appElement: React.ReactElement
 }
 
+export type AppProps = {
+  location?: Route0.Location | undefined
+  dehydratedState?: DehydratedState | undefined
+}
+export type AppComponent = React.ComponentType<AppProps>
+
 // Keep the React root across calls so state can be preserved.
 let root: Root | null = null
-export async function mount(App: React.ComponentType, rootElement?: HTMLElement | null): Promise<MountResult> {
+export async function mount(
+  App: AppComponent,
+  rootElement?: HTMLElement | null,
+  location?: Route0.Location,
+  dehydratedState?: DehydratedState,
+): Promise<MountResult> {
   if (rootElement !== undefined) {
     if (!rootElement) {
       throw new Error(`Provided rootElement is null, please provide correct rootElement`)
@@ -31,7 +44,7 @@ export async function mount(App: React.ComponentType, rootElement?: HTMLElement 
     }
   }
 
-  const appElement = createElement(App)
+  const appElement = createElement(App, { dehydratedState, location })
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.

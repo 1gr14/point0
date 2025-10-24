@@ -197,7 +197,10 @@ export const createBunServer = async (props: ServeServerInput) => {
                     `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not have default export`,
                   )
                 }
-                const appElement = createElement(appComponent)
+                const appElement = createElement(appComponent, {
+                  location: extractResult.location,
+                  dehydratedState: extractResult.dehydratedState,
+                })
                 const readableStream = await renderReadableStream({
                   element: appElement,
                   dehydratedState: extractResult.dehydratedState,

@@ -65,7 +65,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   static async toLoadedPointsCollection(points?: PointsCollection): Promise<LoadedPointsCollection> {
     return await Promise.all(
       points?.map(async (record) => {
-        return { ...record, point: typeof record.point === 'function' ? await record.point() : record.point }
+        return {
+          point: typeof record.point === 'function' ? await record.point() : record.point,
+          route: Route0.create(record.route),
+          method: record.method,
+          type: record.type,
+        }
       }) ?? [],
     )
   }
@@ -94,7 +99,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         continue
       }
       pages.push({
-        routeDefinition: record.route.getDefinition(),
+        route: Route0.create(record.route),
         pageComponent:
           typeof point === 'function'
             ? lazy(async () => ({ default: (await point())._getWrappedPageComponent() }))
@@ -102,6 +107,22 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
     }
     return pages
+  }
+
+  static getRouteMatch = (
+    routes: RoutesCollection,
+    location: Route0.Location,
+  ): { route: Route0.AnyRoute; location: Route0.Location } | undefined => {
+    for (const route of Object.values(routes)) {
+      const match = Route0.getMatch(route, location)
+      if (match.exact) {
+        return {
+          route,
+          location: match.location,
+        }
+      }
+    }
+    return undefined
   }
 
   getParents(): [BaseSourcePoint, ...BaseConnectionPoint[]] | [] {
@@ -817,7 +838,7 @@ export type FillPageResult = {
 export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
   method: Method
-  route: Route0.AnyRoute
+  route: string
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
 }
 export type PointsCollection = PointsCollectionRecord[]
@@ -859,7 +880,9 @@ export type Payload = {
 }
 
 export type ClientPageRecord = {
-  routeDefinition: string
+  route: Route0.AnyRoute
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
 }
 export type ClientPagesCollection = ClientPageRecord[]
+
+export type RoutesCollection = Record<string, Route0.AnyRoute>
