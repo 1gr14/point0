@@ -254,6 +254,10 @@ export const createBunServer = async (props: ServeServerInput) => {
             return toJsonErrorResponse(extractResult.error, extractResult.status)
           }
 
+          if (extractResult.response) {
+            return extractResult.response
+          }
+
           // else we try to get endpoint json
           return new Response(JSON.stringify(extractResult.data), {
             headers: { 'Content-Type': 'application/json' },

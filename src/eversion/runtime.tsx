@@ -418,6 +418,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         base: this.base,
         eversion: this,
         dehydratedState: emptyDehydratedState,
+        response: undefined,
       }
     }
 
@@ -463,6 +464,15 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       for (const head of heads) {
         headOutput.push(typeof head === 'function' ? head({ data: { ...dataOutput }, location }) : head)
       }
+      const response = await (async () => {
+        if (point?._pointType === 'response') {
+          if (!point._responseFn) {
+            throw new Error('Response function not found')
+          }
+          return await point._responseFn({ ctx: ctxOutput, data: dataOutput, location, input: parsedInput })
+        }
+        return undefined
+      })()
       if (point) {
         return {
           ctx: ctxOutput,
@@ -474,6 +484,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 200,
           base: this.base,
           eversion: this,
+          response,
           dehydratedState: this.getDehydratedState({
             data: dataOutput,
             location,
@@ -492,6 +503,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           point,
           error,
           status: 404,
+          response: undefined,
           base: this.base,
           eversion: this,
           dehydratedState: this.getDehydratedState({ data: dataOutput, location, input: parsedInput, point, error }),
@@ -508,6 +520,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         status: 500,
         base: this.base,
         eversion: this,
+        response: undefined,
         dehydratedState: this.getDehydratedState({ data: dataOutput, location, input: parsedInput, point, error }),
       }
     }
@@ -961,6 +974,7 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   ctx: TOutputCtx
   data: TOutputData
   head: ResolvableHead[]
+  response: Response | undefined
   dehydratedState: DehydratedState
   location: Route0.Location
   error: unknown

@@ -146,6 +146,7 @@ describe('Point0', () => {
       base: server2,
       point: clientPoint02,
       eversion: eversion2,
+      response: undefined,
     })
   })
 
@@ -216,6 +217,7 @@ describe('Point0', () => {
       base: server1,
       point: clientPoint01,
       eversion: eversion1,
+      response: undefined,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -245,6 +247,7 @@ describe('Point0', () => {
       base: server2,
       point: clientPoint02,
       eversion: eversion2,
+      response: undefined,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
@@ -270,6 +273,7 @@ describe('Point0', () => {
       base: server3,
       point: clientPoint03,
       eversion: eversion3,
+      response: undefined,
     })
   })
 
@@ -305,6 +309,7 @@ describe('Point0', () => {
       base: server1,
       point: clientPoint01,
       eversion: eversion1,
+      response: undefined,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -335,6 +340,7 @@ describe('Point0', () => {
       base: server2,
       point: clientPoint02,
       eversion: eversion2,
+      response: undefined,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       r: ctx.r,
@@ -362,6 +368,7 @@ describe('Point0', () => {
       base: server3,
       point: clientPoint03,
       eversion: eversion3,
+      response: undefined,
     })
   })
 

@@ -1364,7 +1364,7 @@ export type Input<TInputSchema extends InputSchema | UndefinedInputSchema = Inpu
   TInputSchema extends InputSchema ? z.infer<TInputSchema> : Record<string, unknown>
 export type UndefinedInput = undefined
 
-export type ResponseOutput = Data | Response
+export type ResponseOutput = Response
 export type UndefinedResponseOutput = undefined
 export type ResponseFnProps<
   TCtx extends Ctx = Ctx,
