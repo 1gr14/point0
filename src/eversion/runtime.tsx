@@ -1,8 +1,8 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
+import loadable from '@loadable/component'
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
-import { lazy } from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
   AnyPoint,
@@ -91,20 +91,68 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return connection
   }
 
-  static toClientPagesCollection = (points: PointsCollection): ClientPagesCollection => {
+  static getSuitablePageLocation = ({
+    points,
+    location,
+  }: {
+    points: PointsCollection
+    location: Route0.Location
+  }): Route0.Location => {
+    for (const record of points) {
+      if (record.type !== 'page') {
+        continue
+      }
+      const match = Route0.getMatch(Route0.create(record.route), location)
+      if (match.exact) {
+        return match.location
+      }
+    }
+    return location
+  }
+
+  static toPagesCollection = async ({
+    points,
+    ssrLocation,
+  }: {
+    points: PointsCollection
+    ssrLocation?: Route0.Location
+  }): Promise<ClientPagesCollection> => {
     const pages: ClientPageRecord[] = []
     for (const record of points) {
       const point = record.point
       if (record.type !== 'page') {
         continue
       }
-      pages.push({
-        route: Route0.create(record.route),
-        pageComponent:
-          typeof point === 'function'
-            ? lazy(async () => ({ default: (await point())._getWrappedPageComponent() }))
-            : point._getWrappedPageComponent(),
-      })
+      const route = Route0.create(record.route)
+      if (!ssrLocation) {
+        pages.push({
+          route,
+          pageComponent:
+            typeof point === 'function'
+              ? (loadable as unknown as typeof import('react').lazy)(async () => ({
+                  default: (await point())._getWrappedPageComponent(),
+                }))
+              : point._getWrappedPageComponent(),
+        })
+      } else {
+        const pageComponent = await (async (): Promise<React.ComponentType> => {
+          const match = Route0.getMatch(route, ssrLocation)
+          if (match.exact) {
+            return typeof point === 'function'
+              ? (await point())._getWrappedPageComponent()
+              : point._getWrappedPageComponent()
+          }
+          return typeof point === 'function'
+            ? (loadable as unknown as typeof import('react').lazy)(async () => ({
+                default: (await point())._getWrappedPageComponent(),
+              }))
+            : point._getWrappedPageComponent()
+        })()
+        pages.push({
+          route,
+          pageComponent,
+        })
+      }
     }
     return pages
   }

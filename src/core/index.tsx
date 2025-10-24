@@ -918,21 +918,33 @@ export class Point0<
     return this._extendFns.some((fn) => fn.type === 'head')
   }
 
-  _getId(): Id {
+  _getUnstableId(): Id {
     return this._id || `${this._baseId}-${this._index}`
   }
 
-  // TODO: not params, but route input
   _getRoutePath = ((params?: Record<string, string>) => {
     if (this._route) {
       return this._route.get(params || {})
     }
-    return this._getId()
+    if (this._id) {
+      return this._id
+    }
+    throw new Error('No route or id provided for this point')
   }) as TRoute extends Route0.AnyRoute
     ? Route0.Params<TRoute> extends Record<string, string>
       ? (params: Route0.Params<TRoute>) => string
       : () => string
     : () => string
+
+  _getRouteDefinition = (): string => {
+    if (this._route) {
+      return this._route.getDefinition()
+    }
+    if (this._id) {
+      return this._id
+    }
+    throw new Error('No route or id provided for this point')
+  }
 
   _getWrappedPageComponent = (): React.ComponentType => {
     // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
@@ -987,6 +999,7 @@ export class Point0<
           })
         },
         // enabled: !isInitialPage || query?.state.status !== 'error',
+        retry: false,
         ...point._queryOptions,
         ...point._pageQueryOptions,
       })
@@ -1043,7 +1056,7 @@ export class Point0<
   }) as FetcherFn<TInputSchema, TRoute, Promise<FetchOutput<TResponseOutput, TOutputData>>>
 
   getQueryKey = ((props?: Record<string, any>): QueryKey => {
-    const keyParts: [string, ...string[]] = [this._getId()]
+    const keyParts: [string, ...string[]] = [this._getRouteDefinition()]
     if (props) {
       const serialized = stringify(props)
       keyParts.push(serialized)

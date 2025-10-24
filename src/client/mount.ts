@@ -1,16 +1,9 @@
+import type { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import type React from 'react'
 import { createElement } from 'react'
-import type { Root } from 'react-dom/client'
-import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { Payload } from '../eversion/runtime.js'
-import type { Route0 } from '@devp0nt/route0'
-
-declare global {
-  interface Window {
-    __POINT0_PAYLOAD__?: Payload
-  }
-}
+import { createRoot } from 'react-dom/client'
+import { Eversion0, type ClientPagesCollection, type PointsCollection } from '../eversion/runtime.js'
 
 export type MountResult = {
   rootElement: HTMLElement
@@ -18,19 +11,21 @@ export type MountResult = {
 }
 
 export type AppProps = {
-  location?: Route0.Location | undefined
+  ssrLocation?: Route0.Location | undefined
   dehydratedState?: DehydratedState | undefined
+  pages: ClientPagesCollection
 }
 export type AppComponent = React.ComponentType<AppProps>
 
-// Keep the React root across calls so state can be preserved.
-let root: Root | null = null
-export async function mount(
-  App: AppComponent,
-  rootElement?: HTMLElement | null,
-  location?: Route0.Location,
-  dehydratedState?: DehydratedState,
-): Promise<MountResult> {
+export async function mount({
+  App,
+  points,
+  rootElement,
+}: {
+  App: AppComponent
+  points: PointsCollection
+  rootElement?: HTMLElement | null
+}): Promise<MountResult> {
   if (rootElement !== undefined) {
     if (!rootElement) {
       throw new Error(`Provided rootElement is null, please provide correct rootElement`)
@@ -44,24 +39,12 @@ export async function mount(
     }
   }
 
-  const appElement = createElement(App, { dehydratedState, location })
+  const pages = await Eversion0.toPagesCollection({
+    points,
+  })
+  const appElement = createElement(App, { pages })
 
-  // First invocation: create the root once.
-  //    - If SSR markup exists, hydrate.
-  //    - If not, do a client-side mount.
-  if (!root) {
-    if (rootElement.hasChildNodes()) {
-      root = hydrateRoot(rootElement, appElement)
-    } else {
-      root = createRoot(rootElement)
-      root.render(appElement)
-    }
-  } else {
-    // Subsequent invocations (e.g., HMR updates):
-    // Don’t recreate the root; just render the new element tree.
-    // With React Fast Refresh, this preserves hook state when component boundaries match.
-    root.render(appElement)
-  }
+  createRoot(rootElement).render(appElement)
 
   return { rootElement, appElement }
 }

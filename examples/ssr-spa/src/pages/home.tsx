@@ -1,5 +1,6 @@
 import { routes } from '../lib/routes.js'
 import { client } from '../lib/client.js'
+import { Link } from '../lib/router.js'
 
 export default client
   .route(routes.home)
@@ -12,7 +13,7 @@ export default client
       <h1>Welcome to IdeaNick</h1>
       <p>Discover and share innovative ideas that can change the world!</p>
       <nav>
-        <a href="/ideas">Browse Ideas</a>
+        <Link to="/ideas">Browse Ideas</Link>
       </nav>
     </div>
   ))

@@ -1,17 +1,17 @@
-import { HydrationBoundary, QueryClientProvider } from '@tanstack/react-query'
+import { HydrationBoundary, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Unhead } from 'point0/adapters/unhead'
-import type { AppProps } from 'point0/client/mount'
-import { queryClient } from './lib/react-query'
-import { points } from './lib/points'
 import { Router } from 'point0/adapters/wouter'
+import type { AppProps } from 'point0/client/mount'
+import { useState } from 'react'
 
 // you can add any other app wrappers here
-export default function App({ dehydratedState, location }: AppProps) {
+export default function App({ dehydratedState, ssrLocation, pages }: AppProps) {
+  const [queryClient] = useState(() => new QueryClient())
   return (
     <QueryClientProvider client={queryClient}>
       <HydrationBoundary state={dehydratedState}>
         <Unhead>
-          <Router location={location} points={points} />
+          <Router ssrLocation={ssrLocation} pages={pages} />
         </Unhead>
       </HydrationBoundary>
     </QueryClientProvider>

@@ -1,6 +1,7 @@
 import type { Ctx } from '../lib/client.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
+import { Link } from '../lib/router.js'
 
 export const getIdea = async (ctx: Ctx, id: number) => {
   const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -38,8 +39,8 @@ export const ideaPage = client
           <p>{idea.content}</p>
         </div>
         <nav>
-          <a href="/ideas">← Back to Ideas</a>
-          <a href="/">← Back to Home</a>
+          <Link to="/ideas">← Back to Ideas</Link>
+          <Link to="/">← Back to Home</Link>
         </nav>
       </div>
     )

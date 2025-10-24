@@ -92,6 +92,7 @@
     "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
   },
   "dependencies": {
+    "@loadable/component": "^5.16.7",
     "qs": "^6.14.0",
     "safe-stable-stringify": "^2.5.0"
   },
@@ -100,20 +101,21 @@
     "react-dom": "^19.0.0",
     "@tanstack/react-query": "^5.0.0",
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.18",
+    "@devp0nt/route0": "^1.0.0-next.19",
     "@unhead/react": "^2.0.19",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@devp0nt/route0": "^1.0.0-next.18",
+    "@devp0nt/route0": "^1.0.0-next.19",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",
     "@semantic-release/npm": "^12.0.2",
     "@tanstack/react-query": "^5.90.5",
     "@types/bun": "^1.2.22",
+    "@types/loadable__component": "^5.13.10",
     "@types/node": "^20.0.0",
     "@types/qs": "^6.14.0",
     "@types/react-dom": "^19.2.2",

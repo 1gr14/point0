@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Idea } from '../lib/prisma'
+import { Link } from '../lib/router.js'
 
 export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[]; env: string | undefined } }) => {
   const [count, setCount] = useState(() => 0)
@@ -18,14 +19,14 @@ export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[];
         {data.ideas.map((idea) => (
           <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
             <h3>
-              <a href={`/ideas/${idea.id}`}>{idea.title}</a>
+              <Link to={`/ideas/${idea.id}`}>{idea.title}</Link>
             </h3>
             <p>{idea.description}</p>
           </div>
         ))}
       </div>
       <nav>
-        <a href="/">← Back to Home</a>
+        <Link to="/">← Back to Home</Link>
       </nav>
     </div>
   )

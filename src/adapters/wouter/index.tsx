@@ -1,31 +1,31 @@
 import { Route0 } from '@devp0nt/route0'
 import { useEffect, useState } from 'react'
-import { Route, Switch, useLocation as useWouterLocation, Router as WouterRouter } from 'wouter'
-import { Eversion0, type PointsCollection } from '../../eversion/runtime.js'
+import type { LinkProps as WouterLinkProps } from 'wouter'
+import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
+import type { ClientPagesCollection } from '../../eversion/runtime.js'
+import { Eversion0 } from '../../eversion/runtime.js'
 
 const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
 export const Router = ({
-  location,
-  points,
+  ssrLocation,
+  pages,
   Page404 = DefaultPage404,
 }: {
-  location?: Route0.Location | undefined
-  points: PointsCollection
+  ssrLocation?: Route0.Location | undefined
+  pages: ClientPagesCollection
   Page404?: React.ComponentType
-}) => {
-  const pages = Eversion0.toClientPagesCollection(points)
-
+}): React.ReactElement => {
   const wouterRouterProps = (() => {
     if (typeof window !== 'undefined') {
       return {}
     }
-    if (!location) {
-      throw new Error('location is required on server side')
+    if (!ssrLocation) {
+      throw new Error('ssrLocation is required on ssr')
     }
-    return { ssrPath: location.pathname, ssrSearch: location.search }
+    return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   })()
 
   return (
@@ -71,8 +71,13 @@ export const createRouterHelpers = <TRoutes extends Record<string, Route0.AnyRou
     return location
   }
 
+  const Link = (props: WouterLinkProps) => {
+    return <WouterLink {...props} />
+  }
+
   return {
     Router,
+    Link,
     useLocation,
   }
 }

@@ -8,6 +8,7 @@ import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { createElement } from 'react'
+import type { AppComponent } from '../../client/mount.js'
 
 // TODO: {points, clients: {points}}
 // TODO: allow public dir per each client also
@@ -151,13 +152,11 @@ export const createBunServer = async (props: ServeServerInput) => {
             fallbackBaseId,
           })
           const relatedClient = clients.find((client) => client.base === extractResult.base)
-          const isPagePoint = extractResult.point?._pointType === 'page'
           if (extractResult.error) {
             logger.error(extractResult.error)
-            return toJsonErrorResponse(extractResult.error, extractResult.status)
           }
 
-          if (relatedClient && isPagePoint) {
+          if (relatedClient) {
             if (
               relatedClient.srcIndexHtml &&
               process.env.NODE_ENV !== 'production' &&
@@ -191,14 +190,19 @@ export const createBunServer = async (props: ServeServerInput) => {
                     `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not found for client "${relatedClient.base._baseId}", please provide it`,
                   )
                 }
-                const appComponent = await import(appTsx).then((module) => module.default)
+                const appComponent: AppComponent | undefined = await import(appTsx).then((module) => module.default)
                 if (!appComponent) {
                   throw new Error(
                     `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not have default export`,
                   )
                 }
+                const pages = await Eversion0.toPagesCollection({
+                  points: relatedClient.points,
+                  ssrLocation: extractResult.location,
+                })
                 const appElement = createElement(appComponent, {
-                  location: extractResult.location,
+                  pages,
+                  ssrLocation: extractResult.location,
                   dehydratedState: extractResult.dehydratedState,
                 })
                 const readableStream = await renderReadableStream({
@@ -229,6 +233,10 @@ export const createBunServer = async (props: ServeServerInput) => {
                 status: 200,
               })
             }
+          }
+
+          if (extractResult.error) {
+            return toJsonErrorResponse(extractResult.error, extractResult.status)
           }
 
           // else we try to get endpoint json
