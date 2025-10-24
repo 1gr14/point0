@@ -2,7 +2,7 @@ import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
-import type * as React from 'react'
+import { lazy } from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
   AnyPoint,
@@ -84,6 +84,24 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
     this.connections.push(connection)
     return connection
+  }
+
+  static toClientPagesCollection = (points: PointsCollection): ClientPagesCollection => {
+    const pages: ClientPageRecord[] = []
+    for (const record of points) {
+      const point = record.point
+      if (record.type !== 'page') {
+        continue
+      }
+      pages.push({
+        routeDefinition: record.route.getDefinition(),
+        pageComponent:
+          typeof point === 'function'
+            ? lazy(async () => ({ default: (await point())._getWrappedPageComponent() }))
+            : point._getWrappedPageComponent(),
+      })
+    }
+    return pages
   }
 
   getParents(): [BaseSourcePoint, ...BaseConnectionPoint[]] | [] {
@@ -839,3 +857,9 @@ export type InferExtractResult<TPoint extends AnyPoint> =
 export type Payload = {
   dehydratedState: DehydratedState
 }
+
+export type ClientPageRecord = {
+  routeDefinition: string
+  pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+}
+export type ClientPagesCollection = ClientPageRecord[]
