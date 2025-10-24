@@ -23,7 +23,7 @@ import type {
   RequiredCtx,
   UndefinedCtx,
 } from '../core/index.js'
-import { emptyDehydratedState } from '../server/utils.js'
+import { emptyDehydratedState } from '../core/utils.js'
 
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
 // so remove force
@@ -456,7 +456,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               input: parsedInput,
             })
             break
-          // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
           default:
             throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
         }

@@ -1,3 +1,4 @@
+import type { DehydratedState } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 
 export function mergeHeaders(base?: HeadersInit, extra?: Record<string, string>): Headers {
@@ -60,4 +61,9 @@ export function mergeResolvableHead(base?: ResolvableHead, extra?: ResolvableHea
 
 export function isPlainObject(obj: unknown): obj is Record<string, any> {
   return !!obj && typeof obj === 'object' && !Array.isArray(obj)
+}
+
+export const emptyDehydratedState: DehydratedState = {
+  queries: [],
+  mutations: [],
 }

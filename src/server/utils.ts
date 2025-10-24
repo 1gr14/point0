@@ -1,6 +1,5 @@
-import * as nodePath from 'node:path'
 import * as nodeFs from 'node:fs'
-import type { DehydratedState } from '@tanstack/react-query'
+import * as nodePath from 'node:path'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -95,9 +94,4 @@ export const isPathnameUnderBasepath = (pathname: string, basepath: string | und
     return false
   }
   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
-}
-
-export const emptyDehydratedState: DehydratedState = {
-  queries: [],
-  mutations: [],
 }
