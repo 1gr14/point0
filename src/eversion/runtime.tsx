@@ -817,3 +817,7 @@ export type InferExtractResult<TPoint extends AnyPoint> =
   TPoint extends AnyPoint<any, any, any, infer TOutputCtx, infer TOutputData, any, any>
     ? ExtractResult<TOutputCtx, TOutputData>
     : ExtractResult<EmptyCtx, EmptyData>
+
+export type Payload = {
+  dehydratedState: DehydratedState
+}

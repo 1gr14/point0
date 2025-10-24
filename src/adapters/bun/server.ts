@@ -7,6 +7,7 @@ import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
+import { createElement } from 'react'
 
 // TODO: {points, clients: {points}}
 // TODO: allow public dir per each client also
@@ -42,16 +43,16 @@ export const createBunServer = async (props: ServeServerInput) => {
       return Object.fromEntries(
         await Promise.all(
           clients
-            .flatMap((client) => (client.srcEntry ? [{ client, srcEntry: client.srcEntry }] : []))
-            .map(async (clientWithSrcEntry) => {
-              if (!(await Bun.file(clientWithSrcEntry.srcEntry).exists())) {
+            .flatMap((client) => (client.srcIndexHtml ? [{ client, srcIndexHtml: client.srcIndexHtml }] : []))
+            .map(async (clientWithSrcIndexHtml) => {
+              if (!(await Bun.file(clientWithSrcIndexHtml.srcIndexHtml).exists())) {
                 throw new Error(
-                  `srcEntry file "${clientWithSrcEntry.srcEntry}" not found in development mode for client ${clientWithSrcEntry.client.base._baseId}`,
+                  `srcIndexHtml file "${clientWithSrcIndexHtml.srcIndexHtml}" not found in development mode for client ${clientWithSrcIndexHtml.client.base._baseId}`,
                 )
               }
               return [
-                `/client-development-${clientWithSrcEntry.client.base._baseId}.index.html`,
-                (await import(clientWithSrcEntry.srcEntry)).default,
+                `/client-development-${clientWithSrcIndexHtml.client.base._baseId}.index.html`,
+                (await import(clientWithSrcIndexHtml.srcIndexHtml)).default,
               ]
             }),
         ),
@@ -63,22 +64,33 @@ export const createBunServer = async (props: ServeServerInput) => {
   // prod serve client index.html from dist
   // dev serve index.html from '/client-development-<base-id>.index.html', will be set below on first request
   const originalIndexHtmls: Record<string, string | undefined> = await (async () => {
-    if (process.env.NODE_ENV === 'production') {
-      return Object.fromEntries(
-        await Promise.all(
-          clients.map(async (client) => {
-            if (!client.distEntry) {
-              return [client.base._baseId, undefined]
-            }
-            if (!(await Bun.file(client.distEntry).exists())) {
-              throw new Error(`"${client.distEntry}" not found in production mode for client ${client.base._baseId}`)
-            }
-            return [client.base._baseId, await Bun.file(client.distEntry).text()]
-          }),
-        ),
-      )
-    }
-    return []
+    return Object.fromEntries(
+      await Promise.all(
+        clients.map(async (client) => {
+          if (process.env.NODE_ENV !== 'production') {
+            return [client.base._baseId, undefined]
+          }
+          if (!client.distIndexHtml) {
+            return [client.base._baseId, undefined]
+          }
+          if (!(await Bun.file(client.distIndexHtml).exists())) {
+            throw new Error(`"${client.distIndexHtml}" not found in production mode for client ${client.base._baseId}`)
+          }
+          return [client.base._baseId, await Bun.file(client.distIndexHtml).text()]
+        }),
+      ),
+    )
+  })()
+
+  // preload app.tsx
+  const appsTsx: Record<string, string | undefined> = await (async () => {
+    return Object.fromEntries(
+      await Promise.all(
+        clients.map(async (client) => {
+          return [client.base._baseId, process.env.NODE_ENV === 'production' ? client.distAppTsx : client.srcAppTsx]
+        }),
+      ),
+    )
   })()
 
   const bunServer = serve({
@@ -140,10 +152,14 @@ export const createBunServer = async (props: ServeServerInput) => {
           })
           const relatedClient = clients.find((client) => client.base === extractResult.base)
           const isPagePoint = extractResult.point?._pointType === 'page'
+          if (extractResult.error) {
+            logger.error(extractResult.error)
+            return toJsonErrorResponse(extractResult.error, extractResult.status)
+          }
 
           if (relatedClient && isPagePoint) {
             if (
-              relatedClient.srcEntry &&
+              relatedClient.srcIndexHtml &&
               process.env.NODE_ENV !== 'production' &&
               !originalIndexHtmls[relatedClient.base._baseId]
             ) {
@@ -154,35 +170,38 @@ export const createBunServer = async (props: ServeServerInput) => {
               ).text()
             }
             const originalIndexHtml = originalIndexHtmls[relatedClient.base._baseId]
+            const appTsx = appsTsx[relatedClient.base._baseId]
 
             if (relatedClient.ssr && !isJsonAcceptable) {
               if (!originalIndexHtml) {
                 if (process.env.NODE_ENV !== 'production') {
                   throw new Error(
-                    `index.html not found for client ${relatedClient.base._baseId}, please provide srcEntry for client in development mode`,
+                    `index.html not found for client ${relatedClient.base._baseId}, please provide srcIndexHtml for client in development mode`,
                   )
                 } else {
                   throw new Error(
-                    `index.html not found for client ${relatedClient.base._baseId}, please provide distEntry for client in production mode`,
+                    `index.html not found for client ${relatedClient.base._baseId}, please provide distIndexHtml for client in production mode`,
                   )
                 }
               }
               // so we render page wrapped with layouts
-              const { element, error: fillError } = await extractResult.eversion.fillPageComponent({
-                point: extractResult.point,
-                base: extractResult.base,
-                payload: extractResult.payload,
-                error: extractResult.error,
-                status: extractResult.status,
-                location: extractResult.payload.location,
-              })
-              if (extractResult.error || fillError) {
-                logger.error(extractResult.error || fillError)
-              }
               try {
+                if (!appTsx) {
+                  throw new Error(
+                    `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not found for client "${relatedClient.base._baseId}", please provide it`,
+                  )
+                }
+                const appComponent = await import(appTsx).then((module) => module.default)
+                if (!appComponent) {
+                  throw new Error(
+                    `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not have default export`,
+                  )
+                }
+                const appElement = createElement(appComponent)
                 const readableStream = await renderReadableStream({
-                  element,
-                  payload: extractResult.payload,
+                  element: appElement,
+                  dehydratedState: extractResult.dehydratedState,
+                  head: extractResult.head,
                   originalIndexHtml,
                   rootElementId: relatedClient.rootElementId,
                 })
@@ -201,7 +220,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                 }
                 throw error
               }
-            } else if (!relatedClient.ssr && !isJsonAcceptable && relatedClient.distEntry) {
+            } else if (!relatedClient.ssr && !isJsonAcceptable && relatedClient.distIndexHtml) {
               return new Response(originalIndexHtml, {
                 headers: { 'Content-Type': 'text/html' },
                 status: 200,
@@ -210,11 +229,7 @@ export const createBunServer = async (props: ServeServerInput) => {
           }
 
           // else we try to get endpoint json
-          if (extractResult.error) {
-            logger.error(extractResult.error)
-            return toJsonErrorResponse(extractResult.error, extractResult.status)
-          }
-          return new Response(JSON.stringify(extractResult.payload.data), {
+          return new Response(JSON.stringify(extractResult.data), {
             headers: { 'Content-Type': 'application/json' },
             status: extractResult.status,
           })

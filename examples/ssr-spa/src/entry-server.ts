@@ -16,8 +16,10 @@ void serve({
       ssr: true,
       base: client,
       points,
-      srcEntry: './index.html', // only when NODE_ENV=development
-      distEntry: '../client/index.html', // only when NODE_ENV=production
+      srcIndexHtml: './index.html', // only when NODE_ENV=development
+      distIndexHtml: '../client/index.html', // only when NODE_ENV=production
+      srcAppTsx: './app.tsx',
+      distAppTsx: '../client/app.tsx',
       distDir: '../client', // only when NODE_ENV=production
       distRoute: '/dist/client', // only when NODE_ENV=production
       basepath: '/',

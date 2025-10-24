@@ -13,8 +13,10 @@ export type ServeClientInput = {
   basepath?: string
   distDir?: string
   distRoute?: string
-  srcEntry?: string
-  distEntry?: string
+  srcIndexHtml?: string
+  distIndexHtml?: string
+  srcAppTsx?: string
+  distAppTsx?: string
   rootElementId?: string
 }
 export type ServeServerInput = {
@@ -35,8 +37,10 @@ export type ServeClientInputParsed = {
   basepath: string
   distDir: string | undefined
   distRoute: string | undefined
-  srcEntry: string | undefined
-  distEntry: string | undefined
+  srcIndexHtml: string | undefined
+  distIndexHtml: string | undefined
+  srcAppTsx: string | undefined
+  distAppTsx: string | undefined
   index: number
   rootElementId: string | undefined
 }
@@ -60,9 +64,11 @@ const parseServeClientInput = (
   input: ServeClientInput,
   dirname: string | undefined,
 ): ServeClientInputParsed => {
-  const srcEntry = absPath(dirname, input.srcEntry)
   const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
-  const distEntry = absPath(dirname, input.distEntry)
+  const srcIndexHtml = absPath(dirname, input.srcIndexHtml)
+  const distIndexHtml = absPath(dirname, input.distIndexHtml)
+  const srcAppTsx = absPath(dirname, input.srcAppTsx)
+  const distAppTsx = absPath(dirname, input.distAppTsx)
   const basepath = prependAndAppendSlash(input.basepath) || '/'
   const distRoute = prependAndAppendSlash(input.distRoute)
   if (distRoute !== 'undefined' && (distRoute === '' || distRoute === '/')) {
@@ -76,8 +82,10 @@ const parseServeClientInput = (
     basepath,
     distDir,
     distRoute,
-    srcEntry,
-    distEntry,
+    srcIndexHtml,
+    distIndexHtml,
+    srcAppTsx,
+    distAppTsx,
     index,
     rootElementId: input.rootElementId,
   }
@@ -102,7 +110,7 @@ export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed
     )
   } else {
     throwOnNonUniqueArrayElements(
-      clients.map((client) => client.srcEntry),
+      clients.map((client) => client.srcIndexHtml),
       'each client srcEntry must be unique',
     )
   }
