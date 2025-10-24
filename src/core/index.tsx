@@ -832,6 +832,7 @@ export class Point0<
     >({
       _pointType: 'page',
       _page: page as PageComponent<Data, CurrentRoute<TRoute>>,
+      _method: this._method || 'get',
     })
   }
 
@@ -861,6 +862,7 @@ export class Point0<
       _responseFn: responseFn as TResponseOutput extends ResponseOutput
         ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
         : undefined,
+      _method: this._method || 'post',
     })
   }
 
@@ -888,6 +890,7 @@ export class Point0<
     >({
       _pointType: 'json',
       _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }] as never,
+      _method: this._method || 'post',
     })
   }
 
@@ -922,7 +925,7 @@ export class Point0<
       return this._route.get(params || {})
     }
     if (this._id) {
-      return this._id
+      return `/endpoints/${this._id}`
     }
     throw new Error('No route or id provided for this point')
   }) as TRoute extends Route0.AnyRoute
@@ -1026,16 +1029,16 @@ export class Point0<
   fetch = (async (props: Record<string, any> = {}) => {
     const fetchOptions = this._fetchOptions()
     const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-    const routePath = this._getRoutePath((this._inputSchema ? {} : props) as never)
+    const routePath = this._getRoutePath((this._pointType === 'page' ? props : {}) as never)
     const url = new URL(routePath, window.location.origin)
     const method = this._method
     let body: string | undefined = undefined
     if (method === 'get' || method === 'head' || method === 'options') {
-      if (this._inputSchema) {
+      if (this._pointType !== 'page') {
         url.search = qs.stringify(props)
       }
     } else {
-      if (this._inputSchema) {
+      if (this._pointType !== 'page') {
         headers.set('Content-Type', 'application/json')
         body = JSON.stringify(props)
       }
@@ -1056,7 +1059,7 @@ export class Point0<
     throw Error0.from(json, {
       httpStatus: res.status,
     })
-  }) as FetcherFn<TInputSchema, TRoute, Promise<FetchOutput<TResponseOutput, TOutputData>>>
+  }) as FetcherFn<TPointType, TInputSchema, TRoute, Promise<FetchOutput<TResponseOutput, TOutputData>>>
 
   getQueryKey = ((props?: Record<string, any>): QueryKey => {
     const keyParts: [string, ...string[]] = [this._getRouteDefinition()]
@@ -1065,7 +1068,7 @@ export class Point0<
       keyParts.push(serialized)
     }
     return keyParts
-  }) as FetcherFn<TInputSchema, TRoute, QueryKey>
+  }) as FetcherFn<TPointType, TInputSchema, TRoute, QueryKey>
 
   getQueryOptions = ((props: Record<string, any> = {}) => {
     const queryKey = this.getQueryKey(props as never)
@@ -1078,7 +1081,12 @@ export class Point0<
       queryFn,
       ...this._queryOptions,
     }
-  }) as never as FetcherFn<TInputSchema, TRoute, QueryOptions<FetchOutput<TResponseOutput, TOutputData>, Error0>>
+  }) as never as FetcherFn<
+    TPointType,
+    TInputSchema,
+    TRoute,
+    QueryOptions<FetchOutput<TResponseOutput, TOutputData>, Error0>
+  >
 
   getMutationOptions = (() => {
     const mutationFn = async (props: Record<string, any> = {}) => {
@@ -1093,7 +1101,7 @@ export class Point0<
 
   useQuery = ((props: Record<string, any> = {}) => {
     return useQuery(this.getQueryOptions(props as never) as never)
-  }) as FetcherFn<TInputSchema, TRoute, UseQueryResult<FetchOutput<TResponseOutput, TOutputData>, Error0>>
+  }) as FetcherFn<TPointType, TInputSchema, TRoute, UseQueryResult<FetchOutput<TResponseOutput, TOutputData>, Error0>>
 
   useMutation = (() => {
     return useMutation(this.getMutationOptions() as never) as never
@@ -1461,42 +1469,22 @@ export type PointType = 'page' | 'component' | 'response' | 'json' | 'layout' | 
 export type EndPointType = Exclude<PointType, 'middleware'>
 
 export type QueryKey = readonly [string, ...string[]]
-// export type FetcherInput<
-//   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = TRoute extends Route0.AnyRoute
-//   ? TInputSchema extends InputSchema
-//     ? { params: Route0.Params<TRoute>; input: Input<TInputSchema> }
-//     : { params: Route0.Params<TRoute> }
-//   : TInputSchema extends InputSchema
-//     ? { input: Record<string, any> }
-//     : never
-// export type FetcherFn<
-//   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TFnOutput = any,
-// > = TInputSchema extends InputSchema
-//   ? (props: Input<TInputSchema>) => TFnOutput
-//   : TRoute extends Route0.AnyRoute
-//     ? (props: Route0.Params<Route0.AnyRoute>) => TFnOutput
-//     : (props: Record<string, any>) => TFnOutput
 export type FetcherFn<
+  TPointType extends PointType,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TFnOutput = any,
-> = TInputSchema extends InputSchema
-  ? (props: Input<TInputSchema>) => TFnOutput
-  : TRoute extends Route0.AnyRoute
+> = TPointType extends 'page'
+  ? TRoute extends Route0.AnyRoute
     ? Route0.HasParams<TRoute> extends true
-      ? (props: Route0.Params<TRoute> & { query?: Route0.Query<TRoute> }) => TFnOutput
+      ? // TODO: refactor Route0 itself and make better here
+        (props: Route0.Params<TRoute> & { query?: Route0.Query<TRoute> }) => TFnOutput
       : (props?: { query?: Route0.Query<TRoute> }) => TFnOutput
-    : () => TFnOutput
+    : TInputSchema extends InputSchema
+      ? (props: Input<TInputSchema>) => TFnOutput
+      : () => TFnOutput
+  : () => TFnOutput
 
-// export type FetchOutput<
-//   TPointType extends PointType,
-//   TOutputData extends Data = Data,
-//   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-// > = TPointType extends 'response' ? TResponseOutput : TOutputData
 export type FetchOutput<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
   TOutputData extends Data = Data,

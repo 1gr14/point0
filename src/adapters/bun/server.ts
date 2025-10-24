@@ -9,6 +9,7 @@ import { isPathnameUnderBasepath } from '../../server/utils.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { createElement } from 'react'
 import type { AppComponent } from '../../client/mount.js'
+import qs from 'qs'
 
 // TODO: {points, clients: {points}}
 // TODO: allow public dir per each client also
@@ -149,10 +150,21 @@ export const createBunServer = async (props: ServeServerInput) => {
           }
 
           // TODO: getSuitableLayouts, getSuitablePage, getSuitableEndpoint
-          const extractResult = await eversion.extractSuitable({
-            method: request.method as Method,
-            path: pathname,
-            fallbackBaseId,
+          const suitable = eversion.getSuitable({ method: request.method as Method, pathname, fallbackBaseId })
+          const body = await (async () => {
+            try {
+              return await request.json()
+            } catch (error) {
+              return undefined
+            }
+          })()
+          const searchParams = { ...qs.parse(url.search) } as Record<string, any>
+          const input = suitable.point?._pointType !== 'page' ? { ...body, ...searchParams } : {}
+          const extractResult = await suitable.eversion.extract({
+            point: suitable.point,
+            requiredCtx: undefined,
+            location: suitable.location,
+            input,
           })
           const relatedClient = clients.find((client) => client.base === extractResult.base)
           if (extractResult.error) {

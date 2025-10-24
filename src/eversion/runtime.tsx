@@ -23,6 +23,7 @@ import type {
   RequiredCtx,
   UndefinedCtx,
 } from '../core/index.js'
+import { emptyDehydratedState } from '../server/utils.js'
 
 // TODO: when find suitable allow porvide "baseId", then it will find only inside that
 // so remove force
@@ -68,7 +69,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           point: typeof record.point === 'function' ? await record.point() : record.point,
           route: Route0.create(record.route),
-          method: record.method,
           type: record.type,
         }
       }) ?? [],
@@ -192,18 +192,15 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return sources.reverse() as [BaseSourcePoint, ...BaseConnectionPoint[]] | []
   }
 
-  idToLocation(id: string): Route0.Location {
-    return Route0.getLocation(`/endpoints/${id}`)
-  }
-
   normalizeLocation(input: LocationInput): Route0.Location {
-    const location = 'location' in input ? input.location : 'path' in input ? Route0.getLocation(input.path) : undefined
+    const location =
+      'location' in input ? input.location : 'pathname' in input ? Route0.getLocation(input.pathname) : undefined
     if (location) {
       return location
     }
     const id = 'id' in input ? input.id : undefined
     if (id) {
-      return this.idToLocation(id)
+      return Route0.getLocation(`/endpoints/${id}`)
     }
     throw new Error('location or path or id is required')
   }
@@ -226,8 +223,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return undefined
     }
     const location = this.normalizeLocation(locationProps)
-    for (const { method, route, point } of this.points) {
-      if (providedMethod.toLowerCase() !== method.toLowerCase()) {
+    for (const { route, point } of this.points) {
+      if (!point._method || providedMethod.toLowerCase() !== point._method.toLowerCase()) {
         continue
       }
       const match = Route0.getMatch(route, location)
@@ -397,6 +394,33 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     point?: AnyPoint | undefined
     input?: Input
   } & LocationInput): Promise<ExtractResult> {
+    const location = this.normalizeLocation(locationProps)
+
+    const { parsedInput, inputError } = (() => {
+      if (point?._inputSchema) {
+        const parseResult = point._inputSchema.safeParse(input)
+        if (parseResult.success) {
+          return { parsedInput: parseResult.data, inputError: undefined }
+        }
+        return { parsedInput: input, inputError: parseResult.error }
+      }
+      return { parsedInput: input, inputError: undefined }
+    })()
+    if (inputError) {
+      return {
+        ctx: requiredCtx ?? {},
+        data: {},
+        head: [],
+        location,
+        point,
+        error: inputError,
+        status: 422,
+        base: this.base,
+        eversion: this,
+        dehydratedState: emptyDehydratedState,
+      }
+    }
+
     let ctxOutput: Ctx = requiredCtx ?? {}
     let dataOutput: Data = {}
     const headOutput: ResolvableHead[] = []
@@ -410,17 +434,26 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       ...this.base._heads,
       ...(point?._heads ?? []),
     ]
-    const location = this.normalizeLocation(locationProps)
     // TODO: get status from real point data
 
     try {
       for (const extendFn of extendFns) {
         switch (extendFn.type) {
           case 'ctx':
-            ctxOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location, input })
+            ctxOutput = await extendFn.fn({
+              ctx: { ...ctxOutput },
+              data: { ...dataOutput },
+              location,
+              input: parsedInput,
+            })
             break
           case 'loader':
-            dataOutput = await extendFn.fn({ ctx: { ...ctxOutput }, data: { ...dataOutput }, location, input })
+            dataOutput = await extendFn.fn({
+              ctx: { ...ctxOutput },
+              data: { ...dataOutput },
+              location,
+              input: parsedInput,
+            })
             break
           // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
           default:
@@ -441,7 +474,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 200,
           base: this.base,
           eversion: this,
-          dehydratedState: this.getDehydratedState({ data: dataOutput, location, input, point, error: undefined }),
+          dehydratedState: this.getDehydratedState({
+            data: dataOutput,
+            location,
+            input: parsedInput,
+            point,
+            error: undefined,
+          }),
         }
       } else {
         const error = new Error0(`Point Not Found: ${location.pathname}`)
@@ -455,7 +494,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 404,
           base: this.base,
           eversion: this,
-          dehydratedState: this.getDehydratedState({ data: dataOutput, location, input, point, error }),
+          dehydratedState: this.getDehydratedState({ data: dataOutput, location, input: parsedInput, point, error }),
         }
       }
     } catch (error) {
@@ -469,7 +508,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         status: 500,
         base: this.base,
         eversion: this,
-        dehydratedState: this.getDehydratedState({ data: dataOutput, location, input, point, error }),
+        dehydratedState: this.getDehydratedState({ data: dataOutput, location, input: parsedInput, point, error }),
       }
     }
   }
@@ -899,20 +938,18 @@ export type FillPageResult = {
 
 export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
-  method: Method
   route: string
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
 }
 export type PointsCollection = PointsCollectionRecord[]
 export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
-  method: Method
   route: Route0.AnyRoute
   point: EndPoint<TEndPointType>
 }
 export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
 
-export type LocationInput = { path: string } | { location: Route0.Location } | { id: string }
+export type LocationInput = { pathname: string } | { location: Route0.Location } | { id: string }
 
 export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
   ? {

@@ -1,18 +1,14 @@
-on .page() or .component() or .layout() or .endpoint() set _pointType = 'page'
-on .any() or else after .page() or else, set _prevReadyPoint = this
-.base() set _pointType = 'connected-base' | 'source-base'
-first generic <TPointType> page layout component endpoint base middle, and we do
 
-const {data, meta, res} = await somePage.fetch({ id: 123 }) → json
-const {data, meta, res} = await someEndpoint.useFetch({ id: 123 }) → json
-form
-.loader(() => [201, <div />]).loader(() => [404, <div />])
-.endpoint({req} => Response(Bun.file))
-.restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
+respect input
+omit method in points collection
+not path but pathname
+
+reponse endpoint type: .endpoint({req} => Response(Bun.file)). input OPENAPI_KEY output streaming text
 .endpoint() → just another loader but should be last
 
 auth
 
+on call any cloient fn or head(() =>) endpoint type is client-middleware and als _pointType
 .clientLoader, after call do not allow usual loader another
 .clientCtx, has access to exposeCtx,  just add  and there real javascript, can have usual useHooks (useEffect etc) will be called only on client
 .useClientCtx
@@ -27,6 +23,7 @@ mount({ hydration: true })
 ...? find suiatble layouts, find suitable page. Extract each layout payload, extract page payload. Render <Layout1 data={data1}><Layout2 data={data2}><Page data={data3} /></></>. __PAYLOAD_0__=data1 __PAYLOAD_1__=data2 __PAYLOAD_2__
 .layout() maybe as destination type
 .layout().layout(), and then when we need separatly jsu cut it by index, like nothing was, so in extend each fn we can store previous extend fns for example special for layout, ot we can .assignLayout(layout), or on end htingss like .page().enrpoidn() we can store parent there, on when we call desturctive next fn we create _prevReadyPoint
+on .any() or else after .page() or else, set _prevReadyPoint = this
 layout scroll position
 example general layout, idea layout, idea news page
 
@@ -54,12 +51,13 @@ env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 ? maybe move config to Point0.extend and Point0.create and extract it from there
 cli for simplify commands, like build with bun: point0 build
 
+.base() set _pointType = 'connected-base' | 'source-base'
+status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 split index.ts code
 .disable()
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
 superjson
 route0 respect origin on match and try two clients with one server
-.ctx(true, {}) for for assign ctx
 .extendRoute()
 remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
 analyze if there same id points or route points
@@ -79,8 +77,9 @@ npm @point0
 
 ---
 
-openapi plugin
-persistent zustand store
+? .restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
+? openapi plugin
+? persistent zustand store
 .isSuitable(() => boolean) to override default route suitable behaviour
 
 ---

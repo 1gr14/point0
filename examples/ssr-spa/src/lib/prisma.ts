@@ -12,7 +12,7 @@ export const prisma = {
 
     create: async ({ data }: { data: Omit<Idea, 'id'> }): Promise<Idea> => {
       await wait()
-      const idea = { ...data, id: fakeIdeas.length + 1 }
+      const idea = { ...data, id: Math.floor(Math.random() * 1000000) }
       fakeIdeas.push(idea)
       return idea
     },

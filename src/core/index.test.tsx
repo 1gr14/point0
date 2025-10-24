@@ -222,7 +222,7 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.connect<typeof server2>('client').page(pageComponent)
+    const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
     const eversion2 = await Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
@@ -249,7 +249,7 @@ describe('Point0', () => {
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
     }))
-    const clientPoint03 = Point0.connect<typeof server3>('client').page(pageComponent)
+    const clientPoint03 = Point0.connect<typeof server3>('client').route(Route0.create('/')).page(pageComponent)
     const eversion3 = await Eversion0.create({ base: server3 })
     expect(
       await eversion3.extract({
@@ -311,7 +311,7 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.connect<typeof server2>('client').page(pageComponent)
+    const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
     const eversion2 = await Eversion0.create({ base: server2 })
     expect(
       await eversion2.extract({
@@ -340,7 +340,7 @@ describe('Point0', () => {
       r: ctx.r,
       c: 5,
     }))
-    const clientPoint03 = Point0.connect<typeof server3>('client').page(pageComponent)
+    const clientPoint03 = Point0.connect<typeof server3>('client').route(Route0.create('/')).page(pageComponent)
     const eversion3 = await Eversion0.create({ base: server3 })
     expect(
       await eversion3.extract({

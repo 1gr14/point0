@@ -5,14 +5,15 @@ import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 
 export const createIdeaMutation = client
+  .id('createIdea')
   .input(
     z.object({
-      title: z.string(),
-      description: z.string(),
-      content: z.string(),
+      title: z.string().min(1).max(10),
+      description: z.string().min(1).max(100),
+      content: z.string().min(1).max(1000),
     }),
   )
-  .response(async ({ input, ctx }) => {
+  .json(async ({ input, ctx }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
@@ -25,9 +26,9 @@ export default client
   .page(() => {
     // any hook or whatever here, it is just client code
     const mutation = useMutation(createIdeaMutation.getMutationOptions())
-    const [title, setTitle] = useState('')
-    const [description, setDescription] = useState('')
-    const [content, setContent] = useState('')
+    const [title, setTitle] = useState('a')
+    const [description, setDescription] = useState('b')
+    const [content, setContent] = useState('c')
     return (
       <div>
         <label>Title</label>
@@ -56,7 +57,14 @@ export default client
         />
         <button
           onClick={() => {
-            mutation.mutate({ title, description, content })
+            mutation
+              .mutateAsync({ title, description, content })
+              .then((res) => {
+                console.log('res', res)
+              })
+              .catch((err: unknown) => {
+                console.log('err', err)
+              })
           }}
         >
           Create Idea
