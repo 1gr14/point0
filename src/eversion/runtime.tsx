@@ -456,7 +456,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               input: parsedInput,
             })
             break
-
+          // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
           default:
             throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
         }

@@ -1,3 +1,4 @@
+import type { AppComponent } from '../client/mount.js'
 import type { BaseId, BasePoint } from '../core/index.js'
 import type { PointsCollection } from '../eversion/runtime.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
@@ -15,8 +16,7 @@ export type ServeClientInput = {
   distRoute?: string
   srcIndexHtml?: string
   distIndexHtml?: string
-  srcAppTsx?: string
-  distAppTsx?: string
+  App?: AppComponent
   rootElementId?: string
 }
 export type ServeServerInput = {
@@ -39,8 +39,7 @@ export type ServeClientInputParsed = {
   distRoute: string | undefined
   srcIndexHtml: string | undefined
   distIndexHtml: string | undefined
-  srcAppTsx: string | undefined
-  distAppTsx: string | undefined
+  App: AppComponent | undefined
   index: number
   rootElementId: string | undefined
 }
@@ -67,8 +66,6 @@ const parseServeClientInput = (
   const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
   const srcIndexHtml = absPath(dirname, input.srcIndexHtml)
   const distIndexHtml = absPath(dirname, input.distIndexHtml)
-  const srcAppTsx = absPath(dirname, input.srcAppTsx)
-  const distAppTsx = absPath(dirname, input.distAppTsx)
   const basepath = prependAndAppendSlash(input.basepath) || '/'
   const distRoute = prependAndAppendSlash(input.distRoute)
   if (distRoute !== 'undefined' && (distRoute === '' || distRoute === '/')) {
@@ -84,8 +81,7 @@ const parseServeClientInput = (
     distRoute,
     srcIndexHtml,
     distIndexHtml,
-    srcAppTsx,
-    distAppTsx,
+    App: input.App,
     index,
     rootElementId: input.rootElementId,
   }

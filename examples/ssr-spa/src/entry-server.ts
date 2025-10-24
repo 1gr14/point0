@@ -2,6 +2,7 @@ import serve from 'point0/adapters/bun/server.js'
 import { points } from './lib/points.js'
 import { server } from './lib/server.js'
 import { client } from './lib/client.js'
+import App from './app.js'
 
 void serve({
   base: server,
@@ -19,8 +20,7 @@ void serve({
       // TODO: use without src or dist prefixes
       srcIndexHtml: './index.html', // only when NODE_ENV=development
       distIndexHtml: '../client/index.html', // only when NODE_ENV=production
-      srcAppTsx: './app.tsx',
-      distAppTsx: '../client/app.js',
+      App,
       distDir: '../client', // only when NODE_ENV=production
       distRoute: '/dist/client', // only when NODE_ENV=production
       basepath: '/',

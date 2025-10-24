@@ -1,15 +1,14 @@
 import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
+import qs from 'qs'
+import { createElement } from 'react'
 import type { Method } from '../../core/index.js'
 import { Eversion0 } from '../../eversion/runtime.js'
+import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { parseServeInput, type ServeServerInput } from '../../server/serve.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
-import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
-import { createElement } from 'react'
-import type { AppComponent } from '../../client/mount.js'
-import qs from 'qs'
 
 // TODO: {points, clients: {points}}
 // TODO: allow public dir per each client also
@@ -79,17 +78,6 @@ export const createBunServer = async (props: ServeServerInput) => {
             throw new Error(`"${client.distIndexHtml}" not found in production mode for client ${client.base._baseId}`)
           }
           return [client.base._baseId, await Bun.file(client.distIndexHtml).text()]
-        }),
-      ),
-    )
-  })()
-
-  // preload app.tsx
-  const appsTsx: Record<string, string | undefined> = await (async () => {
-    return Object.fromEntries(
-      await Promise.all(
-        clients.map(async (client) => {
-          return [client.base._baseId, process.env.NODE_ENV === 'production' ? client.distAppTsx : client.srcAppTsx]
         }),
       ),
     )
@@ -184,7 +172,7 @@ export const createBunServer = async (props: ServeServerInput) => {
               ).text()
             }
             const originalIndexHtml = originalIndexHtmls[relatedClient.base._baseId]
-            const appTsx = appsTsx[relatedClient.base._baseId]
+            const App = relatedClient.App
 
             if (relatedClient.ssr && !isJsonAcceptable) {
               if (!originalIndexHtml) {
@@ -200,22 +188,14 @@ export const createBunServer = async (props: ServeServerInput) => {
               }
               // so we render page wrapped with layouts
               try {
-                if (!appTsx) {
-                  throw new Error(
-                    `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not found for client "${relatedClient.base._baseId}", please provide it`,
-                  )
-                }
-                const appComponent: AppComponent | undefined = await import(appTsx).then((module) => module.default)
-                if (!appComponent) {
-                  throw new Error(
-                    `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not have default export`,
-                  )
+                if (!App) {
+                  throw new Error(`App not found for client "${relatedClient.base._baseId}", please provide it`)
                 }
                 const pages = await Eversion0.toServerPagesCollection({
                   points: relatedClient.points,
                   ssrLocation: extractResult.location,
                 })
-                const appElement = createElement(appComponent, {
+                const appElement = createElement(App, {
                   pages,
                   ssrLocation: extractResult.location,
                   dehydratedState: extractResult.dehydratedState,

@@ -41,6 +41,10 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 split index.ts code
 .disable()
 .route(string)
+fix head title blinking
+not json but query and mutation, and if it is mutation the on extract do not add it to hydratedState
+do not loose state on hmr
+prevent endless loop hmr after code changes
 html template parsing by provided vars
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags)
 superjson
