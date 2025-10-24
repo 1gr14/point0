@@ -58,6 +58,6 @@ export function mergeResolvableHead(base?: ResolvableHead, extra?: ResolvableHea
   return merged
 }
 
-function isPlainObject(obj: unknown): obj is Record<string, any> {
+export function isPlainObject(obj: unknown): obj is Record<string, any> {
   return !!obj && typeof obj === 'object' && !Array.isArray(obj)
 }
