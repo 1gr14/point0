@@ -92,7 +92,6 @@
     "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
   },
   "dependencies": {
-    "@loadable/component": "^5.16.7",
     "qs": "^6.14.0",
     "safe-stable-stringify": "^2.5.0"
   },
@@ -115,7 +114,6 @@
     "@semantic-release/npm": "^12.0.2",
     "@tanstack/react-query": "^5.90.5",
     "@types/bun": "^1.2.22",
-    "@types/loadable__component": "^5.13.10",
     "@types/node": "^20.0.0",
     "@types/qs": "^6.14.0",
     "@types/react-dom": "^19.2.2",

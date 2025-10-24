@@ -10,7 +10,7 @@ export type HydrateResult = MountResult & {
 }
 
 let root: Root | null = null
-export async function hydrate({
+export function hydrate({
   App,
   points,
   rootElement,
@@ -18,7 +18,7 @@ export async function hydrate({
   App: AppComponent
   points: PointsCollection
   rootElement?: HTMLElement | null
-}): Promise<HydrateResult> {
+}): HydrateResult {
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) {
@@ -31,15 +31,6 @@ export async function hydrate({
       throw new Error('Invalid __POINT0_PAYLOAD__', { cause: error })
     }
   })()
-
-  const ssrLocation = Eversion0.getSuitablePageLocation({
-    points,
-    location: Route0.getLocation(window.location.pathname),
-  })
-  const pages = await Eversion0.toPagesCollection({
-    points,
-    ssrLocation,
-  })
 
   if (rootElement !== undefined) {
     if (!rootElement) {
@@ -54,6 +45,13 @@ export async function hydrate({
     }
   }
 
+  const ssrLocation = Eversion0.getSuitablePageLocation({
+    points,
+    location: Route0.getLocation(window.location.pathname),
+  })
+  const pages = Eversion0.toClientPagesCollection({
+    points,
+  })
   const appElement = createElement(App, { dehydratedState: payload.dehydratedState, pages, ssrLocation })
 
   // First invocation: create the root once.

@@ -3,7 +3,7 @@ import type { DehydratedState } from '@tanstack/react-query'
 import type React from 'react'
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Eversion0, type ClientPagesCollection, type PointsCollection } from '../eversion/runtime.js'
+import { Eversion0, type PagesCollection, type PointsCollection } from '../eversion/runtime.js'
 
 export type MountResult = {
   rootElement: HTMLElement
@@ -13,11 +13,11 @@ export type MountResult = {
 export type AppProps = {
   ssrLocation?: Route0.Location | undefined
   dehydratedState?: DehydratedState | undefined
-  pages: ClientPagesCollection
+  pages: PagesCollection
 }
 export type AppComponent = React.ComponentType<AppProps>
 
-export async function mount({
+export function mount({
   App,
   points,
   rootElement,
@@ -25,7 +25,7 @@ export async function mount({
   App: AppComponent
   points: PointsCollection
   rootElement?: HTMLElement | null
-}): Promise<MountResult> {
+}): MountResult {
   if (rootElement !== undefined) {
     if (!rootElement) {
       throw new Error(`Provided rootElement is null, please provide correct rootElement`)
@@ -39,7 +39,7 @@ export async function mount({
     }
   }
 
-  const pages = await Eversion0.toPagesCollection({
+  const pages = Eversion0.toClientPagesCollection({
     points,
   })
   const appElement = createElement(App, { pages })

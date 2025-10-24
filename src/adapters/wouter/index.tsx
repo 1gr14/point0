@@ -2,7 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import { useEffect, useState } from 'react'
 import type { LinkProps as WouterLinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import type { ClientPagesCollection } from '../../eversion/runtime.js'
+import type { PagesCollection } from '../../eversion/runtime.js'
 import { Eversion0 } from '../../eversion/runtime.js'
 
 const DefaultPage404 = () => {
@@ -15,7 +15,7 @@ export const Router = ({
   Page404 = DefaultPage404,
 }: {
   ssrLocation?: Route0.Location | undefined
-  pages: ClientPagesCollection
+  pages: PagesCollection
   Page404?: React.ComponentType
 }): React.ReactElement => {
   const wouterRouterProps = (() => {

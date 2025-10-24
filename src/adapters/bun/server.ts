@@ -96,6 +96,9 @@ export const createBunServer = async (props: ServeServerInput) => {
 
   const bunServer = serve({
     port,
+    development: process.env.NODE_ENV !== 'production' && {
+      hmr: true,
+    },
     routes: {
       ...devClientSsrRoutes,
       '/*': async (request) => {
@@ -196,7 +199,7 @@ export const createBunServer = async (props: ServeServerInput) => {
                     `${process.env.NODE_ENV === 'production' ? 'dist' : 'src'}AppTsx not have default export`,
                   )
                 }
-                const pages = await Eversion0.toPagesCollection({
+                const pages = await Eversion0.toServerPagesCollection({
                   points: relatedClient.points,
                   ssrLocation: extractResult.location,
                 })

@@ -969,11 +969,8 @@ export class Point0<
       }
       return PageComponent
     }
-    console.log(3343434, point)
-    console.log(343434, point._heads)
 
     function PageComponent({ data, location }: PageComponentProps<TOutputData, TRoute>): React.ReactElement {
-      console.log(1231232, point._heads)
       for (const head of point._heads) {
         useHead(typeof head === 'function' ? head({ data, location }) : head)
       }
