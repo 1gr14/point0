@@ -3,7 +3,15 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:t
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Eversion0 } from '../eversion/runtime.js'
-import type { EmptyCtx, EmptyData, UndefinedCtx } from './index.js'
+import type {
+  EmptyCtx,
+  EmptyData,
+  UndefinedConnectedSourceBasePoint,
+  UndefinedCtx,
+  UndefinedInputSchema,
+  UndefinedResponseOutput,
+  UndefinedRoute,
+} from './index.js'
 import { Point0 } from './index.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
@@ -22,9 +30,17 @@ describe('Point0', () => {
   it('creates an empty instance', () => {
     const server = Point0.source('server')
     expect(server).toBeInstanceOf(Point0)
-    expectTypeOf(server).toEqualTypeOf<Point0>()
     expectTypeOf(server).toEqualTypeOf<
-      Point0<'middleware', undefined, UndefinedCtx, EmptyCtx, EmptyData, undefined, undefined, undefined>
+      Point0<
+        'middleware',
+        UndefinedConnectedSourceBasePoint,
+        UndefinedCtx,
+        EmptyCtx,
+        EmptyData,
+        UndefinedRoute,
+        UndefinedInputSchema,
+        UndefinedResponseOutput
+      >
     >()
     expect(server._extendFns).toEqual([])
   })
@@ -40,13 +56,13 @@ describe('Point0', () => {
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
         'middleware',
-        undefined,
+        UndefinedConnectedSourceBasePoint,
         UndefinedCtx,
         { a: number; b: number },
         EmptyData,
-        undefined,
-        undefined,
-        undefined
+        UndefinedRoute,
+        UndefinedInputSchema,
+        UndefinedResponseOutput
       >
     >()
     expect(server1._extendFns).toHaveLength(1)
@@ -87,16 +103,7 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<
-        'middleware',
-        undefined,
-        UndefinedCtx,
-        { a: number; b: number },
-        EmptyData,
-        undefined,
-        undefined,
-        undefined
-      >
+      Point0<'middleware', undefined, undefined, { a: number; b: number }, EmptyData, undefined, undefined, undefined>
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -400,8 +407,18 @@ describe('Point0', () => {
     const server = Point0.source('server')
     const clientPoint0 = Point0.connect<typeof server>('client')
     expect(clientPoint0).toBeInstanceOf(Point0)
-    expectTypeOf(clientPoint0).toEqualTypeOf<Point0<'middleware', typeof server>>()
-    expectTypeOf(clientPoint0).toEqualTypeOf<Point0<'middleware', typeof server, UndefinedCtx, EmptyCtx, EmptyData>>()
+    expectTypeOf(clientPoint0).toEqualTypeOf<
+      Point0<
+        'middleware',
+        typeof server,
+        UndefinedCtx,
+        EmptyCtx,
+        EmptyData,
+        UndefinedRoute,
+        UndefinedInputSchema,
+        UndefinedResponseOutput
+      >
+    >()
     expect(clientPoint0._extendFns).toEqual([])
   })
 

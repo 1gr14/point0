@@ -139,8 +139,9 @@ export const createBunServer = async (props: ServeServerInput) => {
             fallbackBaseId,
           })
           const relatedClient = clients.find((client) => client.base === extractResult.base)
+          const isPagePoint = extractResult.point?._pointType === 'page'
 
-          if (relatedClient) {
+          if (relatedClient && isPagePoint) {
             if (
               relatedClient.srcEntry &&
               process.env.NODE_ENV !== 'production' &&

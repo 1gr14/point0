@@ -2,7 +2,7 @@ import { routes } from '../lib/routes.js'
 import { client } from '../lib/client.js'
 import { IdeasView } from './ideas.view.js'
 
-export default client
+export const ideasPage = client
   .route(routes.ideas)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
@@ -43,3 +43,5 @@ export default client
 //     </div>
 //   )
 // })
+
+export default ideasPage

@@ -9,7 +9,7 @@ export const getIdea = async (ctx: Ctx, id: number) => {
   return { idea }
 }
 
-export default client
+export const ideaPage = client
   .route(routes.idea)
   .loader(async ({ ctx, location }) => {
     // it excutes on server, but defined in client file,
@@ -44,3 +44,5 @@ export default client
       </div>
     )
   })
+
+export default ideaPage

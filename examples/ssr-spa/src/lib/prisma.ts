@@ -10,19 +10,22 @@ export const prisma = {
       return fakeIdeas.length
     },
 
-    create: async (data: Idea): Promise<Idea> => {
+    create: async ({ data }: { data: Omit<Idea, 'id'> }): Promise<Idea> => {
       await wait()
       const idea = { ...data, id: fakeIdeas.length + 1 }
       fakeIdeas.push(idea)
       return idea
     },
 
-    update: async (id: number, data: Idea): Promise<Idea> => {
-      const idea = fakeIdeas.find((idea) => idea.id === id)
-      if (!idea) {
-        throw new Error(`Idea with id ${id} not found`)
+    update: async ({ where, data }: { where: { id: number }; data: Idea }): Promise<Idea> => {
+      const ideaIndex = fakeIdeas.findIndex((idea) => idea.id === where.id)
+      if (ideaIndex === -1) {
+        throw new Error(`Idea with id ${where.id} not found`)
       }
-      return { ...idea, ...data }
+      const idea = fakeIdeas[ideaIndex]
+      const newIdea = { ...idea, ...data }
+      fakeIdeas[ideaIndex] = newIdea
+      return newIdea
     },
 
     findMany: async (): Promise<Idea[]> => {

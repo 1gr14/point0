@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 
-export const createIdea = client
+export const createIdeaMutation = client
   .input(
     z.object({
       title: z.string(),
@@ -22,9 +22,9 @@ export const createIdea = client
 export default client
   .route(routes.newIdea)
   .title('New Idea')
-  .page(({ data: { idea } }) => {
+  .page(() => {
     // any hook or whatever here, it is just client code
-    const mutation = useMutation(createIdea.getMutationOptions())
+    const mutation = useMutation(createIdeaMutation.getMutationOptions())
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [content, setContent] = useState('')

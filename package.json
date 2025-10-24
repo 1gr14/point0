@@ -92,6 +92,7 @@
     "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
   },
   "dependencies": {
+    "qs": "^6.14.0",
     "safe-stable-stringify": "^2.5.0"
   },
   "peerDependencies": {
@@ -99,13 +100,14 @@
     "react-dom": "^19.0.0",
     "@tanstack/react-query": "^5.0.0",
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.17",
+    "@devp0nt/route0": "^1.0.0-next.18",
     "@unhead/react": "^2.0.19",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
+    "@devp0nt/route0": "^1.0.0-next.18",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",
@@ -113,6 +115,7 @@
     "@tanstack/react-query": "^5.90.5",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "@types/qs": "^6.14.0",
     "@types/react-dom": "^19.2.2",
     "concurrently": "^9.2.1",
     "cross-env": "^10.0.0",
@@ -125,6 +128,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.1",
     "prettier": "^3.6.2",
+    "react-router": "^7.9.4",
     "rimraf": "^6.0.1",
     "semantic-release": "^24.2.8",
     "tsc-watch": "^7.1.1",
