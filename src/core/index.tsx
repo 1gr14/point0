@@ -934,15 +934,19 @@ export class Point0<
       : () => string
     : () => string
 
-  _getPageComponent = (): PageComponent<TOutputData, TRoute> | undefined => {
-    if (!this._page) {
-      return undefined
-    }
-
+  _getWrappedPageComponent = (): React.ComponentType => {
     // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
     const point = this
     const loaderComponent = point._getLoaderComponent({ type: 'page' })
     const errorComponent = point._getErrorComponent({ type: 'page' })
+
+    if (!this._page) {
+      function PageComponent(): React.ReactElement {
+        const location = point._useLocation()
+        return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
+      }
+      return PageComponent
+    }
 
     if (!point._hasLoader()) {
       function PageComponent(): React.ReactElement {
