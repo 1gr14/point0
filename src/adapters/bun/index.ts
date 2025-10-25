@@ -114,17 +114,14 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   async _preloadIndexHtmlContents(): Promise<void> {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV !== 'production') {
+      // on dev mode we will load index.html from served srcIndexHtml becous it has injected hmr script
       return
     }
+    // else we will get provided distIndexHtml
     const indexHtmlContents = Object.fromEntries(
       await Promise.all(
         this.clients.map(async (client) => {
-          if (process.env.NODE_ENV !== 'production') {
-            // on dev mode we will load index.html from served srcIndexHtml becous it has injected hmr script
-            return [client.base._baseId, undefined]
-          }
-          // else we will get provided distIndexHtml
           if (!client.distIndexHtml) {
             return [client.base._baseId, undefined]
           }
@@ -248,6 +245,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           process.env.NODE_ENV !== 'production' &&
           !this.indexHtmlContents[relatedClient.base._baseId]
         ) {
+          console.log('fetching development index.html for client', relatedClient.base._baseId)
           this.indexHtmlContents[relatedClient.base._baseId] = await (
             await fetch(`${url.origin}${relatedClient.basepath}development-${relatedClient.base._baseId}.index.html`)
           ).text()
@@ -259,11 +257,11 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           if (!originalIndexHtml) {
             if (process.env.NODE_ENV !== 'production') {
               throw new Error(
-                `index.html not found for client ${relatedClient.base._baseId}, please provide srcIndexHtml for client in development mode`,
+                `index.html not found for client "${relatedClient.base._baseId}", please provide srcIndexHtml for client in development mode`,
               )
             } else {
               throw new Error(
-                `index.html not found for client ${relatedClient.base._baseId}, please provide distIndexHtml for client in production mode`,
+                `index.html not found for client "${relatedClient.base._baseId}", please provide distIndexHtml for client in production mode`,
               )
             }
           }
