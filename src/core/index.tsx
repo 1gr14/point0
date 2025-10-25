@@ -1107,19 +1107,19 @@ export class Point0<
     })
   }) as FetcherFn<TRoute, TInputSchema, Promise<FetchOutput<TResponseOutput, TOutputData>>>
 
-  getQueryKey = ((props?: Record<string, any>): QueryKey => {
+  getQueryKey = ((input?: Record<string, any>): QueryKey => {
     const keyParts: [string, ...string[]] = [this._getRouteDefinition()]
-    if (props) {
-      const serialized = stringify(props)
+    if (input) {
+      const serialized = stringify(input)
       keyParts.push(serialized)
     }
     return keyParts
   }) as FetcherFn<TRoute, TInputSchema, QueryKey>
 
-  getQueryOptions = ((props: Record<string, any> = {}) => {
-    const queryKey = this.getQueryKey(props as never)
+  getQueryOptions = ((input: Record<string, any> = {}) => {
+    const queryKey = this.getQueryKey(input as never)
     const queryFn = async () => {
-      const data = await this.fetch(props as never)
+      const data = await this.fetch(input as never)
       return data
     }
     return {
