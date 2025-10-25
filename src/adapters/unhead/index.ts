@@ -7,11 +7,17 @@ export const Unhead = ({ children }: { children: React.ReactNode }) => {
   if (typeof window !== 'undefined') {
     return createElement(UnheadProvider, { head: createHead(), children })
   } else {
-    return (async () => {
-      const { UnheadProvider: UnheadProviderServer, createHead: createHeadServer } = await import(
-        '@unhead/react/server'
+    if (!process.env.CLIENT_ONLY) {
+      return (async () => {
+        const { UnheadProvider: UnheadProviderServer, createHead: createHeadServer } = await import(
+          '@unhead/react/server'
+        )
+        return createElement(UnheadProviderServer, { value: createHeadServer(), children })
+      })()
+    } else {
+      throw new Error(
+        'CLIENT_ONLY is truthy but we are on server becouse window is undefined, it is strange. May be you try to build server with CLIENT_ONLY=1, it is wrong',
       )
-      return createElement(UnheadProviderServer, { value: createHeadServer(), children })
-    })()
+    }
   }
 }
