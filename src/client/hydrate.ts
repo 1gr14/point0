@@ -1,24 +1,29 @@
-import { Route0 } from '@devp0nt/route0'
+import type { Route0 } from '@devp0nt/route0'
+import type { DehydratedState } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import { Eversion0, type Payload, type PointsCollection } from '../eversion/runtime.js'
-import type { AppComponent, MountResult } from './mount.js'
+import type { PagesCollection, Payload, PointsCollection } from '../eversion/runtime.js'
+import { Eversion0 } from '../eversion/runtime.js'
 
-export type HydrateResult = MountResult & {
+export type HydrateResult = {
   payload: Payload
+  rootElement: HTMLElement
+  appElement: React.ReactElement
 }
+export type HydratedAppProps = {
+  ssrLocation: Route0.Location | undefined
+  dehydratedState: DehydratedState | undefined
+  pages: PagesCollection
+}
+export type HydratedAppComponent = React.ComponentType<HydratedAppProps>
 
 let root: Root | null = null
-export function hydrate({
-  App,
-  points,
-  rootElement,
-}: {
-  App: AppComponent
-  points: PointsCollection
-  rootElement?: HTMLElement | null
-}): HydrateResult {
+export function hydrate(
+  App: HydratedAppComponent,
+  points: PointsCollection,
+  rootElement?: HTMLElement | null,
+): HydrateResult {
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) {
@@ -45,14 +50,11 @@ export function hydrate({
     }
   }
 
-  const ssrLocation = Eversion0.getSuitablePageLocation({
-    points,
-    location: Route0.getLocation(window.location.pathname),
+  const appElement = createElement(App, {
+    dehydratedState: payload.dehydratedState,
+    ssrLocation: payload.location,
+    pages: Eversion0.toClientPagesCollection({ points }),
   })
-  const pages = Eversion0.toClientPagesCollection({
-    points,
-  })
-  const appElement = createElement(App, { dehydratedState: payload.dehydratedState, pages, ssrLocation })
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.

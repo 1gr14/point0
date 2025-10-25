@@ -988,6 +988,7 @@ export type InferExtractResult<TPoint extends AnyPoint> =
 
 export type Payload = {
   dehydratedState: DehydratedState
+  location: Route0.Location
 }
 
 export type PagesCollectionRecord = {

@@ -6,15 +6,15 @@ import { createElement } from 'react'
 import type { BaseId, BasePoint, Method, RequiredCtx } from '../../core/index.js'
 import type { PointsCollection } from '../../eversion/runtime.js'
 import { Eversion0 } from '../../eversion/runtime.js'
-import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
-import { renderReadableStream } from '../../server/render.js'
-import { parseAdapterInput } from '../../server/adapter.js'
 import type {
   AdapterClientInputParsed,
   AdapterLogger,
-  AdapterServerInputParsed,
   AdapterServerInput,
+  AdapterServerInputParsed,
 } from '../../server/adapter.js'
+import { parseAdapterInput } from '../../server/adapter.js'
+import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
+import { renderReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
 
 // TODO: allow public dir per each client also
@@ -67,7 +67,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
     await bunServer._setPublicFilePaths()
     await bunServer._setClientsDevRoutes()
-    await bunServer._preloadIndexHtmlContents()
+    await bunServer._preloadDistIndexHtmlContents()
 
     return bunServer
   }
@@ -113,9 +113,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.clientsDevRoutes = clientsDevRoutes
   }
 
-  async _preloadIndexHtmlContents(): Promise<void> {
+  async _preloadDistIndexHtmlContents(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') {
-      // on dev mode we will load index.html from served srcIndexHtml becous it has injected hmr script
+      // on dev mode we will load index.html from served srcIndexHtml becouse it has injected hmr script
       return
     }
     // else we will get provided distIndexHtml
@@ -131,6 +131,30 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             )
           }
           return [client.base._baseId, await Bun.file(client.distIndexHtml).text()]
+        }),
+      ),
+    )
+    this.indexHtmlContents = indexHtmlContents
+  }
+
+  async _preloadSrcIndexHtmlContents(bunServer: Bun.Server<unknown>): Promise<void> {
+    if (process.env.NODE_ENV === 'production') {
+      // on production mode we already preloaded distIndexHtml contents
+      return
+    }
+    // else we will fetch srcIndexHtml contents from clientsDevRoutes
+    const indexHtmlContents = Object.fromEntries(
+      await Promise.all(
+        this.clients.map(async (client) => {
+          if (!client.srcIndexHtml) {
+            return [client.base._baseId, undefined]
+          }
+          const content = await (
+            await fetch(
+              `http://localhost:${bunServer.port}${client.basepath}development-${client.base._baseId}.index.html`,
+            )
+          ).text()
+          return [client.base._baseId, content]
         }),
       ),
     )
@@ -219,6 +243,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pathname,
         fallbackBaseId: this.fallbackBaseId,
       })
+      // TODO: get correct input by suitable using helper
       const body = await (async () => {
         try {
           return await request.json()
@@ -240,16 +265,6 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
 
       if (relatedClient) {
-        if (
-          relatedClient.srcIndexHtml &&
-          process.env.NODE_ENV !== 'production' &&
-          !this.indexHtmlContents[relatedClient.base._baseId]
-        ) {
-          console.log('fetching development index.html for client', relatedClient.base._baseId)
-          this.indexHtmlContents[relatedClient.base._baseId] = await (
-            await fetch(`${url.origin}${relatedClient.basepath}development-${relatedClient.base._baseId}.index.html`)
-          ).text()
-        }
         const originalIndexHtml = this.indexHtmlContents[relatedClient.base._baseId]
         const App = relatedClient.App
 
@@ -275,14 +290,15 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               ssrLocation: extractResult.location,
             })
             const appElement = createElement(App, {
-              pages,
               ssrLocation: extractResult.location,
+              pages,
               dehydratedState: extractResult.dehydratedState,
             })
             const readableStream = await renderReadableStream({
               element: appElement,
               dehydratedState: extractResult.dehydratedState,
               head: extractResult.head,
+              location: extractResult.location,
               originalIndexHtml,
               rootElementId: relatedClient.rootElementId,
             })
@@ -340,6 +356,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       },
     })
     this.port = bunServer.port
+    this._preloadSrcIndexHtmlContents(bunServer).catch((error: unknown) => {
+      this.logger.error(error)
+    })
     this.logger.info(`Bun server running at http://localhost:${this.port}`)
     return bunServer
   }

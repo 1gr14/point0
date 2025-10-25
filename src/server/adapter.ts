@@ -1,4 +1,4 @@
-import type { AppComponent } from '../client/mount.js'
+import type { HydratedAppComponent } from '../client/hydrate.js'
 import type { BaseId, BasePoint, RequiredCtx } from '../core/index.js'
 import type { PointsCollection } from '../eversion/runtime.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
@@ -16,7 +16,7 @@ export type AdapterClientInput = {
   distRoute?: string
   srcIndexHtml?: string
   distIndexHtml?: string
-  App?: AppComponent
+  App?: HydratedAppComponent
   rootElementId?: string
 }
 export type AdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
@@ -39,7 +39,7 @@ export type AdapterClientInputParsed = {
   distRoute: string | undefined
   srcIndexHtml: string | undefined
   distIndexHtml: string | undefined
-  App: AppComponent | undefined
+  App: HydratedAppComponent | undefined
   index: number
   rootElementId: string | undefined
 }

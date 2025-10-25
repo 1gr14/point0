@@ -4,6 +4,7 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
 import type { Payload } from '../eversion/runtime.js'
 import type { ResolvableHead } from 'unhead/types'
+import type { Route0 } from '@devp0nt/route0'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -81,6 +82,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   originalIndexHtml,
   content,
   dehydratedState,
+  location,
   head,
   rootElementId,
   clientBundlePath,
@@ -89,11 +91,12 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   content?: TContent
   // TODO: make it choosable by settings
   dehydratedState: DehydratedState
+  location: Route0.Location
   head: ResolvableHead[]
   rootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
-  const serializedPayload = serializePayload({ dehydratedState })
+  const serializedPayload = serializePayload({ dehydratedState, location })
 
   let html = prependBodyElement({
     content: `<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>`,
@@ -137,6 +140,7 @@ export async function renderStatic({
   element,
   dehydratedState,
   head,
+  location,
   renderer = renderToStaticMarkup,
   clientBundlePath,
   originalIndexHtml,
@@ -144,6 +148,7 @@ export async function renderStatic({
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
+  location: Route0.Location
   head: ResolvableHead[]
   renderer?: StaticRenderer
   clientBundlePath: string
@@ -154,6 +159,7 @@ export async function renderStatic({
     await overrideDocumentHtml({
       content: renderer(element),
       dehydratedState,
+      location,
       head,
       clientBundlePath,
       originalIndexHtml,
@@ -196,6 +202,7 @@ export async function getReadableStreamWithWrapper({
 export async function renderReadableStream({
   element,
   dehydratedState,
+  location,
   head,
   clientBundlePath,
   renderer = renderToReadableStream,
@@ -204,12 +211,19 @@ export async function renderReadableStream({
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
+  location: Route0.Location
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
   rootElementId?: string
 }): Promise<ReadableStream> {
-  const { prefix, suffix } = await overrideDocumentHtml({ originalIndexHtml, dehydratedState, head, rootElementId })
+  const { prefix, suffix } = await overrideDocumentHtml({
+    originalIndexHtml,
+    dehydratedState,
+    location,
+    head,
+    rootElementId,
+  })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
 }
