@@ -14,8 +14,7 @@ export type AdapterClientInput = {
   basepath?: string
   distDir?: string
   distRoute?: string
-  srcIndexHtml?: string
-  distIndexHtml?: string
+  indexHtml?: Bun.HTMLBundle
   App?: AppComponent
   rootElementId?: string
 }
@@ -37,8 +36,7 @@ export type AdapterClientInputParsed = {
   basepath: string
   distDir: string | undefined
   distRoute: string | undefined
-  srcIndexHtml: string | undefined
-  distIndexHtml: string | undefined
+  indexHtml: Bun.HTMLBundle | undefined
   App: AppComponent | undefined
   index: number
   rootElementId: string | undefined
@@ -61,8 +59,6 @@ const parseAdapterClientInput = (
   dirname: string | undefined,
 ): AdapterClientInputParsed => {
   const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
-  const srcIndexHtml = absPath(dirname, input.srcIndexHtml)
-  const distIndexHtml = absPath(dirname, input.distIndexHtml)
   const basepath = prependAndAppendSlash(input.basepath) || '/'
   const distRoute = prependAndAppendSlash(input.distRoute)
   if (distRoute !== 'undefined' && (distRoute === '' || distRoute === '/')) {
@@ -76,8 +72,7 @@ const parseAdapterClientInput = (
     basepath,
     distDir,
     distRoute,
-    srcIndexHtml,
-    distIndexHtml,
+    indexHtml: input.indexHtml,
     App: input.App,
     index,
     rootElementId: input.rootElementId,
@@ -102,11 +97,6 @@ export const parseAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx
     throwOnNonUniqueArrayElements(
       clients.map((client) => client.distRoute),
       'each client distRoute must be unique',
-    )
-  } else {
-    throwOnNonUniqueArrayElements(
-      clients.map((client) => client.srcIndexHtml),
-      'each client srcEntry must be unique',
     )
   }
   return {

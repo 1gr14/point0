@@ -96,17 +96,20 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const clientsDevRoutes = Object.fromEntries(
       await Promise.all(
         this.clients
-          .flatMap((client) => (client.srcIndexHtml ? [{ client, srcIndexHtml: client.srcIndexHtml }] : []))
-          .map(async (clientWithSrcIndexHtml) => {
-            if (!(await Bun.file(clientWithSrcIndexHtml.srcIndexHtml).exists())) {
-              throw new Error(
-                `srcIndexHtml file "${clientWithSrcIndexHtml.srcIndexHtml}" not found in development mode for client "${clientWithSrcIndexHtml.client.base._baseId}"`,
-              )
-            }
-            return [
-              `/development-${clientWithSrcIndexHtml.client.base._baseId}.index.html`,
-              (await import(clientWithSrcIndexHtml.srcIndexHtml)).default,
-            ]
+          .flatMap((client) => (client.indexHtml ? [{ client, indexHtml: client.indexHtml }] : []))
+          .map(async (clientWithIndexHtml) => {
+            return [`/development-${clientWithIndexHtml.client.base._baseId}.index.html`, clientWithIndexHtml.indexHtml]
+            // if (!(await Bun.file(clientWithIndexHtml.indexHtml.files).exists())) {
+            //   throw new Error(
+            //     `indexHtml file "${clientWithIndexHtml.indexHtml}" not found in development mode for client "${clientWithIndexHtml.client.base._baseId}"`,
+            //   )
+            // }
+            // return [
+            //   `/development-${clientWithIndexHtml.client.base._baseId}.index.html`,
+            //   'default' in clientWithIndexHtml.indexHtml
+            //     ? clientWithIndexHtml.indexHtml.default
+            //     : clientWithIndexHtml.indexHtml,
+            // ]
           }),
       ),
     )
@@ -122,15 +125,23 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const indexHtmlContents = Object.fromEntries(
       await Promise.all(
         this.clients.map(async (client) => {
-          if (!client.distIndexHtml) {
+          if (!client.indexHtml) {
             return [client.base._baseId, undefined]
           }
-          if (!(await Bun.file(client.distIndexHtml).exists())) {
-            throw new Error(
-              `"${client.distIndexHtml}" not found in production mode for client "${client.base._baseId}"`,
-            )
+          console.log('FILES', client.indexHtml.files)
+          const filepathRel = client.indexHtml.files?.find((file) => file.loader === 'html')?.path
+          if (!filepathRel) {
+            throw new Error(`index.html not found for client "${client.base._baseId}"`)
           }
-          return [client.base._baseId, await Bun.file(client.distIndexHtml).text()]
+          const baseDir = this.dirname || process.cwd()
+          const filepathAbs = nodePath.resolve(baseDir, filepathRel)
+          console.log('filepathAbs', filepathAbs)
+          const content = await Bun.file(filepathAbs).text()
+          return [client.base._baseId, content]
+          // if (!(await Bun.file(client.indexHtml).exists())) {
+          //   throw new Error(`"${client.indexHtml}" not found in production mode for client "${client.base._baseId}"`)
+          // }
+          // return [client.base._baseId, await Bun.file(client.indexHtml).text()]
         }),
       ),
     )
@@ -241,7 +252,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       if (relatedClient) {
         if (
-          relatedClient.srcIndexHtml &&
+          relatedClient.indexHtml &&
           process.env.NODE_ENV !== 'production' &&
           !this.indexHtmlContents[relatedClient.base._baseId]
         ) {
@@ -255,15 +266,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
         if (relatedClient.ssr && !isJsonAcceptable) {
           if (!originalIndexHtml) {
-            if (process.env.NODE_ENV !== 'production') {
-              throw new Error(
-                `index.html not found for client "${relatedClient.base._baseId}", please provide srcIndexHtml for client in development mode`,
-              )
-            } else {
-              throw new Error(
-                `index.html not found for client "${relatedClient.base._baseId}", please provide distIndexHtml for client in production mode`,
-              )
-            }
+            throw new Error(
+              `index.html not found for client "${relatedClient.base._baseId}", please provide indexHtml for client`,
+            )
           }
           // so we render page wrapped with layouts
           try {
@@ -301,7 +306,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }
             throw error
           }
-        } else if (!relatedClient.ssr && !isJsonAcceptable && relatedClient.distIndexHtml) {
+        } else if (!relatedClient.ssr && !isJsonAcceptable && relatedClient.indexHtml) {
           return new Response(originalIndexHtml, {
             headers: { 'Content-Type': 'text/html' },
             status: 200,

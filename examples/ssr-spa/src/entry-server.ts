@@ -3,6 +3,7 @@ import { points } from './lib/points.js'
 import { server } from './lib/server.js'
 import { client } from './lib/client.js'
 import App from './app.js'
+import indexHtml from './index.html'
 
 const adapter = await BunAdapter.create({
   base: server,
@@ -20,8 +21,7 @@ const adapter = await BunAdapter.create({
       base: client,
       points,
       // TODO: use without src or dist prefixes
-      srcIndexHtml: './index.html', // only when NODE_ENV=development
-      distIndexHtml: '../client/index.html', // only when NODE_ENV=production
+      indexHtml, // only when NODE_ENV=development
       App,
       distDir: '../client', // only when NODE_ENV=production
       distRoute: '/dist/client', // only when NODE_ENV=production
