@@ -1149,14 +1149,6 @@ export class Point0<
   }) as () => UseMutationResult<FetchOutput<TResponseOutput, TOutputData>, Error0, Input<TRoute, TInputSchema>>
 }
 
-// TODO: just use any in EndPoint, and move it back
-export class UsablePoint0<TPoint extends AnyPoint> {
-  point: TPoint
-  constructor(point: TPoint) {
-    this.point = point
-  }
-}
-
 export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>
 // used to avoid circular depedencies
 type Infer<
