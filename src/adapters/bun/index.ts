@@ -16,6 +16,7 @@ import { parseAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
+import type { IsEmptyObject } from '../../core/types.js'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
@@ -244,16 +245,18 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pathname,
         fallbackBaseId: this.fallbackBaseId,
       })
+
       // TODO: get correct input by suitable using helper
       const body = await (async () => {
         try {
           return await request.json()
         } catch (error) {
-          return undefined
+          return {}
         }
       })()
       const searchParams = { ...qs.parse(url.search) } as Record<string, any>
-      const input = suitable.point?._pointType !== 'page' ? { ...body, ...searchParams } : {}
+      const routeParams = suitable.location.params
+      const input = { ...searchParams, ...routeParams, ...body }
       const extractResult = await suitable.eversion.extract({
         point: suitable.point,
         requiredCtx,
@@ -417,7 +420,5 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return this.bunServer
   }
 }
-
-type IsEmptyObject<T> = keyof T extends never ? true : false
 
 export default BunAdapter

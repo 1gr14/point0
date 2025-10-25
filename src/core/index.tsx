@@ -1,5 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type { Route0 } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import type {
   MutationOptions,
   QueryClient,
@@ -33,6 +33,7 @@ export class Point0<
   // static pagePoints: PagePoint[] = []
   static pointsCount = 0
 
+  _sourceBaseUrl: string | undefined
   _pointType: TPointType
   _inputSchema: TInputSchema
   _responseFn: TResponseOutput extends ResponseOutput
@@ -66,6 +67,7 @@ export class Point0<
   private constructor(props: {
     _pointType: TPointType
     _useLocation?: () => Route0.Location
+    _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
@@ -100,6 +102,7 @@ export class Point0<
       (() => {
         throw new Error('add .setUseLocation to chain to use page function')
       })) as () => Route0.Location<CurrentRoute<TRoute>>
+    this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
       : undefined
@@ -144,6 +147,7 @@ export class Point0<
     TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   >(overrides: {
     _pointType: TPointType
+    _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
     _useLocation?: () => Route0.Location
     _responseFn?: TResponseOutput extends ResponseOutput
@@ -192,6 +196,7 @@ export class Point0<
 
       // overridable
       _pointType: overrides._pointType,
+      _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
@@ -295,6 +300,33 @@ export class Point0<
       // TODO: extends - by default, if provide true in end, then will override previous
       _pointType: 'middleware',
       _id: id,
+    })
+  }
+
+  sourceBaseUrl(
+    sourceBaseUrl: string,
+  ): Point0<
+    'middleware',
+    TConnectedSourceBasePoint,
+    TRequiredCtx,
+    TOutputCtx,
+    TOutputData,
+    TRoute,
+    TInputSchema,
+    TResponseOutput
+  > {
+    return this._clone<
+      'middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      TRoute,
+      TInputSchema,
+      TResponseOutput
+    >({
+      _pointType: 'middleware',
+      _sourceBaseUrl: sourceBaseUrl,
     })
   }
 
@@ -920,28 +952,26 @@ export class Point0<
     return this._id || `${this._baseId}-${this._index}`
   }
 
-  _getRoutePath = ((params?: Record<string, string>) => {
+  _getRouteAbsPath = (input?: Record<string, string>): string => {
+    if (!this._sourceBaseUrl) {
+      throw new Error('No source base url provided for this point')
+    }
+    const route = this._getRoute()
+    return new URL(route.get(input || {}), this._sourceBaseUrl).toString()
+  }
+
+  _getRoute = (): Route0.AnyRoute => {
     if (this._route) {
-      return this._route.get(params || {})
+      return this._route
     }
     if (this._id) {
-      return `/endpoints/${this._id}`
+      return Route0.create(`/endpoints/${this._id}`)
     }
     throw new Error('No route or id provided for this point')
-  }) as TRoute extends Route0.AnyRoute
-    ? Route0.Params<TRoute> extends Record<string, string>
-      ? (params: Route0.Params<TRoute>) => string
-      : () => string
-    : () => string
+  }
 
   _getRouteDefinition = (): string => {
-    if (this._route) {
-      return this._route.getDefinition()
-    }
-    if (this._id) {
-      return this._id
-    }
-    throw new Error('No route or id provided for this point')
+    return this._getRoute().getDefinition()
   }
 
   _getWrappedPageComponent = (): React.ComponentType => {
@@ -1026,22 +1056,38 @@ export class Point0<
     return WrapperComponent
   }
 
-  fetch = (async (props: Record<string, any> = {}) => {
+  fetch = (async (input: Record<string, any> = {}) => {
+    const route = this._getRoute()
+    const { routeParams, routeQuery, inputSelf } = (() => {
+      const { query: routeQuery, ...restInput } = input
+      const paramsKeys = Object.keys(route.paramsDefinition)
+      const routeParams = paramsKeys.reduce<Record<string, string>>((acc, key) => {
+        acc[key] = input[key]
+        return acc
+      }, {})
+      const inputSelf = Object.keys(restInput).reduce<Record<string, string>>((acc, key) => {
+        if (paramsKeys.includes(key)) {
+          return acc
+        }
+        acc[key] = restInput[key]
+        return acc
+      }, {})
+      return { routeParams, routeQuery, inputSelf }
+    })()
+
     const fetchOptions = this._fetchOptions()
     const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-    const routePath = this._getRoutePath((this._pointType === 'page' ? props : {}) as never)
-    const url = new URL(routePath, window.location.origin)
+    const routeAbsPath = this._getRouteAbsPath({ ...routeParams, query: routeQuery })
+    const url = new URL(routeAbsPath)
     const method = this._method
+
     let body: string | undefined = undefined
     if (method === 'get' || method === 'head' || method === 'options') {
-      if (this._pointType !== 'page') {
-        url.search = qs.stringify(props)
-      }
+      url.search = qs.stringify({ ...routeQuery, ...inputSelf })
     } else {
-      if (this._pointType !== 'page') {
-        headers.set('Content-Type', 'application/json')
-        body = JSON.stringify(props)
-      }
+      headers.set('Content-Type', 'application/json')
+      url.search = qs.stringify({ ...routeQuery })
+      body = JSON.stringify({ ...inputSelf })
     }
     const res = await fetch(url.toString(), {
       ...fetchOptions,
@@ -1059,7 +1105,7 @@ export class Point0<
     throw Error0.from(json, {
       httpStatus: res.status,
     })
-  }) as FetcherFn<TPointType, TInputSchema, TRoute, Promise<FetchOutput<TResponseOutput, TOutputData>>>
+  }) as FetcherFn<TRoute, TInputSchema, Promise<FetchOutput<TResponseOutput, TOutputData>>>
 
   getQueryKey = ((props?: Record<string, any>): QueryKey => {
     const keyParts: [string, ...string[]] = [this._getRouteDefinition()]
@@ -1068,7 +1114,7 @@ export class Point0<
       keyParts.push(serialized)
     }
     return keyParts
-  }) as FetcherFn<TPointType, TInputSchema, TRoute, QueryKey>
+  }) as FetcherFn<TRoute, TInputSchema, QueryKey>
 
   getQueryOptions = ((props: Record<string, any> = {}) => {
     const queryKey = this.getQueryKey(props as never)
@@ -1081,12 +1127,7 @@ export class Point0<
       queryFn,
       ...this._queryOptions,
     }
-  }) as never as FetcherFn<
-    TPointType,
-    TInputSchema,
-    TRoute,
-    QueryOptions<FetchOutput<TResponseOutput, TOutputData>, Error0>
-  >
+  }) as never as FetcherFn<TRoute, TInputSchema, QueryOptions<FetchOutput<TResponseOutput, TOutputData>, Error0>>
 
   getMutationOptions = (() => {
     const mutationFn = async (props: Record<string, any> = {}) => {
@@ -1097,15 +1138,15 @@ export class Point0<
       mutationFn,
       // TODO: add mutation options
     }
-  }) as () => MutationOptions<FetchOutput<TResponseOutput, TOutputData>, Error0, Input<TInputSchema>>
+  }) as () => MutationOptions<FetchOutput<TResponseOutput, TOutputData>, Error0, Input<TRoute, TInputSchema>>
 
   useQuery = ((props: Record<string, any> = {}) => {
     return useQuery(this.getQueryOptions(props as never) as never)
-  }) as FetcherFn<TPointType, TInputSchema, TRoute, UseQueryResult<FetchOutput<TResponseOutput, TOutputData>, Error0>>
+  }) as FetcherFn<TRoute, TInputSchema, UseQueryResult<FetchOutput<TResponseOutput, TOutputData>, Error0>>
 
   useMutation = (() => {
     return useMutation(this.getMutationOptions() as never) as never
-  }) as () => UseMutationResult<FetchOutput<TResponseOutput, TOutputData>, Error0, Input<TInputSchema>>
+  }) as () => UseMutationResult<FetchOutput<TResponseOutput, TOutputData>, Error0, Input<TRoute, TInputSchema>>
 }
 
 // TODO: just use any in EndPoint, and move it back
@@ -1360,8 +1401,17 @@ export type WrapperComponentType = React.ComponentType<{ children: React.ReactNo
 
 export type InputSchema = z.ZodObject<any>
 export type UndefinedInputSchema = undefined
-export type Input<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
-  TInputSchema extends InputSchema ? z.infer<TInputSchema> : Record<string, unknown>
+export type Input<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TRoute extends Route0.AnyRoute
+  ? TInputSchema extends InputSchema
+    ? z.infer<TInputSchema> & Omit<Route0.Params<TRoute>, keyof z.infer<TInputSchema>> & { query: Route0.Query<TRoute> }
+    : Route0.Params<TRoute> & { query: Route0.Query<TRoute> }
+  : TInputSchema extends InputSchema
+    ? z.infer<TInputSchema>
+    : Record<never, never>
+// > = TInputSchema extends InputSchema ? z.infer<TInputSchema> : Record<string, unknown>
 export type UndefinedInput = undefined
 
 export type ResponseOutput = Response
@@ -1369,13 +1419,13 @@ export type UndefinedResponseOutput = undefined
 export type ResponseFnProps<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   ctx: TCtx
   data: TDataInput
-  input: Input<TInputSchema>
-  location: Route0.Location<CurrentRoute<TRoute0>>
+  input: Input<TRoute, TInputSchema>
+  location: Route0.Location<CurrentRoute<TRoute>>
 }
 export type ResponseFn<
   TCtx extends Ctx = Ctx,
@@ -1396,42 +1446,42 @@ export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends 
 export type CtxFnProps<
   TCtxInput extends Ctx = Ctx,
   TData extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   ctx: TCtxInput
   data: TData
-  input: Input<TInputSchema>
-  location: Route0.Location<TRoute0>
+  input: Input<TRoute, TInputSchema>
+  location: Route0.Location<TRoute>
 }
 export type CtxFn<
   TCtxInput extends Ctx = Ctx,
   TData extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxOutput extends Ctx = Ctx,
-> = (props: CtxFnProps<TCtxInput, TData, TRoute0, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
+> = (props: CtxFnProps<TCtxInput, TData, TRoute, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
 
 export type LoaderFnProps<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   ctx: TCtx
   data: TDataInput
-  location: Route0.Location<CurrentRoute<TRoute0>>
-  input: Input<TInputSchema>
+  location: Route0.Location<CurrentRoute<TRoute>>
+  input: Input<TRoute, TInputSchema>
 }
 export type LoaderFn<
   TCtx extends Ctx = Ctx,
   TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TDataOutput extends Data = Data,
-> = (props: LoaderFnProps<TCtx, TDataInput, TRoute0, TInputSchema>) => Promise<TDataOutput> | TDataOutput
+> = (props: LoaderFnProps<TCtx, TDataInput, TRoute, TInputSchema>) => Promise<TDataOutput> | TDataOutput
 
 export type TitleFnProps<
   TOutputData extends Data = Data,
@@ -1446,13 +1496,13 @@ export type ExtendFnRecord<
   TType extends 'ctx' | 'loader' = 'ctx' | 'loader',
   TCtxInput extends Ctx = Ctx,
   TDataInput extends Data = Data,
-  TRoute0 extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TOutput extends Ctx | Data = Ctx | Data,
 > = TType extends 'ctx'
-  ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute0, TInputSchema, TOutput> }
+  ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute, TInputSchema, TOutput> }
   : TType extends 'loader'
-    ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute0, TInputSchema, TOutput> }
+    ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute, TInputSchema, TOutput> }
     : never
 
 export type HeadFnProps<
@@ -1470,20 +1520,18 @@ export type EndPointType = Exclude<PointType, 'middleware'>
 
 export type QueryKey = readonly [string, ...string[]]
 export type FetcherFn<
-  TPointType extends PointType,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TFnOutput = any,
-> = TPointType extends 'page'
-  ? TRoute extends Route0.AnyRoute
-    ? Route0.HasParams<TRoute> extends true
-      ? // TODO: refactor Route0 itself and make better here
-        (props: Route0.Params<TRoute> & { query?: Route0.Query<TRoute> }) => TFnOutput
-      : (props?: { query?: Route0.Query<TRoute> }) => TFnOutput
-    : TInputSchema extends InputSchema
-      ? (props: Input<TInputSchema>) => TFnOutput
-      : () => TFnOutput
-  : () => TFnOutput
+> = TRoute extends Route0.AnyRoute
+  ? TInputSchema extends InputSchema
+    ? (input: Input<TRoute, TInputSchema>) => TFnOutput
+    : Route0.HasParams<TRoute> extends true
+      ? (input: Input<TRoute, TInputSchema>) => TFnOutput
+      : (input?: Input<TRoute, TInputSchema>) => TFnOutput
+  : TInputSchema extends InputSchema
+    ? (input: Input<TRoute, TInputSchema>) => TFnOutput
+    : () => TFnOutput
 
 export type FetchOutput<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
