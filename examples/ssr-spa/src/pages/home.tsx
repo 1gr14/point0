@@ -1,8 +1,8 @@
-import { routes } from '../lib/routes.js'
-import { client } from '../lib/client.js'
+import { generalLayout } from '../layouts/general.js'
 import { Link } from '../lib/router.js'
+import { routes } from '../lib/routes.js'
 
-export default client
+export default generalLayout
   .route(routes.home)
   .head({
     title: 'IdeaNick Forever!',

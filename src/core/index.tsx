@@ -26,12 +26,15 @@ export class Point0<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
 > {
-  Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData> = {} as never
+  Infer: Infer<TRequiredCtx, TOutputCtx, TOutputData, TInputSchema> = {} as never
 
   // TODO: may it help somebody?
   // static readyPoints: ReadyPoint[] = []
   // static pagePoints: PagePoint[] = []
-  static pointsCount = 0
+  static _prevUnstableId = 0
+  static _getNextUnstableId(): number {
+    return Point0._prevUnstableId++
+  }
 
   _sourceBaseUrl: string | undefined
   _pointType: TPointType
@@ -41,18 +44,19 @@ export class Point0<
     : undefined
   _baseId: BaseId
   _heads: HeadsCollection
-  _queryClient: QueryClient | undefined
   _useLocation: () => Route0.Location<CurrentRoute<TRoute>>
   // TODO: add _pageQueryOptions
   _queryOptions: QueryOptionsSettings
   _pageQueryOptions: QueryOptionsSettings
+  // TODO: remove or use wrapper
   _wrapper: WrapperComponentType | undefined
   _hasSourceBase: TConnectedSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true
   _extendFns: ExtendFnRecord[]
   _route: TRoute
   _page: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
+  _layout: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
   _id: Id | UndefinedId
-  _index: number
+  _unstableId: number
   _method: Method | UndefinedMethod
   _fetchOptions: FetchOptionsFn
 
@@ -74,7 +78,6 @@ export class Point0<
       : undefined
     _baseId: BaseId
     _wrapper?: WrapperComponentType | undefined
-    _queryClient?: QueryClient | undefined
     _heads?: HeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
@@ -82,6 +85,7 @@ export class Point0<
     _extendFns?: ExtendFnRecord[]
     _route?: TRoute
     _page?: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
+    _layout?: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -108,7 +112,6 @@ export class Point0<
       : undefined
     this._pointType = props._pointType
     this._wrapper = props._wrapper
-    this._queryClient = props._queryClient
     this._heads = props._heads ?? []
     this._queryOptions = props._queryOptions ?? {}
     this._pageQueryOptions = props._pageQueryOptions ?? {}
@@ -118,6 +121,7 @@ export class Point0<
     this._extendFns = props._extendFns ?? []
     this._route = props._route ?? (undefined as TRoute)
     this._page = props._page ?? undefined
+    this._layout = props._layout ?? undefined
     this._id = props._id
     this._method = props._method ?? (undefined as Method | UndefinedMethod)
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
@@ -133,7 +137,7 @@ export class Point0<
     this._appLoaderComponent = props._appLoaderComponent
 
     // calculated
-    this._index = Point0.pointsCount++
+    this._unstableId = Point0._getNextUnstableId()
   }
 
   _clone<
@@ -153,7 +157,6 @@ export class Point0<
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
       : undefined
-    _queryClient?: QueryClient | undefined
     _heads?: HeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
@@ -161,6 +164,7 @@ export class Point0<
     _extendFns?: ExtendFnRecord[]
     _route?: Route0.AnyRoute | UndefinedRoute
     _page?: PageComponent | UndefinedPageComponent
+    _layout?: LayoutComponent | UndefinedLayoutComponent
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -201,7 +205,6 @@ export class Point0<
       _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
         : undefined,
-      _queryClient: overrides._queryClient ?? this._queryClient,
       _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
       _heads: [...this._heads, ...(overrides._heads ?? [])],
@@ -211,6 +214,7 @@ export class Point0<
       _extendFns: overrides._extendFns ?? this._extendFns,
       _route: (overrides._route ?? this._route) as TRoute,
       _page: (overrides._page ?? this._page) as PageComponent<TOutputData, TRoute> | UndefinedPageComponent,
+      _layout: (overrides._layout ?? this._layout) as LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent,
       _id: overrides._id ?? this._id,
       _method: overrides._method ?? this._method,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
@@ -597,6 +601,80 @@ export class Point0<
     })
   }
 
+  // use<TChain extends Chain<TOutputCtx, TOutputData>(
+  //   chain: TChain,
+  // ): Point0<
+  //   'middleware',
+  //   TConnectedSourceBasePoint,
+  //   TRequiredCtx,
+  //   TChain['Infer']['OutputCtx'],
+  //   TChain['Infer']['OutputData'],
+  //   TRoute,
+  //   TChain['Infer']['InputSchema'],
+  //   TResponseOutput
+  // > {
+  //   const mergedExtendFns = [...this._extendFns, ...chain._extendFns].reduce<ExtendFnRecord[]>((acc, record) => {
+  //     if (acc.find((f) => f.unstableId === record.unstableId)) {
+  //       return acc
+  //     }
+  //     return [...acc, record]
+  //   }, [])
+  //   const mergedHeads = [...this._heads, ...chain._heads].reduce<HeadsCollection>((acc, head) => {
+  //     if (typeof head === 'function') {
+  //       // functions in head, mean that it use data, so we omit them, else it is static object that can be merged
+  //       return acc
+  //     }
+  //     if (acc.find((h) => h === head)) {
+  //       return acc
+  //     }
+  //     return [...acc, head]
+  //   }, [])
+  //   const layouts = (
+  //     chain._layout
+  //       ? [...this._layouts, ...chain._layouts, chain._layout]
+  //       : [...this._layouts, ...chain._layouts]
+  //   ).reduce<Array<LayoutComponent<TOutputData, TRoute>>>((acc, layout) => {
+  //     if (acc.find((l) => l === layout)) {
+  //       return acc
+  //     }
+  //     return [...acc, layout]
+  //   }, [])
+  //   return this._clone<
+  //     'middleware',
+  //     TConnectedSourceBasePoint,
+  //     TRequiredCtx,
+  //     TChain['Infer']['OutputCtx'],
+  //     TChain['Infer']['OutputData'],
+  //     TRoute,
+  //     TChain['Infer']['InputSchema'],
+  //     TResponseOutput
+  //   >({
+  //     _pointType: 'middleware',
+  //     _extendFns: mergedExtendFns,
+  //     _heads: mergedHeads,
+  //     _appLoaderComponent,
+  //     _componentErrorComponent,
+  //     _componentLoaderComponent,
+  //     _errorComponent,
+  //     _fetchOptions,
+  //     _id,
+  //     _inputSchema,
+  //     _layout,
+  //     _loaderComponent,
+  //     _method,
+  //     _page,
+  //     _pageErrorComponent,
+  //     _pageLoaderComponent,
+  //     _pageQueryOptions,
+  //     _queryOptions,
+  //     _responseFn,
+  //     _route,
+  //     _sourceBaseUrl,
+  //     _useLocation,
+  //     _wrapper,
+  //   })
+  // }
+
   ctx<TNewOutputCtx extends Ctx = Ctx>(
     ctxFn: CtxFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputCtx>,
   ): Point0<
@@ -645,7 +723,7 @@ export class Point0<
       TResponseOutput
     >({
       _pointType: 'middleware',
-      _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn }] as never,
+      _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
     })
   }
 
@@ -699,7 +777,10 @@ export class Point0<
       TResponseOutput
     >({
       _pointType: 'middleware',
-      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }] as never,
+      _extendFns: [
+        ...this._extendFns,
+        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+      ] as never,
     })
   }
 
@@ -868,6 +949,34 @@ export class Point0<
     })
   }
 
+  layout<TLayout extends LayoutComponent<TOutputData, TRoute>>(
+    layout: TLayout,
+  ): Point0<
+    'layout',
+    TConnectedSourceBasePoint,
+    TRequiredCtx,
+    TOutputCtx,
+    TOutputData,
+    CurrentRoute<TRoute>,
+    TInputSchema,
+    TResponseOutput
+  > {
+    return this._clone<
+      'layout',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TOutputData,
+      CurrentRoute<TRoute>,
+      TInputSchema,
+      TResponseOutput
+    >({
+      _pointType: 'layout',
+      _layout: layout as LayoutComponent<Data, CurrentRoute<TRoute>>,
+      _method: this._method || 'get',
+    })
+  }
+
   response<TResponseOutput extends ResponseOutput = ResponseOutput>(
     responseFn: ResponseFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TResponseOutput>,
   ): Point0<
@@ -921,7 +1030,10 @@ export class Point0<
       TResponseOutput
     >({
       _pointType: 'json',
-      _extendFns: [...this._extendFns, { type: 'loader', fn: loaderFn }] as never,
+      _extendFns: [
+        ...this._extendFns,
+        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+      ] as never,
       _method: this._method || 'post',
     })
   }
@@ -946,10 +1058,6 @@ export class Point0<
 
   _hasLoader(): boolean {
     return this._extendFns.some((fn) => fn.type === 'loader')
-  }
-
-  _getUnstableId(): Id {
-    return this._id || `${this._baseId}-${this._index}`
   }
 
   _getRouteAbsPath = (input?: Record<string, string>): string => {
@@ -1155,10 +1263,12 @@ type Infer<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TOutputCtx extends Ctx = Ctx,
   TOutputData extends Data = Data,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   RequiredCtx: TRequiredCtx
   OutputCtx: TOutputCtx
   OutputData: TOutputData
+  InputSchema: TInputSchema
 }
 
 export type HasPageTure = true
@@ -1354,6 +1464,16 @@ export type PageComponent<
 > = React.ComponentType<PageComponentProps<TOutputData, TRoute>>
 export type UndefinedPageComponent = undefined
 
+export type LayoutComponentProps<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = { data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>>; children: React.ReactNode }
+export type LayoutComponent<
+  TOutputData extends Data = Data,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+> = React.ComponentType<LayoutComponentProps<TOutputData, TRoute>>
+export type UndefinedLayoutComponent = undefined
+
 export type DestinationComponentType = 'app' | 'page' | 'component'
 export type ErrorComponentProps<TType extends DestinationComponentType = DestinationComponentType> = {
   type: TType
@@ -1492,9 +1612,9 @@ export type ExtendFnRecord<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TOutput extends Ctx | Data = Ctx | Data,
 > = TType extends 'ctx'
-  ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute, TInputSchema, TOutput> }
+  ? { type: 'ctx'; fn: CtxFn<TCtxInput, TDataInput, TRoute, TInputSchema, TOutput>; unstableId: number }
   : TType extends 'loader'
-    ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute, TInputSchema, TOutput> }
+    ? { type: 'loader'; fn: LoaderFn<TCtxInput, TDataInput, TRoute, TInputSchema, TOutput>; unstableId: number }
     : never
 
 export type HeadFnProps<

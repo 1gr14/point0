@@ -1,8 +1,8 @@
+import { generalLayout } from '../layouts/general.js'
 import { routes } from '../lib/routes.js'
-import { client } from '../lib/client.js'
 import { IdeasView } from './ideas.view.js'
 
-export const ideasPage = client
+export const ideasPage = generalLayout
   .route(routes.ideas)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()

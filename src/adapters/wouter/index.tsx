@@ -9,6 +9,9 @@ const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
+// TODO: add to Link match result, so we can use current, active, aprent, exact, etc
+// TODO: make router provide in global context all its helpers and we will get it from main router package
+
 export const Router = ({
   ssrLocation,
   pages,
@@ -47,6 +50,7 @@ export const Router = ({
   )
 }
 
+// TODO: not routes, but pages, becouse it is unify
 export const createRouterHelpers = <TRoutes extends Record<string, Route0.AnyRoute>>({
   routes,
 }: {

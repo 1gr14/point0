@@ -3,6 +3,7 @@ import { client } from '../lib/client.js'
 import { useState } from 'react'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
+import { generalLayout } from '../layouts/general.js'
 
 export const createIdeaMutation = client
   .id('createIdea')
@@ -38,7 +39,7 @@ export const generateIdeaMutation = client.id('generateIdea').response(async ({ 
   })
 })
 
-export default client
+export default generalLayout
   .route(routes.newIdea)
   .title('New Idea')
   .page(() => {
