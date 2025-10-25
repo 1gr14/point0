@@ -1,13 +1,13 @@
 import type { AppComponent } from '../client/mount.js'
-import type { BaseId, BasePoint } from '../core/index.js'
+import type { BaseId, BasePoint, RequiredCtx } from '../core/index.js'
 import type { PointsCollection } from '../eversion/runtime.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
-export type ServeLogger = {
+export type AdapterLogger = {
   info: (message: string) => any
   error: (error: unknown) => any
 }
-export type ServeClientInput = {
+export type AdapterClientInput = {
   ssr?: boolean
   points?: PointsCollection
   base: BasePoint
@@ -19,18 +19,18 @@ export type ServeClientInput = {
   App?: AppComponent
   rootElementId?: string
 }
-export type ServeServerInput = {
-  base: BasePoint
+export type AdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  base: BasePoint<TRequiredCtx>
   points?: PointsCollection
   port?: number | string | undefined
-  logger?: ServeLogger
+  logger?: AdapterLogger
   dirname?: string
   publicDir?: string
   fallbackBaseId?: BaseId | undefined
-  clients?: ServeClientInput[] | undefined
+  clients?: AdapterClientInput[] | undefined
 }
 
-export type ServeClientInputParsed = {
+export type AdapterClientInputParsed = {
   ssr: boolean
   points: PointsCollection
   base: BasePoint
@@ -43,26 +43,23 @@ export type ServeClientInputParsed = {
   index: number
   rootElementId: string | undefined
 }
-export type ServeServerInputParsed = {
-  base: BasePoint
+export type AdapterServerInputParsed<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  base: BasePoint<TRequiredCtx>
   points: PointsCollection
   port: number | string | undefined
-  logger: ServeLogger
+  logger: AdapterLogger
   dirname: string | undefined
   publicDir: string | undefined
   fallbackBaseId: BaseId | undefined
-  clients: ServeClientInputParsed[]
-}
-export type ServeServerResult = {
-  fetch: any
+  clients: AdapterClientInputParsed[]
 }
 
 // TODO: extract input from server and client itself
-const parseServeClientInput = (
+const parseAdapterClientInput = (
   index: number,
-  input: ServeClientInput,
+  input: AdapterClientInput,
   dirname: string | undefined,
-): ServeClientInputParsed => {
+): AdapterClientInputParsed => {
   const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
   const srcIndexHtml = absPath(dirname, input.srcIndexHtml)
   const distIndexHtml = absPath(dirname, input.distIndexHtml)
@@ -86,15 +83,17 @@ const parseServeClientInput = (
     rootElementId: input.rootElementId,
   }
 }
-export const parseServeInput = (input: ServeServerInput): ServeServerInputParsed => {
+export const parseAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx>(
+  input: AdapterServerInput<TRequiredCtx>,
+): AdapterServerInputParsed<TRequiredCtx> => {
   const { dirname, port, points, base } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
   }
   const publicDir = absPath(dirname, input.publicDir)
-  const clients: ServeClientInputParsed[] =
-    input.clients?.map((clientInput, index) => parseServeClientInput(index, clientInput, dirname)) ?? []
+  const clients: AdapterClientInputParsed[] =
+    input.clients?.map((clientInput, index) => parseAdapterClientInput(index, clientInput, dirname)) ?? []
   if (process.env.NODE_ENV === 'production') {
     throwOnNonUniqueArrayElements(
       clients.map((client) => client.distDir),

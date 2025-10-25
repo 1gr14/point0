@@ -39,12 +39,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     points,
     connections,
   }: {
-    base: BasePoint<TRequiredCtx>
+    base: BasePoint
     source?: Eversion0<TRequiredCtx> | undefined
     points?: LoadedPointsCollection
     connections?: Array<Eversion0<TRequiredCtx>>
   }) {
-    this.base = base
+    this.base = base as BasePoint<TRequiredCtx>
     this.points = points ?? []
     this.connections = connections ?? []
     this.source = source
@@ -75,13 +75,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
-  async connect({
-    base,
-    points,
-  }: {
-    base: BaseConnectionPoint<any, TRequiredCtx>
-    points?: PointsCollection
-  }): Promise<Eversion0<TRequiredCtx>> {
+  async connect({ base, points }: { base: BasePoint; points?: PointsCollection }): Promise<Eversion0<TRequiredCtx>> {
     const connection = new Eversion0<TRequiredCtx>({
       base,
       points: await Eversion0.toLoadedPointsCollection(points),
@@ -964,11 +958,15 @@ export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
 
 export type LocationInput = { pathname: string } | { location: Route0.Location } | { id: string }
 
-export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
-  ? {
-      requiredCtx: TRequiredCtx
-    }
-  : { requiredCtx?: undefined }
+// TODO: remove this complexity, please
+// export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx
+//   ? {
+//       requiredCtx: TRequiredCtx
+//     }
+//   : { requiredCtx?: undefined }
+export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = {
+  requiredCtx: TRequiredCtx
+}
 
 export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {
   ctx: TOutputCtx

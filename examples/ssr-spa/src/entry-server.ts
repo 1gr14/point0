@@ -1,10 +1,10 @@
-import serve from 'point0/adapters/bun/server.js'
+import { BunAdapter } from 'point0/adapters/bun/server.js'
 import { points } from './lib/points.js'
 import { server } from './lib/server.js'
 import { client } from './lib/client.js'
 import App from './app.js'
 
-void serve({
+const adapter = await BunAdapter.create({
   base: server,
   port: 3000,
   dirname: import.meta.dir, // all paths will be relative to it. it is optional, you may pass all paths as absolute
@@ -27,3 +27,5 @@ void serve({
     },
   ],
 })
+
+adapter.serve()

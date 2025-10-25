@@ -202,6 +202,7 @@ describe('Point0', () => {
       await eversion1.extract({
         location: Route0.getLocation(url),
         point: clientPoint01,
+        requiredCtx: undefined,
       }),
     ).toEqual({
       ctx: {
@@ -258,7 +259,7 @@ describe('Point0', () => {
       await eversion3.extract({
         point: clientPoint03,
         location: Route0.getLocation(url),
-        // requiredCtx: undefined,
+        requiredCtx: undefined,
       }),
     ).toEqual({
       ctx: {
