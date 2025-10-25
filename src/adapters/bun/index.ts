@@ -28,6 +28,7 @@ type ParsedRequest = {
 }
 
 export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+  bunServer: Bun.Server<unknown> | undefined
   base: BasePoint<TRequiredCtx>
   points?: PointsCollection
   port?: number | string | undefined
@@ -344,24 +345,79 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }
 
-  serve({ port, hmr = true }: { port?: number | string | undefined; hmr?: boolean } = {}): Bun.Server<unknown> {
-    const bunServer = serve({
+  serve(
+    ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
+      ? [
+          options?: {
+            port?: number | string
+            hmr?: boolean
+            requiredCtx?: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+      : [
+          options: {
+            port?: number | string
+            hmr?: boolean
+            requiredCtx: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+  ): Bun.Server<unknown> {
+    const options = args[0]
+    const port = options?.port ?? this.port
+    const hmr = options?.hmr ?? true
+    const requiredCtx = options && 'requiredCtx' in options ? options.requiredCtx : {}
+    if (this.bunServer) {
+      throw new Error(
+        'Bun server already started. If you call "serve" method, you do not need to call "startClientsDevServer" method, becouse clients dev server already injected into bun server',
+      )
+    }
+    this.bunServer = serve({
       port: port ?? this.port,
       development: process.env.NODE_ENV === 'production' ? false : { hmr },
       routes: {
         ...this.clientsDevRoutes,
         '/*': async (request) => {
-          return await this.fetch(request, { request } as never as TRequiredCtx)
+          return await this.fetch(request, { request, ...requiredCtx } as never as TRequiredCtx)
         },
       },
     })
-    this.port = bunServer.port
-    this._preloadSrcIndexHtmlContents(bunServer).catch((error: unknown) => {
+    this.port = this.bunServer.port
+    this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
       this.logger.error(error)
     })
     this.logger.info(`Bun server running at http://localhost:${this.port}`)
-    return bunServer
+    return this.bunServer
+  }
+
+  // in case if we serve via elysia or another server, we need to start clients dev server separately
+  startClientsDevServer({ port, hmr = true }: { port?: number | string | undefined; hmr?: boolean } = {}):
+    | Bun.Server<unknown>
+    | undefined {
+    if (this.bunServer) {
+      throw new Error(
+        'Bun server already started. If you call "serve" method, you do not need to call "startClientsDevServer" method, becouse clients dev server already injected into bun server',
+      )
+    }
+    if (process.env.NODE_ENV === 'production') {
+      // throw new Error('startClientsDevServer is only available in development mode, please wrap your code in if (process.env.NODE_ENV !== "production") { ... }')
+      return undefined
+    }
+    this.bunServer = serve({
+      port: port ?? this.port,
+      development: process.env.NODE_ENV === 'production' ? false : { hmr },
+      routes: {
+        ...this.clientsDevRoutes,
+      },
+    })
+    this.port = this.bunServer.port
+    this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
+      this.logger.error(error)
+    })
+    this.logger.info(`Clients dev server running at http://localhost:${this.port}`)
+    return this.bunServer
   }
 }
+
+type IsEmptyObject<T> = keyof T extends never ? true : false
 
 export default BunAdapter
