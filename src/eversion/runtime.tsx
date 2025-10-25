@@ -482,7 +482,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           dehydratedState: this.getDehydratedState({
             data: dataOutput,
             location,
-            input: parsedInput,
             point,
             error: undefined,
           }),
@@ -500,7 +499,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           response: undefined,
           base: this.base,
           eversion: this,
-          dehydratedState: this.getDehydratedState({ data: dataOutput, location, input: parsedInput, point, error }),
+          dehydratedState: this.getDehydratedState({ data: dataOutput, location, point, error }),
         }
       }
     } catch (error) {
@@ -515,7 +514,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         base: this.base,
         eversion: this,
         response: undefined,
-        dehydratedState: this.getDehydratedState({ data: dataOutput, location, input: parsedInput, point, error }),
+        dehydratedState: this.getDehydratedState({ data: dataOutput, location, point, error }),
       }
     }
   }
@@ -547,21 +546,17 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   getDehydratedState({
     data,
     location,
-    input,
     error,
     point,
   }: {
     data: Data
     location: Route0.Location
-    input?: Record<string, any> | undefined
     error: unknown
     point: AnyPoint | undefined
   }): DehydratedState {
     const queryClient = new QueryClient()
-    if (point) {
-      const queryKey: QueryKey = (point.getQueryKey as any)(
-        point._inputSchema ? input : { ...location.params, query: location.query },
-      )
+    if (point && (point._pointType === 'query' || point._pointType === 'page')) {
+      const queryKey: QueryKey = point.getQueryKey({ ...location.query, ...location.params })
       const query = queryClient.getQueryCache().build(queryClient, { queryKey, queryHash: hashKey(queryKey) })
       if (error) {
         query.setState({

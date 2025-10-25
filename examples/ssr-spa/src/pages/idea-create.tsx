@@ -14,7 +14,7 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .json(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })

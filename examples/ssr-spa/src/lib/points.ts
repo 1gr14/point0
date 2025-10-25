@@ -12,7 +12,7 @@ export const points: PointsCollection = [
     point: async () => (await import('../pages/idea-create.js')).default,
   },
   {
-    type: 'json',
+    type: 'mutation',
     route: '/endpoints/createIdea',
     point: async () => (await import('../pages/idea-create.js')).createIdeaMutation,
   },

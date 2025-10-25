@@ -31,12 +31,9 @@ export const ideaPage = ideaLayout
       <div>
         <h1>{idea.title}</h1>
         <p>
-          <strong>Description:</strong> {idea.description}
+          <b>{idea.description}</b>
         </p>
-        <div>
-          <h2>Full Content</h2>
-          <p>{idea.content}</p>
-        </div>
+        <p>{idea.content}</p>
         <nav>
           <Link to="/ideas">← Back to Ideas</Link>
           <Link to="/">← Back to Home</Link>

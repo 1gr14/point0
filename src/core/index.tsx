@@ -55,6 +55,7 @@ export class Point0<
   _route: TRoute
   _page: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
   _layout: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
+  _layouts: LayoutComponent[]
   _id: Id | UndefinedId
   _unstableId: number
   _method: Method | UndefinedMethod
@@ -86,6 +87,7 @@ export class Point0<
     _route?: TRoute
     _page?: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
     _layout?: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
+    _layouts?: LayoutComponent[]
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -122,6 +124,7 @@ export class Point0<
     this._route = props._route ?? (undefined as TRoute)
     this._page = props._page ?? undefined
     this._layout = props._layout ?? undefined
+    this._layouts = props._layouts ?? []
     this._id = props._id
     this._method = props._method ?? (undefined as Method | UndefinedMethod)
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
@@ -185,6 +188,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
+    const _layouts = !this._layout ? this._layouts : [...this._layouts, this._layout as LayoutComponent]
     return new Point0<
       TPointType,
       TSourceBasePoint,
@@ -215,6 +219,7 @@ export class Point0<
       _route: (overrides._route ?? this._route) as TRoute,
       _page: (overrides._page ?? this._page) as PageComponent<TOutputData, TRoute> | UndefinedPageComponent,
       _layout: (overrides._layout ?? this._layout) as LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent,
+      _layouts,
       _id: overrides._id ?? this._id,
       _method: overrides._method ?? this._method,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
@@ -1007,10 +1012,10 @@ export class Point0<
     })
   }
 
-  json<TNewOutputData extends Data = Data>(
+  query<TNewOutputData extends Data = Data>(
     loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputData>,
   ): Point0<
-    'json',
+    'query',
     TConnectedSourceBasePoint,
     TRequiredCtx,
     TOutputCtx,
@@ -1020,7 +1025,7 @@ export class Point0<
     TResponseOutput
   > {
     return this._clone<
-      'json',
+      'query',
       TConnectedSourceBasePoint,
       TRequiredCtx,
       TOutputCtx,
@@ -1029,12 +1034,43 @@ export class Point0<
       TInputSchema,
       TResponseOutput
     >({
-      _pointType: 'json',
+      _pointType: 'query',
       _extendFns: [
         ...this._extendFns,
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
-      _method: this._method || 'post',
+      _method: 'get',
+    })
+  }
+
+  mutation<TNewOutputData extends Data = Data>(
+    loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputData>,
+  ): Point0<
+    'mutation',
+    TConnectedSourceBasePoint,
+    TRequiredCtx,
+    TOutputCtx,
+    TNewOutputData,
+    TRoute,
+    TInputSchema,
+    TResponseOutput
+  > {
+    return this._clone<
+      'mutation',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TOutputCtx,
+      TNewOutputData,
+      TRoute,
+      TInputSchema,
+      TResponseOutput
+    >({
+      _pointType: 'mutation',
+      _extendFns: [
+        ...this._extendFns,
+        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+      ] as never,
+      _method: 'post',
     })
   }
 
@@ -1121,12 +1157,12 @@ export class Point0<
       return React.createElement(point._page, { data, location })
     }
 
-    function WrapperComponent(): React.ReactElement {
+    function PageWrapperComponent(): React.ReactElement {
       const location = point._useLocation()
       // const { isInitialPage } = useEversionContext()
       // const queryClient = useQueryClient()
       // const cache = queryClient.getQueryCache()
-      const queryKey = point.getQueryKey({ ...location.params, query: location.query } as never)
+      const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
       // const query = cache.find({ queryKey })
       const result = useQuery<TOutputData>({
         queryKey,
@@ -1161,7 +1197,97 @@ export class Point0<
       }
       return React.createElement(PageComponent, { data: result.data, location })
     }
-    return WrapperComponent
+    return PageWrapperComponent
+  }
+
+  _getWrappedLayoutComponent = (): React.ComponentType<{ children: React.ReactNode }> => {
+    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+    const point = this
+    const loaderComponent = point._getLoaderComponent({ type: 'page' })
+    const errorComponent = point._getErrorComponent({ type: 'page' })
+
+    if (!this._layout) {
+      function LayoutComponent(): React.ReactElement {
+        const location = point._useLocation()
+        return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
+      }
+      return LayoutComponent
+    }
+
+    if (!point._hasLoader()) {
+      function LayoutComponent({ children }: { children: React.ReactNode }): React.ReactElement {
+        const location = point._useLocation()
+        const data = {} as TOutputData
+        // for (const head of point._heads) {
+        //   useHead(typeof head === 'function' ? head({ data, location }) : head)
+        // }
+        if (!point._layout) {
+          return React.createElement(errorComponent, {
+            type: 'page',
+            error: new Error0('No layout component'),
+            location,
+          })
+        }
+        return React.createElement(point._layout, { data, location, children })
+      }
+      return LayoutComponent
+    }
+
+    function LayoutComponent({
+      data,
+      location,
+      children,
+    }: LayoutComponentProps<TOutputData, TRoute>): React.ReactElement {
+      // for (const head of point._heads) {
+      //   useHead(typeof head === 'function' ? head({ data, location }) : head)
+      // }
+      if (!point._layout) {
+        return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
+      }
+      return React.createElement(point._layout, { data, location, children })
+    }
+
+    function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {
+      const location = point._useLocation()
+      // const { isInitialPage } = useEversionContext()
+      // const queryClient = useQueryClient()
+      // const cache = queryClient.getQueryCache()
+      const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
+      // const query = cache.find({ queryKey })
+      const result = useQuery<TOutputData>({
+        queryKey,
+        queryFn: async () => {
+          const fetchOptions = point._fetchOptions()
+          const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+          const res = await fetch(location.pathname, {
+            ...fetchOptions,
+            headers,
+          })
+          const json = await res.json()
+          if (res.ok) {
+            return json
+          }
+          throw Error0.from(json, {
+            httpStatus: res.status,
+          })
+        },
+        // enabled: !isInitialPage || query?.state.status !== 'error',
+        retry: false,
+        ...point._queryOptions,
+        ...point._pageQueryOptions,
+      })
+      if (result.error) {
+        return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
+      }
+      if (result.isLoading) {
+        return React.createElement(loaderComponent, { type: 'page', location })
+      }
+      if (!result.data) {
+        return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
+      }
+      return React.createElement(LayoutComponent, { data: result.data, location, children })
+    }
+    return LayoutWrapperComponent
   }
 
   fetch = (async (input: Record<string, any> = {}) => {
@@ -1380,6 +1506,26 @@ export type PagePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
 > = AnyPoint<
   'page',
+  TConnectedSourceBasePoint,
+  TRequiredCtx,
+  TOutputCtx,
+  TOutputData,
+  TRoute,
+  TInputSchema,
+  TResponseOutput
+>
+export type LayoutPoint<
+  TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint =
+    | ConnectedSourceBasePoint
+    | UndefinedConnectedSourceBasePoint,
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TOutputCtx extends Ctx = any,
+  TOutputData extends Data = any,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
+  TInputSchema extends UndefinedInputSchema = UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+> = AnyPoint<
+  'layout',
   TConnectedSourceBasePoint,
   TRequiredCtx,
   TOutputCtx,
@@ -1627,7 +1773,7 @@ export type HeadFn<
 > = (props: HeadFnProps<TOutputData, TRoute>) => ResolvableHead
 export type HeadsCollection = Array<ResolvableHead | HeadFn<any, any>>
 
-export type PointType = 'page' | 'component' | 'response' | 'json' | 'layout' | 'middleware'
+export type PointType = 'page' | 'component' | 'response' | 'query' | 'mutation' | 'layout' | 'middleware'
 export type EndPointType = Exclude<PointType, 'middleware'>
 
 export type QueryKey = readonly [string, ...string[]]

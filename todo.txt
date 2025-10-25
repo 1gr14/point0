@@ -7,6 +7,9 @@ on .any() or else after .page() or else, set _prevReadyPoint = this
 layout scroll position
 example general layout, idea layout, idea news page
 
+chain
+requireData()
+
 extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
 
