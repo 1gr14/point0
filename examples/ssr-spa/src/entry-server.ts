@@ -1,4 +1,4 @@
-import { BunAdapter } from 'point0/adapters/bun/server.js'
+import { BunAdapter } from 'point0/adapters/bun/index.js'
 import { points } from './lib/points.js'
 import { server } from './lib/server.js'
 import { client } from './lib/client.js'
@@ -7,7 +7,9 @@ import App from './app.js'
 const adapter = await BunAdapter.create({
   base: server,
   port: 3000,
-  dirname: import.meta.dir, // all paths will be relative to it. it is optional, you may pass all paths as absolute
+  // all paths will be relative to it. it is optional, you may pass all paths as absolute
+  // before build it is right here, after build it is in dist/server or where you build it
+  dirname: import.meta.dir,
   publicDir:
     process.env.NODE_ENV === 'production'
       ? '../public' // when self location is "dist/server/entry-server.js" it points to "dist/public"
