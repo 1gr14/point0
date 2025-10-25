@@ -10,7 +10,7 @@ export default generalLayout
   })
   .page(() => (
     <div>
-      <h1>Welcome to IdeaNickxxx</h1>
+      <h1>Welcome to IdeaNick</h1>
       <p>Discover and share innovative ideas that can change the world!</p>
       <nav>
         <Link to="/ideas">Browse Ideas</Link>

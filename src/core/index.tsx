@@ -1,12 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type {
-  MutationOptions,
-  QueryClient,
-  QueryOptions,
-  UseMutationResult,
-  UseQueryResult,
-} from '@tanstack/react-query'
+import type { MutationOptions, QueryOptions, UseMutationResult, UseQueryResult } from '@tanstack/react-query'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import qs from 'qs'
@@ -1522,7 +1516,7 @@ export type LayoutPoint<
   TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
-  TInputSchema extends UndefinedInputSchema = UndefinedInputSchema,
+  TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
 > = AnyPoint<
   'layout',

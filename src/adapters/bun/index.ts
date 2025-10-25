@@ -23,6 +23,7 @@ import type { IsEmptyObject } from '../../core/types.js'
 
 type ParsedRequest = {
   request: Request
+  url: URL
   pathname: string
   pathnameAsRelPath: string
   isJsonAcceptable: boolean
@@ -139,28 +140,35 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.indexHtmlContents = indexHtmlContents
   }
 
-  async _preloadSrcIndexHtmlContents(bunServer: Bun.Server<unknown>): Promise<void> {
-    if (process.env.NODE_ENV === 'production') {
-      // on production mode we already preloaded distIndexHtml contents
-      return
-    }
-    // else we will fetch srcIndexHtml contents from clientsDevRoutes
-    const indexHtmlContents = Object.fromEntries(
-      await Promise.all(
-        this.clients.map(async (client) => {
-          if (!client.srcIndexHtml) {
-            return [client.base._baseId, undefined]
-          }
-          const content = await (
-            await fetch(
-              `http://localhost:${bunServer.port}${client.basepath}development-${client.base._baseId}.index.html`,
-            )
-          ).text()
-          return [client.base._baseId, content]
-        }),
-      ),
-    )
-    this.indexHtmlContents = indexHtmlContents
+  // Do not use it. Becouse we need fresh index.html, becous js bundle path may change
+  // async _preloadSrcIndexHtmlContents(bunServer: Bun.Server<unknown>): Promise<void> {
+  //   if (process.env.NODE_ENV === 'production') {
+  //     // on production mode we already preloaded distIndexHtml contents
+  //     return
+  //   }
+  //   // else we will fetch srcIndexHtml contents from clientsDevRoutes
+  //   const indexHtmlContents = Object.fromEntries(
+  //     await Promise.all(
+  //       this.clients.map(async (client) => {
+  //         if (!client.srcIndexHtml) {
+  //           return [client.base._baseId, undefined]
+  //         }
+  //         const content = await (
+  //           await fetch(
+  //             `http://localhost:${bunServer.port}${client.basepath}development-${client.base._baseId}.index.html`,
+  //           )
+  //         ).text()
+  //         return [client.base._baseId, content]
+  //       }),
+  //     ),
+  //   )
+  //   this.indexHtmlContents = indexHtmlContents
+  // }
+
+  async _loadSrcIndexHtmlContents(parsedRequest: ParsedRequest, client: AdapterClientInputParsed): Promise<string> {
+    return await (
+      await fetch(`${parsedRequest.url.origin}${client.basepath}development-${client.base._baseId}.index.html`)
+    ).text()
   }
 
   async _fetchClientDistDir({ pathname }: ParsedRequest): Promise<Response | undefined> {
@@ -217,7 +225,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const pathname = url.pathname
     const pathnameAsRelPath = pathname.replace(/^\//, '')
     const isJsonAcceptable = !!request.headers.get('Accept')?.includes('application/json')
-    const parsedRequest: ParsedRequest = { request, pathname, pathnameAsRelPath, isJsonAcceptable }
+    const parsedRequest: ParsedRequest = { request, url, pathname, pathnameAsRelPath, isJsonAcceptable }
 
     try {
       let response: Response | undefined = await this._fetchClientDistDir(parsedRequest)
@@ -269,7 +277,10 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
 
       if (relatedClient) {
-        const originalIndexHtml = this.indexHtmlContents[relatedClient.base._baseId]
+        const originalIndexHtml =
+          process.env.NODE_ENV === 'production'
+            ? this.indexHtmlContents[relatedClient.base._baseId]
+            : await this._loadSrcIndexHtmlContents(parsedRequest, relatedClient)
         const App = relatedClient.App
 
         if (relatedClient.ssr && !isJsonAcceptable) {
@@ -385,9 +396,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       },
     })
     this.port = this.bunServer.port
-    this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
-      this.logger.error(error)
-    })
+    // this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
+    //   this.logger.error(error)
+    // })
     this.logger.info(`Bun server running at http://localhost:${this.port}`)
     return this.bunServer
   }
@@ -413,9 +424,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       },
     })
     this.port = this.bunServer.port
-    this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
-      this.logger.error(error)
-    })
+    // this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
+    //   this.logger.error(error)
+    // })
     this.logger.info(`Clients dev server running at http://localhost:${this.port}`)
     return this.bunServer
   }

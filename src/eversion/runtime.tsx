@@ -17,6 +17,7 @@ import type {
   EndPoint,
   EndPointType,
   Input,
+  LayoutPoint,
   Method,
   PagePoint,
   QueryKey,
@@ -66,8 +67,16 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   static async toLoadedPointsCollection(points?: PointsCollection): Promise<LoadedPointsCollection> {
     return await Promise.all(
       points?.map(async (record) => {
+        const pointPromise = typeof record.point === 'function' ? record.point() : record.point
+        const layoutsPromise = Promise.all(
+          record.layouts?.map(async (layout) => {
+            return typeof layout === 'function' ? await layout() : layout
+          }) ?? [],
+        )
+        const [point, layouts] = await Promise.all([pointPromise, layoutsPromise])
         return {
-          point: typeof record.point === 'function' ? await record.point() : record.point,
+          point,
+          layouts,
           route: Route0.create(record.route),
           type: record.type,
         }
@@ -118,22 +127,45 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         continue
       }
       const route = Route0.create(record.route)
-      const pageComponent = await (async (): Promise<React.ComponentType> => {
+      const { pageComponent, layoutComponents } = await (async (): Promise<{
+        pageComponent: React.ComponentType
+        layoutComponents: Array<React.ComponentType<{ children: React.ReactNode }>>
+      }> => {
         const match = Route0.getMatch(route, ssrLocation)
         if (match.exact) {
-          return typeof point === 'function'
-            ? (await point())._getWrappedPageComponent()
-            : point._getWrappedPageComponent()
+          const pageComponentPromise =
+            typeof point === 'function'
+              ? point().then((p) => p._getWrappedPageComponent())
+              : point._getWrappedPageComponent()
+          const layoutComponentsPromise = Promise.all(
+            (record.layouts ?? []).map(async (layout) => {
+              return typeof layout === 'function'
+                ? (await layout())._getWrappedLayoutComponent()
+                : layout._getWrappedLayoutComponent()
+            }),
+          )
+          const [pageComponent, layoutComponents] = await Promise.all([pageComponentPromise, layoutComponentsPromise])
+          return { pageComponent, layoutComponents }
         }
-        return typeof point === 'function'
-          ? lazy(async () => ({
-              default: (await point())._getWrappedPageComponent(),
-            }))
-          : point._getWrappedPageComponent()
+        const pageComponent =
+          typeof point === 'function'
+            ? lazy(async () => ({
+                default: (await point())._getWrappedPageComponent(),
+              }))
+            : point._getWrappedPageComponent()
+        const layoutComponents = (record.layouts ?? []).map((layout) => {
+          return typeof layout === 'function'
+            ? lazy(async () => ({
+                default: (await layout())._getWrappedLayoutComponent(),
+              }))
+            : layout._getWrappedLayoutComponent()
+        })
+        return { pageComponent, layoutComponents }
       })()
       pages.push({
         route,
         pageComponent,
+        layoutComponents,
       })
     }
     return pages
@@ -155,6 +187,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 default: (await point())._getWrappedPageComponent(),
               }))
             : point._getWrappedPageComponent(),
+        layoutComponents: (record.layouts ?? []).map((layout) =>
+          typeof layout === 'function'
+            ? lazy(async () => ({
+                default: (await layout())._getWrappedLayoutComponent(),
+              }))
+            : layout._getWrappedLayoutComponent(),
+        ),
       })
     }
     return pages
@@ -942,14 +981,27 @@ export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPoint
   type: TEndPointType
   route: string
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
+  layouts?: Array<LayoutPoint | (() => Promise<LayoutPoint>)>
 }
 export type PointsCollection = PointsCollectionRecord[]
 export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
   route: Route0.AnyRoute
   point: EndPoint<TEndPointType>
+  layouts: LayoutPoint[]
 }
 export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
+
+// export type LayoutsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
+//   routes: string[]
+//   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
+// }
+// export type LayoutsCollection = LayoutsCollectionRecord[]
+// export type LoadedLayoutsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
+//   routes: Route0.AnyRoute[]
+//   point: EndPoint<TEndPointType>
+// }
+// export type LoadedLayoutsCollection = LoadedLayoutsCollectionRecord[]
 
 export type LocationInput = { pathname: string } | { location: Route0.Location } | { id: string }
 
@@ -989,6 +1041,10 @@ export type Payload = {
 export type PagesCollectionRecord = {
   route: Route0.AnyRoute
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+  layoutComponents: Array<
+    | React.ComponentType<{ children: React.ReactNode }>
+    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+  >
 }
 export type PagesCollection = PagesCollectionRecord[]
 
