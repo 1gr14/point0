@@ -319,7 +319,6 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }
             const pagesAndLayouts = Eversion0.toPagesAndLayoutsCollection({ points: relatedClient.eversion.points })
             const pagesTree = Eversion0.toPagesTree({ pagesAndLayouts })
-            console.dir(Eversion0.toLoggablePagesTree(pagesTree), { depth: null })
             const appElement = createElement(App, {
               ssrLocation: extractResult.location,
               pagesTree,
