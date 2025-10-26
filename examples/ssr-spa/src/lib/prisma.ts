@@ -142,7 +142,7 @@ export const fakeIdeas: Idea[] = [
   },
   {
     id: 10,
-    title: 'Carbon Footprint Tracker',
+    title: 'xCarbon Footprint Tracker',
     description: 'Comprehensive app that tracks and helps reduce individual carbon emissions',
     content: Array.from({ length: 10000 }, (_, i) => `Content ${i + 1}`).join('\n'),
     news: getFakeNews(10),

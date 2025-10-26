@@ -386,6 +386,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
       ? [
           options?: {
+            serveTarget?: 'client' | 'server' | 'universal' | undefined
             port?: number | string
             clientsDevServerPort?: number | string
             hmr?: boolean
@@ -394,18 +395,65 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         ]
       : [
           options: {
+            serveTarget?: 'client' | 'server' | 'universal' | undefined
             port?: number | string
             clientsDevServerPort?: number | string
             hmr?: boolean
             requiredCtx: Omit<TRequiredCtx, 'request'>
           },
         ]
-  ): Bun.Server<unknown> | undefined {
-    if (process.env.SERVE_TARGET === 'client') {
-      return this.serveClientsDevServer(...args)
+  ): typeof this {
+    const options = args[0]
+    const serveTarget = options?.serveTarget ?? process.env.DEV_SERVE_TARGET
+    if (serveTarget === 'client') {
+      this.serveClientsDevServer(...args)
+      return this
+    } else if (serveTarget === 'server') {
+      this.serveMainDevServer(...args)
+      return this
+    } else if (serveTarget === 'universal') {
+      this.serveUniversal(...args)
+      return this
     } else {
-      return this.serveMainServer(...args)
+      this.serveMainServer(...args)
+      return this
     }
+  }
+
+  serveUniversal(
+    ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
+      ? [
+          options?: {
+            port?: number | string
+            requiredCtx?: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+      : [
+          options: {
+            port?: number | string
+            requiredCtx: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+  ): typeof this {
+    const options = args[0]
+    const port = options?.port ?? this.mainServerPort
+    const requiredCtx = options && 'requiredCtx' in options ? options.requiredCtx : {}
+    if (this.mainServer) {
+      throw new Error('Main server already started')
+    }
+    this.mainServer = serve({
+      port,
+      routes: {
+        ...this.clientsDevRoutes,
+        '/*': async (request) => {
+          return await this.fetch(request, { request, ...requiredCtx } as never as TRequiredCtx)
+        },
+      },
+    })
+
+    this.mainServerPort = this.mainServer.port ?? this.mainServerPort
+    this.logger.info(`Universal server running at http://localhost:${this.mainServerPort}`)
+    return this
   }
 
   serveMainServer(
@@ -422,14 +470,46 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             requiredCtx: Omit<TRequiredCtx, 'request'>
           },
         ]
-  ): Bun.Server<unknown> {
+  ): typeof this {
     const options = args[0]
     const port = options?.port ?? this.mainServerPort
     const requiredCtx = options && 'requiredCtx' in options ? options.requiredCtx : {}
     if (this.mainServer) {
       throw new Error('Main server already started')
     }
-    console.log('clientsDevServerPort', this.clientsDevServerPort)
+    this.mainServer = serve({
+      port,
+      fetch: async (request) => {
+        return await this.fetch(request, { request, ...requiredCtx } as never as TRequiredCtx)
+      },
+    })
+
+    this.mainServerPort = this.mainServer.port ?? this.mainServerPort
+    this.logger.info(`Main server running at http://localhost:${this.mainServerPort}`)
+    return this
+  }
+
+  serveMainDevServer(
+    ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
+      ? [
+          options?: {
+            port?: number | string
+            requiredCtx?: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+      : [
+          options: {
+            port?: number | string
+            requiredCtx: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+  ): typeof this {
+    const options = args[0]
+    const port = options?.port ?? this.mainServerPort
+    const requiredCtx = options && 'requiredCtx' in options ? options.requiredCtx : {}
+    if (this.mainServer) {
+      throw new Error('Main dev server already started')
+    }
     this.mainServer = serve({
       port,
       fetch: async (request, server) => {
@@ -513,23 +593,22 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`Server running at http://localhost:${this.mainServerPort}`)
-    return this.mainServer
+    this.logger.info(`Main dev server running at http://localhost:${this.mainServerPort}`)
+    return this
   }
 
   // in case if we serve via elysia or another server, we need to start clients dev server separately
   serveClientsDevServer({
     port = this.clientsDevServerPort,
     hmr = true,
-  }: { port?: number | string | undefined; hmr?: boolean } = {}): Bun.Server<unknown> | undefined {
+  }: { port?: number | string | undefined; hmr?: boolean } = {}): typeof this {
     if (this.clientsDevServer) {
       throw new Error('Clients dev server already started')
     }
     if (process.env.NODE_ENV === 'production') {
       // throw new Error('startClientsDevServer is only available in development mode, please wrap your code in if (process.env.NODE_ENV !== "production") { ... }')
-      return undefined
+      return this
     }
-    console.log('port', port)
     this.clientsDevServer = serve({
       port,
       development: { hmr, console: false },
@@ -539,7 +618,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
     this.clientsDevServerPort = this.clientsDevServer.port ?? this.clientsDevServerPort
     this.logger.info(`Clients dev server running at http://localhost:${this.clientsDevServerPort}`)
-    return this.clientsDevServer
+    return this
   }
 }
 
