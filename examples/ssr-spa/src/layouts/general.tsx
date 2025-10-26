@@ -5,10 +5,10 @@ import { routes } from '../lib/routes'
 export const generalLayout = client.layout(({ children }) => {
   return (
     <div>
-      <h1>IdeaNick</h1>
+      <h1>IdeaNickx</h1>
       <ul>
         <li>
-          <Link to={routes.home()}>Hoe</Link>
+          <Link to={routes.home()}>Home</Link>
         </li>
         <li>
           <Link to={routes.ideas()}>Browse Ideas</Link>

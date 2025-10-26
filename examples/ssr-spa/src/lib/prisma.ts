@@ -144,8 +144,7 @@ export const fakeIdeas: Idea[] = [
     id: 10,
     title: 'Carbon Footprint Tracker',
     description: 'Comprehensive app that tracks and helps reduce individual carbon emissions',
-    content:
-      "This app would monitor transportation, energy usage, food consumption, and purchasing habits to calculate a user's carbon footprint. It would provide actionable recommendations and gamify the process of reducing environmental impact.",
+    content: Array.from({ length: 10000 }, (_, i) => `Content ${i + 1}`).join('\n'),
     news: getFakeNews(10),
   },
 ]

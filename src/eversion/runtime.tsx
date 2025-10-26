@@ -16,6 +16,7 @@ import type {
   EmptyData,
   EndPoint,
   EndPointType,
+  ExtendFnRecord,
   Input,
   LayoutPoint,
   Method,
@@ -197,6 +198,77 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
     }
     return pages
+  }
+
+  static toLayoutsTree = ({ pages }: { pages: PagesCollection }): LayoutsTree => {
+    const tree: LayoutsTree = []
+
+    const split = (p: string) => (p === '/' ? [] : p.replace(/^\/|\/$/g, '').split('/'))
+    const anchorRouteFor = (fullRoute: string, layoutIndex: number) => {
+      // index 0 => '/', index 1 => first TWO segments, index 2 => first THREE, ...
+      const segs = split(fullRoute)
+      if (layoutIndex === 0) return '/'
+      const depth = Math.min(layoutIndex + 1, segs.length)
+      return '/' + segs.slice(0, depth).join('/')
+    }
+
+    const findByRoute = (nodes: LayoutsTree, route: string) => nodes.find((n) => n.route === route)
+
+    // Special bucket for pages with NO layouts (layoutComponent === undefined)
+    const findNoLayoutBucket = (nodes: LayoutsTree) => nodes.find((n) => n.layoutComponent === undefined)
+
+    for (const page of pages) {
+      const route = page.route.getDefinition()
+      const layouts = page.layoutComponents
+      let level = tree
+      let parentNode: LayoutsTreeRecord | undefined
+
+      // Walk/create layout chain by ANCHOR ROUTES
+      for (let i = 0; i < layouts.length; i++) {
+        const layoutComponent = layouts[i]
+        const anchorRoute = anchorRouteFor(route, i)
+
+        let node = findByRoute(level, anchorRoute)
+        if (!node) {
+          node = {
+            route: anchorRoute, // <- anchor path, not the page route
+            layoutComponent, // set the layout used at this anchor
+            pages: [],
+            layouts: [],
+          }
+          level.push(node)
+          // eslint-disable-next-line logical-assignment-operators
+        } else if (!node.layoutComponent) {
+          // if a placeholder existed, attach the layout now
+          node.layoutComponent = layoutComponent
+        }
+
+        parentNode = node
+        level = node.layouts
+      }
+
+      // Attach page at the deepest layout node, or the no-layout bucket
+      if (parentNode) {
+        parentNode.pages.push({ route, pageComponent: page.pageComponent })
+      } else {
+        let bucket = findNoLayoutBucket(tree)
+        if (!bucket) {
+          bucket = { route: '/', layoutComponent: undefined, pages: [], layouts: [] }
+          tree.push(bucket)
+        }
+        bucket.pages.push({ route, pageComponent: page.pageComponent })
+      }
+    }
+
+    // Optional: sort nodes by depth (deeper first) to aid rendering order if needed
+    const depth = (p: string) => split(p).length
+    const sortTree = (nodes: LayoutsTree) => {
+      nodes.sort((a, b) => depth(b.route) - depth(a.route))
+      for (const n of nodes) sortTree(n.layouts)
+    }
+    sortTree(tree)
+
+    return tree
   }
 
   static getRouteMatch = (
@@ -422,12 +494,41 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     point,
     input = {},
     requiredCtx,
+    extendFnsWithOutput = [],
+    queryClient,
+    skipDehydration = false,
     ...locationProps
   }: WithRequiredCtx<TRequiredCtx> & {
     point?: AnyPoint | undefined
     input?: Input
+    extendFnsWithOutput?: ExtendFnWithOutput[]
+    queryClient?: QueryClient
+    skipDehydration?: boolean
   } & LocationInput): Promise<ExtractResult> {
+    queryClient ??= new QueryClient()
     const location = this.normalizeLocation(locationProps)
+
+    if (point?._pointType === 'page') {
+      for (const layout of point._layouts) {
+        if (!layout._hasLoader()) {
+          continue
+        }
+        const layoutLocation = {
+          // layout will request own state on client, it has different route based on id, but it wants to recieve same input. Input for get routes made based o params and query.
+          ...Route0.getLocation(layout._getRouteAbsPath({ query: { ...location.query, ...location.params } } as never)),
+        }
+        const result = await this.extract({
+          point: layout,
+          input,
+          requiredCtx,
+          extendFnsWithOutput,
+          queryClient,
+          location: layoutLocation,
+          skipDehydration: true,
+        })
+        extendFnsWithOutput = result.extendFnsWithOutput
+      }
+    }
 
     const { parsedInput, inputError } = (() => {
       if (point?._inputSchema) {
@@ -450,7 +551,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         status: 422,
         base: this.base,
         eversion: this,
-        dehydratedState: emptyDehydratedState,
+        queryClient,
+        extendFnsWithOutput,
+        dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState({ queryClient }),
         response: undefined,
       }
     }
@@ -473,22 +576,46 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     try {
       for (const extendFn of extendFns) {
         switch (extendFn.type) {
-          case 'ctx':
-            ctxOutput = await extendFn.fn({
-              ctx: { ...ctxOutput },
-              data: { ...dataOutput },
-              location,
-              input: parsedInput,
-            })
+          case 'ctx': {
+            const ex = extendFnsWithOutput.find(
+              (e) => e.record.unstableId === extendFn.unstableId && e.record.type === 'ctx',
+            )
+            if (ex) {
+              ctxOutput = { ...ex.output }
+            } else {
+              ctxOutput = await extendFn.fn({
+                ctx: { ...ctxOutput },
+                data: { ...dataOutput },
+                location,
+                input: parsedInput,
+              })
+              extendFnsWithOutput.push({
+                output: ctxOutput,
+                record: extendFn,
+              })
+            }
             break
-          case 'loader':
-            dataOutput = await extendFn.fn({
-              ctx: { ...ctxOutput },
-              data: { ...dataOutput },
-              location,
-              input: parsedInput,
-            })
+          }
+          case 'loader': {
+            const ex = extendFnsWithOutput.find(
+              (e) => e.record.unstableId === extendFn.unstableId && e.record.type === 'loader',
+            )
+            if (ex) {
+              dataOutput = { ...ex.output }
+            } else {
+              dataOutput = await extendFn.fn({
+                ctx: { ...ctxOutput },
+                data: { ...dataOutput },
+                location,
+                input: parsedInput,
+              })
+              extendFnsWithOutput.push({
+                output: dataOutput,
+                record: extendFn,
+              })
+            }
             break
+          }
           // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
           default:
             throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
@@ -507,6 +634,10 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return undefined
       })()
       if (point) {
+        this.appendQueryClientCache({ data: dataOutput, location, point, error: undefined, queryClient })
+        const dehydratedState = skipDehydration
+          ? emptyDehydratedState
+          : this.getQueryClientDehydratedState({ queryClient })
         return {
           ctx: ctxOutput,
           data: dataOutput,
@@ -518,15 +649,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           base: this.base,
           eversion: this,
           response,
-          dehydratedState: this.getDehydratedState({
-            data: dataOutput,
-            location,
-            point,
-            error: undefined,
-          }),
+          extendFnsWithOutput,
+          queryClient,
+          dehydratedState,
         }
       } else {
         const error = new Error0(`Point Not Found: ${location.pathname}`)
+        this.appendQueryClientCache({ data: dataOutput, location, point, error, queryClient })
         return {
           ctx: ctxOutput,
           data: dataOutput,
@@ -538,10 +667,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           response: undefined,
           base: this.base,
           eversion: this,
-          dehydratedState: this.getDehydratedState({ data: dataOutput, location, point, error }),
+          extendFnsWithOutput,
+          queryClient,
+          dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState({ queryClient }),
         }
       }
     } catch (error) {
+      this.appendQueryClientCache({ data: dataOutput, location, point, error, queryClient })
       return {
         ctx: ctxOutput,
         data: dataOutput,
@@ -553,7 +685,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         base: this.base,
         eversion: this,
         response: undefined,
-        dehydratedState: this.getDehydratedState({ data: dataOutput, location, point, error }),
+        extendFnsWithOutput,
+        queryClient,
+        dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState({ queryClient }),
       }
     }
   }
@@ -582,19 +716,26 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     } as never)
   }
 
-  getDehydratedState({
+  appendQueryClientCache({
     data,
     location,
     error,
     point,
+    queryClient,
   }: {
     data: Data
     location: Route0.Location
     error: unknown
     point: AnyPoint | undefined
-  }): DehydratedState {
-    const queryClient = new QueryClient()
-    if (point && (point._pointType === 'query' || point._pointType === 'page')) {
+    queryClient: QueryClient
+  }): void {
+    if (
+      point &&
+      (point._pointType === 'query' ||
+        point._pointType === 'page' ||
+        point._pointType === 'layout' ||
+        point._pointType === 'component')
+    ) {
       const queryKey: QueryKey = point.getQueryKey({ ...location.query, ...location.params })
       const query = queryClient.getQueryCache().build(queryClient, { queryKey, queryHash: hashKey(queryKey) })
       if (error) {
@@ -614,6 +755,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         })
       }
     }
+  }
+
+  getQueryClientDehydratedState({ queryClient }: { queryClient: QueryClient }): DehydratedState {
     const dehydratedState = dehydrate(queryClient, {
       shouldDehydrateQuery: (query) => {
         // This will include all queries, including failed ones
@@ -1015,6 +1159,10 @@ export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = {
   requiredCtx: TRequiredCtx
 }
 
+export type ExtendFnWithOutput = {
+  output: Ctx | Data
+  record: ExtendFnRecord
+}
 export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {
   ctx: TOutputCtx
   data: TOutputData
@@ -1027,6 +1175,8 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   base: BasePoint
   point: AnyPoint | undefined
   eversion: Eversion0
+  extendFnsWithOutput: ExtendFnWithOutput[]
+  queryClient: QueryClient
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
   TPoint extends AnyPoint<any, any, any, infer TOutputCtx, infer TOutputData, any, any>
@@ -1047,5 +1197,19 @@ export type PagesCollectionRecord = {
   >
 }
 export type PagesCollection = PagesCollectionRecord[]
+
+export type LayoutsTreeRecord = {
+  route: string
+  layoutComponent:
+    | React.ComponentType<{ children: React.ReactNode }>
+    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+    | undefined
+  pages: Array<{
+    route: string
+    pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+  }>
+  layouts: LayoutsTreeRecord[]
+}
+export type LayoutsTree = LayoutsTreeRecord[]
 
 export type RoutesCollection = Record<string, Route0.AnyRoute>

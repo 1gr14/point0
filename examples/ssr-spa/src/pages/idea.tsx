@@ -29,7 +29,6 @@ export const ideaPage = ideaLayout
     // any hook or whatever here, it is just client code
     return (
       <div>
-        <h1>{idea.title}</h1>
         <p>
           <b>{idea.description}</b>
         </p>

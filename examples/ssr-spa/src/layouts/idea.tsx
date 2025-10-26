@@ -1,9 +1,11 @@
-import { client } from '../lib/client'
+import { useState } from 'react'
 import { z } from 'zod'
 import { Link } from '../lib/router'
 import { routes } from '../lib/routes'
+import { generalLayout } from './general'
 
-export const ideaLayout = client
+export const ideaLayout = generalLayout
+  .id('ideaLayout')
   .input(
     z.object({
       id: z.coerce.number(),

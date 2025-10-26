@@ -1,37 +1,31 @@
-...? .route( * will be used as is in fetch request ).id().loader().layout(() = <>{children}</>) standalone
-...? .loader().id().layout(() = <>{children}</>).route(here id resets to route path).loader().page() connected to page
-...? find suiatble layouts, find suitable page. Extract each layout payload, extract page payload. Render <Layout1 data={data1}><Layout2 data={data2}><Page data={data3} /></></>. __PAYLOAD_0__=data1 __PAYLOAD_1__=data2 __PAYLOAD_2__
-.layout() maybe as destination type
-.layout().layout(), and then when we need separatly jsu cut it by index, like nothing was, so in extend each fn we can store previous extend fns for example special for layout, ot we can .assignLayout(layout), or on end htingss like .page().enrpoidn() we can store parent there, on when we call desturctive next fn we create _prevReadyPoint
-on .any() or else after .page() or else, set _prevReadyPoint = this
-layout scroll position
-example general layout, idea layout, idea news page
-
-chain
-requireData()
-
+preload layouts data
 extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
 const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
+client dev server
+router use regex for paths
+router provides hook for isInitialPage and prevent query retries
 
-query, mutation
+chain: .chain().x() , Point0.chain()
+on clone clean ready artefacts
+requireData()
+
+.base(() => clientCtx) <ClientCtxProvider base={client} />
+client.useClientCtx
+store _base in points
+
+.clientLoader, after call do not allow usual loader another
 
 auth
 
-.clientLoader, after call do not allow usual loader another
-.clientCtx, has access to exposeCtx,  just add  and there real javascript, can have usual useHooks (useEffect etc) will be called only on client
-.useClientCtx
+points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
 
 .component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extendFns
 .useLoad|.exec(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
 on client build remove server code, just force to rebuild @point0/core package and there have if (process.env.IS_CLIENT === true) {retrun undefined}
 
-points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
-
-const plugx = createPlugin(...), point.use(plugx(...)), Point0.use(plugx) → point.plugx(....)
 
 example expo
 expo router helper
-base({useUrl: ...})
 
 example elysia
 
@@ -45,6 +39,8 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 split index.ts code
 .disable()
 .route(string)
+store each point location to normalize errors messages for example in No route or id provided for this point
+layout scroll position
 fix head title blinking
 not json but query and mutation, and if it is mutation the on extract do not add it to hydratedState
 do not loose state on hmr

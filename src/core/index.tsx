@@ -49,7 +49,7 @@ export class Point0<
   _route: TRoute
   _page: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
   _layout: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
-  _layouts: LayoutComponent[]
+  _layouts: LayoutPoint[]
   _id: Id | UndefinedId
   _unstableId: number
   _method: Method | UndefinedMethod
@@ -81,7 +81,7 @@ export class Point0<
     _route?: TRoute
     _page?: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
     _layout?: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
-    _layouts?: LayoutComponent[]
+    _layouts?: LayoutPoint[]
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -182,7 +182,8 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    const _layouts = !this._layout ? this._layouts : [...this._layouts, this._layout as LayoutComponent]
+    const wasEndpoint = this._isEndpoint()
+
     return new Point0<
       TPointType,
       TSourceBasePoint,
@@ -200,22 +201,24 @@ export class Point0<
       _pointType: overrides._pointType,
       _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
-      _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
+      _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
-        : undefined,
+        : undefined, // remove end artefact on continue
       _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
-      _heads: [...this._heads, ...(overrides._heads ?? [])],
-      _queryOptions: { ...this._queryOptions, ...(overrides._queryOptions ?? {}) },
+      _heads: wasEndpoint
+        ? [...this._heads, ...(overrides._heads ?? [])].filter((h) => typeof h !== 'function')
+        : [...this._heads, ...(overrides._heads ?? [])], // remove stale artefact on continue, fn heads related to data, object heads is persistent
+      _queryOptions: { ...this._queryOptions, ...(overrides._queryOptions ?? {}) }, // TODO: fallback to base sattings also store base itself here
       _pageQueryOptions: { ...this._pageQueryOptions, ...(overrides._pageQueryOptions ?? {}) },
       _hasSourceBase: this._hasSourceBase as TSourceBasePoint extends UndefinedConnectedSourceBasePoint ? false : true,
       _extendFns: overrides._extendFns ?? this._extendFns,
-      _route: (overrides._route ?? this._route) as TRoute,
-      _page: (overrides._page ?? this._page) as PageComponent<TOutputData, TRoute> | UndefinedPageComponent,
-      _layout: (overrides._layout ?? this._layout) as LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent,
-      _layouts,
-      _id: overrides._id ?? this._id,
-      _method: overrides._method ?? this._method,
+      _route: (overrides._route ?? (wasEndpoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
+      _page: (overrides._page ?? undefined) as PageComponent<TOutputData, TRoute> | UndefinedPageComponent, // remove end artefact on continue
+      _layout: (overrides._layout ?? undefined) as LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent, // remove end artefact on continue
+      _layouts: !this._layout ? this._layouts : [...this._layouts, this as LayoutPoint], // add layout to self layouts on continue
+      _id: overrides._id ?? (wasEndpoint ? undefined : this._id), // remove stale artefact on continue
+      _method: overrides._method ?? (wasEndpoint ? undefined : this._method), // remove stale artefact on continue
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
       _errorComponent: overrides._errorComponent ?? this._errorComponent,
       _pageErrorComponent: overrides._pageErrorComponent ?? this._pageErrorComponent,
@@ -225,6 +228,17 @@ export class Point0<
       _componentLoaderComponent: overrides._componentLoaderComponent ?? this._componentLoaderComponent,
       _appLoaderComponent: overrides._appLoaderComponent ?? this._appLoaderComponent,
     })
+  }
+
+  _isEndpoint(): boolean {
+    return (
+      this._pointType === 'page' ||
+      this._pointType === 'layout' ||
+      this._pointType === 'response' ||
+      this._pointType === 'query' ||
+      this._pointType === 'mutation' ||
+      this._pointType === 'component'
+    )
   }
 
   // base
@@ -944,7 +958,7 @@ export class Point0<
     >({
       _pointType: 'page',
       _page: page as PageComponent<Data, CurrentRoute<TRoute>>,
-      _method: this._method || 'get',
+      _method: 'get',
     })
   }
 
@@ -972,7 +986,7 @@ export class Point0<
     >({
       _pointType: 'layout',
       _layout: layout as LayoutComponent<Data, CurrentRoute<TRoute>>,
-      _method: this._method || 'get',
+      _method: 'get',
     })
   }
 
@@ -1002,7 +1016,7 @@ export class Point0<
       _responseFn: responseFn as TResponseOutput extends ResponseOutput
         ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
         : undefined,
-      _method: this._method || 'post',
+      _method: 'post',
     })
   }
 

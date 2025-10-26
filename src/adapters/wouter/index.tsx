@@ -1,8 +1,8 @@
 import { Route0 } from '@devp0nt/route0'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import type { LinkProps as WouterLinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import type { PagesCollection } from '../../eversion/runtime.js'
+import type { LayoutsTree, PagesCollection } from '../../eversion/runtime.js'
 import { Eversion0 } from '../../eversion/runtime.js'
 
 const DefaultPage404 = () => {
@@ -11,6 +11,62 @@ const DefaultPage404 = () => {
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 // TODO: make router provide in global context all its helpers and we will get it from main router package
+
+const anchorWithSplat = (anchor: string) => {
+  const base = anchor.replace(/\/$/, '')
+  return base === '' ? '/*' : `${base}/*?`
+}
+
+export const RenderLayoutTree = ({ nodes, Page404 }: { nodes: LayoutsTree; Page404: React.ComponentType }) => {
+  return (
+    <Switch>
+      {nodes.map((node) => {
+        // Bucket for pages without any layout
+        if (!node.layoutComponent) {
+          return (
+            <Fragment key={`nolayout-${node.route}`}>
+              {node.pages.map(({ route, pageComponent: Page }) => {
+                return (
+                  <Route key={route} path={route}>
+                    <Page />
+                  </Route>
+                )
+              })}
+
+              {/* Child layouts (they emit their own <Route> wrappers) */}
+              <RenderLayoutTree nodes={node.layouts} Page404={Page404} />
+            </Fragment>
+          )
+        }
+
+        const Layout = node.layoutComponent
+        return (
+          <Route key={node.route} path={anchorWithSplat(node.route)}>
+            <Layout>
+              <Switch>
+                {/* Pages directly under this layout */}
+                {node.pages.map(({ route, pageComponent: Page }) => {
+                  return (
+                    <Route key={route} path={route}>
+                      <Page />
+                    </Route>
+                  )
+                })}
+
+                {/* Nested layout branches (each produces its own <Route path="child/*">) */}
+                <RenderLayoutTree nodes={node.layouts} Page404={Page404} />
+              </Switch>
+            </Layout>
+          </Route>
+        )
+      })}
+
+      <Route path="*">
+        <Page404 />
+      </Route>
+    </Switch>
+  )
+}
 
 export const Router = ({
   ssrLocation,
@@ -31,21 +87,11 @@ export const Router = ({
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   })()
 
+  const layoutsTree = Eversion0.toLayoutsTree({ pages })
+
   return (
     <WouterRouter {...wouterRouterProps}>
-      <Switch>
-        {pages.map((page) => {
-          const route = page.route.getDefinition()
-          return (
-            <Route key={route} path={route}>
-              <page.pageComponent />
-            </Route>
-          )
-        })}
-        <Route path="*">
-          <Page404 />
-        </Route>
-      </Switch>
+      <RenderLayoutTree nodes={layoutsTree} Page404={Page404} />
     </WouterRouter>
   )
 }

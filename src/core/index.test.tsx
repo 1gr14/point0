@@ -13,6 +13,7 @@ import type {
   UndefinedRoute,
 } from './index.js'
 import { Point0 } from './index.js'
+import { QueryClient } from '@tanstack/react-query'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -147,6 +148,8 @@ describe('Point0', () => {
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
   })
 
@@ -219,6 +222,8 @@ describe('Point0', () => {
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -249,6 +254,8 @@ describe('Point0', () => {
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
@@ -275,6 +282,8 @@ describe('Point0', () => {
       point: clientPoint03,
       eversion: eversion3,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
   })
 
@@ -311,6 +320,8 @@ describe('Point0', () => {
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -342,6 +353,8 @@ describe('Point0', () => {
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
     const server3 = server1.ctx(({ ctx }) => ({
       r: ctx.r,
@@ -370,6 +383,8 @@ describe('Point0', () => {
       point: clientPoint03,
       eversion: eversion3,
       response: undefined,
+      extendFnsWithOutput: expect.any(Array),
+      queryClient: expect.any(QueryClient),
     })
   })
 
