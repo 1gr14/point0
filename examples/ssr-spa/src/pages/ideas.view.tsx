@@ -1,6 +1,7 @@
+import { Link } from 'point0/adapters/wouter'
 import { useState } from 'react'
 import type { Idea } from '../lib/prisma'
-import { Link } from 'point0/adapters/wouter'
+import { routes } from '../lib/routes'
 
 export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[]; env: string | undefined } }) => {
   const [count, setCount] = useState(() => 0)
@@ -22,6 +23,9 @@ export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[];
               <Link to={`/ideas/${idea.id}`}>{idea.title}</Link>
             </h3>
             <p>{idea.description}</p>
+            <p>
+              <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
+            </p>
           </div>
         ))}
       </div>

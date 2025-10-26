@@ -28,6 +28,7 @@ type RouterContextValue = {
   policy: RouterPolicy
   status: RouterStatus
   pagesTree: PagesTree
+  routes: RoutesCollection
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
@@ -87,10 +88,13 @@ export function useLocation<TRoute extends Route0.AnyRoute = Route0.AnyRoute>():
   return ctx.currentLocation as Route0.Location<TRoute>
 }
 
-export const useRoute: UseRouteFn = <TRoute extends Route0.AnyRoute>(route: TRoute) => {
+export const useRoute: UseRouteFn = <TRoute extends Route0.AnyRoute>(route: TRoute, location?: Route0.Location) => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useRoute must be used within RouterContextProvider')
-  return useMemo(() => Route0.getMatch(route, ctx.currentLocation), [route, ctx.currentLocation])
+  return useMemo(
+    () => Route0.getMatch(route, location || ctx.currentLocation),
+    [route, location || ctx.currentLocation],
+  )
 }
 
 export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -104,6 +108,12 @@ export const useRouterPolicy: UseRouterPolicyFn = () => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useRouterPolicy must be used within RouterContextProvider')
   return ctx.policy
+}
+
+export const useIsRouterFetching = (): boolean => {
+  const ctx = React.useContext(RouterContext)
+  if (!ctx) throw new Error('useIsRouterFetching must be used within RouterContextProvider')
+  return ctx.status === 'fetching'
 }
 
 export const useRouterContext: UseRouterContextFn = () => {
@@ -133,7 +143,8 @@ export function wrapUseNavigate<T extends () => (href: string, ...args: any[]) =
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = Route0.getLocation(href)
+      const rawLocation = Route0.getLocation(href)
+      const location = Eversion0.getRouteMatch(ctx.routes, rawLocation)?.location || rawLocation
       ctx.setNextLocation(location)
 
       if (ctx.policy === 'simple') {

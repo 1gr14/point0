@@ -10,7 +10,7 @@ export default function App({ dehydratedState, ssrLocation, pagesTree }: Hydrate
     <QueryClientProvider client={queryClient}>
       <HydrationBoundary state={dehydratedState}>
         <Unhead>
-          <Router pagesTree={pagesTree} ssrLocation={ssrLocation} />
+          <Router pagesTree={pagesTree} ssrLocation={ssrLocation} policy="prefetch" />
         </Unhead>
       </HydrationBoundary>
     </QueryClientProvider>

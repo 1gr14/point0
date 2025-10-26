@@ -1,7 +1,3 @@
-router provides hook for isInitialPage and prevent query retries
-On Link click prefetch all queries if not already prefetched for target page and its layouts
-router global context
-
 client dev server
 
 chain: .chain().x() , Point0.chain()

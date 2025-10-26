@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { MutationOptions, QueryOptions, UseMutationResult, UseQueryResult } from '@tanstack/react-query'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import qs from 'qs'
 import * as React from 'react'
@@ -9,7 +9,7 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type z from 'zod'
 import { mergeHeaders } from './utils.js'
-import { useLocation } from '../eversion/router.js'
+import { useIsInitalSsrLocation, useLocation } from '../eversion/router.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -1180,11 +1180,12 @@ export class Point0<
 
     function PageWrapperComponent(): React.ReactElement {
       const location = useLocation<CurrentRoute<TRoute>>()
-      // const { isInitialPage } = useEversionContext()
-      // const queryClient = useQueryClient()
-      // const cache = queryClient.getQueryCache()
+      const isInitalSsrLocation = useIsInitalSsrLocation()
+      console.log('isInitalSsrLocation', isInitalSsrLocation)
+      const queryClient = useQueryClient()
+      const cache = queryClient.getQueryCache()
       const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
-      // const query = cache.find({ queryKey })
+      const query = cache.find({ queryKey })
       const result = useQuery<TOutputData>({
         queryKey,
         queryFn: async () => {
@@ -1202,8 +1203,13 @@ export class Point0<
             httpStatus: res.status,
           })
         },
-        // enabled: !isInitialPage || query?.state.status !== 'error',
+        enabled: !isInitalSsrLocation || query?.state.status !== 'error',
         retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
         ...point._queryOptions,
         ...point._pageQueryOptions,
       })
@@ -1270,11 +1276,11 @@ export class Point0<
 
     function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {
       const location = useLocation<CurrentRoute<TRoute>>()
-      // const { isInitialPage } = useEversionContext()
-      // const queryClient = useQueryClient()
-      // const cache = queryClient.getQueryCache()
+      const isInitalSsrLocation = useIsInitalSsrLocation()
+      const queryClient = useQueryClient()
+      const cache = queryClient.getQueryCache()
       const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
-      // const query = cache.find({ queryKey })
+      const query = cache.find({ queryKey })
       const result = useQuery<TOutputData>({
         queryKey,
         queryFn: async () => {
@@ -1292,8 +1298,13 @@ export class Point0<
             httpStatus: res.status,
           })
         },
-        // enabled: !isInitialPage || query?.state.status !== 'error',
+        enabled: !isInitalSsrLocation || query?.state.status !== 'error',
         retry: false,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
         ...point._queryOptions,
         ...point._pageQueryOptions,
       })

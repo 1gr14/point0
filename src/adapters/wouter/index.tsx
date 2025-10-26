@@ -77,18 +77,18 @@ export const Router = ({
   )
 
   return (
-    <RouterContextProvider
-      pagesTree={pagesTree}
-      useAdapterLocation={useAdapterLocation}
-      routes={routes}
-      ssrLocation={ssrLocation}
-      policy={policy}
-      status={status}
-    >
-      <WouterRouter {...wouterRouterProps}>
+    <WouterRouter {...wouterRouterProps}>
+      <RouterContextProvider
+        pagesTree={pagesTree}
+        useAdapterLocation={useAdapterLocation}
+        routes={routes}
+        ssrLocation={ssrLocation}
+        policy={policy}
+        status={status}
+      >
         <RenderPagesTree nodes={pagesTree} Page404={Page404} />
-      </WouterRouter>
-    </RouterContextProvider>
+      </RouterContextProvider>
+    </WouterRouter>
   )
 }
 
