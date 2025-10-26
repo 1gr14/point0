@@ -1,12 +1,11 @@
-preload layouts data
-extendFns should store middle state (extractedExtendFsn) and be returned on after extract, and can be passed to another extract to avoid recalling we can store it in {cache}
-const {ctx, data, meta} = await somePage.extract({ctx: currentCtx, data: currentData, meta: currentMeta}) // inside another loaders or ctxFns
-client dev server
 router use regex for paths
 router provides hook for isInitialPage and prevent query retries
+On Link click prefetch all queries if not already prefetched for target page and its layouts
+router global context
+
+client dev server
 
 chain: .chain().x() , Point0.chain()
-on clone clean ready artefacts
 requireData()
 
 .base(() => clientCtx) <ClientCtxProvider base={client} />
@@ -47,7 +46,6 @@ do not loose state on hmr
 prevent endless loop hmr after code changes
 html template parsing by provided vars
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags), on call any cloient fn or head(() =>) endpoint type is client-middleware and als _pointType
-superjson
 route0 respect origin on match and try two clients with one server
 .extendRoute()
 remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
