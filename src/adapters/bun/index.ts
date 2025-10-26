@@ -4,6 +4,7 @@ import * as nodePath from 'node:path'
 import qs from 'qs'
 import { createElement } from 'react'
 import type { BaseId, BasePoint, Method, RequiredCtx } from '../../core/index.js'
+import type { IsEmptyObject } from '../../core/types.js'
 import type { PointsCollection } from '../../eversion/main.js'
 import { Eversion0 } from '../../eversion/main.js'
 import type {
@@ -16,7 +17,6 @@ import { parseAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
-import type { IsEmptyObject } from '../../core/types.js'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
@@ -33,11 +33,14 @@ type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = Adapte
   eversion: Eversion0<TRequiredCtx>
 }
 
+// TODO: rename it
 export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  bunServer: Bun.Server<unknown> | undefined
+  mainServer: Bun.Server<unknown> | undefined
+  mainServerPort: number
+  clientsDevServer: Bun.Server<unknown> | undefined
+  clientsDevServerPort: number
   base: BasePoint<TRequiredCtx>
   points?: PointsCollection
-  port?: number | string | undefined
   logger: AdapterLogger
   dirname?: string
   publicDir?: string
@@ -57,7 +60,10 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   ) {
     this.base = input.base
     this.points = input.points
-    this.port = input.port
+    this.mainServerPort = input.port ? Number(input.port) : 3000
+    this.clientsDevServerPort = input.clientsDevServerPort
+      ? Number(input.clientsDevServerPort)
+      : this.mainServerPort + 1
     this.logger = input.logger
     this.dirname = input.dirname
     this.publicDir = input.publicDir
@@ -182,9 +188,11 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   this.indexHtmlContents = indexHtmlContents
   // }
 
-  async _loadSrcIndexHtmlContents(parsedRequest: ParsedRequest, client: AdapterClientInputParsed): Promise<string> {
+  async _loadSrcIndexHtmlContents(client: AdapterClientInputParsed): Promise<string> {
     return await (
-      await fetch(`${parsedRequest.url.origin}${client.basepath}development-${client.base._baseId}.index.html`)
+      await fetch(
+        `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.base._baseId}.index.html`,
+      )
     ).text()
   }
 
@@ -297,7 +305,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         const originalIndexHtml =
           process.env.NODE_ENV === 'production'
             ? this.indexHtmlContents[relatedClient.base._baseId]
-            : await this._loadSrcIndexHtmlContents(parsedRequest, relatedClient)
+            : await this._loadSrcIndexHtmlContents(relatedClient)
         const App = relatedClient.App
 
         if (relatedClient.ssr && !isJsonAcceptable) {
@@ -379,6 +387,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       ? [
           options?: {
             port?: number | string
+            clientsDevServerPort?: number | string
             hmr?: boolean
             requiredCtx?: Omit<TRequiredCtx, 'request'>
           },
@@ -386,64 +395,151 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       : [
           options: {
             port?: number | string
+            clientsDevServerPort?: number | string
             hmr?: boolean
+            requiredCtx: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+  ): Bun.Server<unknown> | undefined {
+    if (process.env.SERVE_TARGET === 'client') {
+      return this.serveClientsDevServer(...args)
+    } else {
+      return this.serveMainServer(...args)
+    }
+  }
+
+  serveMainServer(
+    ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
+      ? [
+          options?: {
+            port?: number | string
+            requiredCtx?: Omit<TRequiredCtx, 'request'>
+          },
+        ]
+      : [
+          options: {
+            port?: number | string
             requiredCtx: Omit<TRequiredCtx, 'request'>
           },
         ]
   ): Bun.Server<unknown> {
     const options = args[0]
-    const port = options?.port ?? this.port
-    const hmr = options?.hmr ?? true
+    const port = options?.port ?? this.mainServerPort
     const requiredCtx = options && 'requiredCtx' in options ? options.requiredCtx : {}
-    if (this.bunServer) {
-      throw new Error(
-        'Bun server already started. If you call "serve" method, you do not need to call "startClientsDevServer" method, becouse clients dev server already injected into bun server',
-      )
+    if (this.mainServer) {
+      throw new Error('Main server already started')
     }
-    this.bunServer = serve({
-      port: port ?? this.port,
-      development: process.env.NODE_ENV === 'production' ? false : { hmr },
-      routes: {
-        ...this.clientsDevRoutes,
-        '/*': async (request) => {
-          return await this.fetch(request, { request, ...requiredCtx } as never as TRequiredCtx)
+    console.log('clientsDevServerPort', this.clientsDevServerPort)
+    this.mainServer = serve({
+      port,
+      fetch: async (request, server) => {
+        const url = new URL(request.url)
+        const path = url.pathname
+
+        // WebSocket proxy for HMR
+        if (process.env.NODE_ENV === 'development' && path.startsWith('/_bun/hmr')) {
+          const wsUrl = `ws://localhost:${this.clientsDevServerPort}${path}${url.search}`
+
+          // Upgrade the connection and store upstream URL in data
+          const upgraded = server.upgrade(request, {
+            data: { wsUrl },
+          })
+
+          if (!upgraded) {
+            return new Response('WebSocket upgrade failed', { status: 400 })
+          }
+
+          // Return undefined to indicate WebSocket upgrade was successful
+          return
+        }
+
+        // HTTP proxy for client dev server assets
+        const shouldProxyToClient =
+          process.env.NODE_ENV === 'development' &&
+          (path.startsWith('/_bun') || path.startsWith('/development-') || path.endsWith('.hot-update.js'))
+
+        if (shouldProxyToClient) {
+          const fixedUrl = new URL(`http://localhost:${this.clientsDevServerPort}${path}${url.search}`)
+          return await fetch(fixedUrl, request)
+        }
+
+        return await this.fetch(request, { request, ...requiredCtx } as never as TRequiredCtx)
+      },
+
+      websocket: {
+        open(ws) {
+          // Connect to upstream WebSocket when client connects
+          const data = ws.data as { wsUrl: string; upstream?: WebSocket }
+          const upstream = new WebSocket(data.wsUrl)
+
+          upstream.onopen = () => {
+            // Store upstream reference in ws data
+            data.upstream = upstream
+          }
+
+          upstream.onmessage = (event) => {
+            // Forward messages from upstream to client
+            ws.send(event.data)
+          }
+
+          upstream.onclose = () => {
+            ws.close()
+          }
+
+          upstream.onerror = () => {
+            ws.close()
+          }
+
+          // Store upstream for later use
+          data.upstream = upstream
+        },
+
+        message(ws, message) {
+          // Forward messages from client to upstream
+          const data = ws.data as { upstream?: WebSocket }
+          if (data.upstream && data.upstream.readyState === WebSocket.OPEN) {
+            data.upstream.send(message)
+          }
+        },
+
+        close(ws) {
+          // Clean up upstream connection when client disconnects
+          const data = ws.data as { upstream?: WebSocket }
+          if (data.upstream) {
+            data.upstream.close()
+          }
         },
       },
     })
-    this.port = this.bunServer.port
-    // this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
-    //   this.logger.error(error)
-    // })
-    this.logger.info(`Bun server running at http://localhost:${this.port}`)
-    return this.bunServer
+
+    this.mainServerPort = this.mainServer.port ?? this.mainServerPort
+    this.logger.info(`Server running at http://localhost:${this.mainServerPort}`)
+    return this.mainServer
   }
 
   // in case if we serve via elysia or another server, we need to start clients dev server separately
-  startClientsDevServer({ port, hmr = true }: { port?: number | string | undefined; hmr?: boolean } = {}):
-    | Bun.Server<unknown>
-    | undefined {
-    if (this.bunServer) {
-      throw new Error(
-        'Bun server already started. If you call "serve" method, you do not need to call "startClientsDevServer" method, becouse clients dev server already injected into bun server',
-      )
+  serveClientsDevServer({
+    port = this.clientsDevServerPort,
+    hmr = true,
+  }: { port?: number | string | undefined; hmr?: boolean } = {}): Bun.Server<unknown> | undefined {
+    if (this.clientsDevServer) {
+      throw new Error('Clients dev server already started')
     }
     if (process.env.NODE_ENV === 'production') {
       // throw new Error('startClientsDevServer is only available in development mode, please wrap your code in if (process.env.NODE_ENV !== "production") { ... }')
       return undefined
     }
-    this.bunServer = serve({
-      port: port ?? this.port,
-      development: process.env.NODE_ENV === 'production' ? false : { hmr },
+    console.log('port', port)
+    this.clientsDevServer = serve({
+      port,
+      development: { hmr, console: false },
       routes: {
         ...this.clientsDevRoutes,
       },
     })
-    this.port = this.bunServer.port
-    // this._preloadSrcIndexHtmlContents(this.bunServer).catch((error: unknown) => {
-    //   this.logger.error(error)
-    // })
-    this.logger.info(`Clients dev server running at http://localhost:${this.port}`)
-    return this.bunServer
+    this.clientsDevServerPort = this.clientsDevServer.port ?? this.clientsDevServerPort
+    this.logger.info(`Clients dev server running at http://localhost:${this.clientsDevServerPort}`)
+    return this.clientsDevServer
   }
 }
 

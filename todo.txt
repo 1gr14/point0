@@ -68,3 +68,4 @@ npm @point0
 ? persistent zustand store
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
+websocket

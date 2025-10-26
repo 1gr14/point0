@@ -23,6 +23,7 @@ export type AdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> =
   base: BasePoint<TRequiredCtx>
   points?: PointsCollection
   port?: number | string | undefined
+  clientsDevServerPort?: number | string | undefined
   logger?: AdapterLogger
   dirname?: string
   publicDir?: string
@@ -47,6 +48,7 @@ export type AdapterServerInputParsed<TRequiredCtx extends RequiredCtx = Required
   base: BasePoint<TRequiredCtx>
   points: PointsCollection
   port: number | string | undefined
+  clientsDevServerPort: number | string | undefined
   logger: AdapterLogger
   dirname: string | undefined
   publicDir: string | undefined
@@ -112,6 +114,7 @@ export const parseAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx
   return {
     points: points ?? [],
     port,
+    clientsDevServerPort: input.clientsDevServerPort,
     logger,
     dirname,
     publicDir,
