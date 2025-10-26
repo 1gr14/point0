@@ -11,6 +11,40 @@ import type z from 'zod'
 import { mergeHeaders } from './utils.js'
 import { useIsInitalSsrLocation, useLocation } from '../eversion/router.js'
 
+// Global cache for HMR-aware component wrappers
+// This ensures component identity is preserved across HMR updates
+const _hmrComponentCache = new Map<string, { component: React.ComponentType<any>; componentRef: { current: any } }>()
+
+function _getOrCreateHMRSafeWrapper<TProps extends Record<string, any>>(
+  cacheKey: string,
+  component: React.ComponentType<TProps>,
+  displayNamePrefix = 'HMRSafeWrapper',
+): React.ComponentType<TProps> {
+  let cached = _hmrComponentCache.get(cacheKey)
+
+  if (!cached) {
+    // Create a ref to hold the latest version of the component
+    const componentRef = { current: component }
+
+    // Create a stable wrapper component that uses the ref
+    const StableWrapper: React.ComponentType<TProps> = (props) => {
+      // Always use the latest version from the ref
+      return React.createElement(componentRef.current, props)
+    }
+
+    // Set display name for better debugging
+    StableWrapper.displayName = `${displayNamePrefix}(${component.name || 'Anonymous'})`
+
+    cached = { component: StableWrapper, componentRef }
+    _hmrComponentCache.set(cacheKey, cached)
+  } else {
+    // Update the ref to point to the new component version (for HMR)
+    cached.componentRef.current = component
+  }
+
+  return cached.component
+}
+
 export class Point0<
   TPointType extends PointType,
   TConnectedSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint,
@@ -1168,14 +1202,25 @@ export class Point0<
       return PageComponent
     }
 
+    // Create a stable cache key for this page component
+    const cacheKey = `page:${point._baseId}:${point._getRouteDefinition()}`
+
+    // At this point we know _page is defined due to checks above, but TypeScript doesn't know that
+    // So we use a local const to narrow the type
+    const pageComponentDefined: PageComponent<TOutputData, TRoute> = point._page ?? (() => null as never)
+
+    // Get or create an HMR-safe wrapper that maintains component identity
+    const HMRSafePageComponent = _getOrCreateHMRSafeWrapper<PageComponentProps<TOutputData, TRoute>>(
+      cacheKey,
+      pageComponentDefined,
+      'HMRSafePage',
+    )
+
     function PageComponent({ data, location }: PageComponentProps<TOutputData, TRoute>): React.ReactElement {
       for (const head of point._heads) {
         useHead(typeof head === 'function' ? head({ data, location }) : head)
       }
-      if (!point._page) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-      }
-      return React.createElement(point._page, { data, location })
+      return React.createElement(HMRSafePageComponent, { data, location })
     }
 
     function PageWrapperComponent(): React.ReactElement {
@@ -1259,6 +1304,20 @@ export class Point0<
       return LayoutComponent
     }
 
+    // Create a stable cache key for this layout component
+    const cacheKey = `layout:${point._baseId}:${point._getRouteDefinition()}`
+
+    // At this point we know _layout is defined due to checks above, but TypeScript doesn't know that
+    // So we use a local const to narrow the type
+    const layoutComponentDefined: LayoutComponent<TOutputData, TRoute> = point._layout ?? (() => null as never)
+
+    // Get or create an HMR-safe wrapper that maintains component identity
+    const HMRSafeLayoutComponent = _getOrCreateHMRSafeWrapper<LayoutComponentProps<TOutputData, TRoute>>(
+      cacheKey,
+      layoutComponentDefined,
+      'HMRSafeLayout',
+    )
+
     function LayoutComponent({
       data,
       location,
@@ -1267,10 +1326,7 @@ export class Point0<
       // for (const head of point._heads) {
       //   useHead(typeof head === 'function' ? head({ data, location }) : head)
       // }
-      if (!point._layout) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
-      }
-      return React.createElement(point._layout, { data, location, children })
+      return React.createElement(HMRSafeLayoutComponent, { data, location, children })
     }
 
     function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {

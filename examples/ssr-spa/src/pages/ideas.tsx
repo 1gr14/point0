@@ -9,8 +9,8 @@ export const ideasPage = generalLayout
     return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
   })
   .title(({ data }) => `${data.ideasCount} ideas`)
-  // if you want to preserve state of "count" on HMR, you need to use this approach,
-  // just return ready elemnt imported from another file
+  // To preserve state on HMR, define your component in a separate file (like IdeasView)
+  // The framework now uses an HMR-safe wrapper that maintains component identity across reloads
   .page(({ data }) => <IdeasView data={data} />)
 // you can provider ready element here, but you will loose state on HMR.
 // And it is ok for most parts of your app.
