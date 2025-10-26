@@ -11,7 +11,12 @@ export const ideasPage = generalLayout
   .title(({ data }) => `${data.ideasCount} ideas`)
   // if you want to preserve state of "count" on HMR, you need to use this approach,
   // just return ready elemnt imported from another file
-  .page(({ data }) => <IdeasView data={data} />)
+  .page(({ data }) => (
+    <div>
+      47899
+      <IdeasView data={data} />
+    </div>
+  ))
 // you can provider ready element here, but you will loose state on HMR.
 // And it is ok for most parts of your app.
 // .page(({ data }) => {

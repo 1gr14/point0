@@ -334,11 +334,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             if (!App) {
               throw new Error(`App not found for client "${relatedClient.base._baseId}", please provide it`)
             }
-            const pagesAndLayouts = Eversion0.toPagesAndLayoutsCollection({ points: relatedClient.eversion.points })
-            const pagesTree = Eversion0.toPagesTree({ pagesAndLayouts })
             const appElement = createElement(App, {
               ssrLocation: extractResult.location,
-              pagesTree,
+              pagesTree: Eversion0.toPagesTree({ points: relatedClient.eversion.points }),
               dehydratedState: extractResult.dehydratedState,
             })
             const readableStream = await renderReadableStream({

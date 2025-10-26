@@ -311,7 +311,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return collection
   }
 
-  static toPagesTree = ({ pagesAndLayouts }: { pagesAndLayouts: PagesAndLayoutsCollection }): PagesTree => {
+  static toPagesTreeFromPagesAndLayouts = ({
+    pagesAndLayouts,
+  }: {
+    pagesAndLayouts: PagesAndLayoutsCollection
+  }): PagesTree => {
     const layouts = pagesAndLayouts.layouts
     const pages = pagesAndLayouts.pages
     const pagesWithoutLayouts = pages.filter((p) => p.layoutComponents.length === 0)
@@ -367,6 +371,15 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return pagesTree
   }
 
+  static toPagesTree = ({ points }: { points: PointsCollection | LoadedPointsCollection }): PagesTree => {
+    const pagesAndLayouts = Eversion0.toPagesAndLayoutsCollection({ points })
+    return Eversion0.toPagesTreeFromPagesAndLayouts({ pagesAndLayouts })
+  }
+
+  static toLoadedPagesTree = async ({ points }: { points: PointsCollection }): Promise<PagesTree> => {
+    const loadedPoints = await Eversion0.toLoadedPointsCollection(points)
+    return Eversion0.toPagesTree({ points: loadedPoints })
+  }
   static toRoutesCollection = (pagesTree: PagesTree): RoutesCollection => {
     const routes: RoutesCollection = {}
     const traverse = (node: PagesTreeRecord): void => {

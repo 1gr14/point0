@@ -1226,6 +1226,91 @@ export class Point0<
     return PageWrapperComponent
   }
 
+  // _getWrappedPageComponent = (): React.ComponentType => {
+  //   // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+  //   const point = this
+
+  //   // define a single stable React component
+  //   const Wrapped: React.FC = () => {
+  //     const location = useLocation<CurrentRoute<TRoute>>()
+  //     const isInitalSsrLocation = useIsInitalSsrLocation()
+  //     const queryClient = useQueryClient()
+  //     const cache = queryClient.getQueryCache()
+  //     const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
+  //     const query = cache.find({ queryKey })
+
+  //     const loaderComponent = point._getLoaderComponent({ type: 'page' })
+  //     const errorComponent = point._getErrorComponent({ type: 'page' })
+  //     const Page = point._page
+
+  //     // if there's no page at all
+  //     if (!Page) {
+  //       return React.createElement(errorComponent, {
+  //         type: 'page',
+  //         error: new Error0('No page component'),
+  //         location,
+  //       })
+  //     }
+
+  //     // no loader — static page
+  //     if (!point._hasLoader()) {
+  //       const data = {} as TOutputData
+  //       for (const head of point._heads) {
+  //         useHead(typeof head === 'function' ? head({ data, location }) : head)
+  //       }
+  //       return React.createElement(Page, { data, location })
+  //     }
+
+  //     // useQuery for loader-based pages
+  //     const result = useQuery<TOutputData>({
+  //       queryKey,
+  //       queryFn: async () => {
+  //         const fetchOptions = point._fetchOptions()
+  //         const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+  //         const res = await fetch(location.pathname, { ...fetchOptions, headers })
+  //         const json = await res.json()
+  //         if (res.ok) return json
+  //         throw Error0.from(json, { httpStatus: res.status })
+  //       },
+  //       enabled: !isInitalSsrLocation || query?.state.status !== 'error',
+  //       retry: false,
+  //       refetchOnMount: false,
+  //       refetchOnWindowFocus: false,
+  //       refetchOnReconnect: false,
+  //       refetchInterval: false,
+  //       refetchIntervalInBackground: false,
+  //       ...point._queryOptions,
+  //       ...point._pageQueryOptions,
+  //     })
+
+  //     if (result.error) {
+  //       return React.createElement(errorComponent, {
+  //         type: 'page',
+  //         error: Error0.from(result.error),
+  //         location,
+  //       })
+  //     }
+  //     if (result.isLoading) {
+  //       return React.createElement(loaderComponent, { type: 'page', location })
+  //     }
+  //     if (!result.data) {
+  //       return React.createElement(errorComponent, {
+  //         type: 'page',
+  //         error: new Error0('No data'),
+  //         location,
+  //       })
+  //     }
+
+  //     for (const head of point._heads) {
+  //       useHead(typeof head === 'function' ? head({ data: result.data, location }) : head)
+  //     }
+
+  //     return React.createElement(Page, { data: result.data, location })
+  //   }
+
+  //   return Wrapped
+  // }
+
   _getWrappedLayoutComponent = (): React.ComponentType<{ children: React.ReactNode }> => {
     // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
     const point = this
@@ -1533,8 +1618,8 @@ export type PagePoint<
   TOutputCtx extends Ctx = any,
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
-  TInputSchema extends UndefinedInputSchema = UndefinedInputSchema,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TInputSchema extends UndefinedInputSchema = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = AnyPoint<
   'page',
   TConnectedSourceBasePoint,
