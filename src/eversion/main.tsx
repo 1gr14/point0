@@ -90,23 +90,175 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return connection
   }
 
-  static getSuitablePageLocation = ({
-    points,
+  // Best-effort prefetch for React.lazy components (safe if not lazy)
+  private static async _prefetchLazyComponent(
+    component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
+  ): Promise<void> {
+    const anyComp = component as any
+    if (!anyComp) return
+    try {
+      // React 18 lazy internals
+      if (anyComp?._init && anyComp?._payload) {
+        await anyComp._init(anyComp._payload)
+        return
+      }
+      // Some libraries expose preload()
+      if (typeof anyComp?.preload === 'function') {
+        await anyComp.preload()
+        return
+      }
+      // Fallback: sometimes the payload carries a thunk
+      if (anyComp?._payload && typeof anyComp._payload._result === 'function') {
+        await anyComp._payload._result()
+      }
+    } catch {
+      // ignore — prefetch is best-effort
+    }
+  }
+
+  static getSuitablePagePoint = async ({
+    pagesTree,
     location,
   }: {
-    points: PointsCollection
+    pagesTree: PagesTree
     location: Route0.Location
-  }): Route0.Location => {
-    for (const record of points) {
-      if (record.type !== 'page') {
-        continue
+  }): Promise<
+    | {
+        pagePoint: PagePoint
+        pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+        layouts: Array<{
+          layoutPoint: LayoutPoint
+          layoutComponent:
+            | React.ComponentType<{ children: React.ReactNode }>
+            | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+        }>
       }
-      const match = Route0.getMatch(Route0.create(record.route), location)
-      if (match.exact) {
-        return match.location
-      }
+    | undefined
+  > => {
+    type Found = {
+      page: PagesTreeRecord['pages'][number]
+      layoutPath: PagesTreeRecord[] // root -> node containing the page
     }
-    return location
+
+    let found: Found | undefined
+    const stack: PagesTreeRecord[] = []
+
+    const dfs = (node: PagesTreeRecord): void => {
+      if (found) return
+      stack.push(node)
+
+      // check pages at this node
+      for (const p of node.pages) {
+        const match = Route0.getMatch(p.route, location)
+        if (match.exact) {
+          found = { page: p, layoutPath: [...stack] }
+          break
+        }
+      }
+
+      // descend if not found
+      if (!found) {
+        for (const child of node.nestedPagesTree) {
+          dfs(child)
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (found) break
+        }
+      }
+
+      stack.pop()
+    }
+
+    for (const root of pagesTree) {
+      dfs(root)
+      if (found) break
+    }
+
+    if (!found) return undefined
+
+    // Load the PagePoint (await if it's a promise-returning factory)
+    const pagePoint = typeof found.page.pagePoint === 'function' ? await found.page.pagePoint() : found.page.pagePoint
+
+    // Prefetch the (possibly lazy) page component
+    await Eversion0._prefetchLazyComponent(found.page.pageComponent)
+
+    // Build layouts chain: take all ancestors that actually represent a layout node
+    const layoutNodes = found.layoutPath.filter((n) => n.layoutComponent && n.layoutPoint) as Array<
+      Required<Pick<PagesTreeRecord, 'layoutComponent' | 'layoutPoint'>>
+    >
+
+    // Resolve layoutPoints (if lazy factory) and prefetch lazy layout components
+    const layouts = await Promise.all(
+      layoutNodes.flatMap(async (n) => {
+        if (!n.layoutComponent || !n.layoutPoint) {
+          return [] as never
+        }
+        const layoutPoint = typeof n.layoutPoint === 'function' ? await n.layoutPoint() : n.layoutPoint
+        await Eversion0._prefetchLazyComponent(n.layoutComponent)
+        return {
+          layoutPoint,
+          layoutComponent: n.layoutComponent,
+        }
+      }),
+    )
+
+    return {
+      pagePoint,
+      pageComponent: found.page.pageComponent,
+      layouts,
+    }
+  }
+
+  static prefetchSuitablePagePoint = async ({
+    pagesTree,
+    location,
+    queryClient, // kept for signature parity if you need it later
+  }: {
+    pagesTree: PagesTree
+    location: Route0.Location
+    queryClient: QueryClient
+  }): Promise<PagePoint | undefined> => {
+    const result = await Eversion0.getSuitablePagePoint({ pagesTree, location })
+    if (!result) {
+      return undefined
+    }
+
+    // TODO: remove it
+    // // Touch the wrapped component to warm any internal wrappers (harmless if already loaded)
+    // try {
+    //   void result.pagePoint._getWrappedPageComponent()
+    // } catch {
+    //   // ignore best-effort warmup
+    // }
+
+    const points = [result.pagePoint, ...result.layouts.map((l) => l.layoutPoint)]
+    await Promise.all(
+      points.map(async (p) => {
+        await Eversion0.prefetchPoint({ point: p, queryClient, location })
+      }),
+    )
+
+    return result.pagePoint
+  }
+
+  static prefetchPoint = async ({
+    point,
+    queryClient,
+    location,
+  }: {
+    point: AnyPoint
+    queryClient: QueryClient
+    location: Route0.Location
+  }): Promise<void> => {
+    if (!point._hasLoader()) {
+      return
+    }
+    const queryOptions = point.getQueryOptions({ ...location.query, ...location.params })
+    const cache = queryClient.getQueryCache()
+    const query = cache.find({ queryKey: queryOptions.queryKey as QueryKey })
+    if (query) {
+      return
+    }
+    await queryClient.prefetchQuery(queryOptions as never)
   }
 
   static toPagesAndLayoutsCollection = ({
@@ -190,9 +342,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const result: PagesTreeRecord = {
         route: layout.route,
         layoutComponent: layout.layoutComponent,
+        layoutPoint: layout.point,
         pages: layoutPagesWhereThisLayoutIndexEqLevelAndIsLast.map((lp) => ({
           route: lp.route,
           pageComponent: lp.pageComponent,
+          pagePoint: lp.point,
         })),
         nestedPagesTree: nestedLayoutsTrees.flatMap((t) => t ?? []),
       }
@@ -207,8 +361,10 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pages: pagesWithoutLayouts.map((p) => ({
         route: p.route,
         pageComponent: p.pageComponent,
+        pagePoint: p.point,
       })),
       layoutComponent: undefined,
+      layoutPoint: undefined,
       nestedPagesTree: [],
     }
     const pagesTree: PagesTree = [
@@ -472,8 +628,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           continue
         }
         const layoutLocation = {
-          // layout will request own state on client, it has different route based on id, but it wants to recieve same input. Input for get routes made based o params and query.
-          ...Route0.getLocation(layout._getRouteAbsPath({ query: { ...location.query, ...location.params } } as never)),
+          ...Route0.getLocation(layout._getRouteAbsPath({ ...location.params, query: { ...location.query } } as never)),
         }
         const result = await this.extract({
           point: layout,
@@ -726,22 +881,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 }
 
-// type EversionContextValue = {
-//   isInitialPage: boolean
-//   setIsInitialPage: React.Dispatch<React.SetStateAction<boolean>>
-// }
-// const EversionContext = React.createContext<EversionContextValue | undefined>(undefined)
-// function EversionContextProvider({ children }: { children: React.ReactNode }) {
-//   const [isInitialPage, setIsInitialPage] = React.useState(true)
-//   const value = React.useMemo(() => ({ isInitialPage, setIsInitialPage }), [isInitialPage])
-//   return React.createElement(EversionContext.Provider, { value }, children)
-// }
-// export function useEversionContext(): EversionContextValue {
-//   const ctx = React.useContext(EversionContext)
-//   if (!ctx) throw new Error('useEversionContext must be used inside EversionContextProvider')
-//   return ctx
-// }
-
 export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
   base: BasePoint<TRequiredCtx>
   source?: null
@@ -784,17 +923,6 @@ export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = En
   layoutPagesRoutes: string[]
 }
 export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
-
-// export type LayoutsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-//   routes: string[]
-//   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
-// }
-// export type LayoutsCollection = LayoutsCollectionRecord[]
-// export type LoadedLayoutsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-//   routes: Route0.AnyRoute[]
-//   point: EndPoint<TEndPointType>
-// }
-// export type LoadedLayoutsCollection = LoadedLayoutsCollectionRecord[]
 
 export type LocationInput = { pathname: string } | { location: Route0.Location } | { id: string }
 
@@ -867,12 +995,14 @@ export type PagesAndLayoutsCollection = {
 
 export type PagesTreeRecord = {
   route: Route0.AnyRoute
+  layoutPoint: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
   layoutComponent:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
   pages: Array<{
     route: Route0.AnyRoute
+    pagePoint: PagePoint | (() => Promise<PagePoint>)
     pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   }>
   nestedPagesTree: PagesTreeRecord[]
