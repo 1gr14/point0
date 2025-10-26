@@ -9,6 +9,7 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type z from 'zod'
 import { mergeHeaders } from './utils.js'
+import { useLocation } from '../eversion/router.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -38,7 +39,7 @@ export class Point0<
     : undefined
   _baseId: BaseId
   _heads: HeadsCollection
-  _useLocation: () => Route0.Location<CurrentRoute<TRoute>>
+  // _useLocation: () => Route0.Location<CurrentRoute<TRoute>>
   // TODO: add _pageQueryOptions
   _queryOptions: QueryOptionsSettings
   _pageQueryOptions: QueryOptionsSettings
@@ -66,7 +67,7 @@ export class Point0<
 
   private constructor(props: {
     _pointType: TPointType
-    _useLocation?: () => Route0.Location
+    // _useLocation?: () => Route0.Location
     _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
@@ -100,10 +101,10 @@ export class Point0<
 
     // overridable
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
-    this._useLocation = (props._useLocation ??
-      (() => {
-        throw new Error('add .setUseLocation to chain to use page function')
-      })) as () => Route0.Location<CurrentRoute<TRoute>>
+    // this._useLocation = (props._useLocation ??
+    //   (() => {
+    //     throw new Error('add .setUseLocation to chain to use page function')
+    //   })) as () => Route0.Location<CurrentRoute<TRoute>>
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
@@ -207,7 +208,7 @@ export class Point0<
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
         : undefined, // remove end artefact on continue
-      _useLocation: overrides._useLocation ?? this._useLocation,
+      // _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
       _heads: wasEndpoint
         ? [...this._heads, ...(overrides._heads ?? [])].filter((h) => typeof h !== 'function')
@@ -219,7 +220,7 @@ export class Point0<
       _route: (overrides._route ?? (wasEndpoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
       _page: (overrides._page ?? undefined) as PageComponent<TOutputData, TRoute> | UndefinedPageComponent, // remove end artefact on continue
       _layout: (overrides._layout ?? undefined) as LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent, // remove end artefact on continue
-      _layouts: !this._layout ? this._layouts : [...this._layouts, this as LayoutPoint], // add layout to self layouts on continue
+      _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint], // add layout to self layouts on continue
       _id: overrides._id ?? (wasEndpoint ? undefined : this._id), // remove stale artefact on continue
       _method: overrides._method ?? (wasEndpoint ? undefined : this._method), // remove stale artefact on continue
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
@@ -1146,7 +1147,7 @@ export class Point0<
 
     if (!this._page) {
       function PageComponent(): React.ReactElement {
-        const location = point._useLocation()
+        const location = useLocation()
         return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
       }
       return PageComponent
@@ -1154,7 +1155,7 @@ export class Point0<
 
     if (!point._hasLoader()) {
       function PageComponent(): React.ReactElement {
-        const location = point._useLocation()
+        const location = useLocation<CurrentRoute<TRoute>>()
         const data = {} as TOutputData
         for (const head of point._heads) {
           useHead(typeof head === 'function' ? head({ data, location }) : head)
@@ -1178,7 +1179,7 @@ export class Point0<
     }
 
     function PageWrapperComponent(): React.ReactElement {
-      const location = point._useLocation()
+      const location = useLocation<CurrentRoute<TRoute>>()
       // const { isInitialPage } = useEversionContext()
       // const queryClient = useQueryClient()
       // const cache = queryClient.getQueryCache()
@@ -1228,7 +1229,7 @@ export class Point0<
 
     if (!this._layout) {
       function LayoutComponent(): React.ReactElement {
-        const location = point._useLocation()
+        const location = useLocation()
         return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
       }
       return LayoutComponent
@@ -1236,7 +1237,7 @@ export class Point0<
 
     if (!point._hasLoader()) {
       function LayoutComponent({ children }: { children: React.ReactNode }): React.ReactElement {
-        const location = point._useLocation()
+        const location = useLocation<CurrentRoute<TRoute>>()
         const data = {} as TOutputData
         // for (const head of point._heads) {
         //   useHead(typeof head === 'function' ? head({ data, location }) : head)
@@ -1268,7 +1269,7 @@ export class Point0<
     }
 
     function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {
-      const location = point._useLocation()
+      const location = useLocation<CurrentRoute<TRoute>>()
       // const { isInitialPage } = useEversionContext()
       // const queryClient = useQueryClient()
       // const cache = queryClient.getQueryCache()
@@ -1441,7 +1442,7 @@ export type AnyPoint<
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = Point0<
   TPointType,
   TConnectedSourceBasePoint,
@@ -1543,7 +1544,7 @@ export type LayoutPoint<
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = AnyPoint<
   'layout',
   TConnectedSourceBasePoint,
@@ -1584,7 +1585,7 @@ export type EndPoint<
   TOutputData extends Data = any,
   TRoute extends Route0.AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = AnyPoint<
   TPointType,
   TConnectedSourceBasePoint,

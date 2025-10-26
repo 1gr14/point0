@@ -1,5 +1,5 @@
 import { generalLayout } from '../layouts/general.js'
-import { Link } from '../lib/router.js'
+import { Link } from 'point0/adapters/wouter'
 import { routes } from '../lib/routes.js'
 
 export default generalLayout

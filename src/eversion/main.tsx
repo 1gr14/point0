@@ -374,6 +374,24 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return pagesTree
   }
 
+  static toRoutesCollection = (pagesTree: PagesTree): RoutesCollection => {
+    const routes: RoutesCollection = {}
+    const traverse = (node: PagesTreeRecord): void => {
+      // Add all page routes
+      for (const page of node.pages) {
+        routes[page.route.getDefinition()] = page.route
+      }
+      // Recurse into nested layout trees
+      for (const child of node.nestedPagesTree) {
+        traverse(child)
+      }
+    }
+    for (const root of pagesTree) {
+      traverse(root)
+    }
+    return routes
+  }
+
   static toLoggablePagesTree = (pagesTree: PagesTree): object => {
     return pagesTree.map((node) => {
       return {

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Link } from '../lib/router'
+import { Link } from 'point0/adapters/wouter'
 import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 

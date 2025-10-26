@@ -1,5 +1,5 @@
 import { client } from '../lib/client'
-import { Link } from '../lib/router'
+import { Link } from 'point0/adapters/wouter'
 import { routes } from '../lib/routes'
 
 export const generalLayout = client.route(routes.home).layout(({ children }) => {

@@ -1,6 +1,6 @@
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
-import { Link } from '../lib/router.js'
+import { Link } from 'point0/adapters/wouter'
 import { routes } from '../lib/routes.js'
 
 export const getIdea = async (ctx: Ctx, id: number) => {

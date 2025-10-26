@@ -1,11 +1,10 @@
 import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PagesTree, RoutesCollection } from './main.js'
 import { Eversion0 } from './main.js'
 
-export type UseAdapterNavigateFn = () => (href: string) => never | Promise<never>
 export type UseAdapterLocationFn = UseLocationFn
 
 export type RouterStatus = 'idle' | 'transit' | 'fetching' | 'transit-success' | 'transit-error' | 'success' | 'error'
@@ -19,15 +18,16 @@ export type UseOnNavigateFn = (
   prevLocation: Route0.Location,
   nextLocation: Route0.Location,
 ) => never | ((status: RouterStatus) => never)
+export type UseIsInitalSsrLocationFn = () => boolean
+export type UseRouterPolicyFn = () => RouterPolicy
 
 type RouterContextValue = {
-  initialLocation: Route0.Location
+  ssrLocation: Route0.Location | undefined
   currentLocation: Route0.Location
   nextLocation: Route0.Location | undefined
   policy: RouterPolicy
   status: RouterStatus
   pagesTree: PagesTree
-  useAdapterNavigate: UseAdapterNavigateFn
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
@@ -43,9 +43,8 @@ export type RouterContextProviderProps = {
   status?: RouterStatus
   pagesTree?: PagesTree
   routes: RoutesCollection
-  useAdapterNavigate: UseAdapterNavigateFn
   useAdapterLocation: UseAdapterLocationFn
-  initialLocation?: Route0.Location
+  ssrLocation?: Route0.Location | undefined
 }
 
 export function RouterContextProvider({
@@ -54,9 +53,8 @@ export function RouterContextProvider({
   status = 'idle',
   pagesTree = [],
   routes,
-  useAdapterNavigate,
   useAdapterLocation,
-  initialLocation = Route0.getLocation(''),
+  ssrLocation,
 }: RouterContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<Route0.Location | undefined>()
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
@@ -64,7 +62,7 @@ export function RouterContextProvider({
 
   const value = useMemo(
     () => ({
-      initialLocation,
+      ssrLocation,
       currentLocation,
       nextLocation,
       policy,
@@ -73,20 +71,9 @@ export function RouterContextProvider({
       routes,
       setNextLocation,
       setStatus,
-      useAdapterNavigate,
       useAdapterLocation,
     }),
-    [
-      initialLocation,
-      currentLocation,
-      nextLocation,
-      policy,
-      routerStatus,
-      pagesTree,
-      routes,
-      useAdapterNavigate,
-      useAdapterLocation,
-    ],
+    [ssrLocation, currentLocation, nextLocation, policy, routerStatus, pagesTree, routes, useAdapterLocation],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
@@ -106,6 +93,19 @@ export const useRoute: UseRouteFn = <TRoute extends Route0.AnyRoute>(route: TRou
   return useMemo(() => Route0.getMatch(route, ctx.currentLocation), [route, ctx.currentLocation])
 }
 
+export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
+  const ctx = React.useContext(RouterContext)
+  if (!ctx) throw new Error('useIsInitalSsrLocation must be used within RouterContextProvider')
+  const location = useLocation()
+  return !!ctx.ssrLocation && ctx.ssrLocation.href === location.href
+}
+
+export const useRouterPolicy: UseRouterPolicyFn = () => {
+  const ctx = React.useContext(RouterContext)
+  if (!ctx) throw new Error('useRouterPolicy must be used within RouterContextProvider')
+  return ctx.policy
+}
+
 export const useRouterContext: UseRouterContextFn = () => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useRouter must be used within RouterContextProvider')
@@ -122,65 +122,59 @@ export function setNextLocation(location: Route0.Location) {
 
 /** Navigate helper **/
 
-export function useNavigate() {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useNavigate must be used within RouterContextProvider')
+export function wrapUseNavigate<T extends () => (href: string, ...args: any[]) => any>(
+  useAdapterNavigate: T,
+): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: Route0.Location }> {
+  return () => {
+    const ctx = React.useContext(RouterContext)
+    if (!ctx) throw new Error('useNavigate must be used within RouterContextProvider')
+    const queryClient = useQueryClient()
+    const adapterNavigate = useAdapterNavigate()
 
-  const queryClient = useQueryClient()
-  const adapterNavigate = ctx.useAdapterNavigate()
-
-  const navigate = useCallback(
-    async (href: string) => {
+    return async (...args: Parameters<ReturnType<T>>) => {
+      const href = args[0]
       const location = Route0.getLocation(href)
       ctx.setNextLocation(location)
 
       if (ctx.policy === 'simple') {
-        // ── SIMPLE MODE ──
-        ctx.setStatus('transit')
+        ctx.setStatus('idle')
 
-        // Immediate transition
         try {
-          await adapterNavigate(location.href)
-          // ctx.setCurrentLocation(location)
+          await adapterNavigate(...(args as [string, ...any[]]))
           ctx.setNextLocation(undefined)
-          ctx.setStatus('idle')
+          // ctx.setCurrentLocation(location)
           return { status: 'idle', location }
-        } catch (err) {
-          ctx.setStatus('idle')
+        } catch {
           ctx.setNextLocation(undefined)
-          return { status: 'idle', location: ctx.currentLocation }
-        }
-      } else {
-        // ── PREFETCH MODE ──
-        ctx.setStatus('fetching')
-
-        try {
-          await Eversion0.prefetchSuitablePagePoint({
-            pagesTree: ctx.pagesTree,
-            location,
-            queryClient,
-          })
-
-          // After prefetch — perform actual navigation
-          ctx.setStatus('transit-success')
-          await adapterNavigate(location.href)
-          // ctx.setCurrentLocation(location)
-          ctx.setNextLocation(undefined)
-          ctx.setStatus('success')
-          return { status: 'success', location }
-        } catch (err) {
-          ctx.setStatus('transit-error')
-          await adapterNavigate(location.href)
-          ctx.setStatus('error')
-          ctx.setNextLocation(undefined)
-          return { status: 'error', location: ctx.currentLocation }
+          return { status: 'idle', location }
         }
       }
-    },
-    [ctx.policy, ctx.pagesTree, adapterNavigate, ctx.currentLocation, queryClient],
-  )
 
-  return navigate
+      // PREFETCH MODE
+      ctx.setStatus('fetching')
+
+      try {
+        await Eversion0.prefetchSuitablePagePoint({
+          pagesTree: ctx.pagesTree,
+          location,
+          queryClient,
+        })
+
+        ctx.setStatus('transit-success')
+        await adapterNavigate(...(args as [string, ...any[]]))
+        ctx.setNextLocation(undefined)
+        // ctx.setCurrentLocation(location)
+        ctx.setStatus('success')
+        return { status: 'success', location }
+      } catch {
+        ctx.setStatus('transit-error')
+        await adapterNavigate(...(args as [string, ...any[]]))
+        ctx.setNextLocation(undefined)
+        ctx.setStatus('error')
+        return { status: 'error', location: ctx.currentLocation }
+      }
+    }
+  }
 }
 
 /** Navigation hook **/

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Idea } from '../lib/prisma'
-import { Link } from '../lib/router.js'
+import { Link } from 'point0/adapters/wouter'
 
 export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[]; env: string | undefined } }) => {
   const [count, setCount] = useState(() => 0)

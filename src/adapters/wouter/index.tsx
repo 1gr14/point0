@@ -1,25 +1,56 @@
 import { Route0 } from '@devp0nt/route0'
-import React, { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import type { LinkProps as WouterLinkProps } from 'wouter'
+import React, { Fragment, useCallback, useMemo, useState } from 'react'
+import type { BaseLocationHook, LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import type { PagesTree, RoutesCollection } from '../../eversion/main.js'
+import type { BrowserLocationHook } from 'wouter/use-browser-location'
+import type { PagesTree } from '../../eversion/main.js'
 import { Eversion0 } from '../../eversion/main.js'
-import type { UseAdapterLocationFn, UseAdapterNavigate, UseLocationFn } from '../../eversion/router.js'
-import { RouterContextProvider } from '../../eversion/router.js'
+import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../eversion/router.js'
+import { RouterContextProvider, wrapUseNavigate } from '../../eversion/router.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 // TODO: make router provide in global context all its helpers and we will get it from main router package
 
+const _useNavigate = () => {
+  const [, navigate] = useWouterLocation()
+  return navigate
+}
+export const useNavigate = wrapUseNavigate(_useNavigate)
+
+export const Link = <H extends BaseLocationHook = BrowserLocationHook>(props: LinkProps<H>) => {
+  const { to, href, onClick, replace, ...rest } = props as LinkProps
+  const navigate = useNavigate()
+  const finalHref = to || href
+  return (
+    <WouterLink
+      {...rest}
+      href={href as never}
+      to={to}
+      replace={replace}
+      onClick={(e) => {
+        if (finalHref) {
+          if (e.metaKey || e.ctrlKey) return
+          e.preventDefault()
+          void navigate(finalHref, { replace })
+          onClick?.(e)
+        }
+      }}
+    />
+  )
+}
+
 export const Router = ({
   ssrLocation,
   pagesTree,
-  routes,
   Page404 = DefaultPage404,
+  policy,
+  status,
 }: {
   ssrLocation?: Route0.Location | undefined
   pagesTree: PagesTree
-  routes: RoutesCollection
   Page404?: React.ComponentType
+  policy?: RouterPolicy
+  status?: RouterStatus
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -31,7 +62,9 @@ export const Router = ({
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   }, [ssrLocation])
 
-  const useLocation = useCallback(
+  const [routes] = useState(() => Eversion0.toRoutesCollection(pagesTree))
+
+  const useAdapterLocation = useCallback(
     (() => {
       const [wouterLocation] = useWouterLocation()
       const match = Eversion0.getRouteMatch(routes, Route0.getLocation(wouterLocation))
@@ -43,13 +76,15 @@ export const Router = ({
     [routes],
   )
 
-  const useNavigate: UseAdapterNavigate = useCallback(() => {
-    const [, navigate] = useWouterLocation()
-    return navigate
-  }, [])
-
   return (
-    <RouterContextProvider pagesTree={pagesTree} useAdapterLocation={useLocation} useAdapterNavigate={useNavigate}>
+    <RouterContextProvider
+      pagesTree={pagesTree}
+      useAdapterLocation={useAdapterLocation}
+      routes={routes}
+      ssrLocation={ssrLocation}
+      policy={policy}
+      status={status}
+    >
       <WouterRouter {...wouterRouterProps}>
         <RenderPagesTree nodes={pagesTree} Page404={Page404} />
       </WouterRouter>
@@ -123,66 +158,4 @@ export const RenderPagesTree = ({ nodes, Page404 }: { nodes: PagesTree; Page404:
       </Route>
     </Switch>
   )
-}
-
-export const Router = ({
-  ssrLocation,
-  pagesTree,
-  Page404 = DefaultPage404,
-}: {
-  ssrLocation?: Route0.Location | undefined
-  pagesTree: PagesTree
-  Page404?: React.ComponentType
-}): React.ReactElement => {
-  const wouterRouterProps = (() => {
-    if (typeof window !== 'undefined') {
-      return {}
-    }
-    if (!ssrLocation) {
-      throw new Error('ssrLocation is required on ssr')
-    }
-    return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
-  })()
-
-  return (
-    <WouterRouter {...wouterRouterProps}>
-      <RenderPagesTree nodes={pagesTree} Page404={Page404} />
-    </WouterRouter>
-  )
-}
-
-// TODO: not routes, but pages, becouse it is unify
-export const createRouterHelpers = <TRoutes extends Record<string, Route0.AnyRoute>>({
-  routes,
-}: {
-  routes: TRoutes
-}) => {
-  const getLocation = (wouterLocation: string): Route0.Location => {
-    const match = Eversion0.getRouteMatch(routes, Route0.getLocation(wouterLocation))
-    if (match) {
-      return match.location
-    }
-    return Route0.getLocation(wouterLocation)
-  }
-
-  const useLocation = () => {
-    const [wouterLocation] = useWouterLocation()
-    const [location, setLocation] = useState<Route0.Location>(() => {
-      return getLocation(wouterLocation)
-    })
-    useEffect(() => {
-      setLocation(getLocation(wouterLocation))
-    }, [wouterLocation])
-    return location
-  }
-
-  const Link = (props: WouterLinkProps) => {
-    return <WouterLink {...props} />
-  }
-
-  return {
-    Router,
-    Link,
-    useLocation,
-  }
 }
