@@ -69,17 +69,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await Promise.all(
       points?.map(async (record) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
-        const layoutsPromise = Promise.all(
-          record.layouts?.map(async (layout) => {
-            return typeof layout === 'function' ? await layout() : layout
-          }) ?? [],
-        )
-        const [point, layouts] = await Promise.all([pointPromise, layoutsPromise])
+        const [point] = await Promise.all([pointPromise])
         return {
           point,
-          layouts,
           route: Route0.create(record.route),
           type: record.type,
+          layoutPagesRoutes: record.layoutPagesRoutes ?? [],
         }
       }) ?? [],
     )
@@ -114,161 +109,124 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return location
   }
 
-  static toServerPagesCollection = async ({
+  static toPagesAndLayoutsCollection = ({
     points,
-    ssrLocation,
   }: {
-    points: PointsCollection
-    ssrLocation: Route0.Location
-  }): Promise<PagesCollection> => {
-    const pages: PagesCollectionRecord[] = []
+    points: PointsCollection | LoadedPointsCollection
+  }): PagesAndLayoutsCollection => {
+    const collection: PagesAndLayoutsCollection = {
+      pages: [],
+      layouts: [],
+    }
     for (const record of points) {
-      const point = record.point
-      if (record.type !== 'page') {
+      if (record.type !== 'layout') {
         continue
       }
-      const route = Route0.create(record.route)
-      const { pageComponent, layoutComponents } = await (async (): Promise<{
-        pageComponent: React.ComponentType
-        layoutComponents: Array<React.ComponentType<{ children: React.ReactNode }>>
-      }> => {
-        const match = Route0.getMatch(route, ssrLocation)
-        if (match.exact) {
-          const pageComponentPromise =
-            typeof point === 'function'
-              ? point().then((p) => p._getWrappedPageComponent())
-              : point._getWrappedPageComponent()
-          const layoutComponentsPromise = Promise.all(
-            (record.layouts ?? []).map(async (layout) => {
-              return typeof layout === 'function'
-                ? (await layout())._getWrappedLayoutComponent()
-                : layout._getWrappedLayoutComponent()
-            }),
-          )
-          const [pageComponent, layoutComponents] = await Promise.all([pageComponentPromise, layoutComponentsPromise])
-          return { pageComponent, layoutComponents }
-        }
-        const pageComponent =
+      const point = record.point
+      collection.layouts.push({
+        type: 'layout',
+        route: typeof record.route === 'string' ? Route0.create(record.route) : record.route,
+        point: point as LayoutPoint | (() => Promise<LayoutPoint>),
+        layoutComponent:
           typeof point === 'function'
             ? lazy(async () => ({
-                default: (await point())._getWrappedPageComponent(),
+                default: (await point())._getWrappedLayoutComponent(),
               }))
-            : point._getWrappedPageComponent()
-        const layoutComponents = (record.layouts ?? []).map((layout) => {
-          return typeof layout === 'function'
-            ? lazy(async () => ({
-                default: (await layout())._getWrappedLayoutComponent(),
-              }))
-            : layout._getWrappedLayoutComponent()
-        })
-        return { pageComponent, layoutComponents }
-      })()
-      pages.push({
-        route,
-        pageComponent,
-        layoutComponents,
+            : point._getWrappedLayoutComponent(),
+        layoutPagesRoutes: record.layoutPagesRoutes?.map((route) => Route0.create(route)) ?? [],
       })
     }
-    return pages
-  }
-
-  static toClientPagesCollection = ({ points }: { points: PointsCollection }): PagesCollection => {
-    const pages: PagesCollectionRecord[] = []
     for (const record of points) {
-      const point = record.point
       if (record.type !== 'page') {
         continue
       }
-      const route = Route0.create(record.route)
-      pages.push({
-        route,
+      const point = record.point
+      collection.pages.push({
+        type: 'page',
+        route: typeof record.route === 'string' ? Route0.create(record.route) : record.route,
+        point: point as PagePoint | (() => Promise<PagePoint>),
         pageComponent:
           typeof point === 'function'
             ? lazy(async () => ({
                 default: (await point())._getWrappedPageComponent(),
               }))
             : point._getWrappedPageComponent(),
-        layoutComponents: (record.layouts ?? []).map((layout) =>
-          typeof layout === 'function'
-            ? lazy(async () => ({
-                default: (await layout())._getWrappedLayoutComponent(),
-              }))
-            : layout._getWrappedLayoutComponent(),
-        ),
+        layoutComponents: collection.layouts
+          // .filter((l) => record.layoutPagesRoutes?.includes(l.route.getDefinition()))
+          .filter((l) =>
+            l.layoutPagesRoutes.some(
+              (lpr) =>
+                lpr.getDefinition() ===
+                (typeof record.route === 'string' ? Route0.create(record.route) : record.route).getDefinition(),
+            ),
+          )
+          .map((l) => l.layoutComponent),
       })
     }
-    return pages
+    return collection
   }
 
-  static toLayoutsTree = ({ pages }: { pages: PagesCollection }): LayoutsTree => {
-    const tree: LayoutsTree = []
+  static toPagesTree = ({ pagesAndLayouts }: { pagesAndLayouts: PagesAndLayoutsCollection }): PagesTree => {
+    const layouts = pagesAndLayouts.layouts
+    const pages = pagesAndLayouts.pages
+    const pagesWithoutLayouts = pages.filter((p) => p.layoutComponents.length === 0)
 
-    const split = (p: string) => (p === '/' ? [] : p.replace(/^\/|\/$/g, '').split('/'))
-    const anchorRouteFor = (fullRoute: string, layoutIndex: number) => {
-      // index 0 => '/', index 1 => first TWO segments, index 2 => first THREE, ...
-      const segs = split(fullRoute)
-      if (layoutIndex === 0) return '/'
-      const depth = Math.min(layoutIndex + 1, segs.length)
-      return '/' + segs.slice(0, depth).join('/')
-    }
-
-    const findByRoute = (nodes: LayoutsTree, route: string) => nodes.find((n) => n.route === route)
-
-    // Special bucket for pages with NO layouts (layoutComponent === undefined)
-    const findNoLayoutBucket = (nodes: LayoutsTree) => nodes.find((n) => n.layoutComponent === undefined)
-
-    for (const page of pages) {
-      const route = page.route.getDefinition()
-      const layouts = page.layoutComponents
-      let level = tree
-      let parentNode: LayoutsTreeRecord | undefined
-
-      // Walk/create layout chain by ANCHOR ROUTES
-      for (let i = 0; i < layouts.length; i++) {
-        const layoutComponent = layouts[i]
-        const anchorRoute = anchorRouteFor(route, i)
-
-        let node = findByRoute(level, anchorRoute)
-        if (!node) {
-          node = {
-            route: anchorRoute, // <- anchor path, not the page route
-            layoutComponent, // set the layout used at this anchor
-            pages: [],
-            layouts: [],
-          }
-          level.push(node)
-          // eslint-disable-next-line logical-assignment-operators
-        } else if (!node.layoutComponent) {
-          // if a placeholder existed, attach the layout now
-          node.layoutComponent = layoutComponent
-        }
-
-        parentNode = node
-        level = node.layouts
+    const buildLayoutTree = (layout: LayoutsCollectionRecord, level = 0): PagesTreeRecord | undefined => {
+      const layoutPages = pages.filter((p) =>
+        layout.layoutPagesRoutes.some((lpr) => lpr.getDefinition() === p.route.getDefinition()),
+      )
+      const layoutPagesWhereThisLayoutIndexEqLevelAndIsLast = layoutPages.filter((lp) => {
+        return (
+          lp.layoutComponents[level] === layout.layoutComponent &&
+          lp.layoutComponents[level] === lp.layoutComponents[lp.layoutComponents.length - 1]
+        )
+      })
+      const nestedLayouts = layouts.filter(
+        (l) =>
+          l.route.getDefinition().startsWith(layout.route.getDefinition()) &&
+          l.route.getDefinition() !== layout.route.getDefinition(),
+      )
+      const nestedLayoutsTrees = nestedLayouts.map((l) => buildLayoutTree(l, level + 1))
+      const result: PagesTreeRecord = {
+        route: layout.route,
+        layoutComponent: layout.layoutComponent,
+        pages: layoutPagesWhereThisLayoutIndexEqLevelAndIsLast.map((lp) => ({
+          route: lp.route,
+          pageComponent: lp.pageComponent,
+        })),
+        nestedPagesTree: nestedLayoutsTrees.flatMap((t) => t ?? []),
       }
-
-      // Attach page at the deepest layout node, or the no-layout bucket
-      if (parentNode) {
-        parentNode.pages.push({ route, pageComponent: page.pageComponent })
-      } else {
-        let bucket = findNoLayoutBucket(tree)
-        if (!bucket) {
-          bucket = { route: '/', layoutComponent: undefined, pages: [], layouts: [] }
-          tree.push(bucket)
-        }
-        bucket.pages.push({ route, pageComponent: page.pageComponent })
+      if (result.nestedPagesTree.length === 0 && result.pages.length === 0) {
+        return undefined
       }
+      return result
     }
 
-    // Optional: sort nodes by depth (deeper first) to aid rendering order if needed
-    const depth = (p: string) => split(p).length
-    const sortTree = (nodes: LayoutsTree) => {
-      nodes.sort((a, b) => depth(b.route) - depth(a.route))
-      for (const n of nodes) sortTree(n.layouts)
+    const noLayoutTree: PagesTreeRecord = {
+      route: Route0.create('/'),
+      pages: pagesWithoutLayouts.map((p) => ({
+        route: p.route,
+        pageComponent: p.pageComponent,
+      })),
+      layoutComponent: undefined,
+      nestedPagesTree: [],
     }
-    sortTree(tree)
+    const pagesTree: PagesTree = [
+      ...(noLayoutTree.pages.length > 0 ? [noLayoutTree] : []),
+      ...layouts.flatMap((l) => buildLayoutTree(l) ?? []),
+    ]
+    return pagesTree
+  }
 
-    return tree
+  static toLoggablePagesTree = (pagesTree: PagesTree): object => {
+    return pagesTree.map((node) => {
+      return {
+        route: node.route.getDefinition(),
+        layoutComponent: !!node.layoutComponent,
+        pages: node.pages.map((p) => p.route.getDefinition()),
+        nestedPagesTree: Eversion0.toLoggablePagesTree(node.nestedPagesTree),
+      }
+    })
   }
 
   static getRouteMatch = (
@@ -766,315 +724,6 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
     return dehydratedState
   }
-
-  // // TODO: make it also work for nested connections, and respect base id
-  // // but for now we use it only in hidration where all pages in root eversion
-  // async getSuitablePagePoint({
-  //   baseId,
-  //   fallbackBaseId,
-  //   ...locationProps
-  // }: {
-  //   baseId?: BaseId | undefined
-  //   fallbackBaseId: BaseId | undefined
-  // } & LocationInput): Promise<GetSuitablePageComponentResult<TRequiredCtx>> {
-  //   const location = this.normalizeLocation(locationProps)
-  //   for (const record of this.points) {
-  //     if (record.type !== 'page') {
-  //       continue
-  //     }
-  //     const match = Route0.getMatch(record.route, location)
-  //     if (match.exact) {
-  //       return { point: record.point as PagePoint, base: this.base, location: match.location, eversion: this }
-  //     }
-  //   }
-  //   return { point: undefined, base: this.base, location, eversion: this }
-  // }
-
-  // wrapElementWithEversionContextProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  //   return React.createElement(EversionContextProvider, { children })
-  // }
-
-  // wrapComponentEversionContextInitialPageWatcher<T extends React.ComponentType<any>>(component: T): T {
-  //   return function EversionContextInitialPageWatcher(props) {
-  //     const { setIsInitialPage } = useEversionContext()
-  //     useEffect(() => {
-  //       return () => {
-  //         setIsInitialPage(false)
-  //       }
-  //     }, [setIsInitialPage])
-  //     return React.createElement(component, { ...props })
-  //   } as T
-  // }
-
-  // wrapElementWithReactQueryProvider({
-  //   queryClient,
-  //   dehydratedState,
-  //   children,
-  // }: {
-  //   queryClient: QueryClient
-  //   dehydratedState?: DehydratedState
-  //   children: React.ReactNode
-  // }): React.ReactElement {
-  //   return React.createElement(
-  //     QueryClientProvider,
-  //     { client: queryClient },
-  //     React.createElement(HydrationBoundary, { state: dehydratedState }, children),
-  //   )
-  // }
-
-  // async wrapElementWithUnheadProvider({ children }: { children: React.ReactNode }) {
-  //   if (typeof window !== 'undefined') {
-  //     const { UnheadProvider, createHead } = await import('@unhead/react/client')
-  //     return React.createElement(UnheadProvider, { head: createHead(), children })
-  //   } else {
-  //     const { UnheadProvider, createHead } = await import('@unhead/react/server')
-  //     return React.createElement(UnheadProvider, { value: createHead(), children })
-  //   }
-  // }
-
-  // wrapComponentWithReactQueryFetcher({
-  //   component,
-  //   point,
-  // }: {
-  //   component: PageComponent
-  //   point: AnyPoint
-  // }): PageComponent {
-  //   if (!point.hasLoader()) {
-  //     return component
-  //   }
-  //   function PageComponent({ location }: { location: Route0.Location }): React.ReactElement {
-  //     // TODO: get location from useLocation, which in ssr mode is useLoaderData().location else it is from expo or react router
-  //     const { isInitialPage } = useEversionContext()
-  //     const queryClient = useQueryClient()
-  //     const cache = queryClient.getQueryCache()
-  //     const queryKey = point.getQueryKey(location.params)
-  //     const query = cache.find({ queryKey })
-  //     const result = useQuery<Payload['data']>({
-  //       queryKey,
-  //       queryFn: async () => {
-  //         const fetchOptions = point._fetchOptions()
-  //         const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-  //         const res = await fetch(location.pathname, {
-  //           ...fetchOptions,
-  //           headers,
-  //         })
-  //         const json = await res.json()
-  //         if (res.ok) {
-  //           return json
-  //         }
-  //         throw Error0.from(json, {
-  //           httpStatus: res.status,
-  //         })
-  //       },
-  //       enabled: !isInitialPage || query?.state.status !== 'error',
-  //       ...point._queryOptions,
-  //       ...point._pageQueryOptions,
-  //     })
-  //     const loaderComponent = point.getLoaderComponent({ type: 'page' })
-  //     const errorComponent = point.getErrorComponent({ type: 'page' })
-  //     if (result.error) {
-  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
-  //     }
-  //     if (result.isLoading) {
-  //       return React.createElement(loaderComponent, { type: 'page', location })
-  //     }
-  //     if (!result.data) {
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data1'), location })
-  //     }
-  //     return React.createElement(component, { data: result.data, location })
-  //   }
-  //   return PageComponent
-  // }
-
-  // getBasePageElement({
-  //   location,
-  //   pageComponent,
-  //   payload,
-  //   error,
-  // }: {
-  //   location: Route0.Location
-  //   payload?: Payload
-  //   pageComponent?: PageComponent
-  //   error?: unknown
-  // }): React.ReactElement {
-  //   const errorComponent = this.base.getErrorComponent({ type: 'page' })
-  //   if (error) {
-  //     return React.createElement(errorComponent, {
-  //       type: 'page',
-  //       error: Error0.from(error),
-  //       location,
-  //     })
-  //   }
-  //   if (!payload) {
-  //     return React.createElement(errorComponent, {
-  //       type: 'page',
-  //       error: new Error0('No payload'),
-  //       location,
-  //     })
-  //   }
-  //   if (pageComponent) {
-  //     return React.createElement(pageComponent, { data: payload.data, location })
-  //   }
-  //   return React.createElement(errorComponent, {
-  //     type: 'page',
-  //     error: new Error0('No component'),
-  //     location,
-  //   })
-  // }
-
-  // async getFullPageElement({
-  //   point,
-  //   base,
-  //   location,
-  //   payload,
-  //   error,
-  // }: {
-  //   point?: AnyPoint | undefined
-  //   base: BasePoint
-  //   location: Route0.Location
-  //   payload?: Payload
-  //   error?: unknown
-  // }): Promise<React.ReactElement> {
-  //   let pageComponent = point?._page
-  //   pageComponent &&= this.wrapComponentEversionContextInitialPageWatcher(pageComponent)
-  //   pageComponent =
-  //     point?._queryClient && pageComponent
-  //       ? this.wrapComponentWithReactQueryFetcher({ component: pageComponent, point })
-  //       : pageComponent
-  //   let pageElement = this.getBasePageElement({
-  //     location,
-  //     payload,
-  //     pageComponent,
-  //     error,
-  //   })
-  //   if (base.hasHead()) {
-  //     pageElement = await this.wrapElementWithUnheadProvider({ children: pageElement })
-  //   }
-  //   if (base._wrapper) {
-  //     pageElement = React.createElement(base._wrapper, { children: pageElement })
-  //   }
-  //   if (base._queryClient) {
-  //     pageElement = this.wrapElementWithReactQueryProvider({
-  //       queryClient: base._queryClient,
-  //       dehydratedState: payload?.dehydratedState,
-  //       children: pageElement,
-  //     })
-  //   }
-  //   pageElement = this.wrapElementWithEversionContextProvider({ children: pageElement })
-  //   return pageElement
-  // }
-
-  // withDehydratedState<
-  //   T extends {
-  //     payload: Payload
-  //     error: unknown
-  //     point: AnyPoint | undefined
-  //     input?: Record<string, any> | undefined
-  //   },
-  // >(input: T): T {
-  //   const queryClient = new QueryClient()
-  //   if (input.point) {
-  //     const usable = new UsablePoint0(input.point)
-  //     const queryKey: QueryKey = (usable.getQueryKey as any)(
-  //       input.point._inputSchema ? input.input : { ...input.payload.location.params, ...input.payload.location.query },
-  //     )
-  //     const query = queryClient.getQueryCache().build(queryClient, { queryKey, queryHash: hashKey(queryKey) })
-  //     if (input.error) {
-  //       query.setState({
-  //         data: undefined,
-  //         error: { ...Error0.toJSON(input.error), name: 'Error0' },
-  //         status: 'error',
-  //         fetchStatus: 'idle',
-  //       })
-  //     } else {
-  //       const query = queryClient.getQueryCache().build(queryClient, { queryKey, queryHash: hashKey(queryKey) })
-  //       query.setState({
-  //         data: input.payload.data,
-  //         error: null,
-  //         status: 'success',
-  //         fetchStatus: 'idle',
-  //       })
-  //     }
-  //   }
-  //   const dehydratedState = dehydrate(queryClient, {
-  //     shouldDehydrateQuery: (query) => {
-  //       // This will include all queries, including failed ones
-  //       return true
-  //     },
-  //   })
-  //   return {
-  //     ...input,
-  //     payload: {
-  //       ...input.payload,
-  //       dehydratedState,
-  //     },
-  //   }
-  // }
-
-  // async fillPageComponent<TPoint extends AnyPoint | undefined = undefined>({
-  //   point,
-  //   base,
-  //   error,
-  //   status,
-  //   payload,
-  //   location,
-  // }: {
-  //   point?: TPoint | undefined
-  //   base: BasePoint
-  //   payload?: Payload
-  //   error?: unknown
-  //   status?: number | undefined
-  //   location: Route0.Location
-  // }): Promise<FillPageResult> {
-  //   // TODO: use provided errors
-  //   if (error) {
-  //     return {
-  //       element: await this.getFullPageElement({
-  //         point,
-  //         base,
-  //         location,
-  //         error,
-  //         payload,
-  //       }),
-  //       error,
-  //       status,
-  //     }
-  //   }
-  //   return {
-  //     element: await this.getFullPageElement({
-  //       point,
-  //       base,
-  //       location,
-  //       payload,
-  //     }),
-  //     error: undefined,
-  //     status,
-  //   }
-  // }
-
-  // // TODO: respect base id and connections
-  // async fillSuitablePageComponent({
-  //   payload,
-  //   error,
-  //   baseId,
-  //   fallbackBaseId,
-  //   ...locationProps
-  // }: {
-  //   payload?: Payload
-  //   error?: unknown
-  //   baseId?: BaseId | undefined
-  //   fallbackBaseId?: BaseId | undefined
-  // } & LocationInput): Promise<FillPageResult> {
-  //   const location = payload?.location || this.normalizeLocation(locationProps)
-  //   const suitable = await this.getSuitablePagePoint({ location, baseId, fallbackBaseId })
-  //   return await this.fillPageComponent({
-  //     point: suitable.point,
-  //     base: suitable.base,
-  //     payload,
-  //     error,
-  //     location: suitable.location,
-  //   })
-  // }
 }
 
 // type EversionContextValue = {
@@ -1125,14 +774,14 @@ export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPoint
   type: TEndPointType
   route: string
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
-  layouts?: Array<LayoutPoint | (() => Promise<LayoutPoint>)>
+  layoutPagesRoutes?: string[]
 }
 export type PointsCollection = PointsCollectionRecord[]
 export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
   route: Route0.AnyRoute
   point: EndPoint<TEndPointType>
-  layouts: LayoutPoint[]
+  layoutPagesRoutes: string[]
 }
 export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
 
@@ -1189,7 +838,9 @@ export type Payload = {
 }
 
 export type PagesCollectionRecord = {
+  type: 'page'
   route: Route0.AnyRoute
+  point: PagePoint | (() => Promise<PagePoint>)
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   layoutComponents: Array<
     | React.ComponentType<{ children: React.ReactNode }>
@@ -1198,18 +849,34 @@ export type PagesCollectionRecord = {
 }
 export type PagesCollection = PagesCollectionRecord[]
 
-export type LayoutsTreeRecord = {
-  route: string
+export type LayoutsCollectionRecord = {
+  type: 'layout'
+  route: Route0.AnyRoute
+  point: LayoutPoint | (() => Promise<LayoutPoint>)
+  layoutComponent:
+    | React.ComponentType<{ children: React.ReactNode }>
+    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+  layoutPagesRoutes: Route0.AnyRoute[]
+}
+export type LayoutsCollection = LayoutsCollectionRecord[]
+
+export type PagesAndLayoutsCollection = {
+  pages: PagesCollection
+  layouts: LayoutsCollection
+}
+
+export type PagesTreeRecord = {
+  route: Route0.AnyRoute
   layoutComponent:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
   pages: Array<{
-    route: string
+    route: Route0.AnyRoute
     pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   }>
-  layouts: LayoutsTreeRecord[]
+  nestedPagesTree: PagesTreeRecord[]
 }
-export type LayoutsTree = LayoutsTreeRecord[]
+export type PagesTree = PagesTreeRecord[]
 
 export type RoutesCollection = Record<string, Route0.AnyRoute>

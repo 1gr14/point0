@@ -2,7 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Eversion0 } from '../eversion/runtime.js'
+import { Eversion0 } from '../eversion/main.js'
 import type {
   EmptyCtx,
   EmptyData,

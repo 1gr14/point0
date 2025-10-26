@@ -4,13 +4,13 @@ import { Router } from 'point0/adapters/wouter'
 import type { HydratedAppProps } from 'point0/client/hydrate'
 import { useState } from 'react'
 
-export default function App({ dehydratedState, ssrLocation, pages }: HydratedAppProps) {
+export default function App({ dehydratedState, ssrLocation, pagesTree }: HydratedAppProps) {
   const [queryClient] = useState(() => new QueryClient())
   return (
     <QueryClientProvider client={queryClient}>
       <HydrationBoundary state={dehydratedState}>
         <Unhead>
-          <Router pages={pages} ssrLocation={ssrLocation} />
+          <Router pagesTree={pagesTree} ssrLocation={ssrLocation} />
         </Unhead>
       </HydrationBoundary>
     </QueryClientProvider>

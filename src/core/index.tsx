@@ -50,6 +50,7 @@ export class Point0<
   _page: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
   _layout: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
   _layouts: LayoutPoint[]
+  _layoutPagesRoutes: Route0.AnyRoute[]
   _id: Id | UndefinedId
   _unstableId: number
   _method: Method | UndefinedMethod
@@ -82,6 +83,7 @@ export class Point0<
     _page?: PageComponent<TOutputData, TRoute> | UndefinedPageComponent
     _layout?: LayoutComponent<TOutputData, TRoute> | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
+    _layoutPagesRoutes?: Route0.AnyRoute[]
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -119,6 +121,7 @@ export class Point0<
     this._page = props._page ?? undefined
     this._layout = props._layout ?? undefined
     this._layouts = props._layouts ?? []
+    this._layoutPagesRoutes = props._layoutPagesRoutes ?? []
     this._id = props._id
     this._method = props._method ?? (undefined as Method | UndefinedMethod)
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
@@ -946,6 +949,12 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
+    if (!this._route) {
+      throw new Error('add .route() to chain to use .page() function')
+    }
+    for (const layout of this._layouts) {
+      layout._layoutPagesRoutes.push(this._route)
+    }
     return this._clone<
       'page',
       TConnectedSourceBasePoint,
@@ -974,6 +983,9 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
+    if (!this._route) {
+      throw new Error('add .route() to chain to use .layout() function')
+    }
     return this._clone<
       'layout',
       TConnectedSourceBasePoint,

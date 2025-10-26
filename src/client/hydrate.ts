@@ -3,8 +3,8 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { PagesCollection, Payload, PointsCollection } from '../eversion/runtime.js'
-import { Eversion0 } from '../eversion/runtime.js'
+import type { PagesTree, Payload, PointsCollection } from '../eversion/main.js'
+import { Eversion0 } from '../eversion/main.js'
 
 export type HydrateResult = {
   payload: Payload
@@ -14,7 +14,7 @@ export type HydrateResult = {
 export type HydratedAppProps = {
   ssrLocation: Route0.Location | undefined
   dehydratedState: DehydratedState | undefined
-  pages: PagesCollection
+  pagesTree: PagesTree
 }
 export type HydratedAppComponent = React.ComponentType<HydratedAppProps>
 
@@ -50,10 +50,12 @@ export function hydrate(
     }
   }
 
+  const pagesAndLayouts = Eversion0.toPagesAndLayoutsCollection({ points })
+  const pagesTree = Eversion0.toPagesTree({ pagesAndLayouts })
   const appElement = createElement(App, {
     dehydratedState: payload.dehydratedState,
     ssrLocation: payload.location,
-    pages: Eversion0.toClientPagesCollection({ points }),
+    pagesTree,
   })
 
   // First invocation: create the root once.

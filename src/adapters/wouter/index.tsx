@@ -1,60 +1,126 @@
 import { Route0 } from '@devp0nt/route0'
-import { Fragment, useEffect, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import type { LinkProps as WouterLinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import type { LayoutsTree, PagesCollection } from '../../eversion/runtime.js'
-import { Eversion0 } from '../../eversion/runtime.js'
+import type { PagesTree } from '../../eversion/main.js'
+import { Eversion0 } from '../../eversion/main.js'
+
+// TODO: add to Link match result, so we can use current, active, aprent, exact, etc
+// TODO: make router provide in global context all its helpers and we will get it from main router package
+
+// const anchorWithSplat = (anchor: string) => {
+//   // TODO: use regex to combine all routes
+//   const base = anchor.replace(/\/$/, '')
+//   return base === '' ? '/*' : `${base}/*?`
+// }
+
+// export const RenderPagesTree = ({ nodes, Page404 }: { nodes: PagesTree; Page404: React.ComponentType }) => {
+//   return (
+//     <Switch>
+//       {nodes.map((node) => {
+//         // Bucket for pages without any layout
+//         if (!node.layoutComponent) {
+//           return (
+//             <Fragment key={`nolayout-${node.route.getDefinition()}`}>
+//               {node.pages.map(({ route, pageComponent: Page }) => {
+//                 return (
+//                   <Route key={route} path={route}>
+//                     <Page />
+//                   </Route>
+//                 )
+//               })}
+
+//               {/* Child layouts (they emit their own <Route> wrappers) */}
+//               <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
+//             </Fragment>
+//           )
+//         }
+
+//         const Layout = node.layoutComponent
+//         return (
+//           <Route key={node.route.getDefinition()} path={anchorWithSplat(node.route.getDefinition())}>
+//             <Layout>
+//               <Switch>
+//                 {/* Pages directly under this layout */}
+//                 {node.pages.map(({ route, pageComponent: Page }) => {
+//                   return (
+//                     <Route key={route} path={route}>
+//                       <Page />
+//                     </Route>
+//                   )
+//                 })}
+
+//                 {/* Nested layout branches (each produces its own <Route path="child/*">) */}
+//                 <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
+//               </Switch>
+//             </Layout>
+//           </Route>
+//         )
+//       })}
+
+//       <Route path="*">
+//         <Page404 />
+//       </Route>
+//     </Switch>
+//   )
+// }
 
 const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
-// TODO: add to Link match result, so we can use current, active, aprent, exact, etc
-// TODO: make router provide in global context all its helpers and we will get it from main router package
-
-const anchorWithSplat = (anchor: string) => {
-  const base = anchor.replace(/\/$/, '')
-  return base === '' ? '/*' : `${base}/*?`
+const compileRouteToRegex = (route: Route0.AnyRoute) => {
+  return route
+    .getDefinition()
+    .replace(/\/+$/, '') // remove trailing slash
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex special chars
+    .replace(/:(\w+)/g, '([^/]+)') // replace :param with capture group
+}
+// Combine multiple route definitions into a single regex
+const combineRoutesToRegex = (routes: Route0.AnyRoute[]) => {
+  const compiled = routes.map((r) => compileRouteToRegex(r))
+  const pattern = `^(${compiled.join('|')})(?:/|$)`
+  return new RegExp(pattern)
 }
 
-export const RenderLayoutTree = ({ nodes, Page404 }: { nodes: LayoutsTree; Page404: React.ComponentType }) => {
+export const RenderPagesTree = ({ nodes, Page404 }: { nodes: PagesTree; Page404: React.ComponentType }) => {
   return (
     <Switch>
       {nodes.map((node) => {
-        // Bucket for pages without any layout
+        // Layout-less pages
         if (!node.layoutComponent) {
           return (
-            <Fragment key={`nolayout-${node.route}`}>
+            <Fragment key={`nolayout-${node.route.getDefinition()}`}>
               {node.pages.map(({ route, pageComponent: Page }) => {
                 return (
-                  <Route key={route} path={route}>
+                  <Route key={route.getDefinition()} path={route.getDefinition()}>
                     <Page />
                   </Route>
                 )
               })}
 
-              {/* Child layouts (they emit their own <Route> wrappers) */}
-              <RenderLayoutTree nodes={node.layouts} Page404={Page404} />
+              <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
             </Fragment>
           )
         }
 
+        // Layout with pages — combine all its page routes into a single regex
         const Layout = node.layoutComponent
+        const layoutPagesRoutes = node.pages.map((p) => p.route)
+        const layoutPagesRoutesRegex = combineRoutesToRegex(layoutPagesRoutes)
         return (
-          <Route key={node.route} path={anchorWithSplat(node.route)}>
+          <Route key={`layout-${node.route.getDefinition()}`} path={layoutPagesRoutesRegex}>
             <Layout>
               <Switch>
-                {/* Pages directly under this layout */}
                 {node.pages.map(({ route, pageComponent: Page }) => {
                   return (
-                    <Route key={route} path={route}>
+                    <Route key={route.getDefinition()} path={route.getDefinition()}>
                       <Page />
                     </Route>
                   )
                 })}
 
-                {/* Nested layout branches (each produces its own <Route path="child/*">) */}
-                <RenderLayoutTree nodes={node.layouts} Page404={Page404} />
+                <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
               </Switch>
             </Layout>
           </Route>
@@ -70,11 +136,11 @@ export const RenderLayoutTree = ({ nodes, Page404 }: { nodes: LayoutsTree; Page4
 
 export const Router = ({
   ssrLocation,
-  pages,
+  pagesTree,
   Page404 = DefaultPage404,
 }: {
   ssrLocation?: Route0.Location | undefined
-  pages: PagesCollection
+  pagesTree: PagesTree
   Page404?: React.ComponentType
 }): React.ReactElement => {
   const wouterRouterProps = (() => {
@@ -87,11 +153,9 @@ export const Router = ({
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   })()
 
-  const layoutsTree = Eversion0.toLayoutsTree({ pages })
-
   return (
     <WouterRouter {...wouterRouterProps}>
-      <RenderLayoutTree nodes={layoutsTree} Page404={Page404} />
+      <RenderPagesTree nodes={pagesTree} Page404={Page404} />
     </WouterRouter>
   )
 }

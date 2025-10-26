@@ -1,6 +1,6 @@
 import type { HydratedAppComponent } from '../client/hydrate.js'
 import type { BaseId, BasePoint, RequiredCtx } from '../core/index.js'
-import type { PointsCollection } from '../eversion/runtime.js'
+import type { PointsCollection } from '../eversion/main.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type AdapterLogger = {

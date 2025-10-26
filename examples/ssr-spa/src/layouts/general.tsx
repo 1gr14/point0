@@ -2,10 +2,10 @@ import { client } from '../lib/client'
 import { Link } from '../lib/router'
 import { routes } from '../lib/routes'
 
-export const generalLayout = client.layout(({ children }) => {
+export const generalLayout = client.route(routes.home).layout(({ children }) => {
   return (
     <div>
-      <h1>IdeaNickx</h1>
+      <h1>IdeaNick</h1>
       <ul>
         <li>
           <Link to={routes.home()}>Home</Link>

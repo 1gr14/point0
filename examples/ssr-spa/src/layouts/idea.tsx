@@ -1,11 +1,10 @@
-import { useState } from 'react'
 import { z } from 'zod'
 import { Link } from '../lib/router'
 import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 
 export const ideaLayout = generalLayout
-  .id('ideaLayout')
+  .route(routes.idea)
   .input(
     z.object({
       id: z.coerce.number(),
