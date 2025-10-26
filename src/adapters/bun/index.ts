@@ -37,6 +37,7 @@ type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = Adapte
 export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   mainServer: Bun.Server<unknown> | undefined
   mainServerPort: number
+  devServeTarget: 'client' | 'server' | 'universal' | undefined
   clientsDevServer: Bun.Server<unknown> | undefined
   clientsDevServerPort: number
   base: BasePoint<TRequiredCtx>
@@ -189,11 +190,19 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   // }
 
   async _loadSrcIndexHtmlContents(client: AdapterClientInputParsed): Promise<string> {
-    return await (
-      await fetch(
-        `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.base._baseId}.index.html`,
-      )
-    ).text()
+    if (this.devServeTarget === 'server') {
+      return await (
+        await fetch(
+          `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.base._baseId}.index.html`,
+        )
+      ).text()
+    } else {
+      return await (
+        await fetch(
+          `http://localhost:${this.mainServerPort}${client.basepath}development-${client.base._baseId}.index.html`,
+        )
+      ).text()
+    }
   }
 
   async _fetchClientDistDir({ pathname }: ParsedRequest): Promise<Response | undefined> {
@@ -386,7 +395,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
       ? [
           options?: {
-            serveTarget?: 'client' | 'server' | 'universal' | undefined
+            devServeTarget?: 'client' | 'server' | 'universal' | undefined
             port?: number | string
             clientsDevServerPort?: number | string
             hmr?: boolean
@@ -395,7 +404,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         ]
       : [
           options: {
-            serveTarget?: 'client' | 'server' | 'universal' | undefined
+            devServeTarget?: 'client' | 'server' | 'universal' | undefined
             port?: number | string
             clientsDevServerPort?: number | string
             hmr?: boolean
@@ -404,17 +413,21 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         ]
   ): typeof this {
     const options = args[0]
-    const serveTarget = options?.serveTarget ?? process.env.DEV_SERVE_TARGET
-    if (serveTarget === 'client') {
+    const devServeTarget = options?.devServeTarget ?? process.env.DEV_SERVE_TARGET
+    if (devServeTarget === 'client') {
+      this.devServeTarget = 'client'
       this.serveClientsDevServer(...args)
       return this
-    } else if (serveTarget === 'server') {
+    } else if (devServeTarget === 'server') {
+      this.devServeTarget = 'server'
       this.serveMainDevServer(...args)
       return this
-    } else if (serveTarget === 'universal') {
+    } else if (devServeTarget === 'universal') {
+      this.devServeTarget = 'universal'
       this.serveUniversal(...args)
       return this
     } else {
+      this.devServeTarget = undefined
       this.serveMainServer(...args)
       return this
     }

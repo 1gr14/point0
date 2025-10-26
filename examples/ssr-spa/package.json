@@ -12,7 +12,7 @@
     "dev:server": "cross-env NODE_ENV=development DEV_SERVE_TARGET=server bun --no-clear-screen --hot ./src/entry-server.ts",
     "dev:client": "cross-env NODE_ENV=development DEV_SERVE_TARGET=client bun --no-clear-screen ./src/entry-server.ts",
     "dev:separate": "concurrently \"bun run dev:server\" \"bun run dev:client\" --names 'server,client'",
-    "dev:universal": "cross-env NODE_ENV=development DEV_SERVE_TARGET=universal bun --no-clear-screen ./src/entry-server.ts",
+    "dev:universal": "cross-env NODE_ENV=development DEV_SERVE_TARGET=universal bun --hot --no-clear-screen ./src/entry-server.ts",
     "dev": "bun run dev:separate",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/entry-server.js",
     "clean": "rimraf dist",
