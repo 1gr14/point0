@@ -17,7 +17,7 @@ export type UseRouteFn = <TRoute extends Route0.AnyRoute>(route: TRoute) => Rout
 export type UseOnNavigateFn = (
   prevLocation: Route0.Location,
   nextLocation: Route0.Location,
-) => never | ((status: RouterStatus) => never)
+) => ((status: RouterStatus) => void) | undefined
 export type UseIsInitalSsrLocationFn = () => boolean
 export type UseRouterPolicyFn = () => RouterPolicy
 
@@ -190,7 +190,7 @@ export function wrapUseNavigate<T extends () => (href: string, ...args: any[]) =
 
 /** Navigation hook **/
 
-export function useOnNavigate(fn: UseOnNavigateFn) {
+export const useOnNavigate = (fn: UseOnNavigateFn) => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')
 

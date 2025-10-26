@@ -222,17 +222,10 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return undefined
     }
 
-    // TODO: remove it
-    // // Touch the wrapped component to warm any internal wrappers (harmless if already loaded)
-    // try {
-    //   void result.pagePoint._getWrappedPageComponent()
-    // } catch {
-    //   // ignore best-effort warmup
-    // }
-
     const points = [result.pagePoint, ...result.layouts.map((l) => l.layoutPoint)]
     await Promise.all(
       points.map(async (p) => {
+        // TODO: if page or layout has not SELF loaders but only nested loaders, then prefetch only nested and to query cache add its result
         await Eversion0.prefetchPoint({ point: p, queryClient, location })
       }),
     )
@@ -645,9 +638,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (!layout._hasLoader()) {
           continue
         }
-        const layoutLocation = {
-          ...Route0.getLocation(layout._getRouteAbsPath({ ...location.params, query: { ...location.query } } as never)),
-        }
+        const layoutRoute = layout._getRoute()
+        const layoutRoutePath = layoutRoute.get({ ...location.params, query: { ...location.query } } as never)
+        const layoutLocation = layoutRoute.match(layoutRoutePath).location
         const result = await this.extract({
           point: layout,
           input,

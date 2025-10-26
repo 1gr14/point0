@@ -13,6 +13,7 @@ import { RouterContextProvider, wrapUseNavigate } from '../../eversion/router.js
 
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
+  // TODO: allow pass router policy in useNavigate and in Link
   return navigate
 }
 export const useNavigate = wrapUseNavigate(_useNavigate)

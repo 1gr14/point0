@@ -1181,7 +1181,6 @@ export class Point0<
     function PageWrapperComponent(): React.ReactElement {
       const location = useLocation<CurrentRoute<TRoute>>()
       const isInitalSsrLocation = useIsInitalSsrLocation()
-      console.log('isInitalSsrLocation', isInitalSsrLocation)
       const queryClient = useQueryClient()
       const cache = queryClient.getQueryCache()
       const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
