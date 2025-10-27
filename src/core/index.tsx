@@ -1139,138 +1139,68 @@ export class Point0<
     return this._getRoute().getDefinition()
   }
 
-  _getWrappedPageComponent = (): React.ComponentType => {
-    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
-    const point = this
-    const loaderComponent = point._getLoaderComponent({ type: 'page' })
-    const errorComponent = point._getErrorComponent({ type: 'page' })
-
-    if (!this._page) {
-      function PageComponent(): React.ReactElement {
-        const location = useLocation()
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-      }
-      return PageComponent
-    }
-
-    if (!point._hasLoader()) {
-      function PageComponent(): React.ReactElement {
-        const location = useLocation<CurrentRoute<TRoute>>()
-        const data = {} as TOutputData
-        for (const head of point._heads) {
-          useHead(typeof head === 'function' ? head({ data, location }) : head)
-        }
-        if (!point._page) {
-          return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-        }
-        return React.createElement(point._page, { data, location })
-      }
-      return PageComponent
-    }
-
-    function PageComponent({ data, location }: PageComponentProps<TOutputData, TRoute>): React.ReactElement {
-      for (const head of point._heads) {
-        useHead(typeof head === 'function' ? head({ data, location }) : head)
-      }
-      if (!point._page) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-      }
-      return React.createElement(point._page, { data, location })
-    }
-
-    function PageWrapperComponent(): React.ReactElement {
-      const location = useLocation<CurrentRoute<TRoute>>()
-      const isInitalSsrLocation = useIsInitalSsrLocation()
-      const queryClient = useQueryClient()
-      const cache = queryClient.getQueryCache()
-      const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
-      const query = cache.find({ queryKey })
-      const result = useQuery<TOutputData>({
-        queryKey,
-        queryFn: async () => {
-          const fetchOptions = point._fetchOptions()
-          const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-          const res = await fetch(location.pathname, {
-            ...fetchOptions,
-            headers,
-          })
-          const json = await res.json()
-          if (res.ok) {
-            return json
-          }
-          throw Error0.from(json, {
-            httpStatus: res.status,
-          })
-        },
-        enabled: !isInitalSsrLocation || query?.state.status !== 'error',
-        retry: false,
-        refetchOnMount: false,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
-        refetchInterval: false,
-        refetchIntervalInBackground: false,
-        ...point._queryOptions,
-        ...point._pageQueryOptions,
-      })
-      if (result.error) {
-        return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
-      }
-      if (result.isLoading) {
-        return React.createElement(loaderComponent, { type: 'page', location })
-      }
-      if (!result.data) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
-      }
-      return React.createElement(PageComponent, { data: result.data, location })
-    }
-    return PageWrapperComponent
-  }
-
   // _getWrappedPageComponent = (): React.ComponentType => {
   //   // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
   //   const point = this
+  //   const loaderComponent = point._getLoaderComponent({ type: 'page' })
+  //   const errorComponent = point._getErrorComponent({ type: 'page' })
 
-  //   // define a single stable React component
-  //   const Wrapped: React.FC = () => {
+  //   if (!this._page) {
+  //     function PageComponent(): React.ReactElement {
+  //       const location = useLocation()
+  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
+  //     }
+  //     return PageComponent
+  //   }
+
+  //   if (!point._hasLoader()) {
+  //     function PageComponent(): React.ReactElement {
+  //       const location = useLocation<CurrentRoute<TRoute>>()
+  //       const data = {} as TOutputData
+  //       for (const head of point._heads) {
+  //         useHead(typeof head === 'function' ? head({ data, location }) : head)
+  //       }
+  //       if (!point._page) {
+  //         return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
+  //       }
+  //       return React.createElement(point._page, { data, location })
+  //     }
+  //     return PageComponent
+  //   }
+
+  //   function PageComponent({ data, location }: PageComponentProps<TOutputData, TRoute>): React.ReactElement {
+  //     for (const head of point._heads) {
+  //       useHead(typeof head === 'function' ? head({ data, location }) : head)
+  //     }
+  //     if (!point._page) {
+  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
+  //     }
+  //     return React.createElement(point._page, { data, location })
+  //   }
+
+  //   function PageWrapperComponent(): React.ReactElement {
   //     const location = useLocation<CurrentRoute<TRoute>>()
   //     const isInitalSsrLocation = useIsInitalSsrLocation()
   //     const queryClient = useQueryClient()
   //     const cache = queryClient.getQueryCache()
   //     const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
   //     const query = cache.find({ queryKey })
-
-  //     const loaderComponent = point._getLoaderComponent({ type: 'page' })
-  //     const errorComponent = point._getErrorComponent({ type: 'page' })
-  //     const Page = point._page
-
-  //     // if there's no page at all
-  //     if (!Page) {
-  //       return React.createElement(errorComponent, {
-  //         type: 'page',
-  //         error: new Error0('No page component'),
-  //         location,
-  //       })
-  //     }
-
-  //     // no loader — static page
-  //     if (!point._hasLoader()) {
-  //       const data = {} as TOutputData
-  //       for (const head of point._heads) {
-  //         useHead(typeof head === 'function' ? head({ data, location }) : head)
-  //       }
-  //       return React.createElement(Page, { data, location })
-  //     }
-
-  //     // useQuery for loader-based pages
   //     const result = useQuery<TOutputData>({
   //       queryKey,
   //       queryFn: async () => {
   //         const fetchOptions = point._fetchOptions()
   //         const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-  //         const res = await fetch(location.pathname, { ...fetchOptions, headers })
+  //         const res = await fetch(location.pathname, {
+  //           ...fetchOptions,
+  //           headers,
+  //         })
   //         const json = await res.json()
-  //         if (res.ok) return json
-  //         throw Error0.from(json, { httpStatus: res.status })
+  //         if (res.ok) {
+  //           return json
+  //         }
+  //         throw Error0.from(json, {
+  //           httpStatus: res.status,
+  //         })
   //       },
   //       enabled: !isInitalSsrLocation || query?.state.status !== 'error',
   //       retry: false,
@@ -1282,128 +1212,249 @@ export class Point0<
   //       ...point._queryOptions,
   //       ...point._pageQueryOptions,
   //     })
-
   //     if (result.error) {
-  //       return React.createElement(errorComponent, {
-  //         type: 'page',
-  //         error: Error0.from(result.error),
-  //         location,
-  //       })
+  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
   //     }
   //     if (result.isLoading) {
   //       return React.createElement(loaderComponent, { type: 'page', location })
   //     }
   //     if (!result.data) {
-  //       return React.createElement(errorComponent, {
-  //         type: 'page',
-  //         error: new Error0('No data'),
-  //         location,
-  //       })
+  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
   //     }
-
-  //     for (const head of point._heads) {
-  //       useHead(typeof head === 'function' ? head({ data: result.data, location }) : head)
-  //     }
-
-  //     return React.createElement(Page, { data: result.data, location })
+  //     return React.createElement(PageComponent, { data: result.data, location })
   //   }
-
-  //   return Wrapped
+  //   return PageWrapperComponent
   // }
 
-  _getWrappedLayoutComponent = (): React.ComponentType<{ children: React.ReactNode }> => {
-    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
-    const point = this
-    const loaderComponent = point._getLoaderComponent({ type: 'page' })
-    const errorComponent = point._getErrorComponent({ type: 'page' })
-
-    if (!this._layout) {
-      function LayoutComponent(): React.ReactElement {
-        const location = useLocation()
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
-      }
-      return LayoutComponent
+  _PageInner: React.ComponentType<{ data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>> }> = ({
+    data,
+    location,
+  }) => {
+    if (!this._page) {
+      const errorComponent = this._getErrorComponent({ type: 'page' })
+      return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
     }
 
-    if (!point._hasLoader()) {
-      function LayoutComponent({ children }: { children: React.ReactNode }): React.ReactElement {
-        const location = useLocation<CurrentRoute<TRoute>>()
-        const data = {} as TOutputData
-        // for (const head of point._heads) {
-        //   useHead(typeof head === 'function' ? head({ data, location }) : head)
-        // }
-        if (!point._layout) {
-          return React.createElement(errorComponent, {
-            type: 'page',
-            error: new Error0('No layout component'),
-            location,
-          })
+    for (const head of this._heads) {
+      useHead(typeof head === 'function' ? head({ data, location }) : head)
+    }
+    return React.createElement(this._page, { data, location })
+  }
+
+  _Page: React.ComponentType = () => {
+    const location = useLocation<CurrentRoute<TRoute>>()
+    if (!this._hasLoader()) {
+      return React.createElement(this._PageInner, { data: {} as TOutputData, location })
+    }
+
+    const loaderComponent = this._getLoaderComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+    const isInitalSsrLocation = useIsInitalSsrLocation()
+    const queryClient = useQueryClient()
+    const cache = queryClient.getQueryCache()
+    const queryKey = this.getQueryKey({ ...location.query, ...location.params } as never)
+    const query = cache.find({ queryKey })
+    const result = useQuery<TOutputData>({
+      queryKey,
+      queryFn: async () => {
+        const fetchOptions = this._fetchOptions()
+        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+        const res = await fetch(location.pathname, {
+          ...fetchOptions,
+          headers,
+        })
+        const json = await res.json()
+        if (res.ok) {
+          return json
         }
-        return React.createElement(point._layout, { data, location, children })
-      }
-      return LayoutComponent
+        throw Error0.from(json, {
+          httpStatus: res.status,
+        })
+      },
+      enabled: !isInitalSsrLocation || query?.state.status !== 'error',
+      retry: false,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: false,
+      refetchIntervalInBackground: false,
+      ...this._queryOptions,
+      ...this._pageQueryOptions,
+    })
+    if (result.error) {
+      return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
+    }
+    if (result.isLoading) {
+      return React.createElement(loaderComponent, { type: 'page', location })
+    }
+    if (!result.data) {
+      return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
+    }
+    return React.createElement(this._PageInner, { data: result.data, location })
+  }
+
+  // _getWrappedLayoutComponent = (): React.ComponentType<{ children: React.ReactNode }> => {
+  //   // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+  //   const point = this
+  //   const loaderComponent = point._getLoaderComponent({ type: 'page' })
+  //   const errorComponent = point._getErrorComponent({ type: 'page' })
+
+  //   if (!this._layout) {
+  //     function LayoutComponent(): React.ReactElement {
+  //       const location = useLocation()
+  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
+  //     }
+  //     return LayoutComponent
+  //   }
+
+  //   if (!point._hasLoader()) {
+  //     function LayoutComponent({ children }: { children: React.ReactNode }): React.ReactElement {
+  //       const location = useLocation<CurrentRoute<TRoute>>()
+  //       const data = {} as TOutputData
+  //       // for (const head of point._heads) {
+  //       //   useHead(typeof head === 'function' ? head({ data, location }) : head)
+  //       // }
+  //       if (!point._layout) {
+  //         return React.createElement(errorComponent, {
+  //           type: 'page',
+  //           error: new Error0('No layout component'),
+  //           location,
+  //         })
+  //       }
+  //       return React.createElement(point._layout, { data, location, children })
+  //     }
+  //     return LayoutComponent
+  //   }
+
+  //   function LayoutComponent({
+  //     data,
+  //     location,
+  //     children,
+  //   }: LayoutComponentProps<TOutputData, TRoute>): React.ReactElement {
+  //     // for (const head of point._heads) {
+  //     //   useHead(typeof head === 'function' ? head({ data, location }) : head)
+  //     // }
+  //     if (!point._layout) {
+  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
+  //     }
+  //     return React.createElement(point._layout, { data, location, children })
+  //   }
+
+  //   function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {
+  //     const location = useLocation<CurrentRoute<TRoute>>()
+  //     const isInitalSsrLocation = useIsInitalSsrLocation()
+  //     const queryClient = useQueryClient()
+  //     const cache = queryClient.getQueryCache()
+  //     const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
+  //     const query = cache.find({ queryKey })
+  //     const result = useQuery<TOutputData>({
+  //       queryKey,
+  //       queryFn: async () => {
+  //         const fetchOptions = point._fetchOptions()
+  //         const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+  //         const res = await fetch(location.pathname, {
+  //           ...fetchOptions,
+  //           headers,
+  //         })
+  //         const json = await res.json()
+  //         if (res.ok) {
+  //           return json
+  //         }
+  //         throw Error0.from(json, {
+  //           httpStatus: res.status,
+  //         })
+  //       },
+  //       enabled: !isInitalSsrLocation || query?.state.status !== 'error',
+  //       retry: false,
+  //       refetchOnMount: false,
+  //       refetchOnWindowFocus: false,
+  //       refetchOnReconnect: false,
+  //       refetchInterval: false,
+  //       refetchIntervalInBackground: false,
+  //       ...point._queryOptions,
+  //       ...point._pageQueryOptions,
+  //     })
+  //     if (result.error) {
+  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
+  //     }
+  //     if (result.isLoading) {
+  //       return React.createElement(loaderComponent, { type: 'page', location })
+  //     }
+  //     if (!result.data) {
+  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
+  //     }
+  //     return React.createElement(LayoutComponent, { data: result.data, location, children })
+  //   }
+  //   return LayoutWrapperComponent
+  // }
+
+  _LayoutInner: React.ComponentType<{
+    children: React.ReactNode
+    location: Route0.Location<CurrentRoute<TRoute>>
+    data: TOutputData
+  }> = ({ children, location, data }) => {
+    if (!this._layout) {
+      const errorComponent = this._getErrorComponent({ type: 'page' })
+      return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
     }
 
-    function LayoutComponent({
-      data,
-      location,
-      children,
-    }: LayoutComponentProps<TOutputData, TRoute>): React.ReactElement {
-      // for (const head of point._heads) {
-      //   useHead(typeof head === 'function' ? head({ data, location }) : head)
-      // }
-      if (!point._layout) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
-      }
-      return React.createElement(point._layout, { data, location, children })
-    }
+    return React.createElement(this._layout, { data, location, children })
+  }
 
-    function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {
-      const location = useLocation<CurrentRoute<TRoute>>()
-      const isInitalSsrLocation = useIsInitalSsrLocation()
-      const queryClient = useQueryClient()
-      const cache = queryClient.getQueryCache()
-      const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
-      const query = cache.find({ queryKey })
-      const result = useQuery<TOutputData>({
-        queryKey,
-        queryFn: async () => {
-          const fetchOptions = point._fetchOptions()
-          const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-          const res = await fetch(location.pathname, {
-            ...fetchOptions,
-            headers,
-          })
-          const json = await res.json()
-          if (res.ok) {
-            return json
-          }
-          throw Error0.from(json, {
-            httpStatus: res.status,
-          })
-        },
-        enabled: !isInitalSsrLocation || query?.state.status !== 'error',
-        retry: false,
-        refetchOnMount: false,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
-        refetchInterval: false,
-        refetchIntervalInBackground: false,
-        ...point._queryOptions,
-        ...point._pageQueryOptions,
+  _Layout: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+    if (!this._hasLoader()) {
+      return React.createElement(this._LayoutInner, {
+        data: {} as TOutputData,
+        location: useLocation<CurrentRoute<TRoute>>(),
+        children,
       })
-      if (result.error) {
-        return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
-      }
-      if (result.isLoading) {
-        return React.createElement(loaderComponent, { type: 'page', location })
-      }
-      if (!result.data) {
-        return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
-      }
-      return React.createElement(LayoutComponent, { data: result.data, location, children })
     }
-    return LayoutWrapperComponent
+
+    const loaderComponent = this._getLoaderComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+    const location = useLocation<CurrentRoute<TRoute>>()
+    const isInitalSsrLocation = useIsInitalSsrLocation()
+    const queryClient = useQueryClient()
+    const cache = queryClient.getQueryCache()
+    const queryKey = this.getQueryKey({ ...location.query, ...location.params } as never)
+    const query = cache.find({ queryKey })
+    const result = useQuery<TOutputData>({
+      queryKey,
+      queryFn: async () => {
+        const fetchOptions = this._fetchOptions()
+        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+        const res = await fetch(location.pathname, {
+          ...fetchOptions,
+          headers,
+        })
+        const json = await res.json()
+        if (res.ok) {
+          return json
+        }
+        throw Error0.from(json, {
+          httpStatus: res.status,
+        })
+      },
+      enabled: !isInitalSsrLocation || query?.state.status !== 'error',
+      retry: false,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: false,
+      refetchIntervalInBackground: false,
+      ...this._queryOptions,
+      ...this._pageQueryOptions,
+    })
+    if (result.error) {
+      return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
+    }
+    if (result.isLoading) {
+      return React.createElement(loaderComponent, { type: 'page', location })
+    }
+    if (!result.data) {
+      return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
+    }
+    return React.createElement(this._LayoutInner, { data: result.data, location, children })
   }
 
   fetch = (async (input: Record<string, any> = {}) => {

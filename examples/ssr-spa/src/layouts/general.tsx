@@ -7,7 +7,7 @@ export const generalLayout = client.route(routes.home).layout(({ children }) => 
   const isRouterFetching = useIsRouterFetching()
   return (
     <div style={{ opacity: isRouterFetching ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
-      <h1>IdeaNickxx</h1>
+      <h1>IdeaNick</h1>
       <ul>
         <li>
           <Link to={routes.home()}>Home</Link>

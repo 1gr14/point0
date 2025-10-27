@@ -275,9 +275,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         layoutComponent:
           typeof point === 'function'
             ? lazy(async () => ({
-                default: (await point())._getWrappedLayoutComponent(),
+                default: (await point())._Layout,
               }))
-            : point._getWrappedLayoutComponent(),
+            : point._Layout,
         layoutPagesRoutes: record.layoutPagesRoutes?.map((route) => Route0.create(route)) ?? [],
       })
     }
@@ -293,9 +293,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pageComponent:
           typeof point === 'function'
             ? lazy(async () => ({
-                default: (await point())._getWrappedPageComponent(),
+                default: (await point())._Page,
               }))
-            : point._getWrappedPageComponent(),
+            : point._Page,
         layoutComponents: collection.layouts
           // .filter((l) => record.layoutPagesRoutes?.includes(l.route.getDefinition()))
           .filter((l) =>

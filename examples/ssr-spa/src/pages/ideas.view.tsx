@@ -7,7 +7,7 @@ export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[];
   const [count, setCount] = useState(() => 0)
   return (
     <div>
-      <h1>Ideasxx</h1>
+      <h1>Ideas</h1>
       <p>Environment: {data.env}</p>
       <p
         onClick={() => {
