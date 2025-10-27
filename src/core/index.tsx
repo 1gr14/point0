@@ -46,8 +46,6 @@ export class Point0<
     : undefined
   _rootId: RootId
   _heads: HeadsCollection
-  // _useLocation: () => Route0.Location<CurrentRoute<TRoute>>
-  // TODO: add _pageQueryOptions
   _queryOptions: QueryOptionsSettings
   _pageQueryOptions: QueryOptionsSettings
   // TODO: remove or use wrapper
@@ -110,10 +108,6 @@ export class Point0<
     // overridable
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
-    // this._useLocation = (props._useLocation ??
-    //   (() => {
-    //     throw new Error('add .setUseLocation to chain to use page function')
-    //   })) as () => Route0.Location<CurrentRoute<TRoute>>
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>
@@ -782,7 +776,7 @@ export class Point0<
   // }
 
   ctx<TNewOutputCtx extends Ctx = Ctx>(
-    ctxFn: CtxFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputCtx>,
+    ctxFn: CtxFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TNewOutputCtx>,
   ): Point0<
     'middleware',
     TConnectedSourceBasePoint,
@@ -861,7 +855,7 @@ export class Point0<
   }
 
   loader<TNewOutputData extends Data = Data>(
-    loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputData>,
+    loaderFn: LoaderFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TNewOutputData>,
   ): Point0<
     'middleware',
     TConnectedSourceBasePoint,
@@ -891,7 +885,7 @@ export class Point0<
   }
 
   head(
-    headFn: HeadFn<TOutputData, CurrentRoute<TRoute>>,
+    headFn: HeadFn<TOutputData, TRoute>,
   ): Point0<
     'middleware',
     TConnectedSourceBasePoint,
@@ -915,7 +909,7 @@ export class Point0<
     TResponseOutput
   >
   head(
-    headFnOrHead: HeadFn<TOutputData, CurrentRoute<TRoute>> | ResolvableHead,
+    headFnOrHead: HeadFn<TOutputData, TRoute> | ResolvableHead,
   ): Point0<
     'middleware',
     TConnectedSourceBasePoint,
@@ -942,7 +936,7 @@ export class Point0<
   }
 
   title(
-    titleFn: TitleFn<TOutputData, CurrentRoute<TRoute>>,
+    titleFn: TitleFn<TOutputData, TRoute>,
   ): Point0<
     'middleware',
     TConnectedSourceBasePoint,
@@ -966,7 +960,7 @@ export class Point0<
     TResponseOutput
   >
   title(
-    titleFnOrTitle: TitleFn<TOutputData, CurrentRoute<TRoute>> | string,
+    titleFnOrTitle: TitleFn<TOutputData, TRoute> | string,
   ): Point0<
     'middleware',
     TConnectedSourceBasePoint,
@@ -998,7 +992,7 @@ export class Point0<
     })
   }
 
-  input<TNewInputSchema extends InputSchema = InputSchema>(
+  input<TNewInputSchema extends InputSchemaZod>(
     inputSchema: TNewInputSchema,
   ): Point0<
     'middleware',
@@ -1009,20 +1003,22 @@ export class Point0<
     TRoute,
     TNewInputSchema,
     TResponseOutput
-  > {
-    return this._continue<
-      'middleware',
-      TConnectedSourceBasePoint,
-      TRequiredCtx,
-      TOutputCtx,
-      TOutputData,
-      TRoute,
-      TNewInputSchema,
-      TResponseOutput
-    >({
+  >
+  input<TNewInputSchema extends InputSchemaObject>(): Point0<
+    'middleware',
+    TConnectedSourceBasePoint,
+    TRequiredCtx,
+    TOutputCtx,
+    TOutputData,
+    TRoute,
+    TNewInputSchema,
+    TResponseOutput
+  >
+  input(...args: [InputSchemaZod] | []) {
+    return this._continue({
       _pointType: 'middleware',
-      _inputSchema: inputSchema,
-    })
+      ...(args.length === 1 ? { _inputSchema: args[0] } : {}),
+    }) as never
   }
 
   // end points
@@ -1035,7 +1031,7 @@ export class Point0<
     TRequiredCtx,
     TOutputCtx,
     TOutputData,
-    CurrentRoute<TRoute>,
+    TRoute,
     TInputSchema,
     TResponseOutput
   > {
@@ -1051,7 +1047,7 @@ export class Point0<
       TRequiredCtx,
       TOutputCtx,
       TOutputData,
-      CurrentRoute<TRoute>,
+      TRoute,
       TInputSchema,
       TResponseOutput
     >({
@@ -1069,7 +1065,7 @@ export class Point0<
     TRequiredCtx,
     TOutputCtx,
     TOutputData,
-    CurrentRoute<TRoute>,
+    TRoute,
     TInputSchema,
     TResponseOutput
   > {
@@ -1082,7 +1078,7 @@ export class Point0<
       TRequiredCtx,
       TOutputCtx,
       TOutputData,
-      CurrentRoute<TRoute>,
+      TRoute,
       TInputSchema,
       TResponseOutput
     >({
@@ -1093,7 +1089,7 @@ export class Point0<
   }
 
   response<TResponseOutput extends ResponseOutput = ResponseOutput>(
-    responseFn: ResponseFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TResponseOutput>,
+    responseFn: ResponseFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TResponseOutput>,
   ): Point0<
     'response',
     TConnectedSourceBasePoint,
@@ -1123,7 +1119,7 @@ export class Point0<
   }
 
   query<TNewOutputData extends Data = Data>(
-    loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputData>,
+    loaderFn: LoaderFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TNewOutputData>,
   ): Point0<
     'query',
     TConnectedSourceBasePoint,
@@ -1154,7 +1150,7 @@ export class Point0<
   }
 
   mutation<TNewOutputData extends Data = Data>(
-    loaderFn: LoaderFn<TOutputCtx, TOutputData, CurrentRoute<TRoute>, TInputSchema, TNewOutputData>,
+    loaderFn: LoaderFn<TOutputCtx, TOutputData, TRoute, TInputSchema, TNewOutputData>,
   ): Point0<
     'mutation',
     TConnectedSourceBasePoint,
@@ -1228,93 +1224,6 @@ export class Point0<
     return this._getRoute().getDefinition()
   }
 
-  // _getWrappedPageComponent = (): React.ComponentType => {
-  //   // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
-  //   const point = this
-  //   const loaderComponent = point._getLoaderComponent({ type: 'page' })
-  //   const errorComponent = point._getErrorComponent({ type: 'page' })
-
-  //   if (!this._page) {
-  //     function PageComponent(): React.ReactElement {
-  //       const location = useLocation()
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-  //     }
-  //     return PageComponent
-  //   }
-
-  //   if (!point._hasLoader()) {
-  //     function PageComponent(): React.ReactElement {
-  //       const location = useLocation<CurrentRoute<TRoute>>()
-  //       const data = {} as TOutputData
-  //       for (const head of point._heads) {
-  //         useHead(typeof head === 'function' ? head({ data, location }) : head)
-  //       }
-  //       if (!point._page) {
-  //         return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-  //       }
-  //       return React.createElement(point._page, { data, location })
-  //     }
-  //     return PageComponent
-  //   }
-
-  //   function PageComponent({ data, location }: PageComponentProps<TOutputData, TRoute>): React.ReactElement {
-  //     for (const head of point._heads) {
-  //       useHead(typeof head === 'function' ? head({ data, location }) : head)
-  //     }
-  //     if (!point._page) {
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No page component'), location })
-  //     }
-  //     return React.createElement(point._page, { data, location })
-  //   }
-
-  //   function PageWrapperComponent(): React.ReactElement {
-  //     const location = useLocation<CurrentRoute<TRoute>>()
-  //     const isInitalSsrLocation = useIsInitalSsrLocation()
-  //     const queryClient = useQueryClient()
-  //     const cache = queryClient.getQueryCache()
-  //     const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
-  //     const query = cache.find({ queryKey })
-  //     const result = useQuery<TOutputData>({
-  //       queryKey,
-  //       queryFn: async () => {
-  //         const fetchOptions = point._fetchOptions()
-  //         const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-  //         const res = await fetch(location.pathname, {
-  //           ...fetchOptions,
-  //           headers,
-  //         })
-  //         const json = await res.json()
-  //         if (res.ok) {
-  //           return json
-  //         }
-  //         throw Error0.from(json, {
-  //           httpStatus: res.status,
-  //         })
-  //       },
-  //       enabled: !isInitalSsrLocation || query?.state.status !== 'error',
-  //       retry: false,
-  //       refetchOnMount: false,
-  //       refetchOnWindowFocus: false,
-  //       refetchOnReconnect: false,
-  //       refetchInterval: false,
-  //       refetchIntervalInBackground: false,
-  //       ...point._queryOptions,
-  //       ...point._pageQueryOptions,
-  //     })
-  //     if (result.error) {
-  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
-  //     }
-  //     if (result.isLoading) {
-  //       return React.createElement(loaderComponent, { type: 'page', location })
-  //     }
-  //     if (!result.data) {
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
-  //     }
-  //     return React.createElement(PageComponent, { data: result.data, location })
-  //   }
-  //   return PageWrapperComponent
-  // }
-
   _PageInner: React.ComponentType<{ data: TOutputData; location: Route0.Location<CurrentRoute<TRoute>> }> = ({
     data,
     location,
@@ -1381,101 +1290,6 @@ export class Point0<
     }
     return React.createElement(this._PageInner, { data: result.data, location })
   }
-
-  // _getWrappedLayoutComponent = (): React.ComponentType<{ children: React.ReactNode }> => {
-  //   // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
-  //   const point = this
-  //   const loaderComponent = point._getLoaderComponent({ type: 'page' })
-  //   const errorComponent = point._getErrorComponent({ type: 'page' })
-
-  //   if (!this._layout) {
-  //     function LayoutComponent(): React.ReactElement {
-  //       const location = useLocation()
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
-  //     }
-  //     return LayoutComponent
-  //   }
-
-  //   if (!point._hasLoader()) {
-  //     function LayoutComponent({ children }: { children: React.ReactNode }): React.ReactElement {
-  //       const location = useLocation<CurrentRoute<TRoute>>()
-  //       const data = {} as TOutputData
-  //       // for (const head of point._heads) {
-  //       //   useHead(typeof head === 'function' ? head({ data, location }) : head)
-  //       // }
-  //       if (!point._layout) {
-  //         return React.createElement(errorComponent, {
-  //           type: 'page',
-  //           error: new Error0('No layout component'),
-  //           location,
-  //         })
-  //       }
-  //       return React.createElement(point._layout, { data, location, children })
-  //     }
-  //     return LayoutComponent
-  //   }
-
-  //   function LayoutComponent({
-  //     data,
-  //     location,
-  //     children,
-  //   }: LayoutComponentProps<TOutputData, TRoute>): React.ReactElement {
-  //     // for (const head of point._heads) {
-  //     //   useHead(typeof head === 'function' ? head({ data, location }) : head)
-  //     // }
-  //     if (!point._layout) {
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
-  //     }
-  //     return React.createElement(point._layout, { data, location, children })
-  //   }
-
-  //   function LayoutWrapperComponent({ children }: { children: React.ReactNode }): React.ReactElement {
-  //     const location = useLocation<CurrentRoute<TRoute>>()
-  //     const isInitalSsrLocation = useIsInitalSsrLocation()
-  //     const queryClient = useQueryClient()
-  //     const cache = queryClient.getQueryCache()
-  //     const queryKey = point.getQueryKey({ ...location.query, ...location.params } as never)
-  //     const query = cache.find({ queryKey })
-  //     const result = useQuery<TOutputData>({
-  //       queryKey,
-  //       queryFn: async () => {
-  //         const fetchOptions = point._fetchOptions()
-  //         const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-  //         const res = await fetch(location.pathname, {
-  //           ...fetchOptions,
-  //           headers,
-  //         })
-  //         const json = await res.json()
-  //         if (res.ok) {
-  //           return json
-  //         }
-  //         throw Error0.from(json, {
-  //           httpStatus: res.status,
-  //         })
-  //       },
-  //       enabled: !isInitalSsrLocation || query?.state.status !== 'error',
-  //       retry: false,
-  //       refetchOnMount: false,
-  //       refetchOnWindowFocus: false,
-  //       refetchOnReconnect: false,
-  //       refetchInterval: false,
-  //       refetchIntervalInBackground: false,
-  //       ...point._queryOptions,
-  //       ...point._pageQueryOptions,
-  //     })
-  //     if (result.error) {
-  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
-  //     }
-  //     if (result.isLoading) {
-  //       return React.createElement(loaderComponent, { type: 'page', location })
-  //     }
-  //     if (!result.data) {
-  //       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
-  //     }
-  //     return React.createElement(LayoutComponent, { data: result.data, location, children })
-  //   }
-  //   return LayoutWrapperComponent
-  // }
 
   _LayoutInner: React.ComponentType<{
     children: React.ReactNode
@@ -1958,18 +1772,24 @@ export type FetchOptions = RequestInit
 
 export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 
-export type InputSchema = z.ZodObject<any>
+export type InputSchemaZod = z.ZodObject<any>
+export type InputSchemaObject = Record<string, any>
+export type InputSchema = InputSchemaZod | InputSchemaObject
 export type UndefinedInputSchema = undefined
 export type Input<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = TRoute extends Route0.AnyRoute
-  ? TInputSchema extends InputSchema
+  ? TInputSchema extends InputSchemaZod
     ? z.infer<TInputSchema> & Omit<Route0.Params<TRoute>, keyof z.infer<TInputSchema>> & { query: Route0.Query<TRoute> }
-    : Route0.Params<TRoute> & { query: Route0.Query<TRoute> }
-  : TInputSchema extends InputSchema
+    : TInputSchema extends InputSchemaObject
+      ? TInputSchema & Omit<Route0.Params<TRoute>, keyof TInputSchema> & { query: Route0.Query<TRoute> }
+      : Route0.Params<TRoute> & { query: Route0.Query<TRoute> }
+  : TInputSchema extends InputSchemaZod
     ? z.infer<TInputSchema>
-    : Record<never, never>
+    : TInputSchema extends InputSchemaObject
+      ? TInputSchema
+      : Record<never, never>
 // > = TInputSchema extends InputSchema ? z.infer<TInputSchema> : Record<string, unknown>
 export type UndefinedInput = undefined
 
@@ -2005,18 +1825,18 @@ export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends 
 export type CtxFnProps<
   TCtxInput extends Ctx = Ctx,
   TData extends Data = Data,
-  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   ctx: TCtxInput
   data: TData
   input: Input<TRoute, TInputSchema>
-  location: Route0.Location<TRoute>
+  location: Route0.Location<CurrentRoute<TRoute>>
 }
 export type CtxFn<
   TCtxInput extends Ctx = Ctx,
   TData extends Data = Data,
-  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxOutput extends Ctx = Ctx,
 > = (props: CtxFnProps<TCtxInput, TData, TRoute, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
