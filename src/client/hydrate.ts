@@ -3,8 +3,7 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { PagesTree, Payload, PointsCollection } from '../eversion/main.js'
-import { Eversion0 } from '../eversion/main.js'
+import { Eversion0, type PagesTree, type Payload, type PointsCollection } from '../eversion/main.js'
 
 export type HydrateResult = {
   payload: Payload
@@ -26,9 +25,9 @@ export function hydrate(
   points: PointsCollection,
   rootElement?: HTMLElement | null,
 ): HydrateResult {
-  if (result) {
-    return result
-  }
+  // if (result) {
+  //   return result
+  // }
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) {
@@ -75,6 +74,7 @@ export function hydrate(
     // Subsequent invocations (e.g., HMR updates):
     // Don’t recreate the root; just render the new element tree.
     // With React Fast Refresh, this preserves hook state when component boundaries match.
+    console.log(123123)
     root.render(appElement)
   }
 

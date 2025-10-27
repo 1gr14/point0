@@ -380,7 +380,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const loadedPoints = await Eversion0.toLoadedPointsCollection(points)
     return Eversion0.toPagesTree({ points: loadedPoints })
   }
-  static toRoutesCollection = (pagesTree: PagesTree): RoutesCollection => {
+  static toRoutesCollection = ({ pagesTree }: { pagesTree: PagesTree }): RoutesCollection => {
     const routes: RoutesCollection = {}
     const traverse = (node: PagesTreeRecord): void => {
       // Add all page routes
