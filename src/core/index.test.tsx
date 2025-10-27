@@ -1,19 +1,19 @@
 import { Route0 } from '@devp0nt/route0'
+import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Eversion0 } from './eversion.js'
 import type {
   EmptyCtx,
-  EmptyData,
-  UndefinedInferredRootSourcePoint,
   UndefinedCtx,
+  UndefinedData,
+  UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
   UndefinedResponseOutput,
   UndefinedRoute,
 } from './index.js'
 import { Point0 } from './index.js'
-import { QueryClient } from '@tanstack/react-query'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -37,7 +37,8 @@ describe('Point0', () => {
         UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         EmptyCtx,
-        EmptyData,
+        UndefinedData,
+        UndefinedData,
         UndefinedRoute,
         UndefinedInputSchema,
         UndefinedResponseOutput
@@ -60,7 +61,8 @@ describe('Point0', () => {
         UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         { a: number; b: number },
-        EmptyData,
+        UndefinedData,
+        UndefinedData,
         UndefinedRoute,
         UndefinedInputSchema,
         UndefinedResponseOutput
@@ -82,7 +84,8 @@ describe('Point0', () => {
         undefined,
         undefined,
         { a: number; b: number; c: number },
-        EmptyData,
+        undefined,
+        undefined,
         undefined,
         undefined,
         undefined
@@ -104,7 +107,17 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, { a: number; b: number }, EmptyData, undefined, undefined, undefined>
+      Point0<
+        'middleware',
+        undefined,
+        undefined,
+        { a: number; b: number },
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      >
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -116,7 +129,17 @@ describe('Point0', () => {
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, { a: number; c: number }, EmptyData, undefined, undefined, undefined>
+      Point0<
+        'middleware',
+        undefined,
+        undefined,
+        { a: number; c: number },
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      >
     >()
     expect(server2._extendFns).toHaveLength(2)
     // not modified original server1
@@ -161,7 +184,17 @@ describe('Point0', () => {
     }))
     expect(server1).toBeInstanceOf(Point0)
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<'middleware', undefined, undefined, EmptyCtx, { a: number; b: number }, undefined, undefined, undefined>
+      Point0<
+        'middleware',
+        undefined,
+        undefined,
+        EmptyCtx,
+        { a: number; b: number },
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      >
     >()
     expect(server1._extendFns).toHaveLength(1)
     // not modified original server
@@ -179,6 +212,7 @@ describe('Point0', () => {
         undefined,
         EmptyCtx,
         { a: number; b: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined
@@ -422,7 +456,8 @@ describe('Point0', () => {
         typeof server,
         UndefinedCtx,
         EmptyCtx,
-        EmptyData,
+        undefined,
+        undefined,
         UndefinedRoute,
         UndefinedInputSchema,
         UndefinedResponseOutput

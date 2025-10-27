@@ -12,6 +12,7 @@ import type {
   EndPoint,
   EndPointType,
   ExtendFnRecord,
+  FinalData,
   Input,
   Method,
   PagePoint,
@@ -358,18 +359,17 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
     }
 
-    let ctxOutput: Ctx = requiredCtx ?? {}
-    let dataOutput: Data = {}
-    const headOutput: ResolvableHead[] = []
+    let currentCtx: Ctx = requiredCtx ?? {}
+    let currentData: Data = {}
     const extendFns = [
       ...this.getParents().flatMap((source) => source._extendFns),
       ...this.root._extendFns,
       ...(point?._extendFns ?? []),
     ]
-    const heads = [
-      ...this.getParents().flatMap((source) => source._heads),
-      ...this.root._heads,
-      ...(point?._heads ?? []),
+    const staticHeads = [
+      ...this.getParents().flatMap((source) => source._staticHeads),
+      ...this.root._staticHeads,
+      ...(point?._staticHeads ?? []),
     ]
     // TODO: get status from real point data
 
@@ -381,16 +381,16 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               (e) => e.record.unstableId === extendFn.unstableId && e.record.type === 'ctx',
             )
             if (ex) {
-              ctxOutput = { ...ex.output }
+              currentCtx = { ...ex.output }
             } else {
-              ctxOutput = await extendFn.fn({
-                ctx: { ...ctxOutput },
-                data: { ...dataOutput },
+              currentCtx = await extendFn.fn({
+                ctx: { ...currentCtx },
+                data: { ...currentData },
                 location,
                 input: parsedInput,
               })
               extendFnsWithOutput.push({
-                output: ctxOutput,
+                output: currentCtx,
                 record: extendFn,
               })
             }
@@ -401,47 +401,47 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               (e) => e.record.unstableId === extendFn.unstableId && e.record.type === 'loader',
             )
             if (ex) {
-              dataOutput = { ...ex.output }
+              currentData = { ...ex.output }
             } else {
-              dataOutput = await extendFn.fn({
-                ctx: { ...ctxOutput },
-                data: { ...dataOutput },
+              currentData = await extendFn.fn({
+                ctx: { ...currentCtx },
+                data: { ...currentData },
                 location,
                 input: parsedInput,
               })
               extendFnsWithOutput.push({
-                output: dataOutput,
+                output: currentData,
                 record: extendFn,
               })
             }
             break
           }
-          // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
           default:
             throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
         }
       }
-      for (const head of heads) {
-        headOutput.push(typeof head === 'function' ? head({ data: { ...dataOutput }, location }) : head)
-      }
+      // for (const staticHead of staticHeads) {
+      //   currentStaticHeads.push(staticHead)
+      // }
       const response = await (async () => {
         if (point?._pointType === 'response') {
           if (!point._responseFn) {
             throw new Error('Response function not found')
           }
-          return await point._responseFn({ ctx: ctxOutput, data: dataOutput, location, input: parsedInput })
+          return await point._responseFn({ ctx: currentCtx, data: currentData, location, input: parsedInput })
         }
         return undefined
       })()
       if (point) {
-        this.appendQueryClientCache({ data: dataOutput, location, point, error: undefined, queryClient })
+        this.appendQueryClientCache({ data: currentData, location, point, error: undefined, queryClient })
         const dehydratedState = skipDehydration
           ? emptyDehydratedState
           : this.getQueryClientDehydratedState({ queryClient })
         return {
-          ctx: ctxOutput,
-          data: dataOutput,
-          head: headOutput,
+          ctx: currentCtx,
+          data: currentData,
+          head: staticHeads,
           location,
           point,
           error: undefined,
@@ -455,11 +455,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       } else {
         const error = new Error0(`Point Not Found: ${location.pathname}`)
-        this.appendQueryClientCache({ data: dataOutput, location, point, error, queryClient })
+        this.appendQueryClientCache({ data: currentData, location, point, error, queryClient })
         return {
-          ctx: ctxOutput,
-          data: dataOutput,
-          head: headOutput,
+          ctx: currentCtx,
+          data: currentData,
+          head: staticHeads,
           location,
           point,
           error,
@@ -473,11 +473,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
     } catch (error) {
-      this.appendQueryClientCache({ data: dataOutput, location, point, error, queryClient })
+      this.appendQueryClientCache({ data: currentData, location, point, error, queryClient })
       return {
-        ctx: ctxOutput,
-        data: dataOutput,
-        head: headOutput,
+        ctx: currentCtx,
+        data: currentData,
+        head: staticHeads,
         location,
         point,
         error,
@@ -643,8 +643,8 @@ export type ExtractResult<TCtx extends Ctx = Ctx, TData extends Data = Data> = {
   queryClient: QueryClient
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any>
-    ? ExtractResult<TCtx, TData>
+  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any, any>
+    ? ExtractResult<TCtx, FinalData<TData>>
     : ExtractResult<EmptyCtx, EmptyData>
 
 export type Payload = {
