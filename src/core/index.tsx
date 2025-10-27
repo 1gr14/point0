@@ -153,7 +153,7 @@ export class Point0<
     this._unstableId = Point0._getNextUnstableId()
   }
 
-  _clone<
+  _continue<
     TPointType extends PointType,
     TSourceBasePoint extends ConnectedSourceBasePoint | UndefinedConnectedSourceBasePoint,
     TRequiredCtx extends RequiredCtx,
@@ -364,7 +364,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    const cloned = this._clone<
+    return this._continue<
       'base',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -375,9 +375,8 @@ export class Point0<
       TResponseOutput
     >({
       _pointType: 'base',
+      _base: this as BasePoint<any, TRequiredCtx>,
     })
-    cloned._base = this as BasePoint<any, TRequiredCtx>
-    return cloned
   }
 
   id(
@@ -392,7 +391,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -420,7 +419,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -447,7 +446,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -474,7 +473,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -501,7 +500,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -528,7 +527,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -555,7 +554,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -582,7 +581,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -609,7 +608,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -636,7 +635,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -663,7 +662,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -688,7 +687,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
@@ -813,7 +812,7 @@ export class Point0<
     TResponseOutput
   > {
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TOutputCtx }) => ({ ...ctx, ...ctxOrFn })
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -840,7 +839,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -867,7 +866,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -921,7 +920,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -978,7 +977,7 @@ export class Point0<
             title: titleFnOrTitle(props),
           })
         : { title: titleFnOrTitle }
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -1005,7 +1004,7 @@ export class Point0<
     TNewInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'middleware',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -1040,7 +1039,7 @@ export class Point0<
     for (const layout of this._layouts) {
       layout._layoutPagesRoutes.push(this._route)
     }
-    return this._clone<
+    return this._continue<
       'page',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -1071,7 +1070,7 @@ export class Point0<
     if (!this._route) {
       throw new Error('add .route() to chain to use .layout() function')
     }
-    return this._clone<
+    return this._continue<
       'layout',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -1099,7 +1098,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'response',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -1129,7 +1128,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'query',
       TConnectedSourceBasePoint,
       TRequiredCtx,
@@ -1160,7 +1159,7 @@ export class Point0<
     TInputSchema,
     TResponseOutput
   > {
-    return this._clone<
+    return this._continue<
       'mutation',
       TConnectedSourceBasePoint,
       TRequiredCtx,
