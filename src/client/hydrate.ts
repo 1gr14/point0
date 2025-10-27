@@ -19,11 +19,16 @@ export type HydratedAppProps = {
 export type HydratedAppComponent = React.ComponentType<HydratedAppProps>
 
 let root: Root | null = null
+let result: HydrateResult | null = null
+
 export function hydrate(
   App: HydratedAppComponent,
   points: PointsCollection,
   rootElement?: HTMLElement | null,
 ): HydrateResult {
+  if (result) {
+    return result
+  }
   const payloadEl = document.getElementById('__POINT0_PAYLOAD__')
   const payloadContent = payloadEl?.textContent
   if (!payloadContent) {
@@ -50,12 +55,10 @@ export function hydrate(
     }
   }
 
-  const pagesAndLayouts = Eversion0.toPagesAndLayoutsCollection({ points })
-  const pagesTree = Eversion0.toPagesTree({ pagesAndLayouts })
   const appElement = createElement(App, {
     dehydratedState: payload.dehydratedState,
     ssrLocation: payload.location,
-    pagesTree,
+    pagesTree: Eversion0.toPagesTree({ points }),
   })
 
   // First invocation: create the root once.
@@ -75,5 +78,6 @@ export function hydrate(
     root.render(appElement)
   }
 
-  return { payload, rootElement, appElement }
+  result = { payload, rootElement, appElement }
+  return result
 }
