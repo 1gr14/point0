@@ -6,7 +6,7 @@ import { Eversion0 } from './eversion.js'
 import type {
   EmptyCtx,
   EmptyData,
-  UndefinedConnectedSourceBasePoint,
+  UndefinedInferredRootSourcePoint,
   UndefinedCtx,
   UndefinedInputSchema,
   UndefinedResponseOutput,
@@ -34,7 +34,7 @@ describe('Point0', () => {
     expectTypeOf(server).toEqualTypeOf<
       Point0<
         'middleware',
-        UndefinedConnectedSourceBasePoint,
+        UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         EmptyCtx,
         EmptyData,
@@ -57,7 +57,7 @@ describe('Point0', () => {
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
         'middleware',
-        UndefinedConnectedSourceBasePoint,
+        UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         { a: number; b: number },
         EmptyData,

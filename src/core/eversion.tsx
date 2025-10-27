@@ -17,7 +17,7 @@ import type {
   PagePoint,
   QueryKey,
   RequiredCtx,
-  RootConnectionPoint,
+  RootConnectedPoint,
   RootId,
   RootPoint,
   RootSourcePoint,
@@ -88,14 +88,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return connection
   }
 
-  getParents(): [RootSourcePoint, ...RootConnectionPoint[]] | [] {
-    const sources: Array<RootSourcePoint | RootConnectionPoint> = []
+  getParents(): [RootSourcePoint, ...RootConnectedPoint[]] | [] {
+    const sources: Array<RootSourcePoint | RootConnectedPoint> = []
     let current: Eversion0<TRequiredCtx> | undefined = this.source
     while (current) {
       sources.push(current.root)
       current = current.source
     }
-    return sources.reverse() as [RootSourcePoint, ...RootConnectionPoint[]] | []
+    return sources.reverse() as [RootSourcePoint, ...RootConnectedPoint[]] | []
   }
 
   normalizeLocation(input: LocationInput): Route0.Location {
@@ -627,9 +627,9 @@ export type ExtendFnWithOutput = {
   output: Ctx | Data
   record: ExtendFnRecord
 }
-export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data = Data> = {
-  ctx: TOutputCtx
-  data: TOutputData
+export type ExtractResult<TCtx extends Ctx = Ctx, TData extends Data = Data> = {
+  ctx: TCtx
+  data: TData
   head: ResolvableHead[]
   response: Response | undefined
   dehydratedState: DehydratedState
@@ -643,8 +643,8 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   queryClient: QueryClient
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, any, infer TOutputCtx, infer TOutputData, any, any>
-    ? ExtractResult<TOutputCtx, TOutputData>
+  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any>
+    ? ExtractResult<TCtx, TData>
     : ExtractResult<EmptyCtx, EmptyData>
 
 export type Payload = {

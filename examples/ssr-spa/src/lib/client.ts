@@ -9,4 +9,4 @@ export const client = Point0.connect<typeof server>('client')
     htmlAttrs: { lang: 'en' },
   })
 
-export type Ctx = (typeof client)['Infer']['OutputCtx']
+export type Ctx = (typeof client)['Infer']['Ctx']
