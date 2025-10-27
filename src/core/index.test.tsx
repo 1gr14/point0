@@ -125,7 +125,7 @@ describe('Point0', () => {
     expect(server._extendFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion0.create({ base: server2 })
+    const eversion2 = await Eversion0.create({ root: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation('/'),
@@ -144,7 +144,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server2,
+      root: server2,
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
@@ -200,7 +200,7 @@ describe('Point0', () => {
     }))
     const pageComponent = () => <div>Hello</div>
     const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion1 = await Eversion0.create({ base: server1 })
+    const eversion1 = await Eversion0.create({ root: server1 })
     expect(
       await eversion1.extract({
         location: Route0.getLocation(url),
@@ -218,7 +218,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server1,
+      root: server1,
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
@@ -231,7 +231,7 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion0.create({ base: server2 })
+    const eversion2 = await Eversion0.create({ root: server2 })
     expect(
       await eversion2.extract({
         point: clientPoint02,
@@ -250,7 +250,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server2,
+      root: server2,
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
@@ -261,7 +261,7 @@ describe('Point0', () => {
       c: 5,
     }))
     const clientPoint03 = Point0.connect<typeof server3>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion3 = await Eversion0.create({ base: server3 })
+    const eversion3 = await Eversion0.create({ root: server3 })
     expect(
       await eversion3.extract({
         point: clientPoint03,
@@ -278,7 +278,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server3,
+      root: server3,
       point: clientPoint03,
       eversion: eversion3,
       response: undefined,
@@ -288,7 +288,7 @@ describe('Point0', () => {
   })
 
   it('extract ctx with required ctx input', async () => {
-    const server = Point0.source('server').requireCtx<{ r: string }>()
+    const server = Point0.source('server').requireCtx<{ r: string }>().base()
     const url = '/z/x/c'
     const server1 = server.ctx(({ ctx }) => ({
       ...ctx,
@@ -296,8 +296,8 @@ describe('Point0', () => {
       b: 2,
     }))
     const pageComponent = () => <div>Hello</div>
-    const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion1 = await Eversion0.create({ base: server1 })
+    const clientPoint01 = Point0.connect<typeof server1>('client').base().route(Route0.create('/')).page(pageComponent)
+    const eversion1 = await Eversion0.create({ root: server1 })
     expect(
       await eversion1.extract({
         point: clientPoint01,
@@ -316,7 +316,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server1,
+      root: server1,
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
@@ -328,8 +328,8 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion0.create({ base: server2 })
+    const clientPoint02 = Point0.connect<typeof server2>('client').base().route(Route0.create('/')).page(pageComponent)
+    const eversion2 = await Eversion0.create({ root: server2 })
     expect(
       await eversion2.extract({
         location: Route0.getLocation(url),
@@ -349,7 +349,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server2,
+      root: server2,
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
@@ -360,8 +360,8 @@ describe('Point0', () => {
       r: ctx.r,
       c: 5,
     }))
-    const clientPoint03 = Point0.connect<typeof server3>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion3 = await Eversion0.create({ base: server3 })
+    const clientPoint03 = Point0.connect<typeof server3>('client').base().route(Route0.create('/')).page(pageComponent)
+    const eversion3 = await Eversion0.create({ root: server3 })
     expect(
       await eversion3.extract({
         location: Route0.getLocation(url),
@@ -379,7 +379,7 @@ describe('Point0', () => {
       dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      base: server3,
+      root: server3,
       point: clientPoint03,
       eversion: eversion3,
       response: undefined,

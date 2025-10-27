@@ -146,7 +146,8 @@ export function wrapUseNavigate<T extends () => (href: string, ...args: any[]) =
       const rawLocation = Route0.getLocation(href)
       const location = Eversion0.getRouteMatch(ctx.routes, rawLocation)?.location || rawLocation
       ctx.setNextLocation(location)
-
+      console.log('location', location)
+      console.log('ctx.policy', ctx.policy)
       if (ctx.policy === 'simple') {
         ctx.setStatus('idle')
 
@@ -165,11 +166,13 @@ export function wrapUseNavigate<T extends () => (href: string, ...args: any[]) =
       ctx.setStatus('fetching')
 
       try {
+        console.log('prefetching')
         await Eversion0.prefetchSuitablePagePoint({
           pagesTree: ctx.pagesTree,
           location,
           queryClient,
         })
+        console.log('prefetching done')
 
         ctx.setStatus('transit-success')
         await adapterNavigate(...(args as [string, ...any[]]))

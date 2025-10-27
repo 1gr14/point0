@@ -3,7 +3,7 @@ import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import qs from 'qs'
 import { createElement } from 'react'
-import type { BaseId, BasePoint, Method, RequiredCtx } from '../../core/index.js'
+import type { RootId, RootPoint, Method, RequiredCtx } from '../../core/index.js'
 import type { IsEmptyObject } from '../../core/types.js'
 import type { PointsCollection } from '../../eversion/main.js'
 import { Eversion0 } from '../../eversion/main.js'
@@ -40,12 +40,12 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   devServeTarget: 'client' | 'server' | 'universal' | undefined
   clientsDevServer: Bun.Server<unknown> | undefined
   clientsDevServerPort: number
-  base: BasePoint<TRequiredCtx>
+  root: RootPoint<TRequiredCtx>
   points?: PointsCollection
   logger: AdapterLogger
   dirname?: string
   publicDir?: string
-  fallbackBaseId: BaseId
+  fallbackRootId: RootId
   eversion: Eversion0<TRequiredCtx>
   clients: Array<ClientWithEversion<TRequiredCtx>>
 
@@ -59,7 +59,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       clients: Array<ClientWithEversion<TRequiredCtx>>
     },
   ) {
-    this.base = input.base
+    this.root = input.root
     this.points = input.points
     this.mainServerPort = input.port ? Number(input.port) : 3000
     this.clientsDevServerPort = input.clientsDevServerPort
@@ -68,7 +68,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.logger = input.logger
     this.dirname = input.dirname
     this.publicDir = input.publicDir
-    this.fallbackBaseId = input.fallbackBaseId || input.clients.at(0)?.base._baseId || input.base._baseId
+    this.fallbackRootId = input.fallbackRootId || input.clients.at(0)?.root._rootId || input.root._rootId
     this.eversion = input.eversion
     this.clients = input.clients
   }
@@ -77,15 +77,15 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: AdapterServerInput<TRequiredCtx>,
   ): Promise<BunAdapter<TRequiredCtx>> {
     const parsedInput = parseAdapterInput(input)
-    const eversion = await Eversion0.create({ base: parsedInput.base, points: parsedInput.points })
+    const eversion = await Eversion0.create({ root: parsedInput.root, points: parsedInput.points })
     // for (const client of parsedInput.clients) {
-    //   await eversion.connect({ base: client.base, points: client.points })
+    //   await eversion.connect({ root: client.root, points: client.points })
     // }
     const clients = await Promise.all(
       parsedInput.clients.map(async (client) => {
         return {
           ...client,
-          eversion: await eversion.connect({ base: client.base, points: client.points }),
+          eversion: await eversion.connect({ root: client.root, points: client.points }),
         }
       }),
     )
@@ -127,11 +127,11 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           .map(async (clientWithSrcIndexHtml) => {
             if (!(await Bun.file(clientWithSrcIndexHtml.srcIndexHtml).exists())) {
               throw new Error(
-                `srcIndexHtml file "${clientWithSrcIndexHtml.srcIndexHtml}" not found in development mode for client "${clientWithSrcIndexHtml.client.base._baseId}"`,
+                `srcIndexHtml file "${clientWithSrcIndexHtml.srcIndexHtml}" not found in development mode for client "${clientWithSrcIndexHtml.client.root._rootId}"`,
               )
             }
             return [
-              `/development-${clientWithSrcIndexHtml.client.base._baseId}.index.html`,
+              `/development-${clientWithSrcIndexHtml.client.root._rootId}.index.html`,
               (await import(clientWithSrcIndexHtml.srcIndexHtml)).default,
             ]
           }),
@@ -150,14 +150,14 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       await Promise.all(
         this.clients.map(async (client) => {
           if (!client.distIndexHtml) {
-            return [client.base._baseId, undefined]
+            return [client.root._rootId, undefined]
           }
           if (!(await Bun.file(client.distIndexHtml).exists())) {
             throw new Error(
-              `"${client.distIndexHtml}" not found in production mode for client "${client.base._baseId}"`,
+              `"${client.distIndexHtml}" not found in production mode for client "${client.root._rootId}"`,
             )
           }
-          return [client.base._baseId, await Bun.file(client.distIndexHtml).text()]
+          return [client.root._rootId, await Bun.file(client.distIndexHtml).text()]
         }),
       ),
     )
@@ -175,14 +175,14 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //     await Promise.all(
   //       this.clients.map(async (client) => {
   //         if (!client.srcIndexHtml) {
-  //           return [client.base._baseId, undefined]
+  //           return [client.base._rootId, undefined]
   //         }
   //         const content = await (
   //           await fetch(
-  //             `http://localhost:${bunServer.port}${client.basepath}development-${client.base._baseId}.index.html`,
+  //             `http://localhost:${bunServer.port}${client.basepath}development-${client.base._rootId}.index.html`,
   //           )
   //         ).text()
-  //         return [client.base._baseId, content]
+  //         return [client.base._rootId, content]
   //       }),
   //     ),
   //   )
@@ -193,13 +193,13 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (this.devServeTarget === 'server') {
       return await (
         await fetch(
-          `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.base._baseId}.index.html`,
+          `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.root._rootId}.index.html`,
         )
       ).text()
     } else {
       return await (
         await fetch(
-          `http://localhost:${this.mainServerPort}${client.basepath}development-${client.base._baseId}.index.html`,
+          `http://localhost:${this.mainServerPort}${client.basepath}development-${client.root._rootId}.index.html`,
         )
       ).text()
     }
@@ -285,7 +285,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const suitable = this.eversion.getSuitable({
         method: request.method as Method,
         pathname,
-        fallbackBaseId: this.fallbackBaseId,
+        fallbackRootId: this.fallbackRootId,
       })
 
       // TODO: get correct input by suitable using helper
@@ -305,7 +305,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         location: suitable.location,
         input,
       })
-      const relatedClient = this.clients.find((client) => client.base === extractResult.base)
+      const relatedClient = this.clients.find((client) => client.root === extractResult.root)
       if (extractResult.error) {
         this.logger.error(extractResult.error)
       }
@@ -313,7 +313,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (relatedClient) {
         const originalIndexHtml =
           process.env.NODE_ENV === 'production'
-            ? this.indexHtmlContents[relatedClient.base._baseId]
+            ? this.indexHtmlContents[relatedClient.root._rootId]
             : await this._loadSrcIndexHtmlContents(relatedClient)
         const App = relatedClient.App
 
@@ -321,18 +321,18 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           if (!originalIndexHtml) {
             if (process.env.NODE_ENV !== 'production') {
               throw new Error(
-                `index.html not found for client "${relatedClient.base._baseId}", please provide srcIndexHtml for client in development mode`,
+                `index.html not found for client "${relatedClient.root._rootId}", please provide srcIndexHtml for client in development mode`,
               )
             } else {
               throw new Error(
-                `index.html not found for client "${relatedClient.base._baseId}", please provide distIndexHtml for client in production mode`,
+                `index.html not found for client "${relatedClient.root._rootId}", please provide distIndexHtml for client in production mode`,
               )
             }
           }
           // so we render page wrapped with layouts
           try {
             if (!App) {
-              throw new Error(`App not found for client "${relatedClient.base._baseId}", please provide it`)
+              throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
             }
             const appElement = createElement(App, {
               ssrLocation: extractResult.location,

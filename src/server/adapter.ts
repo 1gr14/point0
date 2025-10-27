@@ -1,5 +1,5 @@
 import type { HydratedAppComponent } from '../client/hydrate.js'
-import type { BaseId, BasePoint, RequiredCtx } from '../core/index.js'
+import type { RootId, RootPoint, RequiredCtx } from '../core/index.js'
 import type { PointsCollection } from '../eversion/main.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
@@ -10,7 +10,7 @@ export type AdapterLogger = {
 export type AdapterClientInput = {
   ssr?: boolean
   points?: PointsCollection
-  base: BasePoint
+  root: RootPoint
   basepath?: string
   distDir?: string
   distRoute?: string
@@ -20,21 +20,21 @@ export type AdapterClientInput = {
   rootElementId?: string
 }
 export type AdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  base: BasePoint<TRequiredCtx>
+  root: RootPoint<TRequiredCtx>
   points?: PointsCollection
   port?: number | string | undefined
   clientsDevServerPort?: number | string | undefined
   logger?: AdapterLogger
   dirname?: string
   publicDir?: string
-  fallbackBaseId?: BaseId | undefined
+  fallbackRootId?: RootId | undefined
   clients?: AdapterClientInput[] | undefined
 }
 
 export type AdapterClientInputParsed = {
   ssr: boolean
   points: PointsCollection
-  base: BasePoint
+  root: RootPoint
   basepath: string
   distDir: string | undefined
   distRoute: string | undefined
@@ -45,14 +45,14 @@ export type AdapterClientInputParsed = {
   rootElementId: string | undefined
 }
 export type AdapterServerInputParsed<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  base: BasePoint<TRequiredCtx>
+  root: RootPoint<TRequiredCtx>
   points: PointsCollection
   port: number | string | undefined
   clientsDevServerPort: number | string | undefined
   logger: AdapterLogger
   dirname: string | undefined
   publicDir: string | undefined
-  fallbackBaseId: BaseId | undefined
+  fallbackRootId: RootId | undefined
   clients: AdapterClientInputParsed[]
 }
 
@@ -74,7 +74,7 @@ const parseAdapterClientInput = (
   return {
     ssr,
     points: input.points ?? [],
-    base: input.base,
+    root: input.root,
     basepath,
     distDir,
     distRoute,
@@ -88,7 +88,7 @@ const parseAdapterClientInput = (
 export const parseAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx>(
   input: AdapterServerInput<TRequiredCtx>,
 ): AdapterServerInputParsed<TRequiredCtx> => {
-  const { dirname, port, points, base } = input
+  const { dirname, port, points, root } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
@@ -118,8 +118,8 @@ export const parseAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx
     logger,
     dirname,
     publicDir,
-    base,
-    fallbackBaseId: input.fallbackBaseId,
+    root,
+    fallbackRootId: input.fallbackRootId,
     clients,
   }
 }

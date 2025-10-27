@@ -6,10 +6,10 @@ import { lazy } from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type {
   AnyPoint,
-  BaseConnectionPoint,
-  BaseId,
-  BasePoint,
-  BaseSourcePoint,
+  RootConnectionPoint,
+  RootId,
+  RootPoint,
+  RootSourcePoint,
   Ctx,
   Data,
   EmptyCtx,
@@ -27,40 +27,40 @@ import type {
 } from '../core/index.js'
 import { emptyDehydratedState } from '../core/utils.js'
 
-// TODO: when find suitable allow porvide "baseId", then it will find only inside that
+// TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
 export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  base: BasePoint<TRequiredCtx>
+  root: RootPoint<TRequiredCtx>
   source: Eversion0<TRequiredCtx> | undefined
   points: LoadedPointsCollection
   connections: Array<Eversion0<TRequiredCtx>>
 
   private constructor({
-    base,
+    root,
     source,
     points,
     connections,
   }: {
-    base: BasePoint
+    root: RootPoint
     source?: Eversion0<TRequiredCtx> | undefined
     points?: LoadedPointsCollection
     connections?: Array<Eversion0<TRequiredCtx>>
   }) {
-    this.base = base as BasePoint<TRequiredCtx>
+    this.root = root as RootPoint<TRequiredCtx>
     this.points = points ?? []
     this.connections = connections ?? []
     this.source = source
   }
 
-  static async create<TBasePoint extends BasePoint>({
-    base,
+  static async create<TRootPoint extends RootPoint>({
+    root,
     points,
   }: {
-    base: TBasePoint
+    root: TRootPoint
     points?: PointsCollectionRecord[]
-  }): Promise<Eversion0<TBasePoint['Infer']['RequiredCtx']>> {
-    return new Eversion0<TBasePoint['Infer']['RequiredCtx']>({
-      base,
+  }): Promise<Eversion0<TRootPoint['Infer']['RequiredCtx']>> {
+    return new Eversion0<TRootPoint['Infer']['RequiredCtx']>({
+      root,
       points: await Eversion0.toLoadedPointsCollection(points),
     })
   }
@@ -80,9 +80,9 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
-  async connect({ base, points }: { base: BasePoint; points?: PointsCollection }): Promise<Eversion0<TRequiredCtx>> {
+  async connect({ root, points }: { root: RootPoint; points?: PointsCollection }): Promise<Eversion0<TRequiredCtx>> {
     const connection = new Eversion0<TRequiredCtx>({
-      base,
+      root,
       points: await Eversion0.toLoadedPointsCollection(points),
       source: this,
     })
@@ -218,6 +218,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     queryClient: QueryClient
   }): Promise<PagePoint | undefined> => {
     const result = await Eversion0.getSuitablePagePoint({ pagesTree, location })
+    console.log('result', !!result)
     if (!result) {
       return undefined
     }
@@ -242,15 +243,18 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     queryClient: QueryClient
     location: Route0.Location
   }): Promise<void> => {
+    console.log(123)
     if (!point._hasLoader()) {
       return
     }
+    console.log(234)
     const queryOptions = point.getQueryOptions({ ...location.query, ...location.params })
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as QueryKey })
     if (query) {
       return
     }
+    console.log(456)
     await queryClient.prefetchQuery(queryOptions as never)
   }
 
@@ -425,14 +429,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
 
-  getParents(): [BaseSourcePoint, ...BaseConnectionPoint[]] | [] {
-    const sources: Array<BaseSourcePoint | BaseConnectionPoint> = []
+  getParents(): [RootSourcePoint, ...RootConnectionPoint[]] | [] {
+    const sources: Array<RootSourcePoint | RootConnectionPoint> = []
     let current: Eversion0<TRequiredCtx> | undefined = this.source
     while (current) {
-      sources.push(current.base)
+      sources.push(current.root)
       current = current.source
     }
-    return sources.reverse() as [BaseSourcePoint, ...BaseConnectionPoint[]] | []
+    return sources.reverse() as [RootSourcePoint, ...RootConnectionPoint[]] | []
   }
 
   normalizeLocation(input: LocationInput): Route0.Location {
@@ -450,11 +454,11 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   _getSuitableSelfPoint({
     method: providedMethod,
-    baseId,
+    rootId,
     ...locationProps
   }: {
     method: Method
-    baseId?: BaseId
+    rootId?: RootId
   } & LocationInput):
     | {
         point: EndPoint
@@ -462,7 +466,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         eversion: Eversion0<TRequiredCtx>
       }
     | undefined {
-    if (baseId && this.base._baseId !== baseId) {
+    if (rootId && this.root._rootId !== rootId) {
       return undefined
     }
     const location = this.normalizeLocation(locationProps)
@@ -484,20 +488,20 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
   getSuitablePoint({
     method: providedMethod,
-    baseId,
+    rootId,
     ...locationProps
   }: {
     method: Method
-    baseId?: BaseId
+    rootId?: RootId
   } & LocationInput): GetSuitablePointResult<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const suitableSelfPoint = this._getSuitableSelfPoint({ method: providedMethod, location, baseId })
+    const suitableSelfPoint = this._getSuitableSelfPoint({ method: providedMethod, location, rootId })
     if (suitableSelfPoint) {
       return suitableSelfPoint
     }
     const suitableConnectionPoint = (() => {
       for (const connection of this.connections) {
-        const result = connection.getSuitablePoint({ method: providedMethod, location, baseId })
+        const result = connection.getSuitablePoint({ method: providedMethod, location, rootId })
         if (result) {
           return result
         }
@@ -512,14 +516,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   _getSuitableSelfEversionByLocation({
     method: providedMethod,
-    baseId,
+    rootId,
     ...locationProps
   }: {
     method: Method
-    baseId?: BaseId | undefined
+    rootId?: RootId | undefined
   } & LocationInput): Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const route = this.base._route
+    const route = this.root._route
     if (!route) {
       return undefined
     }
@@ -531,20 +535,20 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
   _getSuitableEversionByLocation({
     method: providedMethod,
-    baseId,
+    rootId,
     ...locationProps
   }: {
     method: Method
-    baseId?: BaseId | undefined
+    rootId?: RootId | undefined
   } & LocationInput): Eversion0<TRequiredCtx> | undefined {
     const location = this.normalizeLocation(locationProps)
-    const suitableSelfEversion = this._getSuitableSelfEversionByLocation({ method: providedMethod, location, baseId })
+    const suitableSelfEversion = this._getSuitableSelfEversionByLocation({ method: providedMethod, location, rootId })
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
     const suitableConnectionEversion = (() => {
       for (const connection of this.connections) {
-        const result = connection._getSuitableEversionByLocation({ method: providedMethod, location, baseId })
+        const result = connection._getSuitableEversionByLocation({ method: providedMethod, location, rootId })
         if (result) {
           return result
         }
@@ -556,14 +560,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     return undefined
   }
-  _getSuitableEversionByBaseId({ baseId }: { baseId: BaseId | undefined }): Eversion0<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this.base._baseId === baseId ? this : undefined
+  _getSuitableEversionByRootId({ rootId }: { rootId: RootId | undefined }): Eversion0<TRequiredCtx> | undefined {
+    const suitableSelfEversion = this.root._rootId === rootId ? this : undefined
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
     const suitableConnectionEversion = (() => {
       for (const connection of this.connections) {
-        const result = connection._getSuitableEversionByBaseId({ baseId })
+        const result = connection._getSuitableEversionByRootId({ rootId })
         if (result) {
           return result
         }
@@ -577,44 +581,44 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
   getSuitableEversionByLocation({
     method: providedMethod,
-    baseId,
-    fallbackBaseId,
+    rootId,
+    fallbackRootId,
     ...locationProps
   }: {
     method: Method
-    baseId?: BaseId | undefined
-    fallbackBaseId: BaseId | undefined
+    rootId?: RootId | undefined
+    fallbackRootId: RootId | undefined
   } & LocationInput): Eversion0<TRequiredCtx> {
     const location = this.normalizeLocation(locationProps)
-    const suitableEversionByLoaction = this._getSuitableEversionByLocation({ method: providedMethod, location, baseId })
+    const suitableEversionByLoaction = this._getSuitableEversionByLocation({ method: providedMethod, location, rootId })
     if (suitableEversionByLoaction) {
       return suitableEversionByLoaction
     }
-    const suitableEversionByBaseId = this._getSuitableEversionByBaseId({ baseId })
-    if (suitableEversionByBaseId) {
-      return suitableEversionByBaseId
+    const suitableEversionByRootId = this._getSuitableEversionByRootId({ rootId })
+    if (suitableEversionByRootId) {
+      return suitableEversionByRootId
     }
-    const suitableEversionByFallbackBaseId = this._getSuitableEversionByBaseId({ baseId: fallbackBaseId })
-    if (suitableEversionByFallbackBaseId) {
-      return suitableEversionByFallbackBaseId
+    const suitableEversionByFallbackRootId = this._getSuitableEversionByRootId({ rootId: fallbackRootId })
+    if (suitableEversionByFallbackRootId) {
+      return suitableEversionByFallbackRootId
     }
     throw new Error(
-      `No suitable eversion found for method "${providedMethod}" at location "${location.pathname}" and base id "${baseId}" and fallback base id "${fallbackBaseId}"`,
+      `No suitable eversion found for method "${providedMethod}" at location "${location.pathname}" and root id "${rootId}" and fallback root id "${fallbackRootId}"`,
     )
   }
 
   getSuitable({
     method: providedMethod,
-    baseId,
-    fallbackBaseId,
+    rootId,
+    fallbackRootId,
     ...locationProps
   }: {
     method: Method
-    baseId?: BaseId
-    fallbackBaseId: BaseId
+    rootId?: RootId
+    fallbackRootId: RootId
   } & LocationInput): GetSuitableResult<TRequiredCtx> {
     const location = this.normalizeLocation(locationProps)
-    const suitablePoint = this.getSuitablePoint({ method: providedMethod, location, baseId })
+    const suitablePoint = this.getSuitablePoint({ method: providedMethod, location, rootId })
     if (suitablePoint) {
       return suitablePoint
     }
@@ -622,8 +626,8 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const suitableEversion = this.getSuitableEversionByLocation({
       method: providedMethod,
       location,
-      baseId,
-      fallbackBaseId,
+      rootId,
+      fallbackRootId,
     })
     return { point: undefined, location, eversion: suitableEversion }
   }
@@ -686,7 +690,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         point,
         error: inputError,
         status: 422,
-        base: this.base,
+        root: this.root,
         eversion: this,
         queryClient,
         extendFnsWithOutput,
@@ -700,12 +704,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const headOutput: ResolvableHead[] = []
     const extendFns = [
       ...this.getParents().flatMap((source) => source._extendFns),
-      ...this.base._extendFns,
+      ...this.root._extendFns,
       ...(point?._extendFns ?? []),
     ]
     const heads = [
       ...this.getParents().flatMap((source) => source._heads),
-      ...this.base._heads,
+      ...this.root._heads,
       ...(point?._heads ?? []),
     ]
     // TODO: get status from real point data
@@ -783,7 +787,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           point,
           error: undefined,
           status: 200,
-          base: this.base,
+          root: this.root,
           eversion: this,
           response,
           extendFnsWithOutput,
@@ -802,7 +806,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           error,
           status: 404,
           response: undefined,
-          base: this.base,
+          root: this.root,
           eversion: this,
           extendFnsWithOutput,
           queryClient,
@@ -819,7 +823,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         point,
         error,
         status: 500,
-        base: this.base,
+        root: this.root,
         eversion: this,
         response: undefined,
         extendFnsWithOutput,
@@ -832,19 +836,19 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async extractSuitable({
     method: providedMethod,
     requiredCtx,
-    baseId,
-    fallbackBaseId,
+    rootId,
+    fallbackRootId,
     input,
     ...locationProps
   }: WithRequiredCtx<TRequiredCtx> & {
     method: Method
-    baseId?: BaseId | undefined
-    fallbackBaseId: BaseId
+    rootId?: RootId | undefined
+    fallbackRootId: RootId
     point?: AnyPoint | undefined
     input?: Input
   } & LocationInput): Promise<ExtractResult> {
     const location = this.normalizeLocation(locationProps)
-    const suitable = this.getSuitable({ method: providedMethod, location, baseId, fallbackBaseId })
+    const suitable = this.getSuitable({ method: providedMethod, location, rootId, fallbackRootId })
     return await suitable.eversion.extract({
       point: suitable.point,
       requiredCtx,
@@ -906,7 +910,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 }
 
 export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
-  base: BasePoint<TRequiredCtx>
+  root: RootPoint<TRequiredCtx>
   source?: null
   points?: PointsCollection
 }
@@ -923,7 +927,7 @@ export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = 
 }
 export type GetSuitablePageComponentResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   point: PagePoint | undefined
-  base: BasePoint
+  root: RootPoint
   location: Route0.Location
   eversion: Eversion0<TRequiredCtx>
 }
@@ -973,7 +977,7 @@ export type ExtractResult<TOutputCtx extends Ctx = Ctx, TOutputData extends Data
   location: Route0.Location
   error: unknown
   status: number
-  base: BasePoint
+  root: RootPoint
   point: AnyPoint | undefined
   eversion: Eversion0
   extendFnsWithOutput: ExtendFnWithOutput[]
