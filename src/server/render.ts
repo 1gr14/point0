@@ -2,7 +2,7 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
-import type { Payload } from '../eversion/main.js'
+import type { Payload } from '../core/eversion.js'
 import type { ResolvableHead } from 'unhead/types'
 import type { Route0 } from '@devp0nt/route0'
 

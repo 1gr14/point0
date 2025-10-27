@@ -1,6 +1,12 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type { MutationOptions, QueryOptions, UseMutationResult, UseQueryResult } from '@tanstack/react-query'
+import type {
+  MutationOptions,
+  QueryClient,
+  QueryOptions,
+  UseMutationResult,
+  UseQueryResult,
+} from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import qs from 'qs'
@@ -9,7 +15,7 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type z from 'zod'
 import { mergeHeaders } from './utils.js'
-import { useIsInitalSsrLocation, useLocation } from '../eversion/router.js'
+import { useIsInitalSsrLocation, useLocation } from './router.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -1631,6 +1637,33 @@ export class Point0<
   useMutation = (() => {
     return useMutation(this.getMutationOptions() as never) as never
   }) as () => UseMutationResult<FetchOutput<TResponseOutput, TOutputData>, Error0, Input<TRoute, TInputSchema>>
+
+  prefetchQuery = async ({
+    queryClient,
+    location,
+    input,
+    force,
+  }: {
+    queryClient: QueryClient
+    location?: Route0.Location
+    input?: Record<string, any>
+    force?: boolean
+  }): Promise<void> => {
+    if (!this._hasLoader()) {
+      return
+    }
+    const suitablePointTypes = ['page', 'query', 'component']
+    if (!suitablePointTypes.includes(this._pointType)) {
+      return
+    }
+    const queryOptions = this.getQueryOptions({ ...location?.query, ...location?.params, ...input } as never)
+    const cache = queryClient.getQueryCache()
+    const query = cache.find({ queryKey: queryOptions.queryKey as never })
+    if (query && !force) {
+      return
+    }
+    await queryClient.prefetchQuery(queryOptions as never)
+  }
 }
 
 export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>

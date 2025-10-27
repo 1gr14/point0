@@ -1,4 +1,4 @@
-import type { PointsCollection } from 'point0/eversion/main.js'
+import type { PointsCollection } from 'point0/core/eversion.js'
 
 export const points: PointsCollection = [
   // should be generated automatically

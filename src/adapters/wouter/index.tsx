@@ -3,10 +3,8 @@ import React, { Fragment, useCallback, useMemo } from 'react'
 import type { BaseLocationHook, LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
-import type { PagesTree } from '../../eversion/main.js'
-import { Eversion0 } from '../../eversion/main.js'
-import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../eversion/router.js'
-import { RouterContextProvider, wrapUseNavigate } from '../../eversion/router.js'
+import type { PagesTree, RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
+import { _getRouteMatch, _toRoutesCollection, _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 // TODO: make router provide in global context all its helpers and we will get it from main router package
@@ -16,7 +14,7 @@ const _useNavigate = () => {
   // TODO: allow pass router policy in useNavigate and in Link
   return navigate
 }
-export const useNavigate = wrapUseNavigate(_useNavigate)
+export const useNavigate = _wrapUseNavigate(_useNavigate)
 
 export const Link = <H extends BaseLocationHook = BrowserLocationHook>(props: LinkProps<H>) => {
   const { to, href, onClick, replace, ...rest } = props as LinkProps
@@ -63,11 +61,11 @@ export const Router = ({
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   }, [ssrLocation])
 
-  const routes = useMemo(() => Eversion0.toRoutesCollection({ pagesTree }), [pagesTree])
+  const routes = useMemo(() => _toRoutesCollection({ pagesTree }), [pagesTree])
 
   const useAdapterLocation = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
-    const match = Eversion0.getRouteMatch(routes, Route0.getLocation(wouterLocation))
+    const match = _getRouteMatch(routes, Route0.getLocation(wouterLocation))
     return match?.location ?? Route0.getLocation(wouterLocation)
   }, [routes])
 

@@ -5,18 +5,19 @@ import qs from 'qs'
 import { createElement } from 'react'
 import type { RootId, RootPoint, Method, RequiredCtx } from '../../core/index.js'
 import type { IsEmptyObject } from '../../core/types.js'
-import type { PointsCollection } from '../../eversion/main.js'
-import { Eversion0 } from '../../eversion/main.js'
+import type { PointsCollection } from '../../core/eversion.js'
+import { Eversion0 } from '../../core/eversion.js'
 import type {
-  AdapterClientInputParsed,
-  AdapterLogger,
-  AdapterServerInput,
-  AdapterServerInputParsed,
+  ServerAdapterClientInputParsed,
+  ServerAdapterLogger,
+  ServerAdapterServerInput,
+  ServerAdapterServerInputParsed,
 } from '../../server/adapter.js'
-import { parseAdapterInput } from '../../server/adapter.js'
+import { parseServerAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
+import { toPagesTree } from '../../core/router.js'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
@@ -29,7 +30,7 @@ type ParsedRequest = {
   isJsonAcceptable: boolean
 }
 
-type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = AdapterClientInputParsed & {
+type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = ServerAdapterClientInputParsed & {
   eversion: Eversion0<TRequiredCtx>
 }
 
@@ -42,7 +43,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   clientsDevServerPort: number
   root: RootPoint<TRequiredCtx>
   points?: PointsCollection
-  logger: AdapterLogger
+  logger: ServerAdapterLogger
   dirname?: string
   publicDir?: string
   fallbackRootId: RootId
@@ -54,7 +55,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   indexHtmlContents: Record<string, string | undefined> = {}
 
   private constructor(
-    input: Omit<AdapterServerInputParsed<TRequiredCtx>, 'clients'> & {
+    input: Omit<ServerAdapterServerInputParsed<TRequiredCtx>, 'clients'> & {
       eversion: Eversion0<TRequiredCtx>
       clients: Array<ClientWithEversion<TRequiredCtx>>
     },
@@ -74,9 +75,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-    input: AdapterServerInput<TRequiredCtx>,
+    input: ServerAdapterServerInput<TRequiredCtx>,
   ): Promise<BunAdapter<TRequiredCtx>> {
-    const parsedInput = parseAdapterInput(input)
+    const parsedInput = parseServerAdapterInput(input)
     const eversion = await Eversion0.create({ root: parsedInput.root, points: parsedInput.points })
     // for (const client of parsedInput.clients) {
     //   await eversion.connect({ root: client.root, points: client.points })
@@ -189,7 +190,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   this.indexHtmlContents = indexHtmlContents
   // }
 
-  async _loadSrcIndexHtmlContents(client: AdapterClientInputParsed): Promise<string> {
+  async _loadSrcIndexHtmlContents(client: ServerAdapterClientInputParsed): Promise<string> {
     if (this.devServeTarget === 'server') {
       return await (
         await fetch(
@@ -336,7 +337,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }
             const appElement = createElement(App, {
               ssrLocation: extractResult.location,
-              pagesTree: Eversion0.toPagesTree({ points: relatedClient.eversion.points }),
+              pagesTree: toPagesTree({ points: relatedClient.eversion.points }),
               dehydratedState: extractResult.dehydratedState,
             })
             const readableStream = await renderReadableStream({

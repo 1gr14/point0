@@ -1,13 +1,13 @@
 import type { HydratedAppComponent } from '../client/hydrate.js'
 import type { RootId, RootPoint, RequiredCtx } from '../core/index.js'
-import type { PointsCollection } from '../eversion/main.js'
+import type { PointsCollection } from '../core/eversion.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
-export type AdapterLogger = {
+export type ServerAdapterLogger = {
   info: (message: string) => any
   error: (error: unknown) => any
 }
-export type AdapterClientInput = {
+export type ServerAdapterClientInput = {
   ssr?: boolean
   points?: PointsCollection
   root: RootPoint
@@ -19,19 +19,19 @@ export type AdapterClientInput = {
   App?: HydratedAppComponent
   rootElementId?: string
 }
-export type AdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+export type ServerAdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   root: RootPoint<TRequiredCtx>
   points?: PointsCollection
   port?: number | string | undefined
   clientsDevServerPort?: number | string | undefined
-  logger?: AdapterLogger
+  logger?: ServerAdapterLogger
   dirname?: string
   publicDir?: string
   fallbackRootId?: RootId | undefined
-  clients?: AdapterClientInput[] | undefined
+  clients?: ServerAdapterClientInput[] | undefined
 }
 
-export type AdapterClientInputParsed = {
+export type ServerAdapterClientInputParsed = {
   ssr: boolean
   points: PointsCollection
   root: RootPoint
@@ -44,24 +44,24 @@ export type AdapterClientInputParsed = {
   index: number
   rootElementId: string | undefined
 }
-export type AdapterServerInputParsed<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+export type ServerAdapterServerInputParsed<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   root: RootPoint<TRequiredCtx>
   points: PointsCollection
   port: number | string | undefined
   clientsDevServerPort: number | string | undefined
-  logger: AdapterLogger
+  logger: ServerAdapterLogger
   dirname: string | undefined
   publicDir: string | undefined
   fallbackRootId: RootId | undefined
-  clients: AdapterClientInputParsed[]
+  clients: ServerAdapterClientInputParsed[]
 }
 
 // TODO: extract input from server and client itself
-const parseAdapterClientInput = (
+const parseServerAdapterClientInput = (
   index: number,
-  input: AdapterClientInput,
+  input: ServerAdapterClientInput,
   dirname: string | undefined,
-): AdapterClientInputParsed => {
+): ServerAdapterClientInputParsed => {
   const distDir = prependAndAppendSlash(absPath(dirname, input.distDir))
   const srcIndexHtml = absPath(dirname, input.srcIndexHtml)
   const distIndexHtml = absPath(dirname, input.distIndexHtml)
@@ -85,17 +85,17 @@ const parseAdapterClientInput = (
     rootElementId: input.rootElementId,
   }
 }
-export const parseAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx>(
-  input: AdapterServerInput<TRequiredCtx>,
-): AdapterServerInputParsed<TRequiredCtx> => {
+export const parseServerAdapterInput = <TRequiredCtx extends RequiredCtx = RequiredCtx>(
+  input: ServerAdapterServerInput<TRequiredCtx>,
+): ServerAdapterServerInputParsed<TRequiredCtx> => {
   const { dirname, port, points, root } = input
   const logger = input.logger || {
     info: console.info.bind(console),
     error: console.error.bind(console),
   }
   const publicDir = absPath(dirname, input.publicDir)
-  const clients: AdapterClientInputParsed[] =
-    input.clients?.map((clientInput, index) => parseAdapterClientInput(index, clientInput, dirname)) ?? []
+  const clients: ServerAdapterClientInputParsed[] =
+    input.clients?.map((clientInput, index) => parseServerAdapterClientInput(index, clientInput, dirname)) ?? []
   if (process.env.NODE_ENV === 'production') {
     throwOnNonUniqueArrayElements(
       clients.map((client) => client.distDir),
