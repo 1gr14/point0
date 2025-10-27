@@ -1,5 +1,3 @@
-client dev server
-
 chain: .chain().x() , Point0.chain()
 requireData()
 
@@ -7,7 +5,7 @@ requireData()
 client.useClientCtx
 store _base in points
 
-.clientLoader, after call do not allow usual loader another
+.clientLoader, after call do not allow usual loader another, middleware-client
 
 auth
 
@@ -42,6 +40,8 @@ prevent endless loop hmr after code changes
 find unused code
 asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extendFns calls
+refactor route0
+refactor error0
 html template parsing by provided vars
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags), on call any cloient fn or head(() =>) endpoint type is client-middleware and als _pointType
 route0 respect origin on match and try two clients with one server
