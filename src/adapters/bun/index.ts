@@ -3,10 +3,10 @@ import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import qs from 'qs'
 import { createElement } from 'react'
-import type { RootId, RootPoint, Method, RequiredCtx } from '../../core/index.js'
-import type { IsEmptyObject } from '../../core/types.js'
 import type { PointsCollection } from '../../core/eversion.js'
 import { Eversion0 } from '../../core/eversion.js'
+import { toPagesTree } from '../../core/router.js'
+import type { IsEmptyObject, Method, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
 import type {
   ServerAdapterClientInputParsed,
   ServerAdapterLogger,
@@ -17,7 +17,6 @@ import { parseServerAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
-import { toPagesTree } from '../../core/router.js'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also

@@ -12,7 +12,7 @@ import type {
   UndefinedInputSchema,
   UndefinedResponseOutput,
   UndefinedRoute,
-} from './index.js'
+} from './types.js'
 import { Point0 } from './index.js'
 
 // TODO: move all tests to separate files in test dir and refactor it

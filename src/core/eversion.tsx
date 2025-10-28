@@ -23,7 +23,7 @@ import type {
   RootPoint,
   RootSourcePoint,
   UndefinedCtx,
-} from './index.js'
+} from './types.js'
 import { emptyDehydratedState } from './utils.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that

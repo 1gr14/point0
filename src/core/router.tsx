@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LoadedPointsCollection, PointsCollection } from './eversion.js'
 import { Eversion0 } from './eversion.js'
-import type { LayoutPoint, PagePoint } from './index.js'
+import type { LayoutPoint, PagePoint } from './types.js'
 
 export type UseAdapterLocationFn = UseLocationFn
 
