@@ -28,6 +28,7 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 .disable()
 preventSsr
 .route(string)
+Router accept points and Routes get pagesTree from Context
 remove server code from client
 store each point location to normalize errors messages for example in No route or id provided for this point
 layout scroll position

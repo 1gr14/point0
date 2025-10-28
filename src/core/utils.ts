@@ -1,11 +1,16 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 
-export function mergeHeaders(base?: HeadersInit, extra?: Record<string, string>): Headers {
+export function mergeHeaders(
+  base?: HeadersInit,
+  ...extras: Array<HeadersInit | Record<string, string> | undefined>
+): Headers {
   const merged = new Headers(base)
-  if (extra) {
-    for (const [key, value] of Object.entries(extra)) {
-      merged.set(key, value)
+  for (const extra of extras) {
+    if (extra) {
+      for (const [key, value] of Object.entries(extra)) {
+        merged.set(key, value)
+      }
     }
   }
   return merged

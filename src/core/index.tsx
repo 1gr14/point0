@@ -1824,8 +1824,8 @@ export class Point0<
       return { routeParams, routeQuery, inputSelf }
     })()
 
-    const fetchOptions = this._fetchOptions()
-    const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+    const fetchOptions = { ...this._fetchOptions(), ...options }
+    const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
     const routeAbsPath = this._getRouteAbsPath({ ...routeParams, query: routeQuery })
     const url = new URL(routeAbsPath)
     const method = this._method
@@ -1838,23 +1838,47 @@ export class Point0<
       url.search = qs.stringify({ ...routeQuery })
       body = JSON.stringify({ ...inputSelf })
     }
-    const res = await fetch(url.toString(), {
-      ...fetchOptions,
-      ...options,
-      headers,
-      method,
-      body,
-    })
-    if (this._pointType === 'response') {
-      return res
+    if (!fetchOptions.eversion || !fetchOptions.extractOptions) {
+      const res = await fetch(url.toString(), {
+        ...fetchOptions,
+        headers,
+        method,
+        body,
+      })
+      if (this._pointType === 'response') {
+        return res
+      }
+      const json = await res.json()
+      if (res.ok) {
+        return json
+      }
+      throw Error0.from(json, {
+        httpStatus: res.status,
+      })
+    } else {
+      const eversion = fetchOptions.eversion
+      const extractOptions = fetchOptions.extractOptions
+      try {
+        const extractResult = await eversion.extract({
+          ...extractOptions,
+          point: this,
+        })
+        if (extractResult.error) {
+          throw Error0.from(extractResult.error)
+        }
+        if (extractResult.status && extractResult.status > 299) {
+          throw Error0.from(extractResult.data, {
+            httpStatus: extractResult.status,
+          })
+        }
+        if (this._pointType === 'response') {
+          return extractResult.response
+        }
+        return extractResult.data
+      } catch (error) {
+        throw Error0.from(error)
+      }
     }
-    const json = await res.json()
-    if (res.ok) {
-      return json
-    }
-    throw Error0.from(json, {
-      httpStatus: res.status,
-    })
   }) as never as FetchFn<TRoute, TInputSchema, TResponseOutput, TData>
 
   getQueryKey = ((input?: Record<string, any>): QueryKey => {
@@ -1910,11 +1934,15 @@ export class Point0<
 
   prefetchQuery = (async ({
     queryClient,
+    queryOptions: providedQueryOptions,
+    fetchOptions,
     location,
     input,
     force,
   }: {
     queryClient: QueryClient
+    queryOptions?: QueryOptions
+    fetchOptions?: FetchOptions
     location?: Route0.Location
     input?: Record<string, any>
     force?: boolean
@@ -1926,11 +1954,15 @@ export class Point0<
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }
-    const queryOptions = (this.getQueryOptions as any)({
-      ...location?.query,
-      ...location?.params,
-      ...input,
-    } as never) as QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>
+    const queryOptions = (this.getQueryOptions as any)(
+      {
+        ...location?.query,
+        ...location?.params,
+        ...input,
+      } as never,
+      providedQueryOptions,
+      fetchOptions,
+    ) as QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {

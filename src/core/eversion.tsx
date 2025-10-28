@@ -2,7 +2,11 @@ import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
+import type * as React from 'react'
+import { createElement, isValidElement } from 'react'
 import type { ResolvableHead } from 'unhead/types'
+import type { HydratedAppComponent } from './hydrate.js'
+import type { PagesTree } from './router.js'
 import type {
   AnyPoint,
   Ctx,
@@ -25,11 +29,6 @@ import type {
   UndefinedCtx,
 } from './types.js'
 import { emptyDehydratedState } from './utils.js'
-import type { HydratedAppComponent } from './hydrate.js'
-import type { PagesTree } from './router.js'
-import { toPagesTree } from './router.js'
-import { createElement, isValidElement } from 'react'
-import type * as React from 'react'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -305,15 +304,13 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     queryClient,
     skipDehydration = false,
     ...locationProps
-  }: WithRequiredCtx<TRequiredCtx> & {
-    point?: AnyPoint | undefined
-    input?: Input
-    extractFnsWithOutput?: ExtractFnWithOutput[]
-    queryClient?: QueryClient
-    skipDehydration?: boolean
-  } & LocationInput): Promise<ExtractResult> {
+  }: ExtractOptions<TRequiredCtx>): Promise<ExtractResult> {
     queryClient ??= new QueryClient()
     const location = this.normalizeLocation(locationProps)
+
+    const setExtractFnsWithOutput = (newExtractFnsWithOutput: ExtractFnWithOutput[]) => {
+      extractFnsWithOutput.splice(0, extractFnsWithOutput.length, ...newExtractFnsWithOutput)
+    }
 
     if (point?._pointType === 'page') {
       for (const layout of point._layouts) {
@@ -332,7 +329,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           location: layoutLocation,
           skipDehydration: true,
         })
-        extractFnsWithOutput = result.extractFnsWithOutput
+        setExtractFnsWithOutput(result.extractFnsWithOutput)
       }
     }
 
@@ -688,6 +685,13 @@ export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = {
   requiredCtx: TRequiredCtx
 }
 
+export type ExtractOptions<TRequiredCtx extends RequiredCtx = RequiredCtx> = WithRequiredCtx<TRequiredCtx> & {
+  point?: AnyPoint | undefined
+  input?: Input
+  extractFnsWithOutput?: ExtractFnWithOutput[]
+  queryClient?: QueryClient
+  skipDehydration?: boolean
+} & LocationInput
 export type ExtractFnWithOutput = {
   output: Ctx | Data
   record: ExtractFnRecord
