@@ -4,7 +4,7 @@ import type { server } from './server.js'
 export const client = Point0.connect<typeof server>('client')
   .sourceBaseUrl('http://localhost:3000')
   .head({
-    title: 'IdeaNick',
+    title: 'Loading...',
     titleTemplate: '%s | IdeaNick',
     htmlAttrs: { lang: 'en' },
   })

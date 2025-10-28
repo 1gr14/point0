@@ -9,7 +9,13 @@ export const ideasPage = generalLayout
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
   })
-  .title(({ data }) => `${data.ideasCount} ideas`)
+  .clientLoader(async ({ data }) => {
+    return {
+      ...data,
+      ideasCountX2: data.ideasCount * 2,
+    }
+  })
+  .title(({ data }) => `${data.ideasCountX2} ideas`)
   // if you want to preserve state of "count" on HMR, you need to use this approach,
   // just return ready elemnt imported from another file
   .page(({ data }) => {
@@ -20,7 +26,11 @@ export const ideasPage = generalLayout
           setCount(count + 1)
         }}
       >
-        {count}: 4700
+        Ideas Count: {data.ideasCount}
+        <br />
+        Ideas Count X2: {data.ideasCountX2}
+        <br />
+        {count}: zxc
         <IdeasView data={data} />
       </div>
     )

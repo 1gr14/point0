@@ -1,5 +1,4 @@
 
-head fn and cleintLoader it is clientExtendFns
 const clientCtx = .clientLoader, after call do not allow usual loader another, middleware-client
 <ClientCtxProvider loader={clientCtx} />
 clientCtx.useClientCtx
@@ -10,7 +9,7 @@ auth
 
 points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
 
-.component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extendFns
+.component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extractFns
 .useLoad|.exec(((props, ...args) => ...), [arg1, arg2], [optinalZodSchema, optinalZodSchema]) (dynamic returns {data,error,loading})
 on client build remove server code, just force to rebuild @point0/core package and there have if (process.env.IS_CLIENT === true) {retrun undefined}
 .props<>() and in final <Component {...input} {...props} />
@@ -42,8 +41,9 @@ do not loose state on hmr
 force layout and page to have route
 prevent endless loop hmr after code changes
 find unused code
+.loadingMeta() for client async client loaders
 asterisk layout as .layout(true, () => <div/>)
-immutable ctx and data on extendFns calls
+immutable ctx and data on extractFns calls
 refactor route0
 refactor error0
 html template parsing by provided vars

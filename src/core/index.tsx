@@ -54,8 +54,8 @@ export class Point0<
   // TODO: remove or use wrapper
   _wrapper: WrapperComponentType | undefined
   _hasSourceBase: TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint ? false : true
-  _extendFns: ExtendFnRecord[]
-  _clientExtendFns: ClientExtendFnRecord[]
+  _extractFns: ExtractFnRecord[]
+  _clientExtractFns: ClientExtractFnRecord[]
   _route: TRoute
   _page: PageComponent<TData, TClientData, TRoute> | UndefinedPageComponent
   _layout: LayoutComponent<TData, TClientData, TRoute> | UndefinedLayoutComponent
@@ -89,8 +89,8 @@ export class Point0<
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
     _hasSourceBase?: TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint ? false : true
-    _extendFns?: ExtendFnRecord[]
-    _clientExtendFns?: ClientExtendFnRecord[]
+    _extractFns?: ExtractFnRecord[]
+    _clientExtractFns?: ClientExtractFnRecord[]
     _route?: TRoute
     _page?: PageComponent<TData, TClientData, TRoute> | UndefinedPageComponent
     _layout?: LayoutComponent<TData, TClientData, TRoute> | UndefinedLayoutComponent
@@ -125,8 +125,8 @@ export class Point0<
     this._hasSourceBase = props._hasSourceBase as TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint
       ? false
       : true
-    this._extendFns = props._extendFns ?? []
-    this._clientExtendFns = props._clientExtendFns ?? []
+    this._extractFns = props._extractFns ?? []
+    this._clientExtractFns = props._clientExtractFns ?? []
     this._route = props._route ?? (undefined as TRoute)
     this._page = props._page ?? undefined
     this._layout = props._layout ?? undefined
@@ -182,8 +182,8 @@ export class Point0<
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
     _wrapper?: WrapperComponentType | undefined
-    _extendFns?: ExtendFnRecord[]
-    _clientExtendFns?: ClientExtendFnRecord[]
+    _extractFns?: ExtractFnRecord[]
+    _clientExtractFns?: ClientExtractFnRecord[]
     _route?: Route0.AnyRoute | UndefinedRoute
     _page?: PageComponent | UndefinedPageComponent
     _layout?: LayoutComponent | UndefinedLayoutComponent
@@ -250,8 +250,8 @@ export class Point0<
             : { ...this._pageQueryOptions }
           : { ...this._pageQueryOptions }),
       _hasSourceBase: this._hasSourceBase as TSourceBasePoint extends UndefinedInferredRootSourcePoint ? false : true,
-      _extendFns: overrides._extendFns ?? this._extendFns,
-      _clientExtendFns: overrides._clientExtendFns ?? this._clientExtendFns,
+      _extractFns: overrides._extractFns ?? this._extractFns,
+      _clientExtractFns: wasEndpoint ? [] : (overrides._clientExtractFns ?? this._clientExtractFns),
       _route: (overrides._route ?? (wasEndpoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
       _page: (overrides._page ?? undefined) as PageComponent<TData, TClientData, TRoute> | UndefinedPageComponent, // remove end artefact on continue
       _layout: (overrides._layout ?? undefined) as
@@ -308,7 +308,8 @@ export class Point0<
       this._pointType === 'response' ||
       this._pointType === 'query' ||
       this._pointType === 'mutation' ||
-      this._pointType === 'component'
+      this._pointType === 'component' ||
+      this._pointType === 'client-ctx'
     )
   }
 
@@ -372,7 +373,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -383,7 +384,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -401,7 +402,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -412,7 +413,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -430,7 +431,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -441,42 +442,13 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
     >({
       _pointType: 'middleware',
       _sourceBaseUrl: sourceBaseUrl,
-    })
-  }
-
-  setUseLocation(
-    useLocation: () => Route0.Location,
-  ): Point0<
-    'middleware',
-    TConnectedSourceBasePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRoute,
-    TInputSchema,
-    TResponseOutput
-  > {
-    return this._continue<
-      'middleware',
-      TConnectedSourceBasePoint,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRoute,
-      TInputSchema,
-      TResponseOutput
-    >({
-      _pointType: 'middleware',
-      _useLocation: useLocation,
     })
   }
 
@@ -488,7 +460,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -499,7 +471,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -517,7 +489,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -528,7 +500,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -546,7 +518,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -557,7 +529,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -575,7 +547,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -586,7 +558,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -604,7 +576,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -615,7 +587,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -633,7 +605,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -644,7 +616,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -662,7 +634,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -673,7 +645,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -691,7 +663,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -702,7 +674,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -718,7 +690,7 @@ export class Point0<
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -729,7 +701,7 @@ export class Point0<
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -750,7 +722,7 @@ export class Point0<
   //   TChain['Infer']['InputSchema'],
   //   TResponseOutput
   // > {
-  //   const mergedExtendFns = [...this._extendFns, ...chain._extendFns].reduce<ExtendFnRecord[]>((acc, record) => {
+  //   const mergedExtractFns = [...this._extractFns, ...chain._extractFns].reduce<ExtractFnRecord[]>((acc, record) => {
   //     if (acc.find((f) => f.unstableId === record.unstableId)) {
   //       return acc
   //     }
@@ -787,7 +759,7 @@ export class Point0<
   //     TResponseOutput
   //   >({
   //     _pointType: 'middleware',
-  //     _extendFns: mergedExtendFns,
+  //     _extractFns: mergedExtractFns,
   //     _heads: mergedHeads,
   //     _appLoaderComponent,
   //     _componentErrorComponent,
@@ -820,7 +792,7 @@ export class Point0<
     TRequiredCtx,
     TNewCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -833,7 +805,7 @@ export class Point0<
     TRequiredCtx,
     TNewCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -846,7 +818,7 @@ export class Point0<
     TRequiredCtx,
     TNewCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -858,13 +830,13 @@ export class Point0<
       TRequiredCtx,
       TNewCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
     >({
       _pointType: 'middleware',
-      _extendFns: [...this._extendFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
+      _extractFns: [...this._extractFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
     })
   }
 
@@ -876,7 +848,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TNewRoute0,
     TInputSchema,
     TResponseOutput
@@ -887,7 +859,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TNewRoute0,
       TInputSchema,
       TResponseOutput
@@ -905,7 +877,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TNewData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -916,28 +888,60 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TNewData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
     >({
       _pointType: 'middleware',
-      _extendFns: [
-        ...this._extendFns,
+      _extractFns: [
+        ...this._extractFns,
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
     })
   }
 
-  head(
-    headFn: HeadFn<TData, TRoute>,
+  clientLoader<TNewClientData extends Data = Data>(
+    clientLoaderFn: ClientLoaderFn<FinalClientData<TData, TClientData>, TRoute, TNewClientData>,
   ): Point0<
     'client-middleware',
     TConnectedSourceBasePoint,
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    TNewClientData,
+    TRoute,
+    TInputSchema,
+    TResponseOutput
+  > {
+    return this._continue<
+      'client-middleware',
+      TConnectedSourceBasePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TNewClientData,
+      TRoute,
+      TInputSchema,
+      TResponseOutput
+    >({
+      _pointType: 'client-middleware',
+      _clientExtractFns: [
+        ...this._clientExtractFns,
+        { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() },
+      ] as never,
+    })
+  }
+
+  head(
+    headFn: HeadFn<TData, TClientData, TRoute>,
+  ): Point0<
+    'client-middleware',
+    TConnectedSourceBasePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -950,17 +954,17 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
   >
-  head(headFnOrHead: HeadFn<TData, TRoute> | ResolvableHead) {
+  head(headFnOrHead: HeadFn<TData, TClientData, TRoute> | ResolvableHead) {
     if (typeof headFnOrHead === 'function') {
       return this._continue({
         _pointType: 'client-middleware',
-        _clientExtendFns: [
-          ...this._clientExtendFns,
+        _clientExtractFns: [
+          ...this._clientExtractFns,
           { type: 'head', fn: headFnOrHead as never, unstableId: Point0._getNextUnstableId() },
         ],
       }) as never
@@ -973,14 +977,14 @@ export class Point0<
   }
 
   title(
-    titleFn: TitleFn<TData, TRoute>,
+    titleFn: TitleFn<TData, TClientData, TRoute>,
   ): Point0<
     'client-middleware',
     TConnectedSourceBasePoint,
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -993,18 +997,19 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
   >
-  title(titleFnOrTitle: TitleFn<TData, TRoute> | string) {
+  title(titleFnOrTitle: TitleFn<TData, TClientData, TRoute> | string) {
     if (typeof titleFnOrTitle === 'function') {
+      const headFn: HeadFn = (props) => ({ title: titleFnOrTitle(props as never) })
       return this._continue({
         _pointType: 'client-middleware',
-        _clientExtendFns: [
-          ...this._clientExtendFns,
-          { type: 'head', fn: titleFnOrTitle as never, unstableId: Point0._getNextUnstableId() },
+        _clientExtractFns: [
+          ...this._clientExtractFns,
+          { type: 'head', fn: headFn, unstableId: Point0._getNextUnstableId() },
         ],
       }) as never
     } else {
@@ -1023,7 +1028,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TNewInputSchema,
     TResponseOutput
@@ -1034,7 +1039,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TNewInputSchema,
     TResponseOutput
@@ -1048,7 +1053,9 @@ export class Point0<
 
   // end points
 
-  page<TPage extends PageComponent<TData, TClientData, TRoute>>(
+  page<
+    TPage extends PageComponent<TData, IsEndPointType<TPointType> extends true ? UndefinedData : TClientData, TRoute>,
+  >(
     page: TPage,
   ): Point0<
     'page',
@@ -1056,7 +1063,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -1073,7 +1080,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -1084,7 +1091,13 @@ export class Point0<
     })
   }
 
-  layout<TLayout extends LayoutComponent<TData, TClientData, TRoute>>(
+  layout<
+    TLayout extends LayoutComponent<
+      TData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+      TRoute
+    >,
+  >(
     layout: TLayout,
   ): Point0<
     'layout',
@@ -1092,7 +1105,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -1106,7 +1119,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -1125,7 +1138,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -1136,7 +1149,7 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
@@ -1157,7 +1170,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TNewData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -1168,14 +1181,14 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TNewData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
     >({
       _pointType: 'query',
-      _extendFns: [
-        ...this._extendFns,
+      _extractFns: [
+        ...this._extractFns,
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
       _method: 'get',
@@ -1190,7 +1203,7 @@ export class Point0<
     TRequiredCtx,
     TCtx,
     TNewData,
-    TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
     TRoute,
     TInputSchema,
     TResponseOutput
@@ -1201,14 +1214,14 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TNewData,
-      TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
       TRoute,
       TInputSchema,
       TResponseOutput
     >({
       _pointType: 'mutation',
-      _extendFns: [
-        ...this._extendFns,
+      _extractFns: [
+        ...this._extractFns,
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
       _method: 'post',
@@ -1234,15 +1247,19 @@ export class Point0<
   }
 
   _hasLoader(): boolean {
-    return this._extendFns.some((fn) => fn.type === 'loader')
+    return this._extractFns.some((fn) => fn.type === 'loader')
   }
 
-  _clientExtendFnsHasOnlyHeadFnsOrEmpty(): boolean {
-    return this._clientExtendFns.length === 0 || this._clientExtendFns.every((fn) => fn.type === 'head')
+  _clientExtractFnsHasOnlyHeadFnsOrEmpty(): boolean {
+    return this._clientExtractFns.length === 0 || this._clientExtractFns.every((fn) => fn.type === 'head')
   }
 
   _hasClientLoader(): boolean {
-    return this._clientExtendFns.some((fn) => fn.type === 'loader')
+    return this._clientExtractFns.some((fn) => fn.type === 'loader')
+  }
+
+  _hasClientAsyncLoader(): boolean {
+    return this._clientExtractFns.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
   }
 
   _getRouteAbsPath = (input?: Record<string, string>): string => {
@@ -1267,6 +1284,75 @@ export class Point0<
     return this._getRoute().getDefinition()
   }
 
+  _extractClientAsync = async ({
+    data,
+    location,
+    skipHeads,
+  }: {
+    data: Data
+    location: Route0.Location<CurrentRoute<TRoute>>
+    skipHeads: boolean
+  }): Promise<{ clientData: Data; clientHeadMerged: ResolvableHead }> => {
+    let currentClientData: Data = data
+    let clientHeadMerged: ResolvableHead = {}
+    for (const clientExtractFn of this._clientExtractFns) {
+      switch (clientExtractFn.type) {
+        case 'head': {
+          if (skipHeads) {
+            continue
+          }
+          clientHeadMerged = mergeResolvableHead(
+            clientHeadMerged,
+            clientExtractFn.fn({ data: currentClientData, location }),
+          )
+          break
+        }
+        case 'loader': {
+          currentClientData = await clientExtractFn.fn({ data: currentClientData, location })
+          break
+        }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+        default: {
+          throw new Error(`Unknown client extend fn type: ${(clientExtractFn as any).type}`)
+        }
+      }
+    }
+    return { clientData: currentClientData, clientHeadMerged }
+  }
+
+  _extractClientSync = ({
+    data,
+    location,
+    skipHeads,
+  }: {
+    data: Data
+    location: Route0.Location<CurrentRoute<TRoute>>
+    skipHeads: boolean
+  }): { clientData: Data; clientHead: ResolvableHead[] } => {
+    let currentClientData: Data = data
+    const clientHead: ResolvableHead[] = []
+    for (const clientExtractFn of this._clientExtractFns) {
+      switch (clientExtractFn.type) {
+        case 'head': {
+          if (skipHeads) {
+            continue
+          }
+          clientHead.push(clientExtractFn.fn({ data: currentClientData, location }))
+          break
+        }
+        case 'loader': {
+          currentClientData = clientExtractFn.fn({ data: currentClientData, location }) as Data
+          break
+        }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+        default: {
+          throw new Error(`Unknown client extend fn type: ${(clientExtractFn as any).type}`)
+        }
+      }
+    }
+    return { clientData: currentClientData, clientHead }
+  }
+
   _PageInner: React.ComponentType<{
     data: FinalData<TData>
     location: Route0.Location<CurrentRoute<TRoute>>
@@ -1282,45 +1368,36 @@ export class Point0<
       useHead(staticHead)
     }
 
-    if (this._clientExtendFnsHasOnlyHeadFnsOrEmpty()) {
-      for (const headFn of this._clientExtendFns) {
+    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
+      for (const headFn of this._clientExtractFns) {
         useHead((headFn.fn as HeadFn)({ data, location }))
       }
       return React.createElement(this._page, { data: data as FinalClientData<TData, TClientData>, location })
     }
 
+    if (!this._hasClientAsyncLoader()) {
+      try {
+        const { clientData, clientHead } = this._extractClientSync({ data, location, skipHeads: false })
+        for (const head of clientHead) {
+          useHead(head)
+        }
+        return React.createElement(this._page, { data: clientData as FinalClientData<TData, TClientData>, location })
+      } catch (error: unknown) {
+        return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location })
+      }
+    }
+
     const [clientHead, setClientHead] = React.useState<ResolvableHead>({})
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [finalClientData, setFinalClientData] = React.useState<Data>({})
+    const [clientData, setClientData] = React.useState<Data>({})
     React.useEffect(() => {
       void (async () => {
         setLoading(true)
         try {
-          let currentClientData: Data = data
-          let currentClientHead: ResolvableHead = {}
-          for (const clientExtendFn of this._clientExtendFns) {
-            // nextClientData = await clientExtendFn.fn({ data: nextClientData, location })
-            switch (clientExtendFn.type) {
-              case 'head': {
-                currentClientHead = mergeResolvableHead(
-                  currentClientHead,
-                  clientExtendFn.fn({ data: currentClientData, location }),
-                )
-                break
-              }
-              case 'loader': {
-                currentClientData = await clientExtendFn.fn({ data: currentClientData, location })
-                break
-              }
-              // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-              default: {
-                throw new Error(`Unknown client extend fn type: ${(clientExtendFn as any).type}`)
-              }
-            }
-          }
-          setClientHead(currentClientHead)
-          setFinalClientData(currentClientData)
+          const { clientData, clientHeadMerged } = await this._extractClientAsync({ data, location, skipHeads: false })
+          setClientHead(clientHeadMerged)
+          setClientData(clientData)
           setLoading(false)
         } catch (error) {
           setError(Error0.from(error))
@@ -1328,6 +1405,7 @@ export class Point0<
         }
       })()
     }, [data, location])
+
     useHead(clientHead)
 
     if (loading) {
@@ -1336,7 +1414,7 @@ export class Point0<
     if (error) {
       return React.createElement(errorComponent, { type: 'page', error, location })
     }
-    return React.createElement(this._page, { data: finalClientData as FinalClientData<TData, TClientData>, location })
+    return React.createElement(this._page, { data: clientData as FinalClientData<TData, TClientData>, location })
   }
 
   _Page: React.ComponentType = () => {
@@ -1398,39 +1476,41 @@ export class Point0<
   }> = ({ children, location, data }) => {
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
+
     if (!this._layout) {
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No layout component'), location })
     }
 
-    if (!this._hasLoader()) {
-      return React.createElement(this._layout, { data: {} as FinalClientData<TData, TClientData>, location, children })
+    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
+      return React.createElement(this._layout, {
+        data: data as FinalClientData<TData, TClientData>,
+        location,
+        children,
+      })
+    }
+
+    if (!this._hasClientAsyncLoader()) {
+      try {
+        const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
+        return React.createElement(this._layout, {
+          data: clientData as FinalClientData<TData, TClientData>,
+          location,
+          children,
+        })
+      } catch (error: unknown) {
+        return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location })
+      }
     }
 
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [finalClientData, setFinalClientData] = React.useState<Data>({})
+    const [clientData, setClientData] = React.useState<Data>({})
     React.useEffect(() => {
       void (async () => {
         setLoading(true)
         try {
-          let currentClientData: Data = data
-          for (const clientExtendFn of this._clientExtendFns) {
-            // nextClientData = await clientExtendFn.fn({ data: nextClientData, location })
-            switch (clientExtendFn.type) {
-              case 'head': {
-                break
-              }
-              case 'loader': {
-                currentClientData = await clientExtendFn.fn({ data: currentClientData, location })
-                break
-              }
-              // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-              default: {
-                throw new Error(`Unknown client extend fn type: ${(clientExtendFn as any).type}`)
-              }
-            }
-          }
-          setFinalClientData(currentClientData)
+          const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
+          setClientData(clientData)
           setLoading(false)
         } catch (error) {
           setError(Error0.from(error))
@@ -1446,7 +1526,7 @@ export class Point0<
       return React.createElement(errorComponent, { type: 'page', error, location })
     }
     return React.createElement(this._layout, {
-      data: finalClientData as FinalClientData<TData, TClientData>,
+      data: clientData as FinalClientData<TData, TClientData>,
       location,
       children,
     })
@@ -1873,7 +1953,7 @@ export type InferredRootSourcePoint<
   TClientData extends Data | UndefinedData = any,
 > = {
   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData>
-  _extendFns: ExtendFnRecord[]
+  _extractFns: ExtractFnRecord[]
 }
 export type UndefinedInferredRootSourcePoint = undefined
 
@@ -2052,7 +2132,7 @@ export type LoaderFn<
   TDataOutput extends Data = Data,
 > = (props: LoaderFnProps<TCtx, TData, TRoute, TInputSchema>) => Promise<TDataOutput> | TDataOutput
 
-export type ExtendFnRecord<
+export type ExtractFnRecord<
   TType extends 'ctx' | 'loader' | 'head' = 'ctx' | 'loader' | 'head',
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
@@ -2064,10 +2144,10 @@ export type ExtendFnRecord<
   : TType extends 'loader'
     ? { type: 'loader'; fn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TOutput>; unstableId: number }
     : TType extends 'head'
-      ? { type: 'head'; fn: HeadFn<TData, TRoute>; unstableId: number }
+      ? { type: 'head'; fn: HeadFn<TData, TData, TRoute>; unstableId: number }
       : never
 
-export type ClientExtendFnRecord<
+export type ClientExtractFnRecord<
   TType extends 'loader' | 'head' = 'head' | 'loader',
   TClientData extends Data | UndefinedData = Data | UndefinedData,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
@@ -2075,7 +2155,7 @@ export type ClientExtendFnRecord<
 > = TType extends 'loader'
   ? { type: 'loader'; fn: ClientLoaderFn<TClientData, TRoute, TOutput>; unstableId: number }
   : TType extends 'head'
-    ? { type: 'head'; fn: HeadFn<TClientData, TRoute>; unstableId: number }
+    ? { type: 'head'; fn: HeadFn<TClientData, TClientData, TRoute>; unstableId: number }
     : never
 
 export type ClientLoaderFnProps<
@@ -2092,23 +2172,27 @@ export type ClientLoaderFn<
 > = (props: ClientLoaderFnProps<TClientData, TRoute>) => Promise<TClientDataOutput> | TClientDataOutput
 
 export type HeadFnProps<
-  TDataOrClientData extends Data | UndefinedData = Data | UndefinedData,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-> = { data: FinalData<TDataOrClientData>; location: Route0.Location<CurrentRoute<TRoute>> }
+> = { data: FinalClientData<TData, TClientData>; location: Route0.Location<CurrentRoute<TRoute>> }
 export type HeadFn<
-  TDataOrClientData extends Data | UndefinedData = Data | UndefinedData,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-> = (props: HeadFnProps<TDataOrClientData, TRoute>) => ResolvableHead
+> = (props: HeadFnProps<TData, TClientData, TRoute>) => ResolvableHead
 export type StaticHeadsCollection = ResolvableHead[]
 
 export type TitleFnProps<
-  TDataOrClientData extends Data | UndefinedData = Data | UndefinedData,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-> = { data: FinalData<TDataOrClientData>; location: Route0.Location<CurrentRoute<TRoute>> }
+> = { data: FinalClientData<TData, TClientData>; location: Route0.Location<CurrentRoute<TRoute>> }
 export type TitleFn<
-  TDataOrClientData extends Data | UndefinedData = Data | UndefinedData,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
-> = (props: TitleFnProps<TDataOrClientData, TRoute>) => string
+> = (props: TitleFnProps<TData, TClientData, TRoute>) => string
 
 export type PointType =
   | 'base'
@@ -2122,6 +2206,7 @@ export type PointType =
   | 'client-middleware'
   | 'client-ctx'
 export type EndPointType = Exclude<PointType, 'middleware' | 'base' | 'client-middleware'>
+export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 
 export type QueryKey = readonly [string, ...string[]]
 export type FetcherFn<

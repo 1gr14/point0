@@ -11,7 +11,7 @@ import type {
   EmptyData,
   EndPoint,
   EndPointType,
-  ExtendFnRecord,
+  ExtractFnRecord,
   FinalData,
   Input,
   Method,
@@ -296,14 +296,14 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     point,
     input = {},
     requiredCtx,
-    extendFnsWithOutput = [],
+    extractFnsWithOutput = [],
     queryClient,
     skipDehydration = false,
     ...locationProps
   }: WithRequiredCtx<TRequiredCtx> & {
     point?: AnyPoint | undefined
     input?: Input
-    extendFnsWithOutput?: ExtendFnWithOutput[]
+    extractFnsWithOutput?: ExtractFnWithOutput[]
     queryClient?: QueryClient
     skipDehydration?: boolean
   } & LocationInput): Promise<ExtractResult> {
@@ -322,12 +322,12 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           point: layout,
           input,
           requiredCtx,
-          extendFnsWithOutput,
+          extractFnsWithOutput,
           queryClient,
           location: layoutLocation,
           skipDehydration: true,
         })
-        extendFnsWithOutput = result.extendFnsWithOutput
+        extractFnsWithOutput = result.extractFnsWithOutput
       }
     }
 
@@ -353,7 +353,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         root: this.root,
         eversion: this,
         queryClient,
-        extendFnsWithOutput,
+        extractFnsWithOutput,
         dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState({ queryClient }),
         response: undefined,
       }
@@ -361,10 +361,10 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
     let currentCtx: Ctx = requiredCtx ?? {}
     let currentData: Data = {}
-    const extendFns = [
-      ...this.getParents().flatMap((source) => source._extendFns),
-      ...this.root._extendFns,
-      ...(point?._extendFns ?? []),
+    const extractFns = [
+      ...this.getParents().flatMap((source) => source._extractFns),
+      ...this.root._extractFns,
+      ...(point?._extractFns ?? []),
     ]
     const staticHeads = [
       ...this.getParents().flatMap((source) => source._staticHeads),
@@ -374,51 +374,51 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     // TODO: get status from real point data
 
     try {
-      for (const extendFn of extendFns) {
-        switch (extendFn.type) {
+      for (const extractFn of extractFns) {
+        switch (extractFn.type) {
           case 'ctx': {
-            const ex = extendFnsWithOutput.find(
-              (e) => e.record.unstableId === extendFn.unstableId && e.record.type === 'ctx',
+            const ex = extractFnsWithOutput.find(
+              (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'ctx',
             )
             if (ex) {
               currentCtx = { ...ex.output }
             } else {
-              currentCtx = await extendFn.fn({
+              currentCtx = await extractFn.fn({
                 ctx: { ...currentCtx },
                 data: { ...currentData },
                 location,
                 input: parsedInput,
               })
-              extendFnsWithOutput.push({
+              extractFnsWithOutput.push({
                 output: currentCtx,
-                record: extendFn,
+                record: extractFn,
               })
             }
             break
           }
           case 'loader': {
-            const ex = extendFnsWithOutput.find(
-              (e) => e.record.unstableId === extendFn.unstableId && e.record.type === 'loader',
+            const ex = extractFnsWithOutput.find(
+              (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'loader',
             )
             if (ex) {
               currentData = { ...ex.output }
             } else {
-              currentData = await extendFn.fn({
+              currentData = await extractFn.fn({
                 ctx: { ...currentCtx },
                 data: { ...currentData },
                 location,
                 input: parsedInput,
               })
-              extendFnsWithOutput.push({
+              extractFnsWithOutput.push({
                 output: currentData,
-                record: extendFn,
+                record: extractFn,
               })
             }
             break
           }
 
           default:
-            throw new Error(`Unknown extend function type: ${(extendFn as any).type}`)
+            throw new Error(`Unknown extend function type: ${(extractFn as any).type}`)
         }
       }
       // for (const staticHead of staticHeads) {
@@ -449,7 +449,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           root: this.root,
           eversion: this,
           response,
-          extendFnsWithOutput,
+          extractFnsWithOutput,
           queryClient,
           dehydratedState,
         }
@@ -467,7 +467,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           response: undefined,
           root: this.root,
           eversion: this,
-          extendFnsWithOutput,
+          extractFnsWithOutput,
           queryClient,
           dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState({ queryClient }),
         }
@@ -485,7 +485,7 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         root: this.root,
         eversion: this,
         response: undefined,
-        extendFnsWithOutput,
+        extractFnsWithOutput,
         queryClient,
         dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState({ queryClient }),
       }
@@ -623,9 +623,9 @@ export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = {
   requiredCtx: TRequiredCtx
 }
 
-export type ExtendFnWithOutput = {
+export type ExtractFnWithOutput = {
   output: Ctx | Data
-  record: ExtendFnRecord
+  record: ExtractFnRecord
 }
 export type ExtractResult<TCtx extends Ctx = Ctx, TData extends Data = Data> = {
   ctx: TCtx
@@ -639,7 +639,7 @@ export type ExtractResult<TCtx extends Ctx = Ctx, TData extends Data = Data> = {
   root: RootPoint
   point: AnyPoint | undefined
   eversion: Eversion0
-  extendFnsWithOutput: ExtendFnWithOutput[]
+  extractFnsWithOutput: ExtractFnWithOutput[]
   queryClient: QueryClient
 }
 export type InferExtractResult<TPoint extends AnyPoint> =

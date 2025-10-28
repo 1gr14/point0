@@ -44,7 +44,7 @@ describe('Point0', () => {
         UndefinedResponseOutput
       >
     >()
-    expect(server._extendFns).toEqual([])
+    expect(server._extractFns).toEqual([])
   })
 
   it('extends with ctx fn', () => {
@@ -68,9 +68,9 @@ describe('Point0', () => {
         UndefinedResponseOutput
       >
     >()
-    expect(server1._extendFns).toHaveLength(1)
+    expect(server1._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extendFns).toHaveLength(0)
+    expect(server._extractFns).toHaveLength(0)
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
@@ -91,11 +91,11 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server2._extendFns).toHaveLength(2)
+    expect(server2._extractFns).toHaveLength(2)
     // not modified original server1
-    expect(server1._extendFns).toHaveLength(1)
+    expect(server1._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extendFns).toHaveLength(0)
+    expect(server._extractFns).toHaveLength(0)
   })
 
   it('extends with ctx with {}', async () => {
@@ -119,9 +119,9 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server1._extendFns).toHaveLength(1)
+    expect(server1._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extendFns).toHaveLength(0)
+    expect(server._extractFns).toHaveLength(0)
     const server2 = server1.ctx({
       a: 3,
       c: 4,
@@ -141,11 +141,11 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server2._extendFns).toHaveLength(2)
+    expect(server2._extractFns).toHaveLength(2)
     // not modified original server1
-    expect(server1._extendFns).toHaveLength(1)
+    expect(server1._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extendFns).toHaveLength(0)
+    expect(server._extractFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
     const eversion2 = await Eversion0.create({ root: server2 })
@@ -171,7 +171,7 @@ describe('Point0', () => {
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
   })
@@ -196,9 +196,9 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server1._extendFns).toHaveLength(1)
+    expect(server1._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extendFns).toHaveLength(0)
+    expect(server._extractFns).toHaveLength(0)
     const server2 = server1.loader(({ data }) => ({
       ...data,
       a: 3,
@@ -218,11 +218,11 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server2._extendFns).toHaveLength(2)
+    expect(server2._extractFns).toHaveLength(2)
     // not modified original server1
-    expect(server1._extendFns).toHaveLength(1)
+    expect(server1._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extendFns).toHaveLength(0)
+    expect(server._extractFns).toHaveLength(0)
   })
 
   it('extract without required ctx', async () => {
@@ -256,7 +256,7 @@ describe('Point0', () => {
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
     const server2 = server1.ctx(({ ctx }) => ({
@@ -288,7 +288,7 @@ describe('Point0', () => {
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
     const server3 = server1.ctx(({ ctx }) => ({
@@ -316,7 +316,7 @@ describe('Point0', () => {
       point: clientPoint03,
       eversion: eversion3,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
   })
@@ -354,7 +354,7 @@ describe('Point0', () => {
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
     const server2 = server1.ctx(({ ctx }) => ({
@@ -387,7 +387,7 @@ describe('Point0', () => {
       point: clientPoint02,
       eversion: eversion2,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
     const server3 = server1.ctx(({ ctx }) => ({
@@ -417,7 +417,7 @@ describe('Point0', () => {
       point: clientPoint03,
       eversion: eversion3,
       response: undefined,
-      extendFnsWithOutput: expect.any(Array),
+      extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
     })
   })
@@ -463,7 +463,7 @@ describe('Point0', () => {
         UndefinedResponseOutput
       >
     >()
-    expect(clientPoint0._extendFns).toEqual([])
+    expect(clientPoint0._extractFns).toEqual([])
   })
 
   it('creates ready page', () => {
