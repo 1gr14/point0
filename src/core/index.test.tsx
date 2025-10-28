@@ -1,9 +1,9 @@
 import { Route0 } from '@devp0nt/route0'
-import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Eversion, EversionRun } from './eversion.js'
+import { Eversion } from './eversion.js'
+import { Point0 } from './index.js'
 import type {
   EmptyCtx,
   UndefinedCtx,
@@ -13,7 +13,6 @@ import type {
   UndefinedResponseOutput,
   UndefinedRoute,
 } from './types.js'
-import { Point0 } from './index.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -159,18 +158,9 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation('/'),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server2,
-      point: clientPoint02,
-      eversion: eversion2,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
-      eversionRun: expect.any(EversionRun),
-      providedInput: undefined,
-      requiredCtx: undefined,
     })
   })
 
@@ -242,18 +232,9 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation(url),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server1,
-      point: clientPoint01,
-      eversion: eversion1,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
-      eversionRun: expect.any(EversionRun),
-      providedInput: undefined,
-      requiredCtx: undefined,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -272,18 +253,9 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation(url),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server2,
-      point: clientPoint02,
-      eversion: eversion2,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
-      eversionRun: expect.any(EversionRun),
-      providedInput: undefined,
-      requiredCtx: undefined,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
@@ -302,22 +274,13 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation(url),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server3,
-      point: clientPoint03,
-      eversion: eversion3,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
-      eversionRun: expect.any(EversionRun),
-      providedInput: undefined,
-      requiredCtx: undefined,
     })
   })
 
-  it.only('extract ctx with required ctx input', async () => {
+  it('extract ctx with required ctx input', async () => {
     const server = Point0.source('server').requireCtx<{ r: string }>().base()
     const url = '/z/x/c'
     const server1 = server.ctx(({ ctx }) => ({
@@ -342,18 +305,9 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation(url),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server1,
-      point: clientPoint01,
-      eversion: eversion1,
       response: undefined,
-      extractFnsWithOutput: expect.anything(),
-      queryClient: expect.anything(),
-      eversionRun: expect.anything(),
-      providedInput: {},
-      requiredCtx: { r: 'str' },
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -373,18 +327,9 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation(url),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server2,
-      point: clientPoint02,
-      eversion: eversion2,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
-      eversionRun: expect.any(EversionRun),
-      providedInput: undefined,
-      requiredCtx: { r: 'str' },
     })
     const server3 = server1.ctx(({ ctx }) => ({
       r: ctx.r,
@@ -401,18 +346,9 @@ describe('Point0', () => {
       data: {},
       head: [],
       location: Route0.getLocation(url),
-      dehydratedState: expect.any(Object),
       error: undefined,
       status: 200,
-      root: server3,
-      point: clientPoint03,
-      eversion: eversion3,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
-      eversionRun: expect.any(EversionRun),
-      providedInput: undefined,
-      requiredCtx: { r: 'str' },
     })
   })
 

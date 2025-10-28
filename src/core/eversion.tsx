@@ -28,7 +28,6 @@ import type {
   RootSourcePoint,
   UndefinedCtx,
 } from './types.js'
-import { emptyDehydratedState } from './utils.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -394,17 +393,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.dehydratedState = dehydrate(this.queryClient)
   }
 
-  async extract({
-    point,
-    input = {},
-    skipDehydration = false,
-    ...locationProps
-  }: ExtractOptions): Promise<ExtractResult> {
+  async extract({ point, input = {}, ...locationProps }: ExtractOptions): Promise<ExtractResult> {
     const location = this.eversion._normalizeLocation(locationProps, this.location)
-
-    const setExtractFnsWithOutput = (newExtractFnsWithOutput: ExtractFnWithOutput[]) => {
-      this.extractFnsWithOutput.splice(0, this.extractFnsWithOutput.length, ...newExtractFnsWithOutput)
-    }
 
     // TODO: remove it, we will prefetch everything in createPrefetchedAppElement
     if (point?._pointType === 'page') {
@@ -415,13 +405,11 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         const layoutRoute = layout._getRoute()
         const layoutRoutePath = layoutRoute.get({ ...location.params, query: { ...location.query } } as never)
         const layoutLocation = layoutRoute.match(layoutRoutePath).location
-        const result = await this.extract({
+        await this.extract({
           point: layout,
           input,
           location: layoutLocation,
-          skipDehydration: true,
         })
-        setExtractFnsWithOutput(result.extractFnsWithOutput)
       }
     }
 
@@ -441,18 +429,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         data: {},
         head: [],
         location,
-        point,
         error: inputError,
         status: 422,
-        root: this.eversion.root,
-        eversion: this.eversion,
-        eversionRun: this,
-        queryClient: this.queryClient,
-        providedInput: input,
-        extractFnsWithOutput: this.extractFnsWithOutput,
-        dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState(),
         response: undefined,
-        requiredCtx: this.requiredCtx,
       }
     }
 
@@ -532,24 +511,14 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })()
       if (point) {
         this.appendQueryClientCache({ data: currentData, location, point, error: undefined })
-        const dehydratedState = skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState()
         return {
           ctx: currentCtx,
           data: currentData,
           head: staticHeads,
           location,
-          point,
+          response,
           error: undefined,
           status: 200,
-          root: this.eversion.root,
-          eversion: this.eversion,
-          eversionRun: this,
-          response,
-          extractFnsWithOutput: this.extractFnsWithOutput,
-          queryClient: this.queryClient,
-          dehydratedState,
-          providedInput: input,
-          requiredCtx: this.requiredCtx,
         }
       } else {
         const error = new Error0(`Point Not Found: ${location.pathname}`)
@@ -559,18 +528,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           data: currentData,
           head: staticHeads,
           location,
-          point,
           error,
           status: 404,
           response: undefined,
-          root: this.eversion.root,
-          eversion: this.eversion,
-          eversionRun: this,
-          extractFnsWithOutput: this.extractFnsWithOutput,
-          queryClient: this.queryClient,
-          dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState(),
-          providedInput: input,
-          requiredCtx: this.requiredCtx,
         }
       }
     } catch (error) {
@@ -580,18 +540,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         data: currentData,
         head: staticHeads,
         location,
-        point,
         error,
         status: 500,
-        root: this.eversion.root,
-        eversion: this.eversion,
-        eversionRun: this,
         response: undefined,
-        extractFnsWithOutput: this.extractFnsWithOutput,
-        queryClient: this.queryClient,
-        dehydratedState: skipDehydration ? emptyDehydratedState : this.getQueryClientDehydratedState(),
-        providedInput: input,
-        requiredCtx: this.requiredCtx,
       }
     }
   }
@@ -627,7 +578,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pagesTree,
       dehydratedState: this.getQueryClientDehydratedState(),
     })
-    return appElement
+    return { appElement, dehydratedState: this.getQueryClientDehydratedState() }
     // await walkElementsAsync(appElement, async (element) => {
     //   console.log(34343, element)
     //   if ((element as any)?._POINT0_point && (element as any)._POINT0_isPrefetched === false) {
@@ -767,7 +718,6 @@ export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = {
 export type ExtractOptions = {
   point?: AnyPoint | undefined
   input?: Input
-  skipDehydration?: boolean
 } & OptionalLocationInput
 export type ExtractFnWithOutput = {
   output: Ctx | Data
@@ -778,18 +728,9 @@ export type ExtractResult<TCtx extends Ctx = Ctx, TData extends Data = Data> = {
   data: TData
   head: ResolvableHead[]
   response: Response | undefined
-  dehydratedState: DehydratedState
   location: Route0.Location
   error: unknown
   status: number
-  root: RootPoint
-  point: AnyPoint | undefined
-  providedInput: Input | undefined
-  requiredCtx: RequiredCtx
-  eversion: Eversion
-  eversionRun: EversionRun
-  extractFnsWithOutput: ExtractFnWithOutput[]
-  queryClient: QueryClient
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
   TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any, any>

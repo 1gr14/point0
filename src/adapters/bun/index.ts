@@ -334,10 +334,10 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             if (!App) {
               throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
             }
-            const appElement = await run.createPrefetchedAppElement({ App })
+            const { appElement, dehydratedState } = await run.createPrefetchedAppElement({ App })
             const readableStream = await renderReadableStream({
               element: appElement,
-              dehydratedState: extractResult.dehydratedState,
+              dehydratedState,
               head: extractResult.head,
               location: extractResult.location,
               originalIndexHtml,
