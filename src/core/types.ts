@@ -10,7 +10,7 @@ import type {
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, ZodObject } from 'zod'
 import type { Point0 } from './index.js'
-import type { ExtractOptions, Eversion0 } from './eversion.js'
+import type { ExtractOptions, Eversion } from './eversion.js'
 import { ExtractResult } from './eversion.js'
 
 // basic
@@ -395,7 +395,7 @@ export type FinalClientData<
 
 export type FetchOptionsFn = () => FetchOptions
 export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
-export type FetchOptions = RequestInit & { extractOptions?: ExtractOptions; eversion?: Eversion0 }
+export type FetchOptions = RequestInit
 
 export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 

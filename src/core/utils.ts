@@ -1,4 +1,6 @@
 import type { DehydratedState } from '@tanstack/react-query'
+import type { ReactElement, ReactNode } from 'react'
+import React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 
 export function mergeHeaders(
@@ -72,3 +74,39 @@ export const emptyDehydratedState: DehydratedState = {
   queries: [],
   mutations: [],
 }
+
+// type VisitorFn = (element: React.ReactElement<any>) => void | Promise<void>
+// export async function walkElementsAsync(node: ReactNode, visitor: VisitorFn): Promise<void> {
+//   if (node == null) return
+
+//   if (Array.isArray(node)) {
+//     for (const child of node) {
+//       await walkElementsAsync(child, visitor)
+//     }
+//     return
+//   }
+
+//   if (!React.isValidElement(node)) return
+
+//   await visitor(node)
+
+//   const { type, props } = node
+
+//   // If it's a function component, call it to expand children
+//   if (typeof type === 'function') {
+//     try {
+//       const rendered = type(props)
+//       await walkElementsAsync(rendered, visitor)
+//       return
+//     } catch (err) {
+//       console.error(err)
+//       // Ignore hook errors or components needing context
+//       return
+//     }
+//   }
+
+//   // Otherwise, descend into its children if present
+//   if (props?.children) {
+//     await walkElementsAsync(props.children, visitor)
+//   }
+// }

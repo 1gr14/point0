@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LoadedPointsCollection, PointsCollection } from './eversion.js'
-import { Eversion0 } from './eversion.js'
+import { Eversion } from './eversion.js'
 import type { LayoutPoint, PagePoint } from './types.js'
 
 export type UseAdapterLocationFn = UseLocationFn
@@ -472,10 +472,6 @@ export const toPagesTree = ({ points }: { points: PointsCollection | LoadedPoint
   return _toPagesTreeFromPagesAndLayouts({ pagesAndLayouts })
 }
 
-export const toLoadedPagesTree = async ({ points }: { points: PointsCollection }): Promise<PagesTree> => {
-  const loadedPoints = await Eversion0.toLoadedPointsCollection(points)
-  return toPagesTree({ points: loadedPoints })
-}
 export const _toRoutesCollection = ({ pagesTree }: { pagesTree: PagesTree }): RoutesCollection => {
   const routes: RoutesCollection = {}
   const traverse = (node: PagesTreeRecord): void => {

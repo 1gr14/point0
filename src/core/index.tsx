@@ -7,6 +7,7 @@ import qs from 'qs'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
+import type { EversionRun, ExtractOptions } from './eversion.js'
 import { useIsInitalSsrLocation, useLocation } from './router.js'
 import type {
   AppendCtx,
@@ -88,6 +89,8 @@ export class Point0<
     Input: Input<TRoute, TInputSchema>
   } = {} as never
 
+  _eversionRun: EversionRun<TRequiredCtx> | undefined
+
   // TODO: may it help somebody?
   // static readyPoints: ReadyPoint[] = []
   // static pagePoints: PagePoint[] = []
@@ -162,6 +165,7 @@ export class Point0<
     _pageLoaderComponent?: LoaderComponentType<'page'>
     _componentLoaderComponent?: LoaderComponentType<'component'>
     _appLoaderComponent?: LoaderComponentType<'app'>
+    _unstableId?: number
   }) {
     // persistent
     this._rootId = props._rootId
@@ -212,12 +216,12 @@ export class Point0<
     this._appLoaderComponent = props._appLoaderComponent
 
     // calculated
-    this._unstableId = Point0._getNextUnstableId()
+    this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
   }
 
   _continue<
     TPointType extends PointType,
-    TSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
+    TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
     TRequiredCtx extends RequiredCtx,
     TCtx extends Ctx,
     TData extends Data | UndefinedData,
@@ -255,7 +259,7 @@ export class Point0<
     _appLoaderComponent?: LoaderComponentType<'app'>
   }): Point0<
     TPointType,
-    TSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -268,7 +272,7 @@ export class Point0<
 
     return new Point0<
       TPointType,
-      TSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -305,7 +309,9 @@ export class Point0<
             ? { ...this._base._pageQueryOptions }
             : { ...this._pageQueryOptions }
           : { ...this._pageQueryOptions }),
-      _hasSourceBase: this._hasSourceBase as TSourceBasePoint extends UndefinedInferredRootSourcePoint ? false : true,
+      _hasSourceBase: this._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
+        ? false
+        : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
       _clientExtractFns: wasEndpoint ? [] : (overrides._clientExtractFns ?? this._clientExtractFns),
       _route: (overrides._route ?? (wasEndpoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
@@ -365,6 +371,26 @@ export class Point0<
       this._pointType === 'component' ||
       this._pointType === 'client-ctx'
     )
+  }
+
+  _cloneWithEversionRun(
+    eversionRun: EversionRun<TRequiredCtx>,
+  ): Point0<
+    TPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRoute,
+    TInputSchema,
+    TResponseOutput
+  > {
+    return new Point0({
+      // eslint-disable-next-line @typescript-eslint/no-misused-spread
+      ...this,
+      _eversionRun: eversionRun,
+    })
   }
 
   // base
@@ -1838,7 +1864,7 @@ export class Point0<
       url.search = qs.stringify({ ...routeQuery })
       body = JSON.stringify({ ...inputSelf })
     }
-    if (!fetchOptions.eversion || !fetchOptions.extractOptions) {
+    if (!this._eversionRun) {
       const res = await fetch(url.toString(), {
         ...fetchOptions,
         headers,
@@ -1856,12 +1882,12 @@ export class Point0<
         httpStatus: res.status,
       })
     } else {
-      const eversion = fetchOptions.eversion
-      const extractOptions = fetchOptions.extractOptions
+      const location = this._getRoute().match(url.toString()).location
       try {
-        const extractResult = await eversion.extract({
-          ...extractOptions,
+        const extractResult = await this._eversionRun.extract({
           point: this,
+          location,
+          input: inputSelf,
         })
         if (extractResult.error) {
           throw Error0.from(extractResult.error)

@@ -2,10 +2,8 @@ import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import qs from 'qs'
-import { createElement } from 'react'
 import type { PointsCollection } from '../../core/eversion.js'
-import { Eversion0 } from '../../core/eversion.js'
-import { toPagesTree } from '../../core/router.js'
+import { Eversion } from '../../core/eversion.js'
 import type { IsEmptyObject, Method, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
 import type {
   ServerAdapterClientInputParsed,
@@ -30,7 +28,7 @@ type ParsedRequest = {
 }
 
 type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = ServerAdapterClientInputParsed & {
-  eversion: Eversion0<TRequiredCtx>
+  eversion: Eversion<TRequiredCtx>
 }
 
 // TODO: rename it
@@ -46,7 +44,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   dirname?: string
   publicDir?: string
   fallbackRootId: RootId
-  eversion: Eversion0<TRequiredCtx>
+  eversion: Eversion<TRequiredCtx>
   clients: Array<ClientWithEversion<TRequiredCtx>>
 
   publicFilePaths: Map<string, string> = new Map<string, string>()
@@ -55,7 +53,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   private constructor(
     input: Omit<ServerAdapterServerInputParsed<TRequiredCtx>, 'clients'> & {
-      eversion: Eversion0<TRequiredCtx>
+      eversion: Eversion<TRequiredCtx>
       clients: Array<ClientWithEversion<TRequiredCtx>>
     },
   ) {
@@ -77,7 +75,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: ServerAdapterServerInput<TRequiredCtx>,
   ): Promise<BunAdapter<TRequiredCtx>> {
     const parsedInput = parseServerAdapterInput(input)
-    const eversion = await Eversion0.create({ root: parsedInput.root, points: parsedInput.points })
+    const eversion = await Eversion.create({ root: parsedInput.root, points: parsedInput.points })
     // for (const client of parsedInput.clients) {
     //   await eversion.connect({ root: client.root, points: client.points })
     // }
@@ -287,6 +285,10 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pathname,
         fallbackRootId: this.fallbackRootId,
       })
+      const run = await this.eversion.createRun({
+        location: suitable.location,
+        requiredCtx,
+      })
 
       // TODO: get correct input by suitable using helper
       const body = await (async () => {
@@ -299,13 +301,11 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const searchParams = { ...qs.parse(url.search) } as Record<string, any>
       const routeParams = suitable.location.params
       const input = { ...searchParams, ...routeParams, ...body }
-      const extractResult = await suitable.eversion.extract({
+      const extractResult = await run.extract({
         point: suitable.point,
-        requiredCtx,
-        location: suitable.location,
         input,
       })
-      const relatedClient = this.clients.find((client) => client.root === extractResult.root)
+      const relatedClient = this.clients.find((client) => client.root === suitable.eversion.root)
       if (extractResult.error) {
         this.logger.error(extractResult.error)
       }
@@ -334,11 +334,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             if (!App) {
               throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
             }
-            const appElement = this.eversion.createAppElement({
-              App,
-              extractResult,
-              pagesTree: toPagesTree({ points: relatedClient.eversion.points }),
-            })
+            const appElement = await run.createPrefetchedAppElement({ App })
             const readableStream = await renderReadableStream({
               element: appElement,
               dehydratedState: extractResult.dehydratedState,

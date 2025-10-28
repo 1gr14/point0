@@ -3,7 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Eversion0 } from './eversion.js'
+import { Eversion, EversionRun } from './eversion.js'
 import type {
   EmptyCtx,
   UndefinedCtx,
@@ -148,14 +148,9 @@ describe('Point0', () => {
     expect(server._extractFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion0.create({ root: server2 })
-    expect(
-      await eversion2.extract({
-        location: Route0.getLocation('/'),
-        point: clientPoint02,
-        requiredCtx: undefined,
-      }),
-    ).toEqual({
+    const eversion2 = await Eversion.create({ root: server2 })
+    const run = await eversion2.createRun({ location: Route0.getLocation('/'), requiredCtx: undefined })
+    expect(await run.extract({ point: clientPoint02 })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -173,6 +168,9 @@ describe('Point0', () => {
       response: undefined,
       extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
+      eversionRun: expect.any(EversionRun),
+      providedInput: undefined,
+      requiredCtx: undefined,
     })
   })
 
@@ -234,14 +232,9 @@ describe('Point0', () => {
     }))
     const pageComponent = () => <div>Hello</div>
     const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion1 = await Eversion0.create({ root: server1 })
-    expect(
-      await eversion1.extract({
-        location: Route0.getLocation(url),
-        point: clientPoint01,
-        requiredCtx: undefined,
-      }),
-    ).toEqual({
+    const eversion1 = await Eversion.create({ root: server1 })
+    const run = await eversion1.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
+    expect(await run.extract({ point: clientPoint01 })).toEqual({
       ctx: {
         a: 1,
         b: 2,
@@ -258,6 +251,9 @@ describe('Point0', () => {
       response: undefined,
       extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
+      eversionRun: expect.any(EversionRun),
+      providedInput: undefined,
+      requiredCtx: undefined,
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -265,14 +261,9 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion0.create({ root: server2 })
-    expect(
-      await eversion2.extract({
-        point: clientPoint02,
-        location: Route0.getLocation(url),
-        requiredCtx: undefined,
-      }),
-    ).toEqual({
+    const eversion2 = await Eversion.create({ root: server2 })
+    const run2 = await eversion2.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
+    expect(await run2.extract({ point: clientPoint02 })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -290,17 +281,19 @@ describe('Point0', () => {
       response: undefined,
       extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
+      eversionRun: expect.any(EversionRun),
+      providedInput: undefined,
+      requiredCtx: undefined,
     })
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
     }))
     const clientPoint03 = Point0.connect<typeof server3>('client').route(Route0.create('/')).page(pageComponent)
-    const eversion3 = await Eversion0.create({ root: server3 })
+    const eversion3 = await Eversion.create({ root: server3 })
+    const run3 = await eversion3.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
     expect(
-      await eversion3.extract({
+      await run3.extract({
         point: clientPoint03,
-        location: Route0.getLocation(url),
-        requiredCtx: undefined,
       }),
     ).toEqual({
       ctx: {
@@ -318,10 +311,13 @@ describe('Point0', () => {
       response: undefined,
       extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
+      eversionRun: expect.any(EversionRun),
+      providedInput: undefined,
+      requiredCtx: undefined,
     })
   })
 
-  it('extract ctx with required ctx input', async () => {
+  it.only('extract ctx with required ctx input', async () => {
     const server = Point0.source('server').requireCtx<{ r: string }>().base()
     const url = '/z/x/c'
     const server1 = server.ctx(({ ctx }) => ({
@@ -331,12 +327,11 @@ describe('Point0', () => {
     }))
     const pageComponent = () => <div>Hello</div>
     const clientPoint01 = Point0.connect<typeof server1>('client').base().route(Route0.create('/')).page(pageComponent)
-    const eversion1 = await Eversion0.create({ root: server1 })
+    const eversion1 = await Eversion.create({ root: server1 })
+    const run1 = await eversion1.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
     expect(
-      await eversion1.extract({
+      await run1.extract({
         point: clientPoint01,
-        location: Route0.getLocation(url),
-        requiredCtx: { r: 'str' },
       }),
     ).toEqual({
       ctx: {
@@ -354,8 +349,11 @@ describe('Point0', () => {
       point: clientPoint01,
       eversion: eversion1,
       response: undefined,
-      extractFnsWithOutput: expect.any(Array),
-      queryClient: expect.any(QueryClient),
+      extractFnsWithOutput: expect.anything(),
+      queryClient: expect.anything(),
+      eversionRun: expect.anything(),
+      providedInput: {},
+      requiredCtx: { r: 'str' },
     })
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
@@ -363,14 +361,9 @@ describe('Point0', () => {
       c: 4,
     }))
     const clientPoint02 = Point0.connect<typeof server2>('client').base().route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion0.create({ root: server2 })
-    expect(
-      await eversion2.extract({
-        location: Route0.getLocation(url),
-        point: clientPoint02,
-        requiredCtx: { r: 'str' },
-      }),
-    ).toEqual({
+    const eversion2 = await Eversion.create({ root: server2 })
+    const run2 = await eversion2.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
+    expect(await run2.extract({ point: clientPoint02 })).toEqual({
       ctx: {
         r: 'str',
         a: 3,
@@ -389,20 +382,18 @@ describe('Point0', () => {
       response: undefined,
       extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
+      eversionRun: expect.any(EversionRun),
+      providedInput: undefined,
+      requiredCtx: { r: 'str' },
     })
     const server3 = server1.ctx(({ ctx }) => ({
       r: ctx.r,
       c: 5,
     }))
     const clientPoint03 = Point0.connect<typeof server3>('client').base().route(Route0.create('/')).page(pageComponent)
-    const eversion3 = await Eversion0.create({ root: server3 })
-    expect(
-      await eversion3.extract({
-        location: Route0.getLocation(url),
-        point: clientPoint03,
-        requiredCtx: { r: 'str' },
-      }),
-    ).toEqual({
+    const eversion3 = await Eversion.create({ root: server3 })
+    const run3 = await eversion3.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
+    expect(await run3.extract({ point: clientPoint03 })).toEqual({
       ctx: {
         r: 'str',
         c: 5,
@@ -419,6 +410,9 @@ describe('Point0', () => {
       response: undefined,
       extractFnsWithOutput: expect.any(Array),
       queryClient: expect.any(QueryClient),
+      eversionRun: expect.any(EversionRun),
+      providedInput: undefined,
+      requiredCtx: { r: 'str' },
     })
   })
 

@@ -16,7 +16,7 @@ export type HydratedAppProps = {
   dehydratedState: DehydratedState | undefined
   pagesTree: PagesTree
 }
-export type HydratedAppComponent = React.ComponentType<HydratedAppProps>
+export type HydratedAppComponent = (props: HydratedAppProps) => React.ReactElement
 
 let root: Root | null = null
 let result: HydrateResult | null = null
