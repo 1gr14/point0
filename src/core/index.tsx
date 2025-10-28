@@ -7,9 +7,10 @@ import qs from 'qs'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun, ExtractOptions } from './eversion.js'
+import type { EversionRun } from './eversion.js'
 import { useIsInitalSsrLocation, useLocation } from './router.js'
 import type {
+  AnyPoint,
   AppendCtx,
   BasePoint,
   ClientExtractFnRecord,
@@ -1821,6 +1822,43 @@ export class Point0<
       children,
     })
   }
+
+  // static _PointCollectorContext = React.createContext<((cp: AnyPoint) => void) | null>(null)
+  // static _usePointCollector(): ((cp: AnyPoint) => void) | null {
+  //   return React.useContext(Point0._PointCollectorContext)
+  // }
+  // static _PointCollectorProvider({
+  //   onRegister,
+  //   children,
+  // }: {
+  //   onRegister: (cp: AnyPoint) => void
+  //   children: React.ReactNode
+  // }): React.ReactNode {
+  //   return <this._PointCollectorContext.Provider value={onRegister}>{children}</this._PointCollectorContext.Provider>
+  // }
+
+  // _RegisteringProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  //   const register = Point0._usePointCollector()
+  //   const registeredRef = React.useRef(false)
+  //   // Safe to do during render in SSR (pattern used by CSS-in-JS)
+  //   if (register && !registeredRef.current) {
+  //     registeredRef.current = true
+  //     register(this)
+  //   }
+  //   return React.createElement(React.Fragment, null, children)
+  // }
+
+  // Provider = this._Provider
+
+  // Provider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  //   return React.createElement(this._Provider, { children })
+  //   // if (!this._eversionRun) {
+  //   //   return React.createElement(this._Provider, { children })
+  //   // }
+  //   // return React.createElement(this._RegisteringProvider, {
+  //   //   children: React.createElement(this._Provider, { children }),
+  //   // })
+  // }
 
   useClientCtx = (): FinalClientData<TData, TClientData> => {
     const ctx = React.useContext(this._ClientCtxReactContext)

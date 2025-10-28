@@ -51,4 +51,19 @@ export const points: PointsCollection = [
     point: async () => (await import('../layouts/idea.js')).ideaLayout,
     layoutPagesRoutes: ['/ideas/:id', '/ideas/:id/news'],
   },
+  {
+    type: 'client-ctx',
+    route: '/endpoints/test-client-ctx-1',
+    point: async () => (await import('../lib/client-ctx.js')).clientCtx1,
+  },
+  {
+    type: 'client-ctx',
+    route: '/endpoints/test-client-ctx-2',
+    point: async () => (await import('../lib/client-ctx.js')).clientCtx2,
+  },
+  {
+    type: 'client-ctx',
+    route: '/endpoints/test-client-ctx-3',
+    point: async () => (await import('../lib/client-ctx.js')).clientCtx3,
+  },
 ]

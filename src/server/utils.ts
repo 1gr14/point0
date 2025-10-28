@@ -86,7 +86,11 @@ export const prependAndAppendSlash = <T extends string | undefined>(path: T): T 
   if (!path) {
     return undefined as T
   }
-  return ('/' + path.replace(/^\//, '').replace(/\/$/, '').replace(/\/\/+/g, '/') + '/') as T
+  let result = '/' + path.replace(/^\//, '')
+  result = result.replace(/\/$/, '') + '/'
+  result = result.replace(/\/\/+/g, '/')
+  console.log('xxcc', result)
+  return result as T
 }
 
 export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {

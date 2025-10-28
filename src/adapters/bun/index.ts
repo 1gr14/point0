@@ -618,6 +618,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     this.clientsDevServer = serve({
       port,
+      // TODO: console as option for clients dev server
       development: { hmr, console: false },
       routes: {
         ...this.clientsDevRoutes,
