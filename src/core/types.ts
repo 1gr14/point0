@@ -11,6 +11,33 @@ import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, ZodObject } from 'zod'
 import type { Point0 } from './index.js'
 
+// basic
+
+export type HasPageTure = true
+export type HasPageFalse = false
+export type HasPage = boolean
+export type IsClientTrue = true
+export type IsClientFalse = false
+export type IsClient = boolean
+
+export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
+export type UndefinedMethod = undefined
+export type Id = string
+export type UndefinedId = undefined
+export type RootId = string
+export type UndefinedRootId = undefined
+
+export type UndefinedRoute = undefined
+export type EmptyCtx = Record<string, unknown> // TODO: use UndefinedCtx instead
+export type UnknownCtx = Record<string, unknown>
+export type UndefinedCtx = undefined
+export type RequiredCtx = UnknownCtx | UndefinedCtx
+export type Ctx = UnknownCtx | EmptyCtx
+export type EmptyData = Record<string, unknown> // TODO: use UndefinedData instead
+export type UnknownData = Record<string, unknown>
+export type UndefinedData = undefined
+export type Data = UnknownData | EmptyData
+
 export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>
 // used to avoid circular depedencies
 export type Infer<
@@ -27,23 +54,25 @@ export type Infer<
   InputSchema: TInputSchema
 }
 
-export type HasPageTure = true
-export type HasPageFalse = false
-export type HasPage = boolean
-export type IsClientTrue = true
-export type IsClientFalse = false
-export type IsClient = boolean
+// points types
 
-export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
-export type UndefinedMethod = undefined
-export type Id = string
-export type UndefinedId = undefined
-export type RootId = string
-export type UndefinedRootId = undefined
+export type PointType =
+  | 'base'
+  | 'middleware'
+  | 'page'
+  | 'component'
+  | 'response'
+  | 'query'
+  | 'mutation'
+  | 'layout'
+  | 'client-middleware'
+  | 'client-ctx'
+export type EndPointType = Exclude<PointType, 'middleware' | 'base' | 'client-middleware'>
+export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 
 export type AnyPoint<
   TPointType extends PointType = PointType,
-  TConnectedSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -55,7 +84,7 @@ export type AnyPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = Point0<
   TPointType,
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -66,7 +95,7 @@ export type AnyPoint<
 >
 
 export type BasePoint<
-  TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
+  TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -76,7 +105,7 @@ export type BasePoint<
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
 > = AnyPoint<
   'base',
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -87,7 +116,7 @@ export type BasePoint<
 >
 
 export type RootSourcePoint<
-  TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
+  TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -97,7 +126,7 @@ export type RootSourcePoint<
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
 > = AnyPoint<
   'base' | 'middleware',
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -106,8 +135,9 @@ export type RootSourcePoint<
   TInputSchema,
   TResponseOutput
 >
+
 export type RootConnectedPoint<
-  TConnectedSourceBasePoint extends InferredRootSourcePoint = InferredRootSourcePoint,
+  TConnectedRootSourcePoint extends InferredRootSourcePoint = InferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = any,
@@ -117,7 +147,7 @@ export type RootConnectedPoint<
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
 > = AnyPoint<
   'base' | 'middleware',
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -126,6 +156,7 @@ export type RootConnectedPoint<
   TInputSchema,
   TResponseOutput
 >
+
 export type RootPoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
@@ -157,7 +188,7 @@ export type RootPoint<
     >
 
 export type PagePoint<
-  TConnectedSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -169,7 +200,7 @@ export type PagePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = AnyPoint<
   'page',
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -180,7 +211,7 @@ export type PagePoint<
 >
 
 export type LayoutPoint<
-  TConnectedSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -192,7 +223,7 @@ export type LayoutPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = AnyPoint<
   'layout',
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -203,7 +234,7 @@ export type LayoutPoint<
 >
 
 export type ResponsePoint<
-  TConnectedSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -215,7 +246,30 @@ export type ResponsePoint<
   TResponseOutput extends ResponseOutput = ResponseOutput,
 > = AnyPoint<
   'response',
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRoute,
+  TInputSchema,
+  TResponseOutput
+>
+
+export type ClientCtxPoint<
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
+    | InferredRootSourcePoint
+    | UndefinedInferredRootSourcePoint,
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TCtx extends Ctx = any,
+  TData extends Data | UndefinedData = any,
+  TClientData extends Data | UndefinedData = any,
+  TRoute extends Route0.AnyRoute = Route0.AnyRoute,
+  TInputSchema extends UndefinedInputSchema = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+> = AnyPoint<
+  'client-ctx',
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -227,7 +281,7 @@ export type ResponsePoint<
 
 export type EndPoint<
   TPointType extends EndPointType = EndPointType,
-  TConnectedSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -239,7 +293,7 @@ export type EndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
 > = AnyPoint<
   TPointType,
-  TConnectedSourceBasePoint,
+  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -260,6 +314,8 @@ export type InferredRootSourcePoint<
 }
 export type UndefinedInferredRootSourcePoint = undefined
 
+// point helpers
+
 export type InferCtx<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
   TPoint extends AnyPoint<any, any, any, infer TCtx, any, any, any, any>
     ? TCtx
@@ -274,6 +330,16 @@ export type InferData<TPoint extends AnyPoint | InferredRootSourcePoint | undefi
       : EmptyData
 export type InferSourceBase<TPoint extends AnyPoint | undefined> =
   TPoint extends AnyPoint<infer TSourceBasePoint> ? TSourceBasePoint : undefined
+
+export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
+  ? Omit<TCtx, keyof TAppend> & TAppend
+  : TAppend
+export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends UnknownCtx> = TCtx extends Ctx
+  ? Omit<TPrepend, keyof TCtx> & TPrepend
+  : TPrepend
+
+export type CurrentRoute<TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute> =
+  TRoute extends Route0.AnyRoute ? TRoute : Route0.AnyRoute
 
 export type PageComponentProps<
   TData extends Data | UndefinedData = Data | UndefinedData,
@@ -319,20 +385,6 @@ export type ErrorComponentType<TType extends DestinationComponentType = Destinat
   ErrorComponentProps<TType>
 >
 
-export type CurrentRoute<TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute> =
-  TRoute extends Route0.AnyRoute ? TRoute : Route0.AnyRoute
-
-// TODO: unknown and undefined objects
-export type UndefinedRoute = undefined
-export type EmptyCtx = Record<string, unknown> // Record<string, never>
-export type UnknownCtx = Record<string, unknown>
-export type UndefinedCtx = undefined
-export type RequiredCtx = UnknownCtx | UndefinedCtx
-export type Ctx = UnknownCtx | EmptyCtx
-export type EmptyData = Record<string, unknown> // Record<string, never>
-export type UnknownData = Record<string, unknown>
-export type UndefinedData = undefined
-export type Data = UnknownData | EmptyData
 export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
 export type FinalClientData<
   TData extends Data | UndefinedData,
@@ -364,7 +416,6 @@ export type Input<
     : TInputSchema extends InputSchemaObject
       ? TInputSchema
       : Record<never, never>
-// > = TInputSchema extends InputSchema ? z.infer<TInputSchema> : Record<string, unknown>
 export type UndefinedInput = undefined
 
 export type ResponseOutput = Response
@@ -388,13 +439,6 @@ export type ResponseFn<
   TResponseOutput extends ResponseOutput = ResponseOutput,
 > = (props: ResponseFnProps<TCtx, TData, TRoute0, TInputSchema>) => Promise<TResponseOutput> | TResponseOutput
 export type ResponseFnOutput<TResponseFn extends ResponseFn> = Awaited<ReturnType<TResponseFn>>
-
-export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
-  ? Omit<TCtx, keyof TAppend> & TAppend
-  : TAppend
-export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends UnknownCtx> = TCtx extends Ctx
-  ? Omit<TPrepend, keyof TCtx> & TPrepend
-  : TPrepend
 
 export type CtxFnProps<
   TCtxInput extends Ctx = Ctx,
@@ -498,19 +542,11 @@ export type TitleFn<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
 > = (props: TitleFnProps<TData, TClientData, TRoute>) => string
 
-export type PointType =
-  | 'base'
-  | 'middleware'
-  | 'page'
-  | 'component'
-  | 'response'
-  | 'query'
-  | 'mutation'
-  | 'layout'
-  | 'client-middleware'
-  | 'client-ctx'
-export type EndPointType = Exclude<PointType, 'middleware' | 'base' | 'client-middleware'>
-export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
+// point methods
+
+// TODO: move here Ctx etc
+
+// endpoint helpers
 
 export type QueryKey = readonly [string, ...string[]]
 export type FetcherFnArgs<
@@ -544,16 +580,22 @@ export type FetchOutput<
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 
-// endpoint fns
+// endpoint methods
 
 export type FetchFn<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
   TData extends Data | UndefinedData = Data | UndefinedData,
-> = (
-  ...args: WithFetcherFnArgs<TRoute, TInputSchema, FetchOptions | undefined>
-) => Promise<FetchOutput<TResponseOutput, TData>>
+> = TResponseOutput extends ResponseOutput
+  ? (
+      ...args: WithFetcherFnArgs<TRoute, TInputSchema, FetchOptions | undefined>
+    ) => Promise<FetchOutput<TResponseOutput, TData>>
+  : TData extends Data
+    ? (
+        ...args: WithFetcherFnArgs<TRoute, TInputSchema, FetchOptions | undefined>
+      ) => Promise<FetchOutput<TResponseOutput, TData>>
+    : never
 
 export type GetQueryKeyFn<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,

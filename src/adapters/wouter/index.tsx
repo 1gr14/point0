@@ -44,12 +44,14 @@ export const Router = ({
   Page404 = DefaultPage404,
   policy,
   status,
+  children,
 }: {
   ssrLocation?: Route0.Location | undefined
   pagesTree: PagesTree
   Page404?: React.ComponentType
   policy?: RouterPolicy
   status?: RouterStatus
+  children?: React.ReactNode
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -79,10 +81,20 @@ export const Router = ({
         policy={policy}
         status={status}
       >
-        <RenderPagesTree nodes={pagesTree} Page404={Page404} />
+        {children ?? <RenderPagesTree nodes={pagesTree} Page404={Page404} />}
       </RouterContextProvider>
     </WouterRouter>
   )
+}
+
+export const Routes = ({
+  pagesTree,
+  Page404 = DefaultPage404,
+}: {
+  pagesTree: PagesTree
+  Page404?: React.ComponentType
+}): React.ReactElement => {
+  return <RenderPagesTree nodes={pagesTree} Page404={Page404} />
 }
 
 const DefaultPage404 = () => {

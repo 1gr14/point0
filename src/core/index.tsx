@@ -75,7 +75,7 @@ import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
 export class Point0<
   TPointType extends PointType,
-  TConnectedSourceBasePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
+  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TData extends Data | UndefinedData,
@@ -109,7 +109,7 @@ export class Point0<
   _pageQueryOptions: QueryOptionsSettings
   // TODO: remove or use wrapper
   _wrapper: WrapperComponentType | undefined
-  _hasSourceBase: TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint ? false : true
+  _hasSourceBase: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
   _extractFns: ExtractFnRecord[]
   _clientExtractFns: ClientExtractFnRecord[]
   _route: TRoute
@@ -144,7 +144,7 @@ export class Point0<
     _staticHeads?: StaticHeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
     _pageQueryOptions?: QueryOptionsSettings | undefined
-    _hasSourceBase?: TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint ? false : true
+    _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
     _route?: TRoute
@@ -178,7 +178,7 @@ export class Point0<
     this._staticHeads = props._staticHeads ?? []
     this._queryOptions = props._queryOptions ?? {}
     this._pageQueryOptions = props._pageQueryOptions ?? {}
-    this._hasSourceBase = props._hasSourceBase as TConnectedSourceBasePoint extends UndefinedInferredRootSourcePoint
+    this._hasSourceBase = props._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
       ? false
       : true
     this._extractFns = props._extractFns ?? []
@@ -389,26 +389,26 @@ export class Point0<
     })
   }
 
-  static connect<TConnectedSourceBasePoint extends InferredRootSourcePoint>(
+  static connect<TConnectedRootSourcePoint extends InferredRootSourcePoint>(
     rootId: string,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
-    TConnectedSourceBasePoint['Infer']['RequiredCtx'],
-    TConnectedSourceBasePoint['Infer']['Ctx'],
-    TConnectedSourceBasePoint['Infer']['Data'],
-    TConnectedSourceBasePoint['Infer']['ClientData'],
+    TConnectedRootSourcePoint,
+    TConnectedRootSourcePoint['Infer']['RequiredCtx'],
+    TConnectedRootSourcePoint['Infer']['Ctx'],
+    TConnectedRootSourcePoint['Infer']['Data'],
+    TConnectedRootSourcePoint['Infer']['ClientData'],
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedResponseOutput
   > {
     return new Point0<
       'middleware',
-      TConnectedSourceBasePoint,
-      TConnectedSourceBasePoint['Infer']['RequiredCtx'],
-      TConnectedSourceBasePoint['Infer']['Ctx'],
-      TConnectedSourceBasePoint['Infer']['Data'],
-      TConnectedSourceBasePoint['Infer']['ClientData'],
+      TConnectedRootSourcePoint,
+      TConnectedRootSourcePoint['Infer']['RequiredCtx'],
+      TConnectedRootSourcePoint['Infer']['Ctx'],
+      TConnectedRootSourcePoint['Infer']['Data'],
+      TConnectedRootSourcePoint['Infer']['ClientData'],
       UndefinedRoute,
       UndefinedInputSchema,
       UndefinedResponseOutput
@@ -423,7 +423,7 @@ export class Point0<
 
   base(): Point0<
     'base',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -434,7 +434,7 @@ export class Point0<
   > {
     return this._continue<
       'base',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -452,7 +452,7 @@ export class Point0<
     id: Id,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -463,7 +463,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -481,7 +481,7 @@ export class Point0<
     sourceBaseUrl: string,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -492,7 +492,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -510,7 +510,7 @@ export class Point0<
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -521,7 +521,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -539,7 +539,7 @@ export class Point0<
     errorComponent: ErrorComponentType,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -550,7 +550,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -568,7 +568,7 @@ export class Point0<
     pageErrorComponent: ErrorComponentType<'page'>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -579,7 +579,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -597,7 +597,7 @@ export class Point0<
     componentErrorComponent: ErrorComponentType<'component'>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -608,7 +608,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -626,7 +626,7 @@ export class Point0<
     pageLoaderComponent: LoaderComponentType<'page'>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -637,7 +637,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -655,7 +655,7 @@ export class Point0<
     componentLoaderComponent: LoaderComponentType<'component'>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -666,7 +666,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -684,7 +684,7 @@ export class Point0<
     appLoaderComponent: LoaderComponentType<'app'>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -695,7 +695,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -713,7 +713,7 @@ export class Point0<
     loaderComponent: LoaderComponentType,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -724,7 +724,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -740,7 +740,7 @@ export class Point0<
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
     TData,
@@ -751,7 +751,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
       TData,
@@ -768,7 +768,7 @@ export class Point0<
   //   chain: TChain,
   // ): Point0<
   //   'middleware',
-  //   TConnectedSourceBasePoint,
+  //   TConnectedRootSourcePoint,
   //   TRequiredCtx,
   //   TChain['Infer']['Ctx'],
   //   TChain['Infer']['Data'],
@@ -804,7 +804,7 @@ export class Point0<
   //   }, [])
   //   return this._clone<
   //     'middleware',
-  //     TConnectedSourceBasePoint,
+  //     TConnectedRootSourcePoint,
   //     TRequiredCtx,
   //     TChain['Infer']['Ctx'],
   //     TChain['Infer']['Data'],
@@ -842,7 +842,7 @@ export class Point0<
     ctxFn: CtxFn<TCtx, TData, TRoute, TInputSchema, TNewCtx>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
     TData,
@@ -855,7 +855,7 @@ export class Point0<
     ctx: TNewCtx,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
     TData,
@@ -868,7 +868,7 @@ export class Point0<
     ctxOrFn: TNewCtx,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
     TData,
@@ -880,7 +880,7 @@ export class Point0<
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TNewCtx,
       TData,
@@ -898,7 +898,7 @@ export class Point0<
     route: TNewRoute0,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -909,7 +909,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -927,7 +927,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TNewData,
@@ -938,7 +938,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TNewData,
@@ -959,7 +959,7 @@ export class Point0<
     clientLoaderFn: ClientLoaderFn<FinalClientData<TData, TClientData>, TRoute, TNewClientData>,
   ): Point0<
     'client-middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -970,7 +970,7 @@ export class Point0<
   > {
     return this._continue<
       'client-middleware',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -987,11 +987,44 @@ export class Point0<
     })
   }
 
+  clientCtx<TNewClientData extends Data = Data>(
+    clientLoaderFn: ClientLoaderFn<FinalClientData<TData, TClientData>, TRoute, TNewClientData>,
+  ): Point0<
+    'client-ctx',
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TNewClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput
+  >
+  clientCtx(): Point0<
+    'client-ctx',
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput
+  >
+  clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any>) {
+    return this._continue({
+      _pointType: 'client-ctx',
+      _clientExtractFns: clientLoaderFn
+        ? [...this._clientExtractFns, { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() }]
+        : this._clientExtractFns,
+    }) as never
+  }
+
   head(
     headFn: HeadFn<TData, TClientData, TRoute>,
   ): Point0<
     'client-middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1004,7 +1037,7 @@ export class Point0<
     head: ResolvableHead,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1034,7 +1067,7 @@ export class Point0<
     titleFn: TitleFn<TData, TClientData, TRoute>,
   ): Point0<
     'client-middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1047,7 +1080,7 @@ export class Point0<
     title: string,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1078,7 +1111,7 @@ export class Point0<
     inputSchema: TNewInputSchema,
   ): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1089,7 +1122,7 @@ export class Point0<
   >
   input<TNewInputSchema extends InputSchemaObject>(): Point0<
     'middleware',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1111,7 +1144,7 @@ export class Point0<
     page: TPage,
   ): Point0<
     'page',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1128,7 +1161,7 @@ export class Point0<
     }
     return this._continue<
       'page',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1147,7 +1180,7 @@ export class Point0<
     layout: TLayout,
   ): Point0<
     'layout',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1161,7 +1194,7 @@ export class Point0<
     }
     return this._continue<
       'layout',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1180,7 +1213,7 @@ export class Point0<
     responseFn: ResponseFn<TCtx, TData, TRoute, TInputSchema, TNewResponseOutput>,
   ): Point0<
     'response',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1191,7 +1224,7 @@ export class Point0<
   > {
     return this._continue<
       'response',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1210,7 +1243,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'query',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TNewData,
@@ -1221,7 +1254,7 @@ export class Point0<
   > {
     return this._continue<
       'query',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TNewData,
@@ -1243,7 +1276,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'mutation',
-    TConnectedSourceBasePoint,
+    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TNewData,
@@ -1254,7 +1287,7 @@ export class Point0<
   > {
     return this._continue<
       'mutation',
-      TConnectedSourceBasePoint,
+      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TNewData,
@@ -1630,6 +1663,143 @@ export class Point0<
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
     }
     return React.createElement(this._LayoutInner, { data: result.data as FinalData<TData>, location, children })
+  }
+
+  _ClientCtxReactContext: React.Context<FinalClientData<TData, TClientData>> = React.createContext<
+    FinalClientData<TData, TClientData>
+  >(null as never)
+
+  _ClientCtxProviderInner: React.ComponentType<{
+    children: React.ReactNode
+    location: Route0.Location<CurrentRoute<TRoute>>
+    data: FinalData<TData>
+  }> = ({ children, location, data }) => {
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+    const loaderComponent = this._getLoaderComponent({ type: 'page' })
+
+    if (this._pointType !== 'client-ctx') {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        error: new Error0('Point type is not client-ctx'),
+        location,
+      })
+    }
+
+    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
+      return React.createElement(this._ClientCtxReactContext.Provider, {
+        value: data as FinalClientData<TData, TClientData>,
+        children,
+      })
+    }
+
+    if (!this._hasClientAsyncLoader()) {
+      try {
+        const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
+        return React.createElement(this._ClientCtxReactContext.Provider, {
+          value: clientData as FinalClientData<TData, TClientData>,
+          children,
+        })
+      } catch (error: unknown) {
+        return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location })
+      }
+    }
+
+    const [loading, setLoading] = React.useState(true)
+    const [error, setError] = React.useState<Error0 | undefined>(undefined)
+    const [clientData, setClientData] = React.useState<Data>({})
+    React.useEffect(() => {
+      void (async () => {
+        setLoading(true)
+        try {
+          const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
+          setClientData(clientData)
+          setLoading(false)
+        } catch (error) {
+          setError(Error0.from(error))
+          setLoading(false)
+        }
+      })()
+    }, [data, location])
+
+    if (loading) {
+      return React.createElement(loaderComponent, { type: 'page', location })
+    }
+    if (error) {
+      return React.createElement(errorComponent, { type: 'page', error, location })
+    }
+    return React.createElement(this._ClientCtxReactContext.Provider, {
+      value: clientData as FinalClientData<TData, TClientData>,
+      children,
+    })
+  }
+
+  ClientCtxProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+    if (!this._hasLoader()) {
+      return React.createElement(this._ClientCtxProviderInner, {
+        data: {} as FinalData<TData>,
+        location: useLocation<CurrentRoute<TRoute>>(),
+        children,
+      })
+    }
+
+    const loaderComponent = this._getLoaderComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+    const location = useLocation<CurrentRoute<TRoute>>()
+    const isInitalSsrLocation = useIsInitalSsrLocation()
+    const queryClient = useQueryClient()
+    const cache = queryClient.getQueryCache()
+    const queryKey = (this.getQueryKey as any)({ ...location.query, ...location.params }) as QueryKey
+    const query = cache.find({ queryKey })
+    const result = useQuery<TData>({
+      queryKey,
+      queryFn: async () => {
+        const fetchOptions = this._fetchOptions()
+        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
+        const res = await fetch(location.pathname, {
+          ...fetchOptions,
+          headers,
+        })
+        const json = await res.json()
+        if (res.ok) {
+          return json
+        }
+        throw Error0.from(json, {
+          httpStatus: res.status,
+        })
+      },
+      enabled: !isInitalSsrLocation || query?.state.status !== 'error',
+      retry: false,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: false,
+      refetchIntervalInBackground: false,
+      ...this._queryOptions,
+      ...this._pageQueryOptions,
+    })
+    if (result.error) {
+      return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
+    }
+    if (result.isLoading) {
+      return React.createElement(loaderComponent, { type: 'page', location })
+    }
+    if (!result.data) {
+      return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
+    }
+    return React.createElement(this._ClientCtxProviderInner, {
+      data: result.data as FinalData<TData>,
+      location,
+      children,
+    })
+  }
+
+  useClientCtx = (): FinalClientData<TData, TClientData> => {
+    const ctx = React.useContext(this._ClientCtxReactContext)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!ctx) {
+      throw new Error(`useClientCtx on must be used within a ClientCtxProvider`)
+    }
+    return ctx
   }
 
   fetch = (async (input: Record<string, any> = {}, options?: FetchOptions | undefined) => {

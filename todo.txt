@@ -42,6 +42,7 @@ asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
 refactor route0
 refactor error0
+remove wrapper
 html template parsing by provided vars
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags), on call any cloient fn or head(() =>) endpoint type is client-middleware and als _pointType
 route0 respect origin on match and try two clients with one server
