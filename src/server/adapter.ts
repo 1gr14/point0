@@ -1,4 +1,4 @@
-import type { HydratedAppComponent } from '../client/hydrate.js'
+import type { HydratedAppComponent } from '../core/hydrate.js'
 import type { RootId, RootPoint, RequiredCtx } from '../core/types.js'
 import type { PointsCollection } from '../core/eversion.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'

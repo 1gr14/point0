@@ -334,10 +334,10 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             if (!App) {
               throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
             }
-            const appElement = createElement(App, {
-              ssrLocation: extractResult.location,
+            const appElement = this.eversion.createAppElement({
+              App,
+              extractResult,
               pagesTree: toPagesTree({ points: relatedClient.eversion.points }),
-              dehydratedState: extractResult.dehydratedState,
             })
             const readableStream = await renderReadableStream({
               element: appElement,

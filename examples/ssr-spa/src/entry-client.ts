@@ -1,4 +1,4 @@
-import { hydrate } from 'point0/client/hydrate.js'
+import { hydrate } from 'point0/core/hydrate.js'
 import App from './app.js'
 import { points } from './lib/points.js'
 

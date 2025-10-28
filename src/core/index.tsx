@@ -1012,12 +1012,15 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput
   >
   clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any>) {
-    return this._continue({
+    const cloned = this._continue({
       _pointType: 'client-ctx',
       _clientExtractFns: clientLoaderFn
         ? [...this._clientExtractFns, { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() }]
         : this._clientExtractFns,
-    }) as never
+    })
+    ;(cloned as any).Provider._POINT0_isPrefetched = false
+    ;(cloned as any).Provider._POINT0_point = cloned
+    return cloned as never
   }
 
   head(
@@ -1733,7 +1736,7 @@ export class Point0<
     })
   }
 
-  ClientCtxProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  Provider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
     if (!this._hasLoader()) {
       return React.createElement(this._ClientCtxProviderInner, {
         data: {} as FinalData<TData>,

@@ -25,6 +25,11 @@ import type {
   UndefinedCtx,
 } from './types.js'
 import { emptyDehydratedState } from './utils.js'
+import type { HydratedAppComponent } from './hydrate.js'
+import type { PagesTree } from './router.js'
+import { toPagesTree } from './router.js'
+import { createElement, isValidElement } from 'react'
+import type * as React from 'react'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -514,6 +519,66 @@ export class Eversion0<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       location: suitable.location,
       input,
     } as never)
+  }
+
+  createAppElement({
+    App,
+    extractResult,
+    pagesTree,
+  }: {
+    App: HydratedAppComponent
+    extractResult: ExtractResult
+    pagesTree: PagesTree
+  }) {
+    const element = createElement(App, {
+      ssrLocation: extractResult.location,
+      pagesTree,
+      dehydratedState: extractResult.dehydratedState,
+    })
+    // const x = Eversion0.findNextNotPrefetchedPoint(element)
+    // console.log(!!x)
+    return element
+  }
+
+  static findNextNotPrefetchedPoint(element: unknown): AnyPoint | null {
+    if (!element) return null
+
+    // Check if this element itself has the markers
+    if ((element as any)?._POINT0_point && !(element as any)?._POINT0_isPrefetched) {
+      return (element as any)._POINT0_point as AnyPoint
+    }
+
+    // Traverse React element props if possible
+    if (isValidElement(element)) {
+      const props = (element as any).props ?? {}
+
+      // Check known prop containers
+      const candidates = [props.children, props.pagesTree, props.page, props.layout]
+
+      for (const candidate of candidates) {
+        const found = this.findNextNotPrefetchedPoint(candidate)
+        if (found) return found
+      }
+    }
+
+    // Traverse arrays
+    if (Array.isArray(element)) {
+      for (const child of element) {
+        const found = this.findNextNotPrefetchedPoint(child)
+        if (found) return found
+      }
+    }
+
+    // Traverse object fields like { layoutComponent, nestedPagesTree, pages, ... }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (typeof element === 'object' && element !== null) {
+      for (const value of Object.values(element)) {
+        const found = this.findNextNotPrefetchedPoint(value)
+        if (found) return found
+      }
+    }
+
+    return null
   }
 
   appendQueryClientCache({

@@ -36,6 +36,7 @@ export default defineConfig([
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 
       // disable
+      'max-depth': 'off',
       '@typescript-eslint/max-params': 'off',
       '@typescript-eslint/prefer-return-this-type': 'off',
       '@typescript-eslint/no-duplicate-type-constituents': 'off',

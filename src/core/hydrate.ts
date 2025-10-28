@@ -3,8 +3,8 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { Payload, PointsCollection } from '../core/eversion.js'
-import { toPagesTree, type PagesTree } from '../core/router.js'
+import type { Payload, PointsCollection } from './eversion.js'
+import { toPagesTree, type PagesTree } from './router.js'
 
 export type HydrateResult = {
   payload: Payload
