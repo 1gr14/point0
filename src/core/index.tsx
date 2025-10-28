@@ -1,12 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type {
-  MutationOptions,
-  QueryClient,
-  QueryOptions,
-  UseMutationResult,
-  UseQueryResult,
-} from '@tanstack/react-query'
+import type { MutationOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import qs from 'qs'
@@ -27,12 +21,16 @@ import type {
   EmptyCtx,
   ErrorComponentType,
   ExtractFnRecord,
-  FetcherFn,
+  FetchFn,
+  FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
   FetchOutput,
   FinalClientData,
   FinalData,
+  GetMutationOptionsFn,
+  GetQueryKeyFn,
+  GetQueryOptionsFn,
   HeadFn,
   Id,
   Infer,
@@ -49,6 +47,7 @@ import type {
   Method,
   PageComponent,
   PointType,
+  PrefetchQueryFn,
   PrependCtx,
   QueryKey,
   QueryOptionsSettings,
@@ -68,6 +67,8 @@ import type {
   UndefinedPageComponent,
   UndefinedResponseOutput,
   UndefinedRoute,
+  UseMutationFn,
+  UseQueryFn,
   WrapperComponentType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
@@ -443,7 +444,7 @@ export class Point0<
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput
     >({
       _pointType: 'base',
-      _base: this as BasePoint<any, TRequiredCtx>,
+      _base: this as never as BasePoint<any, TRequiredCtx>,
     })
   }
 
@@ -1271,7 +1272,7 @@ export class Point0<
     })
   }
 
-  // end points
+  // getters
 
   _getErrorComponent<TType extends DestinationComponentType>({ type }: { type: TType }): ErrorComponentType<TType> {
     return ({
@@ -1471,7 +1472,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = this.getQueryKey({ ...location.query, ...location.params } as never)
+    const queryKey = (this.getQueryKey as any)({ ...location.query, ...location.params }) as QueryKey
     const query = cache.find({ queryKey })
     const result = useQuery<TData>({
       queryKey,
@@ -1590,7 +1591,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = this.getQueryKey({ ...location.query, ...location.params } as never)
+    const queryKey = (this.getQueryKey as any)({ ...location.query, ...location.params }) as QueryKey
     const query = cache.find({ queryKey })
     const result = useQuery<TData>({
       queryKey,
@@ -1631,7 +1632,7 @@ export class Point0<
     return React.createElement(this._LayoutInner, { data: result.data as FinalData<TData>, location, children })
   }
 
-  fetch = (async (input: Record<string, any> = {}) => {
+  fetch = (async (input: Record<string, any> = {}, options?: FetchOptions | undefined) => {
     const route = this._getRoute()
     const { routeParams, routeQuery, inputSelf } = (() => {
       const { query: routeQuery, ...restInput } = input
@@ -1666,6 +1667,7 @@ export class Point0<
     }
     const res = await fetch(url.toString(), {
       ...fetchOptions,
+      ...options,
       headers,
       method,
       body,
@@ -1680,7 +1682,7 @@ export class Point0<
     throw Error0.from(json, {
       httpStatus: res.status,
     })
-  }) as FetcherFn<TRoute, TInputSchema, Promise<FetchOutput<TResponseOutput, TData>>>
+  }) as never as FetchFn<TRoute, TInputSchema, TResponseOutput, TData>
 
   getQueryKey = ((input?: Record<string, any>): QueryKey => {
     const keyParts: [string, ...string[]] = [this._getRouteDefinition()]
@@ -1689,41 +1691,51 @@ export class Point0<
       keyParts.push(serialized)
     }
     return keyParts
-  }) as FetcherFn<TRoute, TInputSchema, QueryKey>
+  }) as never as GetQueryKeyFn<TRoute, TInputSchema>
 
-  getQueryOptions = ((input: Record<string, any> = {}) => {
-    const queryKey = this.getQueryKey(input as never)
+  getQueryOptions = ((
+    input: Record<string, any> = {},
+    queryOptions?: QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>,
+    fetchOptions?: FetchOptions,
+  ) => {
+    const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const queryFn = async () => {
-      const data = await this.fetch(input as never)
+      const data = (await (this.fetch as any)(input, fetchOptions)) as FetchOutput<TResponseOutput, TData>
       return data
     }
     return {
+      ...this._queryOptions,
+      ...queryOptions,
       queryKey,
       queryFn,
-      ...this._queryOptions,
     }
-  }) as never as FetcherFn<TRoute, TInputSchema, QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>>
+  }) as never as GetQueryOptionsFn<TRoute, TInputSchema, TResponseOutput, TData>
 
-  getMutationOptions = (() => {
+  getMutationOptions = ((mutationOptions?: MutationOptions, fetchOptions?: FetchOptions) => {
     const mutationFn = async (props: Record<string, any> = {}) => {
-      const data = await this.fetch(props as never)
+      const data = (await (this.fetch as any)(props as never, fetchOptions)) as FetchOutput<TResponseOutput, TData>
       return data
     }
     return {
+      ...mutationOptions,
       mutationFn,
       // TODO: add mutation options
     }
-  }) as () => MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, Input<TRoute, TInputSchema>>
+  }) as GetMutationOptionsFn<TRoute, TInputSchema, TResponseOutput, TData>
 
-  useQuery = ((props: Record<string, any> = {}) => {
-    return useQuery(this.getQueryOptions(props as never) as never)
-  }) as FetcherFn<TRoute, TInputSchema, UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0>>
+  useQuery = ((
+    props: Record<string, any> = {},
+    queryOptions?: QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>,
+    fetchOptions?: FetchOptions,
+  ) => {
+    return useQuery((this.getQueryOptions as any)(props as never, queryOptions, fetchOptions) as never)
+  }) as never as UseQueryFn<TRoute, TInputSchema, TResponseOutput, TData>
 
-  useMutation = (() => {
-    return useMutation(this.getMutationOptions() as never) as never
-  }) as () => UseMutationResult<FetchOutput<TResponseOutput, TData>, Error0, Input<TRoute, TInputSchema>>
+  useMutation = ((mutationOptions?: MutationOptions, fetchOptions?: FetchOptions) => {
+    return useMutation((this.getMutationOptions as any)(mutationOptions, fetchOptions) as never) as never
+  }) as never as UseMutationFn<TRoute, TInputSchema, TResponseOutput, TData>
 
-  prefetchQuery = async ({
+  prefetchQuery = (async ({
     queryClient,
     location,
     input,
@@ -1741,12 +1753,16 @@ export class Point0<
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }
-    const queryOptions = this.getQueryOptions({ ...location?.query, ...location?.params, ...input } as never)
+    const queryOptions = (this.getQueryOptions as any)({
+      ...location?.query,
+      ...location?.params,
+      ...input,
+    } as never) as QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
       return
     }
     await queryClient.prefetchQuery(queryOptions as never)
-  }
+  }) as PrefetchQueryFn<TRoute, TInputSchema>
 }

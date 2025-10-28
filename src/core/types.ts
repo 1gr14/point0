@@ -1,6 +1,12 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { Route0 } from '@devp0nt/route0'
-import type { QueryOptions } from '@tanstack/react-query'
+import type {
+  MutationOptions,
+  QueryClient,
+  QueryOptions,
+  UseMutationResult,
+  UseQueryResult,
+} from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, ZodObject } from 'zod'
 import type { Point0 } from './index.js'
@@ -507,19 +513,29 @@ export type EndPointType = Exclude<PointType, 'middleware' | 'base' | 'client-mi
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 
 export type QueryKey = readonly [string, ...string[]]
-export type FetcherFn<
+export type FetcherFnArgs<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TFnOutput = any,
 > = TRoute extends Route0.AnyRoute
   ? TInputSchema extends InputSchema
-    ? (input: Input<TRoute, TInputSchema>) => TFnOutput
+    ? [input: Input<TRoute, TInputSchema>]
     : Route0.HasParams<TRoute> extends true
-      ? (input: Input<TRoute, TInputSchema>) => TFnOutput
-      : (input?: Input<TRoute, TInputSchema>) => TFnOutput
+      ? [input: Input<TRoute, TInputSchema>]
+      : [input?: Input<TRoute, TInputSchema>]
   : TInputSchema extends InputSchema
-    ? (input: Input<TRoute, TInputSchema>) => TFnOutput
-    : () => TFnOutput
+    ? [input: Input<TRoute, TInputSchema>]
+    : []
+export type WithFetcherFnArgs<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TArg1 = any,
+> = [...FetcherFnArgs<TRoute, TInputSchema>, TArg1?]
+export type WithFetcherFnArgs2<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TArg1 = any,
+  TArg2 = any,
+> = [...FetcherFnArgs<TRoute, TInputSchema>, TArg1?, TArg2?]
 
 export type FetchOutput<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
@@ -527,3 +543,66 @@ export type FetchOutput<
 > = TResponseOutput extends ResponseOutput ? TResponseOutput : FinalData<TData>
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
+
+// endpoint fns
+
+export type FetchFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+> = (
+  ...args: WithFetcherFnArgs<TRoute, TInputSchema, FetchOptions | undefined>
+) => Promise<FetchOutput<TResponseOutput, TData>>
+
+export type GetQueryKeyFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = (...args: FetcherFnArgs<TRoute, TInputSchema>) => QueryKey
+
+export type GetQueryOptionsFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+> = (
+  ...args: WithFetcherFnArgs2<TRoute, TInputSchema, QueryOptions | undefined, FetchOptions | undefined>
+) => QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>
+
+export type GetMutationOptionsFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+> = (
+  mutationOptions?: MutationOptions,
+  fetchOptions?: FetchOptions,
+) => MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, Input<TRoute, TInputSchema>>
+
+export type UseQueryFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+> = (
+  ...args: WithFetcherFnArgs2<TRoute, TInputSchema, QueryOptions | undefined, FetchOptions | undefined>
+) => UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0>
+
+export type UseMutationFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+> = (
+  ...args: WithFetcherFnArgs2<TRoute, TInputSchema, MutationOptions | undefined, FetchOptions | undefined>
+) => UseMutationResult<FetchOutput<TResponseOutput, TData>, Error0, Input<TRoute, TInputSchema>>
+
+export type PrefetchQueryFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = (props: {
+  queryClient: QueryClient
+  location?: Route0.Location
+  input?: Input<TRoute, TInputSchema>
+  force?: boolean
+}) => Promise<void>
