@@ -10,8 +10,6 @@ import type {
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, ZodObject } from 'zod'
 import type { Point0 } from './index.js'
-import type { ExtractOptions, Eversion } from './eversion.js'
-import { ExtractResult } from './eversion.js'
 
 // basic
 

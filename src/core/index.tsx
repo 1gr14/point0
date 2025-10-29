@@ -7,7 +7,7 @@ import qs from 'qs'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun, PointsCollection } from './eversion.js'
+import type { EversionRun } from './eversion.js'
 import { useIsInitalSsrLocation, useLocation } from './router.js'
 import type {
   AnyPoint,
@@ -1459,25 +1459,15 @@ export class Point0<
     return { clientData: currentClientData, clientHead }
   }
 
+  _getSelfLocationByAnotherLocation(location: Route0.Location) {
+    const route = this._getRoute()
+    const routePath = route.get({ ...location.params, query: { ...location.query } } as never)
+    return route.match(routePath).location
+  }
+
   _getInputByLocation(location: Route0.Location) {
-    // TODO: write this fn and user everywhere
-    // const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
-    // const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
-    //   if (!location.params[key]) {
-    //     return acc
-    //   }
-    //   acc[key] = location.params[key]
-    //   return acc
-    // }, {})
-    // const searchKeys = Object.keys(this._getRoute().queryDefinition)
-    // const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
-    //   if (!location.query[key]) {
-    //     return acc
-    //   }
-    //   acc[key] = location.query[key]
-    //   return acc
-    // }, {})
-    // return { ...search, ...params }
+    const selfLocation = this._getSelfLocationByAnotherLocation(location)
+    return { ...selfLocation.query, ...selfLocation.params }
   }
 
   static _SsrNonfetchedPointsCollectorContext = React.createContext<{
@@ -1571,23 +1561,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
-    const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
-      if (!location.params[key]) {
-        return acc
-      }
-      acc[key] = location.params[key]
-      return acc
-    }, {})
-    const searchKeys = Object.keys(this._getRoute().queryDefinition)
-    const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
-      if (!location.query[key]) {
-        return acc
-      }
-      acc[key] = location.query[key]
-      return acc
-    }, {})
-    const queryKey = (this.getQueryKey as any)({ ...search, ...params }) as QueryKey
+    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location) }) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
     const result = useQuery<TData>({
@@ -1707,23 +1681,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
-    const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
-      if (!location.params[key]) {
-        return acc
-      }
-      acc[key] = location.params[key]
-      return acc
-    }, {})
-    const searchKeys = Object.keys(this._getRoute().queryDefinition)
-    const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
-      if (!location.query[key]) {
-        return acc
-      }
-      acc[key] = location.query[key]
-      return acc
-    }, {})
-    const queryKey = (this.getQueryKey as any)({ ...search, ...params }) as QueryKey
+    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location) }) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
     const result = useQuery<TData>({
@@ -1848,23 +1806,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
-    const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
-      if (!location.params[key]) {
-        return acc
-      }
-      acc[key] = location.params[key]
-      return acc
-    }, {})
-    const searchKeys = Object.keys(this._getRoute().queryDefinition)
-    const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
-      if (!location.query[key]) {
-        return acc
-      }
-      acc[key] = location.query[key]
-      return acc
-    }, {})
-    const queryKey = (this.getQueryKey as any)({ ...search, ...params }) as QueryKey
+    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location) }) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
     const result = useQuery<TData>({
@@ -1996,7 +1938,7 @@ export class Point0<
   }) as never as FetchFn<TRoute, TInputSchema, TResponseOutput, TData>
 
   getQueryKey = ((input?: Record<string, any>): QueryKey => {
-    const keyParts: [string, ...string[]] = [this._getRouteDefinition()]
+    const keyParts: [string, ...string[]] = [this._pointType, this._getRouteDefinition()]
     if (input) {
       const serialized = stringify(input)
       keyParts.push(serialized)
@@ -2064,14 +2006,13 @@ export class Point0<
     if (!this._hasLoader()) {
       return
     }
-    const suitablePointTypes = ['page', 'query', 'component', 'client-ctx']
+    const suitablePointTypes = ['page', 'query', 'component', 'layout', 'client-ctx']
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }
     const queryOptions = (this.getQueryOptions as any)(
       {
-        ...location?.query,
-        ...location?.params,
+        ...(location ? this._getInputByLocation(location) : {}),
         ...input,
       } as never,
       providedQueryOptions,

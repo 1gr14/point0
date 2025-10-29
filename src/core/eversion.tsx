@@ -404,13 +404,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (!layout._hasLoader()) {
           continue
         }
-        const layoutRoute = layout._getRoute()
-        const layoutRoutePath = layoutRoute.get({ ...location.params, query: { ...location.query } } as never)
-        const layoutLocation = layoutRoute.match(layoutRoutePath).location
         await this.extract({
           point: layout,
           input,
-          location: layoutLocation,
+          location: layout._getSelfLocationByAnotherLocation(location),
         })
       }
     }
@@ -624,15 +621,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (isCurcular) {
         return
       }
-      const route = record.point._getRoute()
-      const routePath = route.get({
-        ...this.location.params,
-        query: { ...this.location.query },
-      } as never)
-      const location = route.match(routePath).location
       await record.point.prefetchQuery({
         queryClient: this.queryClient,
-        location,
+        location: this.location,
       })
       fetchedPoints.push(record.point)
     }

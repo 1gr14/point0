@@ -1,6 +1,4 @@
 import type { DehydratedState } from '@tanstack/react-query'
-import type { ReactElement, ReactNode } from 'react'
-import React from 'react'
 import type { ResolvableHead } from 'unhead/types'
 
 export function mergeHeaders(
