@@ -39,6 +39,11 @@ export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 
+export type Props = Record<string, any>
+export type UndefinedProps = undefined
+export type EmptyProps = Record<string, unknown>
+export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends UndefinedProps ? EmptyProps : TProps
+
 export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>
 // used to avoid circular depedencies
 export type Infer<
@@ -83,6 +88,7 @@ export type AnyPoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TProps extends Props | UndefinedProps = any,
 > = Point0<
   TPointType,
   TConnectedRootSourcePoint,
@@ -92,7 +98,8 @@ export type AnyPoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type BasePoint<
@@ -104,6 +111,7 @@ export type BasePoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base',
   TConnectedRootSourcePoint,
@@ -113,7 +121,8 @@ export type BasePoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type RootSourcePoint<
@@ -125,6 +134,7 @@ export type RootSourcePoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base' | 'middleware',
   TConnectedRootSourcePoint,
@@ -134,7 +144,8 @@ export type RootSourcePoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type RootConnectedPoint<
@@ -146,6 +157,7 @@ export type RootConnectedPoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base' | 'middleware',
   TConnectedRootSourcePoint,
@@ -155,7 +167,8 @@ export type RootConnectedPoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type RootPoint<
@@ -166,6 +179,7 @@ export type RootPoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TProps extends Props | UndefinedProps = any,
 > =
   | RootSourcePoint<
       UndefinedInferredRootSourcePoint,
@@ -175,7 +189,8 @@ export type RootPoint<
       TClientData,
       TRoute,
       TInputSchema,
-      TResponseOutput
+      TResponseOutput,
+      TProps
     >
   | RootConnectedPoint<
       InferredRootSourcePoint,
@@ -185,7 +200,8 @@ export type RootPoint<
       TClientData,
       TRoute,
       TInputSchema,
-      TResponseOutput
+      TResponseOutput,
+      TProps
     >
 
 export type PagePoint<
@@ -199,6 +215,7 @@ export type PagePoint<
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'page',
   TConnectedRootSourcePoint,
@@ -208,7 +225,8 @@ export type PagePoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type LayoutPoint<
@@ -222,6 +240,7 @@ export type LayoutPoint<
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'layout',
   TConnectedRootSourcePoint,
@@ -231,7 +250,8 @@ export type LayoutPoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type ResponsePoint<
@@ -245,6 +265,7 @@ export type ResponsePoint<
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput = ResponseOutput,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'response',
   TConnectedRootSourcePoint,
@@ -254,7 +275,8 @@ export type ResponsePoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type ClientCtxPoint<
@@ -268,6 +290,7 @@ export type ClientCtxPoint<
   TRoute extends Route0.AnyRoute = Route0.AnyRoute,
   TInputSchema extends UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'client-ctx',
   TConnectedRootSourcePoint,
@@ -277,7 +300,8 @@ export type ClientCtxPoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type EndPoint<
@@ -292,6 +316,7 @@ export type EndPoint<
   TRoute extends Route0.AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   TPointType,
   TConnectedRootSourcePoint,
@@ -301,7 +326,8 @@ export type EndPoint<
   TClientData,
   TRoute,
   TInputSchema,
-  TResponseOutput
+  TResponseOutput,
+  TProps
 >
 
 export type InferredRootSourcePoint<
@@ -369,6 +395,37 @@ export type LayoutComponent<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
 > = React.ComponentType<LayoutComponentProps<TData, TClientData, TRoute>>
 export type UndefinedLayoutComponent = undefined
+
+export type ComponentComponentProps<
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TProps extends Props | UndefinedProps = any,
+> = {
+  data: FinalClientData<TData, TClientData>
+  location: Route0.Location<CurrentRoute<TRoute>>
+  props: FinalProps<TProps>
+}
+export type ComponentComponent<
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+> = React.ComponentType<ComponentComponentProps<TData, TClientData, TRoute, TProps>>
+export type UndefinedComponentComponent = undefined
+
+export type ComponentMountableProps<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+> = TInputSchema extends InputSchemaZod
+  ? { input: ZodInfer<TInputSchema> } & FinalProps<TProps>
+  : TInputSchema extends InputSchemaObject
+    ? { input: TInputSchema } & FinalProps<TProps>
+    : TProps
+export type ComponentMountable<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+> = React.ComponentType<ComponentMountableProps<TInputSchema, TProps>>
 
 export type DestinationComponentType = 'app' | 'page' | 'component'
 export type ErrorComponentProps<TType extends DestinationComponentType = DestinationComponentType> = {
@@ -451,6 +508,7 @@ export type CtxFnProps<
   data: FinalData<TData>
   input: Input<TRoute, TInputSchema>
   location: Route0.Location<CurrentRoute<TRoute>>
+  eversionRun: EversionRun
 }
 export type CtxFn<
   TCtxInput extends Ctx = Ctx,
@@ -472,6 +530,7 @@ export type LoaderFnProps<
   data: FinalData<TData>
   location: Route0.Location<CurrentRoute<TRoute>>
   input: Input<TRoute, TInputSchema>
+  eversionRun: EversionRun
 }
 export type LoaderFn<
   TCtx extends Ctx = Ctx,

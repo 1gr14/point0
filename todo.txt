@@ -20,12 +20,14 @@ cli for simplify commands, like build with bun: point0 build
 workspace packages
 start0 without mono0
 
-.base() set _pointType = 'connected-base' | 'source-base'
 status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 ? split index.ts code
 .disable()
 preventSsr
 .route(string)
+use this.fetch() instead in .page(), .component(), .layout()
+remove id route is enough
+? inputs chema not needed, just input enough. No! Becouse we can have route whch defines part of input, but we can have no input schema. Or Yes! And when we define route we also define input schema, and new input schema should have same keys or more kike route
 Router accept points and Routes get pagesTree from Context
 remove server code from client
 store each point location to normalize errors messages for example in No route or id provided for this point

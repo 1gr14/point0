@@ -431,6 +431,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 data: { ...currentData },
                 location,
                 input: parsedInput,
+                eversionRun: this,
               })
               this.extractFnsWithOutput.push({
                 output: currentCtx,
@@ -451,6 +452,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 data: { ...currentData },
                 location,
                 input: parsedInput,
+                eversionRun: this,
               })
               this.extractFnsWithOutput.push({
                 output: currentData,

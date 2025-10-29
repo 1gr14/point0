@@ -5,6 +5,7 @@ import * as nodePath from 'node:path'
 import { Eversion } from './eversion.js'
 import { Point0 } from './index.js'
 import type {
+  UndefinedProps,
   EmptyCtx,
   UndefinedCtx,
   UndefinedData,
@@ -40,7 +41,8 @@ describe('Point0', () => {
         UndefinedData,
         UndefinedRoute,
         UndefinedInputSchema,
-        UndefinedResponseOutput
+        UndefinedResponseOutput,
+        UndefinedProps
       >
     >()
     expect(server._extractFns).toEqual([])
@@ -64,7 +66,8 @@ describe('Point0', () => {
         UndefinedData,
         UndefinedRoute,
         UndefinedInputSchema,
-        UndefinedResponseOutput
+        UndefinedResponseOutput,
+        UndefinedProps
       >
     >()
     expect(server1._extractFns).toHaveLength(1)
@@ -83,6 +86,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         { a: number; b: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -115,6 +119,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         undefined
       >
     >()
@@ -133,6 +138,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         { a: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -181,6 +187,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         undefined
       >
     >()
@@ -200,6 +207,7 @@ describe('Point0', () => {
         undefined,
         EmptyCtx,
         { a: number; b: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -390,7 +398,8 @@ describe('Point0', () => {
         undefined,
         UndefinedRoute,
         UndefinedInputSchema,
-        UndefinedResponseOutput
+        UndefinedResponseOutput,
+        UndefinedProps
       >
     >()
     expect(clientPoint0._extractFns).toEqual([])
