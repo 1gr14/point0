@@ -22,6 +22,7 @@ import type {
   DestinationComponentType,
   EmptyCtx,
   ErrorComponentType,
+  ExtractFn,
   ExtractFnRecord,
   FetchFn,
   FetchOptions,
@@ -89,8 +90,6 @@ export class Point0<
   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData, TInputSchema> & {
     Input: Input<TRoute, TInputSchema>
   } = {} as never
-
-  _eversionRun: EversionRun<TRequiredCtx> | undefined
 
   // TODO: may it help somebody?
   // static readyPoints: ReadyPoint[] = []
@@ -167,7 +166,6 @@ export class Point0<
     _componentLoaderComponent?: LoaderComponentType<'component'>
     _appLoaderComponent?: LoaderComponentType<'app'>
     _unstableId?: number
-    _eversionRun?: EversionRun<TRequiredCtx> | undefined
   }) {
     // persistent
     this._rootId = props._rootId
@@ -216,7 +214,6 @@ export class Point0<
       props._loaderComponent ?? ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoaderComponentType)
     this._componentLoaderComponent = props._componentLoaderComponent
     this._appLoaderComponent = props._appLoaderComponent
-    this._eversionRun = props._eversionRun ?? undefined
 
     // calculated
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
@@ -374,26 +371,6 @@ export class Point0<
       this._pointType === 'component' ||
       this._pointType === 'client-ctx'
     )
-  }
-
-  _cloneWithEversionRun(
-    eversionRun: EversionRun<TRequiredCtx>,
-  ): Point0<
-    TPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRoute,
-    TInputSchema,
-    TResponseOutput
-  > {
-    return new Point0({
-      // eslint-disable-next-line @typescript-eslint/no-misused-spread
-      ...this,
-      _eversionRun: eversionRun,
-    })
   }
 
   // base
@@ -1482,7 +1459,7 @@ export class Point0<
     // Safe to do during render in SSR (pattern used by CSS-in-JS)
     if (ssrNonfetchedPointsCollectorContext?.register && !registeredRef.current) {
       registeredRef.current = true
-      ssrNonfetchedPointsCollectorContext.register(this)
+      ssrNonfetchedPointsCollectorContext.register(this as never)
     }
   }
 
@@ -1894,48 +1871,35 @@ export class Point0<
       url.search = qs.stringify({ ...routeQuery })
       body = JSON.stringify({ ...inputSelf })
     }
-    if (!this._eversionRun) {
-      const res = await fetch(url.toString(), {
-        ...fetchOptions,
-        headers,
-        method,
-        body,
-      })
-      if (this._pointType === 'response') {
-        return res
-      }
-      const json = await res.json()
-      if (res.ok) {
-        return json
-      }
-      throw Error0.from(json, {
-        httpStatus: res.status,
-      })
-    } else {
-      const location = this._getRoute().match(url.toString()).location
-      try {
-        const extractResult = await this._eversionRun.extract({
-          point: this,
-          location,
-          input: inputSelf,
-        })
-        if (extractResult.error) {
-          throw Error0.from(extractResult.error)
-        }
-        if (extractResult.status && extractResult.status > 299) {
-          throw Error0.from(extractResult.data, {
-            httpStatus: extractResult.status,
-          })
-        }
-        if (this._pointType === 'response') {
-          return extractResult.response
-        }
-        return extractResult.data
-      } catch (error) {
-        throw Error0.from(error)
-      }
+    const res = await fetch(url.toString(), {
+      ...fetchOptions,
+      headers,
+      method,
+      body,
+    })
+    if (this._pointType === 'response') {
+      return res
     }
+    const json = await res.json()
+    if (res.ok) {
+      return json
+    }
+    throw Error0.from(json, {
+      httpStatus: res.status,
+    })
   }) as never as FetchFn<TRoute, TInputSchema, TResponseOutput, TData>
+
+  extract = (async (eversionRun: EversionRun<TRequiredCtx>, input: Record<string, any> = {}) => {
+    if (process.env.CLIENT_ONLY) {
+      throw new Error(
+        'Extract is not available on client, call it inside server points fn like ctx or loader. In client you should use fetch() instead',
+      )
+    }
+    return await eversionRun.extract({
+      point: this as never,
+      input,
+    })
+  }) as never as ExtractFn<TRoute, TInputSchema, TRequiredCtx, TCtx, TData, TResponseOutput>
 
   getQueryKey = ((input?: Record<string, any>): QueryKey => {
     const keyParts: [string, ...string[]] = [this._pointType, this._getRouteDefinition()]

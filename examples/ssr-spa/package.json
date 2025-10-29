@@ -1,5 +1,5 @@
 {
-  "name": "@point0/example-managed",
+  "name": "@point0/ssr-spa",
   "private": true,
   "version": "1.0.0",
   "type": "module",

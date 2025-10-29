@@ -10,6 +10,7 @@ import type {
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, ZodObject } from 'zod'
 import type { Point0 } from './index.js'
+import type { EversionRun, ExtractResult } from './eversion.js'
 
 // basic
 
@@ -75,7 +76,7 @@ export type AnyPoint<
   TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
@@ -96,7 +97,7 @@ export type AnyPoint<
 
 export type BasePoint<
   TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
@@ -158,7 +159,7 @@ export type RootConnectedPoint<
 >
 
 export type RootPoint<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
@@ -284,7 +285,7 @@ export type EndPoint<
   TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
+  TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
@@ -561,6 +562,11 @@ export type FetcherFnArgs<
   : TInputSchema extends InputSchema
     ? [input: Input<TRoute, TInputSchema>]
     : []
+export type WithFetcherFnArgsPrepend<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TArg1 = any,
+> = [TArg1, ...FetcherFnArgs<TRoute, TInputSchema>]
 export type WithFetcherFnArgs<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -581,6 +587,23 @@ export type FetchOutput<
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 
 // endpoint methods
+
+export type ExtractFn<
+  TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRequiredCtx extends RequiredCtx = any,
+  TCtx extends Ctx = any,
+  TData extends Data | UndefinedData = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+> = TResponseOutput extends ResponseOutput
+  ? (
+      ...args: WithFetcherFnArgsPrepend<TRoute, TInputSchema, EversionRun<TRequiredCtx>>
+    ) => Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>>
+  : TData extends Data
+    ? (
+        ...args: WithFetcherFnArgsPrepend<TRoute, TInputSchema, EversionRun<TRequiredCtx>>
+      ) => Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>>
+    : never
 
 export type FetchFn<
   TRoute extends Route0.AnyRoute | UndefinedRoute = Route0.AnyRoute | UndefinedRoute,

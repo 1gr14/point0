@@ -23,11 +23,13 @@ import type {
   PagePoint,
   QueryKey,
   RequiredCtx,
+  ResponseOutput,
   RootConnectedPoint,
   RootId,
   RootPoint,
   RootSourcePoint,
   UndefinedCtx,
+  UndefinedResponseOutput,
 } from './types.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
@@ -108,53 +110,18 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     location: Route0.Location
     requiredCtx: TRequiredCtx
   }): Promise<EversionRun<TRequiredCtx>> {
-    const eversionRun = new EversionRun({
+    return new EversionRun({
       eversion: this,
       location,
       requiredCtx,
     })
-    eversionRun.eversion = await this._cloneWithEversionRun(eversionRun)
-    return eversionRun
-  }
-
-  async _cloneSourceWithEversionRun(eversionRun: EversionRun<TRequiredCtx>): Promise<Eversion<TRequiredCtx>> {
-    if (this.source) {
-      return await this.source._cloneSourceWithEversionRun(eversionRun)
-    }
-    const eversionWithEversionRun = new Eversion<TRequiredCtx>({
-      root: this.root._cloneWithEversionRun(eversionRun),
-      points: this.points.map((record) => ({ ...record, point: record.point._cloneWithEversionRun(eversionRun) })),
-    })
-    await Promise.all(
-      this.connections.map(async (connection) => {
-        await eversionWithEversionRun.connect({
-          root: connection.root._cloneWithEversionRun(eversionRun),
-          points: connection.points.map((record) => ({
-            ...record,
-            point: record.point._cloneWithEversionRun(eversionRun),
-          })),
-        })
-      }),
-    )
-    return eversionWithEversionRun
-  }
-
-  async _cloneWithEversionRun(eversionRun: EversionRun<TRequiredCtx>): Promise<Eversion<TRequiredCtx>> {
-    const sourceEversionWithEversionRun = await this._cloneSourceWithEversionRun(eversionRun)
-    const thisEversionWithEversionRun = sourceEversionWithEversionRun._getSuitableEversionByRootId({
-      rootId: this.root._rootId,
-    })
-    if (!thisEversionWithEversionRun) {
-      throw new Error('This eversion is not suitable for the root id')
-    }
-    return thisEversionWithEversionRun
   }
 
   _getParents(): [RootSourcePoint, ...RootConnectedPoint[]] | [] {
     const sources: Array<RootSourcePoint | RootConnectedPoint> = []
     let current: Eversion<TRequiredCtx> | undefined = this.source
     while (current) {
-      sources.push(current.root)
+      sources.push(current.root as RootSourcePoint | RootConnectedPoint)
       current = current.source
     }
     return sources.reverse() as [RootSourcePoint, ...RootConnectedPoint[]] | []
@@ -406,21 +373,22 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
         await this.extract({
           point: layout,
-          input,
           location: layout._getSelfLocationByAnotherLocation(location),
         })
       }
     }
 
+    const mergedInput = { ...point?._getInputByLocation(location), ...input }
+
     const { parsedInput, inputError } = (() => {
       if (point?._inputSchema) {
-        const parseResult = point._inputSchema.safeParse(input)
+        const parseResult = point._inputSchema.safeParse(mergedInput)
         if (parseResult.success) {
           return { parsedInput: parseResult.data, inputError: undefined }
         }
-        return { parsedInput: input, inputError: parseResult.error }
+        return { parsedInput: mergedInput, inputError: parseResult.error }
       }
-      return { parsedInput: input, inputError: undefined }
+      return { parsedInput: mergedInput, inputError: undefined }
     })()
     if (inputError) {
       return {
@@ -509,7 +477,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return undefined
       })()
       if (point) {
-        this.appendQueryClientCache({ data: currentData, location, point, error: undefined })
+        this.appendQueryClientCache({ data: currentData, point, error: undefined, input: mergedInput })
         return {
           ctx: currentCtx,
           data: currentData,
@@ -521,7 +489,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       } else {
         const error = new Error0(`Point Not Found: ${location.pathname}`)
-        this.appendQueryClientCache({ data: currentData, location, point, error })
+        this.appendQueryClientCache({ data: currentData, point, error, input: mergedInput })
         return {
           ctx: currentCtx,
           data: currentData,
@@ -533,7 +501,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
     } catch (error) {
-      this.appendQueryClientCache({ data: currentData, location, point, error })
+      this.appendQueryClientCache({ data: currentData, point, error, input: mergedInput })
       return {
         ctx: currentCtx,
         data: currentData,
@@ -611,21 +579,14 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const fetchedPoints: AnyPoint[] = []
 
     for (const nonfetchedPoint of nonfetchedPoints) {
-      const record = this.eversion.points.find(
-        (p) => p.point._getRouteDefinition() === nonfetchedPoint._getRouteDefinition(),
-      )
-      if (!record) {
-        continue
-      }
-      const isCurcular = allFetchedPoints.some((p) => p._getRouteDefinition() === record.point._getRouteDefinition())
+      const isCurcular = allFetchedPoints.some((p) => p._getRouteDefinition() === nonfetchedPoint._getRouteDefinition())
       if (isCurcular) {
         return
       }
-      await record.point.prefetchQuery({
-        queryClient: this.queryClient,
-        location: this.location,
+      await nonfetchedPoint.extract(this, {
+        ...nonfetchedPoint._getInputByLocation(this.location),
       })
-      fetchedPoints.push(record.point)
+      fetchedPoints.push(nonfetchedPoint)
     }
 
     if (nonfetchedPoints.length === 0) {
@@ -643,12 +604,12 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   appendQueryClientCache({
     data,
-    location,
+    input,
     error,
     point,
   }: {
     data: Data
-    location: Route0.Location
+    input: Input
     error: unknown
     point: AnyPoint | undefined
   }): void {
@@ -657,9 +618,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       (point._pointType === 'query' ||
         point._pointType === 'page' ||
         point._pointType === 'layout' ||
+        point._pointType === 'client-ctx' ||
         point._pointType === 'component')
     ) {
-      const queryKey: QueryKey = point.getQueryKey({ ...location.query, ...location.params })
+      const queryKey: QueryKey = point.getQueryKey(input)
       const query = this.queryClient.getQueryCache().build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
       if (error) {
         query.setState({
@@ -757,19 +719,23 @@ export type ExtractFnWithOutput = {
   output: Ctx | Data
   record: ExtractFnRecord
 }
-export type ExtractResult<TCtx extends Ctx = Ctx, TData extends Data = Data> = {
+export type ExtractResult<
+  TCtx extends Ctx = Ctx,
+  TData extends Data = Data,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+> = {
   ctx: TCtx
   data: TData
   head: ResolvableHead[]
-  response: Response | undefined
+  response: TResponseOutput
   location: Route0.Location
   error: unknown
   status: number
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any, any>
-    ? ExtractResult<TCtx, FinalData<TData>>
-    : ExtractResult<EmptyCtx, EmptyData>
+  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any, any, infer TResponseOutput>
+    ? ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+    : ExtractResult<EmptyCtx, EmptyData, UndefinedResponseOutput>
 
 export type Payload = {
   dehydratedState: DehydratedState
