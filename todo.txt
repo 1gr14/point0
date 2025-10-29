@@ -1,9 +1,7 @@
-
-.clientCtx(); pageTree clientCtx provider as layout; loop extract find Component suspen; clientCtx.useClientCtx
-
 .component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extractFns
-.props<>() and in final <Component {...input} {...props} />
-on extract and fill elemnt do loop to find all Component._point0_isPrefetched === false and call extract(Component.point0), and then again
+.props<>() and in final <Component input={...input} {...props} />
+ssr register with input
+return jsx after .component() and also after .page()
 
 auth
 
