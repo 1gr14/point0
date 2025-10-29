@@ -1,7 +1,8 @@
-.component(() => </div>) return usual ReactElemnt with property "loader" so on server rendering we can see that he has it and call its loaders having cahe of previously called extractFns
-.props<>() and in final <Component input={...input} {...props} />
 ssr register with input
-return jsx after .component() and also after .page()
+route string
+input defined on route
+use this.fetch() and this.useQuery() in .page(), .component(), .layout()
+
 
 auth
 
@@ -26,7 +27,6 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 preventSsr
 .route(string)
 points collection allow to route: undefined, hasLoader undefined we can know on server after loading points
-use this.fetch() instead in .page(), .component(), .layout()
 remove id route is enough
 ? inputs chema not needed, just input enough. No! Becouse we can have route whch defines part of input, but we can have no input schema. Or Yes! And when we define route we also define input schema, and new input schema should have same keys or more kike route
 Router accept points and Routes get pagesTree from Context

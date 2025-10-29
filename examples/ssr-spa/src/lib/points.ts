@@ -32,7 +32,7 @@ export const points: PointsCollection = [
   {
     type: 'component',
     route: '/ideas/best',
-    point: async () => (await import('../pages/home.js')).bestIdeaComponent,
+    point: async () => (await import('../pages/home.js')).BestIdeaComponent.point,
   },
   {
     type: 'page',

@@ -4,15 +4,20 @@ import { routes } from '../lib/routes.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { Route0 } from '@devp0nt/route0'
+import z from 'zod'
 
-export const bestIdeaComponent = client
+export const BestIdeaComponent = client
   .route(Route0.create('/ideas/best'))
-  .loader(async ({ ctx }) => ({ bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }) }))
+  .input(z.object({ x: z.coerce.number() }))
+  .loader(async ({ ctx, input }) => ({
+    bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
+    y: input.x * 2,
+  }))
   .props<{ cta: string }>()
   .component(({ data, props }) => {
     return (
       <div>
-        <h1>Best Idea</h1>
+        <h1>Best Idea {data.y}</h1>
         <p>{props.cta}</p>
         <p>{data.bestIdea.title}</p>
         <p>
@@ -37,7 +42,7 @@ export default generalLayout
         <p>Test: {ctx1.test}</p>
         <p>Test: {ctx2.ideasCountX3}</p>
         <p>Discover and share innovative ideas that can change the world!</p>
-        <bestIdeaComponent._Component cta="It is awesome!" />
+        <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />
         <nav>
           <Link to="/ideas">Browse Ideas</Link>
         </nav>

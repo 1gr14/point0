@@ -427,11 +427,6 @@ export type ComponentMountable<
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<ComponentMountableProps<TInputSchema, TProps>>
 
-export type ComponentWithPoint<
-  TComponentMountable extends ComponentMountable = ComponentMountable,
-  TPoint extends AnyPoint = AnyPoint,
-> = TComponentMountable & { point: TPoint }
-
 export type DestinationComponentType = 'app' | 'page' | 'component'
 export type ErrorComponentProps<TType extends DestinationComponentType = DestinationComponentType> = {
   type: TType

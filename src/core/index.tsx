@@ -18,6 +18,7 @@ import type {
   ComponentComponent,
   ComponentMountable,
   ComponentMountableProps,
+  ComponentWithPoint,
   Ctx,
   CtxFn,
   CurrentRoute,
@@ -1266,22 +1267,24 @@ export class Point0<
 
   component<TComponent extends ComponentComponent<TData, TClientData, TRoute, TProps>>(
     component: TComponent,
-  ): Point0<
-    'component',
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
-    TInputSchema,
-    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-    TProps
-  > {
+  ): ComponentMountable<TInputSchema, TProps> & {
+    point: Point0<
+      'component',
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TInputSchema,
+      IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+      TProps
+    >
+  } {
     if (!this._route) {
       throw new Error('add .route() to chain to use .component() function')
     }
-    return this._continue<
+    const point = this._continue<
       'component',
       TConnectedRootSourcePoint,
       TRequiredCtx,
@@ -1297,6 +1300,9 @@ export class Point0<
       _component: component as ComponentComponent,
       _method: 'get',
     })
+    const componentWithPoint = point._Component
+    Object.assign(componentWithPoint, { point })
+    return componentWithPoint as never
   }
 
   layout<TLayout extends LayoutComponent<TData, TClientData, TRoute>>(
