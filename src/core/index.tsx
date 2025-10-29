@@ -7,7 +7,7 @@ import qs from 'qs'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun } from './eversion.js'
+import type { EversionRun, PointsCollection } from './eversion.js'
 import { useIsInitalSsrLocation, useLocation } from './router.js'
 import type {
   AnyPoint,
@@ -167,6 +167,7 @@ export class Point0<
     _componentLoaderComponent?: LoaderComponentType<'component'>
     _appLoaderComponent?: LoaderComponentType<'app'>
     _unstableId?: number
+    _eversionRun?: EversionRun<TRequiredCtx> | undefined
   }) {
     // persistent
     this._rootId = props._rootId
@@ -215,6 +216,7 @@ export class Point0<
       props._loaderComponent ?? ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoaderComponentType)
     this._componentLoaderComponent = props._componentLoaderComponent
     this._appLoaderComponent = props._appLoaderComponent
+    this._eversionRun = props._eversionRun ?? undefined
 
     // calculated
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
@@ -1039,15 +1041,12 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput
   >
   clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any>) {
-    const cloned = this._continue({
+    return this._continue({
       _pointType: 'client-ctx',
       _clientExtractFns: clientLoaderFn
         ? [...this._clientExtractFns, { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() }]
         : this._clientExtractFns,
-    })
-    ;(cloned as any).Provider._POINT0_isPrefetched = false
-    ;(cloned as any).Provider._POINT0_point = cloned
-    return cloned as never
+    }) as never
   }
 
   head(
@@ -1460,6 +1459,43 @@ export class Point0<
     return { clientData: currentClientData, clientHead }
   }
 
+  _getInputByLocation(location: Route0.Location) {
+    // TODO: write this fn and user everywhere
+    // const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
+    // const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
+    //   if (!location.params[key]) {
+    //     return acc
+    //   }
+    //   acc[key] = location.params[key]
+    //   return acc
+    // }, {})
+    // const searchKeys = Object.keys(this._getRoute().queryDefinition)
+    // const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
+    //   if (!location.query[key]) {
+    //     return acc
+    //   }
+    //   acc[key] = location.query[key]
+    //   return acc
+    // }, {})
+    // return { ...search, ...params }
+  }
+
+  static _SsrNonfetchedPointsCollectorContext = React.createContext<{
+    register: (point: AnyPoint) => void
+  } | null>(null)
+  _useRegisterSelfInSsrNonfetchedPointsCollector = (isFetched: boolean): void => {
+    const ssrNonfetchedPointsCollectorContext = React.useContext(Point0._SsrNonfetchedPointsCollectorContext)
+    const registeredRef = React.useRef(false)
+    if (isFetched) {
+      return
+    }
+    // Safe to do during render in SSR (pattern used by CSS-in-JS)
+    if (ssrNonfetchedPointsCollectorContext?.register && !registeredRef.current) {
+      registeredRef.current = true
+      ssrNonfetchedPointsCollectorContext.register(this)
+    }
+  }
+
   _PageInner: React.ComponentType<{
     data: FinalData<TData>
     location: Route0.Location<CurrentRoute<TRoute>>
@@ -1535,8 +1571,25 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...location.query, ...location.params }) as QueryKey
+    const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
+    const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
+      if (!location.params[key]) {
+        return acc
+      }
+      acc[key] = location.params[key]
+      return acc
+    }, {})
+    const searchKeys = Object.keys(this._getRoute().queryDefinition)
+    const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
+      if (!location.query[key]) {
+        return acc
+      }
+      acc[key] = location.query[key]
+      return acc
+    }, {})
+    const queryKey = (this.getQueryKey as any)({ ...search, ...params }) as QueryKey
     const query = cache.find({ queryKey })
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
     const result = useQuery<TData>({
       queryKey,
       queryFn: async () => {
@@ -1654,8 +1707,25 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...location.query, ...location.params }) as QueryKey
+    const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
+    const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
+      if (!location.params[key]) {
+        return acc
+      }
+      acc[key] = location.params[key]
+      return acc
+    }, {})
+    const searchKeys = Object.keys(this._getRoute().queryDefinition)
+    const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
+      if (!location.query[key]) {
+        return acc
+      }
+      acc[key] = location.query[key]
+      return acc
+    }, {})
+    const queryKey = (this.getQueryKey as any)({ ...search, ...params }) as QueryKey
     const query = cache.find({ queryKey })
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
     const result = useQuery<TData>({
       queryKey,
       queryFn: async () => {
@@ -1778,8 +1848,25 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...location.query, ...location.params }) as QueryKey
+    const paramsKeys = Object.keys(this._getRoute().paramsDefinition)
+    const params = paramsKeys.reduce<Record<string, string>>((acc, key) => {
+      if (!location.params[key]) {
+        return acc
+      }
+      acc[key] = location.params[key]
+      return acc
+    }, {})
+    const searchKeys = Object.keys(this._getRoute().queryDefinition)
+    const search = searchKeys.reduce<Record<string, string>>((acc, key) => {
+      if (!location.query[key]) {
+        return acc
+      }
+      acc[key] = location.query[key]
+      return acc
+    }, {})
+    const queryKey = (this.getQueryKey as any)({ ...search, ...params }) as QueryKey
     const query = cache.find({ queryKey })
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
     const result = useQuery<TData>({
       queryKey,
       queryFn: async () => {
@@ -1822,43 +1909,6 @@ export class Point0<
       children,
     })
   }
-
-  // static _PointCollectorContext = React.createContext<((cp: AnyPoint) => void) | null>(null)
-  // static _usePointCollector(): ((cp: AnyPoint) => void) | null {
-  //   return React.useContext(Point0._PointCollectorContext)
-  // }
-  // static _PointCollectorProvider({
-  //   onRegister,
-  //   children,
-  // }: {
-  //   onRegister: (cp: AnyPoint) => void
-  //   children: React.ReactNode
-  // }): React.ReactNode {
-  //   return <this._PointCollectorContext.Provider value={onRegister}>{children}</this._PointCollectorContext.Provider>
-  // }
-
-  // _RegisteringProvider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
-  //   const register = Point0._usePointCollector()
-  //   const registeredRef = React.useRef(false)
-  //   // Safe to do during render in SSR (pattern used by CSS-in-JS)
-  //   if (register && !registeredRef.current) {
-  //     registeredRef.current = true
-  //     register(this)
-  //   }
-  //   return React.createElement(React.Fragment, null, children)
-  // }
-
-  // Provider = this._Provider
-
-  // Provider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
-  //   return React.createElement(this._Provider, { children })
-  //   // if (!this._eversionRun) {
-  //   //   return React.createElement(this._Provider, { children })
-  //   // }
-  //   // return React.createElement(this._RegisteringProvider, {
-  //   //   children: React.createElement(this._Provider, { children }),
-  //   // })
-  // }
 
   useClientCtx = (): FinalClientData<TData, TClientData> => {
     const ctx = React.useContext(this._ClientCtxReactContext)

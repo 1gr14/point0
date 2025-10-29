@@ -1,10 +1,13 @@
+import type { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
+import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
-import type { Payload } from '../core/eversion.js'
 import type { ResolvableHead } from 'unhead/types'
-import type { Route0 } from '@devp0nt/route0'
+import type { EversionRun, Payload } from '../core/eversion.js'
+import type { HydratedAppComponent } from '../core/hydrate.js'
+import { toPagesTree } from '../core/router.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -226,4 +229,34 @@ export async function renderReadableStream({
     rootElementId,
   })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
+}
+
+export async function renderAppAsReadableStream({
+  App,
+  run,
+  ...props
+}: {
+  App: HydratedAppComponent
+  run: EversionRun
+  location: Route0.Location
+  head: ResolvableHead[]
+  renderer?: ReadableStreamRenderer
+  clientBundlePath?: string
+  originalIndexHtml: string
+  rootElementId?: string
+}): Promise<ReadableStream> {
+  await run.prefetchAppPoints({
+    App,
+    renderToReadableStream,
+  })
+  const element = createElement(App, {
+    ssrLocation: run.location,
+    pagesTree: toPagesTree({ points: run.eversion.points }),
+    dehydratedState: run.getQueryClientDehydratedState(),
+  })
+  return await renderReadableStream({
+    ...props,
+    element,
+    dehydratedState: run.getQueryClientDehydratedState(),
+  })
 }

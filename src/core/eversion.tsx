@@ -2,10 +2,11 @@ import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
-import type * as React from 'react'
-import { createElement } from 'react'
+import * as React from 'react'
+import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 import type { HydratedAppComponent } from './hydrate.js'
+import { Point0 } from './index.js'
 import { toPagesTree } from './router.js'
 import type {
   AnyPoint,
@@ -396,7 +397,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async extract({ point, input = {}, ...locationProps }: ExtractOptions): Promise<ExtractResult> {
     const location = this.eversion._normalizeLocation(locationProps, this.location)
 
-    // TODO: remove it, we will prefetch everything in createPrefetchedAppElement
+    // TODO: maybe remove it, we will prefetch everything in createPrefetchedAppElement
+    // But it is faster, becouse we should not always rerender our app for every layout
     if (point?._pointType === 'page') {
       for (const layout of point._layouts) {
         if (!layout._hasLoader()) {
@@ -571,40 +573,81 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   } as never)
   // }
 
-  async createPrefetchedAppElement({ App }: { App: HydratedAppComponent }) {
+  async prefetchAppPoints({
+    App,
+    renderToReadableStream,
+    allFetchedPoints = [],
+  }: {
+    App: HydratedAppComponent
+    renderToReadableStream: typeof RenderToReadableStream
+    allFetchedPoints?: AnyPoint[]
+  }): Promise<void> {
     const pagesTree = toPagesTree({ points: this.eversion.points })
-    const appElement = createElement(App, {
-      ssrLocation: this.location,
-      pagesTree,
-      dehydratedState: this.getQueryClientDehydratedState(),
+    const nonfetchedPoints: AnyPoint[] = []
+
+    const NonfetchedPointsCollectorContextProvider = ({
+      register,
+      children,
+    }: {
+      register: (point: AnyPoint) => void
+      children: React.ReactNode
+    }): React.ReactNode => {
+      return (
+        <Point0._SsrNonfetchedPointsCollectorContext.Provider value={{ register }}>
+          {children}
+        </Point0._SsrNonfetchedPointsCollectorContext.Provider>
+      )
+    }
+
+    // 1) First render to collect points
+    const probeTree = (
+      <NonfetchedPointsCollectorContextProvider
+        register={(point) => {
+          nonfetchedPoints.push(point)
+        }}
+      >
+        <App ssrLocation={this.location} pagesTree={pagesTree} dehydratedState={this.getQueryClientDehydratedState()} />
+      </NonfetchedPointsCollectorContextProvider>
+    )
+    const stream = await renderToReadableStream(probeTree)
+    await stream.allReady
+    const fetchedPoints: AnyPoint[] = []
+
+    for (const nonfetchedPoint of nonfetchedPoints) {
+      const record = this.eversion.points.find(
+        (p) => p.point._getRouteDefinition() === nonfetchedPoint._getRouteDefinition(),
+      )
+      if (!record) {
+        continue
+      }
+      const isCurcular = allFetchedPoints.some((p) => p._getRouteDefinition() === record.point._getRouteDefinition())
+      if (isCurcular) {
+        return
+      }
+      const route = record.point._getRoute()
+      const routePath = route.get({
+        ...this.location.params,
+        query: { ...this.location.query },
+      } as never)
+      const location = route.match(routePath).location
+      await record.point.prefetchQuery({
+        queryClient: this.queryClient,
+        location,
+      })
+      fetchedPoints.push(record.point)
+    }
+
+    if (nonfetchedPoints.length === 0) {
+      return
+    }
+    if (fetchedPoints.length !== nonfetchedPoints.length) {
+      return
+    }
+    await this.prefetchAppPoints({
+      App,
+      renderToReadableStream,
+      allFetchedPoints: [...allFetchedPoints, ...fetchedPoints],
     })
-    return { appElement, dehydratedState: this.getQueryClientDehydratedState() }
-    // await walkElementsAsync(appElement, async (element) => {
-    //   console.log(34343, element)
-    //   if ((element as any)?._POINT0_point && (element as any)._POINT0_isPrefetched === false) {
-    //     // if (element.type) {
-    //     const point = (element as any)._POINT0_point as AnyPoint
-
-    //     const route = point._getRoute()
-    //     const routePath = route.get({
-    //       ...extractResult.location.params,
-    //       query: { ...extractResult.location.query },
-    //     } as never)
-    //     const location = route.match(routePath).location
-
-    //     await point.prefetchQuery({
-    //       queryClient: extractResult.queryClient,
-    //       location,
-    //     })
-    //   }
-    // })
-    // const newDehydratedState = this.getQueryClientDehydratedState()
-    // console.log(34343, newDehydratedState)
-    // return createElement(App, {
-    //   ssrLocation: extractResult.location,
-    //   pagesTree,
-    //   dehydratedState: newDehydratedState,
-    // })
   }
 
   appendQueryClientCache({

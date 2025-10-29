@@ -13,7 +13,7 @@ import type {
 } from '../../server/adapter.js'
 import { parseServerAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
-import { renderReadableStream } from '../../server/render.js'
+import { renderAppAsReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
 
 // TODO: allow public dir per each client also
@@ -285,7 +285,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pathname,
         fallbackRootId: this.fallbackRootId,
       })
-      const run = await this.eversion.createRun({
+      const run = await suitable.eversion.createRun({
         location: suitable.location,
         requiredCtx,
       })
@@ -334,10 +334,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             if (!App) {
               throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
             }
-            const { appElement, dehydratedState } = await run.createPrefetchedAppElement({ App })
-            const readableStream = await renderReadableStream({
-              element: appElement,
-              dehydratedState,
+            const readableStream = await renderAppAsReadableStream({
+              App,
+              run,
               head: extractResult.head,
               location: extractResult.location,
               originalIndexHtml,

@@ -12,7 +12,7 @@ export default generalLayout
   .page(() => {
     const ctx1 = clientCtx1.useClientCtx()
     const ctx2 = clientCtx2.useClientCtx()
-    console.log(ctx2)
+    // console.log(ctx2)
     return (
       <div>
         <h1>Welcome to IdeaNick</h1>

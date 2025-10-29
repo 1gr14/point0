@@ -89,7 +89,6 @@ export const prependAndAppendSlash = <T extends string | undefined>(path: T): T 
   let result = '/' + path.replace(/^\//, '')
   result = result.replace(/\/$/, '') + '/'
   result = result.replace(/\/\/+/g, '/')
-  console.log('xxcc', result)
   return result as T
 }
 
