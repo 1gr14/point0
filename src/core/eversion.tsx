@@ -581,6 +581,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const fetchedPoints: AnyPoint[] = []
 
     for (const nonfetchedPoint of nonfetchedPoints) {
+      console.log('nonfetchedPoint', nonfetchedPoint._getRouteDefinition())
       const isCurcular = allFetchedPoints.some((p) => p._getRouteDefinition() === nonfetchedPoint._getRouteDefinition())
       if (isCurcular) {
         return
@@ -590,6 +591,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
       fetchedPoints.push(nonfetchedPoint)
     }
+
+    console.log(nonfetchedPoints.length, fetchedPoints.length)
 
     if (nonfetchedPoints.length === 0) {
       return

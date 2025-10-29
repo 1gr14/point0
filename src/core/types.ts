@@ -9,8 +9,8 @@ import type {
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, ZodObject } from 'zod'
-import type { Point0 } from './index.js'
 import type { EversionRun, ExtractResult } from './eversion.js'
+import type { Point0 } from './index.js'
 
 // basic
 
@@ -426,6 +426,11 @@ export type ComponentMountable<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<ComponentMountableProps<TInputSchema, TProps>>
+
+export type ComponentWithPoint<
+  TComponentMountable extends ComponentMountable = ComponentMountable,
+  TPoint extends AnyPoint = AnyPoint,
+> = TComponentMountable & { point: TPoint }
 
 export type DestinationComponentType = 'app' | 'page' | 'component'
 export type ErrorComponentProps<TType extends DestinationComponentType = DestinationComponentType> = {

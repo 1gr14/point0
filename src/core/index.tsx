@@ -1,6 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type { MutationOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
+import type { MutationOptions, QueryClient, QueryOptions, UseQueryResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import qs from 'qs'
@@ -1772,7 +1772,7 @@ export class Point0<
     })
   }
 
-  _Component: ComponentMountable = (props) => {
+  _Component: ComponentMountable<TInputSchema, TProps> = (props) => {
     const { input, ...restProps } = props as ComponentMountableProps<Record<string, any>, TProps>
     const location = useLocation<CurrentRoute<TRoute>>()
     if (!this._hasLoader()) {
@@ -1785,40 +1785,17 @@ export class Point0<
 
     const loaderComponent = this._getLoaderComponent({ type: 'component' })
     const errorComponent = this._getErrorComponent({ type: 'component' })
-    const isInitalSsrLocation = useIsInitalSsrLocation()
+    const result = (this.useQuery as any)(input) as UseQueryResult
+    // TODO: add it to this.useQeruy
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
     const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location), ...input }) as QueryKey
     const query = cache.find({ queryKey })
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
-    const result = useQuery<TData>({
-      queryKey,
-      queryFn: async () => {
-        const fetchOptions = this._fetchOptions()
-        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-        // TODO: use this.fetch() instead
-        const res = await fetch([location.pathname, qs.stringify(input)].join('?'), {
-          ...fetchOptions,
-          headers,
-        })
-        const json = await res.json()
-        if (res.ok) {
-          return json
-        }
-        throw Error0.from(json, {
-          httpStatus: res.status,
-        })
-      },
-      enabled: !isInitalSsrLocation || query?.state.status !== 'error',
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-      ...this._queryOptions,
-      ...this._pageQueryOptions,
-    })
+    console.log('query', query, queryKey)
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(
+      query?.state.status === 'error' || query?.state.status === 'success',
+    )
+
     if (result.error) {
       return React.createElement(errorComponent, { type: 'component', error: Error0.from(result.error), location })
     }
@@ -2196,11 +2173,11 @@ export class Point0<
   }) as GetMutationOptionsFn<TRoute, TInputSchema, TResponseOutput, TData>
 
   useQuery = ((
-    props: Record<string, any> = {},
+    input: Record<string, any> = {},
     queryOptions?: QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>,
     fetchOptions?: FetchOptions,
   ) => {
-    return useQuery((this.getQueryOptions as any)(props as never, queryOptions, fetchOptions) as never)
+    return useQuery((this.getQueryOptions as any)(input as never, queryOptions, fetchOptions) as never)
   }) as never as UseQueryFn<TRoute, TInputSchema, TResponseOutput, TData>
 
   useMutation = ((mutationOptions?: MutationOptions, fetchOptions?: FetchOptions) => {

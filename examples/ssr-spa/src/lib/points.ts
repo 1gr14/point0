@@ -30,6 +30,11 @@ export const points: PointsCollection = [
     point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation,
   },
   {
+    type: 'component',
+    route: '/ideas/best',
+    point: async () => (await import('../pages/home.js')).bestIdeaComponent,
+  },
+  {
     type: 'page',
     route: '/ideas/:id',
     point: async () => (await import('../pages/idea.js')).default,

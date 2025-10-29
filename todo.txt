@@ -25,6 +25,7 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 .disable()
 preventSsr
 .route(string)
+points collection allow to route: undefined, hasLoader undefined we can know on server after loading points
 use this.fetch() instead in .page(), .component(), .layout()
 remove id route is enough
 ? inputs chema not needed, just input enough. No! Becouse we can have route whch defines part of input, but we can have no input schema. Or Yes! And when we define route we also define input schema, and new input schema should have same keys or more kike route
