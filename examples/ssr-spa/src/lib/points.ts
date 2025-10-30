@@ -2,7 +2,7 @@ import type { PointsCollection } from 'point0/core/eversion.js'
 
 // TODO: clientRoute and serverRoute
 
-export const points: PointsCollection = [
+export const points = [
   // should be generated automatically
   // and here we can import them as is without lazy loading,
   // but in pages for spa application we will import it with lazy loading
@@ -23,17 +23,17 @@ export const points: PointsCollection = [
   },
   {
     type: 'mutation',
-    route: '/endpoints/createIdea',
+    id: 'createIdea',
     point: async () => (await import('../pages/idea-create.js')).createIdeaMutation,
   },
   {
     type: 'response',
-    route: '/endpoints/generateIdea',
+    id: 'generateIdea',
     point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation,
   },
   {
     type: 'component',
-    route: '/ideas/best',
+    id: 'bestIdeaComponent',
     point: async () => (await import('../pages/home.js')).BestIdeaComponent.point,
   },
   {
@@ -49,28 +49,30 @@ export const points: PointsCollection = [
   {
     type: 'layout',
     route: '/',
+    id: 'general-layout',
     point: async () => (await import('../layouts/general.js')).generalLayout,
     layoutPagesRoutes: ['/', '/ideas', '/ideas/new', '/ideas/:id', '/ideas/:id/news'],
   },
   {
     type: 'layout',
     route: '/ideas/:id',
+    id: 'idea-layout',
     point: async () => (await import('../layouts/idea.js')).ideaLayout,
     layoutPagesRoutes: ['/ideas/:id', '/ideas/:id/news'],
   },
   {
     type: 'client-ctx',
-    route: '/endpoints/test-client-ctx-1',
+    id: 'test-client-ctx-1',
     point: async () => (await import('../lib/client-ctx.js')).clientCtx1,
   },
   {
     type: 'client-ctx',
-    route: '/endpoints/test-client-ctx-2',
+    id: 'test-client-ctx-2',
     point: async () => (await import('../lib/client-ctx.js')).clientCtx2,
   },
   {
     type: 'client-ctx',
-    route: '/endpoints/test-client-ctx-3',
+    id: 'test-client-ctx-3',
     point: async () => (await import('../lib/client-ctx.js')).clientCtx3,
   },
-]
+] as PointsCollection

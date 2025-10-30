@@ -283,7 +283,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       const suitable = this.eversion.getSuitable({
         method: request.method as Method,
-        location: Route0.getLocation(pathname),
+        location: Route0.getLocation(request.url),
         fallbackRootId: this.fallbackRootId,
       })
       const run = await suitable.eversion.createRun({
@@ -301,7 +301,9 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })()
       const searchParams = { ...qs.parse(url.search.slice(1)) } as Record<string, any>
       const routeParams = suitable.location.params
-      const input = { ...searchParams, ...routeParams, ...body }
+      const input = searchParams._point0_input
+        ? JSON.parse(searchParams._point0_input)
+        : { ...searchParams, ...routeParams, ...body }
       const extractResult = await run.extract({
         point: suitable.point,
         input,

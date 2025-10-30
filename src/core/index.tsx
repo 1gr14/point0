@@ -3,7 +3,6 @@ import type {
   AnyLocation,
   AnyRoute,
   AnyRouteOrDefinition,
-  CallabelRoute,
   ChildrenLocation,
   ExactLocation,
   Extended,
@@ -1053,44 +1052,27 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
   >
-  // route<TNewRoute extends `/${string}`>(
-  //   definitionAbs: TNewRoute,
-  // ): Point0<
-  //   'middleware',
-  //   TLetsEndPointType,
-  //   TConnectedRootSourcePoint,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-  //   AnyRoute<TNewRoute>,
-  //   TInputSchema,
-  //   IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-  //   TProps
-  // >
-  // route<TNewRoute extends string>(
-  //   definitionRel: TNewRoute,
-  // ): Point0<
-  //   'middleware',
-  //   TLetsEndPointType,
-  //   TConnectedRootSourcePoint,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-  //   Extended<TRoute, TNewRoute>,
-  //   TInputSchema,
-  //   IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-  //   TProps
-  // >
+  route<TNewRoute extends string>(
+    definitionRel: TNewRoute,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+    Extended<TRoute, TNewRoute>,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+    TProps
+  >
   route<TNewRoute extends AnyRouteOrDefinition>(route: TNewRoute) {
     const currentRoute = this._route
     const newRoute = !currentRoute
       ? Route0.create(route)
       : typeof route === 'string'
-        ? route.startsWith('/')
-          ? Route0.create(route)
-          : currentRoute.extend(route)
+        ? currentRoute.extend(route)
         : Route0.create(route)
     return this._continue<
       'middleware',
@@ -1100,13 +1082,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      TNewRoute extends `/${string}`
-        ? AnyRoute<TNewRoute>
-        : TNewRoute extends string
-          ? Extended<TRoute, TNewRoute>
-          : TNewRoute extends AnyRoute
-            ? TNewRoute
-            : never,
+      TNewRoute extends string ? Extended<TRoute, TNewRoute> : TNewRoute extends AnyRoute ? TNewRoute : never,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1361,7 +1337,6 @@ export class Point0<
     >({
       _pointType: 'page',
       _page: page as PageComponent,
-      _method: 'get',
       _letsEndPointType: undefined,
     })
   }
@@ -1401,7 +1376,6 @@ export class Point0<
     >({
       _pointType: 'component',
       _component: component as ComponentComponent,
-      _method: 'get',
       _letsEndPointType: undefined,
     })
     const componentWithPoint = point._Component
@@ -1442,7 +1416,6 @@ export class Point0<
     >({
       _pointType: 'layout',
       _layout: layout as LayoutComponent,
-      _method: 'get',
       _letsEndPointType: undefined,
     })
   }
@@ -1515,7 +1488,6 @@ export class Point0<
     >({
       _pointType: 'response',
       _responseFn: responseFn as never,
-      _method: 'post',
       _letsEndPointType: undefined,
     })
   }
@@ -1553,7 +1525,6 @@ export class Point0<
         ...this._extractFns,
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
-      _method: 'get',
       _letsEndPointType: undefined,
     })
   }
@@ -1591,7 +1562,6 @@ export class Point0<
         ...this._extractFns,
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
-      _method: 'post',
       _letsEndPointType: undefined,
     })
   }
@@ -1630,27 +1600,32 @@ export class Point0<
     return this._clientExtractFns.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
   }
 
-  _getRouteAbsPath = (input?: Record<string, string>): string => {
-    if (!this._sourceBaseUrl) {
-      throw new Error('No source base url provided for this point')
-    }
-    const route = this._getRoute()
-    return new URL(route.get(input || {}), this._sourceBaseUrl).toString()
-  }
-
-  _getRoute = (): AnyRoute => {
+  _getClientRoute = (): TRoute => {
     if (this._route) {
-      return this._route
+      return this._route as TRoute
     }
-    // TODO: remove id
-    if (this._id) {
-      return Route0.create(`/endpoints/${this._id}`)
+    return undefined as TRoute
+  }
+  _getClientRouteForce = (): NonNullable<TRoute> => {
+    const route = this._getClientRoute()
+    if (!route) {
+      throw new Error('No client route provided for this point')
     }
-    throw new Error('No route or id provided for this point')
+    return route
   }
 
-  _getRouteDefinition = (): string => {
-    return this._getRoute().getDefinition()
+  _getServerRoute = (): AnyRoute | undefined => {
+    if (this._id) {
+      return Route0.create(`/_point0/${this._rootId}/id/${this._id}`)
+    }
+    return undefined
+  }
+  _getServerRouteForce = (): AnyRoute => {
+    const route = this._getServerRoute()
+    if (!route) {
+      throw new Error('No server route provided for this point')
+    }
+    return route
   }
 
   _extractClientAsync = async ({
@@ -1729,7 +1704,7 @@ export class Point0<
   }
 
   _getSelfLocationByAnotherLocation(location: AnyLocation): KnownLocation<CurrentRoute<TRoute>> {
-    const route = this._getRoute()
+    const route = this._getClientRouteForce()
     return route.getLocation(location) as KnownLocation<CurrentRoute<TRoute>>
   }
 
@@ -2260,38 +2235,20 @@ export class Point0<
   }
 
   fetch = (async (input: Record<string, any> = {}, options?: FetchOptions | undefined) => {
-    const route = this._getRoute()
-    const { routeParams, routeQuery, inputSelf } = (() => {
-      const { query: routeQuery, ...restInput } = input
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const paramsKeys = Object.keys(route.paramsDefinition || {})
-      const routeParams = paramsKeys.reduce<Record<string, string>>((acc, key) => {
-        acc[key] = input[key]
-        return acc
-      }, {})
-      const inputSelf = Object.keys(restInput).reduce<Record<string, string>>((acc, key) => {
-        if (paramsKeys.includes(key)) {
-          return acc
-        }
-        acc[key] = restInput[key]
-        return acc
-      }, {})
-      return { routeParams, routeQuery, inputSelf }
-    })()
-
     const fetchOptions = { ...this._fetchOptions(), ...options }
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
-    const routeAbsPath = this._getRouteAbsPath({ ...routeParams, query: routeQuery })
-    const url = new URL(routeAbsPath)
-    const method = this._method
+    if (!this._sourceBaseUrl) {
+      throw new Error('No source base url provided for this point')
+    }
+    const url = new URL(this._getServerRouteForce().get(), this._sourceBaseUrl)
+    const method = this._method || 'post'
 
     let body: string | undefined = undefined
     if (method === 'get' || method === 'head' || method === 'options') {
-      url.search = qs.stringify({ ...routeQuery, ...inputSelf })
+      url.searchParams.append('_point0_input', stringify(input))
     } else {
       headers.set('Content-Type', 'application/json')
-      url.search = qs.stringify({ ...routeQuery })
-      body = JSON.stringify({ ...inputSelf })
+      body = stringify(input)
     }
     const res = await fetch(url.toString(), {
       ...fetchOptions,
@@ -2319,7 +2276,7 @@ export class Point0<
   }) as never as ExtractFn<TRoute, TInputSchema, TRequiredCtx, TCtx, TData, TResponseOutput>
 
   getQueryKey = ((input?: Record<string, any>): QueryKey => {
-    const keyParts: [string, ...string[]] = [this._pointType, this._getRouteDefinition()]
+    const keyParts: [string, ...string[]] = [this._pointType, this._getServerRouteForce().getDefinition()]
     if (input) {
       const serialized = stringify(input)
       keyParts.push(serialized)

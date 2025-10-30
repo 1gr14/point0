@@ -363,13 +363,13 @@ export const _toPagesAndLayoutsCollection = ({
     layouts: [],
   }
   for (const record of points) {
-    if (record.type !== 'layout') {
+    if (record.type !== 'layout' || !record.route) {
       continue
     }
     const point = record.point
     collection.layouts.push({
       type: 'layout',
-      route: typeof record.route === 'string' ? Route0.create(record.route) : record.route,
+      route: Route0.create(record.route),
       point: point as LayoutPoint | (() => Promise<LayoutPoint>),
       layoutComponent:
         typeof point === 'function'
@@ -381,13 +381,13 @@ export const _toPagesAndLayoutsCollection = ({
     })
   }
   for (const record of points) {
-    if (record.type !== 'page') {
+    if (record.type !== 'page' || !record.route) {
       continue
     }
     const point = record.point
     collection.pages.push({
       type: 'page',
-      route: typeof record.route === 'string' ? Route0.create(record.route) : record.route,
+      route: Route0.create(record.route),
       point: point as PagePoint | (() => Promise<PagePoint>),
       pageComponent:
         typeof point === 'function'
@@ -399,9 +399,7 @@ export const _toPagesAndLayoutsCollection = ({
         // .filter((l) => record.layoutPagesRoutes?.includes(l.route.getDefinition()))
         .filter((l) =>
           l.layoutPagesRoutes.some(
-            (lpr) =>
-              lpr.getDefinition() ===
-              (typeof record.route === 'string' ? Route0.create(record.route) : record.route).getDefinition(),
+            (lpr) => record.route && lpr.getDefinition() === Route0.create(record.route).getDefinition(),
           ),
         )
         .map((l) => l.layoutComponent),
