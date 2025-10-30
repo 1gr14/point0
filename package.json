@@ -101,14 +101,14 @@
     "react-dom": "^19.0.0",
     "@tanstack/react-query": "^5.0.0",
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.19",
+    "@devp0nt/route0": "^1.0.0-next.24",
     "@unhead/react": "^2.0.19",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@devp0nt/route0": "^1.0.0-next.19",
+    "@devp0nt/route0": "^1.0.0-next.24",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",

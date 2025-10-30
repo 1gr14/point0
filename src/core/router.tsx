@@ -1,3 +1,4 @@
+import type { AnyLocation, AnyRoute, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
@@ -6,26 +7,24 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LoadedPointsCollection, PointsCollection } from './eversion.js'
 import type { LayoutPoint, PagePoint } from './types.js'
 
-export type UseAdapterLocationFn = UseLocationFn
+export type UseAdapterLocationFn = () => AnyLocation
 
 export type RouterStatus = 'idle' | 'transit' | 'fetching' | 'transit-success' | 'transit-error' | 'success' | 'error'
 export type RouterPolicy = 'simple' | 'prefetch'
 
 export type UseRouterContextFn = () => RouterContextValue
-export type UseLocationFn = <TRoute extends Route0.AnyRoute = Route0.AnyRoute>() => Route0.Location<TRoute>
 export type UseNavigateFn = (href: string) => never | Promise<never>
-export type UseRouteFn = <TRoute extends Route0.AnyRoute>(route: TRoute) => Route0.MatchResult<TRoute>
 export type UseOnNavigateFn = (
-  prevLocation: Route0.Location,
-  nextLocation: Route0.Location,
+  prevLocation: AnyLocation,
+  nextLocation: AnyLocation,
 ) => ((status: RouterStatus) => void) | undefined
 export type UseIsInitalSsrLocationFn = () => boolean
 export type UseRouterPolicyFn = () => RouterPolicy
 
 type RouterContextValue = {
-  ssrLocation: Route0.Location | undefined
-  currentLocation: Route0.Location
-  nextLocation: Route0.Location | undefined
+  ssrLocation: AnyLocation | undefined
+  currentLocation: AnyLocation
+  nextLocation: AnyLocation | undefined
   policy: RouterPolicy
   status: RouterStatus
   pagesTree: PagesTree
@@ -33,7 +32,7 @@ type RouterContextValue = {
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
-  setNextLocation: React.Dispatch<React.SetStateAction<Route0.Location | undefined>>
+  setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | undefined>>
   setStatus: React.Dispatch<React.SetStateAction<RouterStatus>>
 }
 
@@ -46,7 +45,7 @@ export type RouterContextProviderProps = {
   pagesTree?: PagesTree
   routes: RoutesCollection
   useAdapterLocation: UseAdapterLocationFn
-  ssrLocation?: Route0.Location | undefined
+  ssrLocation?: AnyLocation | undefined
 }
 
 export function RouterContextProvider({
@@ -58,7 +57,7 @@ export function RouterContextProvider({
   useAdapterLocation,
   ssrLocation,
 }: RouterContextProviderProps) {
-  const [nextLocation, setNextLocation] = useState<Route0.Location | undefined>()
+  const [nextLocation, setNextLocation] = useState<AnyLocation | undefined>()
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()
 
@@ -83,18 +82,23 @@ export function RouterContextProvider({
 
 /** Hooks **/
 
-export function useLocation<TRoute extends Route0.AnyRoute = Route0.AnyRoute>(): Route0.Location<TRoute> {
+export function useLocation(): AnyLocation
+export function useLocation<TRoute extends AnyRouteOrDefinition<string> = AnyRouteOrDefinition<string>>(
+  route?: TRoute,
+  location?: AnyLocation,
+): KnownLocation<TRoute>
+export function useLocation<TRoute extends AnyRouteOrDefinition<string> = AnyRouteOrDefinition<string>>(
+  route?: TRoute,
+  location?: AnyLocation,
+) {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useLocation must be used within RouterContextProvider')
-  return ctx.currentLocation as Route0.Location<TRoute>
-}
-
-export const useRoute: UseRouteFn = <TRoute extends Route0.AnyRoute>(route: TRoute, location?: Route0.Location) => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useRoute must be used within RouterContextProvider')
+  if (!route) {
+    return location ?? ctx.currentLocation
+  }
   return useMemo(
-    () => Route0.getMatch(route, location || ctx.currentLocation),
-    [route, location || ctx.currentLocation],
+    () => Route0.create(route).getLocation(location ?? ctx.currentLocation) as KnownLocation<TRoute>,
+    [route, location, ctx.currentLocation],
   )
 }
 
@@ -153,7 +157,7 @@ export const useOnNavigate = (fn: UseOnNavigateFn) => {
 
 export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) => any>(
   useAdapterNavigate: T,
-): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: Route0.Location }> {
+): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: AnyLocation }> {
   return () => {
     const ctx = React.useContext(RouterContext)
     if (!ctx) throw new Error('useNavigate must be used within RouterContextProvider')
@@ -237,7 +241,7 @@ export const _getSuitablePagePoint = async ({
   location,
 }: {
   pagesTree: PagesTree
-  location: Route0.Location
+  location: AnyLocation
 }): Promise<
   | {
       pagePoint: PagePoint
@@ -265,7 +269,7 @@ export const _getSuitablePagePoint = async ({
 
     // check pages at this node
     for (const p of node.pages) {
-      const match = Route0.getMatch(p.route, location)
+      const match = p.route.getLocation(location)
       if (match.exact) {
         found = { page: p, layoutPath: [...stack] }
         break
@@ -330,7 +334,7 @@ export const _prefetchSuitablePagePointWithLayouts = async ({
   queryClient, // kept for signature parity if you need it later
 }: {
   pagesTree: PagesTree
-  location: Route0.Location
+  location: AnyLocation
   queryClient: QueryClient
 }): Promise<PagePoint | undefined> => {
   const result = await _getSuitablePagePoint({ pagesTree, location })
@@ -502,14 +506,14 @@ export const _toLoggablePagesTree = (pagesTree: PagesTree): object => {
 
 export const _getRouteMatch = (
   routes: RoutesCollection,
-  location: Route0.Location,
-): { route: Route0.AnyRoute; location: Route0.Location } | undefined => {
+  location: AnyLocation,
+): { route: AnyRoute; location: AnyLocation } | undefined => {
   for (const route of Object.values(routes)) {
-    const match = Route0.getMatch(route, location)
+    const match = route.getLocation(location)
     if (match.exact) {
       return {
         route,
-        location: match.location,
+        location: match,
       }
     }
   }
@@ -518,7 +522,7 @@ export const _getRouteMatch = (
 
 export type PagesCollectionRecord = {
   type: 'page'
-  route: Route0.AnyRoute
+  route: AnyRoute
   point: PagePoint | (() => Promise<PagePoint>)
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   layoutComponents: Array<
@@ -530,12 +534,12 @@ export type PagesCollection = PagesCollectionRecord[]
 
 export type LayoutsCollectionRecord = {
   type: 'layout'
-  route: Route0.AnyRoute
+  route: AnyRoute
   point: LayoutPoint | (() => Promise<LayoutPoint>)
   layoutComponent:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-  layoutPagesRoutes: Route0.AnyRoute[]
+  layoutPagesRoutes: AnyRoute[]
 }
 export type LayoutsCollection = LayoutsCollectionRecord[]
 
@@ -545,14 +549,14 @@ export type PagesAndLayoutsCollection = {
 }
 
 export type PagesTreeRecord = {
-  route: Route0.AnyRoute
+  route: AnyRoute
   layoutPoint: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
   layoutComponent:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
   pages: Array<{
-    route: Route0.AnyRoute
+    route: AnyRoute
     pagePoint: PagePoint | (() => Promise<PagePoint>)
     pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   }>
@@ -560,4 +564,4 @@ export type PagesTreeRecord = {
 }
 export type PagesTree = PagesTreeRecord[]
 
-export type RoutesCollection = Record<string, Route0.AnyRoute>
+export type RoutesCollection = Record<string, AnyRoute>

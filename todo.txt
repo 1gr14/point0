@@ -1,8 +1,12 @@
-refactor route0: rename query, etc. add helpers, StricQueryTypes
-route string
-input defined on route
-on send input previously we extract only needed by input schema
+TPendingEndPointType, _pendingEndPointType
+coorrect extend fns args based on location
+input is something that comes on server, location is page location
+.input() always requires zod schema
+input defined on .route()
+route string that extends previous route, or fully overridable Route0
+? on send input previously we extract only needed by input schema
 use this.fetch() and this.useQuery() in .page(), .component(), .layout()
+points provider, and on useLocation get knownLocation
 
 
 auth
@@ -14,7 +18,7 @@ expo router
 
 elysia example
 
-config to forward settings to client and server
+config to forward settings to client and server. jsut {server, clients, generators}
 env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 ? maybe move config to Point0.extend and Point0.create and extract it from there
 cli for simplify commands, like build with bun: point0 build
@@ -54,6 +58,7 @@ route0 respect origin on match and try two clients with one server
 remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
 analyze if there same id points or route points
 input even in
+client.create('page').route().loader() → it provides nice helpers
 superjson
 prefetch on Link hover
 make components and pages named in react dev tools

@@ -1,5 +1,7 @@
 import type { PointsCollection } from 'point0/core/eversion.js'
 
+// TODO: clientRoute and serverRoute
+
 export const points: PointsCollection = [
   // should be generated automatically
   // and here we can import them as is without lazy loading,

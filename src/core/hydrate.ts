@@ -1,4 +1,4 @@
-import type { Route0 } from '@devp0nt/route0'
+import type { AnyLocation } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
@@ -12,7 +12,7 @@ export type HydrateResult = {
   appElement: React.ReactElement
 }
 export type HydratedAppProps = {
-  ssrLocation: Route0.Location | undefined
+  ssrLocation: AnyLocation | undefined
   dehydratedState: DehydratedState | undefined
   pagesTree: PagesTree
 }

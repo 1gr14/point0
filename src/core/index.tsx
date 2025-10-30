@@ -1,4 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
+import type { AnyLocation, AnyRoute, ChildrenLocation, ExactLocation, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { MutationOptions, QueryClient, QueryOptions, UseQueryResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -24,6 +25,7 @@ import type {
   Data,
   DestinationComponentType,
   EmptyCtx,
+  EndPointType,
   ErrorComponentType,
   ExtractFn,
   ExtractFnRecord,
@@ -42,9 +44,9 @@ import type {
   Id,
   Infer,
   InferredRootSourcePoint,
-  Input,
+  InputParsed,
+  InputRaw,
   InputSchema,
-  InputSchemaObject,
   InputSchemaZod,
   IsEndPointType,
   LayoutComponent,
@@ -68,6 +70,7 @@ import type {
   UndefinedComponentComponent,
   UndefinedCtx,
   UndefinedData,
+  UndefinedEndPointType,
   UndefinedId,
   UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
@@ -85,18 +88,19 @@ import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
 export class Point0<
   TPointType extends PointType,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TData extends Data | UndefinedData,
   TClientData extends Data | UndefinedData,
-  TRoute extends Route0.AnyRoute | UndefinedRoute,
+  TRoute extends AnyRoute | UndefinedRoute,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TProps extends Props | UndefinedProps,
 > {
   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData, TInputSchema> & {
-    Input: Input<TRoute, TInputSchema>
+    Input: InputParsed<TRoute, TInputSchema>
   } = {} as never
 
   // TODO: may it help somebody?
@@ -107,9 +111,10 @@ export class Point0<
     return Point0._prevUnstableId++
   }
 
-  _base: BasePoint<any, TRequiredCtx> | undefined
+  _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
   _pointType: TPointType
+  _letsEndPointType: TLetsEndPointType
   _inputSchema: TInputSchema
   _responseFn: TResponseOutput extends ResponseOutput
     ? ResponseFn<TCtx, TData, TRoute, TInputSchema, TResponseOutput>
@@ -125,10 +130,10 @@ export class Point0<
   _clientExtractFns: ClientExtractFnRecord[]
   _route: TRoute
   _page: PageComponent<TData, TClientData, TRoute> | UndefinedPageComponent
-  _component: ComponentComponent<TData, TClientData, TRoute, TProps> | UndefinedComponentComponent
+  _component: ComponentComponent<TData, TClientData, TProps> | UndefinedComponentComponent
   _layout: LayoutComponent<TData, TClientData, TRoute> | UndefinedLayoutComponent
   _layouts: LayoutPoint[]
-  _layoutPagesRoutes: Route0.AnyRoute[]
+  _layoutPagesRoutes: AnyRoute[]
   _id: Id | UndefinedId
   _unstableId: number
   _method: Method | UndefinedMethod
@@ -144,7 +149,8 @@ export class Point0<
 
   private constructor(props: {
     _pointType: TPointType
-    _base?: BasePoint<any, TRequiredCtx> | undefined
+    _letsEndPointType: TLetsEndPointType
+    _base?: BasePoint<any, any, TRequiredCtx> | undefined
     // _useLocation?: () => Route0.Location
     _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
@@ -161,10 +167,10 @@ export class Point0<
     _clientExtractFns?: ClientExtractFnRecord[]
     _route?: TRoute
     _page?: PageComponent<TData, TClientData, TRoute> | UndefinedPageComponent
-    _component?: ComponentComponent<TData, TClientData, TRoute, TProps> | UndefinedComponentComponent
+    _component?: ComponentComponent<TData, TClientData, TProps> | UndefinedComponentComponent
     _layout?: LayoutComponent<TData, TClientData, TRoute> | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
-    _layoutPagesRoutes?: Route0.AnyRoute[]
+    _layoutPagesRoutes?: AnyRoute[]
     _id?: Id | UndefinedId
     _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
@@ -188,6 +194,7 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRoute, TInputSchema, TResponseOutput>
       : undefined
     this._pointType = props._pointType
+    this._letsEndPointType = props._letsEndPointType
     this._wrapper = props._wrapper
     this._staticHeads = props._staticHeads ?? []
     this._queryOptions = props._queryOptions ?? {}
@@ -232,21 +239,22 @@ export class Point0<
 
   _continue<
     TPointType extends PointType,
+    TLetsEndPointType extends EndPointType | UndefinedEndPointType,
     TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
     TRequiredCtx extends RequiredCtx,
     TCtx extends Ctx,
     TData extends Data | UndefinedData,
     TClientData extends Data | UndefinedData,
-    TRoute extends Route0.AnyRoute | UndefinedRoute,
+    TRoute extends AnyRoute | UndefinedRoute,
     TInputSchema extends InputSchema | UndefinedInputSchema,
     TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
     TProps extends Props | UndefinedProps,
   >(overrides: {
     _pointType: TPointType
-    _base?: BasePoint<any, TRequiredCtx> | undefined
+    _letsEndPointType?: TLetsEndPointType
+    _base?: BasePoint<any, any, TRequiredCtx> | undefined
     _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
-    _useLocation?: () => Route0.Location
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRoute, TInputSchema, TResponseOutput>
       : undefined
@@ -256,7 +264,7 @@ export class Point0<
     _wrapper?: WrapperComponentType | undefined
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
-    _route?: Route0.AnyRoute | UndefinedRoute
+    _route?: AnyRoute | UndefinedRoute
     _page?: PageComponent | UndefinedPageComponent
     _component?: ComponentComponent | UndefinedComponentComponent
     _layout?: LayoutComponent | UndefinedLayoutComponent
@@ -272,6 +280,7 @@ export class Point0<
     _appLoaderComponent?: LoaderComponentType<'app'>
   }): Point0<
     TPointType,
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -282,10 +291,11 @@ export class Point0<
     TResponseOutput,
     TProps
   > {
-    const wasEndpoint = this._isEndpoint()
+    const wasEndPoint = this._isEndpoint()
 
     return new Point0<
       TPointType,
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -300,11 +310,12 @@ export class Point0<
       _rootId: this._rootId,
 
       // overridable
-      _base: (overrides._base ?? this._base) as BasePoint<any, TRequiredCtx> | undefined,
+      _base: overrides._base ?? (this._base as BasePoint<any, any, TRequiredCtx> | undefined),
       _pointType: overrides._pointType,
+      _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _sourceBaseUrl:
         overrides._sourceBaseUrl ??
-        (wasEndpoint ? (this._base ? this._base._sourceBaseUrl : this._sourceBaseUrl) : this._sourceBaseUrl),
+        (wasEndPoint ? (this._base ? this._base._sourceBaseUrl : this._sourceBaseUrl) : this._sourceBaseUrl),
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRoute, TInputSchema, TResponseOutput>
@@ -313,13 +324,13 @@ export class Point0<
       _wrapper: overrides._wrapper ?? this._wrapper,
       _staticHeads:
         overrides._staticHeads ??
-        (wasEndpoint ? (this._base ? this._base._staticHeads : this._staticHeads) : this._staticHeads),
+        (wasEndPoint ? (this._base ? this._base._staticHeads : this._staticHeads) : this._staticHeads),
       _queryOptions:
         overrides._queryOptions ??
-        (wasEndpoint ? (this._base ? this._base._queryOptions : { ...this._queryOptions }) : { ...this._queryOptions }),
+        (wasEndPoint ? (this._base ? this._base._queryOptions : { ...this._queryOptions }) : { ...this._queryOptions }),
       _pageQueryOptions:
         overrides._pageQueryOptions ??
-        (wasEndpoint
+        (wasEndPoint
           ? this._base
             ? { ...this._base._pageQueryOptions }
             : { ...this._pageQueryOptions }
@@ -328,25 +339,23 @@ export class Point0<
         ? false
         : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
-      _clientExtractFns: wasEndpoint ? [] : (overrides._clientExtractFns ?? this._clientExtractFns),
-      _route: (overrides._route ?? (wasEndpoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
+      _clientExtractFns: wasEndPoint ? [] : (overrides._clientExtractFns ?? this._clientExtractFns),
+      _route: (overrides._route ?? (wasEndPoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
       _page: (overrides._page ?? undefined) as PageComponent<TData, TClientData, TRoute> | undefined, // remove end artefact on continue
-      _component: (overrides._component ?? undefined) as
-        | ComponentComponent<TData, TClientData, TRoute, TProps>
-        | undefined, // remove end artefact on continue
+      _component: (overrides._component ?? undefined) as ComponentComponent<TData, TClientData, TProps> | undefined, // remove end artefact on continue
       _layout: (overrides._layout ?? undefined) as LayoutComponent<TData, TClientData, TRoute> | undefined, // remove end artefact on continue
       _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint], // add layout to self layouts on continue
-      _id: overrides._id ?? (wasEndpoint || this._pointType === 'base' ? undefined : this._id), // remove stale artefact on continue
-      _method: overrides._method ?? (wasEndpoint ? undefined : this._method), // remove stale artefact on continue
+      _id: overrides._id ?? (wasEndPoint || this._pointType === 'base' ? undefined : this._id), // remove stale artefact on continue
+      _method: overrides._method ?? (wasEndPoint ? undefined : this._method), // remove stale artefact on continue
       _fetchOptions:
         overrides._fetchOptions ??
-        (wasEndpoint ? (this._base ? this._base._fetchOptions : this._fetchOptions) : this._fetchOptions),
+        (wasEndPoint ? (this._base ? this._base._fetchOptions : this._fetchOptions) : this._fetchOptions),
       _errorComponent:
         overrides._errorComponent ??
-        (wasEndpoint ? (this._base ? this._base._errorComponent : this._errorComponent) : this._errorComponent),
+        (wasEndPoint ? (this._base ? this._base._errorComponent : this._errorComponent) : this._errorComponent),
       _pageErrorComponent:
         overrides._pageErrorComponent ??
-        (wasEndpoint
+        (wasEndPoint
           ? this._base
             ? this._base._pageErrorComponent
             : this._pageErrorComponent
@@ -354,24 +363,24 @@ export class Point0<
       _componentErrorComponent: overrides._componentErrorComponent ?? this._componentErrorComponent,
       _loaderComponent:
         overrides._loaderComponent ??
-        (wasEndpoint ? (this._base ? this._base._loaderComponent : this._loaderComponent) : this._loaderComponent),
+        (wasEndPoint ? (this._base ? this._base._loaderComponent : this._loaderComponent) : this._loaderComponent),
       _pageLoaderComponent:
         overrides._pageLoaderComponent ??
-        (wasEndpoint
+        (wasEndPoint
           ? this._base
             ? this._base._pageLoaderComponent
             : this._pageLoaderComponent
           : this._pageLoaderComponent),
       _componentLoaderComponent:
         overrides._componentLoaderComponent ??
-        (wasEndpoint
+        (wasEndPoint
           ? this._base
             ? this._base._componentLoaderComponent
             : this._componentLoaderComponent
           : this._componentLoaderComponent),
       _appLoaderComponent:
         overrides._appLoaderComponent ??
-        (wasEndpoint
+        (wasEndPoint
           ? this._base
             ? this._base._appLoaderComponent
             : this._appLoaderComponent
@@ -379,16 +388,20 @@ export class Point0<
     })
   }
 
-  _isEndpoint(): boolean {
+  static _isEndPointType(pointType: PointType): boolean {
     return (
-      this._pointType === 'page' ||
-      this._pointType === 'layout' ||
-      this._pointType === 'response' ||
-      this._pointType === 'query' ||
-      this._pointType === 'mutation' ||
-      this._pointType === 'component' ||
-      this._pointType === 'client-ctx'
+      pointType === 'base' ||
+      pointType === 'page' ||
+      pointType === 'layout' ||
+      pointType === 'response' ||
+      pointType === 'query' ||
+      pointType === 'mutation' ||
+      pointType === 'component' ||
+      pointType === 'client-ctx'
     )
+  }
+  _isEndpoint(): boolean {
+    return Point0._isEndPointType(this._pointType)
   }
 
   // base
@@ -397,6 +410,7 @@ export class Point0<
     rootId: string,
   ): Point0<
     'middleware',
+    'base',
     UndefinedInferredRootSourcePoint,
     UndefinedCtx,
     EmptyCtx,
@@ -411,6 +425,7 @@ export class Point0<
       _pointType: 'middleware',
       _hasSourceBase: false,
       _rootId: rootId,
+      _letsEndPointType: 'base',
     })
   }
 
@@ -418,6 +433,7 @@ export class Point0<
     rootId: string,
   ): Point0<
     'middleware',
+    'base',
     TConnectedRootSourcePoint,
     TConnectedRootSourcePoint['Infer']['RequiredCtx'],
     TConnectedRootSourcePoint['Infer']['Ctx'],
@@ -430,6 +446,7 @@ export class Point0<
   > {
     return new Point0<
       'middleware',
+      'base',
       TConnectedRootSourcePoint,
       TConnectedRootSourcePoint['Infer']['RequiredCtx'],
       TConnectedRootSourcePoint['Infer']['Ctx'],
@@ -441,6 +458,7 @@ export class Point0<
       UndefinedProps
     >({
       _pointType: 'middleware',
+      _letsEndPointType: 'base',
       _hasSourceBase: true as never,
       _rootId: rootId,
     })
@@ -450,6 +468,7 @@ export class Point0<
 
   base(): Point0<
     'base',
+    UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -462,6 +481,7 @@ export class Point0<
   > {
     return this._continue<
       'base',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -473,14 +493,16 @@ export class Point0<
       TProps
     >({
       _pointType: 'base',
-      _base: this as never as BasePoint<any, TRequiredCtx>,
+      _base: this as never as BasePoint<any, any, TRequiredCtx>,
+      _letsEndPointType: undefined,
     })
   }
 
-  id(
-    id: Id,
+  lets<TNewLetsEndPointType extends EndPointType>(
+    letsEndPointType: TNewLetsEndPointType,
   ): Point0<
     'middleware',
+    TNewLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -493,6 +515,40 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TNewLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TInputSchema,
+      IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _letsEndPointType: letsEndPointType,
+    })
+  }
+
+  id(
+    id: Id,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -512,6 +568,7 @@ export class Point0<
     sourceBaseUrl: string,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -524,6 +581,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -543,6 +601,7 @@ export class Point0<
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -555,6 +614,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -574,6 +634,7 @@ export class Point0<
     errorComponent: ErrorComponentType,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -586,6 +647,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -605,6 +667,7 @@ export class Point0<
     pageErrorComponent: ErrorComponentType<'page'>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -617,6 +680,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -636,6 +700,7 @@ export class Point0<
     componentErrorComponent: ErrorComponentType<'component'>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -648,6 +713,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -667,6 +733,7 @@ export class Point0<
     pageLoaderComponent: LoaderComponentType<'page'>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -679,6 +746,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -698,6 +766,7 @@ export class Point0<
     componentLoaderComponent: LoaderComponentType<'component'>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -710,6 +779,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -729,6 +799,7 @@ export class Point0<
     appLoaderComponent: LoaderComponentType<'app'>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -741,6 +812,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -760,6 +832,7 @@ export class Point0<
     loaderComponent: LoaderComponentType,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -772,6 +845,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -789,6 +863,7 @@ export class Point0<
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
@@ -801,6 +876,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
@@ -893,6 +969,7 @@ export class Point0<
     ctxFn: CtxFn<TCtx, TData, TRoute, TInputSchema, TNewCtx>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
@@ -907,6 +984,7 @@ export class Point0<
     ctx: TNewCtx,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
@@ -921,6 +999,7 @@ export class Point0<
     ctxOrFn: TNewCtx,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
@@ -934,6 +1013,7 @@ export class Point0<
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TNewCtx,
@@ -949,10 +1029,11 @@ export class Point0<
     })
   }
 
-  route<TNewRoute0 extends Route0.AnyRoute>(
+  route<TNewRoute0 extends AnyRoute>(
     route: TNewRoute0,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -965,6 +1046,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -984,6 +1066,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -996,6 +1079,7 @@ export class Point0<
   > {
     return this._continue<
       'middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1015,9 +1099,10 @@ export class Point0<
   }
 
   clientLoader<TNewClientData extends Data = Data>(
-    clientLoaderFn: ClientLoaderFn<FinalClientData<TData, TClientData>, TRoute, TNewClientData>,
+    clientLoaderFn: ClientLoaderFn<TLetsEndPointType, TRoute, FinalClientData<TData, TClientData>, TNewClientData>,
   ): Point0<
     'client-middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1030,6 +1115,7 @@ export class Point0<
   > {
     return this._continue<
       'client-middleware',
+      TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1049,9 +1135,10 @@ export class Point0<
   }
 
   clientCtx<TNewClientData extends Data = Data>(
-    clientLoaderFn: ClientLoaderFn<FinalClientData<TData, TClientData>, TRoute, TNewClientData>,
+    clientLoaderFn: ClientLoaderFn<TLetsEndPointType, TRoute, FinalClientData<TData, TClientData>, TNewClientData>,
   ): Point0<
     'client-ctx',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1064,6 +1151,7 @@ export class Point0<
   >
   clientCtx(): Point0<
     'client-ctx',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1084,9 +1172,10 @@ export class Point0<
   }
 
   head(
-    headFn: HeadFn<TData, TClientData, TRoute>,
+    headFn: HeadFn<TLetsEndPointType, TRoute, TData, TClientData>,
   ): Point0<
     'client-middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1101,6 +1190,7 @@ export class Point0<
     head: ResolvableHead,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1111,7 +1201,7 @@ export class Point0<
     TResponseOutput,
     TProps
   >
-  head(headFnOrHead: HeadFn<TData, TClientData, TRoute> | ResolvableHead) {
+  head(headFnOrHead: HeadFn<TLetsEndPointType, TRoute, TData, TClientData> | ResolvableHead) {
     if (typeof headFnOrHead === 'function') {
       return this._continue({
         _pointType: 'client-middleware',
@@ -1129,9 +1219,10 @@ export class Point0<
   }
 
   title(
-    titleFn: TitleFn<TData, TClientData, TRoute>,
+    titleFn: TitleFn<TLetsEndPointType, TRoute, TData, TClientData>,
   ): Point0<
     'client-middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1146,6 +1237,7 @@ export class Point0<
     title: string,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1156,7 +1248,7 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
   >
-  title(titleFnOrTitle: TitleFn<TData, TClientData, TRoute> | string) {
+  title(titleFnOrTitle: TitleFn<TLetsEndPointType, TRoute, TData, TClientData> | string) {
     if (typeof titleFnOrTitle === 'function') {
       const headFn: HeadFn = (props) => ({ title: titleFnOrTitle(props as never) })
       return this._continue({
@@ -1176,6 +1268,7 @@ export class Point0<
 
   props<TNewProps extends Props>(): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1195,6 +1288,7 @@ export class Point0<
     inputSchema: TNewInputSchema,
   ): Point0<
     'middleware',
+    TLetsEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1205,22 +1299,10 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
   >
-  input<TNewInputSchema extends InputSchemaObject>(): Point0<
-    'middleware',
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
-    TNewInputSchema,
-    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-    TProps
-  >
-  input(...args: [InputSchemaZod] | []) {
+  input(inputSchema: InputSchemaZod) {
     return this._continue({
       _pointType: 'middleware',
-      ...(args.length === 1 ? { _inputSchema: args[0] } : {}),
+      _inputSchema: inputSchema,
     }) as never
   }
 
@@ -1230,6 +1312,7 @@ export class Point0<
     page: TPage,
   ): Point0<
     'page',
+    UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1248,6 +1331,7 @@ export class Point0<
     }
     return this._continue<
       'page',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1261,14 +1345,16 @@ export class Point0<
       _pointType: 'page',
       _page: page as PageComponent,
       _method: 'get',
+      _letsEndPointType: undefined,
     })
   }
 
-  component<TComponent extends ComponentComponent<TData, TClientData, TRoute, TProps>>(
+  component<TComponent extends ComponentComponent<TData, TClientData, TProps>>(
     component: TComponent,
   ): ComponentMountable<TInputSchema, TProps> & {
     point: Point0<
       'component',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1285,6 +1371,7 @@ export class Point0<
     }
     const point = this._continue<
       'component',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1298,6 +1385,7 @@ export class Point0<
       _pointType: 'component',
       _component: component as ComponentComponent,
       _method: 'get',
+      _letsEndPointType: undefined,
     })
     const componentWithPoint = point._Component
     Object.assign(componentWithPoint, { point })
@@ -1308,6 +1396,7 @@ export class Point0<
     layout: TLayout,
   ): Point0<
     'layout',
+    UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1323,6 +1412,7 @@ export class Point0<
     }
     return this._continue<
       'layout',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1336,6 +1426,7 @@ export class Point0<
       _pointType: 'layout',
       _layout: layout as LayoutComponent,
       _method: 'get',
+      _letsEndPointType: undefined,
     })
   }
 
@@ -1343,6 +1434,7 @@ export class Point0<
     responseFn: ResponseFn<TCtx, TData, TRoute, TInputSchema, TNewResponseOutput>,
   ): Point0<
     'response',
+    UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1355,6 +1447,7 @@ export class Point0<
   > {
     return this._continue<
       'response',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1368,6 +1461,7 @@ export class Point0<
       _pointType: 'response',
       _responseFn: responseFn as never,
       _method: 'post',
+      _letsEndPointType: undefined,
     })
   }
 
@@ -1375,6 +1469,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'query',
+    UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1387,6 +1482,7 @@ export class Point0<
   > {
     return this._continue<
       'query',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1403,6 +1499,7 @@ export class Point0<
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
       _method: 'get',
+      _letsEndPointType: undefined,
     })
   }
 
@@ -1410,6 +1507,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'mutation',
+    UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
@@ -1422,6 +1520,7 @@ export class Point0<
   > {
     return this._continue<
       'mutation',
+      UndefinedEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
@@ -1438,6 +1537,7 @@ export class Point0<
         { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
       _method: 'post',
+      _letsEndPointType: undefined,
     })
   }
 
@@ -1483,10 +1583,11 @@ export class Point0<
     return new URL(route.get(input || {}), this._sourceBaseUrl).toString()
   }
 
-  _getRoute = (): Route0.AnyRoute => {
+  _getRoute = (): AnyRoute => {
     if (this._route) {
       return this._route
     }
+    // TODO: remove id
     if (this._id) {
       return Route0.create(`/endpoints/${this._id}`)
     }
@@ -1503,7 +1604,7 @@ export class Point0<
     skipHeads,
   }: {
     data: Data
-    location: Route0.Location<CurrentRoute<TRoute>>
+    location: AnyLocation
     skipHeads: boolean
   }): Promise<{ clientData: Data; clientHeadMerged: ResolvableHead }> => {
     let currentClientData: Data = data
@@ -1521,7 +1622,10 @@ export class Point0<
           break
         }
         case 'loader': {
-          currentClientData = await clientExtractFn.fn({ data: currentClientData, location })
+          currentClientData = await clientExtractFn.fn({
+            data: currentClientData,
+            location,
+          })
           break
         }
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
@@ -1539,7 +1643,7 @@ export class Point0<
     skipHeads,
   }: {
     data: Data
-    location: Route0.Location<CurrentRoute<TRoute>>
+    location: AnyLocation
     skipHeads: boolean
   }): { clientData: Data; clientHead: ResolvableHead[] } => {
     let currentClientData: Data = data
@@ -1554,7 +1658,10 @@ export class Point0<
           break
         }
         case 'loader': {
-          currentClientData = clientExtractFn.fn({ data: currentClientData, location }) as Data
+          currentClientData = clientExtractFn.fn({
+            data: currentClientData,
+            location,
+          }) as Data
           break
         }
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
@@ -1566,15 +1673,17 @@ export class Point0<
     return { clientData: currentClientData, clientHead }
   }
 
-  _getSelfLocationByAnotherLocation(location: Route0.Location) {
+  _getSelfLocationByAnotherLocation(location: AnyLocation): KnownLocation<CurrentRoute<TRoute>> {
     const route = this._getRoute()
-    const routePath = route.get({ ...location.params, query: { ...location.query } } as never)
-    return route.match(routePath).location
+    return route.getLocation(location) as KnownLocation<CurrentRoute<TRoute>>
   }
 
-  _getInputByLocation(location: Route0.Location) {
+  _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw<TRoute, TInputSchema> {
     const selfLocation = this._getSelfLocationByAnotherLocation(location)
-    return { ...selfLocation.query, ...selfLocation.params }
+    if (!selfLocation.exact && !selfLocation.children) {
+      throw new Error('Location is not exact or children')
+    }
+    return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRoute, TInputSchema>
   }
 
   static _SsrNonfetchedPointsCollectorContext = React.createContext<{
@@ -1595,7 +1704,7 @@ export class Point0<
 
   _PageInner: React.ComponentType<{
     data: FinalData<TData>
-    location: Route0.Location<CurrentRoute<TRoute>>
+    location: ExactLocation<CurrentRoute<TRoute>>
   }> = ({ data, location }) => {
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
@@ -1660,7 +1769,10 @@ export class Point0<
   _Page: React.ComponentType = () => {
     const location = useLocation<CurrentRoute<TRoute>>()
     if (!this._hasLoader()) {
-      return React.createElement(this._PageInner, { data: {} as FinalData<TData>, location })
+      return React.createElement(this._PageInner, {
+        data: {} as FinalData<TData>,
+        location: location as ExactLocation<CurrentRoute<TRoute>>,
+      })
     }
 
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
@@ -1668,7 +1780,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const input = this._getInputByLocation(location)
+    const input = this._getUnsafeInputRawByLocation(location)
     const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
@@ -1708,12 +1820,15 @@ export class Point0<
     if (!result.data) {
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
     }
-    return React.createElement(this._PageInner, { data: result.data as FinalData<TData>, location })
+    return React.createElement(this._PageInner, {
+      data: result.data as FinalData<TData>,
+      location: location as ExactLocation<CurrentRoute<TRoute>>,
+    })
   }
 
   _ComponentInner: React.ComponentType<{
     data: FinalData<TData>
-    location: Route0.Location<CurrentRoute<TRoute>>
+    location: AnyLocation
     props: FinalProps<TProps>
   }> = ({ data, location, props }) => {
     const errorComponent = this._getErrorComponent({ type: 'component' })
@@ -1779,8 +1894,8 @@ export class Point0<
   }
 
   _Component: ComponentMountable<TInputSchema, TProps> = (props) => {
-    const { input, ...restProps } = props as ComponentMountableProps<Record<string, any>, TProps>
-    const location = useLocation<CurrentRoute<TRoute>>()
+    const { input, ...restProps } = props as ComponentMountableProps<InputSchema, TProps>
+    const location = useLocation()
     if (!this._hasLoader()) {
       return React.createElement(this._ComponentInner, {
         data: {} as FinalData<TData>,
@@ -1795,7 +1910,7 @@ export class Point0<
     // TODO: add it to this.useQeruy
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const mergedInput = { ...this._getInputByLocation(location), ...input }
+    const mergedInput = { ...this._getUnsafeInputRawByLocation(location), ...input }
     const queryKey = (this.getQueryKey as any)(mergedInput) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(
@@ -1821,7 +1936,7 @@ export class Point0<
 
   _LayoutInner: React.ComponentType<{
     children: React.ReactNode
-    location: Route0.Location<CurrentRoute<TRoute>>
+    location: ChildrenLocation<CurrentRoute<TRoute>> | ExactLocation<CurrentRoute<TRoute>>
     data: FinalData<TData>
   }> = ({ children, location, data }) => {
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -1886,7 +2001,9 @@ export class Point0<
     if (!this._hasLoader()) {
       return React.createElement(this._LayoutInner, {
         data: {} as FinalData<TData>,
-        location: useLocation<CurrentRoute<TRoute>>(),
+        location: useLocation<CurrentRoute<TRoute>>() as
+          | ChildrenLocation<CurrentRoute<TRoute>>
+          | ExactLocation<CurrentRoute<TRoute>>,
         children,
       })
     }
@@ -1897,7 +2014,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const input = this._getInputByLocation(location)
+    const input = this._getUnsafeInputRawByLocation(location)
     const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
@@ -1937,7 +2054,11 @@ export class Point0<
     if (!result.data) {
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location })
     }
-    return React.createElement(this._LayoutInner, { data: result.data as FinalData<TData>, location, children })
+    return React.createElement(this._LayoutInner, {
+      data: result.data as FinalData<TData>,
+      location: location as ChildrenLocation<CurrentRoute<TRoute>> | ExactLocation<CurrentRoute<TRoute>>,
+      children,
+    })
   }
 
   _ClientCtxReactContext: React.Context<FinalClientData<TData, TClientData>> = React.createContext<
@@ -1946,7 +2067,7 @@ export class Point0<
 
   _ClientCtxProviderInner: React.ComponentType<{
     children: React.ReactNode
-    location: Route0.Location<CurrentRoute<TRoute>>
+    location: AnyLocation
     data: FinalData<TData>
   }> = ({ children, location, data }) => {
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -1986,7 +2107,11 @@ export class Point0<
       void (async () => {
         setLoading(true)
         try {
-          const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
+          const { clientData } = await this._extractClientAsync({
+            data,
+            location: location as AnyLocation<CurrentRoute<TRoute>>,
+            skipHeads: true,
+          })
           setClientData(clientData)
           setLoading(false)
         } catch (error) {
@@ -2023,7 +2148,7 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const input = this._getInputByLocation(location)
+    const input = this._getUnsafeInputRawByLocation(location)
     const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
@@ -2083,7 +2208,8 @@ export class Point0<
     const route = this._getRoute()
     const { routeParams, routeQuery, inputSelf } = (() => {
       const { query: routeQuery, ...restInput } = input
-      const paramsKeys = Object.keys(route.paramsDefinition)
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const paramsKeys = Object.keys(route.paramsDefinition || {})
       const routeParams = paramsKeys.reduce<Record<string, string>>((acc, key) => {
         acc[key] = input[key]
         return acc
@@ -2131,11 +2257,6 @@ export class Point0<
   }) as never as FetchFn<TRoute, TInputSchema, TResponseOutput, TData>
 
   extract = (async (eversionRun: EversionRun<TRequiredCtx>, input: Record<string, any> = {}) => {
-    if (process.env.CLIENT_ONLY) {
-      throw new Error(
-        'Extract is not available on client, call it inside server points fn like ctx or loader. In client you should use fetch() instead',
-      )
-    }
     return await eversionRun.extract({
       point: this as never,
       input,
@@ -2193,21 +2314,28 @@ export class Point0<
     return useMutation((this.getMutationOptions as any)(mutationOptions, fetchOptions) as never) as never
   }) as never as UseMutationFn<TRoute, TInputSchema, TResponseOutput, TData>
 
-  prefetchQuery = (async ({
-    queryClient,
-    queryOptions: providedQueryOptions,
-    fetchOptions,
-    location,
-    input,
-    force,
-  }: {
-    queryClient: QueryClient
-    queryOptions?: QueryOptions
-    fetchOptions?: FetchOptions
-    location?: Route0.Location
-    input?: Record<string, any>
-    force?: boolean
-  }): Promise<void> => {
+  prefetchQuery = (async (...args): Promise<void> => {
+    const {
+      input,
+      options: { queryClient, queryOptions: providedQueryOptions, fetchOptions, force },
+    } = ((): {
+      input: Record<string, any>
+      options: { queryClient: QueryClient; queryOptions?: QueryOptions; fetchOptions?: FetchOptions; force?: boolean }
+    } => {
+      if (args[0] && 'queryClient' in args[0]) {
+        return {
+          input: {},
+          options: args[0] as never,
+        }
+      }
+      if (args[1] && 'queryClient' in args[1]) {
+        return {
+          input: args[0] || {},
+          options: args[1] as never,
+        }
+      }
+      throw new Error('Invalid arguments')
+    })()
     if (!this._hasLoader()) {
       return
     }
@@ -2215,14 +2343,10 @@ export class Point0<
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }
-    const queryOptions = (this.getQueryOptions as any)(
-      {
-        ...(location ? this._getInputByLocation(location) : {}),
-        ...input,
-      } as never,
-      providedQueryOptions,
-      fetchOptions,
-    ) as QueryOptions<FetchOutput<TResponseOutput, TData>, Error0>
+    const queryOptions = (this.getQueryOptions as any)(input, providedQueryOptions, fetchOptions) as QueryOptions<
+      FetchOutput<TResponseOutput, TData>,
+      Error0
+    >
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {

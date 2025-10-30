@@ -1,3 +1,4 @@
+import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { BaseLocationHook, LinkProps } from 'wouter'
@@ -46,7 +47,7 @@ export const Router = ({
   status,
   children,
 }: {
-  ssrLocation?: Route0.Location | undefined
+  ssrLocation?: AnyLocation | undefined
   pagesTree: PagesTree
   Page404?: React.ComponentType
   policy?: RouterPolicy
@@ -65,7 +66,7 @@ export const Router = ({
 
   const routes = useMemo(() => _toRoutesCollection({ pagesTree }), [pagesTree])
 
-  const useAdapterLocation = useCallback(() => {
+  const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
     const match = _getRouteMatch(routes, Route0.getLocation(wouterLocation))
     return match?.location ?? Route0.getLocation(wouterLocation)
@@ -75,7 +76,7 @@ export const Router = ({
     <WouterRouter {...wouterRouterProps}>
       <RouterContextProvider
         pagesTree={pagesTree}
-        useAdapterLocation={useAdapterLocation as UseAdapterLocationFn}
+        useAdapterLocation={useAdapterLocation}
         routes={routes}
         ssrLocation={ssrLocation}
         policy={policy}
@@ -101,7 +102,7 @@ const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
-const compileRouteToRegex = (route: Route0.AnyRoute) => {
+const compileRouteToRegex = (route: AnyRoute) => {
   return route
     .getDefinition()
     .replace(/\/+$/, '') // remove trailing slash
@@ -109,7 +110,7 @@ const compileRouteToRegex = (route: Route0.AnyRoute) => {
     .replace(/:(\w+)/g, '([^/]+)') // replace :param with capture group
 }
 // Combine multiple route definitions into a single regex
-const combineRoutesToRegex = (routes: Route0.AnyRoute[]) => {
+const combineRoutesToRegex = (routes: AnyRoute[]) => {
   const compiled = routes.map((r) => compileRouteToRegex(r))
   const pattern = `^(${compiled.join('|')})(?:/|$)`
   return new RegExp(pattern)
