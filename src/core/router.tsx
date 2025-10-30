@@ -188,7 +188,6 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       ctx.setStatus('fetching')
 
       try {
-        console.log('prefetching', location)
         await _prefetchSuitablePagePointWithLayouts({
           pagesTree: ctx.pagesTree,
           location,
@@ -470,8 +469,8 @@ export const _toPagesTreeFromPagesAndLayouts = ({
     nestedPagesTree: [],
   }
   const pagesTree: PagesTree = [
-    ...(noLayoutTree.pages.length > 0 ? [noLayoutTree] : []),
     ...layouts.flatMap((l) => buildLayoutTree(l) ?? []),
+    ...(noLayoutTree.pages.length > 0 ? [noLayoutTree] : []),
   ]
   return pagesTree
 }

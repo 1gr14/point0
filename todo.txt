@@ -1,4 +1,3 @@
-Routes.create, and remove _getRouteMatch form router
 use this.fetch() and this.useQuery() in .page(), .component(), .layout()
 points provider, and on useLocation get knownLocation
 layout provides Layout component, That can be just used and it will work

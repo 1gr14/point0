@@ -22,7 +22,6 @@ import type {
   Id,
   InputParsed,
   Method,
-  QueryKey,
   RequiredCtx,
   ResponseOutput,
   RootConnectedPoint,
@@ -30,7 +29,6 @@ import type {
   RootPoint,
   RootSourcePoint,
   UndefinedCtx,
-  UndefinedId,
   UndefinedResponseOutput,
   UndefinedRoute,
 } from './types.js'
@@ -670,7 +668,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         point._pointType === 'client-ctx' ||
         point._pointType === 'component')
     ) {
-      const queryKey: QueryKey = point.getQueryKey(input)
+      const queryKey = point.getQueryKey(input)
       const query = this.queryClient.getQueryCache().build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
       if (error) {
         query.setState({

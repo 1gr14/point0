@@ -1,14 +1,13 @@
 import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useMemo } from 'react'
-import type { BaseLocationHook, LinkProps } from 'wouter'
+import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import type { BrowserLocationHook } from 'wouter/use-browser-location'
 import type { PagesTree, RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _toRoutesCollection, _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
-// TODO: make router provide in global context all its helpers and we will get it from main router package
+// TODO: allow createLink or createHelpers to provide routes type and use <Link to="routeName" param1="value1" param2="value2" />
 
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
@@ -17,8 +16,8 @@ const _useNavigate = () => {
 }
 export const useNavigate = _wrapUseNavigate(_useNavigate)
 
-export const Link = <H extends BaseLocationHook = BrowserLocationHook>(props: LinkProps<H>) => {
-  const { to, href, onClick, replace, ...rest } = props as LinkProps
+export const Link = (props: LinkProps) => {
+  const { to, href, onClick, replace, ...rest } = props
   const navigate = useNavigate()
   const finalHref = to || href
   return (
@@ -102,11 +101,12 @@ const DefaultPage404 = () => {
 }
 
 const compileRouteToRegex = (route: AnyRoute) => {
-  return route
+  const result = route
     .getDefinition()
     .replace(/\/+$/, '') // remove trailing slash
     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex special chars
     .replace(/:(\w+)/g, '([^/]+)') // replace :param with capture group
+  return result || '/'
 }
 // Combine multiple route definitions into a single regex
 const combineRoutesToRegex = (routes: AnyRoute[]) => {

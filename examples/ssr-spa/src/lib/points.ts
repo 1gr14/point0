@@ -14,6 +14,12 @@ export const points = [
   },
   {
     type: 'page',
+    id: 'emptyPage',
+    route: '/empty',
+    point: async () => (await import('../pages/empty.js')).empty,
+  },
+  {
+    type: 'page',
     id: 'ideasPage',
     route: '/ideas',
     point: async () => (await import('../pages/ideas.js')).default,
