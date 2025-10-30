@@ -168,6 +168,8 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       const href = args[0]
       const location = ctx.routes._.getLocation(href)
       ctx.setNextLocation(location)
+
+      // simple mode
       if (ctx.policy === 'simple') {
         ctx.setStatus('idle')
 
@@ -182,7 +184,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
         }
       }
 
-      // PREFETCH MODE
+      // prefetch mode
       ctx.setStatus('fetching')
 
       try {
