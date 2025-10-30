@@ -1716,13 +1716,13 @@ export class Point0<
   ): void => {
     // Safe to do during render in SSR (pattern used by CSS-in-JS)
     const registeredRef = React.useRef(false)
-    const { queryCache } = this.useQueryCache(input)
-    const isFetched = queryCache?.state.status === 'error' || queryCache?.state.status === 'success'
     const ssrNonfetchedPointsCollectorContext = React.useContext(Point0._SsrNonfetchedPointsCollectorContext)
-    if (isFetched) {
-      return
-    }
     if (ssrNonfetchedPointsCollectorContext?.register && !registeredRef.current) {
+      const { queryCache } = this.useQueryCache(input)
+      const isFetched = queryCache?.state.status === 'error' || queryCache?.state.status === 'success'
+      if (isFetched) {
+        return
+      }
       registeredRef.current = true
       ssrNonfetchedPointsCollectorContext.register(this as never, input)
     }
@@ -1807,22 +1807,10 @@ export class Point0<
     const input = this._getUnsafeInputRawByLocation(location)
     const { queryKey, queryCache } = this.useQueryCache(input)
     this._useRegisterSelfInSsrNonfetchedPointsCollector(input)
-    const result = useQuery<TData>({
+    const result = useQuery({
       queryKey,
       queryFn: async () => {
-        const fetchOptions = this._fetchOptions()
-        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-        const res = await fetch(location.pathname, {
-          ...fetchOptions,
-          headers,
-        })
-        const json = await res.json()
-        if (res.ok) {
-          return json
-        }
-        throw Error0.from(json, {
-          httpStatus: res.status,
-        })
+        return await this.fetch(input)
       },
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       retry: false,
@@ -2012,39 +2000,26 @@ export class Point0<
   }
 
   _Layout: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+    const location = useLocation<CurrentRoute<TRoute>>()
+
     if (!this._hasLoader()) {
       return React.createElement(this._LayoutInner, {
         data: {} as FinalData<TData>,
-        location: useLocation<CurrentRoute<TRoute>>() as
-          | ChildrenLocation<CurrentRoute<TRoute>>
-          | ExactLocation<CurrentRoute<TRoute>>,
+        location: location as ChildrenLocation<CurrentRoute<TRoute>> | ExactLocation<CurrentRoute<TRoute>>,
         children,
       })
     }
 
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
-    const location = useLocation<CurrentRoute<TRoute>>()
     const input = this._getUnsafeInputRawByLocation(location)
     const { queryKey, queryCache } = this.useQueryCache(input)
     const isInitalSsrLocation = useIsInitalSsrLocation()
     this._useRegisterSelfInSsrNonfetchedPointsCollector(input)
-    const result = useQuery<TData>({
+    const result = useQuery({
       queryKey,
       queryFn: async () => {
-        const fetchOptions = this._fetchOptions()
-        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-        const res = await fetch(location.pathname, {
-          ...fetchOptions,
-          headers,
-        })
-        const json = await res.json()
-        if (res.ok) {
-          return json
-        }
-        throw Error0.from(json, {
-          httpStatus: res.status,
-        })
+        return await this.fetch(input)
       },
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       retry: false,
@@ -2161,22 +2136,10 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const { queryCache, queryKey } = this.useQueryCache(input)
     this._useRegisterSelfInSsrNonfetchedPointsCollector(input)
-    const result = useQuery<TData>({
+    const result = useQuery({
       queryKey,
       queryFn: async () => {
-        const fetchOptions = this._fetchOptions()
-        const headers = mergeHeaders(fetchOptions.headers, { Accept: 'application/json' })
-        const res = await fetch(location.pathname, {
-          ...fetchOptions,
-          headers,
-        })
-        const json = await res.json()
-        if (res.ok) {
-          return json
-        }
-        throw Error0.from(json, {
-          httpStatus: res.status,
-        })
+        return await this.fetch(input)
       },
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       retry: false,

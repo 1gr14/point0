@@ -93,13 +93,12 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
 ) {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useLocation must be used within RouterContextProvider')
-  if (!route) {
-    return location ?? ctx.currentLocation
-  }
-  return useMemo(
-    () => Route0.create(route).getLocation(location ?? ctx.currentLocation) as KnownLocation<TRoute>,
-    [route, location, ctx.currentLocation],
-  )
+  return useMemo(() => {
+    if (!route) {
+      return ctx.routes._.getLocation(location ?? ctx.currentLocation) as AnyLocation
+    }
+    return Route0.create(route).getLocation(location ?? ctx.currentLocation) as KnownLocation<TRoute>
+  }, [route, location, ctx.currentLocation, ctx.routes])
 }
 
 export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
