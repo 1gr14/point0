@@ -8,16 +8,19 @@ export const points = [
   // but in pages for spa application we will import it with lazy loading
   {
     type: 'page',
+    id: 'homePage',
     route: '/',
     point: async () => (await import('../pages/home.js')).default,
   },
   {
     type: 'page',
+    id: 'ideasPage',
     route: '/ideas',
     point: async () => (await import('../pages/ideas.js')).default,
   },
   {
     type: 'page',
+    id: 'newIdeaPage',
     route: '/ideas/new',
     point: async () => (await import('../pages/idea-create.js')).default,
   },
@@ -38,25 +41,27 @@ export const points = [
   },
   {
     type: 'page',
+    id: 'ideaPage',
     route: '/ideas/:id',
     point: async () => (await import('../pages/idea.js')).default,
   },
   {
     type: 'page',
+    id: 'ideaNewsPage',
     route: '/ideas/:id/news',
     point: async () => (await import('../pages/idea-news.js')).default,
   },
   {
     type: 'layout',
+    id: 'generalLayout',
     route: '/',
-    id: 'general-layout',
     point: async () => (await import('../layouts/general.js')).generalLayout,
     layoutPagesRoutes: ['/', '/ideas', '/ideas/new', '/ideas/:id', '/ideas/:id/news'],
   },
   {
     type: 'layout',
+    id: 'ideaLayout',
     route: '/ideas/:id',
-    id: 'idea-layout',
     point: async () => (await import('../layouts/idea.js')).ideaLayout,
     layoutPagesRoutes: ['/ideas/:id', '/ideas/:id/news'],
   },

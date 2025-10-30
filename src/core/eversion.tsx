@@ -93,7 +93,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     points?: PointsCollection | LoadedPointsCollection,
   ): Promise<LoadedPointsCollection> {
     return await Promise.all(
-      points?.map(async (record) => {
+      points?.map(async (record, index) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
         const [point] = await Promise.all([pointPromise])
         const { route, serverRoute, id, type, layoutPagesRoutes } = (() => {
@@ -109,41 +109,39 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           const clientRoute = point._getClientRoute()
           const serverRoute = point._getServerRoute()
           if (point._hasLoader() && !serverRoute) {
-            throw new Error('No server route provided for point with loader')
+            throw new Error(`No server route provided for point with loader. Index: ${index}.`)
           }
           if (point._pointType === 'page' && !clientRoute) {
-            throw new Error('No client route provided for page point')
+            throw new Error(`No client route provided for page point. Index: ${index}.`)
           }
           const clientRouteDefinition = clientRoute?.getDefinition()
           const recordRouteDefinition = record.route ? Route0.create(record.route).getDefinition() : undefined
           if (clientRouteDefinition !== recordRouteDefinition) {
             throw new Error(
-              'Client route definition does not match record route definition. Forget to regenerate points file?',
+              `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${clientRouteDefinition}. Record route definition: ${recordRouteDefinition}.`,
             )
           }
           const pointId = record.id
           const recordId = record.id
           if (pointId !== recordId) {
-            throw new Error('Point id does not match record id. Forget to regenerate points file?')
+            throw new Error(
+              `Point id does not match record id. Forget to regenerate points file?. Index: ${index}. Point id: ${pointId}. Record id: ${recordId}.`,
+            )
           }
           const recordType = record.type
           const pointType = point._pointType
           if (recordType !== pointType) {
-            throw new Error('Record type does not match point type. Forget to regenerate points file?')
-          }
-          const recordLayoutPagesRoutes = record.layoutPagesRoutes ?? []
-          const pointLayoutPagesRoutes = point._layoutPagesRoutes.map((r) => r.getDefinition())
-          if (recordLayoutPagesRoutes.join(',') !== pointLayoutPagesRoutes.join(',')) {
             throw new Error(
-              'Record layout pages routes does not match point layout pages routes. Forget to regenerate points file?',
+              `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. Record type: ${recordType}. Point type: ${pointType}.`,
             )
           }
+          const recordLayoutPagesRoutes = record.layoutPagesRoutes ?? []
           return {
             route: clientRoute,
             serverRoute,
             id: pointId,
             type: pointType,
-            layoutPagesRoutes: pointLayoutPagesRoutes,
+            layoutPagesRoutes: recordLayoutPagesRoutes,
           }
         })()
         // TODO: also validate that provided record is actual
@@ -639,9 +637,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (isCurcular) {
         return
       }
-      await nonfetchedRecord.point.extract(this, {
-        ...nonfetchedRecord.point._getUnsafeInputRawByLocation(this.location),
-      })
+      await nonfetchedRecord.point.extract(this, nonfetchedRecord.input)
       fetchedRecords.push(nonfetchedRecord)
     }
 

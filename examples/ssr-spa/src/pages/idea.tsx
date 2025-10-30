@@ -15,6 +15,7 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 
 export const ideaPage = ideaLayout
   .lets('page')
+  .id('ideaPage')
   .route(routes.idea)
   .loader(async ({ ctx, input }) => {
     // it excutes on server, but defined in client file,

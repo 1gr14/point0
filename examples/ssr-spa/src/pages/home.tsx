@@ -1,15 +1,13 @@
-import { generalLayout } from '../layouts/general.js'
 import { Link } from 'point0/adapters/wouter'
-import { routes } from '../lib/routes.js'
+import z from 'zod'
+import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
-import { Route0 } from '@devp0nt/route0'
-import z from 'zod'
+import { routes } from '../lib/routes.js'
 
 export const BestIdeaComponent = client
   .lets('component') // TODO: route and id may be right inside lets?
   .id('bestIdea')
-  .route(Route0.create('/ideas/best'))
   .input(z.object({ x: z.coerce.number() }))
   .loader(async ({ ctx, input }) => ({
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
@@ -31,6 +29,7 @@ export const BestIdeaComponent = client
 
 export default generalLayout
   .lets('page')
+  .id('home')
   .route(routes.home)
   .head({
     title: 'IdeaNick Forever!',

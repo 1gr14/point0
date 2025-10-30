@@ -1358,9 +1358,6 @@ export class Point0<
       TProps
     >
   } {
-    if (!this._route) {
-      throw new Error('add .route() to chain to use .component() function')
-    }
     const point = this._continue<
       'component',
       UndefinedEndPointType,
@@ -1609,21 +1606,21 @@ export class Point0<
   _getClientRouteForce = (): NonNullable<TRoute> => {
     const route = this._getClientRoute()
     if (!route) {
-      throw new Error('No client route provided for this point')
+      throw new Error(`No client route provided for this point. Id: ${this._id}.`)
     }
     return route
   }
 
   _getServerRoute = (): AnyRoute | undefined => {
     if (this._id) {
-      return Route0.create(`/_point0/${this._rootId}/id/${this._id}`)
+      return Route0.create(`/_point0/${this._rootId}/${this._id}`)
     }
     return undefined
   }
   _getServerRouteForce = (): AnyRoute => {
     const route = this._getServerRoute()
     if (!route) {
-      throw new Error('No server route provided for this point')
+      throw new Error(`No server route provided for this point. Id: ${this._id}.`)
     }
     return route
   }
@@ -1705,13 +1702,17 @@ export class Point0<
 
   _getSelfLocationByAnotherLocation(location: AnyLocation): KnownLocation<CurrentRoute<TRoute>> {
     const route = this._getClientRouteForce()
-    return route.getLocation(location) as KnownLocation<CurrentRoute<TRoute>>
+    return route.getLocation(route.flat({ ...location.searchParams, ...location.params })) as KnownLocation<
+      CurrentRoute<TRoute>
+    >
   }
 
   _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw<TRoute, TInputSchema> {
     const selfLocation = this._getSelfLocationByAnotherLocation(location)
-    if (!selfLocation.exact && !selfLocation.children) {
-      throw new Error('Location is not exact or children')
+    if (!selfLocation.exact) {
+      throw new Error(
+        `Location is not exact or children. Id: ${this._id}. Route: ${JSON.stringify(this._getClientRouteForce().getDefinition())}. Other Location: ${JSON.stringify(location)}. Self Location: ${JSON.stringify(selfLocation)}.`,
+      )
     }
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRoute, TInputSchema>
   }
@@ -1924,7 +1925,7 @@ export class Point0<
   }
 
   _Component: ComponentMountable<TInputSchema, TProps> = (props) => {
-    const { input, ...restProps } = props as ComponentMountableProps<InputSchema, TProps>
+    const { input = {}, ...restProps } = props as ComponentMountableProps<InputSchema, TProps>
     const location = useLocation()
     if (!this._hasLoader()) {
       return React.createElement(this._ComponentInner, {
@@ -1940,12 +1941,11 @@ export class Point0<
     // TODO: add it to this.useQeruy
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const mergedInput = { ...this._getUnsafeInputRawByLocation(location), ...input }
-    const queryKey = (this.getQueryKey as any)(mergedInput) as QueryKey
+    const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(
       query?.state.status === 'error' || query?.state.status === 'success',
-      mergedInput,
+      input,
     )
 
     if (result.error) {
@@ -2172,13 +2172,14 @@ export class Point0<
       })
     }
 
+    // TODO: allow input as prop
+    const input = {}
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const location = useLocation<CurrentRoute<TRoute>>()
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const input = this._getUnsafeInputRawByLocation(location)
     const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
     this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
@@ -2326,6 +2327,14 @@ export class Point0<
     return useMutation((this.getMutationOptions as any)(mutationOptions, fetchOptions) as never) as never
   }) as never as UseMutationFn<TRoute, TInputSchema, TResponseOutput, TData>
 
+  _prefetchQueryByLocation = async (
+    location: AnyLocation,
+    options: { queryClient: QueryClient; queryOptions?: QueryOptions; fetchOptions?: FetchOptions; force?: boolean },
+  ): Promise<void> => {
+    const input = this._getUnsafeInputRawByLocation(location)
+    await (this.prefetchQuery as any)(input, options)
+  }
+
   prefetchQuery = (async (...args): Promise<void> => {
     const {
       input,
@@ -2348,6 +2357,7 @@ export class Point0<
       }
       throw new Error('Invalid arguments')
     })()
+    console.log('prefetchQuery', this._id, args, input)
     if (!this._hasLoader()) {
       return
     }

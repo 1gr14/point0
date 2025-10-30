@@ -1,17 +1,15 @@
-TPendingEndPointType, _pendingEndPointType
-coorrect extend fns args based on location
-input is something that comes on server, location is page location
-.input() always requires zod schema
-input defined on .route()
-route string that extends previous route, or fully overridable Route0
-? on send input previously we extract only needed by input schema
+Routes.create, and remove _getRouteMatch form router
 use this.fetch() and this.useQuery() in .page(), .component(), .layout()
 points provider, and on useLocation get knownLocation
+layout provides Layout component, That can be just used and it will work
+also page provides Page component that will just work
 
-
-auth
+simplify prefetchQuery, use it only for usual prefetch by hands of user
+but create prefetchPage, which sen request to server, awaits for like usual render, anr returns dehydrated state, so we just add it to ur state and go
 
 points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
+
+auth
 
 expo example
 expo router

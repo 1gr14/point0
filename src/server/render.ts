@@ -233,11 +233,11 @@ export async function renderReadableStream({
 
 export async function renderAppAsReadableStream({
   App,
-  run,
+  eversionRun,
   ...props
 }: {
   App: HydratedAppComponent
-  run: EversionRun
+  eversionRun: EversionRun
   location: AnyLocation
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
@@ -245,18 +245,18 @@ export async function renderAppAsReadableStream({
   originalIndexHtml: string
   rootElementId?: string
 }): Promise<ReadableStream> {
-  await run.prefetchAppPoints({
+  await eversionRun.prefetchAppPoints({
     App,
     renderToReadableStream,
   })
   const element = createElement(App, {
-    ssrLocation: run.location,
-    pagesTree: toPagesTree({ points: run.eversion.points }),
-    dehydratedState: run.getQueryClientDehydratedState(),
+    ssrLocation: eversionRun.location,
+    pagesTree: toPagesTree({ points: eversionRun.eversion.points }),
+    dehydratedState: eversionRun.getQueryClientDehydratedState(),
   })
   return await renderReadableStream({
     ...props,
     element,
-    dehydratedState: run.getQueryClientDehydratedState(),
+    dehydratedState: eversionRun.getQueryClientDehydratedState(),
   })
 }

@@ -187,6 +187,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       ctx.setStatus('fetching')
 
       try {
+        console.log('prefetching', location)
         await _prefetchSuitablePagePointWithLayouts({
           pagesTree: ctx.pagesTree,
           location,
@@ -346,7 +347,7 @@ export const _prefetchSuitablePagePointWithLayouts = async ({
   await Promise.all(
     points.map(async (p) => {
       // TODO: if page or layout has not SELF loaders but only nested loaders, then prefetch only nested and to query cache add its result
-      await p.prefetchQuery({ queryClient, location })
+      await p._prefetchQueryByLocation(location, { queryClient })
     }),
   )
 
@@ -502,6 +503,7 @@ export const _toLoggablePagesTree = (pagesTree: PagesTree): object => {
   })
 }
 
+// TODO: replace with routes collection
 export const _getRouteMatch = (
   routes: RoutesCollection,
   location: AnyLocation,

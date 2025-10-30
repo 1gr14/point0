@@ -45,6 +45,7 @@ export const generateIdeaMutation = client
 
 export default generalLayout
   .lets('page')
+  .id('newIdeaPage')
   .route(routes.newIdea)
   .title('New Idea')
   .page(() => {
