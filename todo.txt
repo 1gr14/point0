@@ -1,6 +1,7 @@
-ssr register with input
+refactor route0: rename query, etc. add helpers, StricQueryTypes
 route string
 input defined on route
+on send input previously we extract only needed by input schema
 use this.fetch() and this.useQuery() in .page(), .component(), .layout()
 
 
@@ -26,6 +27,7 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 .disable()
 preventSsr
 .route(string)
+static headsh should be also merged one to another, becouse of blinking
 points collection allow to route: undefined, hasLoader undefined we can know on server after loading points
 remove id route is enough
 ? inputs chema not needed, just input enough. No! Becouse we can have route whch defines part of input, but we can have no input schema. Or Yes! And when we define route we also define input schema, and new input schema should have same keys or more kike route
@@ -42,7 +44,7 @@ find unused code
 .loadingMeta() for client async client loaders
 asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
-refactor route0
+route0 if ens with "...&" then can be any query, else only provided type of queries
 refactor error0
 remove wrapper
 html template parsing by provided vars
@@ -51,6 +53,7 @@ route0 respect origin on match and try two clients with one server
 .extendRoute()
 remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
 analyze if there same id points or route points
+input even in
 superjson
 prefetch on Link hover
 make components and pages named in react dev tools

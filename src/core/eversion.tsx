@@ -543,20 +543,20 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async prefetchAppPoints({
     App,
     renderToReadableStream,
-    allFetchedPoints = [],
+    allFetchedRecords = [],
   }: {
     App: HydratedAppComponent
     renderToReadableStream: typeof RenderToReadableStream
-    allFetchedPoints?: AnyPoint[]
+    allFetchedRecords?: FetchPointRecord[]
   }): Promise<void> {
     const pagesTree = toPagesTree({ points: this.eversion.points })
-    const nonfetchedPoints: AnyPoint[] = []
+    const nonfetchedRecords: FetchPointRecord[] = []
 
-    const NonfetchedPointsCollectorContextProvider = ({
+    const NonfetchedRecordsCollectorContextProvider = ({
       register,
       children,
     }: {
-      register: (point: AnyPoint) => void
+      register: (point: AnyPoint, input: Record<string, any>) => void
       children: React.ReactNode
     }): React.ReactNode => {
       return (
@@ -568,42 +568,42 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
     // 1) First render to collect points
     const probeTree = (
-      <NonfetchedPointsCollectorContextProvider
-        register={(point) => {
-          nonfetchedPoints.push(point)
+      <NonfetchedRecordsCollectorContextProvider
+        register={(point, input) => {
+          nonfetchedRecords.push({ point, input })
         }}
       >
         <App ssrLocation={this.location} pagesTree={pagesTree} dehydratedState={this.getQueryClientDehydratedState()} />
-      </NonfetchedPointsCollectorContextProvider>
+      </NonfetchedRecordsCollectorContextProvider>
     )
     const stream = await renderToReadableStream(probeTree)
     await stream.allReady
-    const fetchedPoints: AnyPoint[] = []
+    const fetchedRecords: FetchPointRecord[] = []
 
-    for (const nonfetchedPoint of nonfetchedPoints) {
-      console.log('nonfetchedPoint', nonfetchedPoint._getRouteDefinition())
-      const isCurcular = allFetchedPoints.some((p) => p._getRouteDefinition() === nonfetchedPoint._getRouteDefinition())
+    for (const nonfetchedRecord of nonfetchedRecords) {
+      const isCurcular = allFetchedRecords.some(
+        ({ point }) => point._getRouteDefinition() === nonfetchedRecord.point._getRouteDefinition(),
+      )
       if (isCurcular) {
         return
       }
-      await nonfetchedPoint.extract(this, {
-        ...nonfetchedPoint._getInputByLocation(this.location),
+      await nonfetchedRecord.point.extract(this, {
+        ...nonfetchedRecord.point._getInputByLocation(this.location),
+        ...nonfetchedRecord.input,
       })
-      fetchedPoints.push(nonfetchedPoint)
+      fetchedRecords.push(nonfetchedRecord)
     }
 
-    console.log(nonfetchedPoints.length, fetchedPoints.length)
-
-    if (nonfetchedPoints.length === 0) {
+    if (nonfetchedRecords.length === 0) {
       return
     }
-    if (fetchedPoints.length !== nonfetchedPoints.length) {
+    if (fetchedRecords.length !== nonfetchedRecords.length) {
       return
     }
     await this.prefetchAppPoints({
       App,
       renderToReadableStream,
-      allFetchedPoints: [...allFetchedPoints, ...fetchedPoints],
+      allFetchedRecords: [...allFetchedRecords, ...fetchedRecords],
     })
   }
 
@@ -746,3 +746,5 @@ export type Payload = {
   dehydratedState: DehydratedState
   location: Route0.Location
 }
+
+type FetchPointRecord = { point: AnyPoint; input: Record<string, any> }

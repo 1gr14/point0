@@ -301,7 +301,6 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const searchParams = { ...qs.parse(url.search.slice(1)) } as Record<string, any>
       const routeParams = suitable.location.params
       const input = { ...searchParams, ...routeParams, ...body }
-      console.log('input', input)
       const extractResult = await run.extract({
         point: suitable.point,
         input,

@@ -18,7 +18,6 @@ import type {
   ComponentComponent,
   ComponentMountable,
   ComponentMountableProps,
-  ComponentWithPoint,
   Ctx,
   CtxFn,
   CurrentRoute,
@@ -1579,9 +1578,9 @@ export class Point0<
   }
 
   static _SsrNonfetchedPointsCollectorContext = React.createContext<{
-    register: (point: AnyPoint) => void
+    register: (point: AnyPoint, input: Record<string, any>) => void
   } | null>(null)
-  _useRegisterSelfInSsrNonfetchedPointsCollector = (isFetched: boolean): void => {
+  _useRegisterSelfInSsrNonfetchedPointsCollector = (isFetched: boolean, input: Record<string, any>): void => {
     const ssrNonfetchedPointsCollectorContext = React.useContext(Point0._SsrNonfetchedPointsCollectorContext)
     const registeredRef = React.useRef(false)
     if (isFetched) {
@@ -1590,7 +1589,7 @@ export class Point0<
     // Safe to do during render in SSR (pattern used by CSS-in-JS)
     if (ssrNonfetchedPointsCollectorContext?.register && !registeredRef.current) {
       registeredRef.current = true
-      ssrNonfetchedPointsCollectorContext.register(this as never)
+      ssrNonfetchedPointsCollectorContext.register(this as never, input)
     }
   }
 
@@ -1669,9 +1668,10 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location) }) as QueryKey
+    const input = this._getInputByLocation(location)
+    const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
     const result = useQuery<TData>({
       queryKey,
       queryFn: async () => {
@@ -1795,11 +1795,12 @@ export class Point0<
     // TODO: add it to this.useQeruy
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location), ...input }) as QueryKey
+    const mergedInput = { ...this._getInputByLocation(location), ...input }
+    const queryKey = (this.getQueryKey as any)(mergedInput) as QueryKey
     const query = cache.find({ queryKey })
-    console.log('query', query, queryKey)
     this._useRegisterSelfInSsrNonfetchedPointsCollector(
       query?.state.status === 'error' || query?.state.status === 'success',
+      mergedInput,
     )
 
     if (result.error) {
@@ -1896,9 +1897,10 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location) }) as QueryKey
+    const input = this._getInputByLocation(location)
+    const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
     const result = useQuery<TData>({
       queryKey,
       queryFn: async () => {
@@ -2021,9 +2023,10 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
-    const queryKey = (this.getQueryKey as any)({ ...this._getInputByLocation(location) }) as QueryKey
+    const input = this._getInputByLocation(location)
+    const queryKey = (this.getQueryKey as any)(input) as QueryKey
     const query = cache.find({ queryKey })
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query)
+    this._useRegisterSelfInSsrNonfetchedPointsCollector(!!query, input)
     const result = useQuery<TData>({
       queryKey,
       queryFn: async () => {
