@@ -1,11 +1,11 @@
 import type { AnyLocation, AnyRoute, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
+import { Routes, Route0 } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LoadedPointsCollection, PointsCollection } from './eversion.js'
-import type { LayoutPoint, PagePoint } from './types.js'
+import type { Id, LayoutPoint, PagePoint } from './types.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -21,14 +21,14 @@ export type UseOnNavigateFn = (
 export type UseIsInitalSsrLocationFn = () => boolean
 export type UseRouterPolicyFn = () => RouterPolicy
 
-type RouterContextValue = {
+type RouterContextValue<TRoutes extends Routes = Routes> = {
   ssrLocation: AnyLocation | undefined
   currentLocation: AnyLocation
   nextLocation: AnyLocation | undefined
   policy: RouterPolicy
   status: RouterStatus
   pagesTree: PagesTree
-  routes: RoutesCollection
+  routes: TRoutes
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
@@ -38,12 +38,12 @@ type RouterContextValue = {
 
 export const RouterContext = React.createContext<RouterContextValue | null>(null)
 
-export type RouterContextProviderProps = {
+export type RouterContextProviderProps<TRoutes extends Routes = Routes> = {
   children: React.ReactNode
   policy?: RouterPolicy
   status?: RouterStatus
   pagesTree?: PagesTree
-  routes: RoutesCollection
+  routes: TRoutes
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | undefined
 }
@@ -166,8 +166,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const rawLocation = Route0.getLocation(href)
-      const location = _getRouteMatch(ctx.routes, rawLocation)?.location || rawLocation
+      const location = ctx.routes.getLocation(href)
       ctx.setNextLocation(location)
       if (ctx.policy === 'simple') {
         ctx.setStatus('idle')
@@ -370,6 +369,7 @@ export const _toPagesAndLayoutsCollection = ({
     const point = record.point
     collection.layouts.push({
       type: 'layout',
+      id: record.id,
       route: Route0.create(record.route),
       point: point as LayoutPoint | (() => Promise<LayoutPoint>),
       layoutComponent:
@@ -388,6 +388,7 @@ export const _toPagesAndLayoutsCollection = ({
     const point = record.point
     collection.pages.push({
       type: 'page',
+      id: record.id,
       route: Route0.create(record.route),
       point: point as PagePoint | (() => Promise<PagePoint>),
       pageComponent:
@@ -436,9 +437,11 @@ export const _toPagesTreeFromPagesAndLayouts = ({
     const nestedLayoutsTrees = nestedLayouts.map((l) => buildLayoutTree(l, level + 1))
     const result: PagesTreeRecord = {
       route: layout.route,
+      id: layout.id,
       layoutComponent: layout.layoutComponent,
       layoutPoint: layout.point,
       pages: layoutPagesWhereThisLayoutIndexEqLevelAndIsLast.map((lp) => ({
+        id: lp.id,
         route: lp.route,
         pageComponent: lp.pageComponent,
         pagePoint: lp.point,
@@ -453,7 +456,9 @@ export const _toPagesTreeFromPagesAndLayouts = ({
 
   const noLayoutTree: PagesTreeRecord = {
     route: Route0.create('/'),
+    id: '_point0_no_layout_placeholder',
     pages: pagesWithoutLayouts.map((p) => ({
+      id: p.id,
       route: p.route,
       pageComponent: p.pageComponent,
       pagePoint: p.point,
@@ -474,12 +479,12 @@ export const toPagesTree = ({ points }: { points: PointsCollection | LoadedPoint
   return _toPagesTreeFromPagesAndLayouts({ pagesAndLayouts })
 }
 
-export const _toRoutesCollection = ({ pagesTree }: { pagesTree: PagesTree }): RoutesCollection => {
-  const routes: RoutesCollection = {}
+export const _toRoutesCollection = ({ pagesTree }: { pagesTree: PagesTree }): Routes => {
+  const routes: Record<string, AnyRoute> = {}
   const traverse = (node: PagesTreeRecord): void => {
     // Add all page routes
     for (const page of node.pages) {
-      routes[page.route.getDefinition()] = page.route
+      routes[page.id] = page.route
     }
     // Recurse into nested layout trees
     for (const child of node.nestedPagesTree) {
@@ -489,7 +494,7 @@ export const _toRoutesCollection = ({ pagesTree }: { pagesTree: PagesTree }): Ro
   for (const root of pagesTree) {
     traverse(root)
   }
-  return routes
+  return Routes.create(routes)
 }
 
 export const _toLoggablePagesTree = (pagesTree: PagesTree): object => {
@@ -503,25 +508,9 @@ export const _toLoggablePagesTree = (pagesTree: PagesTree): object => {
   })
 }
 
-// TODO: replace with routes collection
-export const _getRouteMatch = (
-  routes: RoutesCollection,
-  location: AnyLocation,
-): { route: AnyRoute; location: AnyLocation } | undefined => {
-  for (const route of Object.values(routes)) {
-    const match = route.getLocation(location)
-    if (match.exact) {
-      return {
-        route,
-        location: match,
-      }
-    }
-  }
-  return undefined
-}
-
 export type PagesCollectionRecord = {
   type: 'page'
+  id: Id
   route: AnyRoute
   point: PagePoint | (() => Promise<PagePoint>)
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
@@ -534,6 +523,7 @@ export type PagesCollection = PagesCollectionRecord[]
 
 export type LayoutsCollectionRecord = {
   type: 'layout'
+  id: Id
   route: AnyRoute
   point: LayoutPoint | (() => Promise<LayoutPoint>)
   layoutComponent:
@@ -550,12 +540,14 @@ export type PagesAndLayoutsCollection = {
 
 export type PagesTreeRecord = {
   route: AnyRoute
+  id: Id
   layoutPoint: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
   layoutComponent:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
   pages: Array<{
+    id: Id
     route: AnyRoute
     pagePoint: PagePoint | (() => Promise<PagePoint>)
     pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
@@ -563,5 +555,3 @@ export type PagesTreeRecord = {
   nestedPagesTree: PagesTreeRecord[]
 }
 export type PagesTree = PagesTreeRecord[]
-
-export type RoutesCollection = Record<string, AnyRoute>

@@ -5,7 +5,7 @@ import type { BaseLocationHook, LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 import type { PagesTree, RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
-import { _getRouteMatch, _toRoutesCollection, _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
+import { _toRoutesCollection, _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 // TODO: make router provide in global context all its helpers and we will get it from main router package
@@ -68,8 +68,7 @@ export const Router = ({
 
   const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
-    const match = _getRouteMatch(routes, Route0.getLocation(wouterLocation))
-    return match?.location ?? Route0.getLocation(wouterLocation)
+    return Route0.getLocation(wouterLocation)
   }, [routes])
 
   return (

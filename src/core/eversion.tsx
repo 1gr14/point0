@@ -205,9 +205,6 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (pointType && point._pointType !== pointType) {
         continue
       }
-      if (point._method && providedMethod.toLowerCase() !== point._method.toLowerCase()) {
-        continue
-      }
       const serverLocation = serverRoute?.getLocation(location)
       if (serverLocation?.exact) {
         return {
@@ -731,7 +728,7 @@ export type FillPageResult = {
 
 export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
-  id?: Id | UndefinedId
+  id: Id
   route?: string | undefined
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
   layoutPagesRoutes?: string[]
@@ -739,7 +736,7 @@ export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPoint
 export type PointsCollection = PointsCollectionRecord[]
 export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
-  id: Id | UndefinedId
+  id: Id
   route: AnyRoute | UndefinedRoute
   serverRoute: AnyRoute | UndefinedRoute
   point: EndPoint<TEndPointType>

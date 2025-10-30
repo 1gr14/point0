@@ -12,7 +12,6 @@ import { Route0 } from '@devp0nt/route0'
 import type { MutationOptions, QueryClient, QueryOptions, UseQueryResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
-import qs from 'qs'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
@@ -61,7 +60,6 @@ import type {
   LayoutPoint,
   LoaderComponentType,
   LoaderFn,
-  Method,
   PageComponent,
   PointType,
   PrefetchQueryFn,
@@ -83,7 +81,6 @@ import type {
   UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
   UndefinedLayoutComponent,
-  UndefinedMethod,
   UndefinedPageComponent,
   UndefinedProps,
   UndefinedResponseOutput,
@@ -144,7 +141,6 @@ export class Point0<
   _layoutPagesRoutes: AnyRoute[]
   _id: Id | UndefinedId
   _unstableId: number
-  _method: Method | UndefinedMethod
   _fetchOptions: FetchOptionsFn
 
   _errorComponent: ErrorComponentType
@@ -180,7 +176,6 @@ export class Point0<
     _layouts?: LayoutPoint[]
     _layoutPagesRoutes?: AnyRoute[]
     _id?: Id | UndefinedId
-    _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
     _errorComponent?: ErrorComponentType
     _pageErrorComponent?: ErrorComponentType<'page'>
@@ -219,7 +214,6 @@ export class Point0<
     this._layouts = props._layouts ?? []
     this._layoutPagesRoutes = props._layoutPagesRoutes ?? []
     this._id = props._id
-    this._method = props._method ?? (undefined as Method | UndefinedMethod)
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
     this._errorComponent =
       props._errorComponent ??
@@ -277,7 +271,6 @@ export class Point0<
     _component?: ComponentComponent | UndefinedComponentComponent
     _layout?: LayoutComponent | UndefinedLayoutComponent
     _id?: Id | UndefinedId
-    _method?: Method | UndefinedMethod
     _fetchOptions?: FetchOptionsFn
     _errorComponent?: ErrorComponentType
     _pageErrorComponent?: ErrorComponentType<'page'>
@@ -354,7 +347,6 @@ export class Point0<
       _layout: (overrides._layout ?? undefined) as LayoutComponent<TData, TClientData, TRoute> | undefined, // remove end artefact on continue
       _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint], // add layout to self layouts on continue
       _id: overrides._id ?? (wasEndPoint || this._pointType === 'base' ? undefined : this._id), // remove stale artefact on continue
-      _method: overrides._method ?? (wasEndPoint ? undefined : this._method), // remove stale artefact on continue
       _fetchOptions:
         overrides._fetchOptions ??
         (wasEndPoint ? (this._base ? this._base._fetchOptions : this._fetchOptions) : this._fetchOptions),
@@ -959,7 +951,6 @@ export class Point0<
   //     _inputSchema,
   //     _layout,
   //     _loaderComponent,
-  //     _method,
   //     _page,
   //     _pageErrorComponent,
   //     _pageLoaderComponent,
@@ -2242,15 +2233,15 @@ export class Point0<
       throw new Error('No source base url provided for this point')
     }
     const url = new URL(this._getServerRouteForce().get(), this._sourceBaseUrl)
-    const method = this._method || 'post'
+    const method = 'post'
 
     let body: string | undefined = undefined
-    if (method === 'get' || method === 'head' || method === 'options') {
-      url.searchParams.append('_point0_input', stringify(input))
-    } else {
-      headers.set('Content-Type', 'application/json')
-      body = stringify(input)
-    }
+    // if (method === 'get' || method === 'head' || method === 'options') {
+    //   url.searchParams.append('_point0_input', stringify(input))
+    // } else {
+    headers.set('Content-Type', 'application/json')
+    body = stringify(input)
+    // }
     const res = await fetch(url.toString(), {
       ...fetchOptions,
       headers,
