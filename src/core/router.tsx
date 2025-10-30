@@ -166,7 +166,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = ctx.routes.getLocation(href)
+      const location = ctx.routes._.getLocation(href)
       ctx.setNextLocation(location)
       if (ctx.policy === 'simple') {
         ctx.setStatus('idle')
