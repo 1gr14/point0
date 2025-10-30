@@ -12,6 +12,7 @@ export const server = Point0.source('server')
     env: process.env,
     Bun,
   })
+  .base()
 // .loader(async ({ ctx }) => {
 //   return { ideasCount: await ctx.prisma.idea.count() }
 // })

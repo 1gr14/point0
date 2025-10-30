@@ -2,6 +2,7 @@ import { ideaLayout } from '../layouts/idea.js'
 import { routes } from '../lib/routes.js'
 
 export const ideasNewsPage = ideaLayout
+  .lets('page')
   .route(routes.ideaNews)
   .title(({ data: { idea } }) => `${idea.news.length} news for idea "${idea.title}"`)
   .page(({ data: { idea } }) => {

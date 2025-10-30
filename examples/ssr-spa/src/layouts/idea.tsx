@@ -1,18 +1,13 @@
-import { z } from 'zod'
 import { Link } from 'point0/adapters/wouter'
 import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 
 export const ideaLayout = generalLayout
+  .lets('layout')
   .route(routes.idea)
-  .input(
-    z.object({
-      id: z.coerce.number(),
-    }),
-  )
   .loader(async ({ ctx, input: { id }, data }) => {
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
-      where: { id },
+      where: { id: parseInt(id) },
     })
     return { ...data, idea }
   })

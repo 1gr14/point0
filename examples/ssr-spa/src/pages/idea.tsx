@@ -14,19 +14,20 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 // TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
 
 export const ideaPage = ideaLayout
+  .lets('page')
   .route(routes.idea)
-  .loader(async ({ ctx, location }) => {
+  .loader(async ({ ctx, input }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
-      where: { id: parseInt(location.params.id) },
+      where: { id: parseInt(input.id) },
     })
     return { idea }
   })
   .head(({ data: { idea } }) => ({
     title: idea.title,
   }))
-  .page(({ data: { idea } }) => {
+  .page(({ data: { idea }, location }) => {
     // any hook or whatever here, it is just client code
     const [state, setState] = useState(() => 0)
     return (
@@ -39,6 +40,9 @@ export const ideaPage = ideaLayout
           <b>
             {state}: {idea.description}
           </b>
+        </p>
+        <p>
+          <b>location: {JSON.stringify(location)}</b>
         </p>
         <p>{idea.content}</p>
         <nav>

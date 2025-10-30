@@ -1,5 +1,13 @@
 import type { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRoute, ChildrenLocation, ExactLocation, FlatInput, HasParams } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  AnyRoute,
+  ChildrenLocation,
+  ExactLocation,
+  FlatInput,
+  FlatOutput,
+  HasParams,
+} from '@devp0nt/route0'
 import type {
   MutationOptions,
   QueryClient,
@@ -472,7 +480,7 @@ export type InputParsed<
 > = TInputSchema extends InputSchemaZod
   ? ZodInfer<TInputSchema>
   : TRoute extends AnyRoute
-    ? FlatInput<TRoute>
+    ? FlatOutput<TRoute>
     : Record<never, never>
 export type InputRaw<
   TRoute extends AnyRoute | UndefinedRoute = AnyRoute | UndefinedRoute,

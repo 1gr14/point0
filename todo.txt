@@ -84,3 +84,4 @@ websocket
 statefull meta
 batch query
 chain: #chain().plugin() , Point0.use(), requireData(), TRequiredData
+.interstellar((extractSelf) => elysia.get(() => extractSelf()))

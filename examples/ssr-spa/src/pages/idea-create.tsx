@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { generalLayout } from '../layouts/general.js'
 
 export const createIdeaMutation = client
+  .lets('mutation')
   .id('createIdea')
   .input(
     z.object({
@@ -21,25 +22,29 @@ export const createIdeaMutation = client
     return { idea }
   })
 
-export const generateIdeaMutation = client.id('generateIdea').response(async ({ input, ctx }) => {
-  const stream = new ReadableStream({
-    async start(controller) {
-      const text = 'x'.repeat(100) // 100 symbols
-      for (const char of text) {
-        controller.enqueue(char)
-        await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
-      }
-      controller.close()
-    },
-  })
+export const generateIdeaMutation = client
+  .lets('response')
+  .id('generateIdea')
+  .response(async ({ input, ctx }) => {
+    const stream = new ReadableStream({
+      async start(controller) {
+        const text = 'x'.repeat(100) // 100 symbols
+        for (const char of text) {
+          controller.enqueue(char)
+          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
+        }
+        controller.close()
+      },
+    })
 
-  // Return a streaming response
-  return new Response(stream, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    // Return a streaming response
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
   })
-})
 
 export default generalLayout
+  .lets('page')
   .route(routes.newIdea)
   .title('New Idea')
   .page(() => {

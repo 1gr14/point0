@@ -1,16 +1,16 @@
-import { LocationKnown, Route0 } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Eversion } from './eversion.js'
 import { Point0 } from './index.js'
 import type {
-  UndefinedProps,
   EmptyCtx,
   UndefinedCtx,
   UndefinedData,
   UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
+  UndefinedProps,
   UndefinedResponseOutput,
   UndefinedRoute,
 } from './types.js'
@@ -34,6 +34,7 @@ describe('Point0', () => {
     expectTypeOf(server).toEqualTypeOf<
       Point0<
         'middleware',
+        'base',
         UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         EmptyCtx,
@@ -59,6 +60,7 @@ describe('Point0', () => {
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
         'middleware',
+        'base',
         UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         { a: number; b: number },
@@ -83,6 +85,7 @@ describe('Point0', () => {
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
         'middleware',
+        'base',
         undefined,
         undefined,
         { a: number; b: number; c: number },
@@ -103,15 +106,18 @@ describe('Point0', () => {
 
   it('extends with ctx with {}', async () => {
     const server = Point0.source('server')
-    const server1 = server.ctx(() => ({
-      a: 1,
-      b: 2,
-    }))
+    const server1 = server
+      .ctx(() => ({
+        a: 1,
+        b: 2,
+      }))
+      .base()
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
-        'middleware',
+        'base',
+        undefined,
         undefined,
         undefined,
         { a: number; b: number },
@@ -126,15 +132,18 @@ describe('Point0', () => {
     expect(server1._extractFns).toHaveLength(1)
     // not modified original server
     expect(server._extractFns).toHaveLength(0)
-    const server2 = server1.ctx({
-      a: 3,
-      c: 4,
-    })
+    const server2 = server1
+      .ctx({
+        a: 3,
+        c: 4,
+      })
+      .base()
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
-        'middleware',
+        'base',
+        undefined,
         undefined,
         undefined,
         { a: number; c: number },
@@ -152,10 +161,14 @@ describe('Point0', () => {
     // not modified original server
     expect(server._extractFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
-    const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
+    const clientPoint02 = Point0.connect<typeof server2>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
     const run = await eversion2.createRun({ location: Route0.getLocation('/'), requiredCtx: undefined })
-    expect(await run.extract({ point: clientPoint02 })).toEqual({
+    expect(await run.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -163,7 +176,6 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      location: Route0.getLocation('/'),
       error: undefined,
       status: 200,
       response: undefined,
@@ -172,14 +184,17 @@ describe('Point0', () => {
 
   it('extends with loader fn', () => {
     const server = Point0.source('server')
-    const server1 = server.loader(() => ({
-      a: 1,
-      b: 2,
-    }))
+    const server1 = server
+      .loader(() => ({
+        a: 1,
+        b: 2,
+      }))
+      .base()
     expect(server1).toBeInstanceOf(Point0)
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
-        'middleware',
+        'base',
+        undefined,
         undefined,
         undefined,
         EmptyCtx,
@@ -194,15 +209,18 @@ describe('Point0', () => {
     expect(server1._extractFns).toHaveLength(1)
     // not modified original server
     expect(server._extractFns).toHaveLength(0)
-    const server2 = server1.loader(({ data }) => ({
-      ...data,
-      a: 3,
-      c: 4,
-    }))
+    const server2 = server1
+      .loader(({ data }) => ({
+        ...data,
+        a: 3,
+        c: 4,
+      }))
+      .base()
     expect(server2).toBeInstanceOf(Point0)
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
-        'middleware',
+        'base',
+        undefined,
         undefined,
         undefined,
         EmptyCtx,
@@ -224,22 +242,27 @@ describe('Point0', () => {
   it('extract without required ctx', async () => {
     const server = Point0.source('server')
     const url = '/z/x/c'
-    const server1 = server.ctx(() => ({
-      a: 1,
-      b: 2,
-    }))
+    const server1 = server
+      .ctx(() => ({
+        a: 1,
+        b: 2,
+      }))
+      .base()
     const pageComponent = () => <div>Hello</div>
-    const clientPoint01 = Point0.connect<typeof server1>('client').route(Route0.create('/')).page(pageComponent)
+    const clientPoint01 = Point0.connect<typeof server1>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion1 = await Eversion.create({ root: server1 })
     const run = await eversion1.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
-    expect(await run.extract({ point: clientPoint01 })).toEqual({
+    expect(await run.extract({ point: clientPoint01, input: {} })).toEqual({
       ctx: {
         a: 1,
         b: 2,
       },
       data: {},
       head: [],
-      location: Route0.getLocation(url),
       error: undefined,
       status: 200,
       response: undefined,
@@ -249,10 +272,14 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.connect<typeof server2>('client').route(Route0.create('/')).page(pageComponent)
+    const clientPoint02 = Point0.connect<typeof server2>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
     const run2 = await eversion2.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
-    expect(await run2.extract({ point: clientPoint02 })).toEqual({
+    expect(await run2.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -260,7 +287,6 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      location: Route0.getLocation(url),
       error: undefined,
       status: 200,
       response: undefined,
@@ -268,12 +294,17 @@ describe('Point0', () => {
     const server3 = server1.ctx(({ ctx }) => ({
       c: 5,
     }))
-    const clientPoint03 = Point0.connect<typeof server3>('client').route(Route0.create('/')).page(pageComponent)
+    const clientPoint03 = Point0.connect<typeof server3>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion3 = await Eversion.create({ root: server3 })
     const run3 = await eversion3.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
     expect(
       await run3.extract({
         point: clientPoint03,
+        input: {},
       }),
     ).toEqual({
       ctx: {
@@ -281,7 +312,6 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      location: Route0.getLocation(url),
       error: undefined,
       status: 200,
       response: undefined,
@@ -297,12 +327,17 @@ describe('Point0', () => {
       b: 2,
     }))
     const pageComponent = () => <div>Hello</div>
-    const clientPoint01 = Point0.connect<typeof server1>('client').base().route(Route0.create('/')).page(pageComponent)
+    const clientPoint01 = Point0.connect<typeof server1>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion1 = await Eversion.create({ root: server1 })
     const run1 = await eversion1.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
     expect(
       await run1.extract({
         point: clientPoint01,
+        input: {},
       }),
     ).toEqual({
       ctx: {
@@ -312,7 +347,6 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      location: Route0.getLocation(url),
       error: undefined,
       status: 200,
       response: undefined,
@@ -322,10 +356,14 @@ describe('Point0', () => {
       a: 3,
       c: 4,
     }))
-    const clientPoint02 = Point0.connect<typeof server2>('client').base().route(Route0.create('/')).page(pageComponent)
+    const clientPoint02 = Point0.connect<typeof server2>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
     const run2 = await eversion2.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
-    expect(await run2.extract({ point: clientPoint02 })).toEqual({
+    expect(await run2.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         r: 'str',
         a: 3,
@@ -334,7 +372,6 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      location: Route0.getLocation(url),
       error: undefined,
       status: 200,
       response: undefined,
@@ -343,17 +380,20 @@ describe('Point0', () => {
       r: ctx.r,
       c: 5,
     }))
-    const clientPoint03 = Point0.connect<typeof server3>('client').base().route(Route0.create('/')).page(pageComponent)
+    const clientPoint03 = Point0.connect<typeof server3>('client')
+      .base()
+      .lets('page')
+      .route(Route0.create('/'))
+      .page(pageComponent)
     const eversion3 = await Eversion.create({ root: server3 })
     const run3 = await eversion3.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
-    expect(await run3.extract({ point: clientPoint03 })).toEqual({
+    expect(await run3.extract({ point: clientPoint03, input: {} })).toEqual({
       ctx: {
         r: 'str',
         c: 5,
       },
       data: {},
       head: [],
-      location: Route0.getLocation(url),
       error: undefined,
       status: 200,
       response: undefined,
@@ -391,6 +431,7 @@ describe('Point0', () => {
     expectTypeOf(clientPoint0).toEqualTypeOf<
       Point0<
         'middleware',
+        'base',
         typeof server,
         UndefinedCtx,
         EmptyCtx,
@@ -430,7 +471,7 @@ describe('Point0', () => {
         sum: async (a: number, b: number) => a + b,
       }))
       // but in loaders ctx is both server and client
-      .loader(async ({ ctx, data, location }) => ({
+      .loader(async ({ ctx, data }) => ({
         ...data,
         preloadedClient: 'something',
         preloadedClientFromServer: await ctx.say('something good'),
@@ -438,14 +479,14 @@ describe('Point0', () => {
     const routeX = Route0.create('/my/:id')
     const pageX = clientPoint0
       .route(routeX)
-      .ctx(({ ctx, location }) => ({
+      .ctx(({ ctx, input }) => ({
         ...ctx,
         // TODO: fix it
-        loadedCtxAfterRoute: `something: ${(location.params as any)?.id}`,
+        loadedCtxAfterRoute: `something: ${input.id}`,
       }))
-      .loader(({ data, location }) => ({
+      .loader(({ data, input }) => ({
         ...data,
-        loadedDataAfterRoute: `something: ${(location.params as any)?.id}`,
+        loadedDataAfterRoute: `something: ${input.id}`,
       }))
       .page(({ data, location }) => {
         // expectTypeOf(location).toEqualTypeOf<LocationExact<typeof routeX>>()

@@ -83,11 +83,11 @@ export function RouterContextProvider({
 /** Hooks **/
 
 export function useLocation(): AnyLocation
-export function useLocation<TRoute extends AnyRouteOrDefinition<string> = AnyRouteOrDefinition<string>>(
+export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   location?: AnyLocation,
 ): KnownLocation<TRoute>
-export function useLocation<TRoute extends AnyRouteOrDefinition<string> = AnyRouteOrDefinition<string>>(
+export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   location?: AnyLocation,
 ) {

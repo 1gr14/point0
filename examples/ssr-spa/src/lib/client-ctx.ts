@@ -1,12 +1,16 @@
 import { client } from './client'
 
-export const clientCtx1 = client.id('test-client-ctx-1').clientCtx(({ data }) => {
-  return {
-    test: 123,
-  }
-})
+export const clientCtx1 = client
+  .lets('client-ctx')
+  .id('test-client-ctx-1')
+  .clientCtx(({ data }) => {
+    return {
+      test: 123,
+    }
+  })
 
 export const clientCtx2 = client
+  .lets('client-ctx')
   .id('test-client-ctx-2')
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
@@ -20,6 +24,7 @@ export const clientCtx2 = client
   })
 
 export const clientCtx3 = client
+  .lets('client-ctx')
   .id('test-client-ctx-2')
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()

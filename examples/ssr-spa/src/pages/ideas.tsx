@@ -4,6 +4,7 @@ import { routes } from '../lib/routes.js'
 import { IdeasView } from './ideas.view.js'
 
 export const ideasPage = generalLayout
+  .lets('page')
   .route(routes.ideas)
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()

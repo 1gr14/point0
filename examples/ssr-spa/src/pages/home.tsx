@@ -7,6 +7,7 @@ import { Route0 } from '@devp0nt/route0'
 import z from 'zod'
 
 export const BestIdeaComponent = client
+  .lets('component')
   .route(Route0.create('/ideas/best'))
   .input(z.object({ x: z.coerce.number() }))
   .loader(async ({ ctx, input }) => ({
@@ -28,6 +29,7 @@ export const BestIdeaComponent = client
   })
 
 export default generalLayout
+  .lets('page')
   .route(routes.home)
   .head({
     title: 'IdeaNick Forever!',

@@ -1,4 +1,4 @@
-import type { LocationAny } from '@devp0nt/route0'
+import type { AnyLocation } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
@@ -94,7 +94,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   content?: TContent
   // TODO: make it choosable by settings
   dehydratedState: DehydratedState
-  location: LocationAny
+  location: AnyLocation
   head: ResolvableHead[]
   rootElementId?: string
   clientBundlePath?: string
@@ -151,7 +151,7 @@ export async function renderStatic({
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
-  location: LocationAny
+  location: AnyLocation
   head: ResolvableHead[]
   renderer?: StaticRenderer
   clientBundlePath: string
@@ -214,7 +214,7 @@ export async function renderReadableStream({
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
-  location: LocationAny
+  location: AnyLocation
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
@@ -238,7 +238,7 @@ export async function renderAppAsReadableStream({
 }: {
   App: HydratedAppComponent
   run: EversionRun
-  location: LocationAny
+  location: AnyLocation
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string

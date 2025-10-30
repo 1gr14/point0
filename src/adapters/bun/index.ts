@@ -15,6 +15,7 @@ import { parseServerAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderAppAsReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
+import { Route0 } from '@devp0nt/route0'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
@@ -282,7 +283,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       const suitable = this.eversion.getSuitable({
         method: request.method as Method,
-        pathname,
+        location: Route0.getLocation(pathname),
         fallbackRootId: this.fallbackRootId,
       })
       const run = await suitable.eversion.createRun({
@@ -338,7 +339,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               App,
               run,
               head: extractResult.head,
-              location: extractResult.location,
+              location: suitable.location,
               originalIndexHtml,
               rootElementId: relatedClient.rootElementId,
             })
