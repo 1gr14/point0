@@ -1,7 +1,7 @@
 import { Point0 } from 'point0/core/index.js'
-import type { server } from './server.js'
+import type { source } from './server.js'
 
-export const client = Point0.connect<typeof server>('client')
+export const client = Point0.connect<typeof source>('client')
   .sourceBaseUrl('http://localhost:3000')
   .head({
     title: 'Loading...',

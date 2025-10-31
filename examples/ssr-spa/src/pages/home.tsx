@@ -3,7 +3,7 @@ import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
-import { routes } from '../lib/routes.js'
+import { routes } from '../lib/points.js'
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
@@ -28,7 +28,7 @@ export const BestIdeaComponent = client
 
 export default generalLayout
   .lets('page', 'home')
-  .route(routes.home)
+  .route('/')
   .head({
     title: 'IdeaNick Forever!',
     titleTemplate: null,

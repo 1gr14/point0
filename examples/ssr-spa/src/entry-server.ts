@@ -1,11 +1,11 @@
-import { BunAdapter } from 'point0/adapters/bun/index.js'
+import { Server } from 'point0/adapters/bun/index.js'
 import { points } from './lib/points.js'
-import { server } from './lib/server.js'
+import { source } from './lib/server.js'
 import { client } from './lib/client.js'
 import App from './app.js'
 
-const adapter = await BunAdapter.create({
-  root: server,
+const adapter = await Server.create({
+  root: source,
   port: 3000,
   // all paths will be relative to it. it is optional, you may pass all paths as absolute
   // before build it is right here, after build it is in dist/server or where you build it

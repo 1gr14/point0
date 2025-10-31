@@ -1,10 +1,10 @@
 import { Link } from 'point0/adapters/wouter'
-import { routes } from '../lib/routes'
+import { routes } from '../lib/points'
 import { generalLayout } from './general'
 
 export const ideaLayout = generalLayout
   .lets('layout', 'ideaLayout')
-  .route(routes.idea)
+  .route('/ideas/:id')
   .loader(async ({ ctx, input: { id }, data }) => {
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: parseInt(id) },

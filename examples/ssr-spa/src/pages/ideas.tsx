@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { generalLayout } from '../layouts/general.js'
-import { routes } from '../lib/routes.js'
 import { IdeasView } from './ideas.view.js'
 
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
-  .route(routes.ideas)
+  .route('/ideas')
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }

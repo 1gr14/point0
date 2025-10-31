@@ -1,8 +1,7 @@
+import { Link } from 'point0/adapters/wouter'
+import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
-import { Link } from 'point0/adapters/wouter'
-import { routes } from '../lib/routes.js'
-import { useState } from 'react'
 
 export const getIdea = async (ctx: Ctx, id: number) => {
   const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -15,7 +14,6 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 
 export const ideaPage = ideaLayout
   .lets('page', 'idea')
-  .route(routes.idea)
   .loader(async ({ ctx, input }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build

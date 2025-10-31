@@ -346,7 +346,7 @@ export class Point0<
         : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
       _clientExtractFns: wasEndPoint ? [] : (overrides._clientExtractFns ?? this._clientExtractFns),
-      _route: (overrides._route ?? (wasEndPoint ? undefined : this._route)) as TRoute, // remove stale artefact on continue
+      _route: (overrides._route ?? this._route) as TRoute,
       _page: (overrides._page ?? undefined) as PageComponent<TData, TClientData, TRoute> | undefined, // remove end artefact on continue
       _component: (overrides._component ?? undefined) as ComponentComponent<TData, TClientData, TProps> | undefined, // remove end artefact on continue
       _layout: (overrides._layout ?? undefined) as LayoutComponent<TData, TClientData, TRoute> | undefined, // remove end artefact on continue
@@ -479,7 +479,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -492,7 +492,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -515,7 +515,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -528,7 +528,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -549,7 +549,7 @@ export class Point0<
   //   TCtx,
   //   TData,
   //   IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-  //   IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+  //   TRoute,
   //   TInputSchema,
   //   IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
   //   TProps
@@ -562,7 +562,7 @@ export class Point0<
   //     TCtx,
   //     TData,
   //     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-  //     IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+  //     TRoute,
   //     TInputSchema,
   //     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
   //     TProps
@@ -582,7 +582,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -595,7 +595,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -615,7 +615,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -628,7 +628,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -648,7 +648,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -661,7 +661,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -681,7 +681,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -694,7 +694,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -747,7 +747,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -760,7 +760,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -780,7 +780,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -793,7 +793,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -813,7 +813,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -826,7 +826,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -846,7 +846,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -859,7 +859,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -877,7 +877,7 @@ export class Point0<
     PrependCtx<TCtx, TExtraRequiredCtx>,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -890,7 +890,7 @@ export class Point0<
       PrependCtx<TCtx, TExtraRequiredCtx>,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -982,7 +982,7 @@ export class Point0<
     TNewCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -997,7 +997,7 @@ export class Point0<
     TNewCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1012,7 +1012,7 @@ export class Point0<
     TNewCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1026,7 +1026,7 @@ export class Point0<
       TNewCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1099,7 +1099,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1114,7 +1114,7 @@ export class Point0<
     TCtx,
     TNewData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1129,7 +1129,7 @@ export class Point0<
     TCtx,
     TNewData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1142,7 +1142,7 @@ export class Point0<
       TCtx,
       TNewData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1165,7 +1165,7 @@ export class Point0<
     TCtx,
     TData,
     TNewClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1178,7 +1178,7 @@ export class Point0<
       TCtx,
       TData,
       TNewClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1248,7 +1248,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1263,7 +1263,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1294,7 +1294,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TNewProps
@@ -1314,7 +1314,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TNewInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1338,7 +1338,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1357,7 +1357,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1379,7 +1379,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1393,7 +1393,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1417,14 +1417,11 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
   > {
-    if (!this._route) {
-      throw new Error('add .route() to chain to use .layout() function')
-    }
     return this._continue<
       'layout',
       UndefinedEndPointType,
@@ -1433,7 +1430,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1454,7 +1451,7 @@ export class Point0<
     TCtx,
     TData,
     TNewClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1467,7 +1464,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1492,7 +1489,7 @@ export class Point0<
     TCtx,
     TData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     TNewResponseOutput,
     TProps
@@ -1505,7 +1502,7 @@ export class Point0<
       TCtx,
       TData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       TNewResponseOutput,
       TProps
@@ -1526,7 +1523,7 @@ export class Point0<
     TCtx,
     TNewData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1539,7 +1536,7 @@ export class Point0<
       TCtx,
       TNewData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps
@@ -1563,7 +1560,7 @@ export class Point0<
     TCtx,
     TNewData,
     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TRoute,
     TInputSchema,
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
@@ -1576,7 +1573,7 @@ export class Point0<
       TCtx,
       TNewData,
       IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+      TRoute,
       TInputSchema,
       IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
       TProps

@@ -2,7 +2,7 @@ import { FileGenerator } from 'point0/generator'
 
 const generator = FileGenerator.create({
   glob: ['../../**/*.{ts,tsx}', '!./lib/server.ts'],
-  output: './lib/_points.ts',
+  output: './lib/points.ts',
   basepath: import.meta.dir,
 })
 

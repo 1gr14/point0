@@ -1,9 +1,8 @@
 import { ideaLayout } from '../layouts/idea.js'
-import { routes } from '../lib/routes.js'
 
 export const ideasNewsPage = ideaLayout
   .lets('page', 'ideaNews')
-  .route(routes.ideaNews)
+  .route('/news')
   .title(({ data: { idea } }) => `${idea.news.length} news for idea "${idea.title}"`)
   .page(({ data: { idea } }) => {
     return (

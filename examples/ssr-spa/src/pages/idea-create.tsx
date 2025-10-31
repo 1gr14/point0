@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { client } from '../lib/client.js'
-import { routes } from '../lib/routes.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
@@ -41,7 +40,7 @@ export const generateIdeaMutation = client.lets('response', 'generateIdea').resp
 
 export default generalLayout
   .lets('page', 'newIdea')
-  .route(routes.newIdea)
+  .route('/ideas/new')
   .title('New Idea')
   .page(() => {
     // any hook or whatever here, it is just client code

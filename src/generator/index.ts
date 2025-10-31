@@ -15,6 +15,7 @@ import type { EndPoint, EndPointType, PointName } from '../core/types.js'
 const traverse = _traverse as never as typeof _traverse.default
 
 export type FileGeneratorOptions = {
+  banner?: string
   glob: string | string[]
   output: string
   basepath: string
@@ -46,6 +47,7 @@ type ChangeCollectedPointsEvent = {
 }
 
 export class FileGenerator {
+  readonly banner: string | undefined
   readonly globInclude: string[]
   readonly globExclude: string[]
   readonly outputAbs: string
@@ -56,6 +58,7 @@ export class FileGenerator {
   private points: CollectedPoint[] = []
 
   constructor(opts: FileGeneratorOptions) {
+    this.banner = opts.banner
     this.basepath = opts.basepath
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g))
@@ -104,11 +107,12 @@ export class FileGenerator {
       return { status: 'replaced', prevPoint, newPoint: collectedPoint }
     } else {
       this.points.push(collectedPoint)
+      this.sortPoints()
       return { status: 'added', prevPoint: undefined, newPoint: collectedPoint }
     }
   }
 
-  addPoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
+  private addPoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
     const added: CollectedPoint[] = []
     const updated: CollectedPoint[] = []
     for (const point of points) {
@@ -124,7 +128,7 @@ export class FileGenerator {
     return { points: this.points, deleted: [], added, updated, changed }
   }
 
-  replacePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
+  private replacePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
     const added: CollectedPoint[] = []
     const deleted: CollectedPoint[] = []
     const updated: CollectedPoint[] = []
@@ -144,8 +148,29 @@ export class FileGenerator {
       }
     }
     this.points = points
+    this.sortPoints()
     const changed = added.length > 0 || deleted.length > 0
     return { points: this.points, deleted, added, updated, changed }
+  }
+
+  private sortPoints(): void {
+    const order = FileGenerator.END_POINT_TYPES
+    const orderIndex = new Map(order.map((t, i) => [t, i]))
+
+    this.points.sort((a, b) => {
+      const aIndex = orderIndex.get(a.type) ?? Number.MAX_SAFE_INTEGER
+      const bIndex = orderIndex.get(b.type) ?? Number.MAX_SAFE_INTEGER
+      const byType = aIndex - bIndex
+      if (byType !== 0) return byType
+
+      const byRoute = (a.route?.replace(/:\w+/g, 'Z') ?? '').localeCompare(b.route?.replace(/:\w+/g, 'Z') ?? '')
+      if (byRoute !== 0) return byRoute
+
+      const byName = a.name.localeCompare(b.name)
+      if (byName !== 0) return byName
+
+      return a.fileAbs.localeCompare(b.fileAbs)
+    })
   }
 
   private removePointsByFileAbs(fileAbs: string): ChangeCollectedPointsEvent {
@@ -158,7 +183,7 @@ export class FileGenerator {
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const collectedPoints = await this.collectPointsFromFile(fileAbs)
+    const { collectedPoints } = await this.collectPointsFromFile(fileAbs)
     return this.addPoints(collectedPoints)
   }
 
@@ -171,8 +196,13 @@ export class FileGenerator {
         return pointsArrays.flat()
       }),
     )
-    const collectedPoints = collectedChunks.flat()
-    return this.replacePoints(collectedPoints)
+    const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => (p.error ? [p.error] : [])))
+    const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
+    if (errors.length === 0) {
+      return this.replacePoints(collectedPoints)
+    } else {
+      return this.addPoints(collectedPoints)
+    }
   }
 
   private async writeOutput() {
@@ -182,30 +212,35 @@ export class FileGenerator {
     console.info(`✅ points file generated: ${this.outputAbs} (${this.points.length} points)`)
   }
 
-  private async collectPointsFromFile(fileAbs: string): Promise<CollectedPoint[]> {
-    let content: string
+  private async collectPointsFromFile(fileAbs: string): Promise<{ collectedPoints: CollectedPoint[]; error: unknown }> {
     try {
-      content = await Bun.file(fileAbs).text()
-    } catch (e) {
-      console.warn(`⚠️ cannot read ${fileAbs}: ${(e as Error).message}`)
-      return []
-    }
-
-    const staticCandidates = this.extractStaticPointsCandidatesFromContent({ content, fileAbs })
-    if (!staticCandidates.length) return []
-
-    const module = await this.jiti.import(fileAbs)
-    const collectedPoints: CollectedPoint[] = []
-
-    for (const staticCandidate of staticCandidates) {
-      const collectedPoint = this.extractCollectedPointFromModule({ staticCandidate, module, fileAbs })
-      if (!collectedPoint) {
-        continue
+      let content: string
+      try {
+        content = await Bun.file(fileAbs).text()
+      } catch (e) {
+        console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+        return { collectedPoints: [], error: e }
       }
-      collectedPoints.push(collectedPoint)
-    }
 
-    return collectedPoints
+      const staticCandidates = this.extractStaticPointsCandidatesFromContent({ content, fileAbs })
+      if (!staticCandidates.length) return { collectedPoints: [], error: undefined }
+
+      const module = await this.jiti.import(fileAbs)
+      const collectedPoints: CollectedPoint[] = []
+
+      for (const staticCandidate of staticCandidates) {
+        const collectedPoint = this.extractCollectedPointFromModule({ staticCandidate, module, fileAbs })
+        if (!collectedPoint) {
+          continue
+        }
+        collectedPoints.push(collectedPoint)
+      }
+
+      return { collectedPoints, error: undefined }
+    } catch (e) {
+      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      return { collectedPoints: [], error: e }
+    }
   }
 
   // parse
@@ -323,8 +358,25 @@ export class FileGenerator {
 
   private emitPointsFile(points: CollectedPoint[]): string {
     const lines: string[] = []
+    if (this.banner) {
+      lines.push(this.banner)
+    }
     lines.push(`import type { PointsCollection } from 'point0/core/points.js'`)
+    lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
+
+    const pagePoints = points.filter((p) => p.type === 'page' && p.route)
+    if (pagePoints.length > 0) {
+      lines.push(`export const routes = Routes.create({`)
+      for (const p of pagePoints) {
+        lines.push(`  ${p.name}: '${p.route}',`)
+      }
+      lines.push(`})`)
+    } else {
+      lines.push(`export const routes = Routes.create({})`)
+    }
+    lines.push(``)
+
     lines.push(`export const points = [`)
     for (const p of points) {
       lines.push(`  {`)
@@ -344,10 +396,15 @@ export class FileGenerator {
     }
     lines.push(`] as PointsCollection`)
     lines.push(``)
+
     return lines.join('\n')
   }
 
   // utils
+
+  private hasPagesPoints(points: CollectedPoint[]): boolean {
+    return points.some((p) => p.type === 'page')
+  }
 
   private createFreshJiti() {
     return createJiti(this.basepath, {
@@ -388,33 +445,23 @@ export class FileGenerator {
     return rel
   }
 
-  private static readonly END_POINT_TYPES: Record<EndPointType, true> = {
-    page: true,
-    component: true,
-    layout: true,
-    mutation: true,
-    query: true,
-    response: true,
-    'client-ctx': true,
-    base: true,
-  }
-  private static isEndPointType(type: string): type is EndPointType {
-    return type in FileGenerator.END_POINT_TYPES
-  }
-
   private static readonly POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
     page: 'page',
-    component: 'component',
     layout: 'layout',
+    component: 'component',
     mutation: 'mutation',
     query: 'query',
     response: 'response',
-    'client-ctx': 'clientTtx',
+    'client-ctx': 'clientCtx',
     base: 'base',
   }
   private static readonly POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
     Object.entries(FileGenerator.POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
   )
+  private static readonly END_POINT_TYPES: EndPointType[] = Object.keys(
+    FileGenerator.POINT_TYPE_TO_METHOD_MAP,
+  ) as EndPointType[]
+
   private static pointMethodToPointType(method: unknown): EndPointType | null {
     if (typeof method !== 'string') {
       return null

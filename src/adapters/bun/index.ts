@@ -33,7 +33,7 @@ type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = Server
 }
 
 // TODO: rename it
-export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   mainServer: Bun.Server<unknown> | undefined
   mainServerPort: number
   devServeTarget: 'client' | 'server' | 'universal' | undefined
@@ -72,7 +72,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
     input: ServerAdapterServerInput<TRequiredCtx>,
-  ): Promise<BunAdapter<TRequiredCtx>> {
+  ): Promise<Server<TRequiredCtx>> {
     const parsedInput = parseServerAdapterInput(input)
     const eversion = await Eversion.create({ root: parsedInput.root, points: parsedInput.points })
     // for (const client of parsedInput.clients) {
@@ -87,7 +87,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }),
     )
 
-    const bunServer = new BunAdapter<TRequiredCtx>({ ...parsedInput, clients, eversion })
+    const bunServer = new Server<TRequiredCtx>({ ...parsedInput, clients, eversion })
 
     await bunServer._setPublicFilePaths()
     await bunServer._setClientsDevRoutes()
@@ -684,4 +684,4 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 }
 
-export default BunAdapter
+export default Server
