@@ -33,6 +33,7 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
+  .loader()
   .page(() => {
     const ctx1 = clientCtx1.useClientCtx()
     const ctx2 = clientCtx2.useClientCtx()

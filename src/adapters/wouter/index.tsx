@@ -1,10 +1,11 @@
-import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import type { PagesTree, RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
-import { _toRoutesCollection, _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
+import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
+import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
+import type { PagesTree } from '../../core/points.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 // TODO: allow createLink or createHelpers to provide routes type and use <Link to="routeName" param1="value1" param2="value2" />
@@ -42,12 +43,14 @@ export const Router = ({
   ssrLocation,
   pagesTree,
   Page404 = DefaultPage404,
+  routes,
   policy,
   status,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
   pagesTree: PagesTree
+  routes: Routes
   Page404?: React.ComponentType
   policy?: RouterPolicy
   status?: RouterStatus
@@ -62,8 +65,6 @@ export const Router = ({
     }
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   }, [ssrLocation])
-
-  const routes = useMemo(() => _toRoutesCollection({ pagesTree }), [pagesTree])
 
   const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
@@ -86,7 +87,7 @@ export const Router = ({
   )
 }
 
-export const Routes = ({
+export const RouterRoutes = ({
   pagesTree,
   Page404 = DefaultPage404,
 }: {

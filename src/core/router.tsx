@@ -1,11 +1,11 @@
-import type { AnyLocation, AnyRoute, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
-import { Routes, Route0 } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, KnownLocation, Routes } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { LoadedPointsCollection, PointsCollection } from './eversion.js'
-import type { PointName, LayoutPoint, PagePoint } from './types.js'
+import type { LayoutPoint, PagePoint } from './types.js'
+import type { PagesTree, PagesTreeRecord } from './points.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -158,53 +158,54 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
   useAdapterNavigate: T,
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: AnyLocation }> {
   return () => {
-    const ctx = React.useContext(RouterContext)
-    if (!ctx) throw new Error('useNavigate must be used within RouterContextProvider')
+    const routerContext = React.useContext(RouterContext)
+    if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
     const queryClient = useQueryClient()
     const adapterNavigate = useAdapterNavigate()
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = ctx.routes._.getLocation(href)
-      ctx.setNextLocation(location)
+      const location = routerContext.routes._.getLocation(href)
+      routerContext.setNextLocation(location)
 
       // simple mode
-      if (ctx.policy === 'simple') {
-        ctx.setStatus('idle')
+      if (routerContext.policy === 'simple') {
+        routerContext.setStatus('idle')
 
         try {
           await adapterNavigate(...(args as [string, ...any[]]))
-          ctx.setNextLocation(undefined)
+          routerContext.setNextLocation(undefined)
           // ctx.setCurrentLocation(location)
           return { status: 'idle', location }
         } catch {
-          ctx.setNextLocation(undefined)
+          routerContext.setNextLocation(undefined)
           return { status: 'idle', location }
         }
       }
 
       // prefetch mode
-      ctx.setStatus('fetching')
+      routerContext.setStatus('fetching')
 
       try {
-        await _prefetchSuitablePagePointWithLayouts({
-          pagesTree: ctx.pagesTree,
+        console.log('prefetching page point', location)
+        await _prefetchSuitablePagePoint({
+          pagesTree: routerContext.pagesTree,
           location,
           queryClient,
         })
 
-        ctx.setStatus('transit-success')
+        routerContext.setStatus('transit-success')
         await adapterNavigate(...(args as [string, ...any[]]))
-        ctx.setNextLocation(undefined)
+        routerContext.setNextLocation(undefined)
         // ctx.setCurrentLocation(location)
-        ctx.setStatus('success')
+        routerContext.setStatus('success')
         return { status: 'success', location }
       } catch {
-        ctx.setStatus('transit-error')
+        routerContext.setStatus('transit-error')
         await adapterNavigate(...(args as [string, ...any[]]))
-        ctx.setNextLocation(undefined)
-        ctx.setStatus('error')
-        return { status: 'error', location: ctx.currentLocation }
+        routerContext.setNextLocation(undefined)
+        routerContext.setStatus('error')
+        return { status: 'error', location: routerContext.currentLocation }
       }
     }
   }
@@ -328,7 +329,7 @@ export const _getSuitablePagePoint = async ({
   }
 }
 
-export const _prefetchSuitablePagePointWithLayouts = async ({
+export const _prefetchSuitablePagePoint = async ({
   pagesTree,
   location,
   queryClient, // kept for signature parity if you need it later
@@ -338,220 +339,19 @@ export const _prefetchSuitablePagePointWithLayouts = async ({
   queryClient: QueryClient
 }): Promise<PagePoint | undefined> => {
   const result = await _getSuitablePagePoint({ pagesTree, location })
+  console.log('result', result)
   if (!result) {
     return undefined
   }
 
-  const points = [result.pagePoint, ...result.layouts.map((l) => l.layoutPoint)]
-  await Promise.all(
-    points.map(async (p) => {
-      // TODO: if page or layout has not SELF loaders but only nested loaders, then prefetch only nested and to query cache add its result
-      await p._prefetchQueryByLocation(location, { queryClient })
-    }),
-  )
+  // const points = [result.pagePoint, ...result.layouts.map((l) => l.layoutPoint)]
+  // await Promise.all(
+  //   points.map(async (p) => {
+  //     // TODO: if page or layout has not SELF loaders but only nested loaders, then prefetch only nested and to query cache add its result
+  //     await p._prefetchQueryByLocation(location, { queryClient })
+  //   }),
+  // )
+  await result.pagePoint.prefetchPage({ ...result.pagePoint._getUnsafeInputRawByLocation(location) }, { queryClient })
 
   return result.pagePoint
 }
-
-export const _toPagesAndLayoutsCollection = ({
-  points,
-}: {
-  points: PointsCollection | LoadedPointsCollection
-}): PagesAndLayoutsCollection => {
-  const collection: PagesAndLayoutsCollection = {
-    pages: [],
-    layouts: [],
-  }
-  for (const record of points) {
-    if (record.type !== 'layout' || !record.route) {
-      continue
-    }
-    const point = record.point
-    collection.layouts.push({
-      type: 'layout',
-      id: record.id,
-      route: Route0.create(record.route),
-      point: point as LayoutPoint | (() => Promise<LayoutPoint>),
-      layoutComponent:
-        typeof point === 'function'
-          ? React.lazy(async () => ({
-              default: (await point())._Layout,
-            }))
-          : point._Layout,
-      layoutPagesRoutes: record.layoutPagesRoutes?.map((route) => Route0.create(route)) ?? [],
-    })
-  }
-  for (const record of points) {
-    if (record.type !== 'page' || !record.route) {
-      continue
-    }
-    const point = record.point
-    collection.pages.push({
-      type: 'page',
-      id: record.id,
-      route: Route0.create(record.route),
-      point: point as PagePoint | (() => Promise<PagePoint>),
-      pageComponent:
-        typeof point === 'function'
-          ? React.lazy(async () => ({
-              default: (await point())._Page,
-            }))
-          : point._Page,
-      layoutComponents: collection.layouts
-        // .filter((l) => record.layoutPagesRoutes?.includes(l.route.getDefinition()))
-        .filter((l) =>
-          l.layoutPagesRoutes.some(
-            (lpr) => record.route && lpr.getDefinition() === Route0.create(record.route).getDefinition(),
-          ),
-        )
-        .map((l) => l.layoutComponent),
-    })
-  }
-  return collection
-}
-
-export const _toPagesTreeFromPagesAndLayouts = ({
-  pagesAndLayouts,
-}: {
-  pagesAndLayouts: PagesAndLayoutsCollection
-}): PagesTree => {
-  const layouts = pagesAndLayouts.layouts
-  const pages = pagesAndLayouts.pages
-  const pagesWithoutLayouts = pages.filter((p) => p.layoutComponents.length === 0)
-
-  const buildLayoutTree = (layout: LayoutsCollectionRecord, level = 0): PagesTreeRecord | undefined => {
-    const layoutPages = pages.filter((p) =>
-      layout.layoutPagesRoutes.some((lpr) => lpr.getDefinition() === p.route.getDefinition()),
-    )
-    const layoutPagesWhereThisLayoutIndexEqLevelAndIsLast = layoutPages.filter((lp) => {
-      return (
-        lp.layoutComponents[level] === layout.layoutComponent &&
-        lp.layoutComponents[level] === lp.layoutComponents[lp.layoutComponents.length - 1]
-      )
-    })
-    const nestedLayouts = layouts.filter(
-      (l) =>
-        l.route.getDefinition().startsWith(layout.route.getDefinition()) &&
-        l.route.getDefinition() !== layout.route.getDefinition(),
-    )
-    const nestedLayoutsTrees = nestedLayouts.map((l) => buildLayoutTree(l, level + 1))
-    const result: PagesTreeRecord = {
-      route: layout.route,
-      id: layout.id,
-      layoutComponent: layout.layoutComponent,
-      layoutPoint: layout.point,
-      pages: layoutPagesWhereThisLayoutIndexEqLevelAndIsLast.map((lp) => ({
-        id: lp.id,
-        route: lp.route,
-        pageComponent: lp.pageComponent,
-        pagePoint: lp.point,
-      })),
-      nestedPagesTree: nestedLayoutsTrees.flatMap((t) => t ?? []),
-    }
-    if (result.nestedPagesTree.length === 0 && result.pages.length === 0) {
-      return undefined
-    }
-    return result
-  }
-
-  const noLayoutTree: PagesTreeRecord = {
-    route: Route0.create('/'),
-    id: '_point0_no_layout_placeholder',
-    pages: pagesWithoutLayouts.map((p) => ({
-      id: p.id,
-      route: p.route,
-      pageComponent: p.pageComponent,
-      pagePoint: p.point,
-    })),
-    layoutComponent: undefined,
-    layoutPoint: undefined,
-    nestedPagesTree: [],
-  }
-  const pagesTree: PagesTree = [
-    ...layouts.flatMap((l) => buildLayoutTree(l) ?? []),
-    ...(noLayoutTree.pages.length > 0 ? [noLayoutTree] : []),
-  ]
-  return pagesTree
-}
-
-export const toPagesTree = ({ points }: { points: PointsCollection | LoadedPointsCollection }): PagesTree => {
-  const pagesAndLayouts = _toPagesAndLayoutsCollection({ points })
-  return _toPagesTreeFromPagesAndLayouts({ pagesAndLayouts })
-}
-
-export const _toRoutesCollection = ({ pagesTree }: { pagesTree: PagesTree }): Routes => {
-  const routes: Record<string, AnyRoute> = {}
-  const traverse = (node: PagesTreeRecord): void => {
-    // Add all page routes
-    for (const page of node.pages) {
-      routes[page.id] = page.route
-    }
-    // Recurse into nested layout trees
-    for (const child of node.nestedPagesTree) {
-      traverse(child)
-    }
-  }
-  for (const root of pagesTree) {
-    traverse(root)
-  }
-  return Routes.create(routes)
-}
-
-export const _toLoggablePagesTree = (pagesTree: PagesTree): object => {
-  return pagesTree.map((node) => {
-    return {
-      route: node.route.getDefinition(),
-      layoutComponent: !!node.layoutComponent,
-      pages: node.pages.map((p) => p.route.getDefinition()),
-      nestedPagesTree: _toLoggablePagesTree(node.nestedPagesTree),
-    }
-  })
-}
-
-export type PagesCollectionRecord = {
-  type: 'page'
-  id: PointName
-  route: AnyRoute
-  point: PagePoint | (() => Promise<PagePoint>)
-  pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-  layoutComponents: Array<
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-  >
-}
-export type PagesCollection = PagesCollectionRecord[]
-
-export type LayoutsCollectionRecord = {
-  type: 'layout'
-  id: PointName
-  route: AnyRoute
-  point: LayoutPoint | (() => Promise<LayoutPoint>)
-  layoutComponent:
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-  layoutPagesRoutes: AnyRoute[]
-}
-export type LayoutsCollection = LayoutsCollectionRecord[]
-
-export type PagesAndLayoutsCollection = {
-  pages: PagesCollection
-  layouts: LayoutsCollection
-}
-
-export type PagesTreeRecord = {
-  route: AnyRoute
-  id: PointName
-  layoutPoint: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
-  layoutComponent:
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-    | undefined
-  pages: Array<{
-    id: PointName
-    route: AnyRoute
-    pagePoint: PagePoint | (() => Promise<PagePoint>)
-    pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-  }>
-  nestedPagesTree: PagesTreeRecord[]
-}
-export type PagesTree = PagesTreeRecord[]

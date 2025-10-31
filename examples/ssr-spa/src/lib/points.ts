@@ -1,4 +1,4 @@
-import type { PointsCollection } from 'point0/core/eversion.js'
+import type { PointsCollection } from 'point0/core/points.js'
 
 // TODO: clientRoute and serverRoute
 

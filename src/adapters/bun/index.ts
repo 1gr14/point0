@@ -1,10 +1,9 @@
 import { Route0 } from '@devp0nt/route0'
-import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import qs from 'qs'
+import { renderToReadableStream } from 'react-dom/server'
 import z from 'zod'
-import type { PointsCollection } from '../../core/eversion.js'
 import { Eversion } from '../../core/eversion.js'
 import type { IsEmptyObject, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
 import type {
@@ -41,7 +40,6 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   clientsDevServer: Bun.Server<unknown> | undefined
   clientsDevServerPort: number
   root: RootPoint<TRequiredCtx>
-  points?: PointsCollection
   logger: ServerAdapterLogger
   dirname?: string
   publicDir?: string
@@ -60,7 +58,6 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     },
   ) {
     this.root = input.root
-    this.points = input.points
     this.mainServerPort = input.port ? Number(input.port) : 3000
     this.clientsDevServerPort = input.clientsDevServerPort
       ? Number(input.clientsDevServerPort)
@@ -313,9 +310,11 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             pointName: bodyRaw.pointName,
           })
       })()
+      const pointType = task?.pointType ?? 'page'
+      const outputType = task?.outputType ?? 'html'
 
       const suitable = this.eversion.getSuitable({
-        pointType: task?.pointType ?? 'page',
+        pointType,
         rootId: task?.rootId,
         pointName: task?.pointName,
         pageLocation: !task ? Route0.getLocation(request.url) : undefined,
@@ -351,7 +350,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             : await this._loadSrcIndexHtmlContents(relatedClient)
         const App = relatedClient.App
 
-        if (relatedClient.ssr && !parsedRequest.isJsonAcceptable) {
+        if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
           if (!originalIndexHtml) {
             if (process.env.NODE_ENV !== 'production') {
               throw new Error(
@@ -395,9 +394,27 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }
             throw error
           }
-        } else if (!relatedClient.ssr && !parsedRequest.isJsonAcceptable && relatedClient.distIndexHtml) {
+        } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.distIndexHtml) {
           return new Response(originalIndexHtml, {
             headers: { 'Content-Type': 'text/html' },
+            status: 200,
+          })
+        } else if (outputType === 'dehydratedState' && pointType === 'page') {
+          if (!App) {
+            throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
+          }
+          if (!suitable.pageLocation) {
+            console.log('pageLocation not found', suitable)
+            // I think it will never throw, but who knows
+            throw new Error('Page for dehydrated state not found')
+          }
+          await eversionRun.prefetchAppPoints({
+            App,
+            renderToReadableStream,
+          })
+          const dehydratedState = eversionRun.getQueryClientDehydratedState()
+          return new Response(JSON.stringify({ dehydratedState }), {
+            headers: { 'Content-Type': 'application/json' },
             status: 200,
           })
         }

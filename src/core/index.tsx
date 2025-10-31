@@ -1086,8 +1086,36 @@ export class Point0<
     })
   }
 
+  loader(): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+    TProps
+  >
   loader<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TNewData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+    TProps
+  >
+  loader<TNewData extends Data = Data>(
+    loaderFn?: LoaderFn<TCtx, TData, TRoute, TInputSchema, TNewData>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1117,7 +1145,7 @@ export class Point0<
       _pointType: 'middleware',
       _extractFns: [
         ...this._extractFns,
-        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+        { type: 'loader', fn: loaderFn ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
       ] as never,
     })
   }
@@ -2305,14 +2333,6 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 
-  _prefetchQueryByLocation = async (
-    location: AnyLocation,
-    options: { queryClient: QueryClient; queryOptions?: QueryOptions; fetchOptions?: FetchOptions; force?: boolean },
-  ): Promise<void> => {
-    const input = this._getUnsafeInputRawByLocation(location)
-    await this.prefetchQuery(input as never, options)
-  }
-
   async prefetchQuery(
     ...args: IsInputOptional<TRoute, TInputSchema> extends true
       ? [
@@ -2388,10 +2408,10 @@ export class Point0<
     const [, { queryClient }] = args
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryKey as never })
-    const dehydratedState = query?.state.data as DehydratedState | undefined
-    if (!dehydratedState) {
+    const data = query?.state.data as { dehydratedState: DehydratedState } | undefined
+    if (!data?.dehydratedState) {
       return
     }
-    hydrate(queryClient, dehydratedState)
+    hydrate(queryClient, data.dehydratedState)
   }
 }

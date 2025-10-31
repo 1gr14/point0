@@ -1,14 +1,14 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
+import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
+import type { PointsCollection } from './points.js'
+import { Points } from './points.js'
 import type { HydratedAppComponent } from './hydrate.js'
 import { Point0 } from './index.js'
-import { toPagesTree } from './router.js'
 import type {
   AnyPoint,
   Ctx,
@@ -29,7 +29,6 @@ import type {
   RootSourcePoint,
   UndefinedCtx,
   UndefinedResponseOutput,
-  UndefinedRoute,
 } from './types.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
@@ -37,7 +36,7 @@ import type {
 export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   root: RootPoint<TRequiredCtx>
   source: Eversion<TRequiredCtx> | undefined
-  points: LoadedPointsCollection
+  points: Points<true>
   connections: Array<Eversion<TRequiredCtx>>
 
   private constructor({
@@ -48,91 +47,42 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     root: RootPoint
     source?: Eversion<TRequiredCtx> | undefined
-    points?: LoadedPointsCollection
+    points: Points<true>
     connections?: Array<Eversion<TRequiredCtx>>
   }) {
     this.root = root as RootPoint<TRequiredCtx>
-    this.points = points ?? []
+    this.points = points
     this.connections = connections ?? []
     this.source = source
   }
 
   static async create<TRootPoint extends RootPoint>({
     root,
-    points,
+    points = [],
   }: {
     root: TRootPoint
-    points?: PointsCollectionRecord[]
+    points?: PointsCollection
   }): Promise<Eversion<TRootPoint['Infer']['RequiredCtx']>> {
     return new Eversion<TRootPoint['Infer']['RequiredCtx']>({
       root,
-      points: await Eversion.toLoadedPointsCollection(points),
+      points: await Points.load(points),
     })
   }
 
   async connect({
     root,
-    points,
+    points = [],
   }: {
     root: RootPoint
-    points?: PointsCollection | LoadedPointsCollection
+    points?: PointsCollection
   }): Promise<Eversion<TRequiredCtx>> {
     const connection = new Eversion<TRequiredCtx>({
       root,
-      points: await Eversion.toLoadedPointsCollection(points),
+      points: await Points.load(points),
       source: this,
     })
     this.connections.push(connection)
     return connection
-  }
-
-  static async toLoadedPointsCollection(
-    points?: PointsCollection | LoadedPointsCollection,
-  ): Promise<LoadedPointsCollection> {
-    const firstPoint = points?.at(0)
-    if (firstPoint && 'loaded' in firstPoint) {
-      return points as LoadedPointsCollection
-    }
-    return await Promise.all(
-      points?.map(async (record, index) => {
-        const pointPromise = typeof record.point === 'function' ? record.point() : record.point
-        const [point] = await Promise.all([pointPromise])
-        const route = point._route
-        if (point._pointType === 'page' && !route) {
-          throw new Error(`No client route provided for page point. Index: ${index}.`)
-        }
-        const routeDefinition = route?.definition
-        const recordRouteDefinition = record.route ? Route0.create(record.route).getDefinition() : undefined
-        if (routeDefinition !== recordRouteDefinition) {
-          throw new Error(
-            `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
-          )
-        }
-        const pointId = record.id
-        const recordId = record.id
-        if (pointId !== recordId) {
-          throw new Error(
-            `Point id does not match record id. Forget to regenerate points file?. Index: ${index}. Point id: ${pointId}. Record id: ${recordId}.`,
-          )
-        }
-        const recordType = record.type
-        const pointType = point._pointType
-        if (recordType !== pointType) {
-          throw new Error(
-            `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. Record type: ${recordType}. Point type: ${pointType}.`,
-          )
-        }
-        const recordLayoutPagesRoutes = record.layoutPagesRoutes ?? []
-        return {
-          loaded: true,
-          point,
-          route,
-          id: pointId,
-          type: pointType,
-          layoutPagesRoutes: recordLayoutPagesRoutes,
-        }
-      }) ?? [],
-    )
   }
 
   async createRun({
@@ -164,11 +114,13 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     pointType,
     pointName,
+    input,
   }: {
     rootId?: RootId
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
+    input?: InputParsed | undefined
   }):
     | {
         point: EndPoint
@@ -179,33 +131,12 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (rootId && this.root._rootId !== rootId) {
       return undefined
     }
-    for (const { route, point } of this.points) {
-      // TODO:ASAP
-      if (pointType && point._pointType !== pointType) {
-        continue
-      }
-      if (pointName) {
-        if (point._name === pointName) {
-          return {
-            point,
-            pageLocation: undefined,
-            eversion: this,
-          }
-        }
-        continue
-      }
-      // only pages and layouts has client route, but layouts data never should be requested on server by its own client path,
-      // becouse it can be same as page path, instead they are requested by its server path
-      if (point._pointType !== 'page' || !pageLocation) {
-        continue
-      }
-      const match = route?.getLocation(pageLocation)
-      if (match?.exact) {
-        return {
-          point,
-          pageLocation: match,
-          eversion: this,
-        }
+    const suitablePoint = this.points.getSuitablePoint({ pageLocation, pointType, pointName, input })
+    if (suitablePoint) {
+      return {
+        point: suitablePoint.point,
+        pageLocation: suitablePoint.pageLocation,
+        eversion: this,
       }
     }
     return undefined
@@ -215,19 +146,21 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     pointType,
     pointName,
+    input,
   }: {
     rootId?: RootId
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
+    input?: InputParsed | undefined
   }): GetSuitablePointResult<TRequiredCtx> | undefined {
-    const suitableSelfPoint = this._getSuitableSelfPoint({ pageLocation, rootId, pointType, pointName })
+    const suitableSelfPoint = this._getSuitableSelfPoint({ pageLocation, rootId, pointType, pointName, input })
     if (suitableSelfPoint) {
       return suitableSelfPoint
     }
     const suitableConnectionPoint = (() => {
       for (const connection of this.connections) {
-        const result = connection._getSuitablePoint({ pageLocation, rootId, pointType, pointName })
+        const result = connection._getSuitablePoint({ pageLocation, rootId, pointType, pointName, input })
         if (result) {
           return result
         }
@@ -247,6 +180,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     rootId?: RootId | undefined
     pageLocation: AnyLocation
   }): Eversion<TRequiredCtx> | undefined {
+    // TODO: fix it later, it now not used
     if (rootId && this.root._rootId !== rootId) {
       return undefined
     }
@@ -345,14 +279,16 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     pointType,
     pointName,
+    input,
   }: {
     rootId?: RootId
     fallbackRootId: RootId
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
+    input?: InputParsed | undefined
   }): GetSuitableResult<TRequiredCtx> {
-    const suitablePoint = this._getSuitablePoint({ pageLocation, rootId, pointType, pointName })
+    const suitablePoint = this._getSuitablePoint({ pageLocation, rootId, pointType, pointName, input })
     if (suitablePoint) {
       return suitablePoint
     }
@@ -542,30 +478,6 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }
 
-  // async extractSuitable({
-  //   method: providedMethod,
-  //   requiredCtx,
-  //   rootId,
-  //   fallbackRootId,
-  //   input,
-  //   ...locationProps
-  // }: WithRequiredCtx<TRequiredCtx> & {
-  //   method: Method
-  //   rootId?: RootId | undefined
-  //   fallbackRootId: RootId
-  //   point?: AnyPoint | undefined
-  //   input?: Input
-  // } & LocationInput): Promise<ExtractResult> {
-  //   const location = this.normalizeLocation(locationProps)
-  //   const suitable = this.getSuitable({ method: providedMethod, location, rootId, fallbackRootId })
-  //   return await suitable.eversion.extract({
-  //     point: suitable.point,
-  //     requiredCtx,
-  //     location: suitable.location,
-  //     input,
-  //   } as never)
-  // }
-
   async prefetchAppPoints({
     App,
     renderToReadableStream,
@@ -575,7 +487,6 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     renderToReadableStream: typeof RenderToReadableStream
     allFetchedRecords?: FetchPointRecord[]
   }): Promise<void> {
-    const pagesTree = toPagesTree({ points: this.eversion.points })
     const nonfetchedRecords: FetchPointRecord[] = []
 
     const NonfetchedRecordsCollectorContextProvider = ({
@@ -601,7 +512,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       >
         <App
           ssrLocation={this.pageLocation}
-          pagesTree={pagesTree}
+          points={this.eversion.points}
           dehydratedState={this.getQueryClientDehydratedState()}
         />
       </NonfetchedRecordsCollectorContextProvider>
@@ -711,24 +622,6 @@ export type FillPageResult = {
   error: unknown
   status: number | undefined
 }
-
-export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-  type: TEndPointType
-  id: PointName
-  route?: string | undefined
-  point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
-  layoutPagesRoutes?: string[]
-}
-export type PointsCollection = PointsCollectionRecord[]
-export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-  loaded: true
-  type: TEndPointType
-  id: PointName
-  route: AnyRoute | UndefinedRoute
-  point: EndPoint<TEndPointType>
-  layoutPagesRoutes: string[]
-}
-export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
 
 // TODO: remove this complexity, please
 // export type WithRequiredCtx<TRequiredCtx extends RequiredCtx = UndefinedCtx> = TRequiredCtx extends Ctx

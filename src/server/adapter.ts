@@ -1,6 +1,6 @@
+import type { PointsCollection } from '../core/points.js'
 import type { HydratedAppComponent } from '../core/hydrate.js'
-import type { RootId, RootPoint, RequiredCtx } from '../core/types.js'
-import type { PointsCollection } from '../core/eversion.js'
+import type { RequiredCtx, RootId, RootPoint } from '../core/types.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
 export type ServerAdapterLogger = {

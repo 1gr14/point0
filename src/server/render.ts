@@ -7,7 +7,6 @@ import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, Payload } from '../core/eversion.js'
 import type { HydratedAppComponent } from '../core/hydrate.js'
-import { toPagesTree } from '../core/router.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -251,7 +250,7 @@ export async function renderAppAsReadableStream({
   })
   const element = createElement(App, {
     ssrLocation: eversionRun.pageLocation,
-    pagesTree: toPagesTree({ points: eversionRun.eversion.points }),
+    points: eversionRun.eversion.points,
     dehydratedState: eversionRun.getQueryClientDehydratedState(),
   })
   return await renderReadableStream({
