@@ -11,6 +11,7 @@ export class Points<TLoaded extends boolean = boolean> {
   loaded: TLoaded
   pagesTree: PagesTree
   routes: Routes
+  routesHash: string
 
   private constructor({
     collection,
@@ -27,6 +28,7 @@ export class Points<TLoaded extends boolean = boolean> {
     this.pagesTree = pagesTree
     this.routes = routes
     this.loaded = loaded as TLoaded
+    this.routesHash = routes._.pathsOrdering.join(',')
   }
 
   static create(points: PointsCollection): Points<false> {

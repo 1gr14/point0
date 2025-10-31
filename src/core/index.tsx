@@ -1777,6 +1777,8 @@ export class Point0<
       }
     }
 
+    // TODO: we should store state globally, to prevent on hmr rernder of page, it is blinking
+    // lets use reactQuery cache here, and store there clientData and clientHead
     const [clientHead, setClientHead] = React.useState<ResolvableHead>({})
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<Error0 | undefined>(undefined)

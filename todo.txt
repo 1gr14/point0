@@ -24,6 +24,8 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 ? split index.ts code
 .disable()
 preventSsr
+props to clientFns for component, and also to page, layout, clientCtx
+queryCache for clients queries
 .route(string)
 basepath replace with cwd
 .useLayout()
