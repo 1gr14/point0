@@ -85,7 +85,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   originalIndexHtml,
   content,
   dehydratedState,
-  location,
+  pageLocation,
   head,
   rootElementId,
   clientBundlePath,
@@ -94,12 +94,12 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   content?: TContent
   // TODO: make it choosable by settings
   dehydratedState: DehydratedState
-  location: AnyLocation
+  pageLocation: AnyLocation
   head: ResolvableHead[]
   rootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
-  const serializedPayload = serializePayload({ dehydratedState, location })
+  const serializedPayload = serializePayload({ dehydratedState, location: pageLocation })
 
   let html = prependBodyElement({
     content: `<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>`,
@@ -143,7 +143,7 @@ export async function renderStatic({
   element,
   dehydratedState,
   head,
-  location,
+  pageLocation,
   renderer = renderToStaticMarkup,
   clientBundlePath,
   originalIndexHtml,
@@ -151,7 +151,7 @@ export async function renderStatic({
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
-  location: AnyLocation
+  pageLocation: AnyLocation
   head: ResolvableHead[]
   renderer?: StaticRenderer
   clientBundlePath: string
@@ -162,7 +162,7 @@ export async function renderStatic({
     await overrideDocumentHtml({
       content: renderer(element),
       dehydratedState,
-      location,
+      pageLocation,
       head,
       clientBundlePath,
       originalIndexHtml,
@@ -205,7 +205,7 @@ export async function getReadableStreamWithWrapper({
 export async function renderReadableStream({
   element,
   dehydratedState,
-  location,
+  pageLocation,
   head,
   clientBundlePath,
   renderer = renderToReadableStream,
@@ -214,7 +214,7 @@ export async function renderReadableStream({
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
-  location: AnyLocation
+  pageLocation: AnyLocation
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
@@ -224,7 +224,7 @@ export async function renderReadableStream({
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
     dehydratedState,
-    location,
+    pageLocation,
     head,
     rootElementId,
   })
@@ -238,7 +238,7 @@ export async function renderAppAsReadableStream({
 }: {
   App: HydratedAppComponent
   eversionRun: EversionRun
-  location: AnyLocation
+  pageLocation: AnyLocation
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
@@ -250,7 +250,7 @@ export async function renderAppAsReadableStream({
     renderToReadableStream,
   })
   const element = createElement(App, {
-    ssrLocation: eversionRun.location,
+    ssrLocation: eversionRun.pageLocation,
     pagesTree: toPagesTree({ points: eversionRun.eversion.points }),
     dehydratedState: eversionRun.getQueryClientDehydratedState(),
   })

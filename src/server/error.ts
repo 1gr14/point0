@@ -14,8 +14,8 @@ export const toTextErrorResponse = (error: unknown, status: number) => {
   })
 }
 
-export const toSuitableErrorResponse = (error: unknown, status: number, accept: string | null) => {
-  if (!accept || accept.includes('application/json')) {
+export const toSuitableErrorResponse = (error: unknown, status: number, json = true) => {
+  if (json) {
     return toJsonErrorResponse(error, status)
   } else {
     return toTextErrorResponse(error, status)

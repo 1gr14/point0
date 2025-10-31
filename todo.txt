@@ -1,6 +1,4 @@
-id → name
-.lets(type, name)
-one server endpoint
+one server endpoint: output, type, input, name, remove isJsonAcceptable
 
 points provider
 layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
@@ -42,6 +40,7 @@ remove server code from client
 store each point location to normalize errors messages for example in No route or id provided for this point
 layout scroll position
 fix head title blinking
+on navigate on unknown location do window location change
 not json but query and mutation, and if it is mutation the on extract do not add it to hydratedState
 do not loose state on hmr
 force layout and page to have route

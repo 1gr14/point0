@@ -1,10 +1,12 @@
+import { Route0 } from '@devp0nt/route0'
 import type {} from 'bun'
 import { serve } from 'bun'
 import * as nodePath from 'node:path'
 import qs from 'qs'
+import z from 'zod'
 import type { PointsCollection } from '../../core/eversion.js'
 import { Eversion } from '../../core/eversion.js'
-import type { IsEmptyObject, Method, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
+import type { IsEmptyObject, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
 import type {
   ServerAdapterClientInputParsed,
   ServerAdapterLogger,
@@ -15,7 +17,6 @@ import { parseServerAdapterInput } from '../../server/adapter.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderAppAsReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
-import { Route0 } from '@devp0nt/route0'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
@@ -224,7 +225,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
 
-  async _fetchPublicDir({ pathnameAsRelPath, request }: ParsedRequest): Promise<Response | undefined> {
+  async _fetchPublicDir({ pathnameAsRelPath, isJsonAcceptable }: ParsedRequest): Promise<Response | undefined> {
     if (!this.publicDir) {
       return undefined
     }
@@ -233,7 +234,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       try {
         return new Response(Bun.file(absPath))
       } catch (error) {
-        return toSuitableErrorResponse(error, 404, request.headers.get('Accept'))
+        return toSuitableErrorResponse(error, 404, isJsonAcceptable)
       }
     }
     return undefined
@@ -255,10 +256,13 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   async fetch(request: Request, requiredCtx: TRequiredCtx): Promise<Response> {
     const url = new URL(request.url)
-    const pathname = url.pathname
-    const pathnameAsRelPath = pathname.replace(/^\//, '')
-    const isJsonAcceptable = !!request.headers.get('Accept')?.includes('application/json')
-    const parsedRequest: ParsedRequest = { request, url, pathname, pathnameAsRelPath, isJsonAcceptable }
+    const parsedRequest: ParsedRequest = {
+      request,
+      url,
+      pathname: url.pathname,
+      pathnameAsRelPath: url.pathname.replace(/^\//, ''),
+      isJsonAcceptable: !!request.headers.get('Accept')?.includes('application/json'),
+    }
 
     try {
       let response: Response | undefined = await this._fetchClientDistDir(parsedRequest)
@@ -281,33 +285,60 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return response
       }
 
+      const task = await (async () => {
+        if (parsedRequest.pathname !== '/_point0') {
+          return undefined
+        }
+        parsedRequest.isJsonAcceptable = true
+        const bodyRaw = await (async () => {
+          try {
+            return await request.json()
+          } catch (error) {
+            return {}
+          }
+        })()
+        return z
+          .object({
+            pointType: z.enum(['page', 'layout', 'component', 'response', 'query', 'mutation', 'client-ctx']),
+            outputType: z.enum(['data', 'response', 'dehydratedState']),
+            pointInput: z.record(z.string(), z.any()),
+            rootId: z.string().min(1),
+            pointName: z.string().min(1),
+          })
+          .parse({
+            pointType: bodyRaw.pointType,
+            outputType: bodyRaw.outputType,
+            pointInput: bodyRaw.pointInput,
+            rootId: bodyRaw.rootId,
+            pointName: bodyRaw.pointName,
+          })
+      })()
+
       const suitable = this.eversion.getSuitable({
-        method: request.method as Method,
-        location: Route0.getLocation(request.url),
+        pointType: task?.pointType ?? 'page',
+        rootId: task?.rootId,
+        pointName: task?.pointName,
+        pageLocation: !task ? Route0.getLocation(request.url) : undefined,
         fallbackRootId: this.fallbackRootId,
       })
       const eversionRun = await suitable.eversion.createRun({
-        location: suitable.location,
+        pageLocation: suitable.pageLocation,
         requiredCtx,
       })
 
-      // TODO: get correct input by suitable using helper
-      const body = await (async () => {
-        try {
-          return await request.json()
-        } catch (error) {
-          return {}
+      const input = (() => {
+        if (task?.pointInput) {
+          return task.pointInput
         }
+        const searchParams = { ...qs.parse(url.search.slice(1)) } as Record<string, any>
+        const routeParams = suitable.pageLocation?.params
+        return { ...searchParams, ...routeParams }
       })()
-      const searchParams = { ...qs.parse(url.search.slice(1)) } as Record<string, any>
-      const routeParams = suitable.location.params
-      const input = searchParams._point0_input
-        ? JSON.parse(searchParams._point0_input)
-        : { ...searchParams, ...routeParams, ...body }
       const extractResult = await eversionRun.extract({
         point: suitable.point,
         input,
       })
+
       const relatedClient = this.clients.find((client) => client.root === suitable.eversion.root)
       if (extractResult.error) {
         this.logger.error(extractResult.error)
@@ -320,7 +351,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             : await this._loadSrcIndexHtmlContents(relatedClient)
         const App = relatedClient.App
 
-        if (relatedClient.ssr && !isJsonAcceptable) {
+        if (relatedClient.ssr && !parsedRequest.isJsonAcceptable) {
           if (!originalIndexHtml) {
             if (process.env.NODE_ENV !== 'production') {
               throw new Error(
@@ -337,11 +368,15 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             if (!App) {
               throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
             }
+            if (!suitable.pageLocation) {
+              // I think it will never throw, but who knows
+              throw new Error('Page Not Found')
+            }
             const readableStream = await renderAppAsReadableStream({
               App,
               eversionRun,
               head: extractResult.head,
-              location: suitable.location,
+              pageLocation: suitable.pageLocation,
               originalIndexHtml,
               rootElementId: relatedClient.rootElementId,
             })
@@ -360,7 +395,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }
             throw error
           }
-        } else if (!relatedClient.ssr && !isJsonAcceptable && relatedClient.distIndexHtml) {
+        } else if (!relatedClient.ssr && !parsedRequest.isJsonAcceptable && relatedClient.distIndexHtml) {
           return new Response(originalIndexHtml, {
             headers: { 'Content-Type': 'text/html' },
             status: 200,
@@ -383,7 +418,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
     } catch (error) {
       this.logger.error(error)
-      return toSuitableErrorResponse(error, 500, request.headers.get('Accept'))
+      return toSuitableErrorResponse(error, 500, true)
     }
   }
 

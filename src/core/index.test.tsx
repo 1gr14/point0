@@ -167,7 +167,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
-    const run = await eversion2.createRun({ location: Route0.getLocation('/'), requiredCtx: undefined })
+    const run = await eversion2.createRun({ pageLocation: Route0.getLocation('/'), requiredCtx: undefined })
     expect(await run.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         a: 3,
@@ -255,7 +255,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion1 = await Eversion.create({ root: server1 })
-    const run = await eversion1.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
+    const run = await eversion1.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: undefined })
     expect(await run.extract({ point: clientPoint01, input: {} })).toEqual({
       ctx: {
         a: 1,
@@ -278,7 +278,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
-    const run2 = await eversion2.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
+    const run2 = await eversion2.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: undefined })
     expect(await run2.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         a: 3,
@@ -300,7 +300,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion3 = await Eversion.create({ root: server3 })
-    const run3 = await eversion3.createRun({ location: Route0.getLocation(url), requiredCtx: undefined })
+    const run3 = await eversion3.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: undefined })
     expect(
       await run3.extract({
         point: clientPoint03,
@@ -333,7 +333,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion1 = await Eversion.create({ root: server1 })
-    const run1 = await eversion1.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
+    const run1 = await eversion1.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: { r: 'str' } })
     expect(
       await run1.extract({
         point: clientPoint01,
@@ -362,7 +362,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
-    const run2 = await eversion2.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
+    const run2 = await eversion2.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: { r: 'str' } })
     expect(await run2.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         r: 'str',
@@ -386,7 +386,7 @@ describe('Point0', () => {
       .route(Route0.create('/'))
       .page(pageComponent)
     const eversion3 = await Eversion.create({ root: server3 })
-    const run3 = await eversion3.createRun({ location: Route0.getLocation(url), requiredCtx: { r: 'str' } })
+    const run3 = await eversion3.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: { r: 'str' } })
     expect(await run3.extract({ point: clientPoint03, input: {} })).toEqual({
       ctx: {
         r: 'str',
