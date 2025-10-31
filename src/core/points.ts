@@ -183,10 +183,12 @@ export class Points<TLoaded extends boolean = boolean> {
           lp.layoutComponents[level] === lp.layoutComponents[lp.layoutComponents.length - 1]
         )
       })
-      const nestedLayouts = layouts.filter((l) =>
-        // l.route.getDefinition().startsWith(layout.route.getDefinition()) &&
-        // l.route.getDefinition() !== layout.route.getDefinition(),
-        l.route.isChildren(layout.route),
+      const nestedLayouts = layouts.filter(
+        (l) =>
+          l.route.getDefinition().startsWith(layout.route.getDefinition()) &&
+          l.route.getDefinition() !== layout.route.getDefinition(),
+        // TODO: use it
+        // l.route.isChildren(layout.route),
       )
       const nestedLayoutsTrees = nestedLayouts.map((l) => buildLayoutTree(l, level + 1))
       const result: PagesTreeRecord = {

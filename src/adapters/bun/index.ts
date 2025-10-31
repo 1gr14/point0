@@ -318,6 +318,7 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         rootId: task?.rootId,
         pointName: task?.pointName,
         pageLocation: !task ? Route0.getLocation(request.url) : undefined,
+        input: task?.pointInput,
         fallbackRootId: this.fallbackRootId,
       })
       const eversionRun = await suitable.eversion.createRun({

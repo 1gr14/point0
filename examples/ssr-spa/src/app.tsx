@@ -1,5 +1,5 @@
 import { HydrationBoundary, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Unhead } from 'point0/adapters/unhead'
+import { Unhead } from 'point0/core/unhead'
 import { Router, RouterRoutes } from 'point0/adapters/wouter'
 import type { HydratedAppProps } from 'point0/core/hydrate'
 import { useState } from 'react'
