@@ -1,18 +1,17 @@
 import * as babel from '@babel/parser'
+import type traverseType from '@babel/traverse'
+import traverseModule from '@babel/traverse'
 import { Glob } from 'bun'
 import type { Jiti } from 'jiti'
 import { createJiti } from 'jiti'
 import * as nodeFs from 'node:fs'
+import { existsSync, watch as fsWatch } from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EndPoint, EndPointType, PointName } from '../core/types.js'
-import traverseModule from '@babel/traverse'
-import type traverseType from '@babel/traverse'
 
-const traverse =
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
-    ? T
-    : typeof traverseType
+const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
+  ? T
+  : typeof traverseType
 
 // TODO: add Routes to output
 // TODO: add PointsCollection.create in result output
@@ -64,6 +63,8 @@ export class FileGenerator {
   private readonly files = new Set<string>()
   private points: CollectedPoint[] = []
 
+  private lastEmittedContent: string | undefined
+
   constructor(opts: FileGeneratorOptions) {
     this.banner = opts.banner
     this.basepath = opts.basepath
@@ -84,6 +85,16 @@ export class FileGenerator {
     await this.writeOutput()
   }
 
+  watch() {
+    void FileWatcher.watch({
+      generators: [this],
+      glob: [...this.globInclude, ...this.globExclude],
+      basepath: this.basepath,
+    })
+  }
+
+  // files
+
   private async collectFiles() {
     // Common built-in exclusions
     // excludePatterns.push('**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**')
@@ -98,6 +109,37 @@ export class FileGenerator {
         }
       }
     }
+  }
+
+  isFileSuitableToGlob(fileAbs: string): boolean {
+    return (
+      this.globInclude.some((g) => new Glob(g).match(fileAbs)) &&
+      !this.globExclude.some((g) => new Glob(g).match(fileAbs))
+    )
+  }
+
+  // watch reactions
+
+  async updateFromFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
+    this.files.add(fileAbs)
+    const evt = await this.processFile(fileAbs)
+    if (evt.changed) {
+      await this.writeOutput()
+    }
+    return evt
+  }
+
+  async removeDirOrFile(fileOrDirAbs: string): Promise<ChangeCollectedPointsEvent> {
+    const evt = this.removePointsByFileOrDirAbs(fileOrDirAbs)
+    if (evt.changed) {
+      await this.writeOutput()
+    }
+    for (const file of this.files) {
+      if (file.startsWith(fileOrDirAbs)) {
+        this.files.delete(file)
+      }
+    }
+    return evt
   }
 
   // mutations
@@ -133,6 +175,16 @@ export class FileGenerator {
     }
     const changed = added.length > 0
     return { points: this.points, deleted: [], added, updated, changed }
+  }
+
+  private deletePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
+    const deleted = points.filter((p) => this.points.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    this.points = this.points.filter((p) => !points.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    const changed = deleted.length > 0
+    if (changed) {
+      this.sortPoints()
+    }
+    return { points: this.points, deleted, added: [], updated: [], changed }
   }
 
   private replacePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
@@ -180,9 +232,11 @@ export class FileGenerator {
     })
   }
 
-  private removePointsByFileAbs(fileAbs: string): ChangeCollectedPointsEvent {
-    const deleted = this.points.filter((p) => p.fileAbs === fileAbs)
-    this.points = this.points.filter((p) => p.fileAbs !== fileAbs)
+  private removePointsByFileOrDirAbs(fileOrDirAbs: string): ChangeCollectedPointsEvent {
+    const deleted = this.points.filter((p) => p.fileAbs === fileOrDirAbs || p.fileAbs.startsWith(fileOrDirAbs))
+    this.points = this.points.filter(
+      (p) => p.fileAbs !== fileOrDirAbs && !p.fileAbs.startsWith(fileOrDirAbs + nodePath.sep),
+    )
     const changed = deleted.length > 0
     return { points: this.points, deleted, added: [], updated: [], changed }
   }
@@ -191,7 +245,19 @@ export class FileGenerator {
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
     const { collectedPoints } = await this.collectPointsFromFile(fileAbs)
-    return this.addPoints(collectedPoints)
+    const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
+    const deleted = prevPointsWithThisFile.filter(
+      (p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)),
+    )
+    const addResult = this.addPoints(collectedPoints)
+    const deleteResult = this.deletePoints(deleted)
+    return {
+      points: this.points,
+      added: addResult.added,
+      deleted: deleteResult.deleted,
+      updated: addResult.updated,
+      changed: addResult.changed || deleteResult.changed,
+    }
   }
 
   private async processFiles(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
@@ -215,7 +281,12 @@ export class FileGenerator {
   private async writeOutput() {
     const content = this.emitPointsFile(this.points)
     await nodeFs.promises.mkdir(nodePath.dirname(this.outputAbs), { recursive: true })
-    await Bun.write(this.outputAbs, content)
+    const tmp = this.outputAbs + '.tmp'
+    await nodeFs.promises.writeFile(tmp, content, 'utf8')
+    await nodeFs.promises.rename(tmp, this.outputAbs)
+    // await Bun.write(this.outputAbs, content)
+    // nodeFs.writeFileSync(this.outputAbs, content)
+    this.lastEmittedContent = content
     console.info(`✅ points file generated: ${this.outputAbs} (${this.points.length} points)`)
   }
 
@@ -483,5 +554,84 @@ export class FileGenerator {
       exported.point?.constructor?.name === 'Point0'
       ? (exported.point as EndPoint)
       : null
+  }
+}
+
+export type FileWatcherOptions = {
+  generators: FileGenerator[]
+  glob: string | string[]
+  basepath: string
+}
+
+export class FileWatcher {
+  readonly generators: FileGenerator[]
+  readonly glob: string | string[]
+  readonly basepath: string
+
+  private constructor(opts: FileWatcherOptions) {
+    this.generators = opts.generators
+    this.glob = opts.glob
+    this.basepath = opts.basepath
+  }
+
+  static create(opts: FileWatcherOptions) {
+    return new FileWatcher(opts)
+  }
+
+  static async watch(opts: FileWatcherOptions) {
+    const watcher = FileWatcher.create(opts)
+    await watcher.watch()
+  }
+
+  private async watch() {
+    const patterns = Array.isArray(this.glob) ? this.glob : [this.glob]
+
+    fsWatch(this.basepath, { recursive: true }, (eventType, filename) => {
+      void (async () => {
+        try {
+          if (!filename) return
+          const targetAbs = nodePath.resolve(this.basepath, filename)
+
+          // glob match
+          const matched = patterns.some((g) => new Glob(nodePath.resolve(this.basepath, g)).match(targetAbs))
+          if (!matched) return
+
+          const exists = existsSync(targetAbs)
+          const isDelete = eventType === 'rename' && !exists
+          const isCreateOrUpdate = (eventType === 'rename' && exists) || eventType === 'change'
+
+          for (const gen of this.generators) {
+            if (isDelete) {
+              const evt = await gen.removeDirOrFile(targetAbs)
+              if (evt.changed) {
+                const typesAndNames = evt.added.map((p) => `${p.type}:${p.name}`).join(', ')
+                console.info(`deleted:  ${typesAndNames}`)
+              }
+              continue
+            }
+
+            if (isCreateOrUpdate) {
+              const suitable = gen.isFileSuitableToGlob(targetAbs)
+              if (!suitable) continue
+              const evt = await gen.updateFromFile(targetAbs)
+              if (evt.changed) {
+                if (evt.deleted.length > 0) {
+                  const typesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
+                  console.info(`deleted: ${typesAndNames}`)
+                }
+                if (evt.added.length > 0) {
+                  const typesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
+                  console.info(`added: ${typesAndNames}`)
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`❌ ${(e as Error).message}`)
+        }
+      })()
+    })
+
+    console.info('👀 FileWatcher started')
   }
 }

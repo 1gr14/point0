@@ -9,6 +9,5 @@ const generator = FileGenerator.create({
 await generator.sync()
 
 if (process.env.WATCH) {
-  // generator.watch()
-  // FileGenerator.watch({ generators:[generator1, generator2], glob: ['../../**/*.{ts,tsx'] })
+  generator.watch()
 }
