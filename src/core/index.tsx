@@ -1422,6 +1422,9 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
   > {
+    if (!this._route) {
+      throw new Error('add .route() to chain to use .layout() function')
+    }
     return this._continue<
       'layout',
       UndefinedEndPointType,

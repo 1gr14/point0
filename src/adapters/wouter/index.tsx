@@ -8,7 +8,6 @@ import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../cor
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
-// TODO: allow createLink or createHelpers to provide routes type and use <Link to="routeName" param1="value1" param2="value2" />
 
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
@@ -97,52 +96,69 @@ const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
+// const compileRouteToRegex = (route: AnyRoute) => {
+//   const result = route
+//     .getDefinition()
+//     .replace(/\/+$/, '') // remove trailing slash
+//     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex special chars
+//     .replace(/:(\w+)/g, '([^/]+)') // replace :param with capture group
+//   return result ? `^${result}/?$` : `^/?$`
+// }
+// Combine multiple route definitions into a single regex
 const combineRoutesToRegex = (routes: AnyRoute[]) => {
   const compiled = routes.map((r) => r.getRegexString())
   const pattern = `^(${compiled.join('|')})(?:/|$)`
   return new RegExp(pattern)
 }
 
-export const RenderPagesTree = ({ nodes, Page404 }: { nodes: PagesTree; Page404: React.ComponentType }) => {
+export const RenderPagesTree = ({
+  nodes,
+  Page404,
+  level = 0,
+}: {
+  nodes: PagesTree
+  Page404: React.ComponentType
+  level?: number
+}) => {
   return (
     <Switch>
       {nodes.map((node) => {
-        // Layout-less pages
-        if (!node.layoutComponent) {
+        if (node.layoutComponent) {
+          // Layout with pages — combine all its page routes into a single regex
+          const Layout = node.layoutComponent
+          const layoutPagesRoutes = node.pages.map((p) => p.route)
+          const layoutPagesRoutesRegex = combineRoutesToRegex(layoutPagesRoutes)
           return (
-            <Fragment key={`nolayout-${node.route.getDefinition()}`}>
-              {node.pages.map(({ route, pageComponent: Page }) => {
-                return (
-                  <Route key={route.getDefinition()} path={route.getDefinition()}>
-                    <Page />
-                  </Route>
-                )
-              })}
-
-              <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
-            </Fragment>
+            <Route key={`layout-${node.route.getDefinition()}`} path={layoutPagesRoutesRegex}>
+              <Layout>
+                <Switch>
+                  {node.pages.map(({ route, pageComponent: Page }) => {
+                    return (
+                      <Route key={route.getDefinition()} path={route.getDefinition()}>
+                        <Page />
+                      </Route>
+                    )
+                  })}
+                  <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} level={level + 1} />
+                </Switch>
+              </Layout>
+            </Route>
           )
         }
 
-        // Layout with pages — combine all its page routes into a single regex
-        const Layout = node.layoutComponent
-        const layoutPagesRoutes = node.pages.map((p) => p.route)
-        const layoutPagesRoutesRegex = combineRoutesToRegex(layoutPagesRoutes)
+        // Layout-less pages
         return (
-          <Route key={`layout-${node.route.getDefinition()}`} path={layoutPagesRoutesRegex}>
-            <Layout>
-              <Switch>
-                {node.pages.map(({ route, pageComponent: Page }) => {
-                  return (
-                    <Route key={route.getDefinition()} path={route.getDefinition()}>
-                      <Page />
-                    </Route>
-                  )
-                })}
-                <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
-              </Switch>
-            </Layout>
-          </Route>
+          <Fragment key={`nolayout-${node.route.getDefinition()}`}>
+            {node.pages.map(({ route, pageComponent: Page }) => {
+              return (
+                <Route key={route.getDefinition()} path={route.getDefinition()}>
+                  <Page />
+                </Route>
+              )
+            })}
+
+            <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} level={level + 1} />
+          </Fragment>
         )
       })}
 

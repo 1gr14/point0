@@ -1,18 +1,25 @@
 import * as babel from '@babel/parser'
-import _traverse from '@babel/traverse'
 import { Glob } from 'bun'
 import type { Jiti } from 'jiti'
 import { createJiti } from 'jiti'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EndPoint, EndPointType, PointName } from '../core/types.js'
+import traverseModule from '@babel/traverse'
+import type traverseType from '@babel/traverse'
+
+const traverse =
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
+    ? T
+    : typeof traverseType
 
 // TODO: add Routes to output
 // TODO: add PointsCollection.create in result output
 // TODO: add watch mode
 // TODO: notify on changes
 
-const traverse = _traverse as never as typeof _traverse.default
+// const traverse = _traverse as never as typeof _traverse.default
 
 export type FileGeneratorOptions = {
   banner?: string
@@ -33,7 +40,7 @@ type CollectedPoint = {
   exportName: string
   importPath: string
   route?: string
-  layoutPagesRoutes?: string[]
+  layouts?: string[]
   fileAbs: string
   point: EndPoint
 }
@@ -348,7 +355,7 @@ export class FileGenerator {
       route: point._route?.definition,
       importPath: this.toRelativeJsImportPath(this.outputAbs, staticCandidate.sourceFileAbs),
       exportName: staticCandidate.exportName,
-      layoutPagesRoutes: point._layoutPagesRoutes.map((x: any) => x.definition as string),
+      layouts: point._pointType === 'page' ? point._layouts.flatMap((x) => (x._name ? [x._name] : [])) : undefined,
       point,
       fileAbs,
     }
@@ -378,19 +385,21 @@ export class FileGenerator {
     lines.push(``)
 
     lines.push(`export const points = [`)
-    for (const p of points) {
+    for (const point of points) {
       lines.push(`  {`)
-      lines.push(`    type: '${p.type}',`)
-      lines.push(`    name: '${p.name}',`)
-      if (p.route) {
-        lines.push(`    route: '${p.route}',`)
+      lines.push(`    type: '${point.type}',`)
+      lines.push(`    name: '${point.name}',`)
+      if (point.route) {
+        lines.push(`    route: '${point.route}',`)
       }
-      if (p.layoutPagesRoutes?.length) {
-        const arr = p.layoutPagesRoutes.map((r) => `'${r}'`).join(', ')
-        lines.push(`    layoutPagesRoutes: [${arr}],`)
+      if (point.type === 'page' && point.layouts?.length) {
+        const arr = point.layouts.map((r) => `'${r}'`).join(', ')
+        lines.push(`    layouts: [${arr}],`)
       }
+      // const exportNameSuffix = point.type === 'component' ? '.point' : ''
+      const exportNameSuffix = '.point'
       lines.push(
-        `    point: async () => (await import('${p.importPath}')).${p.exportName === 'default' ? 'default' : p.exportName},`,
+        `    point: async () => (await import('${point.importPath}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
       )
       lines.push(`  },`)
     }
@@ -431,8 +440,7 @@ export class FileGenerator {
       a.name === b.name &&
       a.type === b.type &&
       a.route === b.route &&
-      (a.layoutPagesRoutes?.every((r) => b.layoutPagesRoutes?.includes(r)) ||
-        (!a.layoutPagesRoutes && !b.layoutPagesRoutes))
+      (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
     )
   }
 
@@ -470,8 +478,7 @@ export class FileGenerator {
   }
 
   private static exportedToEndPoint(exported: unknown): EndPoint | null {
-    return typeof exported === 'object' &&
-      exported !== null &&
+    return ((typeof exported === 'object' && exported !== null) || typeof exported === 'function') &&
       'point' in exported &&
       exported.point?.constructor?.name === 'Point0'
       ? (exported.point as EndPoint)

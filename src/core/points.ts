@@ -50,7 +50,7 @@ export class Points<TLoaded extends boolean = boolean> {
         name: record.name,
         route: record.route ? Route0.create(record.route) : undefined,
         point: record.point,
-        layoutPagesRoutes: record.layoutPagesRoutes?.map((route) => Route0.create(route)) ?? [],
+        layouts: record.layouts ?? [],
       }
     })
   }
@@ -81,32 +81,32 @@ export class Points<TLoaded extends boolean = boolean> {
         const routeDefinition = route?.definition
         const recordRouteDefinition = record.route ? Route0.create(record.route).getDefinition() : undefined
         if (routeDefinition !== recordRouteDefinition) {
-          throw new Error(
-            `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
-          )
+          // throw new Error(
+          //   `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
+          // )
         }
         const pointName = point._name
         const recordName = record.name
         if (pointName !== recordName) {
-          throw new Error(
-            `Point name does not match record name. Forget to regenerate points file?. Index: ${index}. Point name: ${pointName}. Record name: ${recordName}.`,
-          )
+          // throw new Error(
+          //   `Point name does not match record name. Forget to regenerate points file?. Index: ${index}. Point name: ${pointName}. Record name: ${recordName}.`,
+          // )
         }
         const recordType = record.type
         const pointType = point._pointType
         if (recordType !== pointType) {
-          throw new Error(
-            `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. Record type: ${recordType}. Point type: ${pointType}.`,
-          )
+          // throw new Error(
+          //   `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. Record type: ${recordType}. Point type: ${pointType}.`,
+          // )
         }
-        const recordLayoutPagesRoutes = record.layoutPagesRoutes?.map((route) => Route0.create(route)) ?? []
+        const recordLayouts = record.layouts ?? []
         return {
           loaded: true,
           point,
           route,
-          name: pointName,
+          name: pointName || record.name,
           type: pointType,
-          layoutPagesRoutes: recordLayoutPagesRoutes,
+          layouts: recordLayouts,
         }
       }),
     )
@@ -139,7 +139,9 @@ export class Points<TLoaded extends boolean = boolean> {
                 default: (await point())._Layout,
               }))
             : point._Layout,
-        layoutPagesRoutes: record.layoutPagesRoutes,
+        layoutPagesRoutes: points
+          .filter((p) => p.type === 'page' && p.layouts.some((l) => l === record.name))
+          .flatMap((p) => p.route ?? []),
       })
     }
     for (const record of points) {
@@ -158,10 +160,7 @@ export class Points<TLoaded extends boolean = boolean> {
                 default: (await point())._Page,
               }))
             : point._Page,
-        layoutComponents: collection.layouts
-          // .filter((l) => record.layoutPagesRoutes?.includes(l.route.getDefinition()))
-          .filter((l) => l.layoutPagesRoutes.some((lpr) => record.route?.isSame(lpr)))
-          .map((l) => l.layoutComponent),
+        layouts: record.layouts,
       })
     }
     return collection
@@ -174,23 +173,14 @@ export class Points<TLoaded extends boolean = boolean> {
   }): PagesTree => {
     const layouts = pagesAndLayouts.layouts
     const pages = pagesAndLayouts.pages
-    const pagesWithoutLayouts = pages.filter((p) => p.layoutComponents.length === 0)
-
+    const pagesWithoutLayouts = pages.filter((p) => !p.layouts.length)
     const buildLayoutTree = (layout: LayoutsCollectionRecord, level = 0): PagesTreeRecord | undefined => {
       const layoutPages = pages.filter((p) => layout.layoutPagesRoutes.some((lpr) => lpr.isSame(p.route)))
       const layoutPagesWhereThisLayoutIndexEqLevelAndIsLast = layoutPages.filter((lp) => {
-        return (
-          lp.layoutComponents[level] === layout.layoutComponent &&
-          lp.layoutComponents[level] === lp.layoutComponents[lp.layoutComponents.length - 1]
-        )
+        return lp.layouts[level] === layout.name && lp.layouts[level] === lp.layouts[lp.layouts.length - 1]
       })
-      const nestedLayouts = layouts.filter(
-        (l) =>
-          l.route.getDefinition().startsWith(layout.route.getDefinition()) &&
-          l.route.getDefinition() !== layout.route.getDefinition(),
-        // TODO: use it
-        // l.route.isChildren(layout.route),
-      )
+
+      const nestedLayouts = layouts.filter((l) => l.route.isChildren(layout.route))
       const nestedLayoutsTrees = nestedLayouts.map((l) => buildLayoutTree(l, level + 1))
       const result: PagesTreeRecord = {
         route: layout.route,
@@ -476,7 +466,7 @@ export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPoint
   name: PointName
   route?: string | undefined
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
-  layoutPagesRoutes?: string[]
+  layouts?: string[]
 }
 export type PointsCollection = PointsCollectionRecord[]
 export type RoutedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
@@ -484,7 +474,7 @@ export type RoutedPointsCollectionRecord<TEndPointType extends EndPointType = En
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
-  layoutPagesRoutes: AnyRoute[]
+  layouts: string[]
 }
 export type RoutedPointsCollection = RoutedPointsCollectionRecord[]
 export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
@@ -492,7 +482,7 @@ export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = En
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint<TEndPointType>
-  layoutPagesRoutes: AnyRoute[]
+  layouts: string[]
 }
 export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
 
@@ -502,10 +492,7 @@ export type PagesCollectionRecord = {
   route: AnyRoute
   point: PagePoint | (() => Promise<PagePoint>)
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-  layoutComponents: Array<
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-  >
+  layouts: string[]
 }
 export type PagesCollection = PagesCollectionRecord[]
 
