@@ -1,12 +1,3 @@
-
-layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
-
-simplify prefetchQuery, use it only for usual prefetch by hands of user
-but create prefetchPage, which sen request to server, awaits for like usual render, anr returns dehydrated state, so we just add it to ur state and go
-
-
-
-
 points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
 
 auth
@@ -29,6 +20,7 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 .disable()
 preventSsr
 .route(string)
+layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
 static headsh should be also merged one to another, becouse of blinking
 points collection allow to route: undefined, hasLoader undefined we can know on server after loading points
 remove id route is enough
@@ -38,11 +30,13 @@ remove server code from client
 store each point location to normalize errors messages for example in No route or id provided for this point
 layout scroll position
 fix head title blinking
+on navigate to same page do not prefetch, or at least not show preloading
 on navigate on unknown location do window location change
 not json but query and mutation, and if it is mutation the on extract do not add it to hydratedState
 do not loose state on hmr
 force layout and page to have route
 prevent endless loop hmr after code changes
+allow router policy prefetch-partial to use by default inside prefetchSuitablePagePoint
 find unused code
 .loadingMeta() for client async client loaders
 asterisk layout as .layout(true, () => <div/>)

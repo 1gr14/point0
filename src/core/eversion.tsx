@@ -293,11 +293,18 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return suitablePoint
     }
     // TODO: allow find just by fallbackRootId
-    const suitableEversion = this._getSuitableEversionByPageLocation({
-      pageLocation,
-      rootId,
-      fallbackRootId,
-    })
+    if (pageLocation) {
+      const suitableEversion = this._getSuitableEversionByPageLocation({
+        pageLocation,
+        rootId,
+        fallbackRootId,
+      })
+      return { point: undefined, pageLocation, eversion: suitableEversion }
+    }
+    const suitableEversion = this._getSuitableEversionByRootId({ rootId })
+    if (!suitableEversion) {
+      throw new Error(`No suitable eversion found at root id "${rootId}"`)
+    }
     return { point: undefined, pageLocation, eversion: suitableEversion }
   }
 }
@@ -454,7 +461,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 200,
         }
       } else {
-        const error = new Error0(`Point Not Found: ${location.pathname}`)
+        const error = new Error0(`Point Not Found`)
         this.appendQueryClientCache({ data: currentData, point, error, input })
         return {
           ctx: currentCtx,

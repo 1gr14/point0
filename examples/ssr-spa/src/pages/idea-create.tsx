@@ -82,10 +82,10 @@ export default generalLayout
               mutation
                 .mutateAsync({ title, description, content })
                 .then((res) => {
-                  console.log('res', res)
+                  console.info('res', res)
                 })
                 .catch((err: unknown) => {
-                  console.log('err', err)
+                  console.info('err', err)
                 })
             }}
           >
@@ -115,10 +115,10 @@ export default generalLayout
                     setGenerated(result)
                   }
 
-                  console.log('Final result:', result)
+                  console.info('Final result:', result)
                 })
                 .catch((err: unknown) => {
-                  console.log('err', err)
+                  console.error('err', err)
                   setGenerated(`Error generating idea: ${err instanceof Error ? err.message : String(err)}`)
                 })
             }}
