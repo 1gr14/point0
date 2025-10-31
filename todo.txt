@@ -1,18 +1,23 @@
 points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
 
+.output(z.object({}))
+merge .input schemas
+plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
+
+elysia example
 auth
+? interstallar
+prisma in example
 
 expo example
 expo router
-
-elysia example
 
 config to forward settings to client and server. jsut {server, clients, generators}
 env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 ? maybe move config to Point0.extend and Point0.create and extract it from there
 cli for simplify commands, like build with bun: point0 build
 
-workspace packages
+workspace packages: @point0/core @point0/server @point0/wouter
 start0 without mono0
 
 status: .loader(() => [201, <div />]).loader(() => [404, <div />])
@@ -20,28 +25,30 @@ status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 .disable()
 preventSsr
 .route(string)
+basepath replace with cwd
+.useLayout()
+rename BunAdapter to Server and move to server dir and combine with server/adapter.ts | move genrator to adapters/bun, or better create extendable class
+page prefetch should be auto, if has App then full, if has no app, then partial
+eacho point should have prop .prefetch(boolean) and .ssr(boolean)
 layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
 static headsh should be also merged one to another, becouse of blinking
 points collection allow to route: undefined, hasLoader undefined we can know on server after loading points
-remove id route is enough
 ? inputs chema not needed, just input enough. No! Becouse we can have route whch defines part of input, but we can have no input schema. Or Yes! And when we define route we also define input schema, and new input schema should have same keys or more kike route
 Router accept points and Routes get pagesTree from Context
 remove server code from client
+query client nice () => provider safe for ssr
 store each point location to normalize errors messages for example in No route or id provided for this point
 layout scroll position
-fix head title blinking
 on navigate to same page do not prefetch, or at least not show preloading
 on navigate on unknown location do window location change
-not json but query and mutation, and if it is mutation the on extract do not add it to hydratedState
-do not loose state on hmr
-force layout and page to have route
+force page to have route
+test if layout can have no route
 prevent endless loop hmr after code changes
 allow router policy prefetch-partial to use by default inside prefetchSuitablePagePoint
 find unused code
 .loadingMeta() for client async client loaders
 asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
-route0 if ens with "...&" then can be any query, else only provided type of queries
 refactor error0
 remove wrapper
 html template parsing by provided vars
@@ -50,7 +57,6 @@ route0 respect origin on match and try two clients with one server
 .extendRoute()
 remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
 analyze if there same id points or route points
-input even in
 client.create('page').route().loader() → it provides nice helpers
 superjson
 prefetch on Link hover
@@ -76,5 +82,5 @@ example vite-hono
 websocket
 statefull meta
 batch query
-chain: #chain().plugin() , Point0.use(), requireData(), TRequiredData
 .interstellar((extractSelf) => elysia.get(() => extractSelf()))
+.useComponent() to gueranty of preloading of this component

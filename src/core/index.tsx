@@ -117,6 +117,8 @@ export class Point0<
     return Point0._prevUnstableId++
   }
 
+  point: AnyPoint // this, needed for generator to collect points
+
   _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
   _pointType: TPointType
@@ -187,6 +189,8 @@ export class Point0<
     _appLoaderComponent?: LoaderComponentType<'app'>
     _unstableId?: number
   }) {
+    this.point = this as AnyPoint
+
     // persistent
     this._rootId = props._rootId
 
@@ -495,6 +499,7 @@ export class Point0<
     >({
       _pointType: 'base',
       _base: this as never as BasePoint<any, any, TRequiredCtx>,
+      _name: this._name ?? this._rootId,
       _letsEndPointType: undefined,
     })
   }
