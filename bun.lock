@@ -11,7 +11,7 @@
       "devDependencies": {
         "@commitlint/cli": "^19.8.1",
         "@commitlint/config-conventional": "^19.8.1",
-        "@devp0nt/route0": "^1.0.0-next.27",
+        "@devp0nt/route0": "^1.0.0-next.31",
         "@semantic-release/changelog": "^6.0.3",
         "@semantic-release/git": "^10.0.1",
         "@semantic-release/github": "^11.0.6",
@@ -42,7 +42,7 @@
       },
       "peerDependencies": {
         "@devp0nt/error0": "^1.0.0-next.38",
-        "@devp0nt/route0": "^1.0.0-next.27",
+        "@devp0nt/route0": "^1.0.0-next.31",
         "@tanstack/react-query": "^5.0.0",
         "@unhead/react": "^2.0.19",
         "react": "^19.0.0",
@@ -54,7 +54,7 @@
       "name": "@point0/ssr-spa",
       "version": "1.0.0",
       "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.27",
+        "@devp0nt/route0": "^1.0.0-next.31",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "server-only": "^0.0.1",
@@ -120,7 +120,7 @@
 
     "@devp0nt/meta0": ["@devp0nt/meta0@1.0.0-next.34", "", { "dependencies": { "@devp0nt/deepmap0": "^1.0.0-next.23" } }, "sha512-+TGxn2PIxxmqTiYOknC3b1SUETCz5elAeFI9csgosPbHyqiJ2Aw6zMqHNnISxMXpja7DWa9hL9+FdLD7EL73yw=="],
 
-    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.27", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-QjTNTD/XFZayct0YZGK8ZnxIUTxALwtIJ/G3niSCpLfIcQe3fe3OqTpgZpffvB/tyti9jy0MN+8Clt0sYmSJAA=="],
+    "@devp0nt/route0": ["@devp0nt/route0@1.0.0-next.31", "", { "dependencies": { "serialize-error": "^12.0.0" } }, "sha512-ZkF+WJFHCkpcuL9qMj98uPLDRhEDqhgFd+piLlqYxLwdC9KZRuvlK9KOeXmxaQEdZ0x2tRUY5dQh4CEtOLfDqA=="],
 
     "@epic-web/invariant": ["@epic-web/invariant@1.0.0", "", {}, "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA=="],
 

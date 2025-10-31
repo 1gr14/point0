@@ -1,11 +1,11 @@
-import type { AnyLocation, AnyRoute, Routes } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import React, { Fragment, useCallback, useMemo } from 'react'
+import React, { Fragment, useCallback, useContext, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
+import { Points, type PagesTree } from '../../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
-import type { PagesTree } from '../../core/points.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 // TODO: allow createLink or createHelpers to provide routes type and use <Link to="routeName" param1="value1" param2="value2" />
@@ -41,21 +41,21 @@ export const Link = (props: LinkProps) => {
 
 export const Router = ({
   ssrLocation,
-  pagesTree,
   Page404 = DefaultPage404,
-  routes,
   policy,
   status,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
-  pagesTree: PagesTree
-  routes: Routes
   Page404?: React.ComponentType
   policy?: RouterPolicy
   status?: RouterStatus
   children?: React.ReactNode
 }): React.ReactElement => {
+  const pointsCtx = useContext(Points.Context)
+  if (!pointsCtx) {
+    throw new Error('Points context not found')
+  }
   const wouterRouterProps = useMemo(() => {
     if (typeof window !== 'undefined') {
       return {}
@@ -69,52 +69,40 @@ export const Router = ({
   const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
     return Route0.getLocation(wouterLocation)
-  }, [routes])
+  }, [])
 
   return (
     <WouterRouter {...wouterRouterProps}>
       <RouterContextProvider
-        pagesTree={pagesTree}
         useAdapterLocation={useAdapterLocation}
-        routes={routes}
         ssrLocation={ssrLocation}
         policy={policy}
         status={status}
       >
-        {children ?? <RenderPagesTree nodes={pagesTree} Page404={Page404} />}
+        {children ?? <RenderPagesTree nodes={pointsCtx.pagesTree} Page404={Page404} />}
       </RouterContextProvider>
     </WouterRouter>
   )
 }
 
-export const RouterRoutes = ({
-  pagesTree,
-  Page404 = DefaultPage404,
-}: {
-  pagesTree: PagesTree
-  Page404?: React.ComponentType
-}): React.ReactElement => {
-  return <RenderPagesTree nodes={pagesTree} Page404={Page404} />
+export const RouterRoutes = ({ Page404 = DefaultPage404 }: { Page404?: React.ComponentType }): React.ReactElement => {
+  const pointsCtx = useContext(Points.Context)
+  if (!pointsCtx) {
+    throw new Error('Points context not found')
+  }
+  return <RenderPagesTree nodes={pointsCtx.pagesTree} Page404={Page404} />
 }
 
 const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
-const compileRouteToRegex = (route: AnyRoute) => {
-  const result = route
-    .getDefinition()
-    .replace(/\/+$/, '') // remove trailing slash
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex special chars
-    .replace(/:(\w+)/g, '([^/]+)') // replace :param with capture group
-  return result || '/'
-}
-// Combine multiple route definitions into a single regex
 const combineRoutesToRegex = (routes: AnyRoute[]) => {
-  const compiled = routes.map((r) => compileRouteToRegex(r))
+  const compiled = routes.map((r) => r.getRegexString())
   const pattern = `^(${compiled.join('|')})(?:/|$)`
   return new RegExp(pattern)
 }
+
 export const RenderPagesTree = ({ nodes, Page404 }: { nodes: PagesTree; Page404: React.ComponentType }) => {
   return (
     <Switch>
@@ -151,7 +139,6 @@ export const RenderPagesTree = ({ nodes, Page404 }: { nodes: PagesTree; Page404:
                     </Route>
                   )
                 })}
-
                 <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} />
               </Switch>
             </Layout>

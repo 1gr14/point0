@@ -303,9 +303,25 @@ export class Points<TLoaded extends boolean = boolean> {
     return undefined
   }
 
-  Context = React.createContext<Points | undefined>(undefined)
+  pagesTreeToLogableObject = (pagesTree = this.pagesTree): Array<Record<string, any>> => {
+    return pagesTree.map((p) => ({
+      id: p.id,
+      route: p.route.getDefinition(),
+      layoutComponent: !!p.layoutComponent,
+      layoutPoint: !!p.layoutPoint,
+      pages: p.pages.map((p) => ({
+        id: p.id,
+        route: p.route.getDefinition(),
+        pageComponent: !!p.pageComponent,
+        pagePoint: !!p.pagePoint,
+      })),
+      nestedPagesTree: this.pagesTreeToLogableObject(p.nestedPagesTree),
+    }))
+  }
+
+  static Context = React.createContext<Points | undefined>(undefined)
   Provider = ({ children }: { children: React.ReactNode }) => {
-    return React.createElement(this.Context.Provider, { value: this }, children)
+    return React.createElement(Points.Context.Provider, { value: this }, children)
   }
 }
 

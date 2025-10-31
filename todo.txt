@@ -1,6 +1,4 @@
-one server endpoint: output, type, input, name, remove isJsonAcceptable
 
-points provider
 layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
 
 simplify prefetchQuery, use it only for usual prefetch by hands of user

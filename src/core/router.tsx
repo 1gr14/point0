@@ -1,11 +1,11 @@
-import type { AnyLocation, AnyRouteOrDefinition, KnownLocation, Routes } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Points, type PagesTree, type PagesTreeRecord } from './points.js'
 import type { LayoutPoint, PagePoint } from './types.js'
-import type { PagesTree, PagesTreeRecord } from './points.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -21,14 +21,12 @@ export type UseOnNavigateFn = (
 export type UseIsInitalSsrLocationFn = () => boolean
 export type UseRouterPolicyFn = () => RouterPolicy
 
-type RouterContextValue<TRoutes extends Routes = Routes> = {
+type RouterContextValue = {
   ssrLocation: AnyLocation | undefined
   currentLocation: AnyLocation
   nextLocation: AnyLocation | undefined
   policy: RouterPolicy
   status: RouterStatus
-  pagesTree: PagesTree
-  routes: TRoutes
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
@@ -38,12 +36,10 @@ type RouterContextValue<TRoutes extends Routes = Routes> = {
 
 export const RouterContext = React.createContext<RouterContextValue | null>(null)
 
-export type RouterContextProviderProps<TRoutes extends Routes = Routes> = {
+export type RouterContextProviderProps = {
   children: React.ReactNode
   policy?: RouterPolicy
   status?: RouterStatus
-  pagesTree?: PagesTree
-  routes: TRoutes
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | undefined
 }
@@ -52,8 +48,6 @@ export function RouterContextProvider({
   children,
   policy = 'simple',
   status = 'idle',
-  pagesTree = [],
-  routes,
   useAdapterLocation,
   ssrLocation,
 }: RouterContextProviderProps) {
@@ -68,13 +62,11 @@ export function RouterContextProvider({
       nextLocation,
       policy,
       status: routerStatus,
-      pagesTree,
-      routes,
       setNextLocation,
       setStatus,
       useAdapterLocation,
     }),
-    [ssrLocation, currentLocation, nextLocation, policy, routerStatus, pagesTree, routes, useAdapterLocation],
+    [ssrLocation, currentLocation, nextLocation, policy, routerStatus, useAdapterLocation],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
@@ -91,14 +83,16 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   route?: TRoute,
   location?: AnyLocation,
 ) {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useLocation must be used within RouterContextProvider')
+  const routerCtx = React.useContext(RouterContext)
+  const pointsCtx = React.useContext(Points.Context)
+  if (!pointsCtx) throw new Error('useLocation must be used within Points.Context')
+  if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
   return useMemo(() => {
     if (!route) {
-      return ctx.routes._.getLocation(location ?? ctx.currentLocation) as AnyLocation
+      return pointsCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
     }
-    return Route0.create(route).getLocation(location ?? ctx.currentLocation) as KnownLocation<TRoute>
-  }, [route, location, ctx.currentLocation, ctx.routes])
+    return Route0.create(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
+  }, [route, location, routerCtx.currentLocation, pointsCtx.routes])
 }
 
 export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -159,13 +153,15 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: AnyLocation }> {
   return () => {
     const routerContext = React.useContext(RouterContext)
+    const pointsCtx = React.useContext(Points.Context)
     if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
+    if (!pointsCtx) throw new Error('useNavigate must be used within Points.Context')
     const queryClient = useQueryClient()
     const adapterNavigate = useAdapterNavigate()
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = routerContext.routes._.getLocation(href)
+      const location = pointsCtx.routes._.getLocation(href)
       routerContext.setNextLocation(location)
 
       // simple mode
@@ -187,9 +183,8 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       routerContext.setStatus('fetching')
 
       try {
-        console.log('prefetching page point', location)
         await _prefetchSuitablePagePoint({
-          pagesTree: routerContext.pagesTree,
+          pagesTree: pointsCtx.pagesTree,
           location,
           queryClient,
         })
@@ -339,7 +334,6 @@ export const _prefetchSuitablePagePoint = async ({
   queryClient: QueryClient
 }): Promise<PagePoint | undefined> => {
   const result = await _getSuitablePagePoint({ pagesTree, location })
-  console.log('result', result)
   if (!result) {
     return undefined
   }

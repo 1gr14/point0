@@ -8,18 +8,20 @@ import { clientCtx1, clientCtx2 } from './lib/client-ctx'
 export default function App({ dehydratedState, ssrLocation, points }: HydratedAppProps) {
   const [queryClient] = useState(() => new QueryClient())
   return (
-    <QueryClientProvider client={queryClient}>
-      <HydrationBoundary state={dehydratedState}>
-        <Unhead>
-          <Router pagesTree={points.pagesTree} routes={points.routes} ssrLocation={ssrLocation} policy="prefetch">
-            <clientCtx1.Provider>
-              <clientCtx2.Provider>
-                <RouterRoutes pagesTree={points.pagesTree} />
-              </clientCtx2.Provider>
-            </clientCtx1.Provider>
-          </Router>
-        </Unhead>
-      </HydrationBoundary>
-    </QueryClientProvider>
+    <points.Provider>
+      <QueryClientProvider client={queryClient}>
+        <HydrationBoundary state={dehydratedState}>
+          <Unhead>
+            <Router ssrLocation={ssrLocation} policy="prefetch">
+              <clientCtx1.Provider>
+                <clientCtx2.Provider>
+                  <RouterRoutes />
+                </clientCtx2.Provider>
+              </clientCtx1.Provider>
+            </Router>
+          </Unhead>
+        </HydrationBoundary>
+      </QueryClientProvider>
+    </points.Provider>
   )
 }

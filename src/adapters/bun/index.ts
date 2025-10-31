@@ -405,7 +405,6 @@ export class BunAdapter<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
           }
           if (!suitable.pageLocation) {
-            console.log('pageLocation not found', suitable)
             // I think it will never throw, but who knows
             throw new Error('Page for dehydrated state not found')
           }
