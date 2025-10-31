@@ -1,8 +1,7 @@
 import { client } from '../lib/client'
 
 export const empty = client
-  .lets('page')
-  .id('empty')
+  .lets('page', 'empty')
   .route('/empty')
   .page(() => {
     return <div>Empty</div>

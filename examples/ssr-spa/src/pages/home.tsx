@@ -6,8 +6,7 @@ import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 
 export const BestIdeaComponent = client
-  .lets('component') // TODO: route and id may be right inside lets?
-  .id('bestIdea')
+  .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
   .input(z.object({ x: z.coerce.number() }))
   .loader(async ({ ctx, input }) => ({
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
@@ -28,8 +27,7 @@ export const BestIdeaComponent = client
   })
 
 export default generalLayout
-  .lets('page')
-  .id('home')
+  .lets('page', 'home')
   .route(routes.home)
   .head({
     title: 'IdeaNick Forever!',

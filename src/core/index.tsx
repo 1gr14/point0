@@ -50,7 +50,7 @@ import type {
   FinalData,
   FinalProps,
   HeadFn,
-  Id,
+  PointName,
   Infer,
   InferredRootSourcePoint,
   InputParsed,
@@ -79,7 +79,7 @@ import type {
   UndefinedCtx,
   UndefinedData,
   UndefinedEndPointType,
-  UndefinedId,
+  UndefinedPointName,
   UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
   UndefinedLayoutComponent,
@@ -139,7 +139,7 @@ export class Point0<
   _layout: LayoutComponent<TData, TClientData, TRoute> | UndefinedLayoutComponent
   _layouts: LayoutPoint[]
   _layoutPagesRoutes: AnyRoute[]
-  _id: Id | UndefinedId
+  _name: PointName | UndefinedPointName
   _unstableId: number
   _fetchOptions: FetchOptionsFn
 
@@ -175,7 +175,7 @@ export class Point0<
     _layout?: LayoutComponent<TData, TClientData, TRoute> | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
     _layoutPagesRoutes?: AnyRoute[]
-    _id?: Id | UndefinedId
+    _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
     _errorComponent?: ErrorComponentType
     _pageErrorComponent?: ErrorComponentType<'page'>
@@ -213,7 +213,7 @@ export class Point0<
     this._layout = props._layout ?? undefined
     this._layouts = props._layouts ?? []
     this._layoutPagesRoutes = props._layoutPagesRoutes ?? []
-    this._id = props._id
+    this._name = props._name
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
     this._errorComponent =
       props._errorComponent ??
@@ -270,7 +270,7 @@ export class Point0<
     _page?: PageComponent | UndefinedPageComponent
     _component?: ComponentComponent | UndefinedComponentComponent
     _layout?: LayoutComponent | UndefinedLayoutComponent
-    _id?: Id | UndefinedId
+    _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
     _errorComponent?: ErrorComponentType
     _pageErrorComponent?: ErrorComponentType<'page'>
@@ -346,7 +346,7 @@ export class Point0<
       _component: (overrides._component ?? undefined) as ComponentComponent<TData, TClientData, TProps> | undefined, // remove end artefact on continue
       _layout: (overrides._layout ?? undefined) as LayoutComponent<TData, TClientData, TRoute> | undefined, // remove end artefact on continue
       _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint], // add layout to self layouts on continue
-      _id: overrides._id ?? (wasEndPoint || this._pointType === 'base' ? undefined : this._id), // remove stale artefact on continue
+      _name: overrides._name ?? (wasEndPoint || this._pointType === 'base' ? undefined : this._name), // remove stale artefact on continue
       _fetchOptions:
         overrides._fetchOptions ??
         (wasEndPoint ? (this._base ? this._base._fetchOptions : this._fetchOptions) : this._fetchOptions),
@@ -500,6 +500,7 @@ export class Point0<
 
   lets<TNewLetsEndPointType extends EndPointType>(
     letsEndPointType: TNewLetsEndPointType,
+    pointName: PointName,
   ): Point0<
     'middleware',
     TNewLetsEndPointType,
@@ -528,41 +529,42 @@ export class Point0<
     >({
       _pointType: 'middleware',
       _letsEndPointType: letsEndPointType,
+      _name: pointName,
     })
   }
 
-  id(
-    id: Id,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-    IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
-    TInputSchema,
-    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-    TProps
-  > {
-    return this._continue<
-      'middleware',
-      TLetsEndPointType,
-      TConnectedRootSourcePoint,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
-      TInputSchema,
-      IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-      TProps
-    >({
-      _pointType: 'middleware',
-      _id: id,
-    })
-  }
+  // name(
+  //   name: PointName,
+  // ): Point0<
+  //   'middleware',
+  //   TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+  //   IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+  //   TInputSchema,
+  //   IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+  //   TProps
+  // > {
+  //   return this._continue<
+  //     'middleware',
+  //     TLetsEndPointType,
+  //     TConnectedRootSourcePoint,
+  //     TRequiredCtx,
+  //     TCtx,
+  //     TData,
+  //     IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+  //     IsEndPointType<TPointType> extends true ? UndefinedRoute : TRoute,
+  //     TInputSchema,
+  //     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+  //     TProps
+  //   >({
+  //     _pointType: 'middleware',
+  //     _name: name,
+  //   })
+  // }
 
   sourceBaseUrl(
     sourceBaseUrl: string,
@@ -947,7 +949,7 @@ export class Point0<
   //     _componentLoaderComponent,
   //     _errorComponent,
   //     _fetchOptions,
-  //     _id,
+  //     _name,
   //     _inputSchema,
   //     _layout,
   //     _loaderComponent,
@@ -1597,21 +1599,21 @@ export class Point0<
   _getClientRouteForce = (): NonNullable<TRoute> => {
     const route = this._getClientRoute()
     if (!route) {
-      throw new Error(`No client route provided for this point. Id: ${this._id}.`)
+      throw new Error(`No client route provided for this point. Name: ${this._name}.`)
     }
     return route
   }
 
   _getServerRoute = (): AnyRoute | undefined => {
-    if (this._id) {
-      return Route0.create(`/_point0/${this._rootId}/${this._id}`)
+    if (this._name) {
+      return Route0.create(`/_point0/${this._rootId}/${this._name}`)
     }
     return undefined
   }
   _getServerRouteForce = (): AnyRoute => {
     const route = this._getServerRoute()
     if (!route) {
-      throw new Error(`No server route provided for this point. Id: ${this._id}.`)
+      throw new Error(`No server route provided for this point. Name: ${this._name}.`)
     }
     return route
   }
@@ -1702,7 +1704,7 @@ export class Point0<
     const selfLocation = this._getSelfLocationByAnotherLocation(location)
     if (!selfLocation.exact) {
       throw new Error(
-        `Location is not exact or children. Id: ${this._id}. Route: ${JSON.stringify(this._getClientRouteForce().getDefinition())}. Other Location: ${JSON.stringify(location)}. Self Location: ${JSON.stringify(selfLocation)}.`,
+        `Location is not exact or children. Name: ${this._name}. Route: ${JSON.stringify(this._getClientRouteForce().getDefinition())}. Other Location: ${JSON.stringify(location)}. Self Location: ${JSON.stringify(selfLocation)}.`,
       )
     }
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRoute, TInputSchema>

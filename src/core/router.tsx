@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LoadedPointsCollection, PointsCollection } from './eversion.js'
-import type { Id, LayoutPoint, PagePoint } from './types.js'
+import type { PointName, LayoutPoint, PagePoint } from './types.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -510,7 +510,7 @@ export const _toLoggablePagesTree = (pagesTree: PagesTree): object => {
 
 export type PagesCollectionRecord = {
   type: 'page'
-  id: Id
+  id: PointName
   route: AnyRoute
   point: PagePoint | (() => Promise<PagePoint>)
   pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
@@ -523,7 +523,7 @@ export type PagesCollection = PagesCollectionRecord[]
 
 export type LayoutsCollectionRecord = {
   type: 'layout'
-  id: Id
+  id: PointName
   route: AnyRoute
   point: LayoutPoint | (() => Promise<LayoutPoint>)
   layoutComponent:
@@ -540,14 +540,14 @@ export type PagesAndLayoutsCollection = {
 
 export type PagesTreeRecord = {
   route: AnyRoute
-  id: Id
+  id: PointName
   layoutPoint: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
   layoutComponent:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
   pages: Array<{
-    id: Id
+    id: PointName
     route: AnyRoute
     pagePoint: PagePoint | (() => Promise<PagePoint>)
     pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>

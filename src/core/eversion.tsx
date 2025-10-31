@@ -19,7 +19,7 @@ import type {
   EndPointType,
   ExtractFnRecord,
   FinalData,
-  Id,
+  PointName,
   InputParsed,
   Method,
   RequiredCtx,
@@ -726,7 +726,7 @@ export type FillPageResult = {
 
 export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
-  id: Id
+  id: PointName
   route?: string | undefined
   point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
   layoutPagesRoutes?: string[]
@@ -734,7 +734,7 @@ export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPoint
 export type PointsCollection = PointsCollectionRecord[]
 export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
   type: TEndPointType
-  id: Id
+  id: PointName
   route: AnyRoute | UndefinedRoute
   serverRoute: AnyRoute | UndefinedRoute
   point: EndPoint<TEndPointType>

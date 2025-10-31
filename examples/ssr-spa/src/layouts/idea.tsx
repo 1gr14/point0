@@ -3,8 +3,7 @@ import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 
 export const ideaLayout = generalLayout
-  .lets('layout')
-  .id('idea-layout')
+  .lets('layout', 'ideaLayout')
   .route(routes.idea)
   .loader(async ({ ctx, input: { id }, data }) => {
     const idea = await ctx.prisma.idea.findUniqueOrThrow({

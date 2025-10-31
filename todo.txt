@@ -1,13 +1,15 @@
-use this.fetch() and this.useQuery() in .page(), .component(), .layout()
-points provider, and on useLocation get knownLocation
-layout provides Layout component, That can be just used and it will work
-also page provides Page component that will just work
-so .route() is needed only for ssr and Router Routes generator
+id → name
 .lets(type, name)
 one server endpoint
 
+points provider
+layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
+
 simplify prefetchQuery, use it only for usual prefetch by hands of user
 but create prefetchPage, which sen request to server, awaits for like usual render, anr returns dehydrated state, so we just add it to ur state and go
+
+
+
 
 points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
 

@@ -6,8 +6,7 @@ import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 
 export const createIdeaMutation = client
-  .lets('mutation')
-  .id('createIdea')
+  .lets('mutation', 'createIdea')
   .input(
     z.object({
       title: z.string().min(1).max(10),
@@ -22,30 +21,26 @@ export const createIdeaMutation = client
     return { idea }
   })
 
-export const generateIdeaMutation = client
-  .lets('response')
-  .id('generateIdea')
-  .response(async ({ input, ctx }) => {
-    const stream = new ReadableStream({
-      async start(controller) {
-        const text = 'x'.repeat(100) // 100 symbols
-        for (const char of text) {
-          controller.enqueue(char)
-          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
-        }
-        controller.close()
-      },
-    })
-
-    // Return a streaming response
-    return new Response(stream, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
+export const generateIdeaMutation = client.lets('response', 'generateIdea').response(async ({ input, ctx }) => {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const text = 'x'.repeat(100) // 100 symbols
+      for (const char of text) {
+        controller.enqueue(char)
+        await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
+      }
+      controller.close()
+    },
   })
 
+  // Return a streaming response
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  })
+})
+
 export default generalLayout
-  .lets('page')
-  .id('newIdeaPage')
+  .lets('page', 'newIdea')
   .route(routes.newIdea)
   .title('New Idea')
   .page(() => {

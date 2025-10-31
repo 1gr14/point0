@@ -14,8 +14,7 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 // TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
 
 export const ideaPage = ideaLayout
-  .lets('page')
-  .id('ideaPage')
+  .lets('page', 'idea')
   .route(routes.idea)
   .loader(async ({ ctx, input }) => {
     // it excutes on server, but defined in client file,

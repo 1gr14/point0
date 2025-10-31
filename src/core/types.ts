@@ -25,8 +25,8 @@ export type IsClient = boolean
 
 export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
 export type UndefinedMethod = undefined
-export type Id = string
-export type UndefinedId = undefined
+export type PointName = string
+export type UndefinedPointName = undefined
 export type RootId = string
 export type UndefinedRootId = undefined
 

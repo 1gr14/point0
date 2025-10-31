@@ -1,17 +1,13 @@
 import { client } from './client'
 
-export const clientCtx1 = client
-  .lets('client-ctx')
-  .id('test-client-ctx-1')
-  .clientCtx(({ data }) => {
-    return {
-      test: 123,
-    }
-  })
+export const clientCtx1 = client.lets('client-ctx', 'testClientCtx1').clientCtx(({ data }) => {
+  return {
+    test: 123,
+  }
+})
 
 export const clientCtx2 = client
-  .lets('client-ctx')
-  .id('test-client-ctx-2')
+  .lets('client-ctx', 'testClientCtx2')
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
@@ -24,8 +20,7 @@ export const clientCtx2 = client
   })
 
 export const clientCtx3 = client
-  .lets('client-ctx')
-  .id('test-client-ctx-2')
+  .lets('client-ctx', 'testClientCtx3')
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideas, ideasCount: ideas.length, env: ctx.env.NODE_ENV }

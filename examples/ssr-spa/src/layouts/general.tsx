@@ -4,8 +4,7 @@ import { client } from '../lib/client'
 import { routes } from '../lib/routes'
 
 export const generalLayout = client
-  .lets('layout')
-  .id('general-layout')
+  .lets('layout', 'generalLayout')
   .route(routes.home)
   .layout(({ children }) => {
     const isRouterFetching = useIsRouterFetching()

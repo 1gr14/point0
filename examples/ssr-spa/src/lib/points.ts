@@ -73,17 +73,17 @@ export const points = [
   },
   {
     type: 'client-ctx',
-    id: 'test-client-ctx-1',
+    id: 'testClientCtx1',
     point: async () => (await import('../lib/client-ctx.js')).clientCtx1,
   },
   {
     type: 'client-ctx',
-    id: 'test-client-ctx-2',
+    id: 'testClientCtx2',
     point: async () => (await import('../lib/client-ctx.js')).clientCtx2,
   },
   {
     type: 'client-ctx',
-    id: 'test-client-ctx-3',
+    id: 'testClientCtx3',
     point: async () => (await import('../lib/client-ctx.js')).clientCtx3,
   },
 ] as PointsCollection
