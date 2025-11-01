@@ -1,10 +1,10 @@
-add TPrevRoute and clean TRoute on wasEndPoint
-it route0 when extend with empty '' or '/' just preserve previous
 .route('/...') will not extend, but override
+allow empty arg .route()
+deleted on addreprocess all after changed one
+
 layouts do not have routes
 in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
-allow empty arg .route()
 
 .output(z.object({}))
 merge .input schemas
@@ -36,6 +36,7 @@ queryCache for clients queries
 .route(string)
 basepath replace with cwd
 .useLayout()
+server clients do not need root, it will be retrieved from points in eversion create call
 FilesGenerator.({routes: Routes()}) then no needed to runtime generation
 not TRoute, but TRouteDefinition, and then it can be string, and then no problems at all
 page prefetch should be auto, if has App then full, if has no app, then partial
@@ -90,6 +91,7 @@ npm @point0
 ? persistent zustand store
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
+allow not to pass server root at all to server, so client only apps
 websocket
 statefull meta
 batch query

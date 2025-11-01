@@ -3,7 +3,6 @@ import unnamed_1i1npmsah29, { BestIdeaComponent as BestIdeaComponent_1kyend7v629
 import { empty as empty_23f2978d186 } from '../pages/empty.js'
 import { ideasPage as ideasPage_zw6xuh2prm } from '../pages/ideas.js'
 import unnamed_j1iy24wzvp, { createIdeaMutation as createIdeaMutation_j6ofa6bpkz, generateIdeaMutation as generateIdeaMutation_1fxvkflc0se } from '../pages/idea-create.js'
-import { ideaPage as ideaPage_1v0711tfaps } from '../pages/idea.js'
 import { ideasNewsPage as ideasNewsPage_1alvljl3atu } from '../pages/idea-news.js'
 import { generalLayout as generalLayout_cye3xgq6aj } from '../layouts/general.js'
 import { ideaLayout as ideaLayout_7a6s761am9 } from '../layouts/idea.js'
@@ -37,13 +36,6 @@ export const points = Points.ready([
     route: '/ideas/new',
     layouts: ['generalLayout'],
     point: unnamed_j1iy24wzvp.point,
-  },
-  {
-    type: 'page',
-    name: 'idea',
-    route: '/ideas/:id/',
-    layouts: ['generalLayout', 'ideaLayout'],
-    point: ideaPage_1v0711tfaps.point,
   },
   {
     type: 'page',

@@ -313,9 +313,6 @@ export class Point0<
     TResponseOutput,
     TProps
   > {
-    // TODO: use wasEndPoint in lets, keep _conetinue simple
-    const wasEndPoint = this._isEndpoint()
-
     return new Point0<
       TPointType,
       TLetsEndPointType,
@@ -338,78 +335,36 @@ export class Point0<
       _isRoot: overrides._isRoot ?? false,
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
-      _sourceBaseUrl:
-        overrides._sourceBaseUrl ??
-        (wasEndPoint ? (this._base ? this._base._sourceBaseUrl : this._sourceBaseUrl) : this._sourceBaseUrl),
+      _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
         : undefined, // remove end artefact on continue
       // _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
-      _staticHeads:
-        overrides._staticHeads ??
-        (wasEndPoint ? (this._base ? this._base._staticHeads : this._staticHeads) : this._staticHeads),
-      _queryOptions:
-        overrides._queryOptions ??
-        (wasEndPoint ? (this._base ? this._base._queryOptions : { ...this._queryOptions }) : { ...this._queryOptions }),
-      _pageQueryOptions:
-        overrides._pageQueryOptions ??
-        (wasEndPoint
-          ? this._base
-            ? { ...this._base._pageQueryOptions }
-            : { ...this._pageQueryOptions }
-          : { ...this._pageQueryOptions }),
+      _staticHeads: overrides._staticHeads ?? this._staticHeads,
+      _queryOptions: overrides._queryOptions ?? { ...this._queryOptions },
+      _pageQueryOptions: overrides._pageQueryOptions ?? { ...this._pageQueryOptions },
       _hasSourceBase: this._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
         ? false
         : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
-      _clientExtractFns: wasEndPoint ? [] : (overrides._clientExtractFns ?? this._clientExtractFns),
-      _route: (overrides._route ?? (wasEndPoint ? undefined : this._route)) as never,
+      _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
+      _route: (overrides._route ?? this._route) as never,
       _prevRoute: (overrides._prevRoute ?? this._prevRoute) as never,
-      _page: (overrides._page ?? undefined) as PageComponent<TData, TClientData, TRouteDefinition> | undefined, // remove end artefact on continue
-      _component: (overrides._component ?? undefined) as ComponentComponent<TData, TClientData, TProps> | undefined, // remove end artefact on continue
-      _layout: (overrides._layout ?? undefined) as LayoutComponent<TData, TClientData, TRouteDefinition> | undefined, // remove end artefact on continue
-      _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint], // add layout to self layouts on continue
-      _name: overrides._name ?? (wasEndPoint || this._pointType === 'base' ? undefined : this._name), // remove stale artefact on continue
-      _fetchOptions:
-        overrides._fetchOptions ??
-        (wasEndPoint ? (this._base ? this._base._fetchOptions : this._fetchOptions) : this._fetchOptions),
-      _errorComponent:
-        overrides._errorComponent ??
-        (wasEndPoint ? (this._base ? this._base._errorComponent : this._errorComponent) : this._errorComponent),
-      _pageErrorComponent:
-        overrides._pageErrorComponent ??
-        (wasEndPoint
-          ? this._base
-            ? this._base._pageErrorComponent
-            : this._pageErrorComponent
-          : this._pageErrorComponent),
+      _page: (overrides._page ?? undefined) as PageComponent<TData, TClientData, TRouteDefinition> | undefined,
+      _component: (overrides._component ?? undefined) as ComponentComponent<TData, TClientData, TProps> | undefined,
+      _layout: (overrides._layout ?? undefined) as LayoutComponent<TData, TClientData, TRouteDefinition> | undefined,
+      _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint],
+      _name: overrides._name ?? this._name,
+      _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
+      _errorComponent: overrides._errorComponent ?? this._errorComponent,
+      _pageErrorComponent: overrides._pageErrorComponent ?? this._pageErrorComponent,
       _componentErrorComponent: overrides._componentErrorComponent ?? this._componentErrorComponent,
-      _loaderComponent:
-        overrides._loaderComponent ??
-        (wasEndPoint ? (this._base ? this._base._loaderComponent : this._loaderComponent) : this._loaderComponent),
-      _pageLoaderComponent:
-        overrides._pageLoaderComponent ??
-        (wasEndPoint
-          ? this._base
-            ? this._base._pageLoaderComponent
-            : this._pageLoaderComponent
-          : this._pageLoaderComponent),
-      _componentLoaderComponent:
-        overrides._componentLoaderComponent ??
-        (wasEndPoint
-          ? this._base
-            ? this._base._componentLoaderComponent
-            : this._componentLoaderComponent
-          : this._componentLoaderComponent),
-      _appLoaderComponent:
-        overrides._appLoaderComponent ??
-        (wasEndPoint
-          ? this._base
-            ? this._base._appLoaderComponent
-            : this._appLoaderComponent
-          : this._appLoaderComponent),
+      _loaderComponent: overrides._loaderComponent ?? this._loaderComponent,
+      _pageLoaderComponent: overrides._pageLoaderComponent ?? this._pageLoaderComponent,
+      _componentLoaderComponent: overrides._componentLoaderComponent ?? this._componentLoaderComponent,
+      _appLoaderComponent: overrides._appLoaderComponent ?? this._appLoaderComponent,
     })
   }
 
@@ -566,41 +521,21 @@ export class Point0<
       _name: pointName,
       _route: undefined,
       _prevRoute: this._route as never,
+      _sourceBaseUrl: this._base?._sourceBaseUrl,
+      _staticHeads: this._base?._staticHeads,
+      _queryOptions: this._base?._queryOptions,
+      _pageQueryOptions: this._base?._pageQueryOptions,
+      _clientExtractFns: [],
+      _fetchOptions: this._base?._fetchOptions,
+      _errorComponent: this._base?._errorComponent,
+      _pageErrorComponent: this._base?._pageErrorComponent,
+      _componentErrorComponent: this._base?._componentErrorComponent,
+      _loaderComponent: this._base?._loaderComponent,
+      _pageLoaderComponent: this._base?._pageLoaderComponent,
+      _componentLoaderComponent: this._base?._componentLoaderComponent,
+      _appLoaderComponent: this._base?._appLoaderComponent,
     })
   }
-
-  // name(
-  //   name: PointName,
-  // ): Point0<
-  //   'middleware',
-  //   TLetsEndPointType,
-  //   TConnectedRootSourcePoint,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   TRoute,
-  //   TInputSchema,
-  //   TResponseOutput,
-  //   TProps
-  // > {
-  //   return this._continue<
-  //     'middleware',
-  //     TLetsEndPointType,
-  //     TConnectedRootSourcePoint,
-  //     TRequiredCtx,
-  //     TCtx,
-  //     TData,
-  //     TClientData,
-  //     TRoute,
-  //     TInputSchema,
-  //     TResponseOutput,
-  //     TProps
-  //   >({
-  //     _pointType: 'middleware',
-  //     _name: name,
-  //   })
-  // }
 
   sourceBaseUrl(
     sourceBaseUrl: string,
