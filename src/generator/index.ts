@@ -9,7 +9,7 @@ import { createJiti } from 'jiti'
 import * as nodeFs from 'node:fs'
 import { watch as fsWatch } from 'node:fs'
 import * as nodePath from 'node:path'
-import type { EndPoint, EndPointType, PointName } from '../core/types.js'
+import type { EndPointType, PointName } from '../core/types.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -42,6 +42,7 @@ type ChangeCollectedPointsEvent = {
   updated: CollectedPoint[]
   added: CollectedPoint[]
   changed: boolean
+  errors: unknown[]
 }
 
 const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
@@ -90,8 +91,15 @@ export class FileGenerator {
 
   async sync() {
     await this.collectFiles()
-    await this.processFiles()
+    const { errors, points } = await this.processFiles()
     await this.writeOutput()
+    if (errors.length > 0) {
+      console.warn(
+        `🟡 ${points.length} points saved to ${nodePath.relative(this.basepath, this.outputAbs)}, ${errors.length} errors detected`,
+      )
+    } else {
+      console.info(`✅ ${points.length} points saved to ${nodePath.relative(this.basepath, this.outputAbs)}`)
+    }
   }
 
   watch() {
@@ -105,13 +113,9 @@ export class FileGenerator {
   // files
 
   private async collectFiles() {
-    // Common built-in exclusions
-    // excludePatterns.push('**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**')
-
     for (const pattern of this.globInclude) {
       const matcher = new Glob(pattern)
       for await (const path of matcher.scan(this.basepath)) {
-        // Check excludes *before* adding
         const shouldExclude = this.globExclude.some((ex) => new Glob(ex).match(path))
         if (!shouldExclude) {
           this.files.add(nodePath.resolve(this.basepath, path))
@@ -183,7 +187,7 @@ export class FileGenerator {
       }
     }
     const changed = added.length > 0
-    return { points: this.points, deleted: [], added, updated, changed }
+    return { points: this.points, deleted: [], added, updated, changed, errors: [] }
   }
 
   private deletePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
@@ -193,7 +197,7 @@ export class FileGenerator {
     if (changed) {
       this.sortPoints()
     }
-    return { points: this.points, deleted, added: [], updated: [], changed }
+    return { points: this.points, deleted, added: [], updated: [], changed, errors: [] }
   }
 
   private replacePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
@@ -218,7 +222,7 @@ export class FileGenerator {
     this.points = points
     this.sortPoints()
     const changed = added.length > 0 || deleted.length > 0
-    return { points: this.points, deleted, added, updated, changed }
+    return { points: this.points, deleted, added, updated, changed, errors: [] }
   }
 
   private sortPoints(): void {
@@ -247,17 +251,14 @@ export class FileGenerator {
       (p) => p.fileAbs !== fileOrDirAbs && !p.fileAbs.startsWith(fileOrDirAbs + nodePath.sep),
     )
     const changed = deleted.length > 0
-    return { points: this.points, deleted, added: [], updated: [], changed }
+    return { points: this.points, deleted, added: [], updated: [], changed, errors: [] }
   }
 
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const { collectedPoints, errors } = await PointsCollector.collectPoints({
-      basepath: this.basepath,
-      outputAbs: this.outputAbs,
-      fileAbs,
-    })
+    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs })
+    const { collectedPoints, errors } = await collector.collectPointsFromFile({ fileAbs })
     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
     const deleted =
       errors.length > 0
@@ -271,19 +272,18 @@ export class FileGenerator {
       deleted: deleteResult.deleted,
       updated: addResult.updated,
       changed: addResult.changed || deleteResult.changed,
+      errors,
     }
   }
 
   private async processFiles(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
     const files = [...this.files]
     const chunks = FileGenerator.chunk(files, chunkSize)
+    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(
-          chunk.map(
-            async (fileAbs) =>
-              await PointsCollector.collectPoints({ basepath: this.basepath, outputAbs: this.outputAbs, fileAbs }),
-          ),
+          chunk.map(async (fileAbs) => await collector.collectPointsFromFile({ fileAbs })),
         )
         return pointsArrays.flat()
       }),
@@ -293,7 +293,8 @@ export class FileGenerator {
     if (errors.length === 0) {
       return this.replacePoints(collectedPoints)
     } else {
-      return this.addPoints(collectedPoints)
+      const result = this.addPoints(collectedPoints)
+      return { ...result, errors: [...result.errors, ...errors] }
     }
   }
 
@@ -309,36 +310,7 @@ export class FileGenerator {
     // await Bun.write(this.outputAbs, content)
     // nodeFs.writeFileSync(this.outputAbs, content)
     this.lastEmittedContent = content
-    console.info(`✅ points file generated: ${this.outputAbs} (${this.points.length} points)`)
   }
-
-  // private extractCollectedPointFromModule({
-  //   staticCollectedPoint,
-  //   module,
-  //   fileAbs,
-  // }: {
-  //   staticCollectedPoint: StaticCollectedPoint
-  //   module: any
-  //   fileAbs: string
-  // }): CollectedPoint | null {
-  //   const exported: unknown =
-  //     staticCollectedPoint.exportName === 'default' ? module?.default : module?.[staticCollectedPoint.exportName]
-  //   const point = FileGenerator.exportedToEndPoint(exported)
-
-  //   if (!point) {
-  //     return null
-  //   }
-
-  //   return {
-  //     type: point._pointType,
-  //     name: point._name ?? staticCollectedPoint.name,
-  //     route: point._pointType === 'page' || point._pointType === 'layout' ? point._route?.definition : undefined,
-  //     importPath: staticCollectedPoint.importPath,
-  //     exportName: staticCollectedPoint.exportName,
-  //     layouts: point._pointType === 'page' ? point._layouts.flatMap((x) => (x._name ? [x._name] : [])) : undefined,
-  //     fileAbs,
-  //   }
-  // }
 
   // emit
 
@@ -425,41 +397,37 @@ export class FileGenerator {
 export class PointsCollector {
   readonly basepath: string
   readonly outputAbs: string
+
+  // Map<fileAbs, content>
   readonly filesContentCache: Map<string, string>
 
-  private constructor({ basepath, outputAbs }: { basepath: string; outputAbs: string }) {
+  // Map<fileBase, Map<baseIdentifier, route>>
+  readonly filesBaseRoutesCache: Map<string, Map<string, AnyRoute>>
+
+  constructor({ basepath, outputAbs }: { basepath: string; outputAbs: string }) {
     this.basepath = basepath
     this.outputAbs = outputAbs
     this.filesContentCache = new Map()
+    this.filesBaseRoutesCache = new Map()
   }
 
-  static async collectPoints({
-    basepath,
-    outputAbs,
+  async collectPointsFromFile({
     fileAbs,
   }: {
-    basepath: string
-    outputAbs: string
     fileAbs: string
   }): Promise<{ collectedPoints: CollectedPoint[]; errors: unknown[] }> {
-    const collector = new PointsCollector({ basepath, outputAbs })
-    return await collector.collectPointsFromFile(fileAbs)
-  }
-
-  private async collectPointsFromFile(
-    fileAbs: string,
-  ): Promise<{ collectedPoints: CollectedPoint[]; errors: unknown[] }> {
     let content: string
     try {
-      try {
-        const chacheContent = this.filesContentCache.get(fileAbs)
-        if (chacheContent) {
-          return await this.extractCollectedPointsFromContent({ content: chacheContent, fileAbs })
+      const cachedContent = this.filesContentCache.get(fileAbs)
+      if (cachedContent) {
+        content = cachedContent
+      } else {
+        try {
+          content = await Bun.file(fileAbs).text()
+        } catch (e) {
+          console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+          return { collectedPoints: [], errors: [e] }
         }
-        content = await Bun.file(fileAbs).text()
-      } catch (e) {
-        console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
-        return { collectedPoints: [], errors: [e] }
       }
       return await this.extractCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
@@ -505,10 +473,16 @@ export class PointsCollector {
                   const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
                   if (pointType && pointName) {
                     const baseIdentifier = this.findBaseIdentifier(d.init)
+                    const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
                     const route =
-                      (pointType === 'page' || pointType === 'layout') && baseIdentifier
+                      shouldHaveRoute && baseIdentifier
                         ? await this.resolveFullRoute({ fileAbs, baseIdentifier })
                         : undefined
+                    if (shouldHaveRoute && !route) {
+                      const message = `route not detected for ${pointType}.${pointName}`
+                      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                      throw new Error(message)
+                    }
                     return {
                       type: pointType,
                       name: pointName,
@@ -532,10 +506,15 @@ export class PointsCollector {
             const decl = p.node.declaration
             const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
             if (pointType && pointName) {
-              const route =
-                pointType === 'page' || pointType === 'layout'
-                  ? await this.resolveFullRoute({ fileAbs, baseIdentifier: 'default' })
-                  : undefined
+              const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
+              const route = shouldHaveRoute
+                ? await this.resolveFullRoute({ fileAbs, baseIdentifier: 'default' })
+                : undefined
+              if (shouldHaveRoute && !route) {
+                const message = `route not detected for ${pointType}.${pointName}`
+                console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                throw new Error(message)
+              }
               return {
                 exportName: 'default',
                 type: pointType,
@@ -623,7 +602,11 @@ export class PointsCollector {
     fileAbs: string
     baseIdentifier: string
   }): Promise<AnyRoute | undefined> {
-    console.log(fileAbs)
+    const filesBaseMap = this.filesBaseRoutesCache.get(fileAbs) || new Map()
+    if (filesBaseMap.has(baseIdentifier)) {
+      return filesBaseMap.get(baseIdentifier)
+    }
+
     try {
       const content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
       const ast = babel.parse(content, {
@@ -676,10 +659,14 @@ export class PointsCollector {
 
       // Recursively follow import chain if there is a parent layout or base
       if (parentImportPath && parentIdentifier) {
-        const parentAbs = await PointsCollector.detectExistingFilePatByImportPath(
+        const parentAbs = await PointsCollector.detectExistingFilePathByImportPath(
           nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
         )
         if (!parentAbs) {
+          console.warn(
+            `❌ ${nodePath.relative(this.basepath, fileAbs)} parent import path not found: ${parentImportPath}`,
+          )
+          filesBaseMap.set(baseIdentifier, undefined)
           return undefined
         }
         const parentRoute = await this.resolveFullRoute({
@@ -694,19 +681,23 @@ export class PointsCollector {
               : routeSegment
                 ? Route0.create(routeSegment)
                 : undefined
+        filesBaseMap.set(baseIdentifier, route)
         return route
       }
 
-      return routeSegment ? Route0.create(routeSegment) : undefined
+      const route = routeSegment ? Route0.create(routeSegment) : undefined
+      filesBaseMap.set(baseIdentifier, route)
+      return route
     } catch (e) {
-      console.warn(`⚠️ route resolve failed for ${fileAbs}: ${(e as Error).message}`)
+      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} route resolve failed: ${(e as Error).message}`)
+      filesBaseMap.set(baseIdentifier, undefined)
       return undefined
     }
   }
 
   // helpers
 
-  private static async detectExistingFilePatByImportPath(importPath: string): Promise<string | undefined> {
+  private static async detectExistingFilePathByImportPath(importPath: string): Promise<string | undefined> {
     const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
     const currentExt = nodePath.extname(importPath)
     const importPathWithoutExt = importPath.replace(currentExt, '')
@@ -733,14 +724,6 @@ export class PointsCollector {
       return null
     }
     return POINT_METHOD_TO_TYPE_MAP[method] ?? null
-  }
-
-  private static exportedToEndPoint(exported: unknown): EndPoint | null {
-    return ((typeof exported === 'object' && exported !== null) || typeof exported === 'function') &&
-      'point' in exported &&
-      exported.point?.constructor?.name === 'Point0'
-      ? (exported.point as EndPoint)
-      : null
   }
 }
 
