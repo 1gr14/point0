@@ -1,11 +1,14 @@
-find all string routes by imports
+generate layouts
+check if .lets always checked and not throw
+
 add TPrevRoute and clean TRoute on wasEndPoint
 it route0 when extend with empty '' or '/' just preserve previous
+.route('/...') will not extend, but override
 in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
+replace Bun watch with @parcel/watcher
+move genrator to adapters/bun, or better create extendable class, so we have both generator/index and adapters/bun/generator
 allow empty arg .route()
-in route0 add asterisk parsing
-
 
 .output(z.object({}))
 merge .input schemas
@@ -19,6 +22,7 @@ prisma in example
 expo example
 expo router
 
+like always do general fns
 config to forward settings to client and server. jsut {server, clients, generators}
 env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 ? maybe move config to Point0.extend and Point0.create and extract it from there
@@ -38,7 +42,6 @@ basepath replace with cwd
 .useLayout()
 FilesGenerator.({routes: Routes()}) then no needed to runtime generation
 not TRoute, but TRouteDefinition, and then it can be string, and then no problems at all
-move genrator to adapters/bun, or better create extendable class
 page prefetch should be auto, if has App then full, if has no app, then partial
 eacho point should have prop .prefetch(boolean) and .ssr(boolean)
 layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
