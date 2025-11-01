@@ -58,27 +58,27 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   static async create<TRootPoint extends RootPoint>({
     root,
-    points = [],
+    points = Points.create([]),
   }: {
     root: TRootPoint
-    points?: PointsCollection
+    points?: Points
   }): Promise<Eversion<TRootPoint['Infer']['RequiredCtx']>> {
     return new Eversion<TRootPoint['Infer']['RequiredCtx']>({
       root,
-      points: await Points.load(points),
+      points: await points.load(),
     })
   }
 
   async connect({
     root,
-    points = [],
+    points = Points.create([]),
   }: {
     root: RootPoint
-    points?: PointsCollection
+    points?: Points
   }): Promise<Eversion<TRequiredCtx>> {
     const connection = new Eversion<TRequiredCtx>({
       root,
-      points: await Points.load(points),
+      points: await points.load(),
       source: this,
     })
     this.connections.push(connection)

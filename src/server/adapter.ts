@@ -1,5 +1,5 @@
-import type { PointsCollection } from '../core/points.js'
 import type { HydratedAppComponent } from '../core/hydrate.js'
+import { Points } from '../core/points.js'
 import type { RequiredCtx, RootId, RootPoint } from '../core/types.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
 
@@ -9,7 +9,7 @@ export type ServerAdapterLogger = {
 }
 export type ServerAdapterClientInput = {
   ssr?: boolean
-  points?: PointsCollection
+  points?: Points
   root: RootPoint
   basepath?: string
   distDir?: string
@@ -21,7 +21,7 @@ export type ServerAdapterClientInput = {
 }
 export type ServerAdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   root: RootPoint<TRequiredCtx>
-  points?: PointsCollection
+  points?: Points
   port?: number | string | undefined
   clientsDevServerPort?: number | string | undefined
   logger?: ServerAdapterLogger
@@ -33,7 +33,7 @@ export type ServerAdapterServerInput<TRequiredCtx extends RequiredCtx = Required
 
 export type ServerAdapterClientInputParsed = {
   ssr: boolean
-  points: PointsCollection
+  points: Points
   root: RootPoint
   basepath: string
   distDir: string | undefined
@@ -46,7 +46,7 @@ export type ServerAdapterClientInputParsed = {
 }
 export type ServerAdapterServerInputParsed<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   root: RootPoint<TRequiredCtx>
-  points: PointsCollection
+  points: Points
   port: number | string | undefined
   clientsDevServerPort: number | string | undefined
   logger: ServerAdapterLogger
@@ -73,7 +73,7 @@ const parseServerAdapterClientInput = (
   const ssr = input.ssr ?? true
   return {
     ssr,
-    points: input.points ?? [],
+    points: input.points ?? Points.create([]),
     root: input.root,
     basepath,
     distDir,
@@ -112,7 +112,7 @@ export const parseServerAdapterInput = <TRequiredCtx extends RequiredCtx = Requi
     )
   }
   return {
-    points: points ?? [],
+    points: points ?? Points.create([]),
     port,
     clientsDevServerPort: input.clientsDevServerPort,
     logger,

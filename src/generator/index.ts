@@ -8,29 +8,31 @@ import * as nodeFs from 'node:fs'
 import { existsSync, watch as fsWatch } from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EndPoint, EndPointType, PointName } from '../core/types.js'
+import type { Routes } from '@devp0nt/route0'
+
+// TODO: if no routes needed for this point: like layout or page then do not runtime
+// TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType
 
-// TODO: add Routes to output
-// TODO: add PointsCollection.create in result output
-// TODO: add watch mode
-// TODO: notify on changes
-
-// const traverse = _traverse as never as typeof _traverse.default
-
 export type FileGeneratorOptions = {
   banner?: string
+  routes?: Routes
   glob: string | string[]
   output: string
   basepath: string
 }
 
-type StaticPointCandidate = {
+type StaticCollectedPoint = {
+  type: EndPointType
+  name: PointName
   exportName: string
-  pointType: EndPointType
-  sourceFileAbs: string
+  importPath: string
+  fileAbs: string
+  route: undefined
+  layouts: undefined
 }
 
 type CollectedPoint = {
@@ -41,7 +43,6 @@ type CollectedPoint = {
   route?: string
   layouts?: string[]
   fileAbs: string
-  point: EndPoint
 }
 
 type ChangeCollectedPointsEvent = {
@@ -53,6 +54,7 @@ type ChangeCollectedPointsEvent = {
 }
 
 export class FileGenerator {
+  readonly routes: Routes | undefined
   readonly banner: string | undefined
   readonly globInclude: string[]
   readonly globExclude: string[]
@@ -66,6 +68,7 @@ export class FileGenerator {
   private lastEmittedContent: string | undefined
 
   constructor(opts: FileGeneratorOptions) {
+    this.routes = opts.routes ?? undefined
     this.banner = opts.banner
     this.basepath = opts.basepath
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
@@ -244,11 +247,11 @@ export class FileGenerator {
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const { collectedPoints } = await this.collectPointsFromFile(fileAbs)
+    const { collectedPoints, error } = await this.collectPointsFromFile(fileAbs)
     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
-    const deleted = prevPointsWithThisFile.filter(
-      (p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)),
-    )
+    const deleted = error
+      ? []
+      : prevPointsWithThisFile.filter((p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
     const addResult = this.addPoints(collectedPoints)
     const deleteResult = this.deletePoints(deleted)
     return {
@@ -280,6 +283,9 @@ export class FileGenerator {
 
   private async writeOutput() {
     const content = this.emitPointsFile(this.points)
+    if (content === this.lastEmittedContent) {
+      return
+    }
     await nodeFs.promises.mkdir(nodePath.dirname(this.outputAbs), { recursive: true })
     const tmp = this.outputAbs + '.tmp'
     await nodeFs.promises.writeFile(tmp, content, 'utf8')
@@ -291,45 +297,48 @@ export class FileGenerator {
   }
 
   private async collectPointsFromFile(fileAbs: string): Promise<{ collectedPoints: CollectedPoint[]; error: unknown }> {
+    let content: string
+    let staticCollectedPoints: StaticCollectedPoint[] = []
+    let collectedPoints: CollectedPoint[] = []
     try {
-      let content: string
       try {
         content = await Bun.file(fileAbs).text()
       } catch (e) {
         console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
-        return { collectedPoints: [], error: e }
+        return { collectedPoints, error: e }
       }
 
-      const staticCandidates = this.extractStaticPointsCandidatesFromContent({ content, fileAbs })
-      if (!staticCandidates.length) return { collectedPoints: [], error: undefined }
+      const staticResult = this.extractStaticCollectedPointsFromContent({ content, fileAbs })
+      collectedPoints = staticResult.collectedPoints
+      staticCollectedPoints = staticResult.staticCollectedPoints
+      if (!staticCollectedPoints.length) return { collectedPoints: [], error: staticResult.error }
 
       const module = await this.jiti.import(fileAbs)
-      const collectedPoints: CollectedPoint[] = []
 
-      for (const staticCandidate of staticCandidates) {
-        const collectedPoint = this.extractCollectedPointFromModule({ staticCandidate, module, fileAbs })
+      for (const staticCollectedPoint of staticCollectedPoints) {
+        const collectedPoint = this.extractCollectedPointFromModule({ staticCollectedPoint, module, fileAbs })
         if (!collectedPoint) {
           continue
         }
-        collectedPoints.push(collectedPoint)
+        if (collectedPoints.every((p) => !FileGenerator.isSameCollectedPoint(p, collectedPoint))) {
+          collectedPoints.push(collectedPoint)
+        }
       }
 
-      return { collectedPoints, error: undefined }
+      return { collectedPoints, error: staticResult.error }
     } catch (e) {
       console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
-      return { collectedPoints: [], error: e }
+      return { collectedPoints, error: e }
     }
   }
 
   // parse
 
-  private extractStaticPointsCandidatesFromContent({
-    content,
-    fileAbs,
-  }: {
-    content: string
-    fileAbs: string
-  }): StaticPointCandidate[] {
+  private extractStaticCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): {
+    collectedPoints: CollectedPoint[]
+    staticCollectedPoints: StaticCollectedPoint[]
+    error: unknown
+  } {
     let ast
     try {
       ast = babel.parse(content, {
@@ -346,10 +355,10 @@ export class FileGenerator {
       })
     } catch (e) {
       console.warn(`⚠️ parse failed for ${fileAbs}: ${(e as Error).message}`)
-      return []
+      return { collectedPoints: [], staticCollectedPoints: [], error: e }
     }
 
-    const out: StaticPointCandidate[] = []
+    const staticCollectedPoints: StaticCollectedPoint[] = []
 
     traverse(ast, {
       ExportNamedDeclaration: (p) => {
@@ -358,12 +367,16 @@ export class FileGenerator {
           for (const d of decl.declarations) {
             const id = d.id
             if (id.type === 'Identifier') {
-              const pointType = this.detectPointTypeFromInit(d.init)
-              if (pointType) {
-                out.push({
+              const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
+              if (pointType && pointName) {
+                staticCollectedPoints.push({
+                  type: pointType,
+                  name: pointName,
                   exportName: id.name,
-                  pointType,
-                  sourceFileAbs: fileAbs,
+                  importPath: FileGenerator.toRelativeJsImportPath(this.outputAbs, fileAbs),
+                  fileAbs,
+                  route: undefined,
+                  layouts: undefined,
                 })
               }
             }
@@ -372,48 +385,89 @@ export class FileGenerator {
       },
       ExportDefaultDeclaration: (p) => {
         const decl = p.node.declaration
-        const pointType = this.detectPointTypeFromInit(decl)
-        if (pointType) {
-          out.push({
+        const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
+        if (pointType && pointName) {
+          staticCollectedPoints.push({
             exportName: 'default',
-            pointType,
-            sourceFileAbs: fileAbs,
+            type: pointType,
+            name: pointName,
+            importPath: FileGenerator.toRelativeJsImportPath(this.outputAbs, fileAbs),
+            fileAbs,
+            route: undefined,
+            layouts: undefined,
           })
         }
       },
     })
 
-    return out
+    const collectedPoints = staticCollectedPoints.filter((p) =>
+      FileGenerator.isStaticCollectedPointAlreadyCollected(p),
+    ) as CollectedPoint[]
+    return { collectedPoints, staticCollectedPoints, error: undefined }
   }
 
-  private detectPointTypeFromInit(node: any): EndPointType | null {
-    if (node?.type !== 'CallExpression') return null
+  private static isStaticCollectedPointAlreadyCollected(staticCollectedPoint: StaticCollectedPoint): boolean {
+    if (staticCollectedPoint.type === 'page' || staticCollectedPoint.type === 'layout') {
+      // page may have layout and route, layout may have route
+      return false
+    } else {
+      // other no
+      return true
+    }
+  }
 
-    let callee = node.callee
-    let lastMethod: unknown = null
-
-    while (callee?.type === 'MemberExpression') {
-      const id = callee.property
-      if (id?.type === 'Identifier') {
-        lastMethod = id.name
-      }
-      callee = callee.object
+  private detectPointTypeAndNameFromInit(node: any): { pointType: EndPointType | null; pointName: string | null } {
+    if (node?.type !== 'CallExpression' || node.callee?.type !== 'MemberExpression') {
+      return { pointType: null, pointName: null }
     }
 
-    return FileGenerator.pointMethodToPointType(lastMethod)
+    // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
+    const lastProp = node.callee.property
+    const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
+    const pointType = FileGenerator.pointMethodToPointType(lastMethod)
+    if (!pointType) return { pointType: null, pointName: null }
+
+    // Find .lets('type','name') anywhere earlier in the chain
+    const lets = this.findLetsArgsInChain(node)
+    if (!lets) return { pointType: null, pointName: null }
+
+    const { typeArg, nameArg } = lets
+    if (typeArg !== pointType) return { pointType: null, pointName: null }
+
+    return { pointType, pointName: nameArg }
+  }
+
+  private findLetsArgsInChain(call: any): { typeArg: EndPointType; nameArg: string } | null {
+    let curr: any = call
+    while (curr?.type === 'CallExpression' && curr.callee?.type === 'MemberExpression') {
+      const prop = curr.callee.property
+      const method = prop?.type === 'Identifier' ? prop.name : null
+
+      if (method === 'lets') {
+        const [typeNode, nameNode] = curr.arguments ?? []
+        if (typeNode?.type === 'StringLiteral' && nameNode?.type === 'StringLiteral') {
+          return { typeArg: typeNode.value as EndPointType, nameArg: nameNode.value }
+        }
+      }
+
+      // Walk "left" through the chain: the callee's object is either another CallExpression
+      // (previous link in the chain) or an Identifier/MemberExpression (root); keep going.
+      curr = curr.callee.object
+    }
+    return null
   }
 
   private extractCollectedPointFromModule({
-    staticCandidate,
+    staticCollectedPoint,
     module,
     fileAbs,
   }: {
-    staticCandidate: StaticPointCandidate
+    staticCollectedPoint: StaticCollectedPoint
     module: any
     fileAbs: string
   }): CollectedPoint | null {
     const exported: unknown =
-      staticCandidate.exportName === 'default' ? module?.default : module?.[staticCandidate.exportName]
+      staticCollectedPoint.exportName === 'default' ? module?.default : module?.[staticCollectedPoint.exportName]
     const point = FileGenerator.exportedToEndPoint(exported)
 
     if (!point) {
@@ -421,13 +475,12 @@ export class FileGenerator {
     }
 
     return {
-      type: staticCandidate.pointType,
-      name: point._name ?? '__UNNAMED_POINT__',
-      route: point._route?.definition,
-      importPath: this.toRelativeJsImportPath(this.outputAbs, staticCandidate.sourceFileAbs),
-      exportName: staticCandidate.exportName,
+      type: point._pointType,
+      name: point._name ?? staticCollectedPoint.name,
+      route: point._pointType === 'page' || point._pointType === 'layout' ? point._route?.definition : undefined,
+      importPath: staticCollectedPoint.importPath,
+      exportName: staticCollectedPoint.exportName,
       layouts: point._pointType === 'page' ? point._layouts.flatMap((x) => (x._name ? [x._name] : [])) : undefined,
-      point,
       fileAbs,
     }
   }
@@ -439,7 +492,7 @@ export class FileGenerator {
     if (this.banner) {
       lines.push(this.banner)
     }
-    lines.push(`import type { PointsCollection } from 'point0/core/points.js'`)
+    lines.push(`import { Points } from 'point0/core/points.js'`)
     lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
 
@@ -455,7 +508,7 @@ export class FileGenerator {
     }
     lines.push(``)
 
-    lines.push(`export const points = [`)
+    lines.push(`export const points = Points.create([`)
     for (const point of points) {
       lines.push(`  {`)
       lines.push(`    type: '${point.type}',`)
@@ -474,17 +527,13 @@ export class FileGenerator {
       )
       lines.push(`  },`)
     }
-    lines.push(`] as PointsCollection`)
+    lines.push(`])`)
     lines.push(``)
 
     return lines.join('\n')
   }
 
   // utils
-
-  private hasPagesPoints(points: CollectedPoint[]): boolean {
-    return points.some((p) => p.type === 'page')
-  }
 
   private createFreshJiti() {
     return createJiti(this.basepath, {
@@ -515,7 +564,7 @@ export class FileGenerator {
     )
   }
 
-  private toRelativeJsImportPath(fromAbs: string, toAbs: string): string {
+  private static toRelativeJsImportPath(fromAbs: string, toAbs: string): string {
     let rel = nodePath
       .relative(nodePath.dirname(fromAbs), toAbs)
       .replace(/\\/g, '/')

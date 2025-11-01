@@ -327,7 +327,7 @@ export type EndPoint<
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
-  TRoute extends AnyRoute | UndefinedRoute = AnyRoute | UndefinedRoute,
+  TRoute extends AnyRoute | UndefinedRoute = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
   TProps extends Props | UndefinedProps = any,

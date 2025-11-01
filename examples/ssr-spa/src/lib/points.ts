@@ -1,16 +1,16 @@
-import type { PointsCollection } from 'point0/core/points.js'
+import { Points } from 'point0/core/points.js'
 import { Routes } from '@devp0nt/route0'
 
 export const routes = Routes.create({
   home: '/',
-  empty: '/empty',
+  empty: '/empty/:id',
   ideas: '/ideas',
   newIdea: '/ideas/new',
   idea: '/ideas/:id',
   ideaNews: '/ideas/:id/news',
 })
 
-export const points = [
+export const points = Points.create([
   {
     type: 'page',
     name: 'home',
@@ -21,7 +21,7 @@ export const points = [
   {
     type: 'page',
     name: 'empty',
-    route: '/empty',
+    route: '/empty/:id',
     point: async () => (await import('../pages/empty.js')).empty.point,
   },
   {
@@ -94,9 +94,4 @@ export const points = [
     name: 'testClientCtx3',
     point: async () => (await import('./client-ctx.js')).clientCtx3.point,
   },
-  {
-    type: 'base',
-    name: 'client',
-    point: async () => (await import('./client.js')).client.point,
-  },
-] as PointsCollection
+])

@@ -3,9 +3,8 @@ import type { DehydratedState } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { PointsCollection } from './points.js'
-import { Points } from './points.js'
 import type { Payload } from './eversion.js'
+import type { Points } from './points.js'
 
 export type HydrateResult = {
   payload: Payload
@@ -22,11 +21,7 @@ export type HydratedAppComponent = (props: HydratedAppProps) => React.ReactEleme
 let root: Root | null = null
 let result: HydrateResult | null = null
 
-export function hydrate(
-  App: HydratedAppComponent,
-  points: PointsCollection,
-  rootElement?: HTMLElement | null,
-): HydrateResult {
+export function hydrate(App: HydratedAppComponent, points: Points, rootElement?: HTMLElement | null): HydrateResult {
   // if (result) {
   //   return result
   // }
@@ -59,7 +54,7 @@ export function hydrate(
   const appElement = createElement(App, {
     dehydratedState: payload.dehydratedState,
     ssrLocation: payload.location,
-    points: Points.create(points),
+    points,
   })
 
   // First invocation: create the root once.

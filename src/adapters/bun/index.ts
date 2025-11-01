@@ -36,7 +36,7 @@ type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = Server
 export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   mainServer: Bun.Server<unknown> | undefined
   mainServerPort: number
-  devServeTarget: 'client' | 'server' | 'universal' | undefined
+  devServerTarget: 'client' | 'server' | 'universal' | undefined
   clientsDevServer: Bun.Server<unknown> | undefined
   clientsDevServerPort: number
   root: RootPoint<TRequiredCtx>
@@ -187,7 +187,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   // }
 
   async _loadSrcIndexHtmlContents(client: ServerAdapterClientInputParsed): Promise<string> {
-    if (this.devServeTarget === 'server') {
+    if (this.devServerTarget === 'server') {
       return await (
         await fetch(
           `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.root._rootId}.index.html`,
@@ -443,7 +443,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ...args: IsEmptyObject<Omit<TRequiredCtx, 'request'>> extends true
       ? [
           options?: {
-            devServeTarget?: 'client' | 'server' | 'universal' | undefined
+            devServerTarget?: 'client' | 'server' | 'universal' | undefined
             port?: number | string
             clientsDevServerPort?: number | string
             hmr?: boolean
@@ -452,7 +452,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         ]
       : [
           options: {
-            devServeTarget?: 'client' | 'server' | 'universal' | undefined
+            devServerTarget?: 'client' | 'server' | 'universal' | undefined
             port?: number | string
             clientsDevServerPort?: number | string
             hmr?: boolean
@@ -461,21 +461,21 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         ]
   ): typeof this {
     const options = args[0]
-    const devServeTarget = options?.devServeTarget ?? process.env.DEV_SERVE_TARGET
-    if (devServeTarget === 'client') {
-      this.devServeTarget = 'client'
+    const devServerTarget = options?.devServerTarget ?? process.env.DEV_SERVER_TARGET
+    if (devServerTarget === 'client') {
+      this.devServerTarget = 'client'
       this.serveClientsDevServer(...args)
       return this
-    } else if (devServeTarget === 'server') {
-      this.devServeTarget = 'server'
+    } else if (devServerTarget === 'server') {
+      this.devServerTarget = 'server'
       this.serveMainDevServer(...args)
       return this
-    } else if (devServeTarget === 'universal') {
-      this.devServeTarget = 'universal'
+    } else if (devServerTarget === 'universal') {
+      this.devServerTarget = 'universal'
       this.serveUniversal(...args)
       return this
     } else {
-      this.devServeTarget = undefined
+      this.devServerTarget = undefined
       this.serveMainServer(...args)
       return this
     }

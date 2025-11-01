@@ -45,6 +45,16 @@ export class Points<TLoaded extends boolean = boolean> {
     return new Points<true>({ collection: loadedPoints, pagesTree, routes, loaded: true })
   }
 
+  async load(): Promise<Points<true>> {
+    if (this.loaded) {
+      return this as Points<true>
+    }
+    const loadedPoints = await Points.toLoadedPointsCollection(this.collection)
+    const pagesTree = Points.toPagesTree({ points: loadedPoints })
+    const routes = Points.toRoutes({ points: loadedPoints })
+    return new Points<true>({ collection: loadedPoints, pagesTree, routes, loaded: true })
+  }
+
   private static toRoutedPointsCollection(points: PointsCollection): RoutedPointsCollection {
     return points.map((record, index) => {
       return {
@@ -71,7 +81,9 @@ export class Points<TLoaded extends boolean = boolean> {
     return Routes.create(routes)
   }
 
-  private static async toLoadedPointsCollection(points: PointsCollection): Promise<LoadedPointsCollection> {
+  private static async toLoadedPointsCollection(
+    points: PointsCollection | RoutedPointsCollection,
+  ): Promise<LoadedPointsCollection> {
     return await Promise.all(
       points.map(async (record, index) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
@@ -463,27 +475,27 @@ export class Points<TLoaded extends boolean = boolean> {
   }
 }
 
-export type PointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-  type: TEndPointType
+export type PointsCollectionRecord = {
+  type: EndPointType
   name: PointName
   route?: string | undefined
-  point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
+  point: EndPoint | (() => Promise<EndPoint>)
   layouts?: string[]
 }
 export type PointsCollection = PointsCollectionRecord[]
-export type RoutedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-  type: TEndPointType
+export type RoutedPointsCollectionRecord = {
+  type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
-  point: EndPoint<TEndPointType> | (() => Promise<EndPoint<TEndPointType>>)
+  point: EndPoint | (() => Promise<EndPoint>)
   layouts: string[]
 }
 export type RoutedPointsCollection = RoutedPointsCollectionRecord[]
-export type LoadedPointsCollectionRecord<TEndPointType extends EndPointType = EndPointType> = {
-  type: TEndPointType
+export type LoadedPointsCollectionRecord = {
+  type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
-  point: EndPoint<TEndPointType>
+  point: EndPoint
   layouts: string[]
 }
 export type LoadedPointsCollection = LoadedPointsCollectionRecord[]

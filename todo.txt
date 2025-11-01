@@ -1,4 +1,10 @@
-points file generator: eversion/generator.ts, have it as standalone and also imported in entry-server.ts to have watch mode on dev
+find all string routes by imports
+add TPrevRoute and clean TRoute on wasEndPoint
+it route0 when extend with empty '' or '/' just preserve previous
+in router generate page tree based on layouts and pages with tests
+route0 fix regex generator according wouter
+in route0 add asterisk parsing
+
 
 .output(z.object({}))
 merge .input schemas
@@ -6,7 +12,7 @@ plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)
 
 elysia example
 auth
-? interstallar
+interstallar
 prisma in example
 
 expo example
@@ -29,7 +35,9 @@ queryCache for clients queries
 .route(string)
 basepath replace with cwd
 .useLayout()
-rename BunAdapter to Server and move to server dir and combine with server/adapter.ts | move genrator to adapters/bun, or better create extendable class
+FilesGenerator.({routes: Routes()}) then no needed to runtime generation
+not TRoute, but TRouteDefinition, and then it can be string, and then no problems at all
+move genrator to adapters/bun, or better create extendable class
 page prefetch should be auto, if has App then full, if has no app, then partial
 eacho point should have prop .prefetch(boolean) and .ssr(boolean)
 layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
@@ -53,6 +61,7 @@ asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
 refactor error0
 remove wrapper
+before start generate parse existing output file and use it like initial state until success generates new
 html template parsing by provided vars
 hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags), on call any cloient fn or head(() =>) endpoint type is client-middleware and als _pointType
 route0 respect origin on match and try two clients with one server

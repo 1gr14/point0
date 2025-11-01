@@ -1,13 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type {
-  AnyLocation,
-  AnyRoute,
-  AnyRouteOrDefinition,
-  ChildrenLocation,
-  ExactLocation,
-  Extended,
-  KnownLocation,
-} from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ChildrenLocation, ExactLocation, Extended, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -117,7 +109,7 @@ export class Point0<
     return Point0._prevUnstableId++
   }
 
-  point: AnyPoint // this, needed for generator to collect points
+  point: typeof this // this, needed for generator to collect points
 
   _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
@@ -189,7 +181,7 @@ export class Point0<
     _appLoaderComponent?: LoaderComponentType<'app'>
     _unstableId?: number
   }) {
-    this.point = this as AnyPoint
+    this.point = this
 
     // persistent
     this._rootId = props._rootId
@@ -1052,7 +1044,22 @@ export class Point0<
     TProps
   >
   route<TNewRoute extends string>(
-    definitionRel: TNewRoute,
+    ...args: TRoute extends UndefinedRoute ? [TNewRoute] : never
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
+    Route0<TNewRoute>,
+    TInputSchema,
+    IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
+    TProps
+  >
+  route<TNewRoute extends string>(
+    ...args: TRoute extends AnyRoute ? [TNewRoute] : never
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1066,29 +1073,17 @@ export class Point0<
     IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
     TProps
   >
-  route<TNewRoute extends AnyRouteOrDefinition>(route: TNewRoute) {
+  route<TNewRoute extends AnyRoute | string>(route: TNewRoute) {
     const currentRoute = this._route
     const newRoute = !currentRoute
       ? Route0.create(route)
       : typeof route === 'string'
         ? currentRoute.extend(route)
         : Route0.create(route)
-    return this._continue<
-      'middleware',
-      TLetsEndPointType,
-      TConnectedRootSourcePoint,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      IsEndPointType<TPointType> extends true ? UndefinedData : TClientData,
-      TNewRoute extends string ? Extended<TRoute, TNewRoute> : TNewRoute extends AnyRoute ? TNewRoute : never,
-      TInputSchema,
-      IsEndPointType<TPointType> extends true ? UndefinedResponseOutput : TResponseOutput,
-      TProps
-    >({
+    return this._continue({
       _pointType: 'middleware',
       _route: newRoute,
-    })
+    }) as never
   }
 
   loader(): Point0<
