@@ -75,7 +75,7 @@ export class FileGenerator {
   private lastEmittedContent: string | undefined
 
   constructor(opts: FileGeneratorOptions) {
-    this.routes = opts.routes ?? undefined
+    this.routes = opts.routes
     this.banner = opts.banner
     this.basepath = opts.basepath
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
@@ -257,7 +257,7 @@ export class FileGenerator {
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs })
+    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs, routes: this.routes })
     const { collectedPoints, errors } = await collector.collectPointsFromFile({ fileAbs })
     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
     const deleted =
@@ -279,7 +279,7 @@ export class FileGenerator {
   private async processFiles(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
     const files = [...this.files]
     const chunks = FileGenerator.chunk(files, chunkSize)
-    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs })
+    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs, routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(
@@ -397,6 +397,7 @@ export class FileGenerator {
 export class PointsCollector {
   readonly basepath: string
   readonly outputAbs: string
+  readonly routes: Routes | undefined
 
   // Map<fileAbs, content>
   readonly filesContentCache: Map<string, string>
@@ -404,9 +405,10 @@ export class PointsCollector {
   // Map<fileBase, Map<baseIdentifier, route>>
   readonly filesBaseRoutesCache: Map<string, Map<string, AnyRoute>>
 
-  constructor({ basepath, outputAbs }: { basepath: string; outputAbs: string }) {
+  constructor({ basepath, outputAbs, routes }: { basepath: string; outputAbs: string; routes: Routes | undefined }) {
     this.basepath = basepath
     this.outputAbs = outputAbs
+    this.routes = routes
     this.filesContentCache = new Map()
     this.filesBaseRoutesCache = new Map()
   }
