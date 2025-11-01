@@ -78,7 +78,7 @@ export class Points<TReady extends boolean = boolean> {
       return {
         type: record.type,
         name: record.name,
-        route: record.route ? Route0.create(record.route) : undefined,
+        route: record.route ? Route0.from(record.route) : undefined,
         point: record.point,
         layouts: record.layouts ?? [],
       }
@@ -111,7 +111,7 @@ export class Points<TReady extends boolean = boolean> {
           throw new Error(`No client route provided for page point. Index: ${index}.`)
         }
         const routeDefinition = route?.definition
-        const recordRouteDefinition = record.route ? Route0.create(record.route).getDefinition() : undefined
+        const recordRouteDefinition = record.route ? Route0.from(record.route).getDefinition() : undefined
         if (routeDefinition !== recordRouteDefinition) {
           // console.warn(
           //   `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
@@ -167,7 +167,7 @@ export class Points<TReady extends boolean = boolean> {
       collection.layouts.push({
         type: 'layout',
         name: record.name,
-        route: Route0.create(record.route),
+        route: Route0.from(record.route),
         point: point as LayoutPoint | (() => Promise<LayoutPoint>),
         layoutComponent:
           typeof point === 'function'
@@ -188,7 +188,7 @@ export class Points<TReady extends boolean = boolean> {
       collection.pages.push({
         type: 'page',
         name: record.name,
-        route: Route0.create(record.route),
+        route: Route0.from(record.route),
         point: point as PagePoint | (() => Promise<PagePoint>),
         pageComponent:
           typeof point === 'function'
@@ -238,7 +238,7 @@ export class Points<TReady extends boolean = boolean> {
     }
 
     const noLayoutTree: PagesTreeRecord = {
-      route: Route0.create('/'),
+      route: Route0.from('/'),
       name: '_point0_no_layout_placeholder',
       pages: pagesWithoutLayouts.map((p) => ({
         name: p.name,

@@ -107,14 +107,14 @@
     "react-dom": "^19.0.0",
     "@tanstack/react-query": "^5.0.0",
     "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.31",
+    "@devp0nt/route0": "^1.0.0-next.33",
     "@unhead/react": "^2.0.19",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@devp0nt/route0": "^1.0.0-next.31",
+    "@devp0nt/route0": "^1.0.0-next.33",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",

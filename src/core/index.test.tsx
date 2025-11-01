@@ -5,6 +5,7 @@ import * as nodePath from 'node:path'
 import { Eversion } from './eversion.js'
 import { Point0 } from './index.js'
 import type {
+  AnyPoint,
   EmptyCtx,
   UndefinedCtx,
   UndefinedData,
@@ -13,6 +14,7 @@ import type {
   UndefinedProps,
   UndefinedResponseOutput,
   UndefinedRoute,
+  UndefinedRouteDefinition,
 } from './types.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
@@ -40,7 +42,8 @@ describe('Point0', () => {
         EmptyCtx,
         UndefinedData,
         UndefinedData,
-        UndefinedRoute,
+        UndefinedRouteDefinition,
+        UndefinedRouteDefinition,
         UndefinedInputSchema,
         UndefinedResponseOutput,
         UndefinedProps
@@ -66,7 +69,8 @@ describe('Point0', () => {
         { a: number; b: number },
         UndefinedData,
         UndefinedData,
-        UndefinedRoute,
+        UndefinedRouteDefinition,
+        UndefinedRouteDefinition,
         UndefinedInputSchema,
         UndefinedResponseOutput,
         UndefinedProps
@@ -89,6 +93,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         { a: number; b: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -126,6 +131,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         undefined
       >
     >()
@@ -152,6 +158,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         undefined
       >
     >()
@@ -168,6 +175,8 @@ describe('Point0', () => {
       .page(pageComponent)
     const eversion2 = await Eversion.create({ root: server2 })
     const run = await eversion2.createRun({ pageLocation: Route0.getLocation('/'), requiredCtx: undefined })
+    const x: AnyPoint = clientPoint02
+    x._route.get()
     expect(await run.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         a: 3,
@@ -203,6 +212,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         undefined
       >
     >()
@@ -225,6 +235,7 @@ describe('Point0', () => {
         undefined,
         EmptyCtx,
         { a: number; b: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -437,6 +448,7 @@ describe('Point0', () => {
         EmptyCtx,
         undefined,
         undefined,
+        UndefinedRoute,
         UndefinedRoute,
         UndefinedInputSchema,
         UndefinedResponseOutput,

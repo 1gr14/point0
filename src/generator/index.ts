@@ -1287,16 +1287,12 @@ export class PointsCollector {
 
     // no parent – we can only return what we have here
     if (!parentIdentifier) {
-      // const finalRoute = routeSegment ? Route0.create(routeSegment) : undefined
-      // cacheForFile.set(cacheKey, finalRoute)
-      // return { route: finalRoute, errors }
-
       cacheMap.set(cacheKey, undefined)
       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
       return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
     }
     if (parentIdentifier === 'Point0') {
-      const finalRoute = routeSegment !== undefined ? Route0.create(routeSegment) : undefined
+      const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
       cacheMap.set(cacheKey, finalRoute)
       return { route: finalRoute, errors }
     }
@@ -1339,9 +1335,9 @@ export class PointsCollector {
     //
     const finalRoute =
       parentRoute !== undefined && routeSegment !== undefined
-        ? Route0.create(parentRoute).extend(routeSegment)
+        ? Route0.from(parentRoute).extend(routeSegment)
         : routeSegment !== undefined
-          ? Route0.create(routeSegment)
+          ? Route0.from(routeSegment)
           : undefined
     cacheMap.set(cacheKey, finalRoute)
     return { route: finalRoute, errors }

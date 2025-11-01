@@ -89,7 +89,7 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
     if (!route) {
       return pointsCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
     }
-    return Route0.create(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
+    return Route0.from(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
   }, [route, location, routerCtx.currentLocation, pointsCtx.routesHash])
 }
 

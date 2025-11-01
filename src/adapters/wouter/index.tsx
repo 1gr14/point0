@@ -128,6 +128,9 @@ export const RenderPagesTree = ({
           const Layout = node.layoutComponent
           const layoutPagesRoutes = node.pages.map((p) => p.route)
           const layoutPagesRoutesRegex = combineRoutesToRegex(layoutPagesRoutes)
+          const layoutPagesRoutesRegex1 = Route0.getRegexGroup(layoutPagesRoutes)
+          console.log(layoutPagesRoutesRegex)
+          console.log(layoutPagesRoutesRegex1)
           return (
             <Route key={`layout-${node.route.getDefinition()}`} path={layoutPagesRoutesRegex}>
               <Layout>
