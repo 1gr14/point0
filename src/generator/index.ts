@@ -36,7 +36,6 @@ type CollectedPoint = {
   type: EndPointType
   name: PointName
   exportName: string
-  importPath: string
   route?: AnyRoute
   layouts?: string[]
   fileAbs: string
@@ -197,37 +196,45 @@ export class FileGenerator {
 
   // mutations
 
-  private addPoint(collectedPoint: CollectedPoint): {
-    status: 'replaced' | 'added'
-    prevPoint: CollectedPoint | undefined
-    newPoint: CollectedPoint
-  } {
+  private addPoint(collectedPoint: CollectedPoint): ChangeCollectedPointsEvent {
+    const deleted: CollectedPoint[] = []
+    const added: CollectedPoint[] = []
+    const updated: CollectedPoint[] = []
     const prevPointIndex = this.points.findIndex((p) => FileGenerator.isSameCollectedPoint(p, collectedPoint))
+    console.log(123, prevPointIndex)
     if (prevPointIndex !== -1) {
-      const prevPoint = this.points[prevPointIndex]
       this.points[prevPointIndex] = collectedPoint
-      return { status: 'replaced', prevPoint, newPoint: collectedPoint }
-    } else {
-      this.points.push(collectedPoint)
-      this.sortPoints()
-      return { status: 'added', prevPoint: undefined, newPoint: collectedPoint }
+      updated.push(collectedPoint)
+      return { points: this.points, deleted, added, updated, changed: false, errors: [] }
     }
+    const prevConflictedPointIndex = this.points.findIndex((p) =>
+      FileGenerator.isSameNameAndTypeCollectedPoint(p, collectedPoint),
+    )
+    console.log(456, prevConflictedPointIndex)
+    if (prevConflictedPointIndex !== -1) {
+      deleted.push(this.points[prevConflictedPointIndex])
+      this.points[prevConflictedPointIndex] = collectedPoint
+      added.push(collectedPoint)
+      return { points: this.points, deleted, added, updated, changed: false, errors: [] }
+    }
+    added.push(collectedPoint)
+    return { points: this.points, deleted, added, updated, changed: false, errors: [] }
   }
 
   private addPoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
     const added: CollectedPoint[] = []
     const updated: CollectedPoint[] = []
+    const deleted: CollectedPoint[] = []
+    const errors: unknown[] = []
     for (const point of points) {
-      const { status, newPoint } = this.addPoint(point)
-      if (status === 'added') {
-        added.push(newPoint)
-      }
-      if (status === 'replaced') {
-        updated.push(newPoint)
-      }
+      const evt = this.addPoint(point)
+      deleted.push(...evt.deleted)
+      added.push(...evt.added)
+      updated.push(...evt.updated)
+      errors.push(...evt.errors)
     }
-    const changed = added.length > 0
-    return { points: this.points, deleted: [], added, updated, changed, errors: [] }
+    const changed = added.length > 0 || deleted.length > 0
+    return { points: this.points, deleted, added, updated, changed, errors }
   }
 
   private deletePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
@@ -244,25 +251,31 @@ export class FileGenerator {
     const added: CollectedPoint[] = []
     const deleted: CollectedPoint[] = []
     const updated: CollectedPoint[] = []
+    const errors: unknown[] = []
+    const newPoints = []
     for (const point of points) {
-      const { status, newPoint } = this.addPoint(point)
-      if (status === 'added') {
-        added.push(newPoint)
-      }
-      if (status === 'replaced') {
-        updated.push(newPoint)
-      }
+      const evt = this.addPoint(point)
+      deleted.push(...evt.deleted)
+      added.push(...evt.added)
+      updated.push(...evt.updated)
+      errors.push(...evt.errors)
+      newPoints.push(...evt.added, ...evt.updated)
     }
+    console.log(11)
     for (const point of this.points) {
-      const shouldBeDeleted = !points.some((p) => FileGenerator.isSameCollectedPoint(p, point))
-      if (shouldBeDeleted) {
+      // const shouldBeDeleted = !points.some((p) => FileGenerator.isSameCollectedPoint(p, point))
+      const shouldBeAdditionallyDeleted =
+        !points.some((p) => FileGenerator.isSameCollectedPoint(p, point)) &&
+        !newPoints.some((p) => FileGenerator.isSameCollectedPoint(p, point))
+      console.log(789, shouldBeAdditionallyDeleted)
+      if (shouldBeAdditionallyDeleted) {
         deleted.push(point)
       }
     }
     this.points = points
     this.sortPoints()
     const changed = added.length > 0 || deleted.length > 0
-    return { points: this.points, deleted, added, updated, changed, errors: [] }
+    return { points: this.points, deleted, added, updated, changed, errors }
   }
 
   private sortPoints(): void {
@@ -297,13 +310,17 @@ export class FileGenerator {
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
+    console.log(2)
     const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
     const { collectedPoints, errors } = await collector.collectPointsFromFile({ fileAbs })
+    console.log(3, errors)
     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
     const deleted =
       errors.length > 0
         ? []
         : prevPointsWithThisFile.filter((p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    console.log(4, collectedPoints)
+    console.log(5, deleted)
     const addResult = this.addPoints(collectedPoints)
     const deleteResult = this.deletePoints(deleted)
     return {
@@ -333,6 +350,7 @@ export class FileGenerator {
     if (errors.length === 0) {
       return this.replacePoints(collectedPoints)
     } else {
+      console.log(errors.length)
       const result = this.addPoints(collectedPoints)
       return { ...result, errors: [...result.errors, ...errors] }
     }
@@ -447,7 +465,7 @@ export class FileGenerator {
         // const exportNameSuffix = point.type === 'component' ? '.point' : ''
         const exportNameSuffix = '.point'
         lines.push(
-          `    point: async () => (await import('${FileGenerator.toRelativeJsImportPath(this.outputLazyAbs, point.importPath)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+          `    point: async () => (await import('${FileGenerator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
         )
         lines.push(`  },`)
       }
@@ -478,7 +496,7 @@ export class FileGenerator {
       exports: Array<{ originalExportName: string; renamedExportName: string }>
     }> = []
     for (const point of hashedPoints) {
-      const importPath = FileGenerator.toRelativeJsImportPath(this.outputReadyAbs, point.importPath)
+      const importPath = FileGenerator.toRelativeJsImportPath(this.outputReadyAbs, point.fileAbs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const newItem =
         point.exportName === 'default'
@@ -618,9 +636,14 @@ export class FileGenerator {
       a.fileAbs === b.fileAbs &&
       a.name === b.name &&
       a.type === b.type &&
-      a.route === b.route &&
+      a.exportName === b.exportName &&
+      a.route?.definition === b.route?.definition &&
       (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
     )
+  }
+
+  private static isSameNameAndTypeCollectedPoint(a: CollectedPoint, b: CollectedPoint): boolean {
+    return a.name === b.name && a.type === b.type
   }
 
   private static toRelativeJsImportPath(fromAbs: string, toAbs: string): string {
@@ -755,7 +778,6 @@ export class PointsCollector {
                       type: pointType,
                       name: pointName,
                       exportName: id.name,
-                      importPath: fileAbs,
                       fileAbs,
                       route,
                       layouts,
@@ -803,10 +825,9 @@ export class PointsCollector {
                 root,
                 type: pointType,
                 name: pointName,
-                importPath: fileAbs,
                 fileAbs,
                 route,
-                layouts, // ← NEW
+                layouts,
               }
             }
             return null
@@ -984,6 +1005,7 @@ export class PointsCollector {
   }): { routeSegment?: string; routeFull?: AnyRoute; errors: unknown[] } {
     let routeSegment: string | undefined
     let routeFull: AnyRoute | undefined
+    const errors: unknown[] = []
 
     try {
       traverse(ast, {
@@ -996,19 +1018,23 @@ export class PointsCollector {
           ) {
             // we don't strictly check that the object is the same chain as baseIdentifier,
             // but you can tighten that later
-            const arg = p.node.arguments.at(0)
-            if (arg?.type === 'StringLiteral') {
-              routeSegment = arg.value
-            } else if (arg?.type === 'MemberExpression') {
-              // .route(routes.ideaNews)
-              const prop = arg.property
-              if (prop.type === 'Identifier') {
-                const routeKey = prop.name
-                if (this.routes && (this.routes as any)[routeKey]) {
-                  routeFull = (this.routes as any)[routeKey]
-                } else {
-                  // keep as warning, same as before
-                  // console.warn(`unknown route key '${routeKey}'`)
+            if (p.node.arguments.length === 0) {
+              routeSegment = ''
+            } else {
+              const arg = p.node.arguments.at(0)
+              if (arg?.type === 'StringLiteral') {
+                routeSegment = arg.value
+              } else if (arg?.type === 'MemberExpression') {
+                // .route(routes.ideaNews)
+                const prop = arg.property
+                if (prop.type === 'Identifier') {
+                  const routeKey = prop.name
+                  if (this.routes && (this.routes as any)[routeKey]) {
+                    routeFull = (this.routes as any)[routeKey]
+                  } else {
+                    errors.push(new Error(`unknown route key '${routeKey}'`))
+                    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}'`)
+                  }
                 }
               }
             }
@@ -1016,12 +1042,12 @@ export class PointsCollector {
         },
       })
 
-      return { routeSegment, routeFull, errors: [] }
+      return { routeSegment, routeFull, errors }
     } catch (e) {
       console.warn(
         `🔴 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
-      return { routeSegment: undefined, routeFull: undefined, errors: [e] }
+      return { routeSegment: undefined, routeFull: undefined, errors: [...errors, e] }
     }
   }
 
@@ -1287,9 +1313,17 @@ export class PointsCollector {
 
     // no parent – we can only return what we have here
     if (!parentIdentifier) {
-      cacheMap.set(cacheKey, undefined)
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
-      return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
+      const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
+      if (!finalRoute) {
+        console.warn(
+          `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`,
+        )
+        cacheMap.set(cacheKey, undefined)
+        return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
+      } else {
+        cacheMap.set(cacheKey, finalRoute)
+        return { route: finalRoute, errors }
+      }
     }
     if (parentIdentifier === 'Point0') {
       const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
@@ -1335,7 +1369,9 @@ export class PointsCollector {
     //
     const finalRoute =
       parentRoute !== undefined && routeSegment !== undefined
-        ? Route0.from(parentRoute).extend(routeSegment)
+        ? routeSegment.startsWith('/')
+          ? Route0.from(routeSegment)
+          : parentRoute.extend(routeSegment)
         : routeSegment !== undefined
           ? Route0.from(routeSegment)
           : undefined

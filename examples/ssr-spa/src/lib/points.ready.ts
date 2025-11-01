@@ -1,13 +1,13 @@
 import { Points } from 'point0/core/points.js'
-import unnamed_1i1npmsah29, { BestIdeaComponent as BestIdeaComponent_1kyend7v629 } from '../pages/home.js'
-import { empty as empty_23f2978d186 } from '../pages/empty.js'
-import { ideasPage as ideasPage_zw6xuh2prm } from '../pages/ideas.js'
-import unnamed_j1iy24wzvp, { createIdeaMutation as createIdeaMutation_j6ofa6bpkz, generateIdeaMutation as generateIdeaMutation_1fxvkflc0se } from '../pages/idea-create.js'
-import { ideasNewsPage as ideasNewsPage_1alvljl3atu } from '../pages/idea-news.js'
-import { generalLayout as generalLayout_cye3xgq6aj } from '../layouts/general.js'
-import { ideaLayout as ideaLayout_7a6s761am9 } from '../layouts/idea.js'
-import { clientCtx1 as clientCtx1_hwnh96tt7k, clientCtx2 as clientCtx2_pyju4jkxzw, clientCtx3 as clientCtx3_1tk4n7wua57 } from './client-ctx.js'
-import { client as client_1pb2f47mnzg } from './client.js'
+import unnamed_6l07mdq734, { BestIdeaComponent as BestIdeaComponent_3qkxiugr0k } from '../pages/home.js'
+import { empty as empty_n50wzpyog6 } from '../pages/empty.js'
+import { ideasPage as ideasPage_1ez06sxoz6e } from '../pages/ideas.js'
+import unnamed_rhg2sxrtie, { createIdeaMutation as createIdeaMutation_210fo46cs0t, generateIdeaMutation as generateIdeaMutation_qlhpr7tzjc } from '../pages/idea-create.js'
+import { ideaPage as ideaPage_hr2d3acswa } from '../pages/idea.js'
+import { generalLayout as generalLayout_1sm4sgw7w4h } from '../layouts/general.js'
+import { ideaLayout as ideaLayout_15r5wfdlfdu } from '../layouts/idea.js'
+import { clientCtx1 as clientCtx1_e0e2noswu2, clientCtx2 as clientCtx2_10xmsz16jme, clientCtx3 as clientCtx3_5lscxj0gv7 } from './client-ctx.js'
+import { client as client_29b1dq6qbu2 } from './client.js'
 
 export const points = Points.ready([
   {
@@ -15,81 +15,81 @@ export const points = Points.ready([
     name: 'home',
     route: '/',
     layouts: ['generalLayout'],
-    point: unnamed_1i1npmsah29.point,
+    point: unnamed_6l07mdq734.point,
   },
   {
     type: 'page',
     name: 'empty',
     route: '/empty',
-    point: empty_23f2978d186.point,
+    point: empty_n50wzpyog6.point,
   },
   {
     type: 'page',
     name: 'ideas',
     route: '/ideas',
     layouts: ['generalLayout'],
-    point: ideasPage_zw6xuh2prm.point,
+    point: ideasPage_1ez06sxoz6e.point,
   },
   {
     type: 'page',
     name: 'newIdea',
     route: '/ideas/new',
     layouts: ['generalLayout'],
-    point: unnamed_j1iy24wzvp.point,
+    point: unnamed_rhg2sxrtie.point,
   },
   {
     type: 'page',
-    name: 'ideaNews',
-    route: '/ideas/:id/news',
+    name: 'idea',
+    route: '/ideas/:id/',
     layouts: ['generalLayout', 'ideaLayout'],
-    point: ideasNewsPage_1alvljl3atu.point,
+    point: ideaPage_hr2d3acswa.point,
   },
   {
     type: 'layout',
     name: 'generalLayout',
     route: '/',
-    point: generalLayout_cye3xgq6aj.point,
+    point: generalLayout_1sm4sgw7w4h.point,
   },
   {
     type: 'layout',
     name: 'ideaLayout',
     route: '/ideas/:id',
-    point: ideaLayout_7a6s761am9.point,
+    point: ideaLayout_15r5wfdlfdu.point,
   },
   {
     type: 'component',
     name: 'bestIdea',
-    point: BestIdeaComponent_1kyend7v629.point,
+    point: BestIdeaComponent_3qkxiugr0k.point,
   },
   {
     type: 'mutation',
     name: 'createIdea',
-    point: createIdeaMutation_j6ofa6bpkz.point,
+    point: createIdeaMutation_210fo46cs0t.point,
   },
   {
     type: 'response',
     name: 'generateIdea',
-    point: generateIdeaMutation_1fxvkflc0se.point,
+    point: generateIdeaMutation_qlhpr7tzjc.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx1',
-    point: clientCtx1_hwnh96tt7k.point,
+    point: clientCtx1_e0e2noswu2.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx2',
-    point: clientCtx2_pyju4jkxzw.point,
+    point: clientCtx2_10xmsz16jme.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx3',
-    point: clientCtx3_1tk4n7wua57.point,
+    point: clientCtx3_5lscxj0gv7.point,
   },
   {
     root: true,
     type: 'base',
     name: 'client',
-    point: client_1pb2f47mnzg.point,
+    point: client_29b1dq6qbu2.point,
   },
 ])

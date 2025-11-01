@@ -1,5 +1,3 @@
-.route('/...') will not extend, but override
-allow empty arg .route()
 deleted on addreprocess all after changed one
 
 layouts do not have routes
