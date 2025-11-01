@@ -1,13 +1,14 @@
 import { Points } from 'point0/core/points.js'
-import unnamed0, { BestIdeaComponent as BestIdeaComponent7 } from '../pages/home.js'
-import { empty as empty1 } from '../pages/empty.js'
-import { ideasPage as ideasPage2 } from '../pages/ideas.js'
-import unnamed3, { createIdeaMutation as createIdeaMutation8, generateIdeaMutation as generateIdeaMutation9 } from '../pages/idea-create.js'
-import { ideasNewsPage as ideasNewsPage4 } from '../pages/idea-news.js'
-import { generalLayout as generalLayout5 } from '../layouts/general.js'
-import { ideaLayout as ideaLayout6 } from '../layouts/idea.js'
-import { clientCtx1 as clientCtx110, clientCtx2 as clientCtx211, clientCtx3 as clientCtx312 } from './client-ctx.js'
-import { client as client13 } from './client.js'
+import unnamed_1i1npmsah29, { BestIdeaComponent as BestIdeaComponent_1kyend7v629 } from '../pages/home.js'
+import { empty as empty_23f2978d186 } from '../pages/empty.js'
+import { ideasPage as ideasPage_zw6xuh2prm } from '../pages/ideas.js'
+import unnamed_j1iy24wzvp, { createIdeaMutation as createIdeaMutation_j6ofa6bpkz, generateIdeaMutation as generateIdeaMutation_1fxvkflc0se } from '../pages/idea-create.js'
+import { ideaPage as ideaPage_1v0711tfaps } from '../pages/idea.js'
+import { ideasNewsPage as ideasNewsPage_1alvljl3atu } from '../pages/idea-news.js'
+import { generalLayout as generalLayout_cye3xgq6aj } from '../layouts/general.js'
+import { ideaLayout as ideaLayout_7a6s761am9 } from '../layouts/idea.js'
+import { clientCtx1 as clientCtx1_hwnh96tt7k, clientCtx2 as clientCtx2_pyju4jkxzw, clientCtx3 as clientCtx3_1tk4n7wua57 } from './client-ctx.js'
+import { client as client_1pb2f47mnzg } from './client.js'
 
 export const points = Points.ready([
   {
@@ -15,81 +16,88 @@ export const points = Points.ready([
     name: 'home',
     route: '/',
     layouts: ['generalLayout'],
-    point: unnamed0.point,
+    point: unnamed_1i1npmsah29.point,
   },
   {
     type: 'page',
     name: 'empty',
     route: '/empty',
-    point: empty1.point,
+    point: empty_23f2978d186.point,
   },
   {
     type: 'page',
     name: 'ideas',
     route: '/ideas',
     layouts: ['generalLayout'],
-    point: ideasPage2.point,
+    point: ideasPage_zw6xuh2prm.point,
   },
   {
     type: 'page',
     name: 'newIdea',
     route: '/ideas/new',
     layouts: ['generalLayout'],
-    point: unnamed3.point,
+    point: unnamed_j1iy24wzvp.point,
+  },
+  {
+    type: 'page',
+    name: 'idea',
+    route: '/ideas/:id/',
+    layouts: ['generalLayout', 'ideaLayout'],
+    point: ideaPage_1v0711tfaps.point,
   },
   {
     type: 'page',
     name: 'ideaNews',
     route: '/ideas/:id/news',
     layouts: ['generalLayout', 'ideaLayout'],
-    point: ideasNewsPage4.point,
+    point: ideasNewsPage_1alvljl3atu.point,
   },
   {
     type: 'layout',
     name: 'generalLayout',
     route: '/',
-    point: generalLayout5.point,
+    point: generalLayout_cye3xgq6aj.point,
   },
   {
     type: 'layout',
     name: 'ideaLayout',
     route: '/ideas/:id',
-    point: ideaLayout6.point,
+    point: ideaLayout_7a6s761am9.point,
   },
   {
     type: 'component',
     name: 'bestIdea',
-    point: BestIdeaComponent7.point,
+    point: BestIdeaComponent_1kyend7v629.point,
   },
   {
     type: 'mutation',
     name: 'createIdea',
-    point: createIdeaMutation8.point,
+    point: createIdeaMutation_j6ofa6bpkz.point,
   },
   {
     type: 'response',
     name: 'generateIdea',
-    point: generateIdeaMutation9.point,
+    point: generateIdeaMutation_1fxvkflc0se.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx1',
-    point: clientCtx110.point,
+    point: clientCtx1_hwnh96tt7k.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx2',
-    point: clientCtx211.point,
+    point: clientCtx2_pyju4jkxzw.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx3',
-    point: clientCtx312.point,
+    point: clientCtx3_1tk4n7wua57.point,
   },
   {
     root: true,
     type: 'base',
     name: 'client',
-    point: client13.point,
+    point: client_1pb2f47mnzg.point,
   },
 ])

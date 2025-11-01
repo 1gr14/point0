@@ -3,17 +3,17 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { Jiti } from 'jiti'
-import { createJiti } from 'jiti'
-import * as nodeFs from 'node:fs/promises'
-import * as nodeFsSync from 'node:fs'
-import * as nodePath from 'node:path'
-import type { EndPointType, PointName } from '../core/types.js'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { subscribe } from '@parcel/watcher'
 import fg from 'fast-glob'
+import type { Jiti } from 'jiti'
+import { createJiti } from 'jiti'
 import { minimatch } from 'minimatch'
+import * as nodeFsSync from 'node:fs'
+import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
+import * as nodePath from 'node:path'
+import type { EndPointType, PointName } from '../core/types.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -468,17 +468,22 @@ export class FileGenerator {
     }
     lines.push(`import { Points } from 'point0/core/points.js'`)
 
+    const hashedPoints = points.map((p) => ({
+      ...p,
+      hash: FileGenerator.hash(p),
+    }))
+
     const importPathsAndExportNames: Array<{
       importPath: string
       exports: Array<{ originalExportName: string; renamedExportName: string }>
     }> = []
-    for (const [pointIndex, point] of points.entries()) {
+    for (const point of hashedPoints) {
       const importPath = FileGenerator.toRelativeJsImportPath(this.outputReadyAbs, point.importPath)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const newItem =
         point.exportName === 'default'
-          ? { originalExportName: 'default', renamedExportName: `unnamed${pointIndex}` }
-          : { originalExportName: point.exportName, renamedExportName: `${point.exportName}${pointIndex}` }
+          ? { originalExportName: 'default', renamedExportName: `unnamed_${point.hash}` }
+          : { originalExportName: point.exportName, renamedExportName: `${point.exportName}_${point.hash}` }
       if (importPathAndExportNames) {
         importPathAndExportNames.exports.push(newItem)
       } else {
@@ -507,7 +512,7 @@ export class FileGenerator {
     } else {
       lines.push(``)
       lines.push(`export const points = Points.ready([`)
-      for (const [pointIndex, point] of points.entries()) {
+      for (const point of hashedPoints) {
         lines.push(`  {`)
         if (point.root) {
           lines.push(`    root: true,`)
@@ -525,9 +530,9 @@ export class FileGenerator {
           lines.push(`    layouts: [${arr}],`)
         }
         if (point.exportName === 'default') {
-          lines.push(`    point: unnamed${pointIndex}.point,`)
+          lines.push(`    point: unnamed_${point.hash}.point,`)
         } else {
-          lines.push(`    point: ${point.exportName}${pointIndex}.point,`)
+          lines.push(`    point: ${point.exportName}_${point.hash}.point,`)
         }
         lines.push(`  },`)
       }
@@ -578,6 +583,27 @@ export class FileGenerator {
     })
   }
 
+  // 53-bit non-crypto hash (by bryc). Crazy fast in JS.
+  private static cyrb53(str: string, seed = 0): number {
+    let h1 = 0xdeadbeef ^ seed
+    let h2 = 0x41c6ce57 ^ seed
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i)
+      h1 = Math.imul(h1 ^ ch, 2654435761)
+      h2 = Math.imul(h2 ^ ch, 1597334677)
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+    // returns 0..2^53-1
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0)
+  }
+
+  // Convenience for short suffixes
+  private static hash(input: unknown, seed = 0): string {
+    const s = typeof input === 'string' ? input : JSON.stringify(input)
+    return FileGenerator.cyrb53(s, seed).toString(36) // short, URL/file-safe
+  }
+
   private static chunk<T>(array: readonly T[], size: number): T[][] {
     if (size <= 0) throw new Error('chunk size must be > 0')
     const result: T[][] = []
@@ -614,11 +640,14 @@ export class PointsCollector {
   // Map<fileAbs, content>
   readonly filesContentCache = new Map<string, string>()
 
-  // Map<fileBase, Map<baseIdentifier, route>>
-  readonly filesBaseRoutesCache = new Map<string, Map<string, AnyRoute | undefined>>()
+  // Map<fileAbs, ast>
+  readonly astCache = new Map<string, babel.ParseResult<any>>()
 
-  // Map<fileAbs, Map<baseIdentifier, string[]>>  // ← NEW
-  readonly filesBaseLayoutsCache = new Map<string, Map<string, string[]>>()
+  // Map<fileAbs:baseIdentifier, route>
+  readonly routesCache = new Map<string, AnyRoute | undefined>()
+
+  // Map<fileAbs:baseIdentifier, Map<string[]>>
+  readonly layoutsCache = new Map<string, string[]>()
 
   constructor({ basepath, routes }: { basepath: string; routes: Routes | undefined }) {
     this.basepath = basepath
@@ -638,6 +667,7 @@ export class PointsCollector {
       } else {
         try {
           content = await nodeFs.readFile(fileAbs, 'utf8')
+          this.filesContentCache.set(fileAbs, content)
         } catch (e) {
           console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
           return { collectedPoints: [], errors: [e] }
@@ -656,20 +686,27 @@ export class PointsCollector {
   }> {
     let ast
     try {
-      ast = babel.parse(content, {
-        sourceType: 'module',
-        errorRecovery: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-        ],
-      })
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        ast = babel.parse(content, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
     } catch (e) {
       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      this.astCache.set(fileAbs, undefined)
       return { collectedPoints: [], errors: [e] }
     }
 
@@ -1180,17 +1217,18 @@ export class PointsCollector {
   ): Promise<{ route: AnyRoute | undefined; errors: unknown[] }> {
     const errors: unknown[] = []
 
-    const cacheForFile = this.getOrInitFileBaseMap(fileAbs)
-    const cacheKey = baseIdentifier
+    const cacheKey = `${fileAbs}::${baseIdentifier}`
+    const cacheMap = this.routesCache
+    const cacheValue = cacheMap.get(cacheKey)
 
-    if (cacheForFile.has(cacheKey)) {
-      return { route: cacheForFile.get(cacheKey), errors: [] }
+    if (cacheValue) {
+      return { route: cacheValue, errors: [] }
     }
 
     // guard against cycles: fileAbs#id
     const seenKey = `${fileAbs}::${baseIdentifier}`
     if (_seen.has(seenKey)) {
-      cacheForFile.set(cacheKey, undefined)
+      cacheMap.set(cacheKey, undefined)
       return {
         route: undefined,
         errors: [...errors, new Error(`circular route resolution for ${seenKey}`)],
@@ -1200,22 +1238,29 @@ export class PointsCollector {
 
     let ast: babel.ParseResult<any>
     try {
-      const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
-      ast = babel.parse(content, {
-        sourceType: 'module',
-        errorRecovery: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-        ],
-      })
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
+        this.filesContentCache.set(fileAbs, content)
+        ast = babel.parse(content, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
     } catch (e) {
       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
-      cacheForFile.set(cacheKey, undefined)
+      cacheMap.set(cacheKey, undefined)
       return { route: undefined, errors: [...errors, e] }
     }
 
@@ -1226,7 +1271,7 @@ export class PointsCollector {
 
     // if it was a full route (like .route(routes.ideaNews)) – we're done
     if (routeFull) {
-      cacheForFile.set(cacheKey, routeFull)
+      cacheMap.set(cacheKey, routeFull)
       return { route: routeFull, errors }
     }
 
@@ -1246,13 +1291,13 @@ export class PointsCollector {
       // cacheForFile.set(cacheKey, finalRoute)
       // return { route: finalRoute, errors }
 
-      cacheForFile.set(cacheKey, undefined)
+      cacheMap.set(cacheKey, undefined)
       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
       return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
     }
     if (parentIdentifier === 'Point0') {
       const finalRoute = routeSegment !== undefined ? Route0.create(routeSegment) : undefined
-      cacheForFile.set(cacheKey, finalRoute)
+      cacheMap.set(cacheKey, finalRoute)
       return { route: finalRoute, errors }
     }
 
@@ -1270,7 +1315,7 @@ export class PointsCollector {
       console.warn(
         `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
       )
-      cacheForFile.set(cacheKey, undefined)
+      cacheMap.set(cacheKey, undefined)
       return {
         route: undefined,
         errors: [...errors, new Error(`parent ${parentIdentifier} path not found: ${parentImportPath}`)],
@@ -1298,7 +1343,7 @@ export class PointsCollector {
         : routeSegment !== undefined
           ? Route0.create(routeSegment)
           : undefined
-    cacheForFile.set(cacheKey, finalRoute)
+    cacheMap.set(cacheKey, finalRoute)
     return { route: finalRoute, errors }
   }
 
@@ -1315,22 +1360,18 @@ export class PointsCollector {
     const errors: unknown[] = []
 
     // per-file cache
-    const cacheForFile = (() => {
-      const existing = this.filesBaseLayoutsCache.get(fileAbs)
-      if (existing) return existing
-      const m = new Map<string, string[]>()
-      this.filesBaseLayoutsCache.set(fileAbs, m)
-      return m
-    })()
+    const cacheKey = `${fileAbs}::${baseIdentifier}`
+    const cacheMap = this.layoutsCache
+    const cacheValue = cacheMap.get(cacheKey)
 
-    if (cacheForFile.has(baseIdentifier)) {
-      return { layouts: cacheForFile.get(baseIdentifier) ?? [], errors: [] }
+    if (cacheValue) {
+      return { layouts: cacheValue, errors: [] }
     }
 
     // cycle guard
     const seenKey = `${fileAbs}::${baseIdentifier}`
     if (_seen.has(seenKey)) {
-      cacheForFile.set(baseIdentifier, [])
+      cacheMap.set(cacheKey, [])
       return {
         layouts: [],
         errors: [new Error(`circular layouts resolution for ${seenKey}`)],
@@ -1342,21 +1383,28 @@ export class PointsCollector {
     let ast: babel.ParseResult<any>
     try {
       const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
-      ast = babel.parse(content, {
-        sourceType: 'module',
-        errorRecovery: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-        ],
-      })
+      this.filesContentCache.set(fileAbs, content)
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        ast = babel.parse(content, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
     } catch (e) {
       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
-      cacheForFile.set(baseIdentifier, [])
+      cacheMap.set(cacheKey, [])
       return { layouts: [], errors: [e] }
     }
 
@@ -1415,7 +1463,7 @@ export class PointsCollector {
 
     // no parent → done
     if (!parentIdentifier || parentIdentifier === 'Point0') {
-      cacheForFile.set(baseIdentifier, layouts)
+      cacheMap.set(cacheKey, layouts)
       return { layouts, errors }
     }
 
@@ -1430,7 +1478,7 @@ export class PointsCollector {
 
     if (!parentAbs) {
       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
-      cacheForFile.set(baseIdentifier, layouts)
+      cacheMap.set(cacheKey, layouts)
       return {
         layouts,
         errors: [...errors, new Error(`parent layout path not found: ${parentImportPath}`)],
@@ -1455,19 +1503,11 @@ export class PointsCollector {
       }
     }
 
-    cacheForFile.set(baseIdentifier, layouts)
+    cacheMap.set(cacheKey, layouts)
     return { layouts, errors }
   }
 
   // helpers
-
-  private getOrInitFileBaseMap(fileAbs: string): Map<string, AnyRoute | undefined> {
-    const existingMap = this.filesBaseRoutesCache.get(fileAbs)
-    if (existingMap) return existingMap
-    const newMap = new Map<string, AnyRoute | undefined>()
-    this.filesBaseRoutesCache.set(fileAbs, newMap)
-    return newMap
-  }
 
   private static async detectExistingFilePathByImportPath(importPath: string): Promise<string | undefined> {
     const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
