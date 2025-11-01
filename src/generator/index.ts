@@ -584,6 +584,7 @@ export class PointsCollector {
     }
 
     const promises: Array<Promise<CollectedPoint | null>> = []
+    const errors: unknown[] = []
 
     traverse(ast, {
       ExportNamedDeclaration: (p) => {
@@ -598,16 +599,18 @@ export class PointsCollector {
                   if (pointType && pointName) {
                     const baseIdentifier = this.findBaseIdentifier(d.init)
                     const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
-                    const route =
+                    const { route, errors: routeErrors } =
                       shouldHaveRoute && baseIdentifier
                         ? await this.resolveFullRoute({ fileAbs, baseIdentifier })
-                        : undefined
+                        : { route: undefined, errors: [] }
+                    errors.push(...routeErrors)
 
                     // ← NEW: collect layouts for pages
-                    const layouts =
+                    const { layouts, errors: layoutsErrors } =
                       pointType === 'page' && baseIdentifier
                         ? await this.resolveLayoutsChain({ fileAbs, baseIdentifier })
-                        : undefined
+                        : { layouts: [], errors: [] }
+                    errors.push(...layoutsErrors)
 
                     if (shouldHaveRoute && !route) {
                       const message = `route not detected for ${pointType}.${pointName}`
@@ -639,15 +642,17 @@ export class PointsCollector {
             const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
             if (pointType && pointName) {
               const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
-              const route = shouldHaveRoute
+              const { route, errors: routeErrors } = shouldHaveRoute
                 ? await this.resolveFullRoute({ fileAbs, baseIdentifier: 'default' })
-                : undefined
+                : { route: undefined, errors: [] }
+              errors.push(...routeErrors)
 
               // ← NEW: collect layouts for default-exported pages
-              const layouts =
+              const { layouts, errors: layoutsErrors } =
                 pointType === 'page'
                   ? await this.resolveLayoutsChain({ fileAbs, baseIdentifier: 'default' })
-                  : undefined
+                  : { layouts: [], errors: [] }
+              errors.push(...layoutsErrors)
 
               if (shouldHaveRoute && !route) {
                 const message = `route not detected for ${pointType}.${pointName}`
@@ -672,8 +677,8 @@ export class PointsCollector {
 
     const results = await Promise.allSettled(promises)
     const collectedPoints = results.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value || [])
-    const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
-    return { collectedPoints, errors }
+    const promiseRejectedErrors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
+    return { collectedPoints, errors: [...errors, ...promiseRejectedErrors] }
   }
 
   private detectPointTypeAndNameFromInit(node: any): { pointType: EndPointType | null; pointName: string | null } {
@@ -740,11 +745,20 @@ export class PointsCollector {
   }: {
     fileAbs: string
     baseIdentifier: string
-  }): Promise<AnyRoute | undefined> {
-    const filesBaseMap = this.filesBaseRoutesCache.get(fileAbs) || new Map()
+  }): Promise<{ route: AnyRoute | undefined; errors: unknown[] }> {
+    const filesBaseMap = (() => {
+      const existingMap = this.filesBaseRoutesCache.get(fileAbs)
+      if (existingMap) {
+        return existingMap
+      }
+      const newMap = new Map()
+      this.filesBaseRoutesCache.set(fileAbs, newMap)
+      return newMap
+    })()
     if (filesBaseMap.has(baseIdentifier)) {
-      return filesBaseMap.get(baseIdentifier)
+      return { route: filesBaseMap.get(baseIdentifier), errors: [] }
     }
+    const errors: unknown[] = []
 
     try {
       const content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
@@ -765,6 +779,7 @@ export class PointsCollector {
       let routeSegment: string | undefined
       let parentImportPath: string | undefined
       let parentIdentifier: string | undefined
+      let baseIdFromDefinition: string | undefined
 
       traverse(ast, {
         CallExpression: (p) => {
@@ -813,7 +828,7 @@ export class PointsCollector {
 
       if (routeFull) {
         filesBaseMap.set(baseIdentifier, routeFull)
-        return routeFull
+        return { route: routeFull, errors: [] }
       }
 
       // Recursively follow import chain if there is a parent layout or base
@@ -826,12 +841,13 @@ export class PointsCollector {
             `❌ ${nodePath.relative(this.basepath, fileAbs)} parent import path not found: ${parentImportPath}`,
           )
           filesBaseMap.set(baseIdentifier, undefined)
-          return undefined
+          return { route: undefined, errors: [new Error(`parent import path not found: ${parentImportPath}`)] }
         }
-        const parentRoute = await this.resolveFullRoute({
+        const { route: parentRoute, errors: parentErrors } = await this.resolveFullRoute({
           fileAbs: parentAbs,
           baseIdentifier: parentIdentifier,
         })
+        errors.push(...parentErrors)
         const route =
           parentRoute && routeSegment
             ? Route0.create(parentRoute).extend(routeSegment)
@@ -841,16 +857,16 @@ export class PointsCollector {
                 ? Route0.create(routeSegment)
                 : undefined
         filesBaseMap.set(baseIdentifier, route)
-        return route
+        return { route, errors }
       }
 
       const route = routeSegment ? Route0.create(routeSegment) : undefined
       filesBaseMap.set(baseIdentifier, route)
-      return route
+      return { route, errors }
     } catch (e) {
       console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} route resolve failed: ${(e as Error).message}`)
       filesBaseMap.set(baseIdentifier, undefined)
-      return undefined
+      return { route: undefined, errors: [...errors, e] }
     }
   }
 
@@ -860,138 +876,150 @@ export class PointsCollector {
   }: {
     fileAbs: string
     baseIdentifier: string
-  }): Promise<string[]> {
-    // per-file cache
-    const fileCache = this.filesBaseLayoutsCache.get(fileAbs) ?? new Map<string, string[]>()
-
-    if (fileCache.has(baseIdentifier)) {
-      return fileCache.get(baseIdentifier) ?? []
+  }): Promise<{ layouts: string[]; errors: unknown[] }> {
+    const filesBaseMap = (() => {
+      const existingMap = this.filesBaseLayoutsCache.get(fileAbs)
+      if (existingMap) {
+        return existingMap
+      }
+      const newMap = new Map()
+      this.filesBaseRoutesCache.set(fileAbs, newMap)
+      return newMap
+    })()
+    if (filesBaseMap.has(baseIdentifier)) {
+      return { layouts: filesBaseMap.get(baseIdentifier) ?? [], errors: [] }
     }
+    const errors: unknown[] = []
 
-    // optimistic set to avoid cycles
-    // fileCache.set(baseIdentifier, [])
-    // this.filesBaseLayoutsCache.set(fileAbs, fileCache)
-
-    let content: string
     try {
-      content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
-    } catch {
-      return []
-    }
+      let content: string
+      try {
+        content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
+      } catch {
+        console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} failed to parse file`)
+        return { layouts: [], errors: [new Error(`failed to read file ${fileAbs}`)] }
+      }
 
-    const ast = babel.parse(content, {
-      sourceType: 'module',
-      errorRecovery: true,
-      plugins: [
-        'typescript',
-        'jsx',
-        'decorators-legacy',
-        'classProperties',
-        'classPrivateProperties',
-        'classPrivateMethods',
-      ],
-    })
+      const ast = babel.parse(content, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+        ],
+      })
 
-    let thisLayoutName: string | undefined
-    let parentImportPath: string | undefined
-    let parentIdentifier: string | undefined
-    let baseIdFromDefinition: string | undefined
+      let thisLayoutName: string | undefined
+      let parentImportPath: string | undefined
+      let parentIdentifier: string | undefined
+      let baseIdFromDefinition: string | undefined
 
-    // we need `this` inside callbacks
+      // we need `this` inside callbacks
 
-    traverse(ast, {
-      // 1. check if this file DEFINES the baseIdentifier as a layout
-      ExportNamedDeclaration: (path) => {
-        const decl = path.node.declaration
-        if (decl?.type === 'VariableDeclaration') {
-          for (const d of decl.declarations) {
-            if (d.id.type === 'Identifier' && d.id.name === baseIdentifier) {
-              const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
-              if (pointType === 'layout' && pointName) {
-                thisLayoutName = pointName
-              }
-              // also remember its own base (for parent walk)
-              const baseId = this.findBaseIdentifier(d.init)
-              if (baseId) {
-                baseIdFromDefinition = baseId
+      traverse(ast, {
+        // 1. check if this file DEFINES the baseIdentifier as a layout
+        ExportNamedDeclaration: (path) => {
+          const decl = path.node.declaration
+          if (decl?.type === 'VariableDeclaration') {
+            for (const d of decl.declarations) {
+              if (d.id.type === 'Identifier' && d.id.name === baseIdentifier) {
+                const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
+                if (pointType === 'layout' && pointName) {
+                  thisLayoutName = pointName
+                }
+                // also remember its own base (for parent walk)
+                const baseId = this.findBaseIdentifier(d.init)
+                if (baseId) {
+                  baseIdFromDefinition = baseId
+                }
               }
             }
           }
-        }
-      },
-      // 2. check if this file DEFAULT-exports a layout and we are asked for 'default'
-      ExportDefaultDeclaration: (path) => {
-        if (baseIdentifier !== 'default') return
-        const decl = path.node.declaration
-        const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
-        if (pointType === 'layout' && pointName) {
-          thisLayoutName = pointName
-        }
-        const baseId = this.findBaseIdentifier(decl)
-        if (baseId) {
-          baseIdFromDefinition = baseId
-        }
-      },
-      // 3. find where the baseIdentifier is imported from
-      ImportDeclaration: (path) => {
-        for (const spec of path.node.specifiers) {
-          if (spec.local.name === baseIdentifier) {
-            parentImportPath = path.node.source.value
-            if (spec.type === 'ImportSpecifier' && spec.imported.type === 'Identifier') {
-              parentIdentifier = spec.imported.name
-            } else if (spec.type === 'ImportDefaultSpecifier') {
-              parentIdentifier = 'default'
-            } else {
-              parentIdentifier = spec.local.name
-            }
-            if (parentIdentifier === 'Point0') {
-              parentIdentifier = undefined
+        },
+        // 2. check if this file DEFAULT-exports a layout and we are asked for 'default'
+        ExportDefaultDeclaration: (path) => {
+          if (baseIdentifier !== 'default') return
+          const decl = path.node.declaration
+          const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
+          if (pointType === 'layout' && pointName) {
+            thisLayoutName = pointName
+          }
+          const baseId = this.findBaseIdentifier(decl)
+          if (baseId) {
+            baseIdFromDefinition = baseId
+          }
+        },
+        // 3. find where the baseIdentifier is imported from
+        ImportDeclaration: (path) => {
+          for (const spec of path.node.specifiers) {
+            if (spec.local.name === baseIdentifier) {
+              parentImportPath = path.node.source.value
+              if (spec.type === 'ImportSpecifier' && spec.imported.type === 'Identifier') {
+                parentIdentifier = spec.imported.name
+              } else if (spec.type === 'ImportDefaultSpecifier') {
+                parentIdentifier = 'default'
+              } else {
+                parentIdentifier = spec.local.name
+              }
+              if (parentIdentifier === 'Point0') {
+                parentIdentifier = undefined
+              }
             }
           }
+        },
+      })
+
+      const layouts: string[] = []
+      if (thisLayoutName) {
+        layouts.push(thisLayoutName)
+      }
+
+      // walk to parent layout (imported one)
+      if (parentImportPath && parentIdentifier) {
+        const parentAbs = await PointsCollector.detectExistingFilePathByImportPath(
+          nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
+        )
+        if (parentAbs) {
+          const { layouts: parentLayouts, errors: newErrors } = await this.resolveLayoutsChain({
+            fileAbs: parentAbs,
+            baseIdentifier: parentIdentifier,
+          })
+          errors.push(...newErrors)
+          for (const l of parentLayouts) {
+            if (!layouts.includes(l)) {
+              layouts.push(l)
+            }
+          }
+        } else {
+          console.warn(
+            `❌ ${nodePath.relative(this.basepath, fileAbs)} parent layout import path not found: ${parentImportPath}`,
+          )
         }
-      },
-    })
-
-    const layouts: string[] = []
-    if (thisLayoutName) {
-      layouts.push(thisLayoutName)
-    }
-
-    // walk to parent layout (imported one)
-    if (parentImportPath && parentIdentifier) {
-      const parentAbs = await PointsCollector.detectExistingFilePathByImportPath(
-        nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
-      )
-      if (parentAbs) {
-        const parentLayouts = await this.resolveLayoutsChain({
-          fileAbs: parentAbs,
-          baseIdentifier: parentIdentifier,
+      } else if (baseIdFromDefinition) {
+        const { layouts: parentLayouts, errors: newErrors } = await this.resolveLayoutsChain({
+          fileAbs,
+          baseIdentifier: baseIdFromDefinition,
         })
+        errors.push(...newErrors)
         for (const l of parentLayouts) {
           if (!layouts.includes(l)) {
             layouts.push(l)
           }
         }
-      } else {
-        console.warn(
-          `❌ ${nodePath.relative(this.basepath, fileAbs)} parent layout import path not found: ${parentImportPath}`,
-        )
       }
-    } else if (baseIdFromDefinition) {
-      const parentLayouts = await this.resolveLayoutsChain({
-        fileAbs,
-        baseIdentifier: baseIdFromDefinition,
-      })
-      for (const l of parentLayouts) {
-        if (!layouts.includes(l)) {
-          layouts.push(l)
-        }
-      }
-    }
 
-    // save to cache and return
-    fileCache.set(baseIdentifier, layouts)
-    return layouts
+      // save to cache and return
+      filesBaseMap.set(baseIdentifier, layouts)
+      return { layouts, errors }
+    } catch (e) {
+      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} layouts resolve failed: ${(e as Error).message}`)
+      filesBaseMap.set(baseIdentifier, [])
+      return { layouts: [], errors: [...errors, e] }
+    }
   }
 
   // helpers
