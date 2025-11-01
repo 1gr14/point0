@@ -95,6 +95,7 @@ export const points = Points.ready([
     point: clientCtx313.point,
   },
   {
+    root: true,
     type: 'base',
     name: 'client',
     point: client14.point,

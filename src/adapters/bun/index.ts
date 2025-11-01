@@ -513,7 +513,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`Universal server running at http://localhost:${this.mainServerPort}`)
+    this.logger.info(`🚀 universal server running at http://localhost:${this.mainServerPort}`)
     return this
   }
 
@@ -546,7 +546,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`Main server running at http://localhost:${this.mainServerPort}`)
+    this.logger.info(`🚀 main server running at http://localhost:${this.mainServerPort}`)
     return this
   }
 
@@ -654,7 +654,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`Main dev server running at http://localhost:${this.mainServerPort}`)
+    this.logger.info(`🚀 main dev server running at http://localhost:${this.mainServerPort}`)
     return this
   }
 
@@ -679,7 +679,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       },
     })
     this.clientsDevServerPort = this.clientsDevServer.port ?? this.clientsDevServerPort
-    this.logger.info(`Clients dev server running at http://localhost:${this.clientsDevServerPort}`)
+    this.logger.info(`🚀 clients dev server running at http://localhost:${this.clientsDevServerPort}`)
     return this
   }
 }

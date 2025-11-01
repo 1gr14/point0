@@ -28,6 +28,7 @@ export type FileGeneratorOptions = {
 }
 
 type CollectedPoint = {
+  root: boolean
   type: EndPointType
   name: PointName
   exportName: string
@@ -100,7 +101,7 @@ export class FileGenerator {
     const { errors, points, changed } = await this.processFiles()
     if (changed) {
       await this.writeOutput()
-      const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '✅']
+      const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '🟢']
       console[consoleMethod](`${emoji} ${points.length} points processed`)
     }
   }
@@ -314,15 +315,31 @@ export class FileGenerator {
   }
 
   private async writeOneOutput({ content, outputAbs }: { content: string; outputAbs: string }) {
+    if (!this.lastEmittedContentMap.has(outputAbs)) {
+      const currentContent = await (async () => {
+        try {
+          return await Bun.file(outputAbs).text()
+        } catch (e) {
+          return undefined
+        }
+      })()
+      if (currentContent) {
+        this.lastEmittedContentMap.set(outputAbs, currentContent)
+      }
+    }
     if (content === this.lastEmittedContentMap.get(outputAbs)) {
       return
     }
-    await nodeFs.promises.mkdir(nodePath.dirname(outputAbs), { recursive: true })
-    const tmp = outputAbs + '.tmp'
-    await nodeFs.promises.writeFile(tmp, content, 'utf8')
-    await nodeFs.promises.rename(tmp, outputAbs)
-    // await Bun.write(this.outputAbs, content)
-    // nodeFs.writeFileSync(this.outputAbs, content)
+
+    // await nodeFs.promises.mkdir(nodePath.dirname(outputAbs), { recursive: true })
+    // const tmp = outputAbs + '.tmp'
+    // await nodeFs.promises.writeFile(tmp, content, 'utf8')
+    // await nodeFs.promises.rename(tmp, outputAbs)
+
+    await Bun.write(outputAbs, content)
+
+    // nodeFs.writeFileSync(outputAbs, content)
+
     this.lastEmittedContentMap.set(outputAbs, content)
   }
 
@@ -345,6 +362,9 @@ export class FileGenerator {
       lines.push(`export const points = Points.lazy([`)
       for (const point of points) {
         lines.push(`  {`)
+        if (point.root) {
+          lines.push(`    root: true,`)
+        }
         lines.push(`    type: '${point.type}',`)
         lines.push(`    name: '${point.name}',`)
         if (point.route) {
@@ -422,6 +442,9 @@ export class FileGenerator {
       lines.push(`export const points = Points.ready([`)
       for (const [pointIndex, point] of points.entries()) {
         lines.push(`  {`)
+        if (point.root) {
+          lines.push(`    root: true,`)
+        }
         lines.push(`    type: '${point.type}',`)
         lines.push(`    name: '${point.name}',`)
         if (point.route) {
@@ -549,13 +572,13 @@ export class PointsCollector {
         try {
           content = await Bun.file(fileAbs).text()
         } catch (e) {
-          console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+          console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
           return { collectedPoints: [], errors: [e] }
         }
       }
       return await this.extractCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       return { collectedPoints: [], errors: [e] }
     }
   }
@@ -579,7 +602,7 @@ export class PointsCollector {
         ],
       })
     } catch (e) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       return { collectedPoints: [], errors: [e] }
     }
 
@@ -598,6 +621,7 @@ export class PointsCollector {
                   const {
                     pointType,
                     pointName,
+                    root,
                     errors: detectPointTypeAndNameFromInitErrors,
                   } = this.detectPointTypeAndNameFromInit({ fileAbs, node: d.init })
                   errors.push(...detectPointTypeAndNameFromInitErrors)
@@ -618,11 +642,12 @@ export class PointsCollector {
 
                     if (shouldHaveRoute && !route) {
                       const message = `route not detected for ${pointType}.${pointName}`
-                      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
                       throw new Error(message)
                     }
 
                     return {
+                      root,
                       type: pointType,
                       name: pointName,
                       exportName: id.name,
@@ -646,6 +671,7 @@ export class PointsCollector {
             const {
               pointType,
               pointName,
+              root,
               errors: detectPointTypeAndNameFromInitErrors,
             } = this.detectPointTypeAndNameFromInit({ fileAbs, node: decl })
             errors.push(...detectPointTypeAndNameFromInitErrors)
@@ -665,11 +691,12 @@ export class PointsCollector {
 
               if (shouldHaveRoute && !route) {
                 const message = `route not detected for ${pointType}.${pointName}`
-                console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
                 throw new Error(message)
               }
               return {
                 exportName: 'default',
+                root,
                 type: pointType,
                 name: pointName,
                 importPath: fileAbs,
@@ -693,6 +720,7 @@ export class PointsCollector {
   private detectPointTypeAndNameFromInit({ fileAbs, node }: { fileAbs: string; node: any }): {
     pointType: EndPointType | null
     pointName: string | null
+    root: boolean
     errors: unknown[]
   } {
     // normal point0-style chain with .lets('page','name') and ending in .page()/.layout()/...
@@ -701,14 +729,14 @@ export class PointsCollector {
       ('type' in node && node.type !== 'CallExpression') ||
       ('callee' in node && node.callee?.type !== 'MemberExpression')
     ) {
-      return { pointType: null, pointName: null, errors }
+      return { pointType: null, pointName: null, root: false, errors }
     }
 
     // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
     const lastProp = node.callee.property
     const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
     const pointType = PointsCollector.pointMethodToPointType(lastMethod)
-    if (!pointType) return { pointType: null, pointName: null, errors }
+    if (!pointType) return { pointType: null, pointName: null, root: false, errors }
 
     // Find .lets('type','name') anywhere earlier in the chain
     const lets = this.findLetsArgsInChain(node)
@@ -716,16 +744,21 @@ export class PointsCollector {
       const point0RootBaseResult = this.detectPoint0RootBaseFromChain({ fileAbs, node })
       errors.push(...point0RootBaseResult.errors)
       if (point0RootBaseResult.pointType && point0RootBaseResult.pointName) {
-        return { pointType: point0RootBaseResult.pointType, pointName: point0RootBaseResult.pointName, errors }
+        return {
+          pointType: point0RootBaseResult.pointType,
+          pointName: point0RootBaseResult.pointName,
+          root: point0RootBaseResult.root,
+          errors,
+        }
       }
 
-      return { pointType: null, pointName: null, errors }
+      return { pointType: null, pointName: null, root: false, errors }
     }
 
     const { typeArg, nameArg } = lets
-    if (typeArg !== pointType) return { pointType: null, pointName: null, errors }
+    if (typeArg !== pointType) return { pointType: null, pointName: null, root: false, errors }
 
-    return { pointType, pointName: nameArg, errors }
+    return { pointType, pointName: nameArg, root: false, errors }
   }
 
   /**
@@ -746,14 +779,15 @@ export class PointsCollector {
   private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: any }): {
     pointType: EndPointType | null
     pointName: string | null
+    root: boolean
     errors: unknown[]
   } {
     // must end with .base()
-    if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, errors: [] }
-    if (node.callee?.type !== 'MemberExpression') return { pointType: null, pointName: null, errors: [] }
+    if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, root: false, errors: [] }
+    if (node.callee?.type !== 'MemberExpression') return { pointType: null, pointName: null, root: false, errors: [] }
     const lastProp = node.callee.property
     if (lastProp?.type !== 'Identifier' || lastProp.name !== 'base') {
-      return { pointType: null, pointName: null, errors: [] }
+      return { pointType: null, pointName: null, root: false, errors: [] }
     }
 
     // walk LEFT through the chain to find the root call:
@@ -775,17 +809,19 @@ export class PointsCollector {
       }
     }
 
-    if (!rootCall) return { pointType: null, pointName: null, errors: [] }
-    if (rootCall.callee?.type !== 'MemberExpression') return { pointType: null, pointName: null, errors: [] }
+    if (!rootCall) return { pointType: null, pointName: null, root: false, errors: [] }
+    if (rootCall.callee?.type !== 'MemberExpression')
+      return { pointType: null, pointName: null, root: false, errors: [] }
 
     const obj = rootCall.callee.object
     const prop = rootCall.callee.property
 
     // must be Point0.connect / Point0.create / Point0.source
-    if (obj?.type !== 'Identifier' || obj.name !== 'Point0') return { pointType: null, pointName: null, errors: [] }
-    if (prop?.type !== 'Identifier') return { pointType: null, pointName: null, errors: [] }
+    if (obj?.type !== 'Identifier' || obj.name !== 'Point0')
+      return { pointType: null, pointName: null, root: false, errors: [] }
+    if (prop?.type !== 'Identifier') return { pointType: null, pointName: null, root: false, errors: [] }
     const method = prop.name
-    if (!['connect', 'source'].includes(method)) return { pointType: null, pointName: null, errors: [] }
+    if (!['connect', 'source'].includes(method)) return { pointType: null, pointName: null, root: false, errors: [] }
 
     // name should be the first string arg
     const firstArg = rootCall.arguments?.[0]
@@ -793,15 +829,17 @@ export class PointsCollector {
       return {
         pointType: 'base',
         pointName: firstArg.value,
+        root: true,
         errors: [],
       }
     }
 
-    // fallback – it's still a base, just no explicit name
-    console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
+    // fallback – it's still a root base, just no explicit name
+    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
     return {
       pointType: null,
       pointName: null,
+      root: true,
       errors: [new Error('root base name not found')],
     }
   }
@@ -877,7 +915,7 @@ export class PointsCollector {
       return { routeSegment, routeFull, errors: [] }
     } catch (e) {
       console.warn(
-        `❌ ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+        `🔴 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
       return { routeSegment: undefined, routeFull: undefined, errors: [e] }
     }
@@ -956,7 +994,7 @@ export class PointsCollector {
         if (importedFrom) {
           if (!importedName) {
             console.warn(
-              `❌ ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
+              `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
             )
             return {
               parentIdentifier: undefined,
@@ -1005,7 +1043,7 @@ export class PointsCollector {
       if (importedFrom) {
         if (!importedName) {
           console.warn(
-            `❌ ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
+            `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
           )
           return {
             parentIdentifier: undefined,
@@ -1030,7 +1068,7 @@ export class PointsCollector {
         errors: [],
       }
     } catch (e) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
       return {
         parentIdentifier: undefined,
         parentImportPath: undefined,
@@ -1109,7 +1147,7 @@ export class PointsCollector {
         ],
       })
     } catch (e) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       cacheForFile.set(cacheKey, undefined)
       return { route: undefined, errors: [...errors, e] }
     }
@@ -1142,7 +1180,7 @@ export class PointsCollector {
       // return { route: finalRoute, errors }
 
       cacheForFile.set(cacheKey, undefined)
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
       return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
     }
     if (parentIdentifier === 'Point0') {
@@ -1163,7 +1201,7 @@ export class PointsCollector {
       : fileAbs
     if (!parentAbs) {
       console.warn(
-        `❌ ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
+        `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
       )
       cacheForFile.set(cacheKey, undefined)
       return {
@@ -1250,7 +1288,7 @@ export class PointsCollector {
         ],
       })
     } catch (e) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       cacheForFile.set(baseIdentifier, [])
       return { layouts: [], errors: [e] }
     }
@@ -1324,7 +1362,7 @@ export class PointsCollector {
       : fileAbs
 
     if (!parentAbs) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
       cacheForFile.set(baseIdentifier, layouts)
       return {
         layouts,
@@ -1455,11 +1493,11 @@ export class FileWatcher {
             }
           }
         } catch (e) {
-          console.error(`❌ ${(e as Error).message}`)
+          console.error(`🔴 ${(e as Error).message}`)
         }
       })()
     })
 
-    console.info('👀 FileWatcher started')
+    console.info('👀 watcher started')
   }
 }

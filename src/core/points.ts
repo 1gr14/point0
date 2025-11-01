@@ -32,6 +32,7 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   static readonly ready = (readyPoints: ReadyPointsCollection): Points<true> => {
+    Points.validate(readyPoints)
     const routedPoints = Points.toRoutedPointsCollection(readyPoints)
     const pagesTree = Points.toPagesTree({ points: routedPoints })
     const routes = Points.toRoutes({ points: routedPoints })
@@ -39,6 +40,7 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   static readonly lazy = (lazyPoints: LazyPointsCollection): Points<false> => {
+    Points.validate(lazyPoints)
     const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
     const pagesTree = Points.toPagesTree({ points: routedPoints })
     const routes = Points.toRoutes({ points: routedPoints })
@@ -56,6 +58,15 @@ export class Points<TReady extends boolean = boolean> {
     const pagesTree = Points.toPagesTree({ points: readyPoints })
     const routes = Points.toRoutes({ points: readyPoints })
     return new Points<true>({ collection: readyPoints, pagesTree, routes, ready: true })
+  }
+
+  static validate(points: ReadyPointsCollection | LazyPointsCollection): void {
+    const rootRecordsCount = points.filter((r) => r.root).length
+    if (rootRecordsCount > 1) {
+      throw new Error(
+        'Multiple root points are not allowed. Please, check why you have multiple root points. Maybe in generator your server base point comes to client points?',
+      )
+    }
   }
 
   private static toRoutedPointsCollection(points: LazyPointsCollection): LazyRoutedPointsCollection
@@ -122,6 +133,7 @@ export class Points<TReady extends boolean = boolean> {
         }
         const recordLayouts = record.layouts
         return {
+          root: record.root,
           ready: true,
           point,
           route,
@@ -486,6 +498,7 @@ export class Points<TReady extends boolean = boolean> {
 }
 
 export type LazyPointsCollectionRecord = {
+  root?: boolean
   type: EndPointType
   name: PointName
   route?: string | undefined
@@ -494,6 +507,7 @@ export type LazyPointsCollectionRecord = {
 }
 export type LazyPointsCollection = LazyPointsCollectionRecord[]
 export type ReadyPointsCollectionRecord = {
+  root?: boolean
   type: EndPointType
   name: PointName
   route?: string | undefined
@@ -502,6 +516,7 @@ export type ReadyPointsCollectionRecord = {
 }
 export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
 export type LazyRoutedPointsCollectionRecord = {
+  root?: boolean
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
@@ -510,6 +525,7 @@ export type LazyRoutedPointsCollectionRecord = {
 }
 export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
 export type ReadyRoutedPointsCollectionRecord = {
+  root?: boolean
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute

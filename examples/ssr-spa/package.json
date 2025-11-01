@@ -14,7 +14,7 @@
     "dev:separate": "concurrently 'bun run dev:server' 'bun run dev:client' --names 'server,client' --prefix-colors 'blue,green' --prefix '{name} |' --restart-tries -2 --restart-after 100",
     "generate": "bun run ./src/generator.ts",
     "generate:watch": "cross-env WATCH=1 bun run ./src/generator.ts",
-    "dev": "concurrently 'bun run dev:server' 'bun run dev:client' 'bun run generate:watch' --names 'srvr,clnt,gnrt' --prefix-colors 'blue,green,gray' --prefix '{name} |'",
+    "dev": "concurrently 'bun run dev:server' 'bun run dev:client' 'bun run generate:watch' --names 's,c,g' --prefix-colors 'blue,green,yellow' --prefix '{name}:'",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/entry-server.js",
     "clean": "rimraf dist",
     "types": "tsc --noEmit"
