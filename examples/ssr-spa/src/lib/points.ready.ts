@@ -14,6 +14,7 @@ export const points = Points.ready([
     type: 'page',
     name: 'home',
     route: '/',
+    layouts: ['generalLayout'],
     point: unnamed0.point,
   },
   {
@@ -26,24 +27,28 @@ export const points = Points.ready([
     type: 'page',
     name: 'ideas',
     route: '/ideas',
+    layouts: ['generalLayout'],
     point: ideasPage2.point,
   },
   {
     type: 'page',
     name: 'newIdea',
     route: '/ideas/new',
+    layouts: ['generalLayout'],
     point: unnamed3.point,
   },
   {
     type: 'page',
     name: 'idea',
     route: '/ideas/:id/',
+    layouts: ['generalLayout', 'ideaLayout'],
     point: ideaPage4.point,
   },
   {
     type: 'page',
     name: 'ideaNews',
     route: '/ideas/:id/news',
+    layouts: ['generalLayout', 'ideaLayout'],
     point: ideasNewsPage5.point,
   },
   {
