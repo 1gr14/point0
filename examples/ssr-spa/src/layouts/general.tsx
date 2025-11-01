@@ -1,7 +1,7 @@
 import { Link } from 'point0/adapters/wouter'
 import { useIsRouterFetching } from 'point0/core/router'
 import { client } from '../lib/client'
-import { routes } from '../lib/points'
+import { routes } from '../lib/routes'
 
 export const generalLayout = client
   .lets('layout', 'generalLayout')

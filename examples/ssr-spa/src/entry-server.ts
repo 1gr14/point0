@@ -1,5 +1,5 @@
 import { Server } from 'point0/adapters/bun/index.js'
-import { points } from './lib/points.js'
+import { points } from './lib/points.ready.js'
 import { source } from './lib/server.js'
 import { client } from './lib/client.js'
 import App from './app.js'

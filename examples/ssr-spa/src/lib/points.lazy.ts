@@ -1,6 +1,12 @@
 import { Points } from 'point0/core/points.js'
 
-export const points = Points.create([
+export const points = Points.lazy([
+  {
+    type: 'page',
+    name: 'home',
+    route: '/',
+    point: async () => (await import('../pages/home.js')).default.point,
+  },
   {
     type: 'page',
     name: 'empty',

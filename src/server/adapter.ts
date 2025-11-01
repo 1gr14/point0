@@ -73,7 +73,7 @@ const parseServerAdapterClientInput = (
   const ssr = input.ssr ?? true
   return {
     ssr,
-    points: input.points ?? Points.create([]),
+    points: input.points ?? Points.ready([]),
     root: input.root,
     basepath,
     distDir,
@@ -112,7 +112,7 @@ export const parseServerAdapterInput = <TRequiredCtx extends RequiredCtx = Requi
     )
   }
   return {
-    points: points ?? Points.create([]),
+    points: points ?? Points.ready([]),
     port,
     clientsDevServerPort: input.clientsDevServerPort,
     logger,

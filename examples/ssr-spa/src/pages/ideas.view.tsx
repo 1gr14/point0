@@ -1,7 +1,7 @@
 import { Link } from 'point0/adapters/wouter'
 import { useState } from 'react'
 import type { Idea } from '../lib/prisma'
-import { routes } from '../lib/points'
+import { routes } from '../lib/routes'
 
 export const IdeasView = ({ data }: { data: { ideasCount: number; ideas: Idea[]; env: string | undefined } }) => {
   const [count, setCount] = useState(() => 0)

@@ -1,5 +1,5 @@
 import { Link } from 'point0/adapters/wouter'
-import { routes } from '../lib/points'
+import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 
 export const ideaLayout = generalLayout

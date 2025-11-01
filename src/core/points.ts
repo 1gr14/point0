@@ -6,9 +6,9 @@ import type { QueryClient } from '@tanstack/react-query'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
-export class Points<TLoaded extends boolean = boolean> {
-  collection: TLoaded extends true ? LoadedPointsCollection : RoutedPointsCollection
-  loaded: TLoaded
+export class Points<TReady extends boolean = boolean> {
+  collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
+  ready: TReady
   pagesTree: PagesTree
   routes: Routes
   routesHash: string
@@ -17,51 +17,52 @@ export class Points<TLoaded extends boolean = boolean> {
     collection,
     pagesTree,
     routes,
-    loaded,
+    ready,
   }: {
-    collection: TLoaded extends true ? LoadedPointsCollection : RoutedPointsCollection
+    collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
     pagesTree: PagesTree
     routes: Routes
-    loaded: boolean
+    ready: boolean
   }) {
     this.collection = collection
     this.pagesTree = pagesTree
     this.routes = routes
-    this.loaded = loaded as TLoaded
+    this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
   }
 
-  static create(points: PointsCollection): Points<false> {
-    const routedPoints = Points.toRoutedPointsCollection(points)
+  static readonly ready = (readyPoints: ReadyPointsCollection): Points<true> => {
+    const routedPoints = Points.toRoutedPointsCollection(readyPoints)
     const pagesTree = Points.toPagesTree({ points: routedPoints })
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<false>({ collection: routedPoints, pagesTree, routes, loaded: false })
+    return new Points<true>({ collection: routedPoints, pagesTree, routes, ready: true })
   }
 
-  static async load(points: PointsCollection): Promise<Points<true>> {
-    const { loadedPoints, errors } = await Points.toLoadedPointsCollection(points)
-    for (const error of errors) {
-      console.error(error)
-    }
-    const pagesTree = Points.toPagesTree({ points: loadedPoints })
-    const routes = Points.toRoutes({ points: loadedPoints })
-    return new Points<true>({ collection: loadedPoints, pagesTree, routes, loaded: true })
+  static readonly lazy = (lazyPoints: LazyPointsCollection): Points<false> => {
+    const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
+    const pagesTree = Points.toPagesTree({ points: routedPoints })
+    const routes = Points.toRoutes({ points: routedPoints })
+    return new Points<false>({ collection: routedPoints, pagesTree, routes, ready: false })
   }
 
   async load(): Promise<Points<true>> {
-    if (this.loaded) {
+    if (this.ready) {
       return this as Points<true>
     }
-    const { loadedPoints, errors } = await Points.toLoadedPointsCollection(this.collection)
+    const { readyPoints, errors } = await Points.toLoadedPointsCollection(this.collection as LazyRoutedPointsCollection)
     for (const error of errors) {
       console.error(error)
     }
-    const pagesTree = Points.toPagesTree({ points: loadedPoints })
-    const routes = Points.toRoutes({ points: loadedPoints })
-    return new Points<true>({ collection: loadedPoints, pagesTree, routes, loaded: true })
+    const pagesTree = Points.toPagesTree({ points: readyPoints })
+    const routes = Points.toRoutes({ points: readyPoints })
+    return new Points<true>({ collection: readyPoints, pagesTree, routes, ready: true })
   }
 
-  private static toRoutedPointsCollection(points: PointsCollection): RoutedPointsCollection {
+  private static toRoutedPointsCollection(points: LazyPointsCollection): LazyRoutedPointsCollection
+  private static toRoutedPointsCollection(points: ReadyPointsCollection): ReadyRoutedPointsCollection
+  private static toRoutedPointsCollection(
+    points: LazyPointsCollection | ReadyPointsCollection,
+  ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
     return points.map((record, index) => {
       return {
         type: record.type,
@@ -70,13 +71,13 @@ export class Points<TLoaded extends boolean = boolean> {
         point: record.point,
         layouts: record.layouts ?? [],
       }
-    })
+    }) as LazyRoutedPointsCollection | ReadyRoutedPointsCollection
   }
 
   private static readonly toRoutes = ({
     points,
   }: {
-    points: LoadedPointsCollection | RoutedPointsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
   }): Routes => {
     const routes: Record<string, AnyRoute> = {}
     for (const record of points) {
@@ -88,8 +89,8 @@ export class Points<TLoaded extends boolean = boolean> {
   }
 
   private static async toLoadedPointsCollection(
-    points: PointsCollection | RoutedPointsCollection,
-  ): Promise<{ loadedPoints: LoadedPointsCollection; errors: unknown[] }> {
+    points: LazyRoutedPointsCollection,
+  ): Promise<{ readyPoints: ReadyRoutedPointsCollection; errors: unknown[] }> {
     const results = await Promise.allSettled(
       points.map(async (record, index) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
@@ -101,27 +102,27 @@ export class Points<TLoaded extends boolean = boolean> {
         const routeDefinition = route?.definition
         const recordRouteDefinition = record.route ? Route0.create(record.route).getDefinition() : undefined
         if (routeDefinition !== recordRouteDefinition) {
-          // throw new Error(
+          // console.warn(
           //   `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
-          // )
-        }
-        const pointName = point._name
-        const recordName = record.name
-        if (pointName !== recordName) {
-          // throw new Error(
-          //   `Point name does not match record name. Forget to regenerate points file?. Index: ${index}. Point name: ${pointName}. Record name: ${recordName}.`,
           // )
         }
         const recordType = record.type
         const pointType = point._pointType
-        if (recordType !== pointType) {
-          // throw new Error(
-          //   `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. Record type: ${recordType}. Point type: ${pointType}.`,
+        const pointName = point._name
+        const recordName = record.name
+        if (pointName !== recordName) {
+          // console.warn(
+          //   `Point name does not match record name. Forget to regenerate points file?. Index: ${index}. ${pointType}.${pointName} !== ${recordType}.${recordName}`,
           // )
         }
-        const recordLayouts = record.layouts ?? []
+        if (recordType !== pointType) {
+          // console.warn(
+          //   `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. ${pointType}.${pointName} !== ${recordType}.${recordName}`,
+          // )
+        }
+        const recordLayouts = record.layouts
         return {
-          loaded: true,
+          ready: true,
           point,
           route,
           name: pointName || record.name,
@@ -130,9 +131,9 @@ export class Points<TLoaded extends boolean = boolean> {
         }
       }),
     )
-    const loadedPoints = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+    const readyPoints = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
     const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
-    return { loadedPoints, errors }
+    return { readyPoints, errors }
   }
 
   // pages tree
@@ -140,7 +141,7 @@ export class Points<TLoaded extends boolean = boolean> {
   private static readonly toPagesAndLayoutsCollection = ({
     points,
   }: {
-    points: RoutedPointsCollection | LoadedPointsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
   }): PagesAndLayoutsCollection => {
     const collection: PagesAndLayoutsCollection = {
       pages: [],
@@ -392,7 +393,7 @@ export class Points<TLoaded extends boolean = boolean> {
   private static readonly toPagesTree = ({
     points,
   }: {
-    points: RoutedPointsCollection | LoadedPointsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
   }): PagesTree => {
     const pagesAndLayouts = Points.toPagesAndLayoutsCollection({ points })
     return Points.toPagesTreeFromPagesAndLayouts({ pagesAndLayouts })
@@ -416,10 +417,10 @@ export class Points<TLoaded extends boolean = boolean> {
         pageLocation: ExactLocation | undefined
       }
     | undefined {
-    if (!this.loaded) {
-      throw new Error('Points are not loaded')
+    if (!this.ready) {
+      throw new Error('Points are not ready, call load() first')
     }
-    for (const { route, point, type, name } of this.collection as LoadedPointsCollection) {
+    for (const { route, point, type, name } of this.collection as ReadyRoutedPointsCollection) {
       if (pointType && type !== pointType) {
         continue
       }
@@ -484,30 +485,38 @@ export class Points<TLoaded extends boolean = boolean> {
   }
 }
 
-export type PointsCollectionRecord = {
+export type LazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
-  point: EndPoint | (() => Promise<EndPoint>)
+  point: () => Promise<EndPoint>
   layouts?: string[]
 }
-export type PointsCollection = PointsCollectionRecord[]
-export type RoutedPointsCollectionRecord = {
+export type LazyPointsCollection = LazyPointsCollectionRecord[]
+export type ReadyPointsCollectionRecord = {
+  type: EndPointType
+  name: PointName
+  route?: string | undefined
+  point: EndPoint
+  layouts?: string[]
+}
+export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
+export type LazyRoutedPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
-  point: EndPoint | (() => Promise<EndPoint>)
+  point: () => Promise<EndPoint>
   layouts: string[]
 }
-export type RoutedPointsCollection = RoutedPointsCollectionRecord[]
-export type LoadedPointsCollectionRecord = {
+export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
+export type ReadyRoutedPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint
   layouts: string[]
 }
-export type LoadedPointsCollection = LoadedPointsCollectionRecord[]
+export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 
 export type PagesCollectionRecord = {
   type: 'page'

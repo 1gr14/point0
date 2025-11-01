@@ -20,9 +20,10 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 
 export type FileGeneratorOptions = {
   banner?: string
-  routes?: Routes
+  routes?: Routes | string
   glob: string | string[]
-  output: string
+  ready: string
+  lazy: string
   basepath: string
 }
 
@@ -65,23 +66,28 @@ export class FileGenerator {
   readonly banner: string | undefined
   readonly globInclude: string[]
   readonly globExclude: string[]
-  readonly outputAbs: string
+  readonly outputReadyAbs: string | undefined
+  readonly outputLazyAbs: string | undefined
+  readonly outputRoutesAbs: string | undefined
   readonly basepath: string
   readonly jiti: Jiti
 
   private readonly files = new Set<string>()
   private points: CollectedPoint[] = []
 
-  private lastEmittedContent: string | undefined
+  // Map<outputAbs, content>
+  private readonly lastEmittedContentMap = new Map<string, string>()
 
   constructor(opts: FileGeneratorOptions) {
-    this.routes = opts.routes
+    this.routes = typeof opts.routes === 'string' ? undefined : opts.routes
     this.banner = opts.banner
     this.basepath = opts.basepath
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g.slice(1)))
-    this.outputAbs = nodePath.resolve(this.basepath, opts.output)
+    this.outputReadyAbs = nodePath.resolve(this.basepath, opts.ready)
+    this.outputLazyAbs = nodePath.resolve(this.basepath, opts.lazy)
+    this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.basepath, opts.routes) : undefined
     this.jiti = this.createFreshJiti()
   }
 
@@ -91,14 +97,11 @@ export class FileGenerator {
 
   async sync() {
     await this.collectFiles()
-    const { errors, points } = await this.processFiles()
-    await this.writeOutput()
-    if (errors.length > 0) {
-      console.warn(
-        `🟡 ${points.length} points saved to ${nodePath.relative(this.basepath, this.outputAbs)}, ${errors.length} errors detected`,
-      )
-    } else {
-      console.info(`✅ ${points.length} points saved to ${nodePath.relative(this.basepath, this.outputAbs)}`)
+    const { errors, points, changed } = await this.processFiles()
+    if (changed) {
+      await this.writeOutput()
+      const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '✅']
+      console[consoleMethod](`${emoji} ${points.length} points processed`)
     }
   }
 
@@ -257,7 +260,7 @@ export class FileGenerator {
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs, routes: this.routes })
+    const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
     const { collectedPoints, errors } = await collector.collectPointsFromFile({ fileAbs })
     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
     const deleted =
@@ -279,7 +282,7 @@ export class FileGenerator {
   private async processFiles(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
     const files = [...this.files]
     const chunks = FileGenerator.chunk(files, chunkSize)
-    const collector = new PointsCollector({ basepath: this.basepath, outputAbs: this.outputAbs, routes: this.routes })
+    const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(
@@ -299,68 +302,169 @@ export class FileGenerator {
   }
 
   private async writeOutput() {
-    const content = this.emitPointsFile(this.points)
-    if (content === this.lastEmittedContent) {
+    if (this.outputLazyAbs) {
+      await this.writeOneOutput({ content: this.emitLazyPointsFile(this.points), outputAbs: this.outputLazyAbs })
+    }
+    if (this.outputReadyAbs) {
+      await this.writeOneOutput({ content: this.emitReadyPointsFile(this.points), outputAbs: this.outputReadyAbs })
+    }
+    if (this.outputRoutesAbs) {
+      await this.writeOneOutput({ content: this.emitRoutesPointsFile(this.points), outputAbs: this.outputRoutesAbs })
+    }
+  }
+
+  private async writeOneOutput({ content, outputAbs }: { content: string; outputAbs: string }) {
+    if (content === this.lastEmittedContentMap.get(outputAbs)) {
       return
     }
-    await nodeFs.promises.mkdir(nodePath.dirname(this.outputAbs), { recursive: true })
-    const tmp = this.outputAbs + '.tmp'
+    await nodeFs.promises.mkdir(nodePath.dirname(outputAbs), { recursive: true })
+    const tmp = outputAbs + '.tmp'
     await nodeFs.promises.writeFile(tmp, content, 'utf8')
-    await nodeFs.promises.rename(tmp, this.outputAbs)
+    await nodeFs.promises.rename(tmp, outputAbs)
     // await Bun.write(this.outputAbs, content)
     // nodeFs.writeFileSync(this.outputAbs, content)
-    this.lastEmittedContent = content
+    this.lastEmittedContentMap.set(outputAbs, content)
   }
 
   // emit
 
-  private emitPointsFile(points: CollectedPoint[]): string {
+  private emitLazyPointsFile(points: CollectedPoint[]): string {
+    if (!this.outputLazyAbs) {
+      throw new Error('outputLazyAbs is not set')
+    }
     const lines: string[] = []
     if (this.banner) {
       lines.push(this.banner)
     }
     lines.push(`import { Points } from 'point0/core/points.js'`)
-    if (!this.routes) {
-      lines.push(`import { Routes } from '@devp0nt/route0'`)
-    }
     lines.push(``)
 
-    if (!this.routes) {
-      const pagePoints = points.flatMap((p) =>
-        p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
-      )
-      if (pagePoints.length > 0) {
-        lines.push(`export const routes = Routes.create({`)
-        for (const p of pagePoints) {
-          lines.push(`  ${p.name}: '${p.route}',`)
+    if (this.points.length === 0) {
+      lines.push(`export const points = Points.lazy([])`)
+    } else {
+      lines.push(`export const points = Points.lazy([`)
+      for (const point of points) {
+        lines.push(`  {`)
+        lines.push(`    type: '${point.type}',`)
+        lines.push(`    name: '${point.name}',`)
+        if (point.route) {
+          lines.push(`    route: '${point.route.definition}',`)
         }
-        lines.push(`})`)
-      } else {
-        lines.push(`export const routes = Routes.create({})`)
+        if (point.type === 'page' && point.layouts?.length) {
+          const arr = point.layouts.map((r) => `'${r}'`).join(', ')
+          lines.push(`    layouts: [${arr}],`)
+        }
+        // const exportNameSuffix = point.type === 'component' ? '.point' : ''
+        const exportNameSuffix = '.point'
+        lines.push(
+          `    point: async () => (await import('${FileGenerator.toRelativeJsImportPath(this.outputLazyAbs, point.importPath)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+        )
+        lines.push(`  },`)
       }
-      lines.push(``)
+      lines.push(`])`)
     }
 
-    lines.push(`export const points = Points.create([`)
-    for (const point of points) {
-      lines.push(`  {`)
-      lines.push(`    type: '${point.type}',`)
-      lines.push(`    name: '${point.name}',`)
-      if (point.route) {
-        lines.push(`    route: '${point.route.definition}',`)
-      }
-      if (point.type === 'page' && point.layouts?.length) {
-        const arr = point.layouts.map((r) => `'${r}'`).join(', ')
-        lines.push(`    layouts: [${arr}],`)
-      }
-      // const exportNameSuffix = point.type === 'component' ? '.point' : ''
-      const exportNameSuffix = '.point'
-      lines.push(
-        `    point: async () => (await import('${point.importPath}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
-      )
-      lines.push(`  },`)
+    lines.push(``)
+    return lines.join('\n')
+  }
+
+  private emitReadyPointsFile(points: CollectedPoint[]): string {
+    if (!this.outputReadyAbs) {
+      throw new Error('outputReadyAbs is not set')
     }
-    lines.push(`])`)
+    const lines: string[] = []
+    if (this.banner) {
+      lines.push(this.banner)
+    }
+    lines.push(`import { Points } from 'point0/core/points.js'`)
+
+    const importPathsAndExportNames: Array<{
+      importPath: string
+      exports: Array<{ originalExportName: string; renamedExportName: string }>
+    }> = []
+    for (const [pointIndex, point] of points.entries()) {
+      const importPath = FileGenerator.toRelativeJsImportPath(this.outputReadyAbs, point.importPath)
+      const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
+      const newItem =
+        point.exportName === 'default'
+          ? { originalExportName: 'default', renamedExportName: `unnamed${pointIndex}` }
+          : { originalExportName: point.exportName, renamedExportName: `${point.exportName}${pointIndex}` }
+      if (importPathAndExportNames) {
+        importPathAndExportNames.exports.push(newItem)
+      } else {
+        importPathsAndExportNames.push({ importPath, exports: [newItem] })
+      }
+    }
+
+    for (const importPathAndExportNames of importPathsAndExportNames) {
+      const defaultItem = importPathAndExportNames.exports.find((e) => e.originalExportName === 'default')
+      const defaultPart = defaultItem ? defaultItem.renamedExportName : undefined
+      const namedItems = importPathAndExportNames.exports.filter((e) => e.originalExportName !== 'default')
+      const namedPart =
+        namedItems.length > 0
+          ? `{ ${namedItems.map((e) => `${e.originalExportName} as ${e.renamedExportName}`).join(', ')} }`
+          : undefined
+      const combinedPart = defaultPart ? `${defaultPart}, ${namedPart}` : namedPart
+      if (!combinedPart) {
+        continue
+      }
+      lines.push(`import ${combinedPart} from '${importPathAndExportNames.importPath}'`)
+    }
+
+    if (this.points.length === 0) {
+      lines.push(``)
+      lines.push(`export const points = Points.ready([])`)
+    } else {
+      lines.push(``)
+      lines.push(`export const points = Points.ready([`)
+      for (const [pointIndex, point] of points.entries()) {
+        lines.push(`  {`)
+        lines.push(`    type: '${point.type}',`)
+        lines.push(`    name: '${point.name}',`)
+        if (point.route) {
+          lines.push(`    route: '${point.route.definition}',`)
+        }
+        if (point.type === 'page' && point.layouts?.length) {
+          const arr = point.layouts.map((r) => `'${r}'`).join(', ')
+          lines.push(`    layouts: [${arr}],`)
+        }
+        if (point.exportName === 'default') {
+          lines.push(`    point: unnamed${pointIndex}.point,`)
+        } else {
+          lines.push(`    point: ${point.exportName}${pointIndex}.point,`)
+        }
+        lines.push(`  },`)
+      }
+      lines.push(`])`)
+    }
+
+    lines.push(``)
+    return lines.join('\n')
+  }
+
+  private emitRoutesPointsFile(points: CollectedPoint[]): string {
+    if (!this.outputRoutesAbs) {
+      throw new Error('outputRoutesAbs is not set')
+    }
+    const lines: string[] = []
+    if (this.banner) {
+      lines.push(this.banner)
+    }
+    lines.push(`import { Routes } from '@devp0nt/route0'`)
+    lines.push(``)
+
+    const pagePoints = points.flatMap((p) =>
+      p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
+    )
+    if (pagePoints.length > 0) {
+      lines.push(`export const routes = Routes.create({`)
+      for (const p of pagePoints) {
+        lines.push(`  ${p.name}: '${p.route}',`)
+      }
+      lines.push(`})`)
+    } else {
+      lines.push(`export const routes = Routes.create({})`)
+    }
     lines.push(``)
 
     return lines.join('\n')
@@ -396,11 +500,19 @@ export class FileGenerator {
       (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
     )
   }
+
+  private static toRelativeJsImportPath(fromAbs: string, toAbs: string): string {
+    let rel = nodePath
+      .relative(nodePath.dirname(fromAbs), toAbs)
+      .replace(/\\/g, '/')
+      .replace(/.tsx?$/, '.js')
+    if (!rel.startsWith('.')) rel = './' + rel
+    return rel
+  }
 }
 
 export class PointsCollector {
   readonly basepath: string
-  readonly outputAbs: string
   readonly routes: Routes | undefined
 
   // Map<fileAbs, content>
@@ -409,9 +521,8 @@ export class PointsCollector {
   // Map<fileBase, Map<baseIdentifier, route>>
   readonly filesBaseRoutesCache: Map<string, Map<string, AnyRoute>>
 
-  constructor({ basepath, outputAbs, routes }: { basepath: string; outputAbs: string; routes: Routes | undefined }) {
+  constructor({ basepath, routes }: { basepath: string; routes: Routes | undefined }) {
     this.basepath = basepath
-    this.outputAbs = outputAbs
     this.routes = routes
     this.filesContentCache = new Map()
     this.filesBaseRoutesCache = new Map()
@@ -493,7 +604,7 @@ export class PointsCollector {
                       type: pointType,
                       name: pointName,
                       exportName: id.name,
-                      importPath: PointsCollector.toRelativeJsImportPath(this.outputAbs, fileAbs),
+                      importPath: fileAbs,
                       fileAbs,
                       route,
                       layouts: undefined,
@@ -525,7 +636,7 @@ export class PointsCollector {
                 exportName: 'default',
                 type: pointType,
                 name: pointName,
-                importPath: PointsCollector.toRelativeJsImportPath(this.outputAbs, fileAbs),
+                importPath: fileAbs,
                 fileAbs,
                 route,
                 layouts: undefined,
@@ -734,15 +845,6 @@ export class PointsCollector {
       }
     }
     return undefined
-  }
-
-  private static toRelativeJsImportPath(fromAbs: string, toAbs: string): string {
-    let rel = nodePath
-      .relative(nodePath.dirname(fromAbs), toAbs)
-      .replace(/\\/g, '/')
-      .replace(/.tsx?$/, '.js')
-    if (!rel.startsWith('.')) rel = './' + rel
-    return rel
   }
 
   private static pointMethodToPointType(method: unknown): EndPointType | null {

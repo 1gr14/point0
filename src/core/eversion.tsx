@@ -5,10 +5,9 @@ import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import type { PointsCollection } from './points.js'
-import { Points } from './points.js'
 import type { HydratedAppComponent } from './hydrate.js'
 import { Point0 } from './index.js'
+import { Points } from './points.js'
 import type {
   AnyPoint,
   Ctx,
@@ -58,7 +57,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   static async create<TRootPoint extends RootPoint>({
     root,
-    points = Points.create([]),
+    points = Points.ready([]),
   }: {
     root: TRootPoint
     points?: Points
@@ -71,7 +70,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   async connect({
     root,
-    points = Points.create([]),
+    points = Points.ready([]),
   }: {
     root: RootPoint
     points?: Points
@@ -606,12 +605,6 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
     return dehydratedState
   }
-}
-
-export type CreateEversionInput<TRequiredCtx extends RequiredCtx> = {
-  root: RootPoint<TRequiredCtx>
-  source?: null
-  points?: PointsCollection
 }
 
 export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
