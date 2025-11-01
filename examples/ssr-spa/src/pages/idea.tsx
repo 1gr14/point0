@@ -14,7 +14,7 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 
 export const ideaPage = ideaLayout
   .lets('page', 'idea')
-  // .route('')
+  .route('')
   .loader(async ({ ctx, input }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build

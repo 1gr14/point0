@@ -1,6 +1,8 @@
 import * as babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
+import { Route0 } from '@devp0nt/route0'
+import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Glob } from 'bun'
 import type { Jiti } from 'jiti'
 import { createJiti } from 'jiti'
@@ -8,7 +10,6 @@ import * as nodeFs from 'node:fs'
 import { existsSync, watch as fsWatch } from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EndPoint, EndPointType, PointName } from '../core/types.js'
-import type { Routes } from '@devp0nt/route0'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -25,22 +26,12 @@ export type FileGeneratorOptions = {
   basepath: string
 }
 
-type StaticCollectedPoint = {
-  type: EndPointType
-  name: PointName
-  exportName: string
-  importPath: string
-  fileAbs: string
-  route: undefined
-  layouts: undefined
-}
-
 type CollectedPoint = {
   type: EndPointType
   name: PointName
   exportName: string
   importPath: string
-  route?: string
+  route?: AnyRoute
   layouts?: string[]
   fileAbs: string
 }
@@ -225,7 +216,7 @@ export class FileGenerator {
       const byType = aIndex - bIndex
       if (byType !== 0) return byType
 
-      const byRoute = (a.route?.replace(/:\w+/g, 'Z') ?? '').localeCompare(b.route?.replace(/:\w+/g, 'Z') ?? '')
+      const byRoute = !a.route ? 0 : !b.route ? 1 : a.route.isMoreSpecificThan(b.route) ? -1 : 1
       if (byRoute !== 0) return byRoute
 
       const byName = a.name.localeCompare(b.name)
@@ -298,45 +289,24 @@ export class FileGenerator {
 
   private async collectPointsFromFile(fileAbs: string): Promise<{ collectedPoints: CollectedPoint[]; error: unknown }> {
     let content: string
-    let staticCollectedPoints: StaticCollectedPoint[] = []
-    let collectedPoints: CollectedPoint[] = []
     try {
       try {
         content = await Bun.file(fileAbs).text()
       } catch (e) {
         console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
-        return { collectedPoints, error: e }
+        return { collectedPoints: [], error: e }
       }
-
-      const staticResult = this.extractStaticCollectedPointsFromContent({ content, fileAbs })
-      collectedPoints = staticResult.collectedPoints
-      staticCollectedPoints = staticResult.staticCollectedPoints
-      if (!staticCollectedPoints.length) return { collectedPoints: [], error: staticResult.error }
-
-      const module = await this.jiti.import(fileAbs)
-
-      for (const staticCollectedPoint of staticCollectedPoints) {
-        const collectedPoint = this.extractCollectedPointFromModule({ staticCollectedPoint, module, fileAbs })
-        if (!collectedPoint) {
-          continue
-        }
-        if (collectedPoints.every((p) => !FileGenerator.isSameCollectedPoint(p, collectedPoint))) {
-          collectedPoints.push(collectedPoint)
-        }
-      }
-
-      return { collectedPoints, error: staticResult.error }
+      return this.extractCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
       console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
-      return { collectedPoints, error: e }
+      return { collectedPoints: [], error: e }
     }
   }
 
   // parse
 
-  private extractStaticCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): {
+  private extractCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): {
     collectedPoints: CollectedPoint[]
-    staticCollectedPoints: StaticCollectedPoint[]
     error: unknown
   } {
     let ast
@@ -355,10 +325,10 @@ export class FileGenerator {
       })
     } catch (e) {
       console.warn(`⚠️ parse failed for ${fileAbs}: ${(e as Error).message}`)
-      return { collectedPoints: [], staticCollectedPoints: [], error: e }
+      return { collectedPoints: [], error: e }
     }
 
-    const staticCollectedPoints: StaticCollectedPoint[] = []
+    const collectedPoints: CollectedPoint[] = []
 
     traverse(ast, {
       ExportNamedDeclaration: (p) => {
@@ -369,13 +339,18 @@ export class FileGenerator {
             if (id.type === 'Identifier') {
               const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
               if (pointType && pointName) {
-                staticCollectedPoints.push({
+                const baseIdentifier = this.findBaseIdentifier(d.init)
+                const route =
+                  (pointType === 'page' || pointType === 'layout') && baseIdentifier
+                    ? this.resolveFullRoute({ fileAbs, baseIdentifier })
+                    : undefined
+                collectedPoints.push({
                   type: pointType,
                   name: pointName,
                   exportName: id.name,
                   importPath: FileGenerator.toRelativeJsImportPath(this.outputAbs, fileAbs),
                   fileAbs,
-                  route: undefined,
+                  route,
                   layouts: undefined,
                 })
               }
@@ -387,33 +362,24 @@ export class FileGenerator {
         const decl = p.node.declaration
         const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
         if (pointType && pointName) {
-          staticCollectedPoints.push({
+          const route =
+            pointType === 'page' || pointType === 'layout'
+              ? this.resolveFullRoute({ fileAbs, baseIdentifier: 'default' })
+              : undefined
+          collectedPoints.push({
             exportName: 'default',
             type: pointType,
             name: pointName,
             importPath: FileGenerator.toRelativeJsImportPath(this.outputAbs, fileAbs),
             fileAbs,
-            route: undefined,
+            route,
             layouts: undefined,
           })
         }
       },
     })
 
-    const collectedPoints = staticCollectedPoints.filter((p) =>
-      FileGenerator.isStaticCollectedPointAlreadyCollected(p),
-    ) as CollectedPoint[]
-    return { collectedPoints, staticCollectedPoints, error: undefined }
-  }
-
-  private static isStaticCollectedPointAlreadyCollected(staticCollectedPoint: StaticCollectedPoint): boolean {
-    if (staticCollectedPoint.type === 'page' || staticCollectedPoint.type === 'layout') {
-      // page may have layout and route, layout may have route
-      return false
-    } else {
-      // other no
-      return true
-    }
+    return { collectedPoints, error: undefined }
   }
 
   private detectPointTypeAndNameFromInit(node: any): { pointType: EndPointType | null; pointName: string | null } {
@@ -457,33 +423,152 @@ export class FileGenerator {
     return null
   }
 
-  private extractCollectedPointFromModule({
-    staticCollectedPoint,
-    module,
-    fileAbs,
-  }: {
-    staticCollectedPoint: StaticCollectedPoint
-    module: any
-    fileAbs: string
-  }): CollectedPoint | null {
-    const exported: unknown =
-      staticCollectedPoint.exportName === 'default' ? module?.default : module?.[staticCollectedPoint.exportName]
-    const point = FileGenerator.exportedToEndPoint(exported)
-
-    if (!point) {
-      return null
+  private findBaseIdentifier(node: any): string | undefined {
+    let current = node
+    while (current?.type === 'CallExpression') {
+      const callee = current.callee
+      if (callee?.type === 'MemberExpression') {
+        current = callee.object
+      } else {
+        break
+      }
     }
+    // when we exit the loop, current is the base identifier or literal
+    if (current?.type === 'Identifier') {
+      return current.name
+    }
+    return undefined
+  }
 
-    return {
-      type: point._pointType,
-      name: point._name ?? staticCollectedPoint.name,
-      route: point._pointType === 'page' || point._pointType === 'layout' ? point._route?.definition : undefined,
-      importPath: staticCollectedPoint.importPath,
-      exportName: staticCollectedPoint.exportName,
-      layouts: point._pointType === 'page' ? point._layouts.flatMap((x) => (x._name ? [x._name] : [])) : undefined,
-      fileAbs,
+  private resolveFullRoute({
+    fileAbs,
+    baseIdentifier,
+  }: {
+    fileAbs: string
+    baseIdentifier: string
+  }): AnyRoute | undefined {
+    console.log(fileAbs)
+    try {
+      const content = nodeFs.readFileSync(fileAbs, 'utf8')
+      const ast = babel.parse(content, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+        ],
+      })
+
+      let routeSegment: string | undefined
+      let parentImportPath: string | undefined
+      let parentIdentifier: string | undefined
+
+      traverse(ast, {
+        CallExpression(p) {
+          const callee = p.node.callee
+          if (
+            callee.type === 'MemberExpression' &&
+            callee.property.type === 'Identifier' &&
+            callee.property.name === 'route'
+          ) {
+            const arg = p.node.arguments.at(0)
+            if (arg?.type === 'StringLiteral') {
+              routeSegment = arg.value
+            }
+          }
+        },
+        ImportDeclaration(p) {
+          for (const spec of p.node.specifiers) {
+            if (
+              spec.type === 'ImportSpecifier' &&
+              spec.imported.type === 'Identifier' &&
+              spec.local.name === baseIdentifier
+            ) {
+              parentImportPath = p.node.source.value
+              parentIdentifier = spec.imported.name
+            } else if (spec.type === 'ImportDefaultSpecifier' && spec.local.name === baseIdentifier) {
+              parentImportPath = p.node.source.value
+              parentIdentifier = 'default'
+            }
+          }
+        },
+      })
+
+      // Recursively follow import chain if there is a parent layout or base
+      if (parentImportPath && parentIdentifier) {
+        console.log('parentImportPath', parentImportPath)
+        const parentAbs = this.detectExistingFilePatByImportPath(
+          nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
+        )
+        if (!parentAbs) {
+          return undefined
+        }
+        const parentRoute = this.resolveFullRoute({
+          fileAbs: parentAbs,
+          baseIdentifier: parentIdentifier,
+        })
+        const route =
+          parentRoute && routeSegment
+            ? Route0.create(parentRoute).extend(routeSegment)
+            : parentRoute
+              ? Route0.create(parentRoute)
+              : routeSegment
+                ? Route0.create(routeSegment)
+                : undefined
+        return route
+      }
+
+      return routeSegment ? Route0.create(routeSegment) : undefined
+    } catch (e) {
+      console.warn(`⚠️ route resolve failed for ${fileAbs}: ${(e as Error).message}`)
+      return undefined
     }
   }
+
+  private detectExistingFilePatByImportPath(importPath: string): string | undefined {
+    const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
+    const currentExt = nodePath.extname(importPath)
+    const importPathWithoutExt = importPath.replace(currentExt, '')
+    for (const ext of exts) {
+      const abs = importPathWithoutExt + ext
+      if (existsSync(abs)) {
+        return abs
+      }
+    }
+    return undefined
+  }
+
+  // private extractCollectedPointFromModule({
+  //   staticCollectedPoint,
+  //   module,
+  //   fileAbs,
+  // }: {
+  //   staticCollectedPoint: StaticCollectedPoint
+  //   module: any
+  //   fileAbs: string
+  // }): CollectedPoint | null {
+  //   const exported: unknown =
+  //     staticCollectedPoint.exportName === 'default' ? module?.default : module?.[staticCollectedPoint.exportName]
+  //   const point = FileGenerator.exportedToEndPoint(exported)
+
+  //   if (!point) {
+  //     return null
+  //   }
+
+  //   return {
+  //     type: point._pointType,
+  //     name: point._name ?? staticCollectedPoint.name,
+  //     route: point._pointType === 'page' || point._pointType === 'layout' ? point._route?.definition : undefined,
+  //     importPath: staticCollectedPoint.importPath,
+  //     exportName: staticCollectedPoint.exportName,
+  //     layouts: point._pointType === 'page' ? point._layouts.flatMap((x) => (x._name ? [x._name] : [])) : undefined,
+  //     fileAbs,
+  //   }
+  // }
 
   // emit
 
@@ -496,7 +581,9 @@ export class FileGenerator {
     lines.push(`import { Routes } from '@devp0nt/route0'`)
     lines.push(``)
 
-    const pagePoints = points.filter((p) => p.type === 'page' && p.route)
+    const pagePoints = points.flatMap((p) =>
+      p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
+    )
     if (pagePoints.length > 0) {
       lines.push(`export const routes = Routes.create({`)
       for (const p of pagePoints) {
@@ -514,7 +601,7 @@ export class FileGenerator {
       lines.push(`    type: '${point.type}',`)
       lines.push(`    name: '${point.name}',`)
       if (point.route) {
-        lines.push(`    route: '${point.route}',`)
+        lines.push(`    route: '${point.route.definition}',`)
       }
       if (point.type === 'page' && point.layouts?.length) {
         const arr = point.layouts.map((r) => `'${r}'`).join(', ')

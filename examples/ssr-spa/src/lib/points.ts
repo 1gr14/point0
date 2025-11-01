@@ -2,7 +2,6 @@ import { Points } from 'point0/core/points.js'
 import { Routes } from '@devp0nt/route0'
 
 export const routes = Routes.create({
-  home: '/',
   empty: '/empty/:id',
   ideas: '/ideas',
   newIdea: '/ideas/new',
@@ -14,8 +13,6 @@ export const points = Points.create([
   {
     type: 'page',
     name: 'home',
-    route: '/',
-    layouts: ['generalLayout'],
     point: async () => (await import('../pages/home.js')).default.point,
   },
   {
@@ -28,28 +25,24 @@ export const points = Points.create([
     type: 'page',
     name: 'ideas',
     route: '/ideas',
-    layouts: ['generalLayout'],
     point: async () => (await import('../pages/ideas.js')).ideasPage.point,
   },
   {
     type: 'page',
     name: 'newIdea',
     route: '/ideas/new',
-    layouts: ['generalLayout'],
     point: async () => (await import('../pages/idea-create.js')).default.point,
   },
   {
     type: 'page',
     name: 'idea',
     route: '/ideas/:id',
-    layouts: ['generalLayout', 'ideaLayout'],
     point: async () => (await import('../pages/idea.js')).ideaPage.point,
   },
   {
     type: 'page',
     name: 'ideaNews',
     route: '/ideas/:id/news',
-    layouts: ['generalLayout', 'ideaLayout'],
     point: async () => (await import('../pages/idea-news.js')).ideasNewsPage.point,
   },
   {
