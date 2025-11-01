@@ -127,7 +127,7 @@ export class FileGenerator {
   async sync() {
     await this.collectFiles()
     const { errors, points } = await this.process()
-    const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟨'] : ['info' as const, '']
+    const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
     console[consoleMethod]([emoji, `${points.length} points processed`].filter(Boolean).join(' '))
   }
 
@@ -215,7 +215,9 @@ export class FileGenerator {
     const diff = FileGenerator.getCollectedPointsDiff(prevPoints, newPoints)
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
-    await this.writeOutput()
+    if (diff.changed) {
+      await this.writeOutput()
+    }
     return {
       points: newPoints,
       deleted: diff.deleted,
@@ -265,7 +267,9 @@ export class FileGenerator {
             this.lastEmittedContentMap.set(task.outputAbs, currentContent)
           }
         }
-        if (task.content === this.lastEmittedContentMap.get(task.outputAbs)) {
+        const currentContent = this.lastEmittedContentMap.get(task.outputAbs)
+        this.lastEmittedContentMap.set(task.outputAbs, task.content)
+        if (task.content === currentContent) {
           return false
         }
         return true
@@ -595,13 +599,13 @@ export class PointsCollector {
           content = await nodeFs.readFile(fileAbs, 'utf8')
           this.filesContentCache.set(fileAbs, content)
         } catch (e) {
-          console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+          console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
           return { collectedPoints: [], errors: [e] }
         }
       }
       return await this.extractCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
-      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       return { collectedPoints: [], errors: [e] }
     }
   }
@@ -631,7 +635,7 @@ export class PointsCollector {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       this.astCache.set(fileAbs, undefined)
       return { collectedPoints: [], errors: [e] }
     }
@@ -672,7 +676,7 @@ export class PointsCollector {
 
                     if (shouldHaveRoute && !route) {
                       const message = `route not detected for ${pointType}.${pointName}`
-                      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
                       throw new Error(message)
                     }
 
@@ -720,7 +724,7 @@ export class PointsCollector {
 
               if (shouldHaveRoute && !route) {
                 const message = `route not detected for ${pointType}.${pointName}`
-                console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
                 throw new Error(message)
               }
               return {
@@ -863,7 +867,7 @@ export class PointsCollector {
     }
 
     // fallback – it's still a root base, just no explicit name
-    console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
+    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
     return {
       pointType: null,
       pointName: null,
@@ -936,7 +940,7 @@ export class PointsCollector {
                     routeFull = (this.routes as any)[routeKey]
                   } else {
                     errors.push(new Error(`unknown route key '${routeKey}'`))
-                    console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}'`)
+                    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}'`)
                   }
                 }
               }
@@ -948,7 +952,7 @@ export class PointsCollector {
       return { routeSegment, routeFull, errors }
     } catch (e) {
       console.warn(
-        `🟥 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+        `🔴 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
       return { routeSegment: undefined, routeFull: undefined, errors: [...errors, e] }
     }
@@ -1027,7 +1031,7 @@ export class PointsCollector {
         if (importedFrom) {
           if (!importedName) {
             console.warn(
-              `🟥 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
+              `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
             )
             return {
               parentIdentifier: undefined,
@@ -1076,7 +1080,7 @@ export class PointsCollector {
       if (importedFrom) {
         if (!importedName) {
           console.warn(
-            `🟥 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
+            `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
           )
           return {
             parentIdentifier: undefined,
@@ -1101,7 +1105,7 @@ export class PointsCollector {
         errors: [],
       }
     } catch (e) {
-      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
       return {
         parentIdentifier: undefined,
         parentImportPath: undefined,
@@ -1188,7 +1192,7 @@ export class PointsCollector {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       cacheMap.set(cacheKey, undefined)
       return { route: undefined, errors: [...errors, e] }
     }
@@ -1219,7 +1223,7 @@ export class PointsCollector {
       const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
       if (!finalRoute) {
         console.warn(
-          `🟥 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`,
+          `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`,
         )
         cacheMap.set(cacheKey, undefined)
         return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
@@ -1246,7 +1250,7 @@ export class PointsCollector {
       : fileAbs
     if (!parentAbs) {
       console.warn(
-        `🟥 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
+        `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
       )
       cacheMap.set(cacheKey, undefined)
       return {
@@ -1338,7 +1342,7 @@ export class PointsCollector {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       cacheMap.set(cacheKey, [])
       return { layouts: [], errors: [e] }
     }
@@ -1412,7 +1416,7 @@ export class PointsCollector {
       : fileAbs
 
     if (!parentAbs) {
-      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
+      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
       cacheMap.set(cacheKey, layouts)
       return {
         layouts,
@@ -1560,7 +1564,7 @@ export class FileWatcher {
       this.watchDir,
       async (err, events) => {
         if (err) {
-          console.error(`🟥 watcher error: ${err.message}`)
+          console.error(`🔴 watcher error: ${err.message}`)
           return
         }
         for (const event of events) {
@@ -1615,7 +1619,7 @@ export class FileWatcher {
               }),
             )
           } catch (e) {
-            console.error(`🟥 ${(e as Error).message}`)
+            console.error(`🔴 ${(e as Error).message}`)
           }
         }
       },

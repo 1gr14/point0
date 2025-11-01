@@ -4,7 +4,7 @@ import { empty as empty_n50wzpyog6 } from '../pages/empty.js'
 import { ideasPage as ideasPage_1ez06sxoz6e } from '../pages/ideas.js'
 import unnamed_rhg2sxrtie, { createIdeaMutation as createIdeaMutation_210fo46cs0t, generateIdeaMutation as generateIdeaMutation_qlhpr7tzjc } from '../pages/idea-create.js'
 import { ideaPage as ideaPage_hr2d3acswa } from '../pages/idea.js'
-import { ideasNewsPage as ideasNewsPage_1molf60443b } from '../pages/idea-news.js'
+import { ideasNewsPage as ideasNewsPage_1molf60443b, ideasNewsPage2 as ideasNewsPage2_1xzbjmhb6ve } from '../pages/idea-news.js'
 import { generalLayout as generalLayout_1sm4sgw7w4h } from '../layouts/general.js'
 import { ideaLayout as ideaLayout_15r5wfdlfdu } from '../layouts/idea.js'
 import { clientCtx1 as clientCtx1_e0e2noswu2, clientCtx2 as clientCtx2_10xmsz16jme, clientCtx3 as clientCtx3_5lscxj0gv7 } from './client-ctx.js'
@@ -48,9 +48,16 @@ export const points = Points.ready([
   {
     type: 'page',
     name: 'ideaNews',
-    route: '/ideas/:id/news',
+    route: '/ideas/:id/news2',
     layouts: ['generalLayout', 'ideaLayout'],
     point: ideasNewsPage_1molf60443b.point,
+  },
+  {
+    type: 'page',
+    name: 'ideaNews2',
+    route: '/news2',
+    layouts: ['generalLayout'],
+    point: ideasNewsPage2_1xzbjmhb6ve.point,
   },
   {
     type: 'layout',

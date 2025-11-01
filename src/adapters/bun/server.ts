@@ -107,7 +107,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
     } catch (error) {
       // publicDir doesn't exist or is not accessible
-      this.logger.info(`🟥 Please, fix path of publicDir provided to getBunServer: ${this.publicDir}`)
+      this.logger.info(`🔴 Please, fix path of publicDir provided to getBunServer: ${this.publicDir}`)
       throw error
     }
   }
