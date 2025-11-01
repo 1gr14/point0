@@ -36,6 +36,13 @@ export const points = Points.lazy([
     point: async () => (await import('../pages/idea.js')).ideaPage.point,
   },
   {
+    type: 'page',
+    name: 'ideaNews',
+    route: '/ideas/:id/news',
+    layouts: ['generalLayout', 'ideaLayout'],
+    point: async () => (await import('../pages/idea-news.js')).ideasNewsPage.point,
+  },
+  {
     type: 'layout',
     name: 'generalLayout',
     route: '/',

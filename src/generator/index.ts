@@ -42,10 +42,9 @@ type CollectedPoint = {
 }
 
 type ChangeCollectedPointsEvent = {
-  points: CollectedPoint[]
   deleted: CollectedPoint[]
-  updated: CollectedPoint[]
   added: CollectedPoint[]
+  points: CollectedPoint[]
   changed: boolean
   errors: unknown[]
 }
@@ -78,7 +77,7 @@ export class FileGenerator {
   readonly tempDir: string
 
   private readonly files = new Set<string>()
-  private points: CollectedPoint[] = []
+  private readonly points: CollectedPoint[] = []
 
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
@@ -127,12 +126,9 @@ export class FileGenerator {
 
   async sync() {
     await this.collectFiles()
-    const { errors, points, changed } = await this.processFiles()
-    if (changed) {
-      await this.writeOutput()
-      const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '🟢']
-      console[consoleMethod](`${emoji} ${points.length} points processed`)
-    }
+    const { errors, points } = await this.process()
+    const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟨'] : ['info' as const, '']
+    console[consoleMethod]([emoji, `${points.length} points processed`].filter(Boolean).join(' '))
   }
 
   watch() {
@@ -170,113 +166,11 @@ export class FileGenerator {
     )
   }
 
-  // watch reactions
-
-  async updateFromFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    this.files.add(fileAbs)
-    const evt = await this.processFile(fileAbs)
-    if (evt.changed) {
-      await this.writeOutput()
-    }
-    return evt
-  }
-
-  async removeDirOrFile(fileOrDirAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const evt = this.removePointsByFileOrDirAbs(fileOrDirAbs)
-    if (evt.changed) {
-      await this.writeOutput()
-    }
-    for (const file of this.files) {
-      if (file.startsWith(fileOrDirAbs)) {
-        this.files.delete(file)
-      }
-    }
-    return evt
+  isFileOrDirSuitableToFiles(fileOrDirAbs: string): boolean {
+    return [...this.files].some((f) => f.startsWith(fileOrDirAbs))
   }
 
   // mutations
-
-  private addPoint(collectedPoint: CollectedPoint): ChangeCollectedPointsEvent {
-    const deleted: CollectedPoint[] = []
-    const added: CollectedPoint[] = []
-    const updated: CollectedPoint[] = []
-    const prevPointIndex = this.points.findIndex((p) => FileGenerator.isSameCollectedPoint(p, collectedPoint))
-    console.log(123, prevPointIndex)
-    if (prevPointIndex !== -1) {
-      this.points[prevPointIndex] = collectedPoint
-      updated.push(collectedPoint)
-      return { points: this.points, deleted, added, updated, changed: false, errors: [] }
-    }
-    const prevConflictedPointIndex = this.points.findIndex((p) =>
-      FileGenerator.isSameNameAndTypeCollectedPoint(p, collectedPoint),
-    )
-    console.log(456, prevConflictedPointIndex)
-    if (prevConflictedPointIndex !== -1) {
-      deleted.push(this.points[prevConflictedPointIndex])
-      this.points[prevConflictedPointIndex] = collectedPoint
-      added.push(collectedPoint)
-      return { points: this.points, deleted, added, updated, changed: false, errors: [] }
-    }
-    added.push(collectedPoint)
-    return { points: this.points, deleted, added, updated, changed: false, errors: [] }
-  }
-
-  private addPoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
-    const added: CollectedPoint[] = []
-    const updated: CollectedPoint[] = []
-    const deleted: CollectedPoint[] = []
-    const errors: unknown[] = []
-    for (const point of points) {
-      const evt = this.addPoint(point)
-      deleted.push(...evt.deleted)
-      added.push(...evt.added)
-      updated.push(...evt.updated)
-      errors.push(...evt.errors)
-    }
-    const changed = added.length > 0 || deleted.length > 0
-    return { points: this.points, deleted, added, updated, changed, errors }
-  }
-
-  private deletePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
-    const deleted = points.filter((p) => this.points.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
-    this.points = this.points.filter((p) => !points.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
-    const changed = deleted.length > 0
-    if (changed) {
-      this.sortPoints()
-    }
-    return { points: this.points, deleted, added: [], updated: [], changed, errors: [] }
-  }
-
-  private replacePoints(points: CollectedPoint[]): ChangeCollectedPointsEvent {
-    const added: CollectedPoint[] = []
-    const deleted: CollectedPoint[] = []
-    const updated: CollectedPoint[] = []
-    const errors: unknown[] = []
-    const newPoints = []
-    for (const point of points) {
-      const evt = this.addPoint(point)
-      deleted.push(...evt.deleted)
-      added.push(...evt.added)
-      updated.push(...evt.updated)
-      errors.push(...evt.errors)
-      newPoints.push(...evt.added, ...evt.updated)
-    }
-    console.log(11)
-    for (const point of this.points) {
-      // const shouldBeDeleted = !points.some((p) => FileGenerator.isSameCollectedPoint(p, point))
-      const shouldBeAdditionallyDeleted =
-        !points.some((p) => FileGenerator.isSameCollectedPoint(p, point)) &&
-        !newPoints.some((p) => FileGenerator.isSameCollectedPoint(p, point))
-      console.log(789, shouldBeAdditionallyDeleted)
-      if (shouldBeAdditionallyDeleted) {
-        deleted.push(point)
-      }
-    }
-    this.points = points
-    this.sortPoints()
-    const changed = added.length > 0 || deleted.length > 0
-    return { points: this.points, deleted, added, updated, changed, errors }
-  }
 
   private sortPoints(): void {
     const order = END_POINT_TYPES
@@ -298,42 +192,10 @@ export class FileGenerator {
     })
   }
 
-  private removePointsByFileOrDirAbs(fileOrDirAbs: string): ChangeCollectedPointsEvent {
-    const deleted = this.points.filter((p) => p.fileAbs === fileOrDirAbs || p.fileAbs.startsWith(fileOrDirAbs))
-    this.points = this.points.filter(
-      (p) => p.fileAbs !== fileOrDirAbs && !p.fileAbs.startsWith(fileOrDirAbs + nodePath.sep),
-    )
-    const changed = deleted.length > 0
-    return { points: this.points, deleted, added: [], updated: [], changed, errors: [] }
-  }
-
   // processing
 
-  private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    console.log(2)
-    const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
-    const { collectedPoints, errors } = await collector.collectPointsFromFile({ fileAbs })
-    console.log(3, errors)
-    const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
-    const deleted =
-      errors.length > 0
-        ? []
-        : prevPointsWithThisFile.filter((p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
-    console.log(4, collectedPoints)
-    console.log(5, deleted)
-    const addResult = this.addPoints(collectedPoints)
-    const deleteResult = this.deletePoints(deleted)
-    return {
-      points: this.points,
-      added: addResult.added,
-      deleted: deleteResult.deleted,
-      updated: addResult.updated,
-      changed: addResult.changed || deleteResult.changed,
-      errors,
-    }
-  }
-
-  private async processFiles(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
+  // TODO: not chunk size, but max in same time processing files
+  async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
     const files = [...this.files]
     const chunks = FileGenerator.chunk(files, chunkSize)
     const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
@@ -347,12 +209,19 @@ export class FileGenerator {
     )
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
-    if (errors.length === 0) {
-      return this.replacePoints(collectedPoints)
-    } else {
-      console.log(errors.length)
-      const result = this.addPoints(collectedPoints)
-      return { ...result, errors: [...result.errors, ...errors] }
+    const prevPoints = [...this.points]
+    const newPoints =
+      errors.length === 0 ? collectedPoints : FileGenerator.mergePointsSafely(this.points, collectedPoints)
+    const diff = FileGenerator.getCollectedPointsDiff(prevPoints, newPoints)
+    this.points.splice(0, this.points.length, ...newPoints)
+    this.sortPoints()
+    await this.writeOutput()
+    return {
+      points: newPoints,
+      deleted: diff.deleted,
+      added: diff.added,
+      changed: diff.changed,
+      errors,
     }
   }
 
@@ -591,6 +460,40 @@ export class FileGenerator {
 
   // utils
 
+  private static getCollectedPointsDiff(
+    prevPoints: CollectedPoint[],
+    newPoints: CollectedPoint[],
+  ): {
+    deleted: CollectedPoint[]
+    added: CollectedPoint[]
+    changed: boolean
+  } {
+    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    const added = newPoints.filter((p) => !prevPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    const changed = added.length > 0 || deleted.length > 0
+    return { deleted, added, changed }
+  }
+
+  // if was error, we only want to replace conflicted and add new, and do not remove old points
+  private static mergePointsSafely(prevPoints: CollectedPoint[], newPoints: CollectedPoint[]): CollectedPoint[] {
+    const result = [...prevPoints]
+    for (const newPoint of newPoints) {
+      const prevConflictedPointIndex = result.findIndex((p) =>
+        FileGenerator.isSameNameAndTypeCollectedPoint(p, newPoint),
+      )
+      if (prevConflictedPointIndex !== -1) {
+        result[prevConflictedPointIndex] = newPoint
+        continue
+      }
+      const prevPointIndex = result.findIndex((p) => FileGenerator.isSameCollectedPoint(p, newPoint))
+      if (prevPointIndex === -1) {
+        result.push(newPoint)
+        continue
+      }
+    }
+    return result
+  }
+
   private createFreshJiti() {
     return createJiti(this.basepath, {
       cache: false,
@@ -692,13 +595,13 @@ export class PointsCollector {
           content = await nodeFs.readFile(fileAbs, 'utf8')
           this.filesContentCache.set(fileAbs, content)
         } catch (e) {
-          console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+          console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
           return { collectedPoints: [], errors: [e] }
         }
       }
       return await this.extractCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       return { collectedPoints: [], errors: [e] }
     }
   }
@@ -728,7 +631,7 @@ export class PointsCollector {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       this.astCache.set(fileAbs, undefined)
       return { collectedPoints: [], errors: [e] }
     }
@@ -769,7 +672,7 @@ export class PointsCollector {
 
                     if (shouldHaveRoute && !route) {
                       const message = `route not detected for ${pointType}.${pointName}`
-                      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
                       throw new Error(message)
                     }
 
@@ -817,7 +720,7 @@ export class PointsCollector {
 
               if (shouldHaveRoute && !route) {
                 const message = `route not detected for ${pointType}.${pointName}`
-                console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+                console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
                 throw new Error(message)
               }
               return {
@@ -960,7 +863,7 @@ export class PointsCollector {
     }
 
     // fallback – it's still a root base, just no explicit name
-    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
+    console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
     return {
       pointType: null,
       pointName: null,
@@ -1033,7 +936,7 @@ export class PointsCollector {
                     routeFull = (this.routes as any)[routeKey]
                   } else {
                     errors.push(new Error(`unknown route key '${routeKey}'`))
-                    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}'`)
+                    console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}'`)
                   }
                 }
               }
@@ -1045,7 +948,7 @@ export class PointsCollector {
       return { routeSegment, routeFull, errors }
     } catch (e) {
       console.warn(
-        `🔴 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+        `🟥 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
       return { routeSegment: undefined, routeFull: undefined, errors: [...errors, e] }
     }
@@ -1124,7 +1027,7 @@ export class PointsCollector {
         if (importedFrom) {
           if (!importedName) {
             console.warn(
-              `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
+              `🟥 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
             )
             return {
               parentIdentifier: undefined,
@@ -1173,7 +1076,7 @@ export class PointsCollector {
       if (importedFrom) {
         if (!importedName) {
           console.warn(
-            `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
+            `🟥 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
           )
           return {
             parentIdentifier: undefined,
@@ -1198,7 +1101,7 @@ export class PointsCollector {
         errors: [],
       }
     } catch (e) {
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
+      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
       return {
         parentIdentifier: undefined,
         parentImportPath: undefined,
@@ -1285,7 +1188,7 @@ export class PointsCollector {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       cacheMap.set(cacheKey, undefined)
       return { route: undefined, errors: [...errors, e] }
     }
@@ -1316,7 +1219,7 @@ export class PointsCollector {
       const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
       if (!finalRoute) {
         console.warn(
-          `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`,
+          `🟥 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`,
         )
         cacheMap.set(cacheKey, undefined)
         return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
@@ -1343,7 +1246,7 @@ export class PointsCollector {
       : fileAbs
     if (!parentAbs) {
       console.warn(
-        `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
+        `🟥 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
       )
       cacheMap.set(cacheKey, undefined)
       return {
@@ -1435,7 +1338,7 @@ export class PointsCollector {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
       cacheMap.set(cacheKey, [])
       return { layouts: [], errors: [e] }
     }
@@ -1509,7 +1412,7 @@ export class PointsCollector {
       : fileAbs
 
     if (!parentAbs) {
-      console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
+      console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
       cacheMap.set(cacheKey, layouts)
       return {
         layouts,
@@ -1581,6 +1484,17 @@ export class FileWatcher {
     this.generators = opts.generators
     this.watchDir = FileWatcher.getDirByPaths(opts.generators.flatMap((g) => g.globInclude))
     this.ignore = opts.ignore ?? opts.generators.flatMap((g) => g.globExclude)
+    for (const g of opts.generators) {
+      if (g.outputLazyAbs) {
+        this.ignore.push(g.outputLazyAbs)
+      }
+      if (g.outputReadyAbs) {
+        this.ignore.push(g.outputReadyAbs)
+      }
+      if (g.outputRoutesAbs) {
+        this.ignore.push(g.outputRoutesAbs)
+      }
+    }
     this.patterns = opts.generators.flatMap((g) => g.globInclude)
   }
 
@@ -1646,7 +1560,7 @@ export class FileWatcher {
       this.watchDir,
       async (err, events) => {
         if (err) {
-          console.error(`🔴 watcher error: ${err.message}`)
+          console.error(`🟥 watcher error: ${err.message}`)
           return
         }
         for (const event of events) {
@@ -1677,34 +1591,31 @@ export class FileWatcher {
             const isDelete = event.type === 'delete' || (!exists && event.type === 'update')
             const isCreateOrUpdate = (event.type === 'create' || event.type === 'update') && exists
 
-            for (const gen of this.generators) {
-              if (isDelete) {
-                const evt = await gen.removeDirOrFile(targetAbs)
-                if (evt.changed) {
-                  const typesAndNames = evt.deleted.map((p) => `${p.type}:${p.name}`).join(', ')
-                  console.info(`deleted:  ${typesAndNames}`)
+            await Promise.all(
+              this.generators.map(async (gen) => {
+                const suitable = isDelete
+                  ? gen.isFileOrDirSuitableToFiles(targetAbs)
+                  : isCreateOrUpdate
+                    ? gen.isFileSuitableToGlob(targetAbs)
+                    : false
+                if (!suitable) {
+                  return
                 }
-                continue
-              }
-
-              if (isCreateOrUpdate) {
-                const suitable = gen.isFileSuitableToGlob(targetAbs)
-                if (!suitable) continue
-                const evt = await gen.updateFromFile(targetAbs)
+                const evt = await gen.process()
                 if (evt.changed) {
                   if (evt.deleted.length > 0) {
-                    const typesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
-                    console.info(`deleted: ${typesAndNames}`)
+                    const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
+                    console.info(`➖ ${deletedTypesAndNames}`)
                   }
                   if (evt.added.length > 0) {
-                    const typesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
-                    console.info(`added: ${typesAndNames}`)
+                    const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(' ')
+                    console.info(`➕ ${addedTypesAndNames}`)
                   }
                 }
-              }
-            }
+              }),
+            )
           } catch (e) {
-            console.error(`🔴 ${(e as Error).message}`)
+            console.error(`🟥 ${(e as Error).message}`)
           }
         }
       },
@@ -1713,7 +1624,7 @@ export class FileWatcher {
       },
     )
 
-    console.info('👀 watcher started')
+    console.info('watcher started')
 
     // Store subscription for potential cleanup
     this.subscription = subscription

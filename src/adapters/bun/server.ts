@@ -107,7 +107,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
     } catch (error) {
       // publicDir doesn't exist or is not accessible
-      this.logger.info(`🔴 Please, fix path of publicDir provided to getBunServer: ${this.publicDir}`)
+      this.logger.info(`🟥 Please, fix path of publicDir provided to getBunServer: ${this.publicDir}`)
       throw error
     }
   }
@@ -512,7 +512,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`🚀 universal server running at http://localhost:${this.mainServerPort}`)
+    this.logger.info(`universal server running at http://localhost:${this.mainServerPort}`)
     return this
   }
 
@@ -545,7 +545,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`🚀 main server running at http://localhost:${this.mainServerPort}`)
+    this.logger.info(`main server running at http://localhost:${this.mainServerPort}`)
     return this
   }
 
@@ -653,7 +653,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     this.mainServerPort = this.mainServer.port ?? this.mainServerPort
-    this.logger.info(`🚀 main dev server running at http://localhost:${this.mainServerPort}`)
+    this.logger.info(`main dev server running at http://localhost:${this.mainServerPort}`)
     return this
   }
 
@@ -685,7 +685,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       },
     })
     this.clientsDevServerPort = this.clientsDevServer.port ?? this.clientsDevServerPort
-    this.logger.info(`🚀 clients dev server running at http://localhost:${this.clientsDevServerPort}`)
+    this.logger.info(`clients dev server running at http://localhost:${this.clientsDevServerPort}`)
     return this
   }
 }

@@ -1,8 +1,8 @@
-deleted on addreprocess all after changed one
-
 layouts do not have routes
 in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
+
+clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
 
 .output(z.object({}))
 merge .input schemas

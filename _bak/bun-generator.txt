@@ -571,13 +571,13 @@
 //         try {
 //           content = await Bun.file(fileAbs).text()
 //         } catch (e) {
-//           console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+//           console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
 //           return { collectedPoints: [], errors: [e] }
 //         }
 //       }
 //       return await this.extractCollectedPointsFromContent({ content, fileAbs })
 //     } catch (e) {
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
 //       return { collectedPoints: [], errors: [e] }
 //     }
 //   }
@@ -601,7 +601,7 @@
 //         ],
 //       })
 //     } catch (e) {
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
 //       return { collectedPoints: [], errors: [e] }
 //     }
 
@@ -641,7 +641,7 @@
 
 //                     if (shouldHaveRoute && !route) {
 //                       const message = `route not detected for ${pointType}.${pointName}`
-//                       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+//                       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
 //                       throw new Error(message)
 //                     }
 
@@ -690,7 +690,7 @@
 
 //               if (shouldHaveRoute && !route) {
 //                 const message = `route not detected for ${pointType}.${pointName}`
-//                 console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+//                 console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
 //                 throw new Error(message)
 //               }
 //               return {
@@ -834,7 +834,7 @@
 //     }
 
 //     // fallback – it's still a root base, just no explicit name
-//     console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
+//     console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
 //     return {
 //       pointType: null,
 //       pointName: null,
@@ -914,7 +914,7 @@
 //       return { routeSegment, routeFull, errors: [] }
 //     } catch (e) {
 //       console.warn(
-//         `🔴 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+//         `🟥 ${nodePath.relative(this.basepath, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
 //       )
 //       return { routeSegment: undefined, routeFull: undefined, errors: [e] }
 //     }
@@ -993,7 +993,7 @@
 //         if (importedFrom) {
 //           if (!importedName) {
 //             console.warn(
-//               `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
+//               `🟥 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${declaredFrom}, when trying to find parent ref for ${baseIdentifier}`,
 //             )
 //             return {
 //               parentIdentifier: undefined,
@@ -1042,7 +1042,7 @@
 //       if (importedFrom) {
 //         if (!importedName) {
 //           console.warn(
-//             `🔴 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
+//             `🟥 ${nodePath.relative(this.basepath, fileAbs)} imported name not found for ${importedFrom}, when trying to find parent ref for ${baseIdentifier}`,
 //           )
 //           return {
 //             parentIdentifier: undefined,
@@ -1067,7 +1067,7 @@
 //         errors: [],
 //       }
 //     } catch (e) {
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} find parent ref failed: ${(e as Error).message}`)
 //       return {
 //         parentIdentifier: undefined,
 //         parentImportPath: undefined,
@@ -1146,7 +1146,7 @@
 //         ],
 //       })
 //     } catch (e) {
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
 //       cacheForFile.set(cacheKey, undefined)
 //       return { route: undefined, errors: [...errors, e] }
 //     }
@@ -1179,7 +1179,7 @@
 //       // return { route: finalRoute, errors }
 
 //       cacheForFile.set(cacheKey, undefined)
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} parent identifier not found for ${baseIdentifier}`)
 //       return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
 //     }
 //     if (parentIdentifier === 'Point0') {
@@ -1200,7 +1200,7 @@
 //       : fileAbs
 //     if (!parentAbs) {
 //       console.warn(
-//         `🔴 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
+//         `🟥 ${nodePath.relative(this.basepath, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
 //       )
 //       cacheForFile.set(cacheKey, undefined)
 //       return {
@@ -1287,7 +1287,7 @@
 //         ],
 //       })
 //     } catch (e) {
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
 //       cacheForFile.set(baseIdentifier, [])
 //       return { layouts: [], errors: [e] }
 //     }
@@ -1361,7 +1361,7 @@
 //       : fileAbs
 
 //     if (!parentAbs) {
-//       console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
+//       console.warn(`🟥 ${nodePath.relative(this.basepath, fileAbs)} parent layout path not found: ${parentImportPath}`)
 //       cacheForFile.set(baseIdentifier, layouts)
 //       return {
 //         layouts,
@@ -1492,7 +1492,7 @@
 //             }
 //           }
 //         } catch (e) {
-//           console.error(`🔴 ${(e as Error).message}`)
+//           console.error(`🟥 ${(e as Error).message}`)
 //         }
 //       })()
 //     })
