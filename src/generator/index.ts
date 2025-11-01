@@ -595,7 +595,12 @@ export class PointsCollector {
               for (const d of decl.declarations) {
                 const id = d.id
                 if (id.type === 'Identifier') {
-                  const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
+                  const {
+                    pointType,
+                    pointName,
+                    errors: detectPointTypeAndNameFromInitErrors,
+                  } = this.detectPointTypeAndNameFromInit({ fileAbs, node: d.init })
+                  errors.push(...detectPointTypeAndNameFromInitErrors)
                   if (pointType && pointName) {
                     const baseIdentifier = this.findBaseIdentifier(d.init)
                     const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
@@ -638,7 +643,12 @@ export class PointsCollector {
         promises.push(
           (async () => {
             const decl = p.node.declaration
-            const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
+            const {
+              pointType,
+              pointName,
+              errors: detectPointTypeAndNameFromInitErrors,
+            } = this.detectPointTypeAndNameFromInit({ fileAbs, node: decl })
+            errors.push(...detectPointTypeAndNameFromInitErrors)
             if (pointType && pointName) {
               const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
               const { route, errors: routeErrors } = shouldHaveRoute
@@ -680,27 +690,120 @@ export class PointsCollector {
     return { collectedPoints, errors: [...errors, ...promiseRejectedErrors] }
   }
 
-  private detectPointTypeAndNameFromInit(node: any): { pointType: EndPointType | null; pointName: string | null } {
-    if (node?.type !== 'CallExpression' || node.callee?.type !== 'MemberExpression') {
-      return { pointType: null, pointName: null }
+  private detectPointTypeAndNameFromInit({ fileAbs, node }: { fileAbs: string; node: any }): {
+    pointType: EndPointType | null
+    pointName: string | null
+    errors: unknown[]
+  } {
+    // normal point0-style chain with .lets('page','name') and ending in .page()/.layout()/...
+    const errors: unknown[] = []
+    if (
+      ('type' in node && node.type !== 'CallExpression') ||
+      ('callee' in node && node.callee?.type !== 'MemberExpression')
+    ) {
+      return { pointType: null, pointName: null, errors }
     }
 
     // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
     const lastProp = node.callee.property
     const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
     const pointType = PointsCollector.pointMethodToPointType(lastMethod)
-    if (!pointType) return { pointType: null, pointName: null }
-
-    // TODO: if it is Point0.create or Point0.source then it is base, name inside (name arg)
+    if (!pointType) return { pointType: null, pointName: null, errors }
 
     // Find .lets('type','name') anywhere earlier in the chain
     const lets = this.findLetsArgsInChain(node)
-    if (!lets) return { pointType: null, pointName: null }
+    if (!lets) {
+      const point0RootBaseResult = this.detectPoint0RootBaseFromChain({ fileAbs, node })
+      errors.push(...point0RootBaseResult.errors)
+      if (point0RootBaseResult.pointType && point0RootBaseResult.pointName) {
+        return { pointType: point0RootBaseResult.pointType, pointName: point0RootBaseResult.pointName, errors }
+      }
+
+      return { pointType: null, pointName: null, errors }
+    }
 
     const { typeArg, nameArg } = lets
-    if (typeArg !== pointType) return { pointType: null, pointName: null }
+    if (typeArg !== pointType) return { pointType: null, pointName: null, errors }
 
-    return { pointType, pointName: nameArg }
+    return { pointType, pointName: nameArg, errors }
+  }
+
+  /**
+   * Detects chains like:
+   *
+   *   Point0.connect<typeof source>('client')
+   *     .sourceBaseUrl(...)
+   *     .head(...)
+   *     .base()
+   *
+   * or
+   *
+   *   Point0.source('admin').base()
+   *
+   * If we see `.base()` at the end and the root is Point0.(connect|create|source)(<name>),
+   * then it's a "base" point and its name is the first string arg of the root call.
+   */
+  private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: any }): {
+    pointType: EndPointType | null
+    pointName: string | null
+    errors: unknown[]
+  } {
+    // must end with .base()
+    if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, errors: [] }
+    if (node.callee?.type !== 'MemberExpression') return { pointType: null, pointName: null, errors: [] }
+    const lastProp = node.callee.property
+    if (lastProp?.type !== 'Identifier' || lastProp.name !== 'base') {
+      return { pointType: null, pointName: null, errors: [] }
+    }
+
+    // walk LEFT through the chain to find the root call:
+    // ... .head(...) .sourceBaseUrl(...) Point0.connect('client')
+    let current: any = node.callee.object
+    let rootCall: any = null
+
+    while (current) {
+      if (current.type === 'CallExpression') {
+        rootCall = current
+        // if its callee is also a member (something.something) → go further left
+        if (current.callee?.type === 'MemberExpression') {
+          current = current.callee.object
+          continue
+        }
+        break
+      } else {
+        break
+      }
+    }
+
+    if (!rootCall) return { pointType: null, pointName: null, errors: [] }
+    if (rootCall.callee?.type !== 'MemberExpression') return { pointType: null, pointName: null, errors: [] }
+
+    const obj = rootCall.callee.object
+    const prop = rootCall.callee.property
+
+    // must be Point0.connect / Point0.create / Point0.source
+    if (obj?.type !== 'Identifier' || obj.name !== 'Point0') return { pointType: null, pointName: null, errors: [] }
+    if (prop?.type !== 'Identifier') return { pointType: null, pointName: null, errors: [] }
+    const method = prop.name
+    if (!['connect', 'source'].includes(method)) return { pointType: null, pointName: null, errors: [] }
+
+    // name should be the first string arg
+    const firstArg = rootCall.arguments?.[0]
+    if (firstArg?.type === 'StringLiteral') {
+      return {
+        pointType: 'base',
+        pointName: firstArg.value,
+        errors: [],
+      }
+    }
+
+    // fallback – it's still a base, just no explicit name
+    console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)} root base name not found`)
+    return {
+      pointType: null,
+      pointName: null,
+      errors: [new Error('root base name not found')],
+    }
   }
 
   private findLetsArgsInChain(call: any): { typeArg: EndPointType; nameArg: string } | null {
@@ -1162,7 +1265,12 @@ export class PointsCollector {
         if (decl?.type === 'VariableDeclaration') {
           for (const d of decl.declarations) {
             if (d.id.type === 'Identifier' && d.id.name === baseIdentifier) {
-              const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
+              const {
+                pointType,
+                pointName,
+                errors: detectPointTypeAndNameFromInitErrors,
+              } = this.detectPointTypeAndNameFromInit({ fileAbs, node: d.init })
+              errors.push(...detectPointTypeAndNameFromInitErrors)
               if (pointType === 'layout' && pointName) {
                 thisLayoutName = pointName
               }
@@ -1172,7 +1280,12 @@ export class PointsCollector {
       },
       ExportDefaultDeclaration: (p) => {
         if (baseIdentifier !== 'default') return
-        const { pointType, pointName } = this.detectPointTypeAndNameFromInit(p.node.declaration)
+        const {
+          pointType,
+          pointName,
+          errors: detectPointTypeAndNameFromInitErrors,
+        } = this.detectPointTypeAndNameFromInit({ fileAbs, node: p.node.declaration })
+        errors.push(...detectPointTypeAndNameFromInitErrors)
         if (pointType === 'layout' && pointName) {
           thisLayoutName = pointName
         }

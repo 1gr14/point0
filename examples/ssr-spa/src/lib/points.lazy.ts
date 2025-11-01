@@ -84,4 +84,9 @@ export const points = Points.lazy([
     name: 'testClientCtx3',
     point: async () => (await import('./client-ctx.js')).clientCtx3.point,
   },
+  {
+    type: 'base',
+    name: 'client',
+    point: async () => (await import('./client.js')).client.point,
+  },
 ])

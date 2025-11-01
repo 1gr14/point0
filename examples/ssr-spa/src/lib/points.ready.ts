@@ -8,6 +8,7 @@ import { ideasNewsPage as ideasNewsPage5 } from '../pages/idea-news.js'
 import { generalLayout as generalLayout6 } from '../layouts/general.js'
 import { ideaLayout as ideaLayout7 } from '../layouts/idea.js'
 import { clientCtx1 as clientCtx111, clientCtx2 as clientCtx212, clientCtx3 as clientCtx313 } from './client-ctx.js'
+import { client as client14 } from './client.js'
 
 export const points = Points.ready([
   {
@@ -92,5 +93,10 @@ export const points = Points.ready([
     type: 'client-ctx',
     name: 'testClientCtx3',
     point: clientCtx313.point,
+  },
+  {
+    type: 'base',
+    name: 'client',
+    point: client14.point,
   },
 ])
