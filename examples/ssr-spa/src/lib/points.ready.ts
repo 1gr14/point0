@@ -1,14 +1,13 @@
 import { Points } from 'point0/core/points.js'
-import unnamed0, { BestIdeaComponent as BestIdeaComponent8 } from '../pages/home.js'
+import unnamed0, { BestIdeaComponent as BestIdeaComponent7 } from '../pages/home.js'
 import { empty as empty1 } from '../pages/empty.js'
 import { ideasPage as ideasPage2 } from '../pages/ideas.js'
-import unnamed3, { createIdeaMutation as createIdeaMutation9, generateIdeaMutation as generateIdeaMutation10 } from '../pages/idea-create.js'
-import { ideaPage as ideaPage4 } from '../pages/idea.js'
-import { ideasNewsPage as ideasNewsPage5 } from '../pages/idea-news.js'
-import { generalLayout as generalLayout6 } from '../layouts/general.js'
-import { ideaLayout as ideaLayout7 } from '../layouts/idea.js'
-import { clientCtx1 as clientCtx111, clientCtx2 as clientCtx212, clientCtx3 as clientCtx313 } from './client-ctx.js'
-import { client as client14 } from './client.js'
+import unnamed3, { createIdeaMutation as createIdeaMutation8, generateIdeaMutation as generateIdeaMutation9 } from '../pages/idea-create.js'
+import { ideasNewsPage as ideasNewsPage4 } from '../pages/idea-news.js'
+import { generalLayout as generalLayout5 } from '../layouts/general.js'
+import { ideaLayout as ideaLayout6 } from '../layouts/idea.js'
+import { clientCtx1 as clientCtx110, clientCtx2 as clientCtx211, clientCtx3 as clientCtx312 } from './client-ctx.js'
+import { client as client13 } from './client.js'
 
 export const points = Points.ready([
   {
@@ -40,64 +39,57 @@ export const points = Points.ready([
   },
   {
     type: 'page',
-    name: 'idea',
-    route: '/ideas/:id/',
-    layouts: ['generalLayout', 'ideaLayout'],
-    point: ideaPage4.point,
-  },
-  {
-    type: 'page',
     name: 'ideaNews',
     route: '/ideas/:id/news',
     layouts: ['generalLayout', 'ideaLayout'],
-    point: ideasNewsPage5.point,
+    point: ideasNewsPage4.point,
   },
   {
     type: 'layout',
     name: 'generalLayout',
     route: '/',
-    point: generalLayout6.point,
+    point: generalLayout5.point,
   },
   {
     type: 'layout',
     name: 'ideaLayout',
     route: '/ideas/:id',
-    point: ideaLayout7.point,
+    point: ideaLayout6.point,
   },
   {
     type: 'component',
     name: 'bestIdea',
-    point: BestIdeaComponent8.point,
+    point: BestIdeaComponent7.point,
   },
   {
     type: 'mutation',
     name: 'createIdea',
-    point: createIdeaMutation9.point,
+    point: createIdeaMutation8.point,
   },
   {
     type: 'response',
     name: 'generateIdea',
-    point: generateIdeaMutation10.point,
+    point: generateIdeaMutation9.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx1',
-    point: clientCtx111.point,
+    point: clientCtx110.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx2',
-    point: clientCtx212.point,
+    point: clientCtx211.point,
   },
   {
     type: 'client-ctx',
     name: 'testClientCtx3',
-    point: clientCtx313.point,
+    point: clientCtx312.point,
   },
   {
     root: true,
     type: 'base',
     name: 'client',
-    point: client14.point,
+    point: client13.point,
   },
 ])

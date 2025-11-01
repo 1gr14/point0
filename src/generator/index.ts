@@ -3,12 +3,17 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { Glob } from 'bun'
 import type { Jiti } from 'jiti'
 import { createJiti } from 'jiti'
-import { watch as fsWatch } from 'node:fs'
+import * as nodeFs from 'node:fs/promises'
+import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EndPointType, PointName } from '../core/types.js'
+import type { AsyncSubscription } from '@parcel/watcher'
+import { subscribe } from '@parcel/watcher'
+import fg from 'fast-glob'
+import { minimatch } from 'minimatch'
+import * as nodeOs from 'node:os'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -71,6 +76,7 @@ export class FileGenerator {
   readonly outputRoutesAbs: string | undefined
   readonly basepath: string
   readonly jiti: Jiti
+  readonly tempDir: string
 
   private readonly files = new Set<string>()
   private points: CollectedPoint[] = []
@@ -89,6 +95,31 @@ export class FileGenerator {
     this.outputLazyAbs = nodePath.resolve(this.basepath, opts.lazy)
     this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.basepath, opts.routes) : undefined
     this.jiti = this.createFreshJiti()
+    this.tempDir = FileGenerator.resolveTempDirPath()
+  }
+
+  static resolveTempDirPath(): string {
+    let dir = process.cwd()
+    let lastDir = ''
+
+    // Walk up until we find a node_modules folder
+    while (dir !== lastDir) {
+      const candidate = nodePath.join(dir, 'node_modules')
+      if (nodeFsSync.existsSync(candidate)) {
+        const tempDir = nodePath.join(candidate, '.cache', '@point0')
+        nodeFsSync.mkdirSync(tempDir, { recursive: true })
+        return tempDir
+      }
+
+      // Move one level up
+      lastDir = dir
+      dir = nodePath.dirname(dir)
+    }
+
+    // Fallback: if no node_modules found, use system tmp
+    const fallback = nodePath.join(nodeFsSync.realpathSync(nodeOs.tmpdir()), '@point0')
+    nodeFsSync.mkdirSync(fallback, { recursive: true })
+    return fallback
   }
 
   static create(opts: FileGeneratorOptions) {
@@ -108,8 +139,6 @@ export class FileGenerator {
   watch() {
     void FileWatcher.watch({
       generators: [this],
-      glob: [...this.globInclude, ...this.globExclude],
-      basepath: this.basepath,
     })
   }
 
@@ -117,20 +146,28 @@ export class FileGenerator {
 
   private async collectFiles() {
     for (const pattern of this.globInclude) {
-      const matcher = new Glob(pattern)
-      for await (const path of matcher.scan(this.basepath)) {
-        const shouldExclude = this.globExclude.some((ex) => new Glob(ex).match(path))
-        if (!shouldExclude) {
-          this.files.add(nodePath.resolve(this.basepath, path))
-        }
+      // Convert absolute pattern to relative pattern for fast-glob
+      const relativePattern = nodePath.relative(this.basepath, pattern)
+      const entries = await fg([relativePattern], {
+        cwd: this.basepath,
+        absolute: true,
+        onlyFiles: true,
+        ignore: this.globExclude,
+      })
+      for (const absPath of entries) {
+        this.files.add(absPath)
       }
     }
   }
 
   isFileSuitableToGlob(fileAbs: string): boolean {
     return (
-      this.globInclude.some((g) => new Glob(g).match(fileAbs)) &&
-      !this.globExclude.some((g) => new Glob(g).match(fileAbs))
+      this.globInclude.some((g) => {
+        return minimatch(fileAbs, g, { dot: true })
+      }) &&
+      !this.globExclude.some((g) => {
+        return minimatch(fileAbs, g, { dot: true })
+      })
     )
   }
 
@@ -302,44 +339,75 @@ export class FileGenerator {
   }
 
   private async writeOutput() {
+    const tasks = []
     if (this.outputLazyAbs) {
-      await this.writeOneOutput({ content: this.emitLazyPointsFile(this.points), outputAbs: this.outputLazyAbs })
+      tasks.push({
+        content: this.emitLazyPointsFile(this.points),
+        outputAbs: this.outputLazyAbs,
+        tempOutputAbs: nodePath.join(this.tempDir, 'lazy.ts'),
+      })
     }
     if (this.outputReadyAbs) {
-      await this.writeOneOutput({ content: this.emitReadyPointsFile(this.points), outputAbs: this.outputReadyAbs })
+      tasks.push({
+        content: this.emitReadyPointsFile(this.points),
+        outputAbs: this.outputReadyAbs,
+        tempOutputAbs: nodePath.join(this.tempDir, 'ready.ts'),
+      })
     }
     if (this.outputRoutesAbs) {
-      await this.writeOneOutput({ content: this.emitRoutesPointsFile(this.points), outputAbs: this.outputRoutesAbs })
+      tasks.push({
+        content: this.emitRoutesPointsFile(this.points),
+        outputAbs: this.outputRoutesAbs,
+        tempOutputAbs: nodePath.join(this.tempDir, 'routes.ts'),
+      })
     }
-  }
-
-  private async writeOneOutput({ content, outputAbs }: { content: string; outputAbs: string }) {
-    if (!this.lastEmittedContentMap.has(outputAbs)) {
-      const currentContent = await (async () => {
-        try {
-          return await Bun.file(outputAbs).text()
-        } catch (e) {
-          return undefined
-        }
-      })()
-      if (currentContent) {
-        this.lastEmittedContentMap.set(outputAbs, currentContent)
-      }
-    }
-    if (content === this.lastEmittedContentMap.get(outputAbs)) {
+    if (!tasks.length) {
       return
     }
-
-    // await nodeFs.promises.mkdir(nodePath.dirname(outputAbs), { recursive: true })
-    // const tmp = outputAbs + '.tmp'
-    // await nodeFs.promises.writeFile(tmp, content, 'utf8')
-    // await nodeFs.promises.rename(tmp, outputAbs)
-
-    await Bun.write(outputAbs, content)
-
-    // nodeFs.writeFileSync(outputAbs, content)
-
-    this.lastEmittedContentMap.set(outputAbs, content)
+    const hasChanges = await Promise.all(
+      tasks.map(async (task) => {
+        if (!this.lastEmittedContentMap.has(task.outputAbs)) {
+          const currentContent = await (async () => {
+            try {
+              return await nodeFs.readFile(task.outputAbs, 'utf8')
+            } catch (e) {
+              return undefined
+            }
+          })()
+          if (currentContent) {
+            this.lastEmittedContentMap.set(task.outputAbs, currentContent)
+          }
+        }
+        if (task.content === this.lastEmittedContentMap.get(task.outputAbs)) {
+          return false
+        }
+        return true
+      }),
+    )
+    const tasksToWrite = tasks.filter((task, index) => hasChanges[index])
+    if (!tasksToWrite.length) {
+      return
+    }
+    await Promise.all(
+      tasksToWrite.map(async (task) => {
+        await nodeFs.mkdir(nodePath.dirname(task.tempOutputAbs), { recursive: true })
+      }),
+    )
+    await Promise.all(
+      tasksToWrite.map(async (task) => {
+        await nodeFs.writeFile(task.tempOutputAbs, task.content, 'utf8')
+      }),
+    )
+    await Promise.all(
+      tasksToWrite.map(async (task) => {
+        await nodeFs.mkdir(nodePath.dirname(task.outputAbs), { recursive: true })
+      }),
+    )
+    await Promise.all(
+      tasksToWrite.map(async (task) => {
+        await nodeFs.rename(task.tempOutputAbs, task.outputAbs)
+      }),
+    )
   }
 
   // emit
@@ -569,7 +637,7 @@ export class PointsCollector {
         content = cachedContent
       } else {
         try {
-          content = await Bun.file(fileAbs).text()
+          content = await nodeFs.readFile(fileAbs, 'utf8')
         } catch (e) {
           console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
           return { collectedPoints: [], errors: [e] }
@@ -1132,7 +1200,7 @@ export class PointsCollector {
 
     let ast: babel.ParseResult<any>
     try {
-      const content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
+      const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
       ast = babel.parse(content, {
         sourceType: 'module',
         errorRecovery: true,
@@ -1273,7 +1341,7 @@ export class PointsCollector {
     // parse file
     let ast: babel.ParseResult<any>
     try {
-      const content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
+      const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
       ast = babel.parse(content, {
         sourceType: 'module',
         errorRecovery: true,
@@ -1407,8 +1475,11 @@ export class PointsCollector {
     const importPathWithoutExt = importPath.replace(currentExt, '')
     for (const ext of exts) {
       const abs = importPathWithoutExt + ext
-      if (await Bun.file(abs).exists()) {
+      try {
+        await nodeFs.access(abs)
         return abs
+      } catch {
+        // File doesn't exist, try next extension
       }
     }
     return undefined
@@ -1424,19 +1495,21 @@ export class PointsCollector {
 
 export type FileWatcherOptions = {
   generators: FileGenerator[]
-  glob: string | string[]
-  basepath: string
+  ignore?: string[]
 }
 
 export class FileWatcher {
   readonly generators: FileGenerator[]
-  readonly glob: string | string[]
-  readonly basepath: string
+  readonly ignore: string[]
+  readonly watchDir: string
+  readonly patterns: string[]
+  subscription: AsyncSubscription | undefined
 
   private constructor(opts: FileWatcherOptions) {
     this.generators = opts.generators
-    this.glob = opts.glob
-    this.basepath = opts.basepath
+    this.watchDir = FileWatcher.getDirByPaths(opts.generators.flatMap((g) => g.globInclude))
+    this.ignore = opts.ignore ?? opts.generators.flatMap((g) => g.globExclude)
+    this.patterns = opts.generators.flatMap((g) => g.globInclude)
   }
 
   static create(opts: FileWatcherOptions) {
@@ -1448,55 +1521,129 @@ export class FileWatcher {
     await watcher.watch()
   }
 
+  static getDirByPaths(paths: string[]): string {
+    if (paths.length === 0) {
+      return process.cwd()
+    }
+
+    function stripGlobParts(p: string): string {
+      const parts = p.split(nodePath.sep)
+      const globIndex = parts.findIndex((part) => /[*?[\]]/.test(part)) // detect glob chars
+      if (globIndex >= 0) {
+        return parts.slice(0, globIndex).join(nodePath.sep) || nodePath.sep
+      }
+      return p
+    }
+
+    const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
+    function isFile(path: string): boolean {
+      return exts.some((ext) => path.endsWith(ext))
+    }
+
+    // Strip glob parts first
+    const stripped = paths.map(stripGlobParts)
+
+    // Map each path to its directory (if path is a file) or keep as-is (if directory)
+    const dirs = stripped.map((p) => (isFile(p) ? nodePath.dirname(p) : p))
+
+    // Reduce to deepest common ancestor directory
+    let commonDir = dirs[0]
+    for (let i = 1; i < dirs.length; i++) {
+      let dir = dirs[i]
+
+      while (
+        commonDir !== dir &&
+        !dir.startsWith(commonDir.endsWith(nodePath.sep) ? commonDir : commonDir + nodePath.sep)
+      ) {
+        const next = nodePath.dirname(commonDir)
+        if (next === commonDir) break
+        commonDir = next
+      }
+      while (commonDir !== dir && !commonDir.startsWith(dir.endsWith(nodePath.sep) ? dir : dir + nodePath.sep)) {
+        const next = nodePath.dirname(dir)
+        if (next === dir) break
+        dir = next
+      }
+      commonDir = commonDir.length <= dir.length ? commonDir : dir
+    }
+    return commonDir
+  }
+
   private async watch() {
-    const patterns = Array.isArray(this.glob) ? this.glob : [this.glob]
-
-    fsWatch(this.basepath, { recursive: true }, (eventType, filename) => {
-      void (async () => {
-        try {
-          if (!filename) return
-          const targetAbs = nodePath.resolve(this.basepath, filename)
-
-          // glob match
-          const matched = patterns.some((g) => new Glob(nodePath.resolve(this.basepath, g)).match(targetAbs))
-          if (!matched) return
-
-          const exists = await Bun.file(targetAbs).exists()
-          const isDelete = eventType === 'rename' && !exists
-          const isCreateOrUpdate = (eventType === 'rename' && exists) || eventType === 'change'
-
-          for (const gen of this.generators) {
-            if (isDelete) {
-              const evt = await gen.removeDirOrFile(targetAbs)
-              if (evt.changed) {
-                const typesAndNames = evt.added.map((p) => `${p.type}:${p.name}`).join(', ')
-                console.info(`deleted:  ${typesAndNames}`)
-              }
-              continue
-            }
-
-            if (isCreateOrUpdate) {
-              const suitable = gen.isFileSuitableToGlob(targetAbs)
-              if (!suitable) continue
-              const evt = await gen.updateFromFile(targetAbs)
-              if (evt.changed) {
-                if (evt.deleted.length > 0) {
-                  const typesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
-                  console.info(`deleted: ${typesAndNames}`)
-                }
-                if (evt.added.length > 0) {
-                  const typesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
-                  console.info(`added: ${typesAndNames}`)
-                }
-              }
-            }
-          }
-        } catch (e) {
-          console.error(`🔴 ${(e as Error).message}`)
+    const subscription = await subscribe(
+      this.watchDir,
+      async (err, events) => {
+        if (err) {
+          console.error(`🔴 watcher error: ${err.message}`)
+          return
         }
-      })()
-    })
+        for (const event of events) {
+          try {
+            const targetAbs = nodePath.resolve(event.path)
+
+            // glob match - check if the file matches any of our patterns
+            const matched = this.patterns.some((g) => {
+              const resolvedPattern = nodePath.resolve(this.watchDir, g)
+              const relativePath = nodePath.relative(this.watchDir, targetAbs)
+              const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
+              return (
+                minimatch(relativePath, relativePattern, { dot: true }) ||
+                minimatch(targetAbs, resolvedPattern, { dot: true })
+              )
+            })
+            if (!matched) continue
+
+            // Check if file exists
+            let exists = false
+            try {
+              await nodeFs.access(targetAbs)
+              exists = true
+            } catch {
+              exists = false
+            }
+
+            const isDelete = event.type === 'delete' || (!exists && event.type === 'update')
+            const isCreateOrUpdate = (event.type === 'create' || event.type === 'update') && exists
+
+            for (const gen of this.generators) {
+              if (isDelete) {
+                const evt = await gen.removeDirOrFile(targetAbs)
+                if (evt.changed) {
+                  const typesAndNames = evt.deleted.map((p) => `${p.type}:${p.name}`).join(', ')
+                  console.info(`deleted:  ${typesAndNames}`)
+                }
+                continue
+              }
+
+              if (isCreateOrUpdate) {
+                const suitable = gen.isFileSuitableToGlob(targetAbs)
+                if (!suitable) continue
+                const evt = await gen.updateFromFile(targetAbs)
+                if (evt.changed) {
+                  if (evt.deleted.length > 0) {
+                    const typesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(', ')
+                    console.info(`deleted: ${typesAndNames}`)
+                  }
+                  if (evt.added.length > 0) {
+                    const typesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(', ')
+                    console.info(`added: ${typesAndNames}`)
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`🔴 ${(e as Error).message}`)
+          }
+        }
+      },
+      {
+        ignore: this.ignore,
+      },
+    )
 
     console.info('👀 watcher started')
+
+    // Store subscription for potential cleanup
+    this.subscription = subscription
   }
 }

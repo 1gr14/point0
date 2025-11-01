@@ -32,7 +32,6 @@ type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = Server
   eversion: Eversion<TRequiredCtx>
 }
 
-// TODO: rename it
 export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   mainServer: Bun.Server<unknown> | undefined
   mainServerPort: number
