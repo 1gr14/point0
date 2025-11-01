@@ -11,8 +11,8 @@ import type {
   ServerAdapterLogger,
   ServerAdapterServerInput,
   ServerAdapterServerInputParsed,
-} from '../../server/adapter.js'
-import { parseServerAdapterInput } from '../../server/adapter.js'
+} from '../../server/server.js'
+import { parseServerAdapterInput } from '../../server/server.js'
 import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
 import { renderAppAsReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
@@ -675,6 +675,13 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       // TODO: console as option for clients dev server
       development: { hmr, console: false },
       routes: {
+        '/': async () => {
+          if (this.mainServerPort) {
+            // temp redirect to main server
+            return Response.redirect(`http://localhost:${this.mainServerPort}`, 302)
+          }
+          return new Response('It is just client dev server for hmr', { status: 200 })
+        },
         ...this.clientsDevRoutes,
       },
     })

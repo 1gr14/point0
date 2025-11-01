@@ -1,6 +1,3 @@
-generate layouts
-check if .lets always checked and not throw
-
 add TPrevRoute and clean TRoute on wasEndPoint
 it route0 when extend with empty '' or '/' just preserve previous
 .route('/...') will not extend, but override

@@ -1,4 +1,4 @@
-import { Server } from 'point0/adapters/bun/index.js'
+import { Server } from 'point0/adapters/bun/server.js'
 import { points } from './lib/points.ready.js'
 import { source } from './lib/server.js'
 import { client } from './lib/client.js'
