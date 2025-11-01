@@ -1,15 +1,12 @@
 import { Points } from 'point0/core/points.js'
-import { Routes } from '@devp0nt/route0'
-
-export const routes = Routes.create({
-  ideas: '/ideas',
-  newIdea: '/ideas/new',
-  empty: '/empty/:id',
-  idea: '/ideas/:id',
-  ideaNews: '/ideas/:id/news',
-})
 
 export const points = Points.create([
+  {
+    type: 'page',
+    name: 'empty',
+    route: '/empty',
+    point: async () => (await import('../pages/empty.js')).empty.point,
+  },
   {
     type: 'page',
     name: 'ideas',
@@ -21,12 +18,6 @@ export const points = Points.create([
     name: 'newIdea',
     route: '/ideas/new',
     point: async () => (await import('../pages/idea-create.js')).default.point,
-  },
-  {
-    type: 'page',
-    name: 'empty',
-    route: '/empty/:id',
-    point: async () => (await import('../pages/empty.js')).empty.point,
   },
   {
     type: 'page',

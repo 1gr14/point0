@@ -320,22 +320,26 @@ export class FileGenerator {
       lines.push(this.banner)
     }
     lines.push(`import { Points } from 'point0/core/points.js'`)
-    lines.push(`import { Routes } from '@devp0nt/route0'`)
-    lines.push(``)
-
-    const pagePoints = points.flatMap((p) =>
-      p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
-    )
-    if (pagePoints.length > 0) {
-      lines.push(`export const routes = Routes.create({`)
-      for (const p of pagePoints) {
-        lines.push(`  ${p.name}: '${p.route}',`)
-      }
-      lines.push(`})`)
-    } else {
-      lines.push(`export const routes = Routes.create({})`)
+    if (!this.routes) {
+      lines.push(`import { Routes } from '@devp0nt/route0'`)
     }
     lines.push(``)
+
+    if (!this.routes) {
+      const pagePoints = points.flatMap((p) =>
+        p.type === 'page' && p.route ? [{ name: p.name, route: p.route.definition }] : [],
+      )
+      if (pagePoints.length > 0) {
+        lines.push(`export const routes = Routes.create({`)
+        for (const p of pagePoints) {
+          lines.push(`  ${p.name}: '${p.route}',`)
+        }
+        lines.push(`})`)
+      } else {
+        lines.push(`export const routes = Routes.create({})`)
+      }
+      lines.push(``)
+    }
 
     lines.push(`export const points = Points.create([`)
     for (const point of points) {
@@ -624,12 +628,13 @@ export class PointsCollector {
         ],
       })
 
+      let routeFull: AnyRoute | undefined
       let routeSegment: string | undefined
       let parentImportPath: string | undefined
       let parentIdentifier: string | undefined
 
       traverse(ast, {
-        CallExpression(p) {
+        CallExpression: (p) => {
           const callee = p.node.callee
           if (
             callee.type === 'MemberExpression' &&
@@ -639,6 +644,20 @@ export class PointsCollector {
             const arg = p.node.arguments.at(0)
             if (arg?.type === 'StringLiteral') {
               routeSegment = arg.value
+            } else if (arg?.type === 'MemberExpression') {
+              // e.g. .route(something.anything)
+              const prop = arg.property
+              if (prop.type === 'Identifier') {
+                const routeKey = prop.name
+                // TODO: get routes from routes._.getRoute(routeKey)
+                if (this.routes && (this.routes as any)[routeKey]) {
+                  routeFull = (this.routes as any)[routeKey]
+                } else {
+                  console.warn(
+                    `❌ ${nodePath.relative(this.basepath, fileAbs)}: unknown route key '${routeKey}' (no match in provided routes)`,
+                  )
+                }
+              }
             }
           }
         },
@@ -658,6 +677,11 @@ export class PointsCollector {
           }
         },
       })
+
+      if (routeFull) {
+        filesBaseMap.set(baseIdentifier, routeFull)
+        return routeFull
+      }
 
       // Recursively follow import chain if there is a parent layout or base
       if (parentImportPath && parentIdentifier) {

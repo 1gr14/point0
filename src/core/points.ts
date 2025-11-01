@@ -39,7 +39,10 @@ export class Points<TLoaded extends boolean = boolean> {
   }
 
   static async load(points: PointsCollection): Promise<Points<true>> {
-    const loadedPoints = await Points.toLoadedPointsCollection(points)
+    const { loadedPoints, errors } = await Points.toLoadedPointsCollection(points)
+    for (const error of errors) {
+      console.error(error)
+    }
     const pagesTree = Points.toPagesTree({ points: loadedPoints })
     const routes = Points.toRoutes({ points: loadedPoints })
     return new Points<true>({ collection: loadedPoints, pagesTree, routes, loaded: true })
@@ -49,7 +52,10 @@ export class Points<TLoaded extends boolean = boolean> {
     if (this.loaded) {
       return this as Points<true>
     }
-    const loadedPoints = await Points.toLoadedPointsCollection(this.collection)
+    const { loadedPoints, errors } = await Points.toLoadedPointsCollection(this.collection)
+    for (const error of errors) {
+      console.error(error)
+    }
     const pagesTree = Points.toPagesTree({ points: loadedPoints })
     const routes = Points.toRoutes({ points: loadedPoints })
     return new Points<true>({ collection: loadedPoints, pagesTree, routes, loaded: true })
@@ -83,11 +89,11 @@ export class Points<TLoaded extends boolean = boolean> {
 
   private static async toLoadedPointsCollection(
     points: PointsCollection | RoutedPointsCollection,
-  ): Promise<LoadedPointsCollection> {
-    return await Promise.all(
+  ): Promise<{ loadedPoints: LoadedPointsCollection; errors: unknown[] }> {
+    const results = await Promise.allSettled(
       points.map(async (record, index) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
-        const [point] = await Promise.all([pointPromise])
+        const point = await pointPromise
         const route = point._route
         if (point._pointType === 'page' && !route) {
           throw new Error(`No client route provided for page point. Index: ${index}.`)
@@ -124,6 +130,9 @@ export class Points<TLoaded extends boolean = boolean> {
         }
       }),
     )
+    const loadedPoints = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+    const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
+    return { loadedPoints, errors }
   }
 
   // pages tree

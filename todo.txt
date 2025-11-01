@@ -3,6 +3,7 @@ add TPrevRoute and clean TRoute on wasEndPoint
 it route0 when extend with empty '' or '/' just preserve previous
 in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
+allow empty arg .route()
 in route0 add asterisk parsing
 
 
