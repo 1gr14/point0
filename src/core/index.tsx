@@ -111,6 +111,7 @@ export class Point0<
 
   point: typeof this // this, needed for generator to collect points
 
+  _isRoot: boolean
   _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
   _pointType: TPointType
@@ -157,6 +158,7 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRoute, TInputSchema, TResponseOutput>
       : undefined
     _rootId: RootId
+    _isRoot?: boolean
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
@@ -182,11 +184,8 @@ export class Point0<
     _unstableId?: number
   }) {
     this.point = this
-
-    // persistent
     this._rootId = props._rootId
-
-    // overridable
+    this._isRoot = props._isRoot ?? false
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
@@ -249,6 +248,7 @@ export class Point0<
     TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
     TProps extends Props | UndefinedProps,
   >(overrides: {
+    _isRoot?: boolean
     _pointType: TPointType
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
@@ -309,6 +309,7 @@ export class Point0<
 
       // overridable
       _base: overrides._base ?? (this._base as BasePoint<any, any, TRequiredCtx> | undefined),
+      _isRoot: overrides._isRoot ?? false,
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _sourceBaseUrl:
@@ -492,6 +493,7 @@ export class Point0<
       _pointType: 'base',
       _base: this as never as BasePoint<any, any, TRequiredCtx>,
       _name: this._name ?? this._rootId,
+      _isRoot: !this._name,
       _letsEndPointType: undefined,
     })
   }

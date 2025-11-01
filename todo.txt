@@ -1,10 +1,9 @@
 add TPrevRoute and clean TRoute on wasEndPoint
 it route0 when extend with empty '' or '/' just preserve previous
 .route('/...') will not extend, but override
+layouts do not have routes
 in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
-replace Bun watch with @parcel/watcher
-move genrator to adapters/bun, or better create extendable class, so we have both generator/index and adapters/bun/generator
 allow empty arg .route()
 
 .output(z.object({}))
