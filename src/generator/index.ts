@@ -1,6 +1,16 @@
-import * as babel from '@babel/parser'
+import type {
+  CallExpression,
+  ClassDeclaration,
+  Declaration,
+  Expression,
+  FunctionDeclaration,
+  Node,
+  TSDeclareFunction,
+} from '@babel/types'
 import type traverseType from '@babel/traverse'
+import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
+import babel from '@babel/parser'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
@@ -660,17 +670,15 @@ export class PointsCollector {
                   } = this.detectPointTypeAndNameFromInit({ fileAbs, node: d.init })
                   errors.push(...detectPointTypeAndNameFromInitErrors)
                   if (pointType && pointName) {
-                    const baseIdentifier = this.findBaseIdentifier(d.init)
                     const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
-                    const { route, errors: routeErrors } =
-                      shouldHaveRoute && baseIdentifier
-                        ? await this.resolveFullRoute({ fileAbs, baseIdentifier })
-                        : { route: undefined, errors: [] }
+                    const { route, errors: routeErrors } = shouldHaveRoute
+                      ? await this.resolveFullRoute({ fileAbs, baseIdentifier: id.name })
+                      : { route: undefined, errors: [] }
                     errors.push(...routeErrors)
 
                     const { layouts, errors: layoutsErrors } =
-                      pointType === 'page' && baseIdentifier
-                        ? await this.resolveLayoutsChain({ fileAbs, baseIdentifier })
+                      pointType === 'page'
+                        ? await this.resolveLayoutsChain({ fileAbs, baseIdentifier: id.name })
                         : { layouts: [], errors: [] }
                     errors.push(...layoutsErrors)
 
@@ -715,7 +723,6 @@ export class PointsCollector {
                 : { route: undefined, errors: [] }
               errors.push(...routeErrors)
 
-              // ← NEW: collect layouts for default-exported pages
               const { layouts, errors: layoutsErrors } =
                 pointType === 'page'
                   ? await this.resolveLayoutsChain({ fileAbs, baseIdentifier: 'default' })
@@ -749,7 +756,13 @@ export class PointsCollector {
     return { collectedPoints, errors: [...errors, ...promiseRejectedErrors] }
   }
 
-  private detectPointTypeAndNameFromInit({ fileAbs, node }: { fileAbs: string; node: any }): {
+  private detectPointTypeAndNameFromInit({
+    fileAbs,
+    node,
+  }: {
+    fileAbs: string
+    node: Expression | Declaration | null | undefined
+  }): {
     pointType: EndPointType | null
     pointName: string | null
     root: boolean
@@ -757,16 +770,13 @@ export class PointsCollector {
   } {
     // normal point0-style chain with .lets('page','name') and ending in .page()/.layout()/...
     const errors: unknown[] = []
-    if (
-      ('type' in node && node.type !== 'CallExpression') ||
-      ('callee' in node && node.callee?.type !== 'MemberExpression')
-    ) {
+    if (node?.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
       return { pointType: null, pointName: null, root: false, errors }
     }
 
     // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
     const lastProp = node.callee.property
-    const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
+    const lastMethod = lastProp.type === 'Identifier' ? lastProp.name : null
     const pointType = PointsCollector.pointMethodToPointType(lastMethod)
     if (!pointType) return { pointType: null, pointName: null, root: false, errors }
 
@@ -808,30 +818,33 @@ export class PointsCollector {
    * If we see `.base()` at the end and the root is Point0.(connect|create|source)(<name>),
    * then it's a "base" point and its name is the first string arg of the root call.
    */
-  private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: any }): {
+  private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: CallExpression }): {
     pointType: EndPointType | null
     pointName: string | null
     root: boolean
     errors: unknown[]
   } {
     // must end with .base()
-    if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, root: false, errors: [] }
-    if (node.callee?.type !== 'MemberExpression') return { pointType: null, pointName: null, root: false, errors: [] }
+    // if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, root: false, errors: [] }
+    if (node.callee.type !== 'MemberExpression') {
+      return { pointType: null, pointName: null, root: false, errors: [] }
+    }
     const lastProp = node.callee.property
-    if (lastProp?.type !== 'Identifier' || lastProp.name !== 'base') {
+    if (lastProp.type !== 'Identifier' || lastProp.name !== 'base') {
       return { pointType: null, pointName: null, root: false, errors: [] }
     }
 
     // walk LEFT through the chain to find the root call:
     // ... .head(...) .sourceBaseUrl(...) Point0.connect('client')
-    let current: any = node.callee.object
-    let rootCall: any = null
+    let current: Expression | null | undefined = node.callee.object
+    let rootCall: CallExpression | null = null
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (current) {
       if (current.type === 'CallExpression') {
         rootCall = current
         // if its callee is also a member (something.something) → go further left
-        if (current.callee?.type === 'MemberExpression') {
+        if (current.callee.type === 'MemberExpression') {
           current = current.callee.object
           continue
         }
@@ -842,21 +855,21 @@ export class PointsCollector {
     }
 
     if (!rootCall) return { pointType: null, pointName: null, root: false, errors: [] }
-    if (rootCall.callee?.type !== 'MemberExpression')
+    if (rootCall.callee.type !== 'MemberExpression')
       return { pointType: null, pointName: null, root: false, errors: [] }
 
     const obj = rootCall.callee.object
     const prop = rootCall.callee.property
 
     // must be Point0.connect / Point0.create / Point0.source
-    if (obj?.type !== 'Identifier' || obj.name !== 'Point0')
+    if (obj.type !== 'Identifier' || obj.name !== 'Point0')
       return { pointType: null, pointName: null, root: false, errors: [] }
-    if (prop?.type !== 'Identifier') return { pointType: null, pointName: null, root: false, errors: [] }
+    if (prop.type !== 'Identifier') return { pointType: null, pointName: null, root: false, errors: [] }
     const method = prop.name
     if (!['connect', 'source'].includes(method)) return { pointType: null, pointName: null, root: false, errors: [] }
 
     // name should be the first string arg
-    const firstArg = rootCall.arguments?.[0]
+    const firstArg = rootCall.arguments.at(0)
     if (firstArg?.type === 'StringLiteral') {
       return {
         pointType: 'base',
@@ -876,7 +889,7 @@ export class PointsCollector {
     }
   }
 
-  private findLetsArgsInChain(call: any): { typeArg: EndPointType; nameArg: string } | null {
+  private findLetsArgsInChain(call: CallExpression): { typeArg: EndPointType; nameArg: string } | null {
     let curr: any = call
     while (curr?.type === 'CallExpression' && curr.callee?.type === 'MemberExpression') {
       const prop = curr.callee.property
@@ -923,8 +936,10 @@ export class PointsCollector {
             callee.property.type === 'Identifier' &&
             callee.property.name === 'route'
           ) {
-            // we don't strictly check that the object is the same chain as baseIdentifier,
-            // but you can tighten that later
+            const topLevelAssignedIdentifier = this.findTopLevelAssignedIdentifier(p.get('callee').get('object'))
+            if (topLevelAssignedIdentifier !== baseIdentifier) return
+
+            // proceed if the chain belongs to our identifier
             if (p.node.arguments.length === 0) {
               routeSegment = ''
             } else {
@@ -932,7 +947,7 @@ export class PointsCollector {
               if (arg?.type === 'StringLiteral') {
                 routeSegment = arg.value
               } else if (arg?.type === 'MemberExpression') {
-                // .route(routes.ideaNews)
+                // e.g. .route(routes.ideaNews)
                 const prop = arg.property
                 if (prop.type === 'Identifier') {
                   const routeKey = prop.name
@@ -940,7 +955,9 @@ export class PointsCollector {
                     routeFull = (this.routes as any)[routeKey]
                   } else {
                     errors.push(new Error(`unknown route key '${routeKey}'`))
-                    console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}'`)
+                    console.warn(
+                      `🔴 ${nodePath.relative(this.basepath, fileAbs)} unknown route key '${routeKey}' for ${baseIdentifier}`,
+                    )
                   }
                 }
               }
@@ -1116,16 +1133,18 @@ export class PointsCollector {
 
   /**
    * Given an init node like:
-   *   ideaLayout.lets(...).route(...)
+   *   const x = ideaLayout.lets(...).route(...)
    *   generalLayout
    *   someCall(...)
    * return JUST the base identifier ("ideaLayout", "generalLayout", "client", ...)
    */
-  private findBaseIdentifier(node: any): string | undefined {
+  private findBaseIdentifier(
+    node: Expression | ClassDeclaration | FunctionDeclaration | TSDeclareFunction | null | undefined,
+  ): string | undefined {
     let current = node
     while (current?.type === 'CallExpression') {
       const callee = current.callee
-      if (callee?.type === 'MemberExpression') {
+      if (callee.type === 'MemberExpression') {
         current = callee.object
       } else {
         break
@@ -1135,6 +1154,69 @@ export class PointsCollector {
     if (current?.type === 'Identifier') {
       return current.name
     }
+    return undefined
+  }
+
+  /**
+   * Given an init node like:
+   *   const x = ideaLayout.lets(...).route(...)
+   *   generalLayout
+   *   someCall(...)
+   * return JUST the "x"
+   */
+  // 1) works with NodePath, not raw node
+  private findTopLevelAssignedIdentifier(path: NodePath<Node>): string | undefined {
+    // climb up until we hit a place that "names" this expression
+    const decl = path.findParent((p) => {
+      const n = p.node
+
+      // const foo = ...
+      if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier') return true
+
+      // export const foo = ...
+      if (
+        n.type === 'ExportNamedDeclaration' &&
+        n.declaration?.type === 'VariableDeclaration' &&
+        n.declaration.declarations.length > 0 &&
+        n.declaration.declarations[0].id.type === 'Identifier'
+      ) {
+        return true
+      }
+
+      // export default foo
+      if (n.type === 'ExportDefaultDeclaration') return true
+
+      return false
+    })
+
+    if (!decl) return undefined
+
+    const n = decl.node
+
+    // const foo = ...
+    if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier') {
+      return n.id.name
+    }
+
+    // export const foo = ...
+    if (
+      n.type === 'ExportNamedDeclaration' &&
+      n.declaration?.type === 'VariableDeclaration' &&
+      n.declaration.declarations.length > 0 &&
+      n.declaration.declarations[0].id.type === 'Identifier'
+    ) {
+      return n.declaration.declarations[0].id.name
+    }
+
+    // export default foo
+    if (n.type === 'ExportDefaultDeclaration') {
+      if (n.declaration.type === 'Identifier') {
+        return n.declaration.name
+      }
+      // export default <chain>
+      return 'default'
+    }
+
     return undefined
   }
 

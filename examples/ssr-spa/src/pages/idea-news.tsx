@@ -1,4 +1,3 @@
-import { generalLayout } from '../layouts/general.js'
 import { ideaLayout } from '../layouts/idea.js'
 
 export const ideasNewsPage = ideaLayout
@@ -25,15 +24,3 @@ export const ideasNewsPage = ideaLayout
   })
 
 export default ideasNewsPage
-
-export const ideasNewsPage2 = generalLayout
-  .lets('page', 'ideaNews2')
-  .route('news2')
-  .title(({ data: { idea } }) => `news for idea`)
-  .page(({ data: { idea } }) => {
-    return (
-      <div>
-        <h3>News</h3>
-      </div>
-    )
-  })

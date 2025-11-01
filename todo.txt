@@ -3,6 +3,7 @@ in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
 
 clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
+queryClient provider in base.queryClient(() => new Query Client)
 
 .output(z.object({}))
 merge .input schemas
@@ -10,7 +11,6 @@ plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)
 
 elysia example
 auth
-interstallar
 prisma in example
 
 expo example
@@ -56,7 +56,7 @@ prevent endless loop hmr after code changes
 allow router policy prefetch-partial to use by default inside prefetchSuitablePagePoint
 find unused code
 .loadingMeta() for client async client loaders
-asterisk layout as .layout(true, () => <div/>)
+? asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
 refactor error0
 remove wrapper
@@ -95,3 +95,4 @@ statefull meta
 batch query
 .interstellar((extractSelf) => elysia.get(() => extractSelf()))
 .useComponent() to gueranty of preloading of this component
+? interstallar
