@@ -1,13 +1,13 @@
 import * as babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
-import { Route0 } from '@devp0nt/route0'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
+import { Route0 } from '@devp0nt/route0'
 import { Glob } from 'bun'
 import type { Jiti } from 'jiti'
 import { createJiti } from 'jiti'
 import * as nodeFs from 'node:fs'
-import { existsSync, watch as fsWatch } from 'node:fs'
+import { watch as fsWatch } from 'node:fs'
 import * as nodePath from 'node:path'
 import type { EndPoint, EndPointType, PointName } from '../core/types.js'
 
@@ -43,6 +43,21 @@ type ChangeCollectedPointsEvent = {
   added: CollectedPoint[]
   changed: boolean
 }
+
+const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
+  page: 'page',
+  layout: 'layout',
+  component: 'component',
+  mutation: 'mutation',
+  query: 'query',
+  response: 'response',
+  'client-ctx': 'clientCtx',
+  base: 'base',
+}
+const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
+  Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
+)
+const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
 
 export class FileGenerator {
   readonly routes: Routes | undefined
@@ -207,7 +222,7 @@ export class FileGenerator {
   }
 
   private sortPoints(): void {
-    const order = FileGenerator.END_POINT_TYPES
+    const order = END_POINT_TYPES
     const orderIndex = new Map(order.map((t, i) => [t, i]))
 
     this.points.sort((a, b) => {
@@ -238,11 +253,16 @@ export class FileGenerator {
   // processing
 
   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-    const { collectedPoints, error } = await this.collectPointsFromFile(fileAbs)
+    const { collectedPoints, errors } = await PointsCollector.collectPoints({
+      basepath: this.basepath,
+      outputAbs: this.outputAbs,
+      fileAbs,
+    })
     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
-    const deleted = error
-      ? []
-      : prevPointsWithThisFile.filter((p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    const deleted =
+      errors.length > 0
+        ? []
+        : prevPointsWithThisFile.filter((p) => !collectedPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
     const addResult = this.addPoints(collectedPoints)
     const deleteResult = this.deletePoints(deleted)
     return {
@@ -259,11 +279,16 @@ export class FileGenerator {
     const chunks = FileGenerator.chunk(files, chunkSize)
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
-        const pointsArrays = await Promise.all(chunk.map(async (fileAbs) => await this.collectPointsFromFile(fileAbs)))
+        const pointsArrays = await Promise.all(
+          chunk.map(
+            async (fileAbs) =>
+              await PointsCollector.collectPoints({ basepath: this.basepath, outputAbs: this.outputAbs, fileAbs }),
+          ),
+        )
         return pointsArrays.flat()
       }),
     )
-    const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => (p.error ? [p.error] : [])))
+    const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
     if (errors.length === 0) {
       return this.replacePoints(collectedPoints)
@@ -285,261 +310,6 @@ export class FileGenerator {
     // nodeFs.writeFileSync(this.outputAbs, content)
     this.lastEmittedContent = content
     console.info(`✅ points file generated: ${this.outputAbs} (${this.points.length} points)`)
-  }
-
-  private async collectPointsFromFile(fileAbs: string): Promise<{ collectedPoints: CollectedPoint[]; error: unknown }> {
-    let content: string
-    try {
-      try {
-        content = await Bun.file(fileAbs).text()
-      } catch (e) {
-        console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
-        return { collectedPoints: [], error: e }
-      }
-      return this.extractCollectedPointsFromContent({ content, fileAbs })
-    } catch (e) {
-      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
-      return { collectedPoints: [], error: e }
-    }
-  }
-
-  // parse
-
-  private extractCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): {
-    collectedPoints: CollectedPoint[]
-    error: unknown
-  } {
-    let ast
-    try {
-      ast = babel.parse(content, {
-        sourceType: 'module',
-        errorRecovery: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-        ],
-      })
-    } catch (e) {
-      console.warn(`⚠️ parse failed for ${fileAbs}: ${(e as Error).message}`)
-      return { collectedPoints: [], error: e }
-    }
-
-    const collectedPoints: CollectedPoint[] = []
-
-    traverse(ast, {
-      ExportNamedDeclaration: (p) => {
-        const decl = p.node.declaration
-        if (decl?.type === 'VariableDeclaration') {
-          for (const d of decl.declarations) {
-            const id = d.id
-            if (id.type === 'Identifier') {
-              const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
-              if (pointType && pointName) {
-                const baseIdentifier = this.findBaseIdentifier(d.init)
-                const route =
-                  (pointType === 'page' || pointType === 'layout') && baseIdentifier
-                    ? this.resolveFullRoute({ fileAbs, baseIdentifier })
-                    : undefined
-                collectedPoints.push({
-                  type: pointType,
-                  name: pointName,
-                  exportName: id.name,
-                  importPath: FileGenerator.toRelativeJsImportPath(this.outputAbs, fileAbs),
-                  fileAbs,
-                  route,
-                  layouts: undefined,
-                })
-              }
-            }
-          }
-        }
-      },
-      ExportDefaultDeclaration: (p) => {
-        const decl = p.node.declaration
-        const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
-        if (pointType && pointName) {
-          const route =
-            pointType === 'page' || pointType === 'layout'
-              ? this.resolveFullRoute({ fileAbs, baseIdentifier: 'default' })
-              : undefined
-          collectedPoints.push({
-            exportName: 'default',
-            type: pointType,
-            name: pointName,
-            importPath: FileGenerator.toRelativeJsImportPath(this.outputAbs, fileAbs),
-            fileAbs,
-            route,
-            layouts: undefined,
-          })
-        }
-      },
-    })
-
-    return { collectedPoints, error: undefined }
-  }
-
-  private detectPointTypeAndNameFromInit(node: any): { pointType: EndPointType | null; pointName: string | null } {
-    if (node?.type !== 'CallExpression' || node.callee?.type !== 'MemberExpression') {
-      return { pointType: null, pointName: null }
-    }
-
-    // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
-    const lastProp = node.callee.property
-    const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
-    const pointType = FileGenerator.pointMethodToPointType(lastMethod)
-    if (!pointType) return { pointType: null, pointName: null }
-
-    // Find .lets('type','name') anywhere earlier in the chain
-    const lets = this.findLetsArgsInChain(node)
-    if (!lets) return { pointType: null, pointName: null }
-
-    const { typeArg, nameArg } = lets
-    if (typeArg !== pointType) return { pointType: null, pointName: null }
-
-    return { pointType, pointName: nameArg }
-  }
-
-  private findLetsArgsInChain(call: any): { typeArg: EndPointType; nameArg: string } | null {
-    let curr: any = call
-    while (curr?.type === 'CallExpression' && curr.callee?.type === 'MemberExpression') {
-      const prop = curr.callee.property
-      const method = prop?.type === 'Identifier' ? prop.name : null
-
-      if (method === 'lets') {
-        const [typeNode, nameNode] = curr.arguments ?? []
-        if (typeNode?.type === 'StringLiteral' && nameNode?.type === 'StringLiteral') {
-          return { typeArg: typeNode.value as EndPointType, nameArg: nameNode.value }
-        }
-      }
-
-      // Walk "left" through the chain: the callee's object is either another CallExpression
-      // (previous link in the chain) or an Identifier/MemberExpression (root); keep going.
-      curr = curr.callee.object
-    }
-    return null
-  }
-
-  private findBaseIdentifier(node: any): string | undefined {
-    let current = node
-    while (current?.type === 'CallExpression') {
-      const callee = current.callee
-      if (callee?.type === 'MemberExpression') {
-        current = callee.object
-      } else {
-        break
-      }
-    }
-    // when we exit the loop, current is the base identifier or literal
-    if (current?.type === 'Identifier') {
-      return current.name
-    }
-    return undefined
-  }
-
-  private resolveFullRoute({
-    fileAbs,
-    baseIdentifier,
-  }: {
-    fileAbs: string
-    baseIdentifier: string
-  }): AnyRoute | undefined {
-    console.log(fileAbs)
-    try {
-      const content = nodeFs.readFileSync(fileAbs, 'utf8')
-      const ast = babel.parse(content, {
-        sourceType: 'module',
-        errorRecovery: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-        ],
-      })
-
-      let routeSegment: string | undefined
-      let parentImportPath: string | undefined
-      let parentIdentifier: string | undefined
-
-      traverse(ast, {
-        CallExpression(p) {
-          const callee = p.node.callee
-          if (
-            callee.type === 'MemberExpression' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'route'
-          ) {
-            const arg = p.node.arguments.at(0)
-            if (arg?.type === 'StringLiteral') {
-              routeSegment = arg.value
-            }
-          }
-        },
-        ImportDeclaration(p) {
-          for (const spec of p.node.specifiers) {
-            if (
-              spec.type === 'ImportSpecifier' &&
-              spec.imported.type === 'Identifier' &&
-              spec.local.name === baseIdentifier
-            ) {
-              parentImportPath = p.node.source.value
-              parentIdentifier = spec.imported.name
-            } else if (spec.type === 'ImportDefaultSpecifier' && spec.local.name === baseIdentifier) {
-              parentImportPath = p.node.source.value
-              parentIdentifier = 'default'
-            }
-          }
-        },
-      })
-
-      // Recursively follow import chain if there is a parent layout or base
-      if (parentImportPath && parentIdentifier) {
-        console.log('parentImportPath', parentImportPath)
-        const parentAbs = this.detectExistingFilePatByImportPath(
-          nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
-        )
-        if (!parentAbs) {
-          return undefined
-        }
-        const parentRoute = this.resolveFullRoute({
-          fileAbs: parentAbs,
-          baseIdentifier: parentIdentifier,
-        })
-        const route =
-          parentRoute && routeSegment
-            ? Route0.create(parentRoute).extend(routeSegment)
-            : parentRoute
-              ? Route0.create(parentRoute)
-              : routeSegment
-                ? Route0.create(routeSegment)
-                : undefined
-        return route
-      }
-
-      return routeSegment ? Route0.create(routeSegment) : undefined
-    } catch (e) {
-      console.warn(`⚠️ route resolve failed for ${fileAbs}: ${(e as Error).message}`)
-      return undefined
-    }
-  }
-
-  private detectExistingFilePatByImportPath(importPath: string): string | undefined {
-    const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
-    const currentExt = nodePath.extname(importPath)
-    const importPathWithoutExt = importPath.replace(currentExt, '')
-    for (const ext of exts) {
-      const abs = importPathWithoutExt + ext
-      if (existsSync(abs)) {
-        return abs
-      }
-    }
-    return undefined
   }
 
   // private extractCollectedPointFromModule({
@@ -650,6 +420,304 @@ export class FileGenerator {
       (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
     )
   }
+}
+
+export class PointsCollector {
+  readonly basepath: string
+  readonly outputAbs: string
+  readonly filesContentCache: Map<string, string>
+
+  private constructor({ basepath, outputAbs }: { basepath: string; outputAbs: string }) {
+    this.basepath = basepath
+    this.outputAbs = outputAbs
+    this.filesContentCache = new Map()
+  }
+
+  static async collectPoints({
+    basepath,
+    outputAbs,
+    fileAbs,
+  }: {
+    basepath: string
+    outputAbs: string
+    fileAbs: string
+  }): Promise<{ collectedPoints: CollectedPoint[]; errors: unknown[] }> {
+    const collector = new PointsCollector({ basepath, outputAbs })
+    return await collector.collectPointsFromFile(fileAbs)
+  }
+
+  private async collectPointsFromFile(
+    fileAbs: string,
+  ): Promise<{ collectedPoints: CollectedPoint[]; errors: unknown[] }> {
+    let content: string
+    try {
+      try {
+        const chacheContent = this.filesContentCache.get(fileAbs)
+        if (chacheContent) {
+          return await this.extractCollectedPointsFromContent({ content: chacheContent, fileAbs })
+        }
+        content = await Bun.file(fileAbs).text()
+      } catch (e) {
+        console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: read failed: ${(e as Error).message}`)
+        return { collectedPoints: [], errors: [e] }
+      }
+      return await this.extractCollectedPointsFromContent({ content, fileAbs })
+    } catch (e) {
+      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      return { collectedPoints: [], errors: [e] }
+    }
+  }
+
+  private async extractCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): Promise<{
+    collectedPoints: CollectedPoint[]
+    errors: unknown[]
+  }> {
+    let ast
+    try {
+      ast = babel.parse(content, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+        ],
+      })
+    } catch (e) {
+      console.warn(`❌ ${nodePath.relative(this.basepath, fileAbs)}: parse failed: ${(e as Error).message}`)
+      return { collectedPoints: [], errors: [e] }
+    }
+
+    const promises: Array<Promise<CollectedPoint | null>> = []
+
+    traverse(ast, {
+      ExportNamedDeclaration: (p) => {
+        promises.push(
+          (async () => {
+            const decl = p.node.declaration
+            if (decl?.type === 'VariableDeclaration') {
+              for (const d of decl.declarations) {
+                const id = d.id
+                if (id.type === 'Identifier') {
+                  const { pointType, pointName } = this.detectPointTypeAndNameFromInit(d.init)
+                  if (pointType && pointName) {
+                    const baseIdentifier = this.findBaseIdentifier(d.init)
+                    const route =
+                      (pointType === 'page' || pointType === 'layout') && baseIdentifier
+                        ? await this.resolveFullRoute({ fileAbs, baseIdentifier })
+                        : undefined
+                    return {
+                      type: pointType,
+                      name: pointName,
+                      exportName: id.name,
+                      importPath: PointsCollector.toRelativeJsImportPath(this.outputAbs, fileAbs),
+                      fileAbs,
+                      route,
+                      layouts: undefined,
+                    }
+                  }
+                }
+              }
+            }
+            return null
+          })(),
+        )
+      },
+      ExportDefaultDeclaration: (p) => {
+        promises.push(
+          (async () => {
+            const decl = p.node.declaration
+            const { pointType, pointName } = this.detectPointTypeAndNameFromInit(decl)
+            if (pointType && pointName) {
+              const route =
+                pointType === 'page' || pointType === 'layout'
+                  ? await this.resolveFullRoute({ fileAbs, baseIdentifier: 'default' })
+                  : undefined
+              return {
+                exportName: 'default',
+                type: pointType,
+                name: pointName,
+                importPath: PointsCollector.toRelativeJsImportPath(this.outputAbs, fileAbs),
+                fileAbs,
+                route,
+                layouts: undefined,
+              }
+            }
+            return null
+          })(),
+        )
+      },
+    })
+
+    const results = await Promise.allSettled(promises)
+    const collectedPoints = results.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value || [])
+    const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
+    return { collectedPoints, errors }
+  }
+
+  private detectPointTypeAndNameFromInit(node: any): { pointType: EndPointType | null; pointName: string | null } {
+    if (node?.type !== 'CallExpression' || node.callee?.type !== 'MemberExpression') {
+      return { pointType: null, pointName: null }
+    }
+
+    // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
+    const lastProp = node.callee.property
+    const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
+    const pointType = PointsCollector.pointMethodToPointType(lastMethod)
+    if (!pointType) return { pointType: null, pointName: null }
+
+    // Find .lets('type','name') anywhere earlier in the chain
+    const lets = this.findLetsArgsInChain(node)
+    if (!lets) return { pointType: null, pointName: null }
+
+    const { typeArg, nameArg } = lets
+    if (typeArg !== pointType) return { pointType: null, pointName: null }
+
+    return { pointType, pointName: nameArg }
+  }
+
+  private findLetsArgsInChain(call: any): { typeArg: EndPointType; nameArg: string } | null {
+    let curr: any = call
+    while (curr?.type === 'CallExpression' && curr.callee?.type === 'MemberExpression') {
+      const prop = curr.callee.property
+      const method = prop?.type === 'Identifier' ? prop.name : null
+
+      if (method === 'lets') {
+        const [typeNode, nameNode] = curr.arguments ?? []
+        if (typeNode?.type === 'StringLiteral' && nameNode?.type === 'StringLiteral') {
+          return { typeArg: typeNode.value as EndPointType, nameArg: nameNode.value }
+        }
+      }
+
+      // Walk "left" through the chain: the callee's object is either another CallExpression
+      // (previous link in the chain) or an Identifier/MemberExpression (root); keep going.
+      curr = curr.callee.object
+    }
+    return null
+  }
+
+  private findBaseIdentifier(node: any): string | undefined {
+    let current = node
+    while (current?.type === 'CallExpression') {
+      const callee = current.callee
+      if (callee?.type === 'MemberExpression') {
+        current = callee.object
+      } else {
+        break
+      }
+    }
+    // when we exit the loop, current is the base identifier or literal
+    if (current?.type === 'Identifier') {
+      return current.name
+    }
+    return undefined
+  }
+
+  private async resolveFullRoute({
+    fileAbs,
+    baseIdentifier,
+  }: {
+    fileAbs: string
+    baseIdentifier: string
+  }): Promise<AnyRoute | undefined> {
+    console.log(fileAbs)
+    try {
+      const content = this.filesContentCache.get(fileAbs) ?? (await Bun.file(fileAbs).text())
+      const ast = babel.parse(content, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+        ],
+      })
+
+      let routeSegment: string | undefined
+      let parentImportPath: string | undefined
+      let parentIdentifier: string | undefined
+
+      traverse(ast, {
+        CallExpression(p) {
+          const callee = p.node.callee
+          if (
+            callee.type === 'MemberExpression' &&
+            callee.property.type === 'Identifier' &&
+            callee.property.name === 'route'
+          ) {
+            const arg = p.node.arguments.at(0)
+            if (arg?.type === 'StringLiteral') {
+              routeSegment = arg.value
+            }
+          }
+        },
+        ImportDeclaration(p) {
+          for (const spec of p.node.specifiers) {
+            if (
+              spec.type === 'ImportSpecifier' &&
+              spec.imported.type === 'Identifier' &&
+              spec.local.name === baseIdentifier
+            ) {
+              parentImportPath = p.node.source.value
+              parentIdentifier = spec.imported.name
+            } else if (spec.type === 'ImportDefaultSpecifier' && spec.local.name === baseIdentifier) {
+              parentImportPath = p.node.source.value
+              parentIdentifier = 'default'
+            }
+          }
+        },
+      })
+
+      // Recursively follow import chain if there is a parent layout or base
+      if (parentImportPath && parentIdentifier) {
+        const parentAbs = await PointsCollector.detectExistingFilePatByImportPath(
+          nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
+        )
+        if (!parentAbs) {
+          return undefined
+        }
+        const parentRoute = await this.resolveFullRoute({
+          fileAbs: parentAbs,
+          baseIdentifier: parentIdentifier,
+        })
+        const route =
+          parentRoute && routeSegment
+            ? Route0.create(parentRoute).extend(routeSegment)
+            : parentRoute
+              ? Route0.create(parentRoute)
+              : routeSegment
+                ? Route0.create(routeSegment)
+                : undefined
+        return route
+      }
+
+      return routeSegment ? Route0.create(routeSegment) : undefined
+    } catch (e) {
+      console.warn(`⚠️ route resolve failed for ${fileAbs}: ${(e as Error).message}`)
+      return undefined
+    }
+  }
+
+  // helpers
+
+  private static async detectExistingFilePatByImportPath(importPath: string): Promise<string | undefined> {
+    const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
+    const currentExt = nodePath.extname(importPath)
+    const importPathWithoutExt = importPath.replace(currentExt, '')
+    for (const ext of exts) {
+      const abs = importPathWithoutExt + ext
+      if (await Bun.file(abs).exists()) {
+        return abs
+      }
+    }
+    return undefined
+  }
 
   private static toRelativeJsImportPath(fromAbs: string, toAbs: string): string {
     let rel = nodePath
@@ -660,28 +728,11 @@ export class FileGenerator {
     return rel
   }
 
-  private static readonly POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
-    page: 'page',
-    layout: 'layout',
-    component: 'component',
-    mutation: 'mutation',
-    query: 'query',
-    response: 'response',
-    'client-ctx': 'clientCtx',
-    base: 'base',
-  }
-  private static readonly POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
-    Object.entries(FileGenerator.POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
-  )
-  private static readonly END_POINT_TYPES: EndPointType[] = Object.keys(
-    FileGenerator.POINT_TYPE_TO_METHOD_MAP,
-  ) as EndPointType[]
-
   private static pointMethodToPointType(method: unknown): EndPointType | null {
     if (typeof method !== 'string') {
       return null
     }
-    return FileGenerator.POINT_METHOD_TO_TYPE_MAP[method] ?? null
+    return POINT_METHOD_TO_TYPE_MAP[method] ?? null
   }
 
   private static exportedToEndPoint(exported: unknown): EndPoint | null {
@@ -732,7 +783,7 @@ export class FileWatcher {
           const matched = patterns.some((g) => new Glob(nodePath.resolve(this.basepath, g)).match(targetAbs))
           if (!matched) return
 
-          const exists = existsSync(targetAbs)
+          const exists = await Bun.file(targetAbs).exists()
           const isDelete = eventType === 'rename' && !exists
           const isCreateOrUpdate = (eventType === 'rename' && exists) || eventType === 'change'
 
