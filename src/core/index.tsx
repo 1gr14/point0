@@ -91,6 +91,7 @@ import type {
   UndefinedRoute,
   UndefinedRouteDefinition,
   WrapperComponentType,
+  GeneralStore,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
@@ -122,8 +123,8 @@ export class Point0<
 
   point: typeof this // this, needed for generator to collect points
 
-  _queryClient: QueryClient | undefined
-  _isRoot: boolean
+  _generalStore: GeneralStore
+
   _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
   _pointType: TPointType
@@ -163,15 +164,13 @@ export class Point0<
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
-    // _useLocation?: () => Route0.Location
+    _generalStore: GeneralStore
     _sourceBaseUrl?: string | undefined
-    _queryClient?: QueryClient
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
     _rootId: RootId
-    _isRoot?: boolean
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
@@ -198,11 +197,9 @@ export class Point0<
   }) {
     this.point = this
     this._rootId = props._rootId
-    this._isRoot = props._isRoot ?? false
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
-    this._queryClient = props._queryClient ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -251,6 +248,9 @@ export class Point0<
 
     // calculated
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
+
+    // general store, it one for each point0 instance
+    this._generalStore = props._generalStore
   }
 
   _continue<
@@ -267,12 +267,10 @@ export class Point0<
     TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
     TProps extends Props | UndefinedProps,
   >(overrides: {
-    _isRoot?: boolean
     _pointType: TPointType
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
     _sourceBaseUrl?: string | undefined
-    _queryClient?: QueryClient | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -336,11 +334,10 @@ export class Point0<
 
       // overridable
       _base: overrides._base ?? (this._base as BasePoint<any, any, TRequiredCtx> | undefined),
-      _isRoot: overrides._isRoot ?? false,
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
-      _queryClient: overrides._queryClient ?? this._queryClient,
+      _generalStore: this._generalStore,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -412,6 +409,10 @@ export class Point0<
       _hasSourceBase: false,
       _rootId: rootId,
       _letsEndPointType: 'base',
+      _generalStore: {
+        _queryClient: undefined,
+        _createQueryClient: () => new QueryClient(),
+      },
     })
   }
 
@@ -449,6 +450,10 @@ export class Point0<
       _letsEndPointType: 'base',
       _hasSourceBase: true as never,
       _rootId: rootId,
+      _generalStore: {
+        _queryClient: undefined,
+        _createQueryClient: () => new QueryClient(),
+      },
     })
   }
 
@@ -485,7 +490,6 @@ export class Point0<
       _pointType: 'base',
       _base: this as never as BasePoint<any, any, TRequiredCtx>,
       _name: this._name ?? this._rootId,
-      _isRoot: !this._name,
       _letsEndPointType: undefined,
     })
   }
@@ -578,7 +582,7 @@ export class Point0<
   }
 
   queryClient(
-    queryClient: QueryClient,
+    createQueryClient: () => QueryClient,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -593,6 +597,7 @@ export class Point0<
     TResponseOutput,
     TProps
   > {
+    this._generalStore._createQueryClient = createQueryClient
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -608,7 +613,6 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _queryClient: queryClient,
     })
   }
 
@@ -1406,9 +1410,16 @@ export class Point0<
 
   // end points
 
+  _isRoot(): boolean {
+    return this._name === this._rootId
+  }
+
   getQueryClient(): QueryClient {
-    this._queryClient ??= new QueryClient()
-    return this._queryClient
+    if (typeof window === 'undefined') {
+      return this._generalStore._createQueryClient()
+    }
+    this._generalStore._queryClient ??= this._generalStore._createQueryClient()
+    return this._generalStore._queryClient
   }
 
   page<TPage extends PageComponent<TData, TClientData, TRouteDefinition>>(

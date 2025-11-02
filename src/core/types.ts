@@ -1,6 +1,6 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ChildrenLocation, ExactLocation, FlatInput, FlatOutput, HasParams } from '@devp0nt/route0'
-import type { QueryOptions } from '@tanstack/react-query'
+import type { QueryClient, QueryOptions } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, input as ZodInput, ZodObject } from 'zod'
 import type { EversionRun } from './eversion.js'
@@ -692,3 +692,8 @@ export type QueryKey = readonly [string, ...string[]]
 export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThen<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+
+export type GeneralStore = {
+  _queryClient: QueryClient | undefined
+  _createQueryClient: () => QueryClient
+}

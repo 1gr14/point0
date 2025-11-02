@@ -11,6 +11,7 @@ import type {
   PagePoint,
   PointName,
   PointType,
+  RootPoint,
   UndefinedRoute,
 } from './types.js'
 
@@ -95,6 +96,10 @@ export class Points<TReady extends boolean = boolean> {
     }
   }
 
+  _getRootPoint(): RootPoint | undefined {
+    return this.collection.find((record) => record.root)?.point as RootPoint | undefined
+  }
+
   private static isRawPointsCollection(points: any): points is RawPointsCollection {
     return points.length && points.every((p: any) => p instanceof Point0)
   }
@@ -107,7 +112,7 @@ export class Points<TReady extends boolean = boolean> {
         point,
         layouts: point._layouts.map((l) => l._name || '__UNNAMED__'),
         route: point._route,
-        root: point._isRoot,
+        root: point._isRoot(),
       }
     })
   }
@@ -131,6 +136,7 @@ export class Points<TReady extends boolean = boolean> {
         route: record.route ? Route0.from(record.route) : undefined,
         point: record.point,
         layouts: record.layouts ?? [],
+        root: record.root,
         Component:
           record.type === 'layout'
             ? typeof point === 'function'
@@ -529,7 +535,7 @@ export type ReadyPointsCollectionRecord = {
 }
 export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
 export type LazyRoutedPointsCollectionRecord = {
-  root?: boolean
+  root: boolean
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
@@ -539,7 +545,7 @@ export type LazyRoutedPointsCollectionRecord = {
 }
 export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
 export type ReadyRoutedPointsCollectionRecord = {
-  root?: boolean
+  root: boolean
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute

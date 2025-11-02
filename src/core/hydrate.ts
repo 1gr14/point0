@@ -1,11 +1,12 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { DehydratedState } from '@tanstack/react-query'
+import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { Payload } from './eversion.js'
 import type { Points } from './points.js'
 import type { RootPoint } from './types.js'
+import { hydrate } from '@tanstack/react-query'
 
 export type HydrateResult = {
   payload: Payload
@@ -14,7 +15,7 @@ export type HydrateResult = {
 }
 export type HydratedAppProps = {
   ssrLocation: AnyLocation | undefined
-  dehydratedState: DehydratedState | undefined
+  queryClient: QueryClient
   root: RootPoint
   points: Points
 }
@@ -23,7 +24,7 @@ export type HydratedAppComponent = (props: HydratedAppProps) => React.ReactEleme
 let reactRoot: Root | null = null
 let result: HydrateResult | null = null
 
-export function hydrate({
+export function mount({
   App,
   root,
   points,
@@ -63,8 +64,9 @@ export function hydrate({
     }
   }
 
+  const queryClient = hydrateQueryClient({ root, dehydratedState: payload.dehydratedState })
   const appElement = createElement(App, {
-    dehydratedState: payload.dehydratedState,
+    queryClient,
     ssrLocation: payload.location,
     points,
     root,
@@ -89,4 +91,25 @@ export function hydrate({
 
   result = { payload, domRootElement, appElement }
   return result
+}
+
+const hydrateQueryClient = ({ root, dehydratedState }: { root: RootPoint; dehydratedState: DehydratedState }) => {
+  const queryClient = root.getQueryClient()
+
+  hydrate(queryClient, dehydratedState)
+
+  const prefetchPageQuery = queryClient
+    .getQueryCache()
+    .getAll()
+    .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
+
+  if (!prefetchPageQuery) {
+    return queryClient
+  }
+
+  const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
+    .dehydratedState
+  hydrate(queryClient, relatedQueriesDehydratedState)
+
+  return queryClient
 }

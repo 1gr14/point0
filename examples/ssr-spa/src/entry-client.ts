@@ -1,4 +1,4 @@
-import { hydrate } from 'point0/core/hydrate.js'
+import { mount } from 'point0/core/hydrate.js'
 import App from './app.js'
 import { client } from './lib/client.js'
 import { points } from './lib/points.lazy.js'
@@ -7,4 +7,4 @@ import { points } from './lib/points.lazy.js'
 if (import.meta.hot) {
   import.meta.hot.accept()
 }
-hydrate({ App, points, root: client })
+mount({ App, points, root: client })

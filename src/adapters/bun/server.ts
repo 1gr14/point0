@@ -376,6 +376,8 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               eversionRun,
               head: extractResult.head,
               pageLocation: suitable.pageLocation,
+              pagePoint: suitable.point,
+              input,
               originalIndexHtml,
               rootElementId: relatedClient.rootElementId,
             })
@@ -407,9 +409,11 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             // I think it will never throw, but who knows
             throw new Error('Page for dehydrated state not found')
           }
-          await eversionRun.prefetchAppPoints({
+          await eversionRun.prefetchAppPagePoints({
             App,
             renderToReadableStream,
+            pagePoint: suitable.point,
+            input,
           })
           const dehydratedState = eversionRun.getQueryClientDehydratedState()
           return new Response(JSON.stringify({ dehydratedState }), {

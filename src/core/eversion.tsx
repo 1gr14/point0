@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
-import { dehydrate, hashKey } from '@tanstack/react-query'
+import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
@@ -19,6 +19,7 @@ import type {
   ExtractFnRecord,
   FinalData,
   InputParsed,
+  InputRaw,
   PointName,
   RequiredCtx,
   ResponseOutput,
@@ -91,7 +92,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
   }): Promise<EversionRun<TRequiredCtx>> {
-    return new EversionRun({
+    return await EversionRun.create({
       eversion: this,
       pageLocation,
       requiredCtx,
@@ -316,7 +317,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   requiredCtx: TRequiredCtx
   dehydratedState: DehydratedState
 
-  constructor({
+  private constructor({
     eversion,
     pageLocation,
     requiredCtx,
@@ -331,6 +332,18 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
     this.dehydratedState = dehydrate(this.queryClient)
+  }
+
+  static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
+    eversion,
+    pageLocation,
+    requiredCtx,
+  }: {
+    eversion: Eversion<TRequiredCtx>
+    requiredCtx: TRequiredCtx
+    pageLocation: AnyLocation | undefined
+  }): Promise<EversionRun<TRequiredCtx>> {
+    return new EversionRun<TRequiredCtx>({ eversion, pageLocation, requiredCtx })
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
@@ -489,21 +502,27 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }
 
-  async prefetchAppPoints({
+  async prefetchAppPagePoints({
     App,
     renderToReadableStream,
+    pagePoint,
+    input,
     seenQueryHashes = new Set<string>(),
+    level = 0,
   }: {
     App: HydratedAppComponent
     renderToReadableStream: typeof RenderToReadableStream
+    pagePoint: AnyPoint | undefined
+    input: InputRaw
     seenQueryHashes?: Set<string>
+    level?: number
   }): Promise<void> {
     const probeTree = (
       <App
         ssrLocation={this.pageLocation}
         root={this.eversion.root}
         points={this.eversion.points}
-        dehydratedState={this.getQueryClientDehydratedState()}
+        queryClient={this.queryClient}
       />
     )
     const stream = await renderToReadableStream(probeTree)
@@ -526,6 +545,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
 
     if (suitableMarkers.length === 0) {
+      if (level === 0 && pagePoint) {
+        this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+      }
       return
     }
 
@@ -542,11 +564,17 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
     }
 
-    await this.prefetchAppPoints({
+    await this.prefetchAppPagePoints({
       App,
       renderToReadableStream,
+      pagePoint,
+      input,
       seenQueryHashes,
     })
+
+    if (level === 0 && pagePoint) {
+      this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+    }
   }
 
   appendQueryClientCache({
@@ -599,6 +627,24 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       },
     })
     return dehydratedState
+  }
+
+  addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input }: { pagePoint: AnyPoint; input: InputRaw }): void {
+    const prefetchPageQueryOptions = pagePoint.getQueryOptions(input, undefined, undefined, 'dehydratedState')
+
+    // you said you already have this:
+    const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
+
+    // register per-key options (retry, gcTime, etc.)
+    const tempQueryClient = pagePoint._generalStore._createQueryClient()
+    const { queryKey, ...restOptions } = prefetchPageQueryOptions
+    tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
+      ...restOptions,
+    })
+    tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, { dehydratedState: relatedQueriesDehydratedState })
+    const tempDehydratedState = dehydrate(tempQueryClient)
+
+    hydrate(this.queryClient, tempDehydratedState)
   }
 }
 

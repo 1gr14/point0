@@ -7,6 +7,7 @@ import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, Payload } from '../core/eversion.js'
 import type { HydratedAppComponent } from '../core/hydrate.js'
+import type { AnyPoint, InputRaw } from '../core/types.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -234,26 +235,32 @@ export async function renderAppAsReadableStream({
   App,
   eversionRun,
   pageLocation,
+  pagePoint,
+  input,
   ...props
 }: {
   App: HydratedAppComponent
   eversionRun: EversionRun
   pageLocation: AnyLocation
+  pagePoint: AnyPoint | undefined
+  input: InputRaw
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
   rootElementId?: string
 }): Promise<ReadableStream> {
-  await eversionRun.prefetchAppPoints({
+  await eversionRun.prefetchAppPagePoints({
     App,
     renderToReadableStream,
+    pagePoint,
+    input,
   })
   const element = createElement(App, {
     ssrLocation: pageLocation,
     root: eversionRun.eversion.root,
     points: eversionRun.eversion.points,
-    dehydratedState: eversionRun.getQueryClientDehydratedState(),
+    queryClient: eversionRun.queryClient,
   })
   return await renderReadableStream({
     ...props,
