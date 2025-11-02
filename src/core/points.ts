@@ -1,8 +1,18 @@
 import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
-import * as React from 'react'
-import type { EndPoint, EndPointType, InputRaw, LayoutPoint, PagePoint, PointName, UndefinedRoute } from './types.js'
 import type { QueryClient } from '@tanstack/react-query'
+import * as React from 'react'
+import { Point0 } from './index.js'
+import type {
+  EndPoint,
+  EndPointType,
+  InputRaw,
+  LayoutPoint,
+  PagePoint,
+  PointName,
+  PointType,
+  UndefinedRoute,
+} from './types.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -13,14 +23,22 @@ export class Points<TReady extends boolean = boolean> {
   routes: Routes
   routesHash: string
 
+  private readonly pagesTreeSource: PagesTreeSource
+
+  readonly _: {
+    pagesTreeSource: Points['pagesTreeSource']
+  }
+
   private constructor({
     collection,
     pagesTree,
+    pagesTreeSource,
     routes,
     ready,
   }: {
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
     pagesTree: PagesTree
+    pagesTreeSource: PagesTreeSource
     routes: Routes
     ready: boolean
   }) {
@@ -29,38 +47,46 @@ export class Points<TReady extends boolean = boolean> {
     this.routes = routes
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
+    this.pagesTreeSource = pagesTreeSource
+    this._ = { pagesTreeSource }
   }
 
-  static readonly ready = (readyPoints: ReadyPointsCollection): Points<true> => {
+  static readonly ready = (readyPoints: ReadyPointsCollection | RawPointsCollection): Points<true> => {
+    if (Points.isRawPointsCollection(readyPoints)) {
+      readyPoints = Points.rawToReadyPointsCollection(readyPoints)
+    }
     Points.validate(readyPoints)
     const routedPoints = Points.toRoutedPointsCollection(readyPoints)
-    const pagesTree = Points.toPagesTree({ points: routedPoints })
+    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
+    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<true>({ collection: routedPoints, pagesTree, routes, ready: true })
+    return new Points<true>({ collection: routedPoints, pagesTree, pagesTreeSource, routes, ready: true })
   }
 
   static readonly lazy = (lazyPoints: LazyPointsCollection): Points<false> => {
     Points.validate(lazyPoints)
     const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
-    const pagesTree = Points.toPagesTree({ points: routedPoints })
+    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
+    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<false>({ collection: routedPoints, pagesTree, routes, ready: false })
+    return new Points<false>({ collection: routedPoints, pagesTree, pagesTreeSource, routes, ready: false })
   }
 
   async load(): Promise<Points<true>> {
     if (this.ready) {
       return this as Points<true>
     }
-    const { readyPoints, errors } = await Points.toLoadedPointsCollection(this.collection as LazyRoutedPointsCollection)
+    const { readyPoints, errors } = await Points.toReadyPointsCollection(this.collection as LazyRoutedPointsCollection)
     for (const error of errors) {
       console.error(error)
     }
-    const pagesTree = Points.toPagesTree({ points: readyPoints })
+    const pagesTreeSource = this.pagesTreeSource
+    const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
     const routes = Points.toRoutes({ points: readyPoints })
-    return new Points<true>({ collection: readyPoints, pagesTree, routes, ready: true })
+    return new Points<true>({ collection: readyPoints, pagesTree, pagesTreeSource, routes, ready: true })
   }
 
-  static validate(points: ReadyPointsCollection | LazyPointsCollection): void {
+  private static validate(points: ReadyPointsCollection | LazyPointsCollection): void {
     const rootRecordsCount = points.filter((r) => r.root).length
     if (rootRecordsCount > 1) {
       throw new Error(
@@ -69,18 +95,68 @@ export class Points<TReady extends boolean = boolean> {
     }
   }
 
+  private static isRawPointsCollection(points: any): points is RawPointsCollection {
+    return points.length && points.every((p: any) => p instanceof Point0)
+  }
+
+  private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
+    return points.map((point) => {
+      return {
+        type: point._pointType,
+        name: point._name || '__UNNAMED__',
+        point,
+        layouts: point._layouts.map((l) => l._name || '__UNNAMED__'),
+        route: point._route,
+        root: point._isRoot,
+      }
+    })
+  }
+
+  //         typeof point === 'function'
+  //           ? React.lazy(async () => ({
+  //               default: (await point())._Layout,
+  //             }))
+  //           : point._Layout,
+
   private static toRoutedPointsCollection(points: LazyPointsCollection): LazyRoutedPointsCollection
   private static toRoutedPointsCollection(points: ReadyPointsCollection): ReadyRoutedPointsCollection
   private static toRoutedPointsCollection(
     points: LazyPointsCollection | ReadyPointsCollection,
   ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
     return points.map((record, index) => {
+      const point = record.point
       return {
         type: record.type,
         name: record.name,
         route: record.route ? Route0.from(record.route) : undefined,
         point: record.point,
         layouts: record.layouts ?? [],
+        Component:
+          record.type === 'layout'
+            ? typeof point === 'function'
+              ? React.lazy(async () => ({
+                  default: (await point())._Layout,
+                }))
+              : point._Layout
+            : record.type === 'page'
+              ? typeof point === 'function'
+                ? React.lazy(async () => ({
+                    default: (await point())._Page,
+                  }))
+                : point._Page
+              : record.type === 'component'
+                ? typeof point === 'function'
+                  ? React.lazy(async () => ({
+                      default: (await point())._Component,
+                    }))
+                  : point._Component
+                : record.type === 'client-ctx'
+                  ? typeof point === 'function'
+                    ? React.lazy(async () => ({
+                        default: (await point()).Provider,
+                      }))
+                    : point.Provider
+                  : undefined,
       }
     }) as LazyRoutedPointsCollection | ReadyRoutedPointsCollection
   }
@@ -99,7 +175,7 @@ export class Points<TReady extends boolean = boolean> {
     return Routes.create(routes)
   }
 
-  private static async toLoadedPointsCollection(
+  private static async toReadyPointsCollection(
     points: LazyRoutedPointsCollection,
   ): Promise<{ readyPoints: ReadyRoutedPointsCollection; errors: unknown[] }> {
     const results = await Promise.allSettled(
@@ -150,113 +226,153 @@ export class Points<TReady extends boolean = boolean> {
 
   // pages tree
 
-  private static readonly toPagesAndLayoutsCollection = ({
+  static readonly toPagesTreeSource = ({
     points,
   }: {
     points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
-  }): PagesAndLayoutsCollection => {
-    const collection: PagesAndLayoutsCollection = {
-      pages: [],
-      layouts: [],
-    }
-    for (const record of points) {
-      if (record.type !== 'layout' || !record.route) {
-        continue
-      }
-      const point = record.point
-      collection.layouts.push({
-        type: 'layout',
-        name: record.name,
-        route: Route0.from(record.route),
-        point: point as LayoutPoint | (() => Promise<LayoutPoint>),
-        layoutComponent:
-          typeof point === 'function'
-            ? React.lazy(async () => ({
-                default: (await point())._Layout,
-              }))
-            : point._Layout,
-        layoutPagesRoutes: points
-          .filter((p) => p.type === 'page' && p.layouts.some((l) => l === record.name))
-          .flatMap((p) => p.route ?? []),
+  }): PagesTreeSource => {
+    const pages = points.filter((p) => p.type === 'page')
+    const tree: PagesTreeSource = []
+
+    const pagesWithoutLayout = pages.filter((p) => !p.layouts.length)
+    if (pagesWithoutLayout.length) {
+      tree.push({
+        layout: undefined,
+        pages: pagesWithoutLayout.map((p) => p.name),
+        nested: undefined,
       })
     }
-    for (const record of points) {
-      if (record.type !== 'page' || !record.route) {
-        continue
+
+    const addPageToTree = ({
+      tree,
+      page,
+      layouts,
+    }: {
+      tree: PagesTreeSource
+      page: string
+      layouts: string[] // min length 1
+    }): PagesTreeSourceRecord => {
+      const currentLevelLayoutRecord = (() => {
+        for (const record of tree) {
+          if (record.layout === layouts[0]) {
+            return record
+          }
+        }
+        const newRecord: PagesTreeSourceRecord = {
+          layout: layouts[0],
+          pages: [],
+          nested: undefined,
+        }
+        tree.push(newRecord)
+        return newRecord
+      })()
+
+      if (layouts.length === 1) {
+        currentLevelLayoutRecord.pages.push(page)
+        return currentLevelLayoutRecord
+      } else {
+        currentLevelLayoutRecord.nested ||= []
+        addPageToTree({
+          tree: currentLevelLayoutRecord.nested,
+          page,
+          layouts: layouts.slice(1),
+        })
+        return currentLevelLayoutRecord
       }
-      const point = record.point
-      collection.pages.push({
-        type: 'page',
-        name: record.name,
-        route: Route0.from(record.route),
-        point: point as PagePoint | (() => Promise<PagePoint>),
-        pageComponent:
-          typeof point === 'function'
-            ? React.lazy(async () => ({
-                default: (await point())._Page,
-              }))
-            : point._Page,
-        layouts: record.layouts,
+    }
+
+    const pagesWithLayout = pages.filter((p) => p.layouts.length)
+    for (const page of pagesWithLayout) {
+      addPageToTree({
+        tree,
+        page: page.name,
+        layouts: page.layouts,
       })
     }
-    return collection
+    return tree
   }
 
-  private static readonly toPagesTreeFromPagesAndLayouts = ({
-    pagesAndLayouts,
+  // private static readonly toPagesAndLayoutsCollection = ({
+  //   points,
+  // }: {
+  //   points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
+  // }): PagesAndLayoutsCollection => {
+  //   const collection: PagesAndLayoutsCollection = {
+  //     pages: [],
+  //     layouts: [],
+  //   }
+  //   for (const record of points) {
+  //     if (record.type !== 'layout' || !record.route) {
+  //       continue
+  //     }
+  //     const point = record.point
+  //     collection.layouts.push({
+  //       name: record.name,
+  //       point: point as LayoutPoint | (() => Promise<LayoutPoint>),
+  //       Layout:
+  //         typeof point === 'function'
+  //           ? React.lazy(async () => ({
+  //               default: (await point())._Layout,
+  //             }))
+  //           : point._Layout,
+  //     })
+  //   }
+  //   for (const record of points) {
+  //     if (record.type !== 'page' || !record.route) {
+  //       continue
+  //     }
+  //     const point = record.point
+  //     collection.pages.push({
+  //       name: record.name,
+  //       route: Route0.from(record.route),
+  //       point: point as PagePoint | (() => Promise<PagePoint>),
+  //       Page:
+  //         typeof point === 'function'
+  //           ? React.lazy(async () => ({
+  //               default: (await point())._Page,
+  //             }))
+  //           : point._Page,
+  //     })
+  //   }
+  //   return collection
+  // }
+
+  private static readonly toPagesTree = ({
+    points,
+    pagesTreeSource,
   }: {
-    pagesAndLayouts: PagesAndLayoutsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
+    pagesTreeSource: PagesTreeSource
   }): PagesTree => {
-    const layouts = pagesAndLayouts.layouts
-    const pages = pagesAndLayouts.pages
-    const pagesWithoutLayouts = pages.filter((p) => !p.layouts.length)
-    const buildLayoutTree = (layout: LayoutsCollectionRecord, level = 0): PagesTreeRecord | undefined => {
-      const layoutPages = pages.filter((p) => layout.layoutPagesRoutes.some((lpr) => lpr.isSame(p.route)))
-      const layoutPagesWhereThisLayoutIndexEqLevelAndIsLast = layoutPages.filter((lp) => {
-        return lp.layouts[level] === layout.name && lp.layouts[level] === lp.layouts[lp.layouts.length - 1]
-      })
-
-      const nestedLayouts = layouts.filter((l) => l.route.isChildren(layout.route))
-      const nestedLayoutsTrees = nestedLayouts.map((l) => buildLayoutTree(l, level + 1))
-      const result: PagesTreeRecord = {
-        route: layout.route,
-        name: layout.name,
-        layoutComponent: layout.layoutComponent,
-        layoutPoint: layout.point,
-        pages: layoutPagesWhereThisLayoutIndexEqLevelAndIsLast.map((lp) => ({
-          name: lp.name,
-          route: lp.route,
-          pageComponent: lp.pageComponent,
-          pagePoint: lp.point,
+    const pagesTree: PagesTree = []
+    for (const pagesTreeSourceRecord of pagesTreeSource) {
+      const layoutRecord = points.find((l) => l.type === 'layout' && l.name === pagesTreeSourceRecord.layout)
+      const pagesRecords = points.filter((p) => p.type === 'page' && pagesTreeSourceRecord.pages.includes(p.name))
+      const pagesTreeRecord: PagesTreeRecord = {
+        Layout: layoutRecord?.Component as React.ComponentType<{ children: React.ReactNode }> | undefined,
+        layoutName: layoutRecord?.name,
+        layoutPoint: layoutRecord?.point as LayoutPoint | (() => Promise<LayoutPoint>) | undefined,
+        pages: pagesRecords.map((p) => ({
+          Page: p.Component as React.ComponentType | React.LazyExoticComponent<React.ComponentType>,
+          pageName: p.name,
+          pageRoute: p.route as AnyRoute,
+          pagePoint: p.point as PagePoint | (() => Promise<PagePoint>),
         })),
-        nestedPagesTree: nestedLayoutsTrees.flatMap((t) => t ?? []),
+        nested: !pagesTreeSourceRecord.nested
+          ? undefined
+          : Points.toPagesTree({
+              pagesTreeSource: pagesTreeSourceRecord.nested,
+              points,
+            }),
       }
-      if (result.nestedPagesTree.length === 0 && result.pages.length === 0) {
-        return undefined
-      }
-      return result
+      pagesTree.push(pagesTreeRecord)
     }
-
-    const noLayoutTree: PagesTreeRecord = {
-      route: Route0.from('/'),
-      name: '_point0_no_layout_placeholder',
-      pages: pagesWithoutLayouts.map((p) => ({
-        name: p.name,
-        route: p.route,
-        pageComponent: p.pageComponent,
-        pagePoint: p.point,
-      })),
-      layoutComponent: undefined,
-      layoutPoint: undefined,
-      nestedPagesTree: [],
-    }
-    const pagesTree: PagesTree = [
-      ...layouts.flatMap((l) => buildLayoutTree(l) ?? []),
-      ...(noLayoutTree.pages.length > 0 ? [noLayoutTree] : []),
-    ]
     return pagesTree
   }
 
+  // prefetching
+
+  // TODO: check if it is really correct way
   private static readonly prefetchLazyComponent = async (
     component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
   ): Promise<void> => {
@@ -282,93 +398,44 @@ export class Points<TReady extends boolean = boolean> {
     }
   }
 
-  private readonly getSuitablePagePointFromPagesTree = async ({
+  private readonly loadSuitablePage = async ({
     location,
   }: {
     location: AnyLocation
   }): Promise<
     | {
-        pagePoint: PagePoint
-        pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-        layouts: Array<{
-          layoutPoint: LayoutPoint
-          layoutComponent:
-            | React.ComponentType<{ children: React.ReactNode }>
-            | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-        }>
+        page: PagePoint
+        layouts: LayoutPoint[]
       }
     | undefined
   > => {
-    type Found = {
-      page: PagesTreeRecord['pages'][number]
-      layoutPath: PagesTreeRecord[] // root -> node containing the page
+    const suitable = this.getSuitablePoint({ pageLocation: location, pointType: 'page' })
+    if (!suitable) {
+      return undefined
     }
-
-    let found: Found | undefined
-    const stack: PagesTreeRecord[] = []
-
-    const dfs = (node: PagesTreeRecord): void => {
-      if (found) return
-      stack.push(node)
-
-      // check pages at this node
-      for (const p of node.pages) {
-        const match = p.route.getLocation(location)
-        if (match.exact) {
-          found = { page: p, layoutPath: [...stack] }
-          break
-        }
-      }
-
-      // descend if not found
-      if (!found) {
-        for (const child of node.nestedPagesTree) {
-          dfs(child)
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          if (found) break
-        }
-      }
-
-      stack.pop()
-    }
-
-    for (const root of this.pagesTree) {
-      dfs(root)
-      if (found) break
-    }
-
-    if (!found) return undefined
-
-    // Load the PagePoint (await if it's a promise-returning factory)
-    const pagePoint = typeof found.page.pagePoint === 'function' ? await found.page.pagePoint() : found.page.pagePoint
+    const page = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
-    await Points.prefetchLazyComponent(found.page.pageComponent)
+    if (suitable.Component) {
+      await Points.prefetchLazyComponent(suitable.Component)
+    }
 
-    // Build layouts chain: take all ancestors that actually represent a layout node
-    const layoutNodes = found.layoutPath.filter((n) => n.layoutComponent && n.layoutPoint) as Array<
-      Required<Pick<PagesTreeRecord, 'layoutComponent' | 'layoutPoint'>>
-    >
-
-    // Resolve layoutPoints (if lazy factory) and prefetch lazy layout components
     const layouts = await Promise.all(
-      layoutNodes.flatMap(async (n) => {
-        if (!n.layoutComponent || !n.layoutPoint) {
-          return [] as never
-        }
-        const layoutPoint = typeof n.layoutPoint === 'function' ? await n.layoutPoint() : n.layoutPoint
-        await Points.prefetchLazyComponent(n.layoutComponent)
-        return {
-          layoutPoint,
-          layoutComponent: n.layoutComponent,
-        }
-      }),
+      this.collection
+        .filter((p) => p.type === 'layout' && suitable.layouts?.includes(p.name))
+        .map(async (layout) => {
+          if (layout.Component) {
+            await Points.prefetchLazyComponent(layout.Component)
+          }
+          return typeof layout.point === 'function' ? await layout.point() : layout.point
+        }),
     )
 
+    // TODO: maybe we should replace in pagesTree and points this page and layouts points, becouse it is loaded now
+
     return {
-      pagePoint,
-      pageComponent: found.page.pageComponent,
-      layouts,
+      page: page as PagePoint,
+      layouts: layouts as LayoutPoint[],
     }
   }
 
@@ -381,37 +448,26 @@ export class Points<TReady extends boolean = boolean> {
     queryClient: QueryClient
     partial?: boolean
   }): Promise<PagePoint | undefined> => {
-    const result = await this.getSuitablePagePointFromPagesTree({ location })
+    const result = await this.loadSuitablePage({ location })
     if (!result) {
       return undefined
     }
 
     if (partial) {
       await Promise.all(
-        [result.pagePoint, ...result.layouts.map((l) => l.layoutPoint)].map(async (p) => {
+        [result.page, ...result.layouts].map(async (p) => {
           const input = p._getUnsafeInputRawByLocation(location)
           await p.prefetchQuery(input, { queryClient })
         }),
       )
-      return result.pagePoint
+      return result.page
     }
 
-    const input = result.pagePoint._getUnsafeInputRawByLocation(location)
-    await result.pagePoint.prefetchPage(input, { queryClient })
+    const input = result.page._getUnsafeInputRawByLocation(location)
+    await result.page.prefetchPage(input, { queryClient })
 
-    return result.pagePoint
+    return result.page
   }
-
-  private static readonly toPagesTree = ({
-    points,
-  }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
-  }): PagesTree => {
-    const pagesAndLayouts = Points.toPagesAndLayoutsCollection({ points })
-    return Points.toPagesTreeFromPagesAndLayouts({ pagesAndLayouts })
-  }
-
-  // suitable point
 
   getSuitablePoint({
     pageLocation,
@@ -425,14 +481,15 @@ export class Points<TReady extends boolean = boolean> {
     pointName?: PointName | undefined
   }):
     | {
-        point: EndPoint
+        point: TReady extends true ? EndPoint : () => Promise<EndPoint>
+        name: PointName
+        type: PointType
+        Component: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>> | undefined
         pageLocation: ExactLocation | undefined
+        layouts: string[] | undefined
       }
     | undefined {
-    if (!this.ready) {
-      throw new Error('Points are not ready, call load() first')
-    }
-    for (const { route, point, type, name } of this.collection as ReadyRoutedPointsCollection) {
+    for (const { route, point, type, name, Component, layouts } of this.collection as ReadyRoutedPointsCollection) {
       if (pointType && type !== pointType) {
         continue
       }
@@ -440,21 +497,33 @@ export class Points<TReady extends boolean = boolean> {
         if (name === pointName) {
           if (type !== 'page') {
             return {
-              point,
+              point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+              name,
+              type,
               pageLocation: undefined,
+              Component,
+              layouts,
             }
           }
           if (!route || !input) {
             return {
-              point,
+              point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+              name,
+              type,
               pageLocation: undefined,
+              Component,
+              layouts,
             }
           }
           // TODO: add helper for htis in route0, like route.getSelfLocation(input): ExactLocation
           const match = route.getLocation(route.get(input))
           return {
-            point,
+            point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+            name,
+            type,
             pageLocation: match.exact ? match : undefined,
+            Component,
+            layouts,
           }
         }
         continue
@@ -467,28 +536,16 @@ export class Points<TReady extends boolean = boolean> {
       const match = route?.getLocation(pageLocation)
       if (match?.exact) {
         return {
-          point,
+          point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+          name,
+          type,
           pageLocation: match,
+          Component,
+          layouts,
         }
       }
     }
     return undefined
-  }
-
-  pagesTreeToLogableObject = (pagesTree = this.pagesTree): Array<Record<string, any>> => {
-    return pagesTree.map((p) => ({
-      name: p.name,
-      route: p.route.getDefinition(),
-      layoutComponent: !!p.layoutComponent,
-      layoutPoint: !!p.layoutPoint,
-      pages: p.pages.map((p) => ({
-        name: p.name,
-        route: p.route.getDefinition(),
-        pageComponent: !!p.pageComponent,
-        pagePoint: !!p.pagePoint,
-      })),
-      nestedPagesTree: this.pagesTreeToLogableObject(p.nestedPagesTree),
-    }))
   }
 
   static Context = React.createContext<Points | undefined>(undefined)
@@ -512,6 +569,7 @@ export type ReadyPointsCollectionRecord = {
   name: PointName
   route?: string | undefined
   point: EndPoint
+  Component?: React.ComponentType
   layouts?: string[]
 }
 export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
@@ -521,6 +579,7 @@ export type LazyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: () => Promise<EndPoint>
+  Component?: React.LazyExoticComponent<React.ComponentType>
   layouts: string[]
 }
 export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
@@ -530,51 +589,32 @@ export type ReadyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint
+  Component?: React.ComponentType
   layouts: string[]
 }
 export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
+export type RawPointsCollection = EndPoint[]
 
-export type PagesCollectionRecord = {
-  type: 'page'
-  name: PointName
-  route: AnyRoute
-  point: PagePoint | (() => Promise<PagePoint>)
-  pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-  layouts: string[]
+export type PagesTreeSourceRecord = {
+  layout: string | undefined
+  pages: string[]
+  nested: undefined | PagesTreeSourceRecord[]
 }
-export type PagesCollection = PagesCollectionRecord[]
-
-export type LayoutsCollectionRecord = {
-  type: 'layout'
-  name: PointName
-  route: AnyRoute
-  point: LayoutPoint | (() => Promise<LayoutPoint>)
-  layoutComponent:
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-  layoutPagesRoutes: AnyRoute[]
-}
-export type LayoutsCollection = LayoutsCollectionRecord[]
-
-export type PagesAndLayoutsCollection = {
-  pages: PagesCollection
-  layouts: LayoutsCollection
-}
+export type PagesTreeSource = PagesTreeSourceRecord[]
 
 export type PagesTreeRecord = {
-  route: AnyRoute
-  name: PointName
-  layoutPoint: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
-  layoutComponent:
+  layoutName?: PointName
+  layoutPoint?: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
+  Layout?:
     | React.ComponentType<{ children: React.ReactNode }>
     | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
     | undefined
   pages: Array<{
-    name: PointName
-    route: AnyRoute
+    pageName: PointName
+    pageRoute: AnyRoute
     pagePoint: PagePoint | (() => Promise<PagePoint>)
-    pageComponent: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+    Page: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
   }>
-  nestedPagesTree: PagesTreeRecord[]
+  nested: undefined | PagesTreeRecord[]
 }
 export type PagesTree = PagesTreeRecord[]

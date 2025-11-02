@@ -1,9 +1,11 @@
 layouts do not have routes
 in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
+default route of page is its name
 
 clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
 queryClient provider in base.queryClient(() => new Query Client)
+parseQueryClient state pending and fetch them also, maybe we do not need registrator
 
 .output(z.object({}))
 merge .input schemas
@@ -32,6 +34,7 @@ preventSsr
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
+add _ to all clases
 basepath replace with cwd
 .useLayout()
 server clients do not need root, it will be retrieved from points in eversion create call

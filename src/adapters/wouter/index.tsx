@@ -78,7 +78,7 @@ export const Router = ({
         policy={policy}
         status={status}
       >
-        {children ?? <RenderPagesTree nodes={pointsCtx.pagesTree} Page404={Page404} />}
+        {children ?? <RenderPagesTree pagesTree={pointsCtx.pagesTree} Page404={Page404} />}
       </RouterContextProvider>
     </WouterRouter>
   )
@@ -89,7 +89,7 @@ export const RouterRoutes = ({ Page404 = DefaultPage404 }: { Page404?: React.Com
   if (!pointsCtx) {
     throw new Error('Points context not found')
   }
-  return <RenderPagesTree nodes={pointsCtx.pagesTree} Page404={Page404} />
+  return <RenderPagesTree pagesTree={pointsCtx.pagesTree} Page404={Page404} />
 }
 
 const DefaultPage404 = () => {
@@ -112,37 +112,37 @@ const combineRoutesToRegex = (routes: AnyRoute[]) => {
 }
 
 export const RenderPagesTree = ({
-  nodes,
+  pagesTree,
   Page404,
   level = 0,
 }: {
-  nodes: PagesTree
+  pagesTree: PagesTree
   Page404: React.ComponentType
   level?: number
 }) => {
   return (
     <Switch>
-      {nodes.map((node) => {
-        if (node.layoutComponent) {
+      {pagesTree.map((node) => {
+        if (node.Layout) {
           // Layout with pages — combine all its page routes into a single regex
-          const Layout = node.layoutComponent
-          const layoutPagesRoutes = node.pages.map((p) => p.route)
+          const Layout = node.Layout
+          const layoutPagesRoutes = node.pages.map((p) => p.pageRoute)
           const layoutPagesRoutesRegex = combineRoutesToRegex(layoutPagesRoutes)
           // const layoutPagesRoutesRegex1 = Route0.getRegexGroup(layoutPagesRoutes)
           // console.log(layoutPagesRoutesRegex)
           // console.log(layoutPagesRoutesRegex1)
           return (
-            <Route key={`layout-${node.route.getDefinition()}`} path={layoutPagesRoutesRegex}>
+            <Route key={`layout-${node.layoutName}`} path={layoutPagesRoutesRegex}>
               <Layout>
                 <Switch>
-                  {node.pages.map(({ route, pageComponent: Page }) => {
+                  {node.pages.map(({ pageRoute, Page }) => {
                     return (
-                      <Route key={route.getDefinition()} path={route.getDefinition()}>
+                      <Route key={pageRoute.getDefinition()} path={pageRoute.getDefinition()}>
                         <Page />
                       </Route>
                     )
                   })}
-                  <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} level={level + 1} />
+                  {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
                 </Switch>
               </Layout>
             </Route>
@@ -151,16 +151,16 @@ export const RenderPagesTree = ({
 
         // Layout-less pages
         return (
-          <Fragment key={`nolayout-${node.route.getDefinition()}`}>
-            {node.pages.map(({ route, pageComponent: Page }) => {
+          <Fragment key={`nolayout-${node.layoutName}`}>
+            {node.pages.map(({ pageRoute, Page }) => {
               return (
-                <Route key={route.getDefinition()} path={route.getDefinition()}>
+                <Route key={pageRoute.getDefinition()} path={pageRoute.getDefinition()}>
                   <Page />
                 </Route>
               )
             })}
 
-            <RenderPagesTree nodes={node.nestedPagesTree} Page404={Page404} level={level + 1} />
+            {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
           </Fragment>
         )
       })}

@@ -36,6 +36,7 @@ export default defineConfig([
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 
       // disable
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off',
       'eslint-comments/no-unlimited-disable': 'off',
       'max-depth': 'off',
       '@typescript-eslint/max-params': 'off',
