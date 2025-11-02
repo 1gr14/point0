@@ -1715,6 +1715,18 @@ export class Point0<
     return this._clientExtractFns.length === 0 || this._clientExtractFns.every((fn) => fn.type === 'head')
   }
 
+  _getClientHeadFnsUntilFirstClientLoader(): Array<ClientExtractFnRecord<'head'>> {
+    const result: Array<ClientExtractFnRecord<'head'>> = []
+    for (const fn of this._clientExtractFns) {
+      if (fn.type === 'head') {
+        result.push(fn)
+      } else {
+        break
+      }
+    }
+    return result
+  }
+
   _hasClientLoader(): boolean {
     return this._clientExtractFns.some((fn) => fn.type === 'loader')
   }

@@ -375,12 +375,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     let currentData: Data = {}
     const extractFns = [
       ...this.eversion._getParents().flatMap((source) => source._extractFns),
-      ...this.eversion.root._extractFns,
       ...(point?._extractFns ?? []),
     ]
-    const staticHeads = [
+    const curretHead = [
       ...this.eversion._getParents().flatMap((source) => source._staticHeads),
-      ...this.eversion.root._staticHeads,
       ...(point?._staticHeads ?? []),
     ]
     // TODO: get status from real point data
@@ -433,9 +431,16 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             throw new Error(`Unknown extend function type: ${(extractFn as any).type}`)
         }
       }
-      // for (const staticHead of staticHeads) {
-      //   currentStaticHeads.push(staticHead)
-      // }
+
+      const pageLocation = this.pageLocation
+      if (pageLocation && point?._pointType === 'page') {
+        curretHead.push(
+          ...point
+            ._getClientHeadFnsUntilFirstClientLoader()
+            .map((headFn) => headFn.fn({ data: currentData, location: pageLocation })),
+        )
+      }
+
       const response = await (async () => {
         if (point?._pointType === 'response') {
           if (!point._responseFn) {
@@ -454,7 +459,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           ctx: currentCtx,
           data: currentData,
-          head: staticHeads,
+          head: curretHead,
           response,
           error: undefined,
           status: 200,
@@ -465,7 +470,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           ctx: currentCtx,
           data: currentData,
-          head: staticHeads,
+          head: curretHead,
           error,
           status: 404,
           response: undefined,
@@ -476,7 +481,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return {
         ctx: currentCtx,
         data: currentData,
-        head: staticHeads,
+        head: curretHead,
         error,
         status: 500,
         response: undefined,
