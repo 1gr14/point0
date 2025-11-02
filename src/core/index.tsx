@@ -16,6 +16,7 @@ import type {
   QueryOptions,
   UseMutationResult,
   UseQueryResult,
+  QueryKey as OriginalQueryKey,
 } from '@tanstack/react-query'
 import { QueryClient, hydrate, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
@@ -25,7 +26,6 @@ import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, ExtractResult } from './eversion.js'
 import { useIsInitalSsrLocation, useLocation } from './router.js'
 import type {
-  AnyPoint,
   AppendCtx,
   BasePoint,
   ClientExtractFnRecord,
@@ -69,6 +69,7 @@ import type {
   Props,
   QueryKey,
   QueryOptionsSettings,
+  FetchOutputType,
   RequiredCtx,
   ResponseFn,
   ResponseOutput,
@@ -1821,26 +1822,6 @@ export class Point0<
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRouteDefinition, TInputSchema>
   }
 
-  static _SsrNonfetchedPointsCollectorContext = React.createContext<{
-    register: (point: AnyPoint, input: Record<string, any>) => void
-  } | null>(null)
-  _useRegisterSelfInSsrNonfetchedPointsCollector = (
-    input: InputRaw<TRouteDefinition, TInputSchema> | undefined = {} as never,
-  ): void => {
-    // Safe to do during render in SSR (pattern used by CSS-in-JS)
-    const registeredRef = React.useRef(false)
-    const ssrNonfetchedPointsCollectorContext = React.useContext(Point0._SsrNonfetchedPointsCollectorContext)
-    if (ssrNonfetchedPointsCollectorContext?.register && !registeredRef.current) {
-      const { queryCache } = this.useQueryCache(input)
-      const isFetched = queryCache?.state.status === 'error' || queryCache?.state.status === 'success'
-      if (isFetched) {
-        return
-      }
-      registeredRef.current = true
-      ssrNonfetchedPointsCollectorContext.register(this as never, input)
-    }
-  }
-
   _PageInner: React.ComponentType<{
     data: FinalData<TData>
     location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
@@ -1921,7 +1902,6 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const input = this._getUnsafeInputRawByLocation(location)
     const { queryKey, queryCache } = this.useQueryCache(input)
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(input)
     const result = useQuery({
       queryKey,
       queryFn: async () => {
@@ -2033,7 +2013,6 @@ export class Point0<
     const loaderComponent = this._getLoaderComponent({ type: 'component' })
     const errorComponent = this._getErrorComponent({ type: 'component' })
     const result = this.useQuery(input as never)
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(input as never)
 
     if (result.error) {
       return React.createElement(errorComponent, { type: 'component', error: Error0.from(result.error), location })
@@ -2134,7 +2113,6 @@ export class Point0<
     const input = this._getUnsafeInputRawByLocation(location)
     const { queryKey, queryCache } = this.useQueryCache(input)
     const isInitalSsrLocation = useIsInitalSsrLocation()
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(input)
     const result = useQuery({
       queryKey,
       queryFn: async () => {
@@ -2256,7 +2234,6 @@ export class Point0<
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const { queryCache, queryKey } = this.useQueryCache(input)
-    this._useRegisterSelfInSsrNonfetchedPointsCollector(input)
     const result = useQuery({
       queryKey,
       queryFn: async () => {
@@ -2299,8 +2276,8 @@ export class Point0<
 
   async fetch(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: string]
-      : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: string]
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchOutput<TResponseOutput, TData>> {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions(), ...options }
@@ -2347,17 +2324,43 @@ export class Point0<
     })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
   }
 
+  static parseQueryKey(queryKey: OriginalQueryKey | QueryKey):
+    | {
+        pointType: EndPointType
+        pointName: PointName
+        outputType: string
+        input: InputRaw
+      }
+    | undefined {
+    const [check, pointType, pointName, outputType, input] = queryKey
+    if (
+      check !== 'point0' ||
+      typeof pointType !== 'string' ||
+      typeof pointName !== 'string' ||
+      typeof outputType !== 'string' ||
+      typeof input !== 'string'
+    ) {
+      return undefined
+    }
+    return {
+      pointType: pointType as EndPointType,
+      pointName,
+      outputType,
+      input: JSON.parse(input) as InputRaw,
+    }
+  }
+
   getQueryKey(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: string]
-      : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: string]
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
   ): QueryKey {
     if (!this._name) {
       throw new Error('Point name is not provided')
     }
     const [input = {}] = args
     const outputType = args[1] ?? (this._pointType === 'response' ? 'response' : 'data')
-    return [this._pointType, this._name, outputType, stringify(input)]
+    return ['point0', this._pointType, this._name, outputType, stringify(input)]
   }
 
   getQueryOptions(
@@ -2366,13 +2369,13 @@ export class Point0<
           input?: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: QueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _outputType?: string,
+          _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: QueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _outputType?: string,
+          _outputType?: FetchOutputType,
         ]
   ): QueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
     const [input, queryOptions, fetchOptions, outputType] = args
@@ -2410,13 +2413,13 @@ export class Point0<
           input?: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: QueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _outputType?: string,
+          _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: QueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _outputType?: string,
+          _outputType?: FetchOutputType,
         ]
   ): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
     return useQuery(this.getQueryOptions(...args))
@@ -2424,8 +2427,8 @@ export class Point0<
 
   useQueryCache = (
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: string]
-      : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: string]
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
   ): {
     queryCache: Query<FetchOutput<TResponseOutput, TData>, Error0> | undefined
     queryKey: QueryKey
@@ -2454,7 +2457,7 @@ export class Point0<
             fetchOptions?: FetchOptions
             force?: boolean
           },
-          _outputType?: string,
+          _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
@@ -2464,7 +2467,7 @@ export class Point0<
             fetchOptions?: FetchOptions
             force?: boolean
           },
-          _outputType?: string,
+          _outputType?: FetchOutputType,
         ]
   ): Promise<undefined | QueryKey> {
     const [input, { queryClient, queryOptions: providedQueryOptions, fetchOptions, force }, outputType] = args

@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
-import type { DehydratedState } from '@tanstack/react-query'
-import { dehydrate, hashKey, QueryClient } from '@tanstack/react-query'
+import type { DehydratedState, QueryClient } from '@tanstack/react-query'
+import { dehydrate, hashKey } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
@@ -327,7 +327,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }) {
     this.eversion = eversion
     this.extractFnsWithOutput = []
-    this.queryClient = new QueryClient()
+    this.queryClient = this.eversion.root.getQueryClient()
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
     this.dehydratedState = dehydrate(this.queryClient)
@@ -487,70 +487,60 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async prefetchAppPoints({
     App,
     renderToReadableStream,
-    allFetchedRecords = [],
+    seenQueryHashes = new Set<string>(),
   }: {
     App: HydratedAppComponent
     renderToReadableStream: typeof RenderToReadableStream
-    allFetchedRecords?: FetchPointRecord[]
+    seenQueryHashes?: Set<string>
   }): Promise<void> {
-    const nonfetchedRecords: FetchPointRecord[] = []
-
-    const NonfetchedRecordsCollectorContextProvider = ({
-      register,
-      children,
-    }: {
-      register: (point: AnyPoint, input: Record<string, any>) => void
-      children: React.ReactNode
-    }): React.ReactNode => {
-      return (
-        <Point0._SsrNonfetchedPointsCollectorContext.Provider value={{ register }}>
-          {children}
-        </Point0._SsrNonfetchedPointsCollectorContext.Provider>
-      )
-    }
-
-    // 1) First render to collect points
     const probeTree = (
-      <NonfetchedRecordsCollectorContextProvider
-        register={(point, input) => {
-          nonfetchedRecords.push({ point, input })
-        }}
-      >
-        <App
-          ssrLocation={this.pageLocation}
-          points={this.eversion.points}
-          dehydratedState={this.getQueryClientDehydratedState()}
-        />
-      </NonfetchedRecordsCollectorContextProvider>
+      <App
+        ssrLocation={this.pageLocation}
+        root={this.eversion.root}
+        points={this.eversion.points}
+        dehydratedState={this.getQueryClientDehydratedState()}
+      />
     )
     const stream = await renderToReadableStream(probeTree)
     await stream.allReady
-    const fetchedRecords: FetchPointRecord[] = []
-
-    for (const nonfetchedRecord of nonfetchedRecords) {
-      const isCurcular = allFetchedRecords.some(
-        ({ point }) =>
-          point._name === nonfetchedRecord.point._name &&
-          point._rootId === nonfetchedRecord.point._rootId &&
-          point._pointType === nonfetchedRecord.point._pointType,
-      )
-      if (isCurcular) {
-        return
+    const queryClientState = this.queryClient.getQueryCache().findAll()
+    const suitableMarkers = queryClientState.flatMap((query) => {
+      const hash = query.queryHash
+      if (seenQueryHashes.has(hash)) {
+        return []
       }
-      await nonfetchedRecord.point.extract(this, nonfetchedRecord.input)
-      fetchedRecords.push(nonfetchedRecord)
+      const parsedQueryKey = Point0.parseQueryKey(query.queryKey)
+      if (!parsedQueryKey) {
+        return []
+      }
+      if (parsedQueryKey.outputType !== 'data') {
+        return []
+      }
+      seenQueryHashes.add(hash)
+      return parsedQueryKey
+    })
+
+    if (suitableMarkers.length === 0) {
+      return
     }
 
-    if (nonfetchedRecords.length === 0) {
-      return
+    for (const suitableMarker of suitableMarkers) {
+      const suitable = this.eversion.getSuitable({
+        pointType: suitableMarker.pointType,
+        pointName: suitableMarker.pointName,
+        input: suitableMarker.input,
+        rootId: this.eversion.root._rootId,
+        fallbackRootId: this.eversion.root._rootId,
+      })
+      if (suitable.point) {
+        await this.extract({ point: suitable.point, input: suitableMarker.input })
+      }
     }
-    if (fetchedRecords.length !== nonfetchedRecords.length) {
-      return
-    }
+
     await this.prefetchAppPoints({
       App,
       renderToReadableStream,
-      allFetchedRecords: [...allFetchedRecords, ...fetchedRecords],
+      seenQueryHashes,
     })
   }
 
@@ -662,5 +652,3 @@ export type Payload = {
   dehydratedState: DehydratedState
   location: AnyLocation
 }
-
-type FetchPointRecord = { point: AnyPoint; input: Record<string, any> }

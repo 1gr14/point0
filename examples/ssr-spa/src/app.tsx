@@ -1,15 +1,13 @@
-import { HydrationBoundary, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Unhead } from 'point0/core/unhead'
+import { HydrationBoundary, QueryClientProvider } from '@tanstack/react-query'
 import { Router, RouterRoutes } from 'point0/adapters/wouter'
 import type { HydratedAppProps } from 'point0/core/hydrate'
-import { useState } from 'react'
+import { Unhead } from 'point0/core/unhead'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'
 
-export default function App({ dehydratedState, ssrLocation, points }: HydratedAppProps) {
-  const [queryClient] = useState(() => new QueryClient())
+export default function App({ dehydratedState, ssrLocation, points, root }: HydratedAppProps) {
   return (
     <points.Provider>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={root.getQueryClient()}>
         <HydrationBoundary state={dehydratedState}>
           <Unhead>
             <Router ssrLocation={ssrLocation} policy="prefetch">

@@ -5,23 +5,35 @@ import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { Payload } from './eversion.js'
 import type { Points } from './points.js'
+import type { RootPoint } from './types.js'
 
 export type HydrateResult = {
   payload: Payload
-  rootElement: HTMLElement
+  domRootElement: HTMLElement
   appElement: React.ReactElement
 }
 export type HydratedAppProps = {
   ssrLocation: AnyLocation | undefined
   dehydratedState: DehydratedState | undefined
+  root: RootPoint
   points: Points
 }
 export type HydratedAppComponent = (props: HydratedAppProps) => React.ReactElement
 
-let root: Root | null = null
+let reactRoot: Root | null = null
 let result: HydrateResult | null = null
 
-export function hydrate(App: HydratedAppComponent, points: Points, rootElement?: HTMLElement | null): HydrateResult {
+export function hydrate({
+  App,
+  root,
+  points,
+  domRootElement,
+}: {
+  App: HydratedAppComponent
+  root: RootPoint
+  points: Points
+  domRootElement?: HTMLElement | null
+}): HydrateResult {
   // if (result) {
   //   return result
   // }
@@ -38,15 +50,15 @@ export function hydrate(App: HydratedAppComponent, points: Points, rootElement?:
     }
   })()
 
-  if (rootElement !== undefined) {
-    if (!rootElement) {
-      throw new Error(`Provided rootElement is null, please provide correct rootElement`)
+  if (domRootElement !== undefined) {
+    if (!domRootElement) {
+      throw new Error(`Provided domRootElement is null, please provide correct domRootElement`)
     }
   } else {
-    rootElement = document.getElementById('root')
-    if (!rootElement) {
+    domRootElement = document.getElementById('root')
+    if (!domRootElement) {
       throw new Error(
-        `Element #root not found, please provide rootElement in input or add #root element to the index.html`,
+        `Element #root not found, please provide domRootElement in input or add #root element to the index.html`,
       )
     }
   }
@@ -55,25 +67,26 @@ export function hydrate(App: HydratedAppComponent, points: Points, rootElement?:
     dehydratedState: payload.dehydratedState,
     ssrLocation: payload.location,
     points,
+    root,
   })
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.
   //    - If not, do a client-side mount.
-  if (!root) {
-    if (rootElement.hasChildNodes()) {
-      root = hydrateRoot(rootElement, appElement)
+  if (!reactRoot) {
+    if (domRootElement.hasChildNodes()) {
+      reactRoot = hydrateRoot(domRootElement, appElement)
     } else {
-      root = createRoot(rootElement)
-      root.render(appElement)
+      reactRoot = createRoot(domRootElement)
+      reactRoot.render(appElement)
     }
   } else {
     // Subsequent invocations (e.g., HMR updates):
     // Don’t recreate the root; just render the new element tree.
     // With React Fast Refresh, this preserves hook state when component boundaries match.
-    root.render(appElement)
+    reactRoot.render(appElement)
   }
 
-  result = { payload, rootElement, appElement }
+  result = { payload, domRootElement, appElement }
   return result
 }

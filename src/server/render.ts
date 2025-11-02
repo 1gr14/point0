@@ -233,6 +233,7 @@ export async function renderReadableStream({
 export async function renderAppAsReadableStream({
   App,
   eversionRun,
+  pageLocation,
   ...props
 }: {
   App: HydratedAppComponent
@@ -249,12 +250,14 @@ export async function renderAppAsReadableStream({
     renderToReadableStream,
   })
   const element = createElement(App, {
-    ssrLocation: eversionRun.pageLocation,
+    ssrLocation: pageLocation,
+    root: eversionRun.eversion.root,
     points: eversionRun.eversion.points,
     dehydratedState: eversionRun.getQueryClientDehydratedState(),
   })
   return await renderReadableStream({
     ...props,
+    pageLocation,
     element,
     dehydratedState: eversionRun.getQueryClientDehydratedState(),
   })

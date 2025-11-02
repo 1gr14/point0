@@ -1,5 +1,3 @@
-route0 fix regex generator according wouter
-
 queryClient provider in base.queryClient(() => new Query Client)
 parseQueryClient state pending and fetch them also, maybe we do not need registrator
 
@@ -92,6 +90,7 @@ allow not to pass server root at all to server, so client only apps
 websocket
 statefull meta
 batch query
+layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page)
 foxyLoader, clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
 .interstellar((extractSelf) => elysia.get(() => extractSelf()))
 .useComponent() to gueranty of preloading of this component
