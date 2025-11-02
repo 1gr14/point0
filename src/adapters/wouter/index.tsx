@@ -96,17 +96,8 @@ const DefaultPage404 = () => {
   return <div>Page Not Found</div>
 }
 
-// const compileRouteToRegex = (route: AnyRoute) => {
-//   const result = route
-//     .getDefinition()
-//     .replace(/\/+$/, '') // remove trailing slash
-//     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex special chars
-//     .replace(/:(\w+)/g, '([^/]+)') // replace :param with capture group
-//   return result ? `^${result}/?$` : `^/?$`
-// }
-// Combine multiple route definitions into a single regex
-const combineRoutesToRegex = (routes: AnyRoute[]) => {
-  const compiled = routes.map((r) => r.getRegexString())
+const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
+  const compiled = routes.map((r) => r.getRegexBaseString())
   const pattern = `^(${compiled.join('|')})(?:/|$)`
   return new RegExp(pattern)
 }
@@ -124,13 +115,9 @@ export const RenderPagesTree = ({
     <Switch>
       {pagesTree.map((node) => {
         if (node.Layout) {
-          // Layout with pages — combine all its page routes into a single regex
           const Layout = node.Layout
           const layoutPagesRoutes = node.pages.map((p) => p.pageRoute)
-          const layoutPagesRoutesRegex = combineRoutesToRegex(layoutPagesRoutes)
-          // const layoutPagesRoutesRegex1 = Route0.getRegexGroup(layoutPagesRoutes)
-          // console.log(layoutPagesRoutesRegex)
-          // console.log(layoutPagesRoutesRegex1)
+          const layoutPagesRoutesRegex = combinePagesRoutesToRegexForLayout(layoutPagesRoutes)
           return (
             <Route key={`layout-${node.layoutName}`} path={layoutPagesRoutesRegex}>
               <Layout>

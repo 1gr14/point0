@@ -292,51 +292,6 @@ export class Points<TReady extends boolean = boolean> {
     return tree
   }
 
-  // private static readonly toPagesAndLayoutsCollection = ({
-  //   points,
-  // }: {
-  //   points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
-  // }): PagesAndLayoutsCollection => {
-  //   const collection: PagesAndLayoutsCollection = {
-  //     pages: [],
-  //     layouts: [],
-  //   }
-  //   for (const record of points) {
-  //     if (record.type !== 'layout' || !record.route) {
-  //       continue
-  //     }
-  //     const point = record.point
-  //     collection.layouts.push({
-  //       name: record.name,
-  //       point: point as LayoutPoint | (() => Promise<LayoutPoint>),
-  //       Layout:
-  //         typeof point === 'function'
-  //           ? React.lazy(async () => ({
-  //               default: (await point())._Layout,
-  //             }))
-  //           : point._Layout,
-  //     })
-  //   }
-  //   for (const record of points) {
-  //     if (record.type !== 'page' || !record.route) {
-  //       continue
-  //     }
-  //     const point = record.point
-  //     collection.pages.push({
-  //       name: record.name,
-  //       route: Route0.from(record.route),
-  //       point: point as PagePoint | (() => Promise<PagePoint>),
-  //       Page:
-  //         typeof point === 'function'
-  //           ? React.lazy(async () => ({
-  //               default: (await point())._Page,
-  //             }))
-  //           : point._Page,
-  //     })
-  //   }
-  //   return collection
-  // }
-
   private static readonly toPagesTree = ({
     points,
     pagesTreeSource,

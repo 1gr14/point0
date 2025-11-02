@@ -13,12 +13,11 @@ import type {
   DehydratedState,
   MutationOptions,
   Query,
-  QueryClient,
   QueryOptions,
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { hydrate, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { QueryClient, hydrate, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
@@ -122,6 +121,7 @@ export class Point0<
 
   point: typeof this // this, needed for generator to collect points
 
+  _queryClient: QueryClient | undefined
   _isRoot: boolean
   _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
@@ -164,6 +164,7 @@ export class Point0<
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
     // _useLocation?: () => Route0.Location
     _sourceBaseUrl?: string | undefined
+    _queryClient?: QueryClient
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -200,6 +201,7 @@ export class Point0<
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
+    this._queryClient = props._queryClient ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -269,6 +271,7 @@ export class Point0<
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
     _sourceBaseUrl?: string | undefined
+    _queryClient?: QueryClient | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -336,6 +339,7 @@ export class Point0<
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
+      _queryClient: overrides._queryClient ?? this._queryClient,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -569,6 +573,41 @@ export class Point0<
     >({
       _pointType: 'middleware',
       _sourceBaseUrl: sourceBaseUrl,
+    })
+  }
+
+  queryClient(
+    queryClient: QueryClient,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _queryClient: queryClient,
     })
   }
 
@@ -1365,6 +1404,11 @@ export class Point0<
   }
 
   // end points
+
+  getQueryClient(): QueryClient {
+    this._queryClient ??= new QueryClient()
+    return this._queryClient
+  }
 
   page<TPage extends PageComponent<TData, TClientData, TRouteDefinition>>(
     page: TPage,

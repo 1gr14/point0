@@ -1,9 +1,5 @@
-layouts do not have routes
-in router generate page tree based on layouts and pages with tests
 route0 fix regex generator according wouter
-default route of page is its name
 
-clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
 queryClient provider in base.queryClient(() => new Query Client)
 parseQueryClient state pending and fetch them also, maybe we do not need registrator
 
@@ -96,6 +92,8 @@ allow not to pass server root at all to server, so client only apps
 websocket
 statefull meta
 batch query
+foxyLoader, clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
 .interstellar((extractSelf) => elysia.get(() => extractSelf()))
 .useComponent() to gueranty of preloading of this component
+default route of page is its name
 ? interstallar
