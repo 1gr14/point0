@@ -2275,15 +2275,10 @@ export class Point0<
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const input = this._getUnsafeInputRawByLocation(location)
-    const { queryKey, queryCache } = this.useQueryCache(input)
-    const result = useQuery({
-      queryKey,
-      queryFn: async () => {
-        return await this.fetch(input)
-      },
-      enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-      ...this._defaultQueryOptions,
+    const { queryCache } = this.useQueryCache(input)
+    const result = this.useQuery(input, {
       ...this._defaultPageQueryOptions,
+      enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
     })
     if (result.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
@@ -2380,7 +2375,9 @@ export class Point0<
 
     const loaderComponent = this._getLoaderComponent({ type: 'component' })
     const errorComponent = this._getErrorComponent({ type: 'component' })
-    const result = this.useQuery(input as never)
+    const result = this.useQuery(input as never, {
+      ...this._defaultComponentQueryOptions,
+    })
 
     if (result.error) {
       return React.createElement(errorComponent, { type: 'component', error: Error0.from(result.error), location })
@@ -2479,21 +2476,10 @@ export class Point0<
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const input = this._getUnsafeInputRawByLocation(location)
-    const { queryKey, queryCache } = this.useQueryCache(input)
+    const { queryCache } = this.useQueryCache(input)
     const isInitalSsrLocation = useIsInitalSsrLocation()
-    const result = useQuery({
-      queryKey,
-      queryFn: async () => {
-        return await this.fetch(input)
-      },
+    const result = this.useQuery(input, {
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-      ...this._defaultQueryOptions,
       ...this._defaultPageQueryOptions,
     })
     if (result.error) {
@@ -2601,21 +2587,10 @@ export class Point0<
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const isInitalSsrLocation = useIsInitalSsrLocation()
-    const { queryCache, queryKey } = this.useQueryCache(input)
-    const result = useQuery({
-      queryKey,
-      queryFn: async () => {
-        return await this.fetch(input)
-      },
+    const { queryCache } = this.useQueryCache(input)
+    const result = this.useQuery(input, {
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
-      ...this._defaultQueryOptions,
-      ...this._defaultPageQueryOptions,
+      ...this._defaultClientCtxQueryOptions,
     })
     if (result.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
@@ -2735,17 +2710,17 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: QueryOptions | undefined,
+          queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: QueryOptions | undefined,
+          queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
-  ): QueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
+  ): UseQueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
     const [input, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
     const queryFn = async () => {
@@ -2779,13 +2754,13 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: QueryOptions | undefined,
+          queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: QueryOptions | undefined,
+          queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]

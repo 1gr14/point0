@@ -4,6 +4,7 @@ import type {
   UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
   UseQueryOptions as OriginalUseQueryOptions,
   QueryClient,
+  QueryKey as OriginalQueryKey,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, input as ZodInput, ZodObject } from 'zod'
@@ -47,11 +48,33 @@ export type UndefinedProps = undefined
 export type EmptyProps = Record<string, unknown>
 export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends UndefinedProps ? EmptyProps : TProps
 
-export type UseQueryOptions = OriginalUseQueryOptions<any, any, any, any>
-export type ExtraUseQueryOptions = Omit<UseQueryOptions, 'queryFn' | 'queryKey'>
-export type UseInfiniteQueryOptions = OriginalUseInfiniteQueryOptions<any, any, any, any, any>
-export type ExtraUseInfiniteQueryOptions = Omit<
-  UseInfiniteQueryOptions,
+export type UseQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+> = OriginalUseQueryOptions<TQueryFnData, TError, TData, TQueryKey>
+export type ExtraUseQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+> = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'>
+export type UseInfiniteQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>
+export type ExtraUseInfiniteQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = Omit<
+  UseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>,
   'queryFn' | 'queryKey' | 'getNextPageParam' | 'initialPageParam'
 >
 // used to avoid circular depedencies
@@ -721,7 +744,8 @@ export type FetchOutputType = 'data' | 'response' | 'dehydratedState'
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 
-export type QueryKey = readonly [string, ...string[]]
+// export type QueryKey = readonly [string, ...string[]]
+export type QueryKey = OriginalQueryKey
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 export type ShowError<Message extends string> = { error: Message } & never
