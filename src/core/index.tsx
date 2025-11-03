@@ -153,7 +153,7 @@ export class Point0<
   _defaultComponentQueryOptions: ExtraUseQueryOptions
   _defaultClientCtxQueryOptions: ExtraUseQueryOptions
   _queryOptions: ExtraUseQueryOptions
-  _infiniteQueryOptions: ExtraUseInfiniteQueryOptions
+  _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
   _queryResultType: TQueryResultType
   // TODO: remove or use wrapper
   _wrapper: WrapperComponentType | undefined
@@ -203,7 +203,7 @@ export class Point0<
     _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultClientCtxQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
-    _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions | undefined
+    _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
     _queryResultType?: TQueryResultType
     _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
@@ -333,7 +333,7 @@ export class Point0<
     _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultClientCtxQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
-    _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions | undefined
+    _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
     _queryResultType?: TQueryResultType
     _wrapper?: WrapperComponentType | undefined
     _extractFns?: ExtractFnRecord[]
@@ -421,7 +421,9 @@ export class Point0<
         ...this._defaultClientCtxQueryOptions,
       },
       _queryOptions: overrides._queryOptions ?? { ...this._queryOptions },
-      _infiniteQueryOptions: overrides._infiniteQueryOptions ?? { ...this._infiniteQueryOptions },
+      _infiniteQueryOptions: (overrides._infiniteQueryOptions ?? {
+        ...this._infiniteQueryOptions,
+      }) as ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
       _hasSourceBase: this._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
         ? false
@@ -766,7 +768,7 @@ export class Point0<
   }
 
   infiniteQueryOptions(
-    infiniteQueryOptions: ExtraUseInfiniteQueryOptions,
+    infiniteQueryOptions: PartialUseInfiniteQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -2112,7 +2114,14 @@ export class Point0<
 
   infiniteQuery<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>,
+    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+      InputRaw<TRouteDefinition, TInputSchema>,
+      TNewData,
+      Error0,
+      TData,
+      QueryKey,
+      unknown
+    >,
   ): Point0<
     'infiniteQuery',
     TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
@@ -2458,7 +2467,7 @@ export class Point0<
     const query = useQueryMethod(input, {
       ...this._defaultPageQueryOptions,
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-    })
+    } as never)
     if (query.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
     }
@@ -2565,9 +2574,12 @@ export class Point0<
     const loaderComponent = this._getLoaderComponent({ type: 'component' })
     const errorComponent = this._getErrorComponent({ type: 'component' })
     const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
-    const query = useQueryMethod(input as never, {
-      ...this._defaultComponentQueryOptions,
-    })
+    const query = useQueryMethod(
+      input as never,
+      {
+        ...this._defaultComponentQueryOptions,
+      } as never,
+    )
 
     if (query.error) {
       return React.createElement(errorComponent, {
@@ -2691,7 +2703,7 @@ export class Point0<
     const query = useQueryMethod(input, {
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       ...this._defaultPageQueryOptions,
-    })
+    } as never)
     if (query.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
     }
@@ -2810,7 +2822,7 @@ export class Point0<
     const query = useQueryMethod(input, {
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       ...this._defaultClientCtxQueryOptions,
-    })
+    } as never)
     if (query.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
     }
@@ -2977,10 +2989,11 @@ export class Point0<
           _outputType?: FetchOutputType,
         ]
   ): UseInfiniteQueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
-    const [input, queryOptions, fetchOptions, outputType] = args
+    const [input = {}, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
-    const queryFn = async () => {
-      const data = await this.fetch(input as never, fetchOptions, outputType)
+    const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
+      const pageParamInputKey = this._infiniteQueryOptions.pageParamInputKey
+      const data = await this.fetch({ ...input, [pageParamInputKey]: pageParam } as never, fetchOptions, outputType)
       return data
     }
     const result = {
@@ -3031,13 +3044,13 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
-          queryOptions: ExtraUseQueryOptions | undefined,
+          queryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions: ExtraUseQueryOptions | undefined,
+          queryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]

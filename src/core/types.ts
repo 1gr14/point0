@@ -66,30 +66,30 @@ export type ExtraUseQueryOptions<
   TQueryKey extends QueryKey = QueryKey,
 > = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'>
 export type UseInfiniteQueryOptions<
+  TInput extends InputRaw,
   TQueryFnData = any,
   TError = any,
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
-> = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>
+> = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam> & {
+  pageParamInputKey: keyof TInput
+}
 export type ExtraUseInfiniteQueryOptions<
+  TInput extends InputRaw,
   TQueryFnData = any,
   TError = any,
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
-> = Omit<
-  UseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>,
-  'queryFn' | 'queryKey' | 'initialPageParam'
-> &
-  Partial<Pick<UseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'initialPageParam'>>
+> = Omit<UseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'queryFn' | 'queryKey'>
 export type PartialUseInfiniteQueryOptions<
   TQueryFnData = any,
   TError = any,
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
-> = Partial<ExtraUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>>
+> = Partial<ExtraUseInfiniteQueryOptions<InputRaw, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
 // used to avoid circular depedencies
 export type Infer<
   TRequiredCtx extends RequiredCtx = RequiredCtx,

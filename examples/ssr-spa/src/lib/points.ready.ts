@@ -27,7 +27,7 @@ export const points = Points.ready([
   {
     type: 'page',
     name: 'ideas',
-    route: '/ideas&page',
+    route: '/ideas',
     layouts: ['generalLayout'],
     point: ideasPage_1ez06sxoz6e.point,
   },

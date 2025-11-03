@@ -1,24 +1,26 @@
 import { Link } from 'point0/adapters/wouter/index.js'
 import { useState } from 'react'
+import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { routes } from '../lib/routes.js'
 
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
-  .route('/ideas&page')
+  .route('/ideas')
+  .input(z.object({ page: z.coerce.number().default(0) }))
   .infiniteQuery(
     async ({ ctx, data, input }) => {
       const ideasCount = await ctx.prisma.idea.count()
-      console.log('input', input)
-      const page = Number(input.page ?? 0)
+      const page = input.page
       const limit = 2
       const ideas = await ctx.prisma.idea.findMany({ take: limit, skip: page * limit })
       const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
       return { ...data, ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
     },
     {
-      getNextPageParam: (lastPage) => lastPage.ideas[lastPage.ideas.length - 1].id,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: 0,
+      pageParamInputKey: 'page',
     },
   )
   .title(({ data }) => {
