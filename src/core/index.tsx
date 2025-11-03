@@ -92,6 +92,8 @@ import type {
   UndefinedRouteDefinition,
   WrapperComponentType,
   GeneralStore,
+  QueryResultType,
+  UndefinedQueryResultType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
@@ -107,6 +109,7 @@ export class Point0<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > {
   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData, TInputSchema> & {
@@ -135,8 +138,14 @@ export class Point0<
     : undefined
   _rootId: RootId
   _staticHeads: StaticHeadsCollection
+  _defaultQueryOptions: QueryOptionsSettings
+  _defaultInfiniteQueryOptions: QueryOptionsSettings
+  _defaultPageQueryOptions: QueryOptionsSettings
+  _defaultLayoutQueryOptions: QueryOptionsSettings
+  _defaultComponentQueryOptions: QueryOptionsSettings
+  _defaultClientCtxQueryOptions: QueryOptionsSettings
   _queryOptions: QueryOptionsSettings
-  _pageQueryOptions: QueryOptionsSettings
+  _queryResultType: TQueryResultType
   // TODO: remove or use wrapper
   _wrapper: WrapperComponentType | undefined
   _hasSourceBase: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
@@ -152,6 +161,7 @@ export class Point0<
   _unstableId: number
   _fetchOptions: FetchOptionsFn
 
+  // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loaderComponent
   _errorComponent: ErrorComponentType
   _pageErrorComponent?: ErrorComponentType<'page'>
   _componentErrorComponent?: ErrorComponentType<'component'>
@@ -173,8 +183,14 @@ export class Point0<
     _rootId: RootId
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
+    _defaultInfiniteQueryOptions?: QueryOptionsSettings | undefined
+    _defaultQueryOptions?: QueryOptionsSettings | undefined
+    _defaultPageQueryOptions?: QueryOptionsSettings | undefined
+    _defaultLayoutQueryOptions?: QueryOptionsSettings | undefined
+    _defaultComponentQueryOptions?: QueryOptionsSettings | undefined
+    _defaultClientCtxQueryOptions?: QueryOptionsSettings | undefined
     _queryOptions?: QueryOptionsSettings | undefined
-    _pageQueryOptions?: QueryOptionsSettings | undefined
+    _queryResultType?: TQueryResultType
     _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
@@ -207,8 +223,14 @@ export class Point0<
     this._letsEndPointType = props._letsEndPointType
     this._wrapper = props._wrapper
     this._staticHeads = props._staticHeads ?? []
+    this._defaultQueryOptions = props._defaultQueryOptions ?? {}
+    this._defaultInfiniteQueryOptions = props._defaultInfiniteQueryOptions ?? {}
+    this._defaultLayoutQueryOptions = props._defaultLayoutQueryOptions ?? {}
+    this._defaultComponentQueryOptions = props._defaultComponentQueryOptions ?? {}
+    this._defaultClientCtxQueryOptions = props._defaultClientCtxQueryOptions ?? {}
+    this._defaultPageQueryOptions = props._defaultPageQueryOptions ?? {}
     this._queryOptions = props._queryOptions ?? {}
-    this._pageQueryOptions = props._pageQueryOptions ?? {}
+    this._queryResultType = (props._queryResultType ?? undefined) as TQueryResultType
     this._hasSourceBase = props._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
       ? false
       : true
@@ -265,6 +287,7 @@ export class Point0<
     TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
     TInputSchema extends InputSchema | UndefinedInputSchema,
     TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+    TQueryResultType extends QueryResultType | UndefinedQueryResultType,
     TProps extends Props | UndefinedProps,
   >(overrides: {
     _pointType: TPointType
@@ -276,8 +299,14 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
     _staticHeads?: StaticHeadsCollection
+    _defaultInfiniteQueryOptions?: QueryOptionsSettings | undefined
+    _defaultQueryOptions?: QueryOptionsSettings | undefined
+    _defaultPageQueryOptions?: QueryOptionsSettings | undefined
+    _defaultComponentQueryOptions?: QueryOptionsSettings | undefined
+    _defaultLayoutQueryOptions?: QueryOptionsSettings | undefined
+    _defaultClientCtxQueryOptions?: QueryOptionsSettings | undefined
     _queryOptions?: QueryOptionsSettings | undefined
-    _pageQueryOptions?: QueryOptionsSettings | undefined
+    _queryResultType?: TQueryResultType
     _wrapper?: WrapperComponentType | undefined
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
@@ -313,6 +342,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return new Point0<
@@ -327,13 +357,14 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       // persistent
       _rootId: this._rootId,
 
       // overridable
-      _base: overrides._base ?? (this._base as BasePoint<any, any, TRequiredCtx> | undefined),
+      _base: (overrides._base ?? this._base) as BasePoint<any, any, TRequiredCtx> | undefined,
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
@@ -345,8 +376,18 @@ export class Point0<
       // _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
       _staticHeads: overrides._staticHeads ?? this._staticHeads,
+      _defaultQueryOptions: overrides._defaultQueryOptions ?? { ...this._defaultQueryOptions },
+      _defaultInfiniteQueryOptions: overrides._defaultInfiniteQueryOptions ?? { ...this._defaultInfiniteQueryOptions },
+      _defaultPageQueryOptions: overrides._defaultPageQueryOptions ?? { ...this._defaultPageQueryOptions },
+      _defaultLayoutQueryOptions: overrides._defaultLayoutQueryOptions ?? { ...this._defaultLayoutQueryOptions },
+      _defaultComponentQueryOptions: overrides._defaultComponentQueryOptions ?? {
+        ...this._defaultComponentQueryOptions,
+      },
+      _defaultClientCtxQueryOptions: overrides._defaultClientCtxQueryOptions ?? {
+        ...this._defaultClientCtxQueryOptions,
+      },
       _queryOptions: overrides._queryOptions ?? { ...this._queryOptions },
-      _pageQueryOptions: overrides._pageQueryOptions ?? { ...this._pageQueryOptions },
+      _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
       _hasSourceBase: this._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
         ? false
         : true,
@@ -403,6 +444,7 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedResponseOutput,
+    UndefinedQueryResultType,
     UndefinedProps
   > {
     return new Point0({
@@ -431,6 +473,7 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedResponseOutput,
+    UndefinedQueryResultType,
     UndefinedProps
   > {
     return new Point0<
@@ -445,6 +488,7 @@ export class Point0<
       UndefinedRoute,
       UndefinedInputSchema,
       UndefinedResponseOutput,
+      UndefinedQueryResultType,
       UndefinedProps
     >({
       _pointType: 'middleware',
@@ -472,6 +516,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -486,6 +531,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'base',
@@ -510,6 +556,11 @@ export class Point0<
     TRouteDefinition, // and use it as prev route
     TInputSchema,
     UndefinedResponseOutput, // drop response output
+    TNewLetsEndPointType extends 'query'
+      ? 'query'
+      : TNewLetsEndPointType extends 'infiniteQuery'
+        ? 'infiniteQuery'
+        : TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -524,6 +575,11 @@ export class Point0<
       TRouteDefinition,
       TInputSchema,
       UndefinedResponseOutput,
+      TNewLetsEndPointType extends 'query'
+        ? 'query'
+        : TNewLetsEndPointType extends 'infiniteQuery'
+          ? 'infiniteQuery'
+          : TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -533,8 +589,22 @@ export class Point0<
       _prevRoute: this._route as never,
       _sourceBaseUrl: this._base?._sourceBaseUrl,
       _staticHeads: this._base?._staticHeads,
-      _queryOptions: this._base?._queryOptions,
-      _pageQueryOptions: this._base?._pageQueryOptions,
+      _defaultQueryOptions: this._base?._defaultQueryOptions,
+      _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
+      _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
+      _defaultComponentQueryOptions: this._base?._defaultComponentQueryOptions,
+      _defaultClientCtxQueryOptions: this._base?._defaultClientCtxQueryOptions,
+      _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
+      _queryOptions: {},
+      _queryResultType: (letsEndPointType === 'query'
+        ? 'query'
+        : letsEndPointType === 'infiniteQuery'
+          ? 'infiniteQuery'
+          : this._queryResultType) as TNewLetsEndPointType extends 'query'
+        ? 'query'
+        : TNewLetsEndPointType extends 'infiniteQuery'
+          ? 'infiniteQuery'
+          : TQueryResultType,
       _clientExtractFns: [],
       _fetchOptions: this._base?._fetchOptions,
       _errorComponent: this._base?._errorComponent,
@@ -561,6 +631,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -575,6 +646,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -596,6 +668,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     this._generalStore._createQueryClient = createQueryClient
@@ -611,9 +684,232 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
+    })
+  }
+
+  queryOptions(
+    queryOptions: QueryOptionsSettings,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _defaultQueryOptions: queryOptions,
+    })
+  }
+
+  infiniteQueryOptions(
+    infiniteQueryOptions: QueryOptionsSettings,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _defaultInfiniteQueryOptions: infiniteQueryOptions,
+    })
+  }
+
+  pageQueryOptions(
+    pageQueryOptions: QueryOptionsSettings,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _defaultPageQueryOptions: pageQueryOptions,
+    })
+  }
+
+  componentQueryOptions(
+    componentQueryOptions: QueryOptionsSettings,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _defaultComponentQueryOptions: componentQueryOptions,
+    })
+  }
+
+  clientCtxQueryOptions(
+    clientCtxQueryOptions: QueryOptionsSettings,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _defaultClientCtxQueryOptions: clientCtxQueryOptions,
+    })
+  }
+
+  layoutQueryOptions(
+    layoutQueryOptions: QueryOptionsSettings,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _defaultLayoutQueryOptions: layoutQueryOptions,
     })
   }
 
@@ -631,6 +927,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -645,6 +942,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -666,6 +964,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -680,6 +979,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -701,6 +1001,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -715,6 +1016,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -736,6 +1038,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -750,6 +1053,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -771,6 +1075,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -785,6 +1090,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -806,6 +1112,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -820,6 +1127,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -841,6 +1149,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -855,6 +1164,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -876,6 +1186,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -890,6 +1201,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -909,6 +1221,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -923,6 +1236,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -1016,6 +1330,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   ctx<TNewCtx extends Ctx = Ctx>(
@@ -1032,6 +1347,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   ctx<TNewCtx extends Ctx = Ctx>(
@@ -1048,6 +1364,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
@@ -1063,6 +1380,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -1084,6 +1402,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   route<TNewRouteDefinition extends `/${string}`>(
@@ -1100,6 +1419,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   route<TNewRouteDefinition extends string>(
@@ -1118,6 +1438,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   route(): Point0<
@@ -1132,6 +1453,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   route(route?: CallabelRoute | RouteDefinition) {
@@ -1169,6 +1491,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   loader<TNewData extends Data = Data>(
@@ -1185,6 +1508,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   loader<TNewData extends Data = Data>(
@@ -1201,6 +1525,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -1215,6 +1540,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'middleware',
@@ -1244,6 +1570,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -1258,6 +1585,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'client-middleware',
@@ -1282,6 +1610,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   head(
@@ -1298,6 +1627,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   head(headFnOrHead: HeadFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | ResolvableHead) {
@@ -1331,6 +1661,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   title(
@@ -1347,6 +1678,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   title(titleFnOrTitle: TitleFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | string) {
@@ -1379,6 +1711,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TNewProps
   > {
     return this._continue({
@@ -1400,6 +1733,7 @@ export class Point0<
     TPrevRouteDefinition,
     TNewInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   input(inputSchema: InputSchemaZod) {
@@ -1437,6 +1771,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     if (!this._route) {
@@ -1454,6 +1789,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'page',
@@ -1477,6 +1813,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >
   } {
@@ -1492,6 +1829,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'component',
@@ -1517,6 +1855,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     if (!this._route) {
@@ -1534,6 +1873,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'layout',
@@ -1561,6 +1901,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   clientCtx(): Point0<
@@ -1575,6 +1916,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   >
   clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any>) {
@@ -1601,6 +1943,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TNewResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -1615,6 +1958,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TNewResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'response',
@@ -1637,6 +1981,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -1651,6 +1996,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'query',
@@ -1676,6 +2022,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
+    TQueryResultType,
     TProps
   > {
     return this._continue<
@@ -1690,6 +2037,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >({
       _pointType: 'mutation',
@@ -1938,8 +2286,8 @@ export class Point0<
       refetchOnReconnect: false,
       refetchInterval: false,
       refetchIntervalInBackground: false,
-      ...this._queryOptions,
-      ...this._pageQueryOptions,
+      ...this._defaultQueryOptions,
+      ...this._defaultPageQueryOptions,
     })
     if (result.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
@@ -2149,8 +2497,8 @@ export class Point0<
       refetchOnReconnect: false,
       refetchInterval: false,
       refetchIntervalInBackground: false,
-      ...this._queryOptions,
-      ...this._pageQueryOptions,
+      ...this._defaultQueryOptions,
+      ...this._defaultPageQueryOptions,
     })
     if (result.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
@@ -2270,8 +2618,8 @@ export class Point0<
       refetchOnReconnect: false,
       refetchInterval: false,
       refetchIntervalInBackground: false,
-      ...this._queryOptions,
-      ...this._pageQueryOptions,
+      ...this._defaultQueryOptions,
+      ...this._defaultPageQueryOptions,
     })
     if (result.error) {
       return React.createElement(errorComponent, { type: 'page', error: Error0.from(result.error), location })
@@ -2409,7 +2757,7 @@ export class Point0<
       return data
     }
     return {
-      ...this._queryOptions,
+      ...this._defaultQueryOptions,
       ...queryOptions,
       queryKey,
       queryFn,

@@ -35,7 +35,7 @@ export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 
-export type QueryResultType = 'useQuery' | 'useInfiniteQuery'
+export type QueryResultType = 'query' | 'infiniteQuery'
 export type UndefinedQueryResultType = undefined
 
 export type Props = Record<string, any>
@@ -92,6 +92,7 @@ export type AnyPoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = Point0<
   TPointType,
@@ -105,6 +106,7 @@ export type AnyPoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -119,6 +121,7 @@ export type BasePoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base',
@@ -132,6 +135,7 @@ export type BasePoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -145,6 +149,7 @@ export type RootSourcePoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base' | 'middleware',
@@ -158,6 +163,7 @@ export type RootSourcePoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -171,6 +177,7 @@ export type RootConnectedPoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base' | 'middleware',
@@ -184,6 +191,7 @@ export type RootConnectedPoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -196,6 +204,7 @@ export type RootPoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > =
   | RootSourcePoint<
@@ -208,6 +217,7 @@ export type RootPoint<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >
   | RootConnectedPoint<
@@ -220,6 +230,7 @@ export type RootPoint<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
+      TQueryResultType,
       TProps
     >
 
@@ -235,6 +246,7 @@ export type PagePoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'page',
@@ -248,6 +260,7 @@ export type PagePoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -263,6 +276,7 @@ export type LayoutPoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'layout',
@@ -276,6 +290,7 @@ export type LayoutPoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -291,6 +306,7 @@ export type ResponsePoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput = ResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'response',
@@ -304,6 +320,7 @@ export type ResponsePoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -319,6 +336,7 @@ export type ClientCtxPoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'client-ctx',
@@ -332,6 +350,7 @@ export type ClientCtxPoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
@@ -348,6 +367,7 @@ export type EndPoint<
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   TPointType,
@@ -361,6 +381,7 @@ export type EndPoint<
   TPrevRouteDefinition,
   TInputSchema,
   TResponseOutput,
+  TQueryResultType,
   TProps
 >
 
