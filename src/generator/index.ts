@@ -59,7 +59,7 @@ type ChangeCollectedPointsEvent = {
   errors: unknown[]
 }
 
-const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
+const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   page: 'page',
   layout: 'layout',
   component: 'component',
@@ -67,7 +67,7 @@ const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
   query: 'query',
   infiniteQuery: 'infiniteQuery',
   response: 'response',
-  'client-ctx': 'clientCtx',
+  clientCtx: 'clientCtx',
   base: 'base',
 }
 const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
@@ -415,28 +415,11 @@ export class FileGenerator {
       lines.push(``)
       lines.push(`export const points = Points.ready([`)
       for (const point of hashedPoints) {
-        lines.push(`  {`)
-        if (point.root) {
-          lines.push(`    root: true,`)
-        }
-        lines.push(`    type: '${point.type}',`)
-        lines.push(`    name: '${point.name}',`)
-        if (point.route) {
-          lines.push(`    route: '${point.route.definition}',`)
-        }
-        if (point.type === 'page' && point.layouts?.length) {
-          const arr = point.layouts
-            .map((r) => `'${r}'`)
-            .reverse()
-            .join(', ')
-          lines.push(`    layouts: [${arr}],`)
-        }
         if (point.exportName === 'default') {
-          lines.push(`    point: unnamed_${point.hash}.point,`)
+          lines.push(`    unnamed_${point.hash}.point,`)
         } else {
-          lines.push(`    point: ${point.exportName}_${point.hash}.point,`)
+          lines.push(`    ${point.exportName}_${point.hash}.point,`)
         }
-        lines.push(`  },`)
       }
       lines.push(`])`)
     }
@@ -444,6 +427,91 @@ export class FileGenerator {
     lines.push(``)
     return lines.join('\n')
   }
+
+  // private emitReadyPointsFile(points: CollectedPoint[]): string {
+  //   if (!this.outputReadyAbs) {
+  //     throw new Error('outputReadyAbs is not set')
+  //   }
+  //   const lines: string[] = []
+  //   if (this.banner) {
+  //     lines.push(this.banner)
+  //   }
+  //   lines.push(`import { Points } from 'point0/core/points.js'`)
+
+  //   const hashedPoints = points.map((p) => ({
+  //     ...p,
+  //     hash: FileGenerator.hash(p),
+  //   }))
+
+  //   const importPathsAndExportNames: Array<{
+  //     importPath: string
+  //     exports: Array<{ originalExportName: string; renamedExportName: string }>
+  //   }> = []
+  //   for (const point of hashedPoints) {
+  //     const importPath = FileGenerator.toRelativeJsImportPath(this.outputReadyAbs, point.fileAbs)
+  //     const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
+  //     const newItem =
+  //       point.exportName === 'default'
+  //         ? { originalExportName: 'default', renamedExportName: `unnamed_${point.hash}` }
+  //         : { originalExportName: point.exportName, renamedExportName: `${point.exportName}_${point.hash}` }
+  //     if (importPathAndExportNames) {
+  //       importPathAndExportNames.exports.push(newItem)
+  //     } else {
+  //       importPathsAndExportNames.push({ importPath, exports: [newItem] })
+  //     }
+  //   }
+
+  //   for (const importPathAndExportNames of importPathsAndExportNames) {
+  //     const defaultItem = importPathAndExportNames.exports.find((e) => e.originalExportName === 'default')
+  //     const defaultPart = defaultItem ? defaultItem.renamedExportName : undefined
+  //     const namedItems = importPathAndExportNames.exports.filter((e) => e.originalExportName !== 'default')
+  //     const namedPart =
+  //       namedItems.length > 0
+  //         ? `{ ${namedItems.map((e) => `${e.originalExportName} as ${e.renamedExportName}`).join(', ')} }`
+  //         : undefined
+  //     const combinedPart = defaultPart ? `${defaultPart}, ${namedPart}` : namedPart
+  //     if (!combinedPart) {
+  //       continue
+  //     }
+  //     lines.push(`import ${combinedPart} from '${importPathAndExportNames.importPath}'`)
+  //   }
+
+  //   if (this.points.length === 0) {
+  //     lines.push(``)
+  //     lines.push(`export const points = Points.ready([])`)
+  //   } else {
+  //     lines.push(``)
+  //     lines.push(`export const points = Points.ready([`)
+  //     for (const point of hashedPoints) {
+  //       lines.push(`  {`)
+  //       if (point.root) {
+  //         lines.push(`    root: true,`)
+  //       }
+  //       lines.push(`    type: '${point.type}',`)
+  //       lines.push(`    name: '${point.name}',`)
+  //       if (point.route) {
+  //         lines.push(`    route: '${point.route.definition}',`)
+  //       }
+  //       if (point.type === 'page' && point.layouts?.length) {
+  //         const arr = point.layouts
+  //           .map((r) => `'${r}'`)
+  //           .reverse()
+  //           .join(', ')
+  //         lines.push(`    layouts: [${arr}],`)
+  //       }
+  //       if (point.exportName === 'default') {
+  //         lines.push(`    point: unnamed_${point.hash}.point,`)
+  //       } else {
+  //         lines.push(`    point: ${point.exportName}_${point.hash}.point,`)
+  //       }
+  //       lines.push(`  },`)
+  //     }
+  //     lines.push(`])`)
+  //   }
+
+  //   lines.push(``)
+  //   return lines.join('\n')
+  // }
 
   private emitRoutesPointsFile(points: CollectedPoint[]): string {
     if (!this.outputRoutesAbs) {

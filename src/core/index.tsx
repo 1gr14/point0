@@ -472,7 +472,7 @@ export class Point0<
       pointType === 'infiniteQuery' ||
       pointType === 'mutation' ||
       pointType === 'component' ||
-      pointType === 'client-ctx'
+      pointType === 'clientCtx'
     )
   }
   _isEndpoint(): boolean {
@@ -1980,7 +1980,7 @@ export class Point0<
       TNewClientData
     >,
   ): Point0<
-    'client-ctx',
+    'clientCtx',
     UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
@@ -1995,7 +1995,7 @@ export class Point0<
     TProps
   >
   clientCtx(): Point0<
-    'client-ctx',
+    'clientCtx',
     UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
@@ -2011,7 +2011,7 @@ export class Point0<
   >
   clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any, any>) {
     return this._continue({
-      _pointType: 'client-ctx',
+      _pointType: 'clientCtx',
       _clientExtractFns: clientLoaderFn
         ? [...this._clientExtractFns, { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() }]
         : this._clientExtractFns,
@@ -2859,10 +2859,10 @@ export class Point0<
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const loaderComponent = this._getLoaderComponent({ type: 'page' })
 
-    if (this._pointType !== 'client-ctx') {
+    if (this._pointType !== 'clientCtx') {
       return React.createElement(errorComponent, {
         type: 'page',
-        error: new Error0('Point type is not client-ctx'),
+        error: new Error0('Point type is not clientCtx'),
         location,
         query,
       })
@@ -3228,7 +3228,7 @@ export class Point0<
     if (!this._hasLoader()) {
       return
     }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'client-ctx']
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'clientCtx']
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }

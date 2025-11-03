@@ -1,4 +1,6 @@
 NOT client-ctx but clientCtx
+errorComponent → error
+wrapper
 
 merge .input schemas
 plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()

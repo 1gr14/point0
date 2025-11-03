@@ -7,97 +7,23 @@ import { ideaPage as ideaPage_hr2d3acswa } from '../pages/idea.js'
 import { ideasNewsPage as ideasNewsPage_1molf60443b } from '../pages/idea-news.js'
 import { generalLayout as generalLayout_1sm4sgw7w4h } from '../layouts/general.js'
 import { ideaLayout as ideaLayout_15r5wfdlfdu } from '../layouts/idea.js'
-import { clientCtx1 as clientCtx1_e0e2noswu2, clientCtx2 as clientCtx2_10xmsz16jme, clientCtx3 as clientCtx3_5lscxj0gv7 } from './client-ctx.js'
+import { clientCtx1 as clientCtx1_oe0hkc1t9, clientCtx2 as clientCtx2_22uurk5z8jj, clientCtx3 as clientCtx3_a9hpemkq62 } from './client-ctx.js'
 import { client as client_29b1dq6qbu2 } from './client.js'
 
 export const points = Points.ready([
-  {
-    type: 'page',
-    name: 'home',
-    route: '/',
-    layouts: ['generalLayout'],
-    point: unnamed_6l07mdq734.point,
-  },
-  {
-    type: 'page',
-    name: 'empty',
-    route: '/empty',
-    point: empty_n50wzpyog6.point,
-  },
-  {
-    type: 'page',
-    name: 'ideas',
-    route: '/ideas',
-    layouts: ['generalLayout'],
-    point: ideasPage_1ez06sxoz6e.point,
-  },
-  {
-    type: 'page',
-    name: 'newIdea',
-    route: '/ideas/new',
-    layouts: ['generalLayout'],
-    point: unnamed_rhg2sxrtie.point,
-  },
-  {
-    type: 'page',
-    name: 'idea',
-    route: '/ideas/:id/',
-    layouts: ['generalLayout', 'ideaLayout'],
-    point: ideaPage_hr2d3acswa.point,
-  },
-  {
-    type: 'page',
-    name: 'ideaNews',
-    route: '/ideas/:id/news',
-    layouts: ['generalLayout', 'ideaLayout'],
-    point: ideasNewsPage_1molf60443b.point,
-  },
-  {
-    type: 'layout',
-    name: 'generalLayout',
-    route: '/',
-    point: generalLayout_1sm4sgw7w4h.point,
-  },
-  {
-    type: 'layout',
-    name: 'ideaLayout',
-    route: '/ideas/:id',
-    point: ideaLayout_15r5wfdlfdu.point,
-  },
-  {
-    type: 'component',
-    name: 'bestIdea',
-    point: BestIdeaComponent_3qkxiugr0k.point,
-  },
-  {
-    type: 'mutation',
-    name: 'createIdea',
-    point: createIdeaMutation_210fo46cs0t.point,
-  },
-  {
-    type: 'response',
-    name: 'generateIdea',
-    point: generateIdeaMutation_qlhpr7tzjc.point,
-  },
-  {
-    type: 'client-ctx',
-    name: 'testClientCtx1',
-    point: clientCtx1_e0e2noswu2.point,
-  },
-  {
-    type: 'client-ctx',
-    name: 'testClientCtx2',
-    point: clientCtx2_10xmsz16jme.point,
-  },
-  {
-    type: 'client-ctx',
-    name: 'testClientCtx3',
-    point: clientCtx3_5lscxj0gv7.point,
-  },
-  {
-    root: true,
-    type: 'base',
-    name: 'client',
-    point: client_29b1dq6qbu2.point,
-  },
+    unnamed_6l07mdq734.point,
+    empty_n50wzpyog6.point,
+    ideasPage_1ez06sxoz6e.point,
+    unnamed_rhg2sxrtie.point,
+    ideaPage_hr2d3acswa.point,
+    ideasNewsPage_1molf60443b.point,
+    generalLayout_1sm4sgw7w4h.point,
+    ideaLayout_15r5wfdlfdu.point,
+    BestIdeaComponent_3qkxiugr0k.point,
+    createIdeaMutation_210fo46cs0t.point,
+    generateIdeaMutation_qlhpr7tzjc.point,
+    clientCtx1_oe0hkc1t9.point,
+    clientCtx2_22uurk5z8jj.point,
+    clientCtx3_a9hpemkq62.point,
+    client_29b1dq6qbu2.point,
 ])

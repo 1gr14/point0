@@ -70,17 +70,17 @@ export const points = Points.lazy([
     point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation.point,
   },
   {
-    type: 'client-ctx',
+    type: 'clientCtx',
     name: 'testClientCtx1',
     point: async () => (await import('./client-ctx.js')).clientCtx1.point,
   },
   {
-    type: 'client-ctx',
+    type: 'clientCtx',
     name: 'testClientCtx2',
     point: async () => (await import('./client-ctx.js')).clientCtx2.point,
   },
   {
-    type: 'client-ctx',
+    type: 'clientCtx',
     name: 'testClientCtx3',
     point: async () => (await import('./client-ctx.js')).clientCtx3.point,
   },

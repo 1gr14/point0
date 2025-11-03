@@ -120,7 +120,7 @@ export type PointType =
   | 'mutation'
   | 'layout'
   | 'client-middleware'
-  | 'client-ctx'
+  | 'clientCtx'
 export type EndPointType = Exclude<PointType, 'middleware' | 'client-middleware'>
 export type RenderablePointType = Extract<PointType, 'page' | 'component' | 'layout'>
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
@@ -387,7 +387,7 @@ export type ClientCtxPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
-  'client-ctx',
+  'clientCtx',
   UndefinedEndPointType,
   TConnectedRootSourcePoint,
   TRequiredCtx,
