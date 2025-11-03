@@ -591,6 +591,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (
       point &&
       (point._pointType === 'query' ||
+        point._pointType === 'infiniteQuery' ||
         point._pointType === 'page' ||
         point._pointType === 'layout' ||
         point._pointType === 'client-ctx' ||
@@ -609,12 +610,24 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         const query = this.queryClient
           .getQueryCache()
           .build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
-        query.setState({
-          data,
-          error: null,
-          status: 'success',
-          fetchStatus: 'idle',
-        })
+        if (point._queryResultType === 'infiniteQuery') {
+          query.setState({
+            data: {
+              pages: Array.isArray(data) ? data : [data],
+              pageParams: [undefined], // or your actual param if known
+            },
+            error: null,
+            status: 'success',
+            fetchStatus: 'idle',
+          })
+        } else {
+          query.setState({
+            data,
+            error: null,
+            status: 'success',
+            fetchStatus: 'idle',
+          })
+        }
       }
     }
   }

@@ -282,6 +282,17 @@ describe('Point0', () => {
       .page(({ query }) => <div>Hello</div>)
     expectTypeOf<(typeof clientPoint011)['Infer']['QueryResultType']>().toEqualTypeOf<'query'>()
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const clientPoint0111 = clientPointBase01
+      .lets('page', 'page')
+      .route(Route0.create('/'))
+      .infiniteQuery(() => ({ x: 1 }), {
+        initialPageParam: 0,
+        getNextPageParam: () => 1,
+      })
+      .page(({ query }) => <div>Hello{query.data.pages[0].x}</div>)
+    expectTypeOf<(typeof clientPoint0111)['Infer']['QueryResultType']>().toEqualTypeOf<'infiniteQuery'>()
+
     const eversion1 = await Eversion.create({ root: server1 })
     const eversion1Connection = await eversion1.connect({
       root: clientPointBase01,

@@ -3,7 +3,6 @@ infinity query
 NOT client-ctx but clientCtx
 
 merge .input schemas
-.output(z.object({}))
 plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 
 elysia example
@@ -91,6 +90,7 @@ npm @point0
 ? persistent zustand store
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
+.output(z.object({}))
 allow not to pass server root at all to server, so client only apps
 websocket
 statefull meta

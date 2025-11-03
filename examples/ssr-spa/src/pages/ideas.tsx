@@ -1,7 +1,6 @@
+import { Link } from 'point0/adapters/wouter/index.js'
 import { useState } from 'react'
 import { generalLayout } from '../layouts/general.js'
-import { IdeasView } from './ideas.view.js'
-import { Link } from 'point0/adapters/wouter/index.js'
 import { routes } from '../lib/routes.js'
 
 export const ideasPage = generalLayout
@@ -10,22 +9,24 @@ export const ideasPage = generalLayout
   .infiniteQuery(
     async ({ ctx, data, input }) => {
       const ideasCount = await ctx.prisma.idea.count()
+      console.log('input', input)
       const page = Number(input.page ?? 0)
       const limit = 2
       const ideas = await ctx.prisma.idea.findMany({ take: limit, skip: page * limit })
       const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
       return { ...data, ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
     },
-    // {
-    //   getNextPageParam: (lastPage) => lastPage.ideas[lastPage.ideas.length - 1].id,
-    //   initialPageParam: undefined,
-    // },
+    {
+      getNextPageParam: (lastPage) => lastPage.ideas[lastPage.ideas.length - 1].id,
+      initialPageParam: 0,
+    },
   )
-  .title(({ data }) => `${data.ideasCount} ideas`)
+  .title(({ data }) => {
+    return `${data.ideasCount} ideas`
+  })
   // if you want to preserve state of "count" on HMR, you need to use this approach,
   // just return ready elemnt imported from another file
   .page(({ data, query }) => {
-    console.log(data)
     const [count, setCount] = useState(() => 0)
     return (
       <div>
@@ -39,18 +40,31 @@ export const ideasPage = generalLayout
           Here are all the amazing ideas shared by our community: {data.ideasCount + count}
         </p>
         <div>
-          {data.ideas.map((idea) => (
-            <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
-              <h3>
-                <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link>
-              </h3>
-              <p>{idea.description}</p>
-              <p>
-                <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
-              </p>
-            </div>
-          ))}
+          {query.data.pages
+            .flatMap((p) => p.ideas)
+            .map((idea) => (
+              <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
+                <h3>
+                  <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link>
+                </h3>
+                <p>{idea.description}</p>
+                <p>
+                  <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
+                </p>
+              </div>
+            ))}
         </div>
+        {query.isFetchingNextPage && <div>Loading more...</div>}
+        {query.hasNextPage && (
+          <button
+            disabled={query.isFetchingNextPage}
+            onClick={() => {
+              query.fetchNextPage().catch(console.error)
+            }}
+          >
+            Load more
+          </button>
+        )}
         <nav>
           <Link to="/">← Back to Home</Link>
         </nav>

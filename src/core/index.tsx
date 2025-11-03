@@ -11,13 +11,14 @@ import type {
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
+  InfiniteData,
   MutationOptions,
   QueryKey as OriginalQueryKey,
   Query,
   QueryOptions,
+  UseInfiniteQueryResult,
   UseMutationResult,
   UseQueryResult,
-  UseInfiniteQueryResult,
 } from '@tanstack/react-query'
 import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
@@ -27,6 +28,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, ExtractResult } from './eversion.js'
 import { useIsInitalSsrLocation, useLocation } from './router.js'
 import type {
+  AnyDataOrInfiniteData,
   AppendCtx,
   BasePoint,
   ClientExtractFnRecord,
@@ -173,13 +175,13 @@ export class Point0<
   _fetchOptions: FetchOptionsFn
 
   // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loaderComponent
-  _errorComponent: ErrorComponentType
-  _pageErrorComponent?: ErrorComponentType<'page'>
-  _componentErrorComponent?: ErrorComponentType<'component'>
-  _loaderComponent: LoaderComponentType
-  _pageLoaderComponent?: LoaderComponentType<'page'>
-  _componentLoaderComponent?: LoaderComponentType<'component'>
-  _appLoaderComponent?: LoaderComponentType<'app'>
+  _errorComponent: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+  _pageErrorComponent?: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
+  _componentErrorComponent?: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
+  _loaderComponent: LoaderComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+  _pageLoaderComponent?: LoaderComponentType<'page', TData, TResponseOutput, TQueryResultType>
+  _componentLoaderComponent?: LoaderComponentType<'component', TData, TResponseOutput, TQueryResultType>
+  _appLoaderComponent?: LoaderComponentType<'app', TData, TResponseOutput, TQueryResultType>
 
   private constructor(props: {
     _pointType: TPointType
@@ -208,19 +210,25 @@ export class Point0<
     _clientExtractFns?: ClientExtractFnRecord[]
     _route?: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
     _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
-    _page?: PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition> | UndefinedPageComponent
-    _component?: ComponentComponent<TData, TResponseOutput, TClientData, TProps> | UndefinedComponentComponent
-    _layout?: LayoutComponent<TData, TResponseOutput, TClientData, TRouteDefinition> | UndefinedLayoutComponent
+    _page?:
+      | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>
+      | UndefinedPageComponent
+    _component?:
+      | ComponentComponent<TData, TResponseOutput, TClientData, TProps, TQueryResultType>
+      | UndefinedComponentComponent
+    _layout?:
+      | LayoutComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>
+      | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
-    _errorComponent?: ErrorComponentType
-    _pageErrorComponent?: ErrorComponentType<'page'>
-    _componentErrorComponent?: ErrorComponentType<'component'>
-    _loaderComponent?: LoaderComponentType
-    _pageLoaderComponent?: LoaderComponentType<'page'>
-    _componentLoaderComponent?: LoaderComponentType<'component'>
-    _appLoaderComponent?: LoaderComponentType<'app'>
+    _errorComponent?: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+    _pageErrorComponent?: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
+    _componentErrorComponent?: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
+    _loaderComponent?: LoaderComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+    _pageLoaderComponent?: LoaderComponentType<'page', TData, TResponseOutput, TQueryResultType>
+    _componentLoaderComponent?: LoaderComponentType<'component', TData, TResponseOutput, TQueryResultType>
+    _appLoaderComponent?: LoaderComponentType<'app', TData, TResponseOutput, TQueryResultType>
     _unstableId?: number
   }) {
     this.point = this
@@ -272,12 +280,18 @@ export class Point0<
             null,
             JSON.stringify(error.toJSON(), null, 2), // `null, 2` makes it pretty-printed
           ),
-        )) as ErrorComponentType)
+        )) as ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>)
     this._pageErrorComponent = props._pageErrorComponent
     this._componentErrorComponent = props._componentErrorComponent
     this._pageLoaderComponent = props._pageLoaderComponent
     this._loaderComponent =
-      props._loaderComponent ?? ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoaderComponentType)
+      props._loaderComponent ??
+      ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoaderComponentType<
+        DestinationComponentType,
+        TData,
+        TResponseOutput,
+        TQueryResultType
+      >)
     this._componentLoaderComponent = props._componentLoaderComponent
     this._appLoaderComponent = props._appLoaderComponent
 
@@ -332,18 +346,24 @@ export class Point0<
       TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
-    _page?: PageComponent | UndefinedPageComponent
-    _component?: ComponentComponent | UndefinedComponentComponent
-    _layout?: LayoutComponent | UndefinedLayoutComponent
+    _page?:
+      | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>
+      | UndefinedPageComponent
+    _component?:
+      | ComponentComponent<TData, TResponseOutput, TClientData, TProps, TQueryResultType>
+      | UndefinedComponentComponent
+    _layout?:
+      | LayoutComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>
+      | UndefinedLayoutComponent
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
-    _errorComponent?: ErrorComponentType
-    _pageErrorComponent?: ErrorComponentType<'page'>
-    _componentErrorComponent?: ErrorComponentType<'component'>
-    _loaderComponent?: LoaderComponentType
-    _pageLoaderComponent?: LoaderComponentType<'page'>
-    _componentLoaderComponent?: LoaderComponentType<'component'>
-    _appLoaderComponent?: LoaderComponentType<'app'>
+    _errorComponent?: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+    _pageErrorComponent?: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
+    _componentErrorComponent?: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
+    _loaderComponent?: LoaderComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+    _pageLoaderComponent?: LoaderComponentType<'page', TData, TResponseOutput, TQueryResultType>
+    _componentLoaderComponent?: LoaderComponentType<'component', TData, TResponseOutput, TQueryResultType>
+    _appLoaderComponent?: LoaderComponentType<'app', TData, TResponseOutput, TQueryResultType>
   }): Point0<
     TPointType,
     TLetsEndPointType,
@@ -410,25 +430,33 @@ export class Point0<
       _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
       _route: (overrides._route ?? this._route) as never,
       _prevRoute: (overrides._prevRoute ?? this._prevRoute) as never,
-      _page: (overrides._page ?? undefined) as
-        | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition>
-        | undefined,
-      _component: (overrides._component ?? undefined) as
-        | ComponentComponent<TData, TResponseOutput, TClientData, TProps>
-        | undefined,
-      _layout: (overrides._layout ?? undefined) as
-        | LayoutComponent<TData, TResponseOutput, TClientData, TRouteDefinition>
-        | undefined,
+      _page: overrides._page ?? undefined,
+      _component: overrides._component ?? undefined,
+      _layout: overrides._layout ?? undefined,
       _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint],
       _name: overrides._name ?? this._name,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
-      _errorComponent: overrides._errorComponent ?? this._errorComponent,
-      _pageErrorComponent: overrides._pageErrorComponent ?? this._pageErrorComponent,
-      _componentErrorComponent: overrides._componentErrorComponent ?? this._componentErrorComponent,
-      _loaderComponent: overrides._loaderComponent ?? this._loaderComponent,
-      _pageLoaderComponent: overrides._pageLoaderComponent ?? this._pageLoaderComponent,
-      _componentLoaderComponent: overrides._componentLoaderComponent ?? this._componentLoaderComponent,
-      _appLoaderComponent: overrides._appLoaderComponent ?? this._appLoaderComponent,
+      _errorComponent: (overrides._errorComponent ?? this._errorComponent) as
+        | ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+        | undefined,
+      _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as
+        | ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
+        | undefined,
+      _componentErrorComponent: (overrides._componentErrorComponent ?? this._componentErrorComponent) as
+        | ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
+        | undefined,
+      _loaderComponent: (overrides._loaderComponent ?? this._loaderComponent) as
+        | LoaderComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+        | undefined,
+      _pageLoaderComponent: (overrides._pageLoaderComponent ?? this._pageLoaderComponent) as
+        | LoaderComponentType<'page', TData, TResponseOutput, TQueryResultType>
+        | undefined,
+      _componentLoaderComponent: (overrides._componentLoaderComponent ?? this._componentLoaderComponent) as
+        | LoaderComponentType<'component', TData, TResponseOutput, TQueryResultType>
+        | undefined,
+      _appLoaderComponent: (overrides._appLoaderComponent ?? this._appLoaderComponent) as
+        | LoaderComponentType<'app', TData, TResponseOutput, TQueryResultType>
+        | undefined,
     })
   }
 
@@ -960,7 +988,7 @@ export class Point0<
   }
 
   errorComponent(
-    errorComponent: ErrorComponentType,
+    errorComponent: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -997,7 +1025,7 @@ export class Point0<
   }
 
   pageErrorComponent(
-    pageErrorComponent: ErrorComponentType<'page'>,
+    pageErrorComponent: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1034,7 +1062,7 @@ export class Point0<
   }
 
   componentErrorComponent(
-    componentErrorComponent: ErrorComponentType<'component'>,
+    componentErrorComponent: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1071,7 +1099,7 @@ export class Point0<
   }
 
   pageLoaderComponent(
-    pageLoaderComponent: LoaderComponentType<'page'>,
+    pageLoaderComponent: LoaderComponentType<'page', TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1108,7 +1136,7 @@ export class Point0<
   }
 
   componentLoaderComponent(
-    componentLoaderComponent: LoaderComponentType<'component'>,
+    componentLoaderComponent: LoaderComponentType<'component', TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1145,7 +1173,7 @@ export class Point0<
   }
 
   appLoaderComponent(
-    appLoaderComponent: LoaderComponentType<'app'>,
+    appLoaderComponent: LoaderComponentType<'app', TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1182,7 +1210,7 @@ export class Point0<
   }
 
   loaderComponent(
-    loaderComponent: LoaderComponentType,
+    loaderComponent: LoaderComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1692,7 +1720,7 @@ export class Point0<
   >
   title(titleFnOrTitle: TitleFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | string) {
     if (typeof titleFnOrTitle === 'function') {
-      const headFn: HeadFn = (props) => ({ title: titleFnOrTitle(props as never) })
+      const headFn: HeadFn<any, any, any, any> = (props) => ({ title: titleFnOrTitle(props as never) })
       return this._continue({
         _pointType: 'client-middleware',
         _clientExtractFns: [
@@ -1810,7 +1838,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'page',
-      _page: page as PageComponent,
+      _page: page as PageComponent<any, any, any, any, any>,
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -1867,7 +1895,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'component',
-      _component: component as ComponentComponent,
+      _component: component as ComponentComponent<any, any, any, any, any>,
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -1928,7 +1956,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'layout',
-      _layout: layout as LayoutComponent,
+      _layout: layout as LayoutComponent<any, any, any, any, any>,
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -1979,7 +2007,7 @@ export class Point0<
     TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
     TProps
   >
-  clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any>) {
+  clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any, any>) {
     return this._continue({
       _pointType: 'client-ctx',
       _clientExtractFns: clientLoaderFn
@@ -2084,63 +2112,7 @@ export class Point0<
 
   infiniteQuery<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<TNewData, Error0, TNewData, QueryKey, unknown>,
-  ): Point0<
-    'infiniteQuery',
-    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'infiniteQuery',
-    TProps
-  >
-  infiniteQuery<TNewData extends Data & { nextCursor: any } = Data & { nextCursor: any }>(
-    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    infiniteQueryOptions?: PartialUseInfiniteQueryOptions<TNewData, Error0, TNewData, QueryKey, unknown>,
-  ): Point0<
-    'infiniteQuery',
-    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'infiniteQuery',
-    TProps
-  >
-  // infiniteQuery<TNewData extends Data = Data>(
-  //   loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-  //   infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>,
-  // ): Point0<
-  //   'infiniteQuery',
-  //   TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-  //   TConnectedRootSourcePoint,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TNewData,
-  //   TClientData,
-  //   TRouteDefinition,
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponseOutput,
-  //   'infiniteQuery',
-  //   TProps
-  // >
-  infiniteQuery<TNewData extends Data = Data>(
-    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>
-      | PartialUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>,
+    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>,
   ): Point0<
     'infiniteQuery',
     TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
@@ -2180,7 +2152,7 @@ export class Point0<
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       _queryResultType: 'infiniteQuery',
-      _infiniteQueryOptions: infiniteQueryOptions as never,
+      _infiniteQueryOptions: infiniteQueryOptions,
     })
   }
 
@@ -2227,20 +2199,28 @@ export class Point0<
 
   // getters
 
-  _getErrorComponent<TType extends DestinationComponentType>({ type }: { type: TType }): ErrorComponentType<TType> {
+  _getErrorComponent<TType extends DestinationComponentType>({
+    type,
+  }: {
+    type: TType
+  }): ErrorComponentType<any, any, any, any> {
     return ({
       app: this._errorComponent,
       page: this._pageErrorComponent,
       component: this._componentErrorComponent,
-    }[type] ?? this._errorComponent) as ErrorComponentType<TType>
+    }[type] ?? this._errorComponent) as ErrorComponentType<any, any, any, any>
   }
 
-  _getLoaderComponent<TType extends DestinationComponentType>({ type }: { type: TType }): LoaderComponentType<TType> {
+  _getLoaderComponent<TType extends DestinationComponentType>({
+    type,
+  }: {
+    type: TType
+  }): LoaderComponentType<any, any, any, any> {
     return ({
       app: this._loaderComponent,
       page: this._pageLoaderComponent,
       component: this._componentLoaderComponent,
-    }[type] ?? this._loaderComponent) as LoaderComponentType<TType>
+    }[type] ?? this._loaderComponent) as LoaderComponentType<any, any, any, any>
   }
 
   _hasLoader(): boolean {
@@ -2322,11 +2302,11 @@ export class Point0<
     location,
     skipHeads,
   }: {
-    data: Data
+    data: AnyDataOrInfiniteData
     location: AnyLocation
     skipHeads: boolean
-  }): { clientData: Data; clientHead: ResolvableHead[] } => {
-    let currentClientData: Data = data
+  }): { clientData: AnyDataOrInfiniteData; clientHead: ResolvableHead[] } => {
+    let currentClientData: AnyDataOrInfiniteData = data
     const clientHead: ResolvableHead[] = []
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
@@ -2393,9 +2373,13 @@ export class Point0<
 
     if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
       for (const headFn of this._clientExtractFns) {
-        useHead((headFn.fn as HeadFn)({ data, location }))
+        useHead((headFn.fn as HeadFn<any, any, any, any>)({ data, location }))
       }
-      return React.createElement(this._page, { data: data as FinalClientData<TData, TClientData>, location, query })
+      return React.createElement(this._page, {
+        data: data as FinalClientData<TData, TClientData>,
+        location,
+        query,
+      })
     }
 
     if (!this._hasClientAsyncLoader()) {
@@ -2448,7 +2432,11 @@ export class Point0<
     if (error) {
       return React.createElement(errorComponent, { type: 'page', error, location, query })
     }
-    return React.createElement(this._page, { data: clientData as FinalClientData<TData, TClientData>, location, query })
+    return React.createElement(this._page, {
+      data: clientData as FinalClientData<TData, TClientData>,
+      location,
+      query,
+    })
   }
 
   _Page: React.ComponentType = () => {
@@ -2477,11 +2465,14 @@ export class Point0<
     if (query.isLoading) {
       return React.createElement(loaderComponent, { type: 'page', location, query })
     }
-    if (!query.data) {
+    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+      | FinalData<TData>
+      | undefined
+    if (!data) {
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
     }
     return React.createElement(this._PageInner, {
-      data: query.data as FinalData<TData>,
+      data,
       location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
       query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
     })
@@ -2589,11 +2580,14 @@ export class Point0<
     if (query.isLoading) {
       return React.createElement(loaderComponent, { type: 'component', location, query })
     }
-    if (!query.data) {
+    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+      | FinalData<TData>
+      | undefined
+    if (!data) {
       return React.createElement(errorComponent, { type: 'component', error: new Error0('No data'), location, query })
     }
     return React.createElement(this._ComponentInner, {
-      data: query.data as FinalData<TData>,
+      data,
       location,
       props: restProps as unknown as FinalProps<TProps>,
       query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
@@ -2704,11 +2698,14 @@ export class Point0<
     if (query.isLoading) {
       return React.createElement(loaderComponent, { type: 'page', location, query })
     }
-    if (!query.data) {
+    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+      | FinalData<TData>
+      | undefined
+    if (!data) {
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
     }
     return React.createElement(this._LayoutInner, {
-      data: query.data as FinalData<TData>,
+      data,
       location: location as
         | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
         | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
@@ -2820,11 +2817,14 @@ export class Point0<
     if (query.isLoading) {
       return React.createElement(loaderComponent, { type: 'page', location, query })
     }
-    if (!query.data) {
+    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+      | FinalData<TData>
+      | undefined
+    if (!data) {
       return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
     }
     return React.createElement(this._ClientCtxProviderInner, {
-      data: query.data as FinalData<TData>,
+      data,
       location,
       children,
       query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
@@ -2833,6 +2833,7 @@ export class Point0<
 
   useClientCtx = (): FinalClientData<TData, TClientData> => {
     const ctx = React.useContext(this._ClientCtxReactContext)
+
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!ctx) {
       throw new Error(
@@ -2954,6 +2955,7 @@ export class Point0<
     }
     return {
       ...this._defaultQueryOptions,
+      ...this._queryOptions,
       ...queryOptions,
       queryKey,
       queryFn,
@@ -2984,15 +2986,10 @@ export class Point0<
     const result = {
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
+      ...this._infiniteQueryOptions,
       ...queryOptions,
       queryKey,
       queryFn,
-    }
-    if (!('initialPageParam' in result)) {
-      result.initialPageParam = undefined
-    }
-    if (!('getNextPageParam' in result)) {
-      result.getNextPageParam = (lastPage) => lastPage.nextCursor
     }
     return result as never
   }
@@ -3044,9 +3041,8 @@ export class Point0<
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
-  ): UseInfiniteQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
+  ): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> => {
     const infiniteQueryOptions = this.getInfiniteQueryOptions(...args)
-    console.log(infiniteQueryOptions)
     return useInfiniteQuery(infiniteQueryOptions)
   }
 

@@ -7,6 +7,7 @@ import type {
   QueryKey as OriginalQueryKey,
   UseQueryResult,
   UseInfiniteQueryResult,
+  InfiniteData,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, input as ZodInput, ZodObject } from 'zod'
@@ -41,6 +42,8 @@ export type EmptyData = Record<string, unknown> // TODO: use UndefinedData inste
 export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
+export type AnyInfiniteData = InfiniteData<any, any>
+export type AnyDataOrInfiniteData = Data | (InfiniteData<any, any> & { [key: string]: unknown })
 
 export type QueryResultType = 'query' | 'infiniteQuery'
 export type UndefinedQueryResultType = undefined
@@ -478,38 +481,41 @@ export type QueryComponentProp<
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TStatus extends 'pending' | 'error' | 'success',
-> = TQueryResultType extends 'query'
-  ? NarrowQueryComponentPropStatus<UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0>, TStatus>
-  : TQueryResultType extends 'infiniteQuery'
-    ? NarrowQueryComponentPropStatus<UseInfiniteQueryResult<FetchOutput<TResponseOutput, TData>, Error0>, TStatus>
+> = TQueryResultType extends 'infiniteQuery'
+  ? NarrowQueryComponentPropStatus<
+      UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0>,
+      TStatus
+    >
+  : TQueryResultType extends 'query'
+    ? NarrowQueryComponentPropStatus<UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0>, TStatus>
     : undefined
 
 export type PageComponentProps<
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = {
   data: FinalClientData<TData, TClientData>
   location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
 }
 export type PageComponent<
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = React.ComponentType<PageComponentProps<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>>
 export type UndefinedPageComponent = undefined
 
 export type LayoutComponentProps<
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = {
   data: FinalClientData<TData, TClientData>
   location:
@@ -519,20 +525,20 @@ export type LayoutComponentProps<
   children: React.ReactNode
 }
 export type LayoutComponent<
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = React.ComponentType<LayoutComponentProps<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>>
 export type UndefinedLayoutComponent = undefined
 
 export type ComponentComponentProps<
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TProps extends Props | UndefinedProps = any,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData,
+  TProps extends Props | UndefinedProps,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = {
   data: FinalClientData<TData, TClientData>
   location: AnyLocation
@@ -540,16 +546,16 @@ export type ComponentComponentProps<
   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
 }
 export type ComponentComponent<
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData,
+  TProps extends Props | UndefinedProps,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = React.ComponentType<ComponentComponentProps<TData, TResponseOutput, TClientData, TProps, TQueryResultType>>
 export type UndefinedComponentComponent = undefined
 
 export type ComponentMountableProps<
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = TInputSchema extends InputSchemaZod ? { input: ZodInfer<TInputSchema> } & FinalProps<TProps> : TProps
 export type ComponentMountable<
@@ -559,27 +565,27 @@ export type ComponentMountable<
 
 export type DestinationComponentType = 'app' | 'page' | 'component'
 export type LoaderComponentProps<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TType extends DestinationComponentType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = {
   type: TType
   location: AnyLocation
   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'pending' | 'error' | 'success'>
 }
 export type LoaderComponentType<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TType extends DestinationComponentType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = React.ComponentType<LoaderComponentProps<TType, TData, TResponseOutput, TQueryResultType>>
 
 export type ErrorComponentProps<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TType extends DestinationComponentType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = {
   type: TType
   error: Error0
@@ -587,10 +593,10 @@ export type ErrorComponentProps<
   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'pending' | 'error' | 'success'>
 }
 export type ErrorComponentType<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TType extends DestinationComponentType,
+  TData extends Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
 > = React.ComponentType<ErrorComponentProps<TType, TData, TResponseOutput, TQueryResultType>>
 
 export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
@@ -598,6 +604,12 @@ export type FinalClientData<
   TData extends Data | UndefinedData,
   TClientData extends Data | UndefinedData,
 > = TClientData extends Data ? TClientData : FinalData<TData>
+export type FinalQueryData<
+  TData extends Data | UndefinedData,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+> = TQueryResultType extends 'infiniteQuery'
+  ? InfiniteData<FinalData<TData>> & { [key: string]: unknown }
+  : FinalData<TData>
 
 export type FetchOptionsFn = () => FetchOptions
 export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
@@ -700,7 +712,7 @@ export type ExtractFnRecord<
     : never
 
 export type ClientExtractFnRecord<
-  TType extends 'loader' | 'head' = 'head' | 'loader',
+  TType extends 'loader' | 'head' = 'loader' | 'head',
   TClientData extends Data | UndefinedData = Data | UndefinedData,
   TPointType extends RenderablePointType = RenderablePointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -732,53 +744,53 @@ export type ClientExtractFnLocation<
       : never
 
 export type ClientLoaderFnProps<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientData extends Data | UndefinedData,
 > = {
-  data: FinalData<TClientData>
+  data: FinalClientData<any, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
 }
 export type ClientLoaderFn<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientDataOutput extends Data = Data,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientData extends Data | UndefinedData,
+  TClientDataOutput extends Data,
 > = (
   props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TClientData>,
 ) => Promise<TClientDataOutput> | TClientDataOutput
 
 export type HeadFnProps<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<TData, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
 }
 export type HeadFn<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
 > = (props: HeadFnProps<TLetsEndPointType, TRouteDefinition, TData, TClientData>) => ResolvableHead
 export type StaticHeadsCollection = ResolvableHead[]
 
 export type TitleFnProps<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<TData, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
 }
 export type TitleFn<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
 > = (props: TitleFnProps<TLetsEndPointType, TRouteDefinition, TData, TClientData>) => string
 
 // point methods
