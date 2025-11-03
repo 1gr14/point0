@@ -12,7 +12,7 @@ import type {
   UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
   UndefinedProps,
-  UndefinedOutput,
+  UndefinedResponseOutput,
   UndefinedRoute,
   UndefinedRouteDefinition,
 } from './types.js'
@@ -45,7 +45,7 @@ describe('Point0', () => {
         UndefinedRouteDefinition,
         UndefinedRouteDefinition,
         UndefinedInputSchema,
-        UndefinedOutput,
+        UndefinedResponseOutput,
         UndefinedProps
       >
     >()
@@ -72,7 +72,7 @@ describe('Point0', () => {
         UndefinedRouteDefinition,
         UndefinedRouteDefinition,
         UndefinedInputSchema,
-        UndefinedOutput,
+        UndefinedResponseOutput,
         UndefinedProps
       >
     >()
@@ -451,7 +451,7 @@ describe('Point0', () => {
         UndefinedRoute,
         UndefinedRoute,
         UndefinedInputSchema,
-        UndefinedOutput,
+        UndefinedResponseOutput,
         UndefinedProps
       >
     >()

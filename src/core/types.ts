@@ -1,6 +1,6 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ChildrenLocation, ExactLocation, FlatInput, FlatOutput, HasParams } from '@devp0nt/route0'
-import type { QueryClient, QueryOptions, UseInfiniteQueryResult, UseQueryResult } from '@tanstack/react-query'
+import type { QueryClient, QueryOptions } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, input as ZodInput, ZodObject } from 'zod'
 import type { EversionRun } from './eversion.js'
@@ -87,7 +87,7 @@ export type AnyPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TOutput extends Output | UndefinedOutput = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
   TProps extends Props | UndefinedProps = any,
 > = Point0<
   TPointType,
@@ -100,7 +100,7 @@ export type AnyPoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -114,7 +114,7 @@ export type BasePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TOutput extends UndefinedOutput = UndefinedOutput,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base',
@@ -127,7 +127,7 @@ export type BasePoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -140,7 +140,7 @@ export type RootSourcePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TOutput extends UndefinedOutput = UndefinedOutput,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base' | 'middleware',
@@ -153,7 +153,7 @@ export type RootSourcePoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -166,7 +166,7 @@ export type RootConnectedPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TOutput extends UndefinedOutput = any,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base' | 'middleware',
@@ -179,7 +179,7 @@ export type RootConnectedPoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -191,7 +191,7 @@ export type RootPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TOutput extends UndefinedOutput = any,
+  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
   TProps extends Props | UndefinedProps = any,
 > =
   | RootSourcePoint<
@@ -203,7 +203,7 @@ export type RootPoint<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TOutput,
+      TResponseOutput,
       TProps
     >
   | RootConnectedPoint<
@@ -215,7 +215,7 @@ export type RootPoint<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TOutput,
+      TResponseOutput,
       TProps
     >
 
@@ -230,7 +230,7 @@ export type PagePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends UndefinedInputSchema = any,
-  TOutput extends Output | UndefinedOutput = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'page',
@@ -243,7 +243,7 @@ export type PagePoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -258,7 +258,7 @@ export type LayoutPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TOutput extends Output | UndefinedOutput = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'layout',
@@ -271,7 +271,7 @@ export type LayoutPoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -286,7 +286,7 @@ export type ResponsePoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TOutput extends ResponseOutput = ResponseOutput,
+  TResponseOutput extends ResponseOutput = ResponseOutput,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'response',
@@ -299,7 +299,7 @@ export type ResponsePoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -314,7 +314,7 @@ export type ClientCtxPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends UndefinedInputSchema = any,
-  TOutput extends Output | UndefinedOutput = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'client-ctx',
@@ -327,7 +327,7 @@ export type ClientCtxPoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -343,7 +343,7 @@ export type EndPoint<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TOutput extends Output | UndefinedOutput = any,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   TPointType,
@@ -356,7 +356,7 @@ export type EndPoint<
   TRouteDefinition,
   TPrevRouteDefinition,
   TInputSchema,
-  TOutput,
+  TResponseOutput,
   TProps
 >
 
@@ -502,12 +502,8 @@ export type InputRaw<
     ? FlatInput<TRouteDefinition>
     : Record<never, never>
 
-export type QueryOutput = UseQueryResult
-export type InfiniteQueryOutput = UseInfiniteQueryResult
 export type ResponseOutput = Response
-export type Output = ResponseOutput | QueryOutput | InfiniteQueryOutput
-export type UndefinedOutput = undefined
-
+export type UndefinedResponseOutput = undefined
 export type ResponseFnProps<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
@@ -523,8 +519,8 @@ export type ResponseFn<
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TOutput extends ResponseOutput = ResponseOutput,
-> = (props: ResponseFnProps<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TOutput> | TOutput
+  TResponseOutput extends ResponseOutput = ResponseOutput,
+> = (props: ResponseFnProps<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TResponseOutput> | TResponseOutput
 export type ResponseFnOutput<TResponseFn extends ResponseFn> = Awaited<ReturnType<TResponseFn>>
 
 export type CtxFnProps<
@@ -682,9 +678,9 @@ export type IsInputOptional<
     : true
 
 export type FetchOutput<
-  TOutput extends Output | UndefinedOutput = Output | UndefinedOutput,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
   TData extends Data | UndefinedData = Data | UndefinedData,
-> = TOutput extends ResponseOutput ? TOutput : FinalData<TData>
+> = TResponseOutput extends ResponseOutput ? TResponseOutput : FinalData<TData>
 
 export type FetchOutputType = 'data' | 'response' | 'dehydratedState'
 
