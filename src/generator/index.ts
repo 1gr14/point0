@@ -1429,7 +1429,9 @@ export class PointsCollector {
       parentRoute !== undefined && routeSegment !== undefined
         ? routeSegment.startsWith('/')
           ? Route0.from(routeSegment)
-          : parentRoute.extend(routeSegment)
+          : routeSegment === ''
+            ? parentRoute.clone()
+            : parentRoute.extend(routeSegment)
         : routeSegment !== undefined
           ? Route0.from(routeSegment)
           : undefined
