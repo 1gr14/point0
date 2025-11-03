@@ -4,7 +4,7 @@ export const ideasNewsPage = ideaLayout
   .lets('page', 'ideaNews')
   .route('news')
   .title(({ data: { idea } }) => `${idea.news.length} news for idea "${idea.title}"`)
-  .page(({ data: { idea } }) => {
+  .page(({ data: { idea }, query }) => {
     return (
       <div>
         <h3>News</h3>

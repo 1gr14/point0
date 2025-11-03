@@ -9,6 +9,6 @@ export const empty = client
       title: 'Empty',
     }
   })
-  .page(({ data }) => {
+  .page(({ data, query }) => {
     return <div>Empty</div>
   })

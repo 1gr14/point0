@@ -271,14 +271,17 @@ describe('Point0', () => {
       .base()
     const pageComponent = () => <div>Hello</div>
     const clientPointBase01 = Point0.connect<typeof server1>('client').base()
-    const clientPoint01 = clientPointBase01
+    const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent)
+    expectTypeOf<(typeof clientPoint01)['Infer']['QueryResultType']>().toEqualTypeOf<undefined>()
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const clientPoint011 = clientPointBase01
       .lets('page', 'page')
       .route(Route0.create('/'))
-      .page(pageComponent)
-      .base()
-      .lets('page', 'page')
-      .route(Route0.create('/'))
-      .page(pageComponent)
+      .loader(() => ({}))
+      .page(({ query }) => <div>Hello</div>)
+    expectTypeOf<(typeof clientPoint011)['Infer']['QueryResultType']>().toEqualTypeOf<'query'>()
+
     const eversion1 = await Eversion.create({ root: server1 })
     const eversion1Connection = await eversion1.connect({
       root: clientPointBase01,
