@@ -65,6 +65,7 @@ const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, string> = {
   component: 'component',
   mutation: 'mutation',
   query: 'query',
+  infiniteQuery: 'infiniteQuery',
   response: 'response',
   'client-ctx': 'clientCtx',
   base: 'base',

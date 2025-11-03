@@ -377,6 +377,7 @@ export class Point0<
       pointType === 'layout' ||
       pointType === 'response' ||
       pointType === 'query' ||
+      pointType === 'infiniteQuery' ||
       pointType === 'mutation' ||
       pointType === 'component' ||
       pointType === 'client-ctx'
@@ -2497,7 +2498,7 @@ export class Point0<
     if (!this._hasLoader()) {
       return
     }
-    const suitablePointTypes = ['page', 'query', 'component', 'layout', 'client-ctx']
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'client-ctx']
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }

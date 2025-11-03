@@ -295,7 +295,16 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         })()
         return z
           .object({
-            pointType: z.enum(['page', 'layout', 'component', 'response', 'query', 'mutation', 'client-ctx']),
+            pointType: z.enum([
+              'page',
+              'layout',
+              'component',
+              'response',
+              'query',
+              'infiniteQuery',
+              'mutation',
+              'client-ctx',
+            ]),
             outputType: z.enum(['data', 'response', 'dehydratedState']),
             pointInput: z.record(z.string(), z.any()),
             rootId: z.string().min(1),

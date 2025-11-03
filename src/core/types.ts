@@ -35,6 +35,9 @@ export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 
+export type QueryResultType = 'useQuery' | 'useInfiniteQuery'
+export type UndefinedQueryResultType = undefined
+
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
 export type EmptyProps = Record<string, unknown>
@@ -65,6 +68,7 @@ export type PointType =
   | 'component'
   | 'response'
   | 'query'
+  | 'infiniteQuery'
   | 'mutation'
   | 'layout'
   | 'client-middleware'

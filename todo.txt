@@ -1,3 +1,8 @@
+pass query data
+infinity query
+
+NOT client-ctx but clientCtx
+
 .output(z.object({}))
 merge .input schemas
 plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
@@ -5,7 +10,7 @@ plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)
 elysia example
 auth
 
-expo example
+expo example, just define all queries and mutations as plugins and use them in site and expo
 expo router
 
 like always do general fns
