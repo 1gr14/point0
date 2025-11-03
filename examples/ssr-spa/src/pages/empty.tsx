@@ -9,6 +9,18 @@ export const empty = client
       title: 'Empty',
     }
   })
+  .clientLoader(async ({ data }) => {
+    return {
+      ...data,
+      ideasCountX3: 27,
+    }
+  })
   .page(({ data, query }) => {
-    return <div>Empty</div>
+    return (
+      <div>
+        Empty
+        <br />
+        Ideas Count X3: {data.ideasCountX3}
+      </div>
+    )
   })

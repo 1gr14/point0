@@ -77,8 +77,16 @@ export type ExtraUseInfiniteQueryOptions<
   TPageParam = any,
 > = Omit<
   UseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>,
-  'queryFn' | 'queryKey' | 'getNextPageParam' | 'initialPageParam'
->
+  'queryFn' | 'queryKey' | 'initialPageParam'
+> &
+  Partial<Pick<UseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'initialPageParam'>>
+export type PartialUseInfiniteQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = Partial<ExtraUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam>>
 // used to avoid circular depedencies
 export type Infer<
   TRequiredCtx extends RequiredCtx = RequiredCtx,

@@ -17,8 +17,9 @@ import type {
   QueryOptions,
   UseMutationResult,
   UseQueryResult,
+  UseInfiniteQueryResult,
 } from '@tanstack/react-query'
-import { QueryClient, hydrate, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
@@ -67,6 +68,7 @@ import type {
   LoaderComponentType,
   LoaderFn,
   PageComponent,
+  PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
   PrependCtx,
@@ -95,6 +97,7 @@ import type {
   UndefinedResponseOutput,
   UndefinedRoute,
   UndefinedRouteDefinition,
+  UseInfiniteQueryOptions,
   UseQueryOptions,
   WrapperComponentType,
 } from './types.js'
@@ -142,7 +145,7 @@ export class Point0<
   _rootId: RootId
   _staticHeads: StaticHeadsCollection
   _defaultQueryOptions: ExtraUseQueryOptions
-  _defaultInfiniteQueryOptions: ExtraUseInfiniteQueryOptions
+  _defaultInfiniteQueryOptions: PartialUseInfiniteQueryOptions
   _defaultPageQueryOptions: ExtraUseQueryOptions
   _defaultLayoutQueryOptions: ExtraUseQueryOptions
   _defaultComponentQueryOptions: ExtraUseQueryOptions
@@ -191,7 +194,7 @@ export class Point0<
     _rootId: RootId
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
-    _defaultInfiniteQueryOptions?: ExtraUseInfiniteQueryOptions | undefined
+    _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
     _defaultQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
@@ -239,7 +242,7 @@ export class Point0<
     this._defaultClientCtxQueryOptions = props._defaultClientCtxQueryOptions ?? {}
     this._defaultPageQueryOptions = props._defaultPageQueryOptions ?? {}
     this._queryOptions = props._queryOptions ?? {}
-    this._infiniteQueryOptions = props._infiniteQueryOptions ?? {}
+    this._infiniteQueryOptions = props._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (props._queryResultType ?? undefined) as TQueryResultType
     this._hasSourceBase = props._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
       ? false
@@ -309,7 +312,7 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
     _staticHeads?: StaticHeadsCollection
-    _defaultInfiniteQueryOptions?: ExtraUseInfiniteQueryOptions | undefined
+    _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
     _defaultQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
@@ -609,7 +612,7 @@ export class Point0<
       _defaultClientCtxQueryOptions: this._base?._defaultClientCtxQueryOptions,
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
-      _infiniteQueryOptions: {},
+      _infiniteQueryOptions: {} as never,
       _queryResultType: undefined,
       _clientExtractFns: [],
       _fetchOptions: this._base?._fetchOptions,
@@ -2081,7 +2084,63 @@ export class Point0<
 
   infiniteQuery<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    infiniteQueryOptions?: ExtraUseInfiniteQueryOptions,
+    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<TNewData, Error0, TNewData, QueryKey, unknown>,
+  ): Point0<
+    'infiniteQuery',
+    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TNewData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    'infiniteQuery',
+    TProps
+  >
+  infiniteQuery<TNewData extends Data & { nextCursor: any } = Data & { nextCursor: any }>(
+    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+    infiniteQueryOptions?: PartialUseInfiniteQueryOptions<TNewData, Error0, TNewData, QueryKey, unknown>,
+  ): Point0<
+    'infiniteQuery',
+    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TNewData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    'infiniteQuery',
+    TProps
+  >
+  // infiniteQuery<TNewData extends Data = Data>(
+  //   loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+  //   infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>,
+  // ): Point0<
+  //   'infiniteQuery',
+  //   TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TNewData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'infiniteQuery',
+  //   TProps
+  // >
+  infiniteQuery<TNewData extends Data = Data>(
+    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+    infiniteQueryOptions?:
+      | ExtraUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>
+      | PartialUseInfiniteQueryOptions<TNewData, Error0, TData, QueryKey, unknown>,
   ): Point0<
     'infiniteQuery',
     TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
@@ -2121,7 +2180,7 @@ export class Point0<
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       _queryResultType: 'infiniteQuery',
-      _infiniteQueryOptions: infiniteQueryOptions,
+      _infiniteQueryOptions: infiniteQueryOptions as never,
     })
   }
 
@@ -2407,7 +2466,8 @@ export class Point0<
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const input = this._getUnsafeInputRawByLocation(location)
     const { queryCache } = this.useQueryCache(input)
-    const query = this.useQuery(input, {
+    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+    const query = useQueryMethod(input, {
       ...this._defaultPageQueryOptions,
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
     })
@@ -2513,7 +2573,8 @@ export class Point0<
 
     const loaderComponent = this._getLoaderComponent({ type: 'component' })
     const errorComponent = this._getErrorComponent({ type: 'component' })
-    const query = this.useQuery(input as never, {
+    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+    const query = useQueryMethod(input as never, {
       ...this._defaultComponentQueryOptions,
     })
 
@@ -2632,7 +2693,8 @@ export class Point0<
     const input = this._getUnsafeInputRawByLocation(location)
     const { queryCache } = this.useQueryCache(input)
     const isInitalSsrLocation = useIsInitalSsrLocation()
-    const query = this.useQuery(input, {
+    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+    const query = useQueryMethod(input, {
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       ...this._defaultPageQueryOptions,
     })
@@ -2747,7 +2809,8 @@ export class Point0<
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const isInitalSsrLocation = useIsInitalSsrLocation()
     const { queryCache } = this.useQueryCache(input)
-    const query = this.useQuery(input, {
+    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+    const query = useQueryMethod(input, {
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
       ...this._defaultClientCtxQueryOptions,
     })
@@ -2897,6 +2960,43 @@ export class Point0<
     } as never
   }
 
+  getInfiniteQueryOptions(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [
+          input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
+          queryOptions: ExtraUseQueryOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+          _outputType?: FetchOutputType,
+        ]
+      : [
+          input: InputRaw<TRouteDefinition, TInputSchema>,
+          queryOptions: ExtraUseQueryOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+          _outputType?: FetchOutputType,
+        ]
+  ): UseInfiniteQueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
+    const [input, queryOptions, fetchOptions, outputType] = args
+    const queryKey = this.getQueryKey(input as never, outputType)
+    const queryFn = async () => {
+      const data = await this.fetch(input as never, fetchOptions, outputType)
+      return data
+    }
+    const result = {
+      ...this._defaultQueryOptions,
+      ...this._defaultInfiniteQueryOptions,
+      ...queryOptions,
+      queryKey,
+      queryFn,
+    }
+    if (!('initialPageParam' in result)) {
+      result.initialPageParam = undefined
+    }
+    if (!('getNextPageParam' in result)) {
+      result.getNextPageParam = (lastPage) => lastPage.nextCursor
+    }
+    return result as never
+  }
+
   getMutationOptions(
     mutationOptions?: MutationOptions,
     fetchOptions?: FetchOptions,
@@ -2928,6 +3028,26 @@ export class Point0<
         ]
   ): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
     return useQuery(this.getQueryOptions(...args))
+  }
+
+  useInfiniteQuery = (
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [
+          input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
+          queryOptions: ExtraUseQueryOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+          _outputType?: FetchOutputType,
+        ]
+      : [
+          input: InputRaw<TRouteDefinition, TInputSchema>,
+          queryOptions: ExtraUseQueryOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+          _outputType?: FetchOutputType,
+        ]
+  ): UseInfiniteQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
+    const infiniteQueryOptions = this.getInfiniteQueryOptions(...args)
+    console.log(infiniteQueryOptions)
+    return useInfiniteQuery(infiniteQueryOptions)
   }
 
   useQueryCache = (

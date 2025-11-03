@@ -1,10 +1,9 @@
 pass query data
 infinity query
-
 NOT client-ctx but clientCtx
 
-.output(z.object({}))
 merge .input schemas
+.output(z.object({}))
 plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 
 elysia example
@@ -31,6 +30,8 @@ queryCache for clients queries
 .route(string)
 add _ to all clases
 basepath replace with cwd
+not errorComponent, but just error
+.isLoading(({queryType, query}) => )
 .wrapper() → it is like useLayout, so anything with children, But may be then it will be just wrapped in place?
 prefetchPageQueryOption as separate settings
 server clients do not need root, it will be retrieved from points in eversion create call
@@ -93,6 +94,7 @@ example vite-hono
 allow not to pass server root at all to server, so client only apps
 websocket
 statefull meta
+.onError and combine them and clear them to base on lets
 batch query
 layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page)
 foxyLoader, clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
