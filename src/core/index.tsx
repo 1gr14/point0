@@ -87,11 +87,12 @@ import type {
   UndefinedPageComponent,
   UndefinedPointName,
   UndefinedProps,
-  UndefinedResponseOutput,
   UndefinedRoute,
   UndefinedRouteDefinition,
   WrapperComponentType,
   GeneralStore,
+  Output,
+  UndefinedOutput,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
@@ -106,7 +107,7 @@ export class Point0<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TOutput extends Output | UndefinedOutput,
   TProps extends Props | UndefinedProps,
 > {
   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData, TInputSchema> & {
@@ -130,8 +131,8 @@ export class Point0<
   _pointType: TPointType
   _letsEndPointType: TLetsEndPointType
   _inputSchema: TInputSchema
-  _responseFn: TResponseOutput extends ResponseOutput
-    ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
+  _responseFn: TOutput extends ResponseOutput
+    ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
     : undefined
   _rootId: RootId
   _staticHeads: StaticHeadsCollection
@@ -167,8 +168,8 @@ export class Point0<
     _generalStore: GeneralStore
     _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
-    _responseFn?: TResponseOutput extends ResponseOutput
-      ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
+    _responseFn?: TOutput extends ResponseOutput
+      ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
       : undefined
     _rootId: RootId
     _wrapper?: WrapperComponentType | undefined
@@ -200,8 +201,8 @@ export class Point0<
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
-    this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
-      ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
+    this._responseFn = (props._responseFn ?? undefined) as TOutput extends ResponseOutput
+      ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
       : undefined
     this._pointType = props._pointType
     this._letsEndPointType = props._letsEndPointType
@@ -264,7 +265,7 @@ export class Point0<
     TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
     TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
     TInputSchema extends InputSchema | UndefinedInputSchema,
-    TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+    TOutput extends Output | UndefinedOutput,
     TProps extends Props | UndefinedProps,
   >(overrides: {
     _pointType: TPointType
@@ -272,8 +273,8 @@ export class Point0<
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
     _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
-    _responseFn?: TResponseOutput extends ResponseOutput
-      ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
+    _responseFn?: TOutput extends ResponseOutput
+      ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
       : undefined
     _staticHeads?: StaticHeadsCollection
     _queryOptions?: QueryOptionsSettings | undefined
@@ -312,7 +313,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return new Point0<
@@ -326,7 +327,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       // persistent
@@ -339,8 +340,8 @@ export class Point0<
       _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
       _generalStore: this._generalStore,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
-      _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
-        ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
+      _responseFn: (overrides._responseFn ?? undefined) as TOutput extends ResponseOutput
+        ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
         : undefined, // remove end artefact on continue
       // _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
@@ -401,7 +402,7 @@ export class Point0<
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
-    UndefinedResponseOutput,
+    UndefinedOutput,
     UndefinedProps
   > {
     return new Point0({
@@ -429,7 +430,7 @@ export class Point0<
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
-    UndefinedResponseOutput,
+    UndefinedOutput,
     UndefinedProps
   > {
     return new Point0<
@@ -443,7 +444,7 @@ export class Point0<
       UndefinedRoute,
       UndefinedRoute,
       UndefinedInputSchema,
-      UndefinedResponseOutput,
+      UndefinedOutput,
       UndefinedProps
     >({
       _pointType: 'middleware',
@@ -470,7 +471,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -484,7 +485,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'base',
@@ -508,7 +509,7 @@ export class Point0<
     UndefinedRouteDefinition, // drop current route
     TRouteDefinition, // and use it as prev route
     TInputSchema,
-    UndefinedResponseOutput, // drop response output
+    UndefinedOutput, // drop response output
     TProps
   > {
     return this._continue<
@@ -522,7 +523,7 @@ export class Point0<
       UndefinedRouteDefinition,
       TRouteDefinition,
       TInputSchema,
-      UndefinedResponseOutput,
+      UndefinedOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -559,7 +560,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -573,7 +574,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -594,7 +595,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     this._generalStore._createQueryClient = createQueryClient
@@ -609,7 +610,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -629,7 +630,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -643,7 +644,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -664,7 +665,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -678,7 +679,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -699,7 +700,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -713,7 +714,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -734,7 +735,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -748,7 +749,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -769,7 +770,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -783,7 +784,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -804,7 +805,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -818,7 +819,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -839,7 +840,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -853,7 +854,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -874,7 +875,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -888,7 +889,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -907,7 +908,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -921,7 +922,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -1014,7 +1015,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   ctx<TNewCtx extends Ctx = Ctx>(
@@ -1030,7 +1031,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   ctx<TNewCtx extends Ctx = Ctx>(
@@ -1046,7 +1047,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
@@ -1061,7 +1062,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -1082,7 +1083,7 @@ export class Point0<
     TNewRoute['definition'],
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   route<TNewRouteDefinition extends `/${string}`>(
@@ -1098,7 +1099,7 @@ export class Point0<
     Route0<TNewRouteDefinition>['definition'],
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   route<TNewRouteDefinition extends string>(
@@ -1116,7 +1117,7 @@ export class Point0<
       : Route0<TNewRouteDefinition>['definition'],
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   route(): Point0<
@@ -1130,7 +1131,7 @@ export class Point0<
     TPrevRouteDefinition extends RouteDefinition ? TPrevRouteDefinition : never,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   route(route?: CallabelRoute | RouteDefinition) {
@@ -1167,7 +1168,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   loader<TNewData extends Data = Data>(
@@ -1183,7 +1184,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   loader<TNewData extends Data = Data>(
@@ -1199,7 +1200,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -1213,7 +1214,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'middleware',
@@ -1242,7 +1243,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -1256,7 +1257,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'client-middleware',
@@ -1280,7 +1281,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   head(
@@ -1296,7 +1297,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   head(headFnOrHead: HeadFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | ResolvableHead) {
@@ -1329,7 +1330,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   title(
@@ -1345,7 +1346,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   title(titleFnOrTitle: TitleFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | string) {
@@ -1377,7 +1378,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TNewProps
   > {
     return this._continue({
@@ -1398,7 +1399,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TNewInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   input(inputSchema: InputSchemaZod) {
@@ -1435,7 +1436,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     if (!this._route) {
@@ -1452,7 +1453,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'page',
@@ -1475,7 +1476,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >
   } {
@@ -1490,7 +1491,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'component',
@@ -1515,7 +1516,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     if (!this._route) {
@@ -1532,7 +1533,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'layout',
@@ -1559,7 +1560,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   clientCtx(): Point0<
@@ -1573,7 +1574,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   >
   clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any>) {
@@ -1635,7 +1636,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -1649,7 +1650,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'query',
@@ -1674,7 +1675,7 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponseOutput,
+    TOutput,
     TProps
   > {
     return this._continue<
@@ -1688,7 +1689,7 @@ export class Point0<
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponseOutput,
+      TOutput,
       TProps
     >({
       _pointType: 'mutation',
@@ -2301,7 +2302,7 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
-  ): Promise<FetchOutput<TResponseOutput, TData>> {
+  ): Promise<FetchOutput<TOutput, TData>> {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions(), ...options }
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
@@ -2324,7 +2325,7 @@ export class Point0<
       body,
     })
     if (this._pointType === 'response') {
-      return res as FetchOutput<TResponseOutput, TData>
+      return res as FetchOutput<TOutput, TData>
     }
     const json = await res.json()
     if (res.ok) {
@@ -2339,12 +2340,12 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [eversionRun: EversionRun<TRequiredCtx>, input?: InputRaw<TRouteDefinition, TInputSchema>]
       : [eversionRun: EversionRun<TRequiredCtx>, input: InputRaw<TRouteDefinition, TInputSchema>]
-  ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
+  ): Promise<ExtractResult<TCtx, FinalData<TData>, TOutput>> {
     const [eversionRun, input = {}] = args
     return (await eversionRun.extract({
       point: this as never,
       input,
-    })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+    })) as ExtractResult<TCtx, FinalData<TData>, TOutput>
   }
 
   static parseQueryKey(queryKey: OriginalQueryKey | QueryKey):
@@ -2400,7 +2401,7 @@ export class Point0<
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
-  ): QueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
+  ): QueryOptions<FetchOutput<TOutput, TData>, Error0> & { queryKey: QueryKey } {
     const [input, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
     const queryFn = async () => {
@@ -2418,7 +2419,7 @@ export class Point0<
   getMutationOptions(
     mutationOptions?: MutationOptions,
     fetchOptions?: FetchOptions,
-  ): MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>> {
+  ): MutationOptions<FetchOutput<TOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>> {
     const mutationFn = async (input: Record<string, any> = {}) => {
       const data = await this.fetch(input as never, fetchOptions)
       return data
@@ -2427,7 +2428,7 @@ export class Point0<
       ...mutationOptions,
       mutationFn,
       // TODO: add .mutationOptions helper
-    } as MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>>
+    } as MutationOptions<FetchOutput<TOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>>
   }
 
   useQuery = (
@@ -2444,7 +2445,7 @@ export class Point0<
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
-  ): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
+  ): UseQueryResult<FetchOutput<TOutput, TData>, Error0> => {
     return useQuery(this.getQueryOptions(...args))
   }
 
@@ -2453,7 +2454,7 @@ export class Point0<
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
   ): {
-    queryCache: Query<FetchOutput<TResponseOutput, TData>, Error0> | undefined
+    queryCache: Query<FetchOutput<TOutput, TData>, Error0> | undefined
     queryKey: QueryKey
   } => {
     const queryClient = useQueryClient()
@@ -2466,7 +2467,7 @@ export class Point0<
   useMutation = (
     mutationOptions?: MutationOptions | undefined,
     fetchOptions?: FetchOptions | undefined,
-  ): UseMutationResult<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>> => {
+  ): UseMutationResult<FetchOutput<TOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>> => {
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 

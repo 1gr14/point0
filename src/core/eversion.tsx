@@ -20,6 +20,7 @@ import type {
   FinalData,
   InputParsed,
   InputRaw,
+  Output,
   PointName,
   RequiredCtx,
   ResponseOutput,
@@ -28,7 +29,7 @@ import type {
   RootPoint,
   RootSourcePoint,
   UndefinedCtx,
-  UndefinedResponseOutput,
+  UndefinedOutput,
 } from './types.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
@@ -685,19 +686,19 @@ export type ExtractFnWithOutput = {
 export type ExtractResult<
   TCtx extends Ctx = Ctx,
   TData extends Data = Data,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TOutput extends Output | UndefinedOutput = Output | UndefinedOutput,
 > = {
   ctx: TCtx
   data: TData
   head: ResolvableHead[]
-  response: TResponseOutput
+  response: TOutput extends ResponseOutput ? TOutput : undefined
   error: unknown
   status: number
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, any, any, infer TCtx, infer TData, any, any, any, any, infer TResponseOutput>
-    ? ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-    : ExtractResult<EmptyCtx, EmptyData, UndefinedResponseOutput>
+  TPoint extends AnyPoint<any, any, any, any, infer TCtx, infer TData, any, any, any, any, infer TOutput>
+    ? ExtractResult<TCtx, FinalData<TData>, TOutput>
+    : ExtractResult<EmptyCtx, EmptyData, UndefinedOutput>
 
 export type Payload = {
   dehydratedState: DehydratedState
