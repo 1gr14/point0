@@ -1,8 +1,9 @@
-NOT client-ctx but clientCtx
-errorComponent → error
 wrapper
-
+no title all should be just head
+paramNameInputPath
+prefetchInfinityQuery
 merge .input schemas
+
 plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 
 elysia example
@@ -90,15 +91,18 @@ npm @point0
 ? persistent zustand store
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
+? statefull meta, or better ↓
+{...head} as only or second argument in loading and error fns, and as second arg in page fn
 .output(z.object({}))
 allow not to pass server root at all to server, so client only apps
 websocket
-statefull meta
 .onError and combine them and clear them to base on lets
 batch query
 layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page)
-foxyLoader, clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
-.interstellar((extractSelf) => elysia.get(() => extractSelf()))
-.useComponent() to gueranty of preloading of this component
+
+? foxyLoader, clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
+? clientOnlyCtx and clientCtx query key
+now it pretty enough
+
 default route of page is its name
 ? interstallar

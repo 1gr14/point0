@@ -4,12 +4,12 @@ import { routes } from '../lib/routes'
 export const empty = client
   .lets('page', 'empty')
   .route(routes.empty)
-  .loader(({ input }) => {
-    return {
-      title: 'Empty',
-    }
-  })
-  .clientLoader(async ({ data }) => {
+  // .loader(({ input }) => {
+  //   return {
+  //     title: 'Empty',
+  //   }
+  // })
+  .clientLoader(({ data }) => {
     return {
       ...data,
       ideasCountX3: 27,

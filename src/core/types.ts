@@ -564,7 +564,7 @@ export type ComponentMountable<
 > = React.ComponentType<ComponentMountableProps<TInputSchema, TProps>>
 
 export type DestinationComponentType = 'app' | 'page' | 'component'
-export type LoaderComponentProps<
+export type LoadingComponentProps<
   TType extends DestinationComponentType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
@@ -574,12 +574,12 @@ export type LoaderComponentProps<
   location: AnyLocation
   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'pending' | 'error' | 'success'>
 }
-export type LoaderComponentType<
+export type LoadingComponentType<
   TType extends DestinationComponentType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-> = React.ComponentType<LoaderComponentProps<TType, TData, TResponseOutput, TQueryResultType>>
+> = React.ComponentType<LoadingComponentProps<TType, TData, TResponseOutput, TQueryResultType>>
 
 export type ErrorComponentProps<
   TType extends DestinationComponentType,
