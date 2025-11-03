@@ -3,6 +3,14 @@ import type { source } from './server.js'
 
 export const client = Point0.connect<typeof source>('client')
   .sourceBaseUrl('http://localhost:3000')
+  .queryOptions({
+    retry: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+  })
   .head({
     title: 'Loading...',
     titleTemplate: '%s | IdeaNick',

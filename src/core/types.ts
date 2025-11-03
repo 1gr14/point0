@@ -1,6 +1,10 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ChildrenLocation, ExactLocation, FlatInput, FlatOutput, HasParams } from '@devp0nt/route0'
-import type { QueryClient, QueryOptions } from '@tanstack/react-query'
+import type {
+  UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
+  UseQueryOptions as OriginalUseQueryOptions,
+  QueryClient,
+} from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { infer as ZodInfer, input as ZodInput, ZodObject } from 'zod'
 import type { EversionRun } from './eversion.js'
@@ -43,7 +47,13 @@ export type UndefinedProps = undefined
 export type EmptyProps = Record<string, unknown>
 export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends UndefinedProps ? EmptyProps : TProps
 
-export type QueryOptionsSettings = Omit<QueryOptions<any, any, any, any, any>, 'queryFn' | 'queryKey'>
+export type UseQueryOptions = OriginalUseQueryOptions<any, any, any, any>
+export type ExtraUseQueryOptions = Omit<UseQueryOptions, 'queryFn' | 'queryKey'>
+export type UseInfiniteQueryOptions = OriginalUseInfiniteQueryOptions<any, any, any, any, any>
+export type ExtraUseInfiniteQueryOptions = Omit<
+  UseInfiniteQueryOptions,
+  'queryFn' | 'queryKey' | 'getNextPageParam' | 'initialPageParam'
+>
 // used to avoid circular depedencies
 export type Infer<
   TRequiredCtx extends RequiredCtx = RequiredCtx,

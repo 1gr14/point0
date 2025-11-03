@@ -68,7 +68,7 @@ import type {
   PrependCtx,
   Props,
   QueryKey,
-  QueryOptionsSettings,
+  UseQueryOptions,
   FetchOutputType,
   RequiredCtx,
   ResponseFn,
@@ -94,6 +94,8 @@ import type {
   GeneralStore,
   QueryResultType,
   UndefinedQueryResultType,
+  ExtraUseQueryOptions,
+  ExtraUseInfiniteQueryOptions,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
@@ -138,13 +140,13 @@ export class Point0<
     : undefined
   _rootId: RootId
   _staticHeads: StaticHeadsCollection
-  _defaultQueryOptions: QueryOptionsSettings
-  _defaultInfiniteQueryOptions: QueryOptionsSettings
-  _defaultPageQueryOptions: QueryOptionsSettings
-  _defaultLayoutQueryOptions: QueryOptionsSettings
-  _defaultComponentQueryOptions: QueryOptionsSettings
-  _defaultClientCtxQueryOptions: QueryOptionsSettings
-  _queryOptions: QueryOptionsSettings
+  _defaultQueryOptions: ExtraUseQueryOptions
+  _defaultInfiniteQueryOptions: ExtraUseInfiniteQueryOptions
+  _defaultPageQueryOptions: ExtraUseQueryOptions
+  _defaultLayoutQueryOptions: ExtraUseQueryOptions
+  _defaultComponentQueryOptions: ExtraUseQueryOptions
+  _defaultClientCtxQueryOptions: ExtraUseQueryOptions
+  _queryOptions: ExtraUseQueryOptions
   _queryResultType: TQueryResultType
   // TODO: remove or use wrapper
   _wrapper: WrapperComponentType | undefined
@@ -183,13 +185,13 @@ export class Point0<
     _rootId: RootId
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
-    _defaultInfiniteQueryOptions?: QueryOptionsSettings | undefined
-    _defaultQueryOptions?: QueryOptionsSettings | undefined
-    _defaultPageQueryOptions?: QueryOptionsSettings | undefined
-    _defaultLayoutQueryOptions?: QueryOptionsSettings | undefined
-    _defaultComponentQueryOptions?: QueryOptionsSettings | undefined
-    _defaultClientCtxQueryOptions?: QueryOptionsSettings | undefined
-    _queryOptions?: QueryOptionsSettings | undefined
+    _defaultInfiniteQueryOptions?: ExtraUseInfiniteQueryOptions | undefined
+    _defaultQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultClientCtxQueryOptions?: ExtraUseQueryOptions | undefined
+    _queryOptions?: ExtraUseQueryOptions | undefined
     _queryResultType?: TQueryResultType
     _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
@@ -299,13 +301,13 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
     _staticHeads?: StaticHeadsCollection
-    _defaultInfiniteQueryOptions?: QueryOptionsSettings | undefined
-    _defaultQueryOptions?: QueryOptionsSettings | undefined
-    _defaultPageQueryOptions?: QueryOptionsSettings | undefined
-    _defaultComponentQueryOptions?: QueryOptionsSettings | undefined
-    _defaultLayoutQueryOptions?: QueryOptionsSettings | undefined
-    _defaultClientCtxQueryOptions?: QueryOptionsSettings | undefined
-    _queryOptions?: QueryOptionsSettings | undefined
+    _defaultInfiniteQueryOptions?: ExtraUseInfiniteQueryOptions | undefined
+    _defaultQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultClientCtxQueryOptions?: ExtraUseQueryOptions | undefined
+    _queryOptions?: ExtraUseQueryOptions | undefined
     _queryResultType?: TQueryResultType
     _wrapper?: WrapperComponentType | undefined
     _extractFns?: ExtractFnRecord[]
@@ -692,7 +694,7 @@ export class Point0<
   }
 
   queryOptions(
-    queryOptions: QueryOptionsSettings,
+    queryOptions: ExtraUseQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -729,7 +731,7 @@ export class Point0<
   }
 
   infiniteQueryOptions(
-    infiniteQueryOptions: QueryOptionsSettings,
+    infiniteQueryOptions: ExtraUseInfiniteQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -766,7 +768,7 @@ export class Point0<
   }
 
   pageQueryOptions(
-    pageQueryOptions: QueryOptionsSettings,
+    pageQueryOptions: UseQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -803,7 +805,7 @@ export class Point0<
   }
 
   componentQueryOptions(
-    componentQueryOptions: QueryOptionsSettings,
+    componentQueryOptions: UseQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -840,7 +842,7 @@ export class Point0<
   }
 
   clientCtxQueryOptions(
-    clientCtxQueryOptions: QueryOptionsSettings,
+    clientCtxQueryOptions: UseQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -877,7 +879,7 @@ export class Point0<
   }
 
   layoutQueryOptions(
-    layoutQueryOptions: QueryOptionsSettings,
+    layoutQueryOptions: UseQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -2280,12 +2282,6 @@ export class Point0<
         return await this.fetch(input)
       },
       enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-      retry: false,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchInterval: false,
-      refetchIntervalInBackground: false,
       ...this._defaultQueryOptions,
       ...this._defaultPageQueryOptions,
     })
