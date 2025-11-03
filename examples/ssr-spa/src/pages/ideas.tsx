@@ -8,21 +8,19 @@ export const ideasPage = generalLayout
   .lets('page', 'ideas')
   .route('/ideas')
   .input(z.object({ page: z.coerce.number().default(0) }))
-  .infiniteQuery(
-    async ({ ctx, data, input }) => {
-      const ideasCount = await ctx.prisma.idea.count()
-      const page = input.page
-      const limit = 2
-      const ideas = await ctx.prisma.idea.findMany({ take: limit, skip: page * limit })
-      const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
-      return { ...data, ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
-    },
-    {
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-      initialPageParam: 0,
-      pageParamInputKey: 'page',
-    },
-  )
+  .loader(async ({ ctx, data, input }) => {
+    const ideasCount = await ctx.prisma.idea.count()
+    const page = input.page
+    const limit = 2
+    const ideas = await ctx.prisma.idea.findMany({ take: limit, skip: page * limit })
+    const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
+    return { ...data, ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
+  })
+  .infiniteQuery({
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: 0,
+    pageParamInputKey: 'page',
+  })
   .title(({ data }) => {
     return `${data.ideasCount} ideas`
   })

@@ -1,5 +1,3 @@
-pass query data
-infinity query
 NOT client-ctx but clientCtx
 
 merge .input schemas
