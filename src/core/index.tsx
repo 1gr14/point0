@@ -102,6 +102,7 @@ import type {
   UseInfiniteQueryOptions,
   UseQueryOptions,
   WrapperComponentType,
+  ClientCtxFn,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
@@ -160,6 +161,7 @@ export class Point0<
   _hasSourceBase: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
   _extractFns: ExtractFnRecord[]
   _clientExtractFns: ClientExtractFnRecord[]
+  _clientCtxSetter: ClientCtxFn<any, any, any, FinalClientData<TData, TClientData>> | undefined
   _route: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
   _prevRoute: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
   _page: PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType> | UndefinedPageComponent
@@ -208,6 +210,7 @@ export class Point0<
     _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
+    _clientCtxSetter?: ClientCtxFn<any, any, any, any>
     _route?: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
     _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
     _page?:
@@ -257,6 +260,7 @@ export class Point0<
       : true
     this._extractFns = props._extractFns ?? []
     this._clientExtractFns = props._clientExtractFns ?? []
+    this._clientCtxSetter = props._clientCtxSetter ?? undefined
     this._route =
       props._route ??
       (undefined as TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute)
@@ -338,6 +342,7 @@ export class Point0<
     _wrapper?: WrapperComponentType | undefined
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
+    _clientCtxSetter?: ClientCtxFn<any, any, any, any> | undefined
     _route?: IfAnyThen<
       TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
@@ -430,6 +435,7 @@ export class Point0<
         : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
       _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
+      _clientCtxSetter: overrides._clientCtxSetter ?? this._clientCtxSetter,
       _route: (overrides._route ?? this._route) as never,
       _prevRoute: (overrides._prevRoute ?? this._prevRoute) as never,
       _page: overrides._page ?? undefined,
@@ -644,6 +650,7 @@ export class Point0<
       _queryOptions: {},
       _infiniteQueryOptions: {} as never,
       _queryResultType: undefined,
+      _clientCtxSetter: undefined,
       _clientExtractFns: [],
       _fetchOptions: this._base?._fetchOptions,
       _errorComponent: this._base?._errorComponent,
@@ -1973,7 +1980,7 @@ export class Point0<
   }
 
   clientCtx<TNewClientData extends Data = Data>(
-    clientLoaderFn: ClientLoaderFn<
+    clientCtxSetter: ClientCtxFn<
       TLetsEndPointType,
       TRouteDefinition,
       FinalClientData<TData, TClientData>,
@@ -2009,12 +2016,10 @@ export class Point0<
     TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
     TProps
   >
-  clientCtx(clientLoaderFn?: ClientLoaderFn<any, any, any, any>) {
+  clientCtx(clientCtxSetter?: ClientCtxFn<any, any, any, any>) {
     return this._continue({
       _pointType: 'clientCtx',
-      _clientExtractFns: clientLoaderFn
-        ? [...this._clientExtractFns, { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() }]
-        : this._clientExtractFns,
+      _clientCtxSetter: clientCtxSetter || (({ data }) => data),
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2868,18 +2873,23 @@ export class Point0<
       })
     }
 
-    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
-      return React.createElement(this._ClientCtxReactContext.Provider, {
-        value: data as FinalClientData<TData, TClientData>,
-        children,
+    const _clientCtxSetter = this._clientCtxSetter
+
+    if (!_clientCtxSetter) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        error: new Error0('No clientCtx setter'),
+        location,
+        query,
       })
     }
 
     if (!this._hasClientAsyncLoader()) {
       try {
         const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
+        const clientCtxValue = _clientCtxSetter({ data: clientData, location })
         return React.createElement(this._ClientCtxReactContext.Provider, {
-          value: clientData as FinalClientData<TData, TClientData>,
+          value: clientCtxValue,
           children,
         })
       } catch (error: unknown) {
@@ -2889,7 +2899,7 @@ export class Point0<
 
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [clientData, setClientData] = React.useState<Data>({})
+    const [clientCtxValue, setClientCtxValue] = React.useState<FinalClientData<TData, TClientData>>({} as never)
     React.useEffect(() => {
       void (async () => {
         setLoading(true)
@@ -2899,7 +2909,8 @@ export class Point0<
             location: location as AnyLocation<CurrentRouteDefinition<TRouteDefinition>>,
             skipHeads: true,
           })
-          setClientData(clientData)
+          const clientCtxValue = _clientCtxSetter({ data: clientData, location })
+          setClientCtxValue(clientCtxValue)
           setLoading(false)
         } catch (error) {
           setError(Error0.from(error))
@@ -2915,7 +2926,7 @@ export class Point0<
       return React.createElement(errorComponent, { type: 'page', error, location, query })
     }
     return React.createElement(this._ClientCtxReactContext.Provider, {
-      value: clientData as FinalClientData<TData, TClientData>,
+      value: clientCtxValue,
       children,
     })
   }

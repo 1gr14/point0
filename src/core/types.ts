@@ -760,6 +760,21 @@ export type ClientLoaderFn<
   props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TClientData>,
 ) => Promise<TClientDataOutput> | TClientDataOutput
 
+export type ClientCtxFnProps<
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientData extends Data | UndefinedData,
+> = {
+  data: FinalClientData<any, TClientData>
+  location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
+}
+export type ClientCtxFn<
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientData extends Data | UndefinedData,
+  TClientDataOutput extends Data,
+> = (props: ClientCtxFnProps<TLetsEndPointType, TRouteDefinition, TClientData>) => TClientDataOutput
+
 export type HeadFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
