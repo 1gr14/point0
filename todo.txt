@@ -38,6 +38,7 @@ add _ to all clases
 basepath replace with cwd
 not errorComponent, but just error
 .isLoading(({queryType, query}) => )
+on server when returning ssr loactio replace it with toBasOlcation of requestest origin
 .wrapper() → it is like useLayout, so anything with children, But may be then it will be just wrapped in place?
 prefetchPageQueryOption as separate settings
 server clients do not need root, it will be retrieved from points in eversion create call

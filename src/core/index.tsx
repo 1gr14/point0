@@ -2071,26 +2071,99 @@ export class Point0<
     })
   }
 
-  query<TNewData extends Data = Data>(
-    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    queryOptions?: ExtraUseQueryOptions,
-  ): Point0<
-    'query',
-    TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'query',
-    TProps
-  >
+  // query<TNewData extends Data = Data>(
+  //   loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+  //   queryOptions?: ExtraUseQueryOptions,
+  // ): Point0<
+  //   'query',
+  //   TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TNewData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'query',
+  //   TProps
+  // >
+  // query(
+  //   queryOptions?: ExtraUseQueryOptions,
+  // ): Point0<
+  //   'query',
+  //   TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'query',
+  //   TProps
+  // >
+  // query<TNewData extends Data = Data>(
+  //   ...args:
+  //     | [loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>, queryOptions?: ExtraUseQueryOptions]
+  //     | [queryOptions?: ExtraUseQueryOptions]
+  // ): Point0<
+  //   'query',
+  //   TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TNewData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'query',
+  //   TProps
+  // > {
+  //   const { loaderFn, queryOptions } = (() => {
+  //     if (args.length === 0) {
+  //       return { loaderFn: ({ data }) => data, queryOptions: {} }
+  //     } else if (args.length === 1) {
+  //       return { loaderFn: ({ data }) => data, queryOptions: args[0] }
+  //     } else {
+  //       return { loaderFn: args[0], queryOptions: args[1] }
+  //     }
+  //   })() as { loaderFn: LoaderFn<any, any, any, any, any>; queryOptions: ExtraUseQueryOptions<any, any, any, any> }
+  //   return this._continue<
+  //     'query',
+  //     TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+  //     TConnectedRootSourcePoint,
+  //     TRequiredCtx,
+  //     TCtx,
+  //     TNewData,
+  //     TClientData,
+  //     TRouteDefinition,
+  //     TPrevRouteDefinition,
+  //     TInputSchema,
+  //     TResponseOutput,
+  //     'query',
+  //     TProps
+  //   >({
+  //     _pointType: 'query',
+  //     _extractFns: [
+  //       ...this._extractFns,
+  //       { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+  //     ] as never,
+  //     _letsEndPointType: (this._letsEndPointType === 'query'
+  //       ? undefined
+  //       : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+  //     _queryResultType: 'query',
+  //     _queryOptions: queryOptions,
+  //   })
+  // }
+
   query(
-    queryOptions?: ExtraUseQueryOptions,
+    queryOptions: ExtraUseQueryOptions = {},
   ): Point0<
     'query',
     TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
@@ -2105,42 +2178,14 @@ export class Point0<
     TResponseOutput,
     'query',
     TProps
-  >
-  query<TNewData extends Data = Data>(
-    ...args:
-      | [loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>, queryOptions?: ExtraUseQueryOptions]
-      | [queryOptions?: ExtraUseQueryOptions]
-  ): Point0<
-    'query',
-    TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'query',
-    TProps
   > {
-    const { loaderFn, queryOptions } = (() => {
-      if (args.length === 0) {
-        return { loaderFn: ({ data }) => data, queryOptions: {} }
-      } else if (args.length === 1) {
-        return { loaderFn: ({ data }) => data, queryOptions: args[0] }
-      } else {
-        return { loaderFn: args[0], queryOptions: args[1] }
-      }
-    })() as { loaderFn: LoaderFn<any, any, any, any, any>; queryOptions: ExtraUseQueryOptions<any, any, any, any> }
     return this._continue<
       'query',
       TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
-      TNewData,
+      TData,
       TClientData,
       TRouteDefinition,
       TPrevRouteDefinition,
@@ -2150,10 +2195,6 @@ export class Point0<
       TProps
     >({
       _pointType: 'query',
-      _extractFns: [
-        ...this._extractFns,
-        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
-      ] as never,
       _letsEndPointType: (this._letsEndPointType === 'query'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
@@ -2162,31 +2203,6 @@ export class Point0<
     })
   }
 
-  infiniteQuery<TNewData extends Data = Data>(
-    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-      InputRaw<TRouteDefinition, TInputSchema>,
-      TNewData,
-      Error0,
-      TNewData,
-      QueryKey,
-      unknown
-    >,
-  ): Point0<
-    'infiniteQuery',
-    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'infiniteQuery',
-    TProps
-  >
   infiniteQuery(
     infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
       InputRaw<TRouteDefinition, TInputSchema>,
@@ -2210,65 +2226,14 @@ export class Point0<
     TResponseOutput,
     'infiniteQuery',
     TProps
-  >
-  infiniteQuery<TNewData extends Data = Data>(
-    ...args:
-      | [
-          loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-          infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-            InputRaw<TRouteDefinition, TInputSchema>,
-            TNewData,
-            Error0,
-            TNewData,
-            QueryKey,
-            unknown
-          >,
-        ]
-      | [
-          infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-            InputRaw<TRouteDefinition, TInputSchema>,
-            TNewData,
-            Error0,
-            TNewData,
-            QueryKey,
-            unknown
-          >,
-        ]
-  ): Point0<
-    'infiniteQuery',
-    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'infiniteQuery',
-    TProps
   > {
-    const {
-      loaderFn,
-      infiniteQueryOptions,
-    }: {
-      loaderFn: LoaderFn<any, any, any, any, any>
-      infiniteQueryOptions: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
-    } = (() => {
-      if (args.length === 1) {
-        return { loaderFn: ({ data }) => data, infiniteQueryOptions: args[0] }
-      } else {
-        return { loaderFn: args[0], infiniteQueryOptions: args[1] }
-      }
-    })()
     return this._continue<
       'infiniteQuery',
       TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
-      TNewData,
+      TData,
       TClientData,
       TRouteDefinition,
       TPrevRouteDefinition,
@@ -2278,10 +2243,6 @@ export class Point0<
       TProps
     >({
       _pointType: 'infiniteQuery',
-      _extractFns: [
-        ...this._extractFns,
-        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
-      ] as never,
       _letsEndPointType: (this._letsEndPointType === 'infiniteQuery'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
@@ -2289,6 +2250,134 @@ export class Point0<
       _infiniteQueryOptions: infiniteQueryOptions,
     })
   }
+
+  // infiniteQuery<TNewData extends Data = Data>(
+  //   loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+  //   infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+  //     InputRaw<TRouteDefinition, TInputSchema>,
+  //     TNewData,
+  //     Error0,
+  //     TNewData,
+  //     QueryKey,
+  //     unknown
+  //   >,
+  // ): Point0<
+  //   'infiniteQuery',
+  //   TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TNewData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'infiniteQuery',
+  //   TProps
+  // >
+  // infiniteQuery(
+  //   infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+  //     InputRaw<TRouteDefinition, TInputSchema>,
+  //     TData,
+  //     Error0,
+  //     TData,
+  //     QueryKey,
+  //     unknown
+  //   >,
+  // ): Point0<
+  //   'infiniteQuery',
+  //   TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'infiniteQuery',
+  //   TProps
+  // >
+  // infiniteQuery<TNewData extends Data = Data>(
+  //   ...args:
+  //     | [
+  //         loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+  //         infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+  //           InputRaw<TRouteDefinition, TInputSchema>,
+  //           TNewData,
+  //           Error0,
+  //           TNewData,
+  //           QueryKey,
+  //           unknown
+  //         >,
+  //       ]
+  //     | [
+  //         infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+  //           InputRaw<TRouteDefinition, TInputSchema>,
+  //           TNewData,
+  //           Error0,
+  //           TNewData,
+  //           QueryKey,
+  //           unknown
+  //         >,
+  //       ]
+  // ): Point0<
+  //   'infiniteQuery',
+  //   TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+  //   TConnectedRootSourcePoint,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TNewData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   'infiniteQuery',
+  //   TProps
+  // > {
+  //   const {
+  //     loaderFn,
+  //     infiniteQueryOptions,
+  //   }: {
+  //     loaderFn: LoaderFn<any, any, any, any, any>
+  //     infiniteQueryOptions: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
+  //   } = (() => {
+  //     if (args.length === 1) {
+  //       return { loaderFn: ({ data }) => data, infiniteQueryOptions: args[0] }
+  //     } else {
+  //       return { loaderFn: args[0], infiniteQueryOptions: args[1] }
+  //     }
+  //   })()
+  //   return this._continue<
+  //     'infiniteQuery',
+  //     TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+  //     TConnectedRootSourcePoint,
+  //     TRequiredCtx,
+  //     TCtx,
+  //     TNewData,
+  //     TClientData,
+  //     TRouteDefinition,
+  //     TPrevRouteDefinition,
+  //     TInputSchema,
+  //     TResponseOutput,
+  //     'infiniteQuery',
+  //     TProps
+  //   >({
+  //     _pointType: 'infiniteQuery',
+  //     _extractFns: [
+  //       ...this._extractFns,
+  //       { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+  //     ] as never,
+  //     _letsEndPointType: (this._letsEndPointType === 'infiniteQuery'
+  //       ? undefined
+  //       : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
+  //     _queryResultType: 'infiniteQuery',
+  //     _infiniteQueryOptions: infiniteQueryOptions,
+  //   })
+  // }
 
   mutation<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,

@@ -286,7 +286,8 @@ describe('Point0', () => {
     const clientPoint0111 = clientPointBase01
       .lets('page', 'page')
       .route(Route0.create('/'))
-      .infiniteQuery(() => ({ x: 1 }), {
+      .loader(() => ({ x: 1 }))
+      .infiniteQuery({
         initialPageParam: 0,
         getNextPageParam: () => 1,
         pageParamFromInput: 'page',
