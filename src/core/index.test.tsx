@@ -289,7 +289,7 @@ describe('Point0', () => {
       .infiniteQuery(() => ({ x: 1 }), {
         initialPageParam: 0,
         getNextPageParam: () => 1,
-        pageParamInputKey: 'page',
+        pageParamFromInput: 'page',
       })
       .page(({ query }) => <div>Hello{query.data.pages[0].x}</div>)
     expectTypeOf<(typeof clientPoint0111)['Infer']['QueryResultType']>().toEqualTypeOf<'infiniteQuery'>()

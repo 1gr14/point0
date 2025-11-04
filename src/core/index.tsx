@@ -3112,8 +3112,8 @@ export class Point0<
     const [input = {}, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
-      const pageParamInputKey = this._infiniteQueryOptions.pageParamInputKey
-      const data = await this.fetch({ ...input, [pageParamInputKey]: pageParam } as never, fetchOptions, outputType)
+      const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+      const data = await this.fetch({ ...input, [pageParamFromInput]: pageParam } as never, fetchOptions, outputType)
       return data
     }
     const result = {

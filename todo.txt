@@ -1,10 +1,16 @@
-wrapper
-no title all should be just head
-paramNameInputPath
+useMemo, useClientAsyncLoader, useClientSyncLoader
+clientCtx normalize
 prefetchInfinityQuery
+
+no title all should be just head
+head(true, {always,success,error,loading})
+
+wrapper
 merge .input schemas
 
-plugin: const auth = x.plugin((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
+chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
+chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
+chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); so we need in extract also add base extracctFns
 
 elysia example
 auth
@@ -86,6 +92,8 @@ npm @point0
 
 ---
 
+const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
+
 ? .restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
 ? openapi plugin
 ? persistent zustand store
@@ -96,6 +104,7 @@ example vite-hono
 .output(z.object({}))
 allow not to pass server root at all to server, so client only apps
 websocket
+pageParamFromInput as fn or path
 .onError and combine them and clear them to base on lets
 batch query
 layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page)

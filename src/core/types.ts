@@ -73,7 +73,7 @@ export type UseInfiniteQueryOptions<
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
 > = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam> & {
-  pageParamInputKey: keyof TInput
+  pageParamFromInput: keyof TInput
 }
 export type ExtraUseInfiniteQueryOptions<
   TInput extends InputRaw,
