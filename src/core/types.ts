@@ -1,16 +1,15 @@
 import type { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ChildrenLocation, ExactLocation, FlatInput, FlatOutput, HasParams } from '@devp0nt/route0'
 import type {
+  InfiniteData,
   UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
   UseQueryOptions as OriginalUseQueryOptions,
   QueryClient,
-  QueryKey as OriginalQueryKey,
-  UseQueryResult,
   UseInfiniteQueryResult,
-  InfiniteData,
+  UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
-import type { infer as ZodInfer, input as ZodInput, ZodObject } from 'zod'
+import type { ZodDefault, infer as ZodInfer, input as ZodInput, ZodObject, ZodOptional } from 'zod'
 import type { EversionRun } from './eversion.js'
 import type { Point0 } from './index.js'
 
@@ -481,14 +480,31 @@ export type QueryComponentProp<
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TStatus extends 'pending' | 'error' | 'success',
-> = TQueryResultType extends 'infiniteQuery'
-  ? NarrowQueryComponentPropStatus<
-      UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0>,
-      TStatus
-    >
-  : TQueryResultType extends 'query'
-    ? NarrowQueryComponentPropStatus<UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0>, TStatus>
-    : undefined
+> = TData extends UndefinedData
+  ? undefined
+  : TQueryResultType extends 'infiniteQuery'
+    ? NarrowQueryComponentPropStatus<
+        UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0>,
+        TStatus
+      >
+    : TQueryResultType extends 'query'
+      ? NarrowQueryComponentPropStatus<UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0>, TStatus>
+      : undefined
+export type ClientQueryComponentProp<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TStatus extends 'pending' | 'error' | 'success',
+> = TClientData extends UndefinedData
+  ? undefined
+  : TQueryResultType extends 'infiniteQuery'
+    ? NarrowQueryComponentPropStatus<
+        UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0>,
+        TStatus
+      >
+    : TQueryResultType extends 'query'
+      ? NarrowQueryComponentPropStatus<UseQueryResult<FinalClientData<TData, TClientData>, Error0>, TStatus>
+      : undefined
 
 export type PageComponentProps<
   TData extends Data | UndefinedData,
@@ -716,17 +732,18 @@ export type ClientExtractFnRecord<
   TClientData extends Data | UndefinedData = Data | UndefinedData,
   TPointType extends RenderablePointType = RenderablePointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TOutput extends Ctx | Data = Ctx | Data,
 > = TType extends 'loader'
   ? {
       type: 'loader'
-      fn: ClientLoaderFn<TPointType, TRouteDefinition, TClientData, TOutput>
+      fn: ClientLoaderFn<TPointType, TRouteDefinition, TInputSchema, TClientData, TOutput>
       unstableId: number
     }
   : TType extends 'head'
     ? {
         type: 'head'
-        fn: HeadFn<TPointType, TRouteDefinition, TClientData, TClientData>
+        fn: HeadFn<TPointType, TRouteDefinition, TInputSchema, TClientData, TClientData>
         unstableId: number
       }
     : never
@@ -746,18 +763,21 @@ export type ClientExtractFnLocation<
 export type ClientLoaderFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<any, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
+  input: InputParsed<TRouteDefinition, TInputSchema>
 }
 export type ClientLoaderFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TClientData extends Data | UndefinedData,
   TClientDataOutput extends Data,
 > = (
-  props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TClientData>,
+  props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TInputSchema, TClientData>,
 ) => Promise<TClientDataOutput> | TClientDataOutput
 
 export type ClientCtxFnProps<
@@ -778,35 +798,41 @@ export type ClientCtxFn<
 export type HeadFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TData extends Data | UndefinedData,
   TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<TData, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
+  input: InputParsed<TRouteDefinition, TInputSchema>
 }
 export type HeadFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TData extends Data | UndefinedData,
   TClientData extends Data | UndefinedData,
-> = (props: HeadFnProps<TLetsEndPointType, TRouteDefinition, TData, TClientData>) => ResolvableHead
+> = (props: HeadFnProps<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData>) => ResolvableHead
 export type StaticHeadsCollection = ResolvableHead[]
 
 export type TitleFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TData extends Data | UndefinedData,
   TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<TData, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
+  input: InputParsed<TRouteDefinition, TInputSchema>
 }
 export type TitleFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
   TData extends Data | UndefinedData,
   TClientData extends Data | UndefinedData,
-> = (props: TitleFnProps<TLetsEndPointType, TRouteDefinition, TData, TClientData>) => string
+> = (props: TitleFnProps<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData>) => string
 
 // point methods
 
@@ -814,18 +840,49 @@ export type TitleFn<
 
 // endpoint helpers
 
+// export type IsInputOptional<
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = TRouteDefinition extends RouteDefinition
+//   ? TInputSchema extends InputSchema
+//     ? false
+//     : HasParams<TRouteDefinition> extends true
+//       ? false
+//       : true
+//   : TInputSchema extends InputSchema
+//     ? false
+//     : true
+export type HasRequiredKeysInZod<T extends ZodObject<any>> = keyof {
+  [K in keyof T['shape'] as T['shape'][K] extends ZodOptional<any> | ZodDefault<any> ? never : K]: true
+} extends never
+  ? false
+  : true
+
 export type IsInputOptional<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = TRouteDefinition extends RouteDefinition
   ? TInputSchema extends InputSchema
-    ? false
+    ? HasRequiredKeysInZod<TInputSchema> extends true
+      ? false
+      : true
     : HasParams<TRouteDefinition> extends true
       ? false
       : true
   : TInputSchema extends InputSchema
-    ? false
+    ? HasRequiredKeysInZod<TInputSchema> extends true
+      ? false
+      : true
     : true
+
+export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | UndefinedProps> = TProps extends undefined
+  ? true
+  : keyof TProps extends never // no keys at all
+    ? true
+    : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      {} extends TProps // all keys optional
+      ? true
+      : false
 
 export type FetchOutput<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
@@ -837,7 +894,14 @@ export type FetchOutputType = 'data' | 'response' | 'dehydratedState'
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 
 // export type QueryKey = readonly [string, ...string[]]
-export type QueryKey = OriginalQueryKey
+export type QueryKey = readonly [
+  point0: 'point0',
+  serverOrClient: 'server' | 'client',
+  pointType: PointType,
+  pointName: PointName,
+  outputType: FetchOutputType,
+  input: string,
+]
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 export type ShowError<Message extends string> = { error: Message } & never

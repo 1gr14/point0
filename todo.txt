@@ -1,5 +1,5 @@
 useMemo, useClientAsyncLoader, useClientSyncLoader
-clientCtx normalize
+head is part of .page(), in base we have head() but it static if meta, maybe ({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
 prefetchInfinityQuery
 
 no title all should be just head
@@ -36,6 +36,7 @@ queryCache for clients queries
 .route(string)
 add _ to all clases
 basepath replace with cwd
+default client query options, default client page query options, default client component query options
 not errorComponent, but just error
 .isLoading(({queryType, query}) => )
 on server when returning ssr loactio replace it with toBasOlcation of requestest origin
@@ -100,6 +101,7 @@ const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
 ? persistent zustand store
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
+client input
 ? statefull meta, or better ↓
 {...head} as only or second argument in loading and error fns, and as second arg in page fn
 .output(z.object({}))

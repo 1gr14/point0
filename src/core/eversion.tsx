@@ -450,7 +450,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         curretHead.push(
           ...point
             ._getClientHeadFnsUntilFirstClientLoader()
-            .map((headFn) => headFn.fn({ data: currentData, location: pageLocation })),
+            .map((headFn) => headFn.fn({ data: currentData, location: pageLocation, input: parsedInput })),
         )
       }
 
@@ -535,6 +535,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
       const parsedQueryKey = Point0.parseQueryKey(query.queryKey)
       if (!parsedQueryKey) {
+        return []
+      }
+      if (!parsedQueryKey.isServer) {
         return []
       }
       if (parsedQueryKey.outputType !== 'data') {
@@ -652,7 +655,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const tempQueryClient = pagePoint._generalStore._createQueryClient()
     const { queryKey, ...restOptions } = prefetchPageQueryOptions
     tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
-      ...restOptions,
+      ...(restOptions as any),
     })
     tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, { dehydratedState: relatedQueriesDehydratedState })
     const tempDehydratedState = dehydrate(tempQueryClient)

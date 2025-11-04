@@ -31,8 +31,10 @@ import type {
   AnyDataOrInfiniteData,
   AppendCtx,
   BasePoint,
+  ClientCtxFn,
   ClientExtractFnRecord,
   ClientLoaderFn,
+  ClientQueryComponentProp,
   ComponentComponent,
   ComponentMountable,
   ComponentMountableProps,
@@ -67,8 +69,8 @@ import type {
   IsInputOptional,
   LayoutComponent,
   LayoutPoint,
-  LoadingComponentType,
   LoaderFn,
+  LoadingComponentType,
   PageComponent,
   PartialUseInfiniteQueryOptions,
   PointName,
@@ -102,7 +104,6 @@ import type {
   UseInfiniteQueryOptions,
   UseQueryOptions,
   WrapperComponentType,
-  ClientCtxFn,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
 
@@ -1601,6 +1602,7 @@ export class Point0<
     clientLoaderFn: ClientLoaderFn<
       TLetsEndPointType,
       TRouteDefinition,
+      TInputSchema,
       FinalClientData<TData, TClientData>,
       TNewClientData
     >,
@@ -1643,7 +1645,7 @@ export class Point0<
   }
 
   head(
-    headFn: HeadFn<TLetsEndPointType, TRouteDefinition, TData, TClientData>,
+    headFn: HeadFn<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData>,
   ): Point0<
     'client-middleware',
     TLetsEndPointType,
@@ -1676,7 +1678,7 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  head(headFnOrHead: HeadFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | ResolvableHead) {
+  head(headFnOrHead: HeadFn<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData> | ResolvableHead) {
     if (typeof headFnOrHead === 'function') {
       return this._continue({
         _pointType: 'client-middleware',
@@ -1694,7 +1696,7 @@ export class Point0<
   }
 
   title(
-    titleFn: TitleFn<TLetsEndPointType, TRouteDefinition, TData, TClientData>,
+    titleFn: TitleFn<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData>,
   ): Point0<
     'client-middleware',
     TLetsEndPointType,
@@ -1727,9 +1729,9 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  title(titleFnOrTitle: TitleFn<TLetsEndPointType, TRouteDefinition, TData, TClientData> | string) {
+  title(titleFnOrTitle: TitleFn<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData> | string) {
     if (typeof titleFnOrTitle === 'function') {
-      const headFn: HeadFn<any, any, any, any> = (props) => ({ title: titleFnOrTitle(props as never) })
+      const headFn: HeadFn<any, any, any, any, any> = (props) => ({ title: titleFnOrTitle(props as never) })
       return this._continue({
         _pointType: 'client-middleware',
         _clientExtractFns: [
@@ -2490,13 +2492,28 @@ export class Point0<
     data,
     location,
     skipHeads,
+    input,
   }: {
     data: Data
     location: AnyLocation
     skipHeads: boolean
+    input: InputRaw<TRouteDefinition, TInputSchema>
   }): Promise<{ clientData: Data; clientHeadMerged: ResolvableHead }> => {
     let currentClientData: Data = data
     let clientHeadMerged: ResolvableHead = {}
+    const { parsedInput, inputError } = (() => {
+      if (this._inputSchema) {
+        const parseResult = this._inputSchema.safeParse(input)
+        if (parseResult.success) {
+          return { parsedInput: parseResult.data, inputError: undefined }
+        }
+        return { parsedInput: {}, inputError: parseResult.error }
+      }
+      return { parsedInput: input, inputError: undefined }
+    })()
+    if (inputError) {
+      throw new Error(`Input error: ${inputError.message}`)
+    }
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
         case 'head': {
@@ -2505,7 +2522,7 @@ export class Point0<
           }
           clientHeadMerged = mergeResolvableHead(
             clientHeadMerged,
-            clientExtractFn.fn({ data: currentClientData, location }),
+            clientExtractFn.fn({ data: currentClientData, location, input: parsedInput }),
           )
           break
         }
@@ -2513,6 +2530,7 @@ export class Point0<
           currentClientData = await clientExtractFn.fn({
             data: currentClientData,
             location,
+            input: parsedInput,
           })
           break
         }
@@ -2529,26 +2547,42 @@ export class Point0<
     data,
     location,
     skipHeads,
+    input,
   }: {
     data: AnyDataOrInfiniteData
     location: AnyLocation
     skipHeads: boolean
+    input: InputRaw<TRouteDefinition, TInputSchema>
   }): { clientData: AnyDataOrInfiniteData; clientHead: ResolvableHead[] } => {
     let currentClientData: AnyDataOrInfiniteData = data
     const clientHead: ResolvableHead[] = []
+    const { parsedInput, inputError } = (() => {
+      if (this._inputSchema) {
+        const parseResult = this._inputSchema.safeParse(input)
+        if (parseResult.success) {
+          return { parsedInput: parseResult.data, inputError: undefined }
+        }
+        return { parsedInput: {}, inputError: parseResult.error }
+      }
+      return { parsedInput: input, inputError: undefined }
+    })()
+    if (inputError) {
+      throw new Error(`Input error: ${inputError.message}`)
+    }
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
         case 'head': {
           if (skipHeads) {
             continue
           }
-          clientHead.push(clientExtractFn.fn({ data: currentClientData, location }))
+          clientHead.push(clientExtractFn.fn({ data: currentClientData, location, input: parsedInput }))
           break
         }
         case 'loader': {
           currentClientData = clientExtractFn.fn({
             data: currentClientData,
             location,
+            input: parsedInput,
           }) as Data
           break
         }
@@ -2601,7 +2635,7 @@ export class Point0<
 
     if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
       for (const headFn of this._clientExtractFns) {
-        useHead((headFn.fn as HeadFn<any, any, any, any>)({ data, location }))
+        useHead(headFn.fn({ data, location }))
       }
       return React.createElement(this._page, {
         data: data as FinalClientData<TData, TClientData>,
@@ -2704,6 +2738,66 @@ export class Point0<
       location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
       query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
     })
+  }
+
+  useLoader = (
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [
+          input?: InputRaw<TRouteDefinition, TInputSchema>,
+          queryOptions?: ExtraUseQueryOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+          _skipClientLoader?: boolean,
+          _skipHeads?: boolean,
+        ]
+      : [
+          input: InputRaw<TRouteDefinition, TInputSchema>,
+          queryOptions?: ExtraUseQueryOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+          _skipClientLoader?: boolean,
+          _skipHeads?: boolean,
+        ]
+  ): {
+    data: FinalData<TData> | undefined
+    query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'pending' | 'error' | 'success'>
+    clientQuery: ClientQueryComponentProp<TQueryResultType, TData, TClientData, 'pending' | 'error' | 'success'>
+  } => {
+    const [input = {}, queryOptions, fetchOptions, _skipClientLoader] = args
+    if (!this._hasLoader() && !this._hasClientLoader()) {
+      return { data: {}, query: undefined, clientQuery: undefined } as never
+    }
+
+    const query = React.useMemo(() => {
+      if (!this._hasLoader()) {
+        return undefined
+      }
+      const useQueryMethod =
+        this._queryResultType === 'infiniteQuery' && !this._hasClientLoader() ? this.useInfiniteQuery : this.useQuery
+      const query = useQueryMethod(input as never, queryOptions as never, fetchOptions as never)
+      return query
+    }, [this._hasLoader(), this._hasClientLoader(), stringify(input), queryOptions, fetchOptions])
+
+    const clientQuery = React.useMemo(() => {
+      if (!this._hasClientLoader()) {
+        return undefined
+      }
+      const useQueryMethod =
+        this._queryResultType === 'infiniteQuery' ? this.useClientInfiniteQuery : this.useClientQuery
+      const clientQuery = useQueryMethod({
+        input,
+        data: query?.data,
+        skipHeads: false,
+        queryOptions: {
+          ...queryOptions,
+          enabled: query?.data !== undefined,
+        },
+        location,
+      } as never)
+      return clientQuery
+    }, [this._hasClientLoader(), query?.data, _skipClientLoader, queryOptions, location, input])
+
+    const data = clientQuery ? clientQuery.data : query?.data
+
+    return { data, query, clientQuery } as never
   }
 
   _ComponentInner: React.ComponentType<{
@@ -3132,15 +3226,18 @@ export class Point0<
 
   static parseQueryKey(queryKey: OriginalQueryKey | QueryKey):
     | {
+        isServer: boolean
+        isClient: boolean
         pointType: EndPointType
         pointName: PointName
         outputType: string
         input: InputRaw
       }
     | undefined {
-    const [check, pointType, pointName, outputType, input] = queryKey
+    const [check, serverOrClient, pointType, pointName, outputType, input] = queryKey
     if (
       check !== 'point0' ||
+      typeof serverOrClient !== 'string' ||
       typeof pointType !== 'string' ||
       typeof pointName !== 'string' ||
       typeof outputType !== 'string' ||
@@ -3149,6 +3246,8 @@ export class Point0<
       return undefined
     }
     return {
+      isServer: serverOrClient === 'server',
+      isClient: serverOrClient === 'client',
       pointType: pointType as EndPointType,
       pointName,
       outputType,
@@ -3166,7 +3265,7 @@ export class Point0<
     }
     const [input = {}] = args
     const outputType = args[1] ?? (this._pointType === 'response' ? 'response' : 'data')
-    return ['point0', this._pointType, this._name, outputType, stringify(input)]
+    return ['point0', 'server', this._pointType, this._name, outputType, stringify(input)]
   }
 
   getQueryOptions(
@@ -3183,7 +3282,7 @@ export class Point0<
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
-  ): UseQueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
+  ): UseQueryOptions<FetchOutput<TResponseOutput, TData>, Error0, FetchOutput<TResponseOutput, TData>, QueryKey> {
     const [input, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
     const queryFn = async () => {
@@ -3203,17 +3302,40 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
-          queryOptions: ExtraUseQueryOptions | undefined,
+          queryOptions:
+            | ExtraUseInfiniteQueryOptions<
+                InputRaw<TRouteDefinition, TInputSchema>,
+                FinalData<TData>,
+                Error0,
+                FinalData<TData>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions: ExtraUseQueryOptions | undefined,
+          queryOptions:
+            | ExtraUseInfiniteQueryOptions<
+                InputRaw<TRouteDefinition, TInputSchema>,
+                FinalData<TData>,
+                Error0,
+                FinalData<TData>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
           fetchOptions?: FetchOptions | undefined,
           _outputType?: FetchOutputType,
         ]
-  ): UseInfiniteQueryOptions<FetchOutput<TResponseOutput, TData>, Error0> & { queryKey: QueryKey } {
+  ): UseInfiniteQueryOptions<
+    InfiniteData<FetchOutput<TResponseOutput, TData>>,
+    Error0,
+    FetchOutput<TResponseOutput, TData>,
+    QueryKey
+  > {
     const [input = {}, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
@@ -3230,6 +3352,111 @@ export class Point0<
       queryFn,
     }
     return result as never
+  }
+
+  getClientQueryKey({
+    input = {} as never,
+    data = {} as never,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    data: FinalData<TData>
+  }): QueryKey {
+    if (!this._name) {
+      throw new Error('Point name is not provided')
+    }
+    const inputAndData = { input, data }
+    return ['point0', 'client', this._pointType, this._name, 'data', stringify(inputAndData)]
+  }
+
+  getClientQueryOptions({
+    input,
+    data,
+    skipHeads,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    data: FinalData<TData>
+    skipHeads: boolean
+    location: AnyLocation
+    queryOptions?: ExtraUseQueryOptions | undefined
+  }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
+    const queryKey = this.getClientQueryKey({ input, data })
+    const queryFn = this._hasClientAsyncLoader()
+      ? async () => {
+          const clientData = await this._extractClientAsync({ data, location, skipHeads, input })
+          return clientData
+        }
+      : () => {
+          const clientData = this._extractClientSync({ data, location, skipHeads, input })
+          return clientData
+        }
+    return {
+      ...this._defaultQueryOptions,
+      ...this._queryOptions,
+      ...queryOptions,
+      queryKey,
+      queryFn,
+    } as never
+  }
+
+  getClientInfiniteQueryOptions({
+    input,
+    data,
+    skipHeads,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    data: FinalData<TData>
+    skipHeads: boolean
+    location: AnyLocation
+    queryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          FinalClientData<TData, TClientData>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+  }): UseInfiniteQueryOptions<
+    InfiniteData<FetchOutput<TResponseOutput, TData>>,
+    Error0,
+    FetchOutput<TResponseOutput, TData>,
+    QueryKey
+  > {
+    const queryKey = this.getClientQueryKey({ input, data })
+    const queryFn = this._hasClientAsyncLoader()
+      ? async ({ pageParam }: { pageParam: unknown }) => {
+          const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+          const clientData = await this._extractClientAsync({
+            data,
+            location,
+            skipHeads,
+            input: { ...input, [pageParamFromInput]: pageParam },
+          })
+          return clientData
+        }
+      : ({ pageParam }: { pageParam: unknown }) => {
+          const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+          const clientData = this._extractClientSync({
+            data,
+            location,
+            skipHeads,
+            input: { ...input, [pageParamFromInput]: pageParam },
+          })
+          return clientData
+        }
+    return {
+      ...this._defaultQueryOptions,
+      ...this._defaultInfiniteQueryOptions,
+      ...this._infiniteQueryOptions,
+      ...queryOptions,
+      queryKey,
+      queryFn,
+    } as never
   }
 
   getMutationOptions(
@@ -3281,7 +3508,7 @@ export class Point0<
         ]
   ): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> => {
     const infiniteQueryOptions = this.getInfiniteQueryOptions(...args)
-    return useInfiniteQuery(infiniteQueryOptions)
+    return useInfiniteQuery(infiniteQueryOptions) as never
   }
 
   useQueryCache = (
@@ -3289,12 +3516,100 @@ export class Point0<
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
   ): {
-    queryCache: Query<FetchOutput<TResponseOutput, TData>, Error0> | undefined
+    queryCache: Query<FetchOutput<TResponseOutput, TData>, Error0, QueryKey> | undefined
     queryKey: QueryKey
   } => {
     const queryClient = useQueryClient()
     const cache = queryClient.getQueryCache()
     const queryKey = this.getQueryKey(...args)
+    const query = cache.find({ queryKey })
+    return { queryCache: query, queryKey } as never
+  }
+
+  useClientQuery = ({
+    input,
+    data,
+    skipHeads,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    data: FinalData<TData>
+    skipHeads: boolean
+    location: AnyLocation
+    queryOptions?: ExtraUseQueryOptions | undefined
+  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
+    return useQuery(
+      this.getClientQueryOptions({
+        input,
+        data,
+        skipHeads,
+        queryOptions,
+        location,
+      }),
+    )
+  }
+
+  useClientInfiniteQuery = ({
+    input,
+    data,
+    skipHeads,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    data: FinalData<TData>
+    skipHeads: boolean
+    location: AnyLocation
+    queryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          FinalClientData<TData, TClientData>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
+    const infiniteQueryOptions = this.getClientInfiniteQueryOptions({
+      input,
+      data,
+      skipHeads,
+      queryOptions,
+      location,
+    })
+    return useInfiniteQuery(infiniteQueryOptions) as never
+  }
+
+  useClientQueryCache = ({
+    input,
+    data,
+    skipHeads,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    data: FinalData<TData>
+    skipHeads: boolean
+    location: AnyLocation
+    queryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          FinalClientData<TData, TClientData>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+  }): {
+    queryCache: Query<FinalClientData<TData, TClientData>, Error0, QueryKey> | undefined
+    queryKey: QueryKey
+  } => {
+    const queryClient = useQueryClient()
+    const cache = queryClient.getQueryCache()
+    const queryKey = this.getClientQueryKey({ input, data })
     const query = cache.find({ queryKey })
     return { queryCache: query, queryKey } as never
   }
@@ -3312,7 +3627,7 @@ export class Point0<
           input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
           options: {
             queryClient: QueryClient
-            queryOptions?: QueryOptions
+            queryOptions?: ExtraUseQueryOptions
             fetchOptions?: FetchOptions
             force?: boolean
           },
@@ -3322,7 +3637,7 @@ export class Point0<
           input: InputRaw<TRouteDefinition, TInputSchema>,
           options: {
             queryClient: QueryClient
-            queryOptions?: QueryOptions
+            queryOptions?: ExtraUseQueryOptions
             fetchOptions?: FetchOptions
             force?: boolean
           },
@@ -3337,7 +3652,7 @@ export class Point0<
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }
-    const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, fetchOptions, outputType)
+    const queryOptions = this.getQueryOptions(input as any, providedQueryOptions, fetchOptions, outputType)
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
