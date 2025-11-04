@@ -21,7 +21,6 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useHead } from '@unhead/react'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
@@ -34,7 +33,6 @@ import type {
   ClientCtxFn,
   ClientExtractFnRecord,
   ClientLoaderFn,
-  ClientQueryComponentProp,
   ComponentComponent,
   ComponentMountable,
   ComponentMountableProps,
@@ -59,7 +57,7 @@ import type {
   FinalProps,
   GeneralStore,
   HeadFn,
-  IfAnyThen,
+  IfAnyThenElse,
   Infer,
   InferredRootSourcePoint,
   InputParsed,
@@ -70,6 +68,7 @@ import type {
   LayoutComponent,
   LayoutPoint,
   LoaderFn,
+  LoaderResult,
   LoadingComponentType,
   PageComponent,
   PartialUseInfiniteQueryOptions,
@@ -77,7 +76,6 @@ import type {
   PointType,
   PrependCtx,
   Props,
-  QueryComponentProp,
   QueryKey,
   QueryResultType,
   RequiredCtx,
@@ -85,6 +83,7 @@ import type {
   ResponseOutput,
   RootId,
   RouteDefinition,
+  ServerQueryComponentProp,
   StaticHeadsCollection,
   TitleFn,
   UndefinedComponentComponent,
@@ -165,7 +164,9 @@ export class Point0<
   _clientCtxSetter: ClientCtxFn<any, any, any, FinalClientData<TData, TClientData>> | undefined
   _route: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
   _prevRoute: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
-  _page: PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType> | UndefinedPageComponent
+  _page:
+    | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TQueryResultType>
+    | UndefinedPageComponent
   _component:
     | ComponentComponent<TData, TResponseOutput, TClientData, TProps, TQueryResultType>
     | UndefinedComponentComponent
@@ -178,13 +179,69 @@ export class Point0<
   _fetchOptions: FetchOptionsFn
 
   // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loadingComponent
-  _errorComponent: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
-  _pageErrorComponent?: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
-  _componentErrorComponent?: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
-  _loadingComponent: LoadingComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
-  _pageLoadingComponent?: LoadingComponentType<'page', TData, TResponseOutput, TQueryResultType>
-  _componentLoadingComponent?: LoadingComponentType<'component', TData, TResponseOutput, TQueryResultType>
-  _appLoadingComponent?: LoadingComponentType<'app', TData, TResponseOutput, TQueryResultType>
+  _errorComponent: ErrorComponentType<
+    DestinationComponentType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
+  _pageErrorComponent?: ErrorComponentType<
+    'page',
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
+  _componentErrorComponent?: ErrorComponentType<
+    'component',
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
+  _loadingComponent: LoadingComponentType<
+    DestinationComponentType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
+  _pageLoadingComponent?: LoadingComponentType<
+    'page',
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
+  _componentLoadingComponent?: LoadingComponentType<
+    'component',
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
+  _appLoadingComponent?: LoadingComponentType<
+    'app',
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TQueryResultType
+  >
 
   private constructor(props: {
     _pointType: TPointType
@@ -215,7 +272,7 @@ export class Point0<
     _route?: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
     _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
     _page?:
-      | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>
+      | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TQueryResultType>
       | UndefinedPageComponent
     _component?:
       | ComponentComponent<TData, TResponseOutput, TClientData, TProps, TQueryResultType>
@@ -226,13 +283,69 @@ export class Point0<
     _layouts?: LayoutPoint[]
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
-    _errorComponent?: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
-    _pageErrorComponent?: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
-    _componentErrorComponent?: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
-    _loadingComponent?: LoadingComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
-    _pageLoadingComponent?: LoadingComponentType<'page', TData, TResponseOutput, TQueryResultType>
-    _componentLoadingComponent?: LoadingComponentType<'component', TData, TResponseOutput, TQueryResultType>
-    _appLoadingComponent?: LoadingComponentType<'app', TData, TResponseOutput, TQueryResultType>
+    _errorComponent?: ErrorComponentType<
+      DestinationComponentType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _pageErrorComponent?: ErrorComponentType<
+      'page',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _componentErrorComponent?: ErrorComponentType<
+      'component',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _loadingComponent?: LoadingComponentType<
+      DestinationComponentType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _pageLoadingComponent?: LoadingComponentType<
+      'page',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _componentLoadingComponent?: LoadingComponentType<
+      'component',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _appLoadingComponent?: LoadingComponentType<
+      'app',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
     _unstableId?: number
   }) {
     this.point = this
@@ -276,16 +389,24 @@ export class Point0<
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
     this._errorComponent =
       props._errorComponent ??
-      ((({ error }) =>
-        React.createElement(
+      ((({ error }) => {
+        const { stack, ...json } = error.toJSON()
+        console.error(error)
+        return React.createElement(
           React.Fragment,
           null,
-          React.createElement(
-            'pre',
-            null,
-            JSON.stringify(error.toJSON(), null, 2), // `null, 2` makes it pretty-printed
-          ),
-        )) as ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>)
+          React.createElement('pre', null, JSON.stringify(json, null, 2)),
+          React.createElement('pre', null, stack),
+        )
+      }) as ErrorComponentType<
+        DestinationComponentType,
+        TData,
+        TResponseOutput,
+        TClientData,
+        TInputSchema,
+        TRouteDefinition,
+        TQueryResultType
+      >)
     this._pageErrorComponent = props._pageErrorComponent
     this._componentErrorComponent = props._componentErrorComponent
     this._pageLoadingComponent = props._pageLoadingComponent
@@ -295,6 +416,9 @@ export class Point0<
         DestinationComponentType,
         TData,
         TResponseOutput,
+        TClientData,
+        TInputSchema,
+        TRouteDefinition,
         TQueryResultType
       >)
     this._componentLoadingComponent = props._componentLoadingComponent
@@ -344,16 +468,16 @@ export class Point0<
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
     _clientCtxSetter?: ClientCtxFn<any, any, any, any> | undefined
-    _route?: IfAnyThen<
+    _route?: IfAnyThenElse<
       TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
-    _prevRoute?: IfAnyThen<
+    _prevRoute?: IfAnyThenElse<
       TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
     _page?:
-      | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TQueryResultType>
+      | PageComponent<TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TQueryResultType>
       | UndefinedPageComponent
     _component?:
       | ComponentComponent<TData, TResponseOutput, TClientData, TProps, TQueryResultType>
@@ -363,13 +487,69 @@ export class Point0<
       | UndefinedLayoutComponent
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
-    _errorComponent?: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
-    _pageErrorComponent?: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
-    _componentErrorComponent?: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
-    _loadingComponent?: LoadingComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
-    _pageLoadingComponent?: LoadingComponentType<'page', TData, TResponseOutput, TQueryResultType>
-    _componentLoadingComponent?: LoadingComponentType<'component', TData, TResponseOutput, TQueryResultType>
-    _appLoadingComponent?: LoadingComponentType<'app', TData, TResponseOutput, TQueryResultType>
+    _errorComponent?: ErrorComponentType<
+      DestinationComponentType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _pageErrorComponent?: ErrorComponentType<
+      'page',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _componentErrorComponent?: ErrorComponentType<
+      'component',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _loadingComponent?: LoadingComponentType<
+      DestinationComponentType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _pageLoadingComponent?: LoadingComponentType<
+      'page',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _componentLoadingComponent?: LoadingComponentType<
+      'component',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
+    _appLoadingComponent?: LoadingComponentType<
+      'app',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >
   }): Point0<
     TPointType,
     TLetsEndPointType,
@@ -446,25 +626,81 @@ export class Point0<
       _name: overrides._name ?? this._name,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as
-        | ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+        | ErrorComponentType<
+            DestinationComponentType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as
-        | ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>
+        | ErrorComponentType<
+            'page',
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
       _componentErrorComponent: (overrides._componentErrorComponent ?? this._componentErrorComponent) as
-        | ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>
+        | ErrorComponentType<
+            'component',
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
       _loadingComponent: (overrides._loadingComponent ?? this._loadingComponent) as
-        | LoadingComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>
+        | LoadingComponentType<
+            DestinationComponentType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
       _pageLoadingComponent: (overrides._pageLoadingComponent ?? this._pageLoadingComponent) as
-        | LoadingComponentType<'page', TData, TResponseOutput, TQueryResultType>
+        | LoadingComponentType<
+            'page',
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
       _componentLoadingComponent: (overrides._componentLoadingComponent ?? this._componentLoadingComponent) as
-        | LoadingComponentType<'component', TData, TResponseOutput, TQueryResultType>
+        | LoadingComponentType<
+            'component',
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
       _appLoadingComponent: (overrides._appLoadingComponent ?? this._appLoadingComponent) as
-        | LoadingComponentType<'app', TData, TResponseOutput, TQueryResultType>
+        | LoadingComponentType<
+            'app',
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TQueryResultType
+          >
         | undefined,
     })
   }
@@ -654,13 +890,13 @@ export class Point0<
       _clientCtxSetter: undefined,
       _clientExtractFns: [],
       _fetchOptions: this._base?._fetchOptions,
-      _errorComponent: this._base?._errorComponent,
-      _pageErrorComponent: this._base?._pageErrorComponent,
-      _componentErrorComponent: this._base?._componentErrorComponent,
-      _loadingComponent: this._base?._loadingComponent,
-      _pageLoadingComponent: this._base?._pageLoadingComponent,
-      _componentLoadingComponent: this._base?._componentLoadingComponent,
-      _appLoadingComponent: this._base?._appLoadingComponent,
+      _errorComponent: this._base?._errorComponent as never,
+      _pageErrorComponent: this._base?._pageErrorComponent as never,
+      _componentErrorComponent: this._base?._componentErrorComponent as never,
+      _loadingComponent: this._base?._loadingComponent as never,
+      _pageLoadingComponent: this._base?._pageLoadingComponent as never,
+      _componentLoadingComponent: this._base?._componentLoadingComponent as never,
+      _appLoadingComponent: this._base?._appLoadingComponent as never,
     })
   }
 
@@ -998,7 +1234,15 @@ export class Point0<
   }
 
   error(
-    errorComponent: ErrorComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>,
+    errorComponent: ErrorComponentType<
+      DestinationComponentType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1035,7 +1279,15 @@ export class Point0<
   }
 
   pageError(
-    pageErrorComponent: ErrorComponentType<'page', TData, TResponseOutput, TQueryResultType>,
+    pageErrorComponent: ErrorComponentType<
+      'page',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1072,7 +1324,15 @@ export class Point0<
   }
 
   componentError(
-    componentErrorComponent: ErrorComponentType<'component', TData, TResponseOutput, TQueryResultType>,
+    componentErrorComponent: ErrorComponentType<
+      'component',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1109,7 +1369,15 @@ export class Point0<
   }
 
   pageLoading(
-    pageLoadingComponent: LoadingComponentType<'page', TData, TResponseOutput, TQueryResultType>,
+    pageLoadingComponent: LoadingComponentType<
+      'page',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1146,7 +1414,15 @@ export class Point0<
   }
 
   componentLoading(
-    componentLoadingComponent: LoadingComponentType<'component', TData, TResponseOutput, TQueryResultType>,
+    componentLoadingComponent: LoadingComponentType<
+      'component',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1183,7 +1459,15 @@ export class Point0<
   }
 
   appLoading(
-    appLoadingComponent: LoadingComponentType<'app', TData, TResponseOutput, TQueryResultType>,
+    appLoadingComponent: LoadingComponentType<
+      'app',
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1220,7 +1504,15 @@ export class Point0<
   }
 
   loading(
-    loadingComponent: LoadingComponentType<DestinationComponentType, TData, TResponseOutput, TQueryResultType>,
+    loadingComponent: LoadingComponentType<
+      DestinationComponentType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TQueryResultType
+    >,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1811,6 +2103,7 @@ export class Point0<
       TResponseOutput,
       TClientData,
       TRouteDefinition,
+      TInputSchema,
       TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType
     >,
   >(
@@ -1849,7 +2142,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'page',
-      _page: page as PageComponent<any, any, any, any, any>,
+      _page: page as never,
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2433,24 +2726,24 @@ export class Point0<
     type,
   }: {
     type: TType
-  }): ErrorComponentType<any, any, any, any> {
+  }): ErrorComponentType<any, any, any, any, any, any, any> {
     return ({
       app: this._errorComponent,
       page: this._pageErrorComponent,
       component: this._componentErrorComponent,
-    }[type] ?? this._errorComponent) as ErrorComponentType<any, any, any, any>
+    }[type] ?? this._errorComponent) as ErrorComponentType<any, any, any, any, any, any, any>
   }
 
   _getLoadingComponent<TType extends DestinationComponentType>({
     type,
   }: {
     type: TType
-  }): LoadingComponentType<any, any, any, any> {
+  }): LoadingComponentType<any, any, any, any, any, any, any> {
     return ({
       app: this._loadingComponent,
       page: this._pageLoadingComponent,
       component: this._componentLoadingComponent,
-    }[type] ?? this._loadingComponent) as LoadingComponentType<any, any, any, any>
+    }[type] ?? this._loadingComponent) as LoadingComponentType<any, any, any, any, any, any, any>
   }
 
   _hasLoader(): boolean {
@@ -2612,133 +2905,133 @@ export class Point0<
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRouteDefinition, TInputSchema>
   }
 
-  _PageInner: React.ComponentType<{
-    data: FinalData<TData>
-    location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-    query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
-  }> = ({ data, location, query }) => {
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+  // _PageInner: React.ComponentType<{
+  //   data: FinalData<TData>
+  //   location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+  //   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+  // }> = ({ data, location, query }) => {
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
 
-    if (!this._page) {
-      return React.createElement(errorComponent, {
-        type: 'page',
-        error: new Error0('No page component'),
-        location,
-        query,
-      })
-    }
+  //   if (!this._page) {
+  //     return React.createElement(errorComponent, {
+  //       type: 'page',
+  //       error: new Error0('No page component'),
+  //       location,
+  //       query,
+  //     })
+  //   }
 
-    for (const staticHead of this._staticHeads) {
-      useHead(staticHead)
-    }
+  //   for (const staticHead of this._staticHeads) {
+  //     useHead(staticHead)
+  //   }
 
-    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
-      for (const headFn of this._clientExtractFns) {
-        useHead(headFn.fn({ data, location }))
-      }
-      return React.createElement(this._page, {
-        data: data as FinalClientData<TData, TClientData>,
-        location,
-        query,
-      })
-    }
+  //   if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
+  //     for (const headFn of this._clientExtractFns) {
+  //       useHead(headFn.fn({ data, location }))
+  //     }
+  //     return React.createElement(this._page, {
+  //       data: data as FinalClientData<TData, TClientData>,
+  //       location,
+  //       query,
+  //     })
+  //   }
 
-    if (!this._hasClientAsyncLoader()) {
-      try {
-        const { clientData, clientHead } = this._extractClientSync({ data, location, skipHeads: false })
-        for (const head of clientHead) {
-          useHead(head)
-        }
-        return React.createElement(this._page, {
-          data: clientData as FinalClientData<TData, TClientData>,
-          location,
-          query,
-        })
-      } catch (error: unknown) {
-        return React.createElement(errorComponent, {
-          type: 'page',
-          error: Error0.from(error),
-          location,
-          query,
-        })
-      }
-    }
+  //   if (!this._hasClientAsyncLoader()) {
+  //     try {
+  //       const { clientData, clientHead } = this._extractClientSync({ data, location, skipHeads: false })
+  //       for (const head of clientHead) {
+  //         useHead(head)
+  //       }
+  //       return React.createElement(this._page, {
+  //         data: clientData as FinalClientData<TData, TClientData>,
+  //         location,
+  //         query,
+  //       })
+  //     } catch (error: unknown) {
+  //       return React.createElement(errorComponent, {
+  //         type: 'page',
+  //         error: Error0.from(error),
+  //         location,
+  //         query,
+  //       })
+  //     }
+  //   }
 
-    // TODO: we should store state globally, to prevent on hmr rernder of page, it is blinking
-    // lets use reactQuery cache here, and store there clientData and clientHead
-    const [clientHead, setClientHead] = React.useState<ResolvableHead>({})
-    const [loading, setLoading] = React.useState(true)
-    const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [clientData, setClientData] = React.useState<Data>({})
-    React.useEffect(() => {
-      void (async () => {
-        setLoading(true)
-        try {
-          const { clientData, clientHeadMerged } = await this._extractClientAsync({ data, location, skipHeads: false })
-          setClientHead(clientHeadMerged)
-          setClientData(clientData)
-          setLoading(false)
-        } catch (error) {
-          setError(Error0.from(error))
-          setLoading(false)
-        }
-      })()
-    }, [data, location])
+  //   // TODO: we should store state globally, to prevent on hmr rernder of page, it is blinking
+  //   // lets use reactQuery cache here, and store there clientData and clientHead
+  //   const [clientHead, setClientHead] = React.useState<ResolvableHead>({})
+  //   const [loading, setLoading] = React.useState(true)
+  //   const [error, setError] = React.useState<Error0 | undefined>(undefined)
+  //   const [clientData, setClientData] = React.useState<Data>({})
+  //   React.useEffect(() => {
+  //     void (async () => {
+  //       setLoading(true)
+  //       try {
+  //         const { clientData, clientHeadMerged } = await this._extractClientAsync({ data, location, skipHeads: false })
+  //         setClientHead(clientHeadMerged)
+  //         setClientData(clientData)
+  //         setLoading(false)
+  //       } catch (error) {
+  //         setError(Error0.from(error))
+  //         setLoading(false)
+  //       }
+  //     })()
+  //   }, [data, location])
 
-    useHead(clientHead)
+  //   useHead(clientHead)
 
-    if (loading) {
-      return React.createElement(loadingComponent, { type: 'page', location, query })
-    }
-    if (error) {
-      return React.createElement(errorComponent, { type: 'page', error, location, query })
-    }
-    return React.createElement(this._page, {
-      data: clientData as FinalClientData<TData, TClientData>,
-      location,
-      query,
-    })
-  }
+  //   if (loading) {
+  //     return React.createElement(loadingComponent, { type: 'page', location, query })
+  //   }
+  //   if (error) {
+  //     return React.createElement(errorComponent, { type: 'page', error, location, query })
+  //   }
+  //   return React.createElement(this._page, {
+  //     data: clientData as FinalClientData<TData, TClientData>,
+  //     location,
+  //     query,
+  //   })
+  // }
 
-  _Page: React.ComponentType = () => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    if (!this._hasLoader()) {
-      return React.createElement(this._PageInner, {
-        data: {} as FinalData<TData>,
-        location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
-        query: undefined as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-      })
-    }
+  // _Page: React.ComponentType = () => {
+  //   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+  //   if (!this._hasLoader()) {
+  //     return React.createElement(this._PageInner, {
+  //       data: {} as FinalData<TData>,
+  //       location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
+  //       query: undefined as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //     })
+  //   }
 
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-    const isInitalSsrLocation = useIsInitalSsrLocation()
-    const input = this._getUnsafeInputRawByLocation(location)
-    const { queryCache } = this.useQueryCache(input)
-    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
-    const query = useQueryMethod(input, {
-      ...this._defaultPageQueryOptions,
-      enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-    } as never)
-    if (query.error) {
-      return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
-    }
-    if (query.isLoading) {
-      return React.createElement(loadingComponent, { type: 'page', location, query })
-    }
-    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
-      | FinalData<TData>
-      | undefined
-    if (!data) {
-      return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
-    }
-    return React.createElement(this._PageInner, {
-      data,
-      location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
-      query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-    })
-  }
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
+  //   const isInitalSsrLocation = useIsInitalSsrLocation()
+  //   const input = this._getUnsafeInputRawByLocation(location)
+  //   const { queryCache } = this.useQueryCache(input)
+  //   const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+  //   const query = useQueryMethod(input, {
+  //     ...this._defaultPageQueryOptions,
+  //     enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
+  //   } as never)
+  //   if (query.error) {
+  //     return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
+  //   }
+  //   if (query.isLoading) {
+  //     return React.createElement(loadingComponent, { type: 'page', location, query })
+  //   }
+  //   const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+  //     | FinalData<TData>
+  //     | undefined
+  //   if (!data) {
+  //     return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
+  //   }
+  //   return React.createElement(this._PageInner, {
+  //     data,
+  //     location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
+  //     query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //   })
+  // }
 
   useLoader = (
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
@@ -2746,65 +3039,142 @@ export class Point0<
           input?: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _skipClientLoader?: boolean,
-          _skipHeads?: boolean,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _skipClientLoader?: boolean,
-          _skipHeads?: boolean,
         ]
-  ): {
-    data: FinalData<TData> | undefined
-    query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'pending' | 'error' | 'success'>
-    clientQuery: ClientQueryComponentProp<TQueryResultType, TData, TClientData, 'pending' | 'error' | 'success'>
-  } => {
-    const [input = {}, queryOptions, fetchOptions, _skipClientLoader] = args
-    if (!this._hasLoader() && !this._hasClientLoader()) {
+  ): LoaderResult<TData, TResponseOutput, TQueryResultType, TClientData, TInputSchema, TRouteDefinition, any> => {
+    const [input = {}, queryOptions, fetchOptions] = args
+    const location = useLocation()
+    const serverQueryEnabled = this._hasLoader()
+    const clientQueryEnabled = this._hasClientLoader()
+    if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
 
-    const query = React.useMemo(() => {
-      if (!this._hasLoader()) {
-        return undefined
-      }
-      const useQueryMethod =
-        this._queryResultType === 'infiniteQuery' && !this._hasClientLoader() ? this.useInfiniteQuery : this.useQuery
-      const query = useQueryMethod(input as never, queryOptions as never, fetchOptions as never)
-      return query
-    }, [this._hasLoader(), this._hasClientLoader(), stringify(input), queryOptions, fetchOptions])
+    const isInitalSsrLocation = useIsInitalSsrLocation()
 
-    const clientQuery = React.useMemo(() => {
-      if (!this._hasClientLoader()) {
-        return undefined
-      }
-      const useQueryMethod =
-        this._queryResultType === 'infiniteQuery' ? this.useClientInfiniteQuery : this.useClientQuery
-      const clientQuery = useQueryMethod({
-        input,
-        data: query?.data,
-        skipHeads: false,
-        queryOptions: {
-          ...queryOptions,
-          enabled: query?.data !== undefined,
-        },
+    const isServerInfiniteQuery = this._queryResultType === 'infiniteQuery' && !clientQueryEnabled
+    // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
+    // const { queryCache } = useQueryCacheMethod(input as never)
+    const { queryCache } = this.useQueryCache(input as never, 'data')
+    const useServerQueryMethod = isServerInfiniteQuery ? this.useInfiniteQuery : this.useQuery
+    const serverQuery = useServerQueryMethod(
+      input as never,
+      {
+        ...queryOptions,
+        enabled: serverQueryEnabled && (!isInitalSsrLocation || queryCache?.state.status !== 'error'),
+      } as never,
+      fetchOptions as never,
+    )
+    console.log(555, { isServerInfiniteQuery }, queryOptions, serverQuery.data, useServerQueryMethod)
+
+    const useClientQueryMethod =
+      this._queryResultType === 'infiniteQuery' ? this.useClientInfiniteQuery : this.useClientQuery
+    const clientQuery = useClientQueryMethod({
+      input,
+      data: serverQuery.data,
+      skipHeads: false,
+      queryOptions: {
+        ...queryOptions,
+        enabled: clientQueryEnabled && serverQuery.data !== undefined,
+      },
+      location,
+    } as never)
+
+    const loading = serverQueryEnabled
+      ? clientQueryEnabled
+        ? serverQuery.isLoading || clientQuery.isLoading
+        : serverQuery.isLoading
+      : clientQueryEnabled
+        ? clientQuery.isLoading
+        : false
+    const errorRaw = serverQueryEnabled
+      ? clientQueryEnabled
+        ? serverQuery.error || clientQuery.error
+        : serverQuery.error
+      : clientQueryEnabled
+        ? clientQuery.error
+        : null
+    const error = errorRaw && Error0.from(errorRaw)
+    const dataRaw = clientQueryEnabled ? clientQuery.data : serverQueryEnabled ? serverQuery.data : undefined
+    const data =
+      dataRaw &&
+      ((this._queryResultType === 'infiniteQuery' ? (dataRaw as any)?.pages?.at(0) : dataRaw) as
+        | FinalClientData<TData, TClientData>
+        | undefined)
+    const query = serverQueryEnabled
+      ? clientQueryEnabled
+        ? clientQuery
+        : serverQuery
+      : clientQueryEnabled
+        ? clientQuery
+        : undefined
+
+    return {
+      data,
+      loading,
+      error,
+      serverQuery: serverQuery as never,
+      clientQuery: clientQuery as never,
+      query: query as never,
+      location,
+      input: input as never,
+    }
+  }
+
+  _Page: React.ComponentType = () => {
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    if (!this._page) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        data: undefined as FinalClientData<TData, TClientData> | undefined,
+        error: new Error0('No page component'),
+        loading: false,
         location,
+        query: undefined as never,
+        serverQuery: undefined as never,
+        clientQuery: undefined as never,
+        input: {} as InputParsed<TRouteDefinition, TInputSchema>,
       } as never)
-      return clientQuery
-    }, [this._hasClientLoader(), query?.data, _skipClientLoader, queryOptions, location, input])
+    }
 
-    const data = clientQuery ? clientQuery.data : query?.data
-
-    return { data, query, clientQuery } as never
+    const input = this._getUnsafeInputRawByLocation(location)
+    const result = this.useLoader(input, this._defaultPageQueryOptions)
+    if (result.error) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        ...result,
+      } as never)
+    }
+    if (result.loading) {
+      return React.createElement(loadingComponent, {
+        type: 'page',
+        ...result,
+      })
+    }
+    if (!result.data) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        ...result,
+        error: new Error0('No data'),
+      } as never)
+    }
+    return React.createElement(this._page, {
+      ...result,
+    } as never)
   }
 
   _ComponentInner: React.ComponentType<{
     data: FinalData<TData>
     location: AnyLocation
     props: FinalProps<TProps>
-    query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+    query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
   }> = ({ data, location, props, query }) => {
     const errorComponent = this._getErrorComponent({ type: 'component' })
     const loadingComponent = this._getLoadingComponent({ type: 'component' })
@@ -2880,7 +3250,7 @@ export class Point0<
         data: {} as FinalData<TData>,
         location,
         props: restProps as unknown as FinalProps<TProps>,
-        query: undefined as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+        query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
       })
     }
 
@@ -2915,7 +3285,7 @@ export class Point0<
       data,
       location,
       props: restProps as unknown as FinalProps<TProps>,
-      query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+      query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
     })
   }
 
@@ -2925,7 +3295,7 @@ export class Point0<
       | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
       | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
     data: FinalData<TData>
-    query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+    query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
   }> = ({ children, location, data, query }) => {
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
@@ -3003,7 +3373,7 @@ export class Point0<
           | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
           | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
         children,
-        query: undefined as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+        query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
       })
     }
 
@@ -3035,7 +3405,7 @@ export class Point0<
         | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
         | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
       children,
-      query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+      query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
     })
   }
 
@@ -3047,7 +3417,7 @@ export class Point0<
     children: React.ReactNode
     location: AnyLocation
     data: FinalData<TData>
-    query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+    query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
   }> = ({ children, location, data, query }) => {
     const errorComponent = this._getErrorComponent({ type: 'page' })
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
@@ -3125,7 +3495,7 @@ export class Point0<
       return React.createElement(this._ClientCtxProviderInner, {
         data: {} as FinalData<TData>,
         location: useLocation<CurrentRouteDefinition<TRouteDefinition>>(),
-        query: undefined as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+        query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
         children,
       })
     }
@@ -3158,7 +3528,7 @@ export class Point0<
       data,
       location,
       children,
-      query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+      query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
     })
   }
 
@@ -3285,17 +3655,20 @@ export class Point0<
   ): UseQueryOptions<FetchOutput<TResponseOutput, TData>, Error0, FetchOutput<TResponseOutput, TData>, QueryKey> {
     const [input, queryOptions, fetchOptions, outputType] = args
     const queryKey = this.getQueryKey(input as never, outputType)
+    console.log(1110, queryKey)
     const queryFn = async () => {
       const data = await this.fetch(input as never, fetchOptions, outputType)
       return data
     }
-    return {
+    const result = {
       ...this._defaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
       queryKey,
       queryFn,
     } as never
+    console.log(1111, result)
+    return result
   }
 
   getInfiniteQueryOptions(
@@ -3428,6 +3801,7 @@ export class Point0<
     QueryKey
   > {
     const queryKey = this.getClientQueryKey({ input, data })
+    console.log(999, data, queryKey)
     const queryFn = this._hasClientAsyncLoader()
       ? async ({ pageParam }: { pageParam: unknown }) => {
           const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput

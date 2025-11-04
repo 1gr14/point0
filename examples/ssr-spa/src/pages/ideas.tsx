@@ -16,6 +16,9 @@ export const ideasPage = generalLayout
     const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
     return { ...data, ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
   })
+  // .clientLoader(async ({ data }) => {
+  //   return { ...data, amazing: '123', ideas: data.ideas.map((idea) => ({ ...idea, amazing: '234' })) }
+  // })
   .infiniteQuery({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
@@ -38,6 +41,8 @@ export const ideasPage = generalLayout
           }}
         >
           Here are all the amazing ideas shared by our community: {data.ideasCount + count}
+          <br />
+          Amazing: {data.amazing}
         </p>
         <div>
           {query.data.pages
@@ -47,7 +52,11 @@ export const ideasPage = generalLayout
                 <h3>
                   <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link>
                 </h3>
-                <p>{idea.description}</p>
+                <p>
+                  {idea.description}
+                  <br />
+                  Amazing: {idea.amazing}
+                </p>
                 <p>
                   <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
                 </p>
