@@ -14,14 +14,22 @@ import type {
   InfiniteData,
   MutationOptions,
   QueryKey as OriginalQueryKey,
-  Query,
-  QueryOptions,
   UseInfiniteQueryResult,
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  QueryClient,
+  hydrate,
+  useInfiniteQuery,
+  useMutation,
+  usePrefetchInfiniteQuery,
+  usePrefetchQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import * as React from 'react'
+import { useMemo } from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, ExtractResult } from './eversion.js'
@@ -2905,134 +2913,6 @@ export class Point0<
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRouteDefinition, TInputSchema>
   }
 
-  // _PageInner: React.ComponentType<{
-  //   data: FinalData<TData>
-  //   location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-  //   query: QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
-  // }> = ({ data, location, query }) => {
-  //   const errorComponent = this._getErrorComponent({ type: 'page' })
-  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
-
-  //   if (!this._page) {
-  //     return React.createElement(errorComponent, {
-  //       type: 'page',
-  //       error: new Error0('No page component'),
-  //       location,
-  //       query,
-  //     })
-  //   }
-
-  //   for (const staticHead of this._staticHeads) {
-  //     useHead(staticHead)
-  //   }
-
-  //   if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
-  //     for (const headFn of this._clientExtractFns) {
-  //       useHead(headFn.fn({ data, location }))
-  //     }
-  //     return React.createElement(this._page, {
-  //       data: data as FinalClientData<TData, TClientData>,
-  //       location,
-  //       query,
-  //     })
-  //   }
-
-  //   if (!this._hasClientAsyncLoader()) {
-  //     try {
-  //       const { clientData, clientHead } = this._extractClientSync({ data, location, skipHeads: false })
-  //       for (const head of clientHead) {
-  //         useHead(head)
-  //       }
-  //       return React.createElement(this._page, {
-  //         data: clientData as FinalClientData<TData, TClientData>,
-  //         location,
-  //         query,
-  //       })
-  //     } catch (error: unknown) {
-  //       return React.createElement(errorComponent, {
-  //         type: 'page',
-  //         error: Error0.from(error),
-  //         location,
-  //         query,
-  //       })
-  //     }
-  //   }
-
-  //   // TODO: we should store state globally, to prevent on hmr rernder of page, it is blinking
-  //   // lets use reactQuery cache here, and store there clientData and clientHead
-  //   const [clientHead, setClientHead] = React.useState<ResolvableHead>({})
-  //   const [loading, setLoading] = React.useState(true)
-  //   const [error, setError] = React.useState<Error0 | undefined>(undefined)
-  //   const [clientData, setClientData] = React.useState<Data>({})
-  //   React.useEffect(() => {
-  //     void (async () => {
-  //       setLoading(true)
-  //       try {
-  //         const { clientData, clientHeadMerged } = await this._extractClientAsync({ data, location, skipHeads: false })
-  //         setClientHead(clientHeadMerged)
-  //         setClientData(clientData)
-  //         setLoading(false)
-  //       } catch (error) {
-  //         setError(Error0.from(error))
-  //         setLoading(false)
-  //       }
-  //     })()
-  //   }, [data, location])
-
-  //   useHead(clientHead)
-
-  //   if (loading) {
-  //     return React.createElement(loadingComponent, { type: 'page', location, query })
-  //   }
-  //   if (error) {
-  //     return React.createElement(errorComponent, { type: 'page', error, location, query })
-  //   }
-  //   return React.createElement(this._page, {
-  //     data: clientData as FinalClientData<TData, TClientData>,
-  //     location,
-  //     query,
-  //   })
-  // }
-
-  // _Page: React.ComponentType = () => {
-  //   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-  //   if (!this._hasLoader()) {
-  //     return React.createElement(this._PageInner, {
-  //       data: {} as FinalData<TData>,
-  //       location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
-  //       query: undefined as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-  //     })
-  //   }
-
-  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
-  //   const errorComponent = this._getErrorComponent({ type: 'page' })
-  //   const isInitalSsrLocation = useIsInitalSsrLocation()
-  //   const input = this._getUnsafeInputRawByLocation(location)
-  //   const { queryCache } = this.useQueryCache(input)
-  //   const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
-  //   const query = useQueryMethod(input, {
-  //     ...this._defaultPageQueryOptions,
-  //     enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-  //   } as never)
-  //   if (query.error) {
-  //     return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
-  //   }
-  //   if (query.isLoading) {
-  //     return React.createElement(loadingComponent, { type: 'page', location, query })
-  //   }
-  //   const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
-  //     | FinalData<TData>
-  //     | undefined
-  //   if (!data) {
-  //     return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
-  //   }
-  //   return React.createElement(this._PageInner, {
-  //     data,
-  //     location: location as ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
-  //     query: query as QueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-  //   })
-  // }
-
   useLoader = (
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
@@ -3050,75 +2930,72 @@ export class Point0<
     const location = useLocation()
     const serverQueryEnabled = this._hasLoader()
     const clientQueryEnabled = this._hasClientLoader()
+    const isInfiniteQuery = this._queryResultType === 'infiniteQuery'
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
 
-    const isInitalSsrLocation = useIsInitalSsrLocation()
+    if (serverQueryEnabled && !clientQueryEnabled) {
+      // const isInitalSsrLocation = useIsInitalSsrLocation()
+      // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
+      // const { queryCache } = useQueryCacheMethod(input as never)
+      // const { queryCache } = this.useQueryCache(input as never, 'data')
+      const useServerQueryMethod = isInfiniteQuery ? this._useServerInfiniteQuery : this._useServerQuery
+      const query = useServerQueryMethod({
+        input: input as never,
+        queryOptions: queryOptions as any,
+        fetchOptions,
+      })
+      return {
+        data: isInfiniteQuery ? (query.data as any)?.pages?.at(0) : query.data,
+        loading: query.isLoading,
+        error: query.error ? Error0.from(query.error) : null,
+        serverQuery: query as never,
+        clientQuery: undefined as never,
+        query: query as never,
+        location,
+        input: input as never,
+      }
+    }
 
-    const isServerInfiniteQuery = this._queryResultType === 'infiniteQuery' && !clientQueryEnabled
-    // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
-    // const { queryCache } = useQueryCacheMethod(input as never)
-    const { queryCache } = this.useQueryCache(input as never, 'data')
-    const useServerQueryMethod = isServerInfiniteQuery ? this.useInfiniteQuery : this.useQuery
-    const serverQuery = useServerQueryMethod(
-      input as never,
-      {
-        ...queryOptions,
-        enabled: serverQueryEnabled && (!isInitalSsrLocation || queryCache?.state.status !== 'error'),
-      } as never,
-      fetchOptions as never,
-    )
-    console.log(555, { isServerInfiniteQuery }, queryOptions, serverQuery.data, useServerQueryMethod)
+    if (!serverQueryEnabled && clientQueryEnabled) {
+      const useClientQueryMethod =
+        this._queryResultType === 'infiniteQuery' ? this._useClientInfiniteQuery : this._useClientQuery
+      const query = useClientQueryMethod({
+        input,
+        data: {},
+        skipHeads: false,
+        queryOptions: {
+          ...queryOptions,
+        },
+        location,
+      } as never)
+      return {
+        data: isInfiniteQuery ? (query.data as any)?.pages?.at(0) : query.data,
+        loading: query.isLoading,
+        error: query.error ? Error0.from(query.error) : null,
+        serverQuery: query as never,
+        clientQuery: undefined as never,
+        query: query as never,
+        location,
+        input: input as never,
+      }
+    }
 
     const useClientQueryMethod =
-      this._queryResultType === 'infiniteQuery' ? this.useClientInfiniteQuery : this.useClientQuery
-    const clientQuery = useClientQueryMethod({
+      this._queryResultType === 'infiniteQuery' ? this._useCombinedInfiniteQuery : this._useCombinedQuery
+    const query = useClientQueryMethod({
       input,
-      data: serverQuery.data,
-      skipHeads: false,
-      queryOptions: {
-        ...queryOptions,
-        enabled: clientQueryEnabled && serverQuery.data !== undefined,
-      },
+      queryOptions,
       location,
+      fetchOptions,
     } as never)
-
-    const loading = serverQueryEnabled
-      ? clientQueryEnabled
-        ? serverQuery.isLoading || clientQuery.isLoading
-        : serverQuery.isLoading
-      : clientQueryEnabled
-        ? clientQuery.isLoading
-        : false
-    const errorRaw = serverQueryEnabled
-      ? clientQueryEnabled
-        ? serverQuery.error || clientQuery.error
-        : serverQuery.error
-      : clientQueryEnabled
-        ? clientQuery.error
-        : null
-    const error = errorRaw && Error0.from(errorRaw)
-    const dataRaw = clientQueryEnabled ? clientQuery.data : serverQueryEnabled ? serverQuery.data : undefined
-    const data =
-      dataRaw &&
-      ((this._queryResultType === 'infiniteQuery' ? (dataRaw as any)?.pages?.at(0) : dataRaw) as
-        | FinalClientData<TData, TClientData>
-        | undefined)
-    const query = serverQueryEnabled
-      ? clientQueryEnabled
-        ? clientQuery
-        : serverQuery
-      : clientQueryEnabled
-        ? clientQuery
-        : undefined
-
     return {
-      data,
-      loading,
-      error,
-      serverQuery: serverQuery as never,
-      clientQuery: clientQuery as never,
+      data: isInfiniteQuery ? (query.data as any)?.pages?.at(0) : query.data,
+      loading: query.isLoading,
+      error: query.error ? Error0.from(query.error) : null,
+      serverQuery: query as never,
+      clientQuery: undefined as never,
       query: query as never,
       location,
       input: input as never,
@@ -3170,366 +3047,489 @@ export class Point0<
     } as never)
   }
 
-  _ComponentInner: React.ComponentType<{
-    data: FinalData<TData>
-    location: AnyLocation
-    props: FinalProps<TProps>
-    query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
-  }> = ({ data, location, props, query }) => {
-    const errorComponent = this._getErrorComponent({ type: 'component' })
-    const loadingComponent = this._getLoadingComponent({ type: 'component' })
+  // _ComponentInner: React.ComponentType<{
+  //   data: FinalData<TData>
+  //   location: AnyLocation
+  //   props: FinalProps<TProps>
+  //   query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+  // }> = ({ data, location, props, query }) => {
+  //   const errorComponent = this._getErrorComponent({ type: 'component' })
+  //   const loadingComponent = this._getLoadingComponent({ type: 'component' })
 
-    if (!this._component) {
-      return React.createElement(errorComponent, {
-        type: 'component',
-        error: new Error0('No component component'),
-        location,
-        query,
-      })
-    }
+  //   if (!this._component) {
+  //     return React.createElement(errorComponent, {
+  //       type: 'component',
+  //       error: new Error0('No component component'),
+  //       location,
+  //       query,
+  //     })
+  //   }
 
-    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
-      return React.createElement(this._component, {
-        data: data as FinalClientData<TData, TClientData>,
-        location,
-        props,
-        query,
-      })
-    }
+  //   if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
+  //     return React.createElement(this._component, {
+  //       data: data as FinalClientData<TData, TClientData>,
+  //       location,
+  //       props,
+  //       query,
+  //     })
+  //   }
 
-    if (!this._hasClientAsyncLoader()) {
-      try {
-        const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
-        return React.createElement(this._component, {
-          data: clientData as FinalClientData<TData, TClientData>,
-          location,
-          props,
-          query,
-        })
-      } catch (error: unknown) {
-        return React.createElement(errorComponent, { type: 'component', error: Error0.from(error), location, query })
-      }
-    }
+  //   if (!this._hasClientAsyncLoader()) {
+  //     try {
+  //       const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
+  //       return React.createElement(this._component, {
+  //         data: clientData as FinalClientData<TData, TClientData>,
+  //         location,
+  //         props,
+  //         query,
+  //       })
+  //     } catch (error: unknown) {
+  //       return React.createElement(errorComponent, { type: 'component', error: Error0.from(error), location, query })
+  //     }
+  //   }
 
-    const [loading, setLoading] = React.useState(true)
-    const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [clientData, setClientData] = React.useState<Data>({})
-    React.useEffect(() => {
-      void (async () => {
-        setLoading(true)
-        try {
-          const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
-          setClientData(clientData)
-          setLoading(false)
-        } catch (error) {
-          setError(Error0.from(error))
-          setLoading(false)
-        }
-      })()
-    }, [data, location])
+  //   const [loading, setLoading] = React.useState(true)
+  //   const [error, setError] = React.useState<Error0 | undefined>(undefined)
+  //   const [clientData, setClientData] = React.useState<Data>({})
+  //   React.useEffect(() => {
+  //     void (async () => {
+  //       setLoading(true)
+  //       try {
+  //         const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
+  //         setClientData(clientData)
+  //         setLoading(false)
+  //       } catch (error) {
+  //         setError(Error0.from(error))
+  //         setLoading(false)
+  //       }
+  //     })()
+  //   }, [data, location])
 
-    if (loading) {
-      return React.createElement(loadingComponent, { type: 'component', location, query })
-    }
-    if (error) {
-      return React.createElement(errorComponent, { type: 'component', error, location, query })
-    }
-    return React.createElement(this._component, {
-      data: clientData as FinalClientData<TData, TClientData>,
-      location,
-      props,
-      query,
-    })
-  }
+  //   if (loading) {
+  //     return React.createElement(loadingComponent, { type: 'component', location, query })
+  //   }
+  //   if (error) {
+  //     return React.createElement(errorComponent, { type: 'component', error, location, query })
+  //   }
+  //   return React.createElement(this._component, {
+  //     data: clientData as FinalClientData<TData, TClientData>,
+  //     location,
+  //     props,
+  //     query,
+  //   })
+  // }
+
+  // _Component: ComponentMountable<TInputSchema, TProps> = (props) => {
+  //   const { input = {}, ...restProps } = props as ComponentMountableProps<InputSchema, TProps>
+  //   const location = useLocation()
+  //   if (!this._hasLoader()) {
+  //     return React.createElement(this._ComponentInner, {
+  //       data: {} as FinalData<TData>,
+  //       location,
+  //       props: restProps as unknown as FinalProps<TProps>,
+  //       query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //     })
+  //   }
+
+  //   const loadingComponent = this._getLoadingComponent({ type: 'component' })
+  //   const errorComponent = this._getErrorComponent({ type: 'component' })
+  //   const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+  //   const query = useQueryMethod(
+  //     input as never,
+  //     {
+  //       ...this._defaultComponentQueryOptions,
+  //     } as never,
+  //   )
+
+  //   if (query.error) {
+  //     return React.createElement(errorComponent, {
+  //       type: 'component',
+  //       error: Error0.from(query.error),
+  //       location,
+  //       query,
+  //     })
+  //   }
+  //   if (query.isLoading) {
+  //     return React.createElement(loadingComponent, { type: 'component', location, query })
+  //   }
+  //   const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+  //     | FinalData<TData>
+  //     | undefined
+  //   if (!data) {
+  //     return React.createElement(errorComponent, { type: 'component', error: new Error0('No data'), location, query })
+  //   }
+  //   return React.createElement(this._ComponentInner, {
+  //     data,
+  //     location,
+  //     props: restProps as unknown as FinalProps<TProps>,
+  //     query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //   })
+  // }
 
   _Component: ComponentMountable<TInputSchema, TProps> = (props) => {
     const { input = {}, ...restProps } = props as ComponentMountableProps<InputSchema, TProps>
-    const location = useLocation()
-    if (!this._hasLoader()) {
-      return React.createElement(this._ComponentInner, {
-        data: {} as FinalData<TData>,
-        location,
-        props: restProps as unknown as FinalProps<TProps>,
-        query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-      })
-    }
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
 
-    const loadingComponent = this._getLoadingComponent({ type: 'component' })
-    const errorComponent = this._getErrorComponent({ type: 'component' })
-    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
-    const query = useQueryMethod(
-      input as never,
-      {
-        ...this._defaultComponentQueryOptions,
-      } as never,
-    )
-
-    if (query.error) {
+    if (!this._component) {
       return React.createElement(errorComponent, {
-        type: 'component',
-        error: Error0.from(query.error),
+        type: 'page',
+        data: undefined as FinalClientData<TData, TClientData> | undefined,
+        error: new Error0('No component component'),
+        loading: false,
         location,
-        query,
+        query: undefined as never,
+        serverQuery: undefined as never,
+        clientQuery: undefined as never,
+        input: {} as InputParsed<TRouteDefinition, TInputSchema>,
+      } as never)
+    }
+
+    const result = this.useLoader(input as never, this._defaultComponentQueryOptions)
+    if (result.error) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        ...result,
+      } as never)
+    }
+    if (result.loading) {
+      return React.createElement(loadingComponent, {
+        type: 'page',
+        ...result,
       })
     }
-    if (query.isLoading) {
-      return React.createElement(loadingComponent, { type: 'component', location, query })
+    if (!result.data) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        ...result,
+        error: new Error0('No data'),
+      } as never)
     }
-    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
-      | FinalData<TData>
-      | undefined
-    if (!data) {
-      return React.createElement(errorComponent, { type: 'component', error: new Error0('No data'), location, query })
-    }
-    return React.createElement(this._ComponentInner, {
-      data,
-      location,
+    return React.createElement(this._component, {
+      ...result,
       props: restProps as unknown as FinalProps<TProps>,
-      query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-    })
+    } as never)
   }
 
-  _LayoutInner: React.ComponentType<{
-    children: React.ReactNode
-    location:
-      | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
-      | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-    data: FinalData<TData>
-    query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
-  }> = ({ children, location, data, query }) => {
-    const errorComponent = this._getErrorComponent({ type: 'page' })
+  // _LayoutInner: React.ComponentType<{
+  //   children: React.ReactNode
+  //   location:
+  //     | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+  //     | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+  //   data: FinalData<TData>
+  //   query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+  // }> = ({ children, location, data, query }) => {
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
+
+  //   if (!this._layout) {
+  //     return React.createElement(errorComponent, {
+  //       type: 'page',
+  //       error: new Error0('No layout component'),
+  //       location,
+  //       query,
+  //     })
+  //   }
+
+  //   if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
+  //     return React.createElement(this._layout, {
+  //       data: data as FinalClientData<TData, TClientData>,
+  //       location,
+  //       children,
+  //       query,
+  //     })
+  //   }
+
+  //   if (!this._hasClientAsyncLoader()) {
+  //     try {
+  //       const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
+  //       return React.createElement(this._layout, {
+  //         data: clientData as FinalClientData<TData, TClientData>,
+  //         location,
+  //         children,
+  //         query,
+  //       })
+  //     } catch (error: unknown) {
+  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location, query })
+  //     }
+  //   }
+
+  //   const [loading, setLoading] = React.useState(true)
+  //   const [error, setError] = React.useState<Error0 | undefined>(undefined)
+  //   const [clientData, setClientData] = React.useState<Data>({})
+  //   React.useEffect(() => {
+  //     void (async () => {
+  //       setLoading(true)
+  //       try {
+  //         const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
+  //         setClientData(clientData)
+  //         setLoading(false)
+  //       } catch (error) {
+  //         setError(Error0.from(error))
+  //         setLoading(false)
+  //       }
+  //     })()
+  //   }, [data, location])
+
+  //   if (loading) {
+  //     return React.createElement(loadingComponent, { type: 'page', location, query })
+  //   }
+  //   if (error) {
+  //     return React.createElement(errorComponent, { type: 'page', error, location, query })
+  //   }
+  //   return React.createElement(this._layout, {
+  //     data: clientData as FinalClientData<TData, TClientData>,
+  //     location,
+  //     children,
+  //     query,
+  //   })
+  // }
+
+  // _Layout: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  //   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+
+  //   if (!this._hasLoader()) {
+  //     return React.createElement(this._LayoutInner, {
+  //       data: {} as FinalData<TData>,
+  //       location: location as
+  //         | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+  //         | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
+  //       children,
+  //       query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //     })
+  //   }
+
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
+  //   const input = this._getUnsafeInputRawByLocation(location)
+  //   // const { queryCache } = this.useQueryCache(input)
+  //   // const isInitalSsrLocation = useIsInitalSsrLocation()
+  //   const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
+  //   const query = useQueryMethod(input, {
+  //     enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
+  //     ...this._defaultPageQueryOptions,
+  //   } as never)
+  //   if (query.error) {
+  //     return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
+  //   }
+  //   if (query.isLoading) {
+  //     return React.createElement(loadingComponent, { type: 'page', location, query })
+  //   }
+  //   const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+  //     | FinalData<TData>
+  //     | undefined
+  //   if (!data) {
+  //     return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
+  //   }
+  //   return React.createElement(this._LayoutInner, {
+  //     data,
+  //     location: location as
+  //       | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+  //       | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
+  //     children,
+  //     query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //   })
+  // }
+
+  _Layout: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
 
     if (!this._layout) {
       return React.createElement(errorComponent, {
         type: 'page',
+        data: undefined as never,
         error: new Error0('No layout component'),
+        loading: false,
         location,
-        query,
+        query: undefined as never,
+        serverQuery: undefined as never,
+        clientQuery: undefined as never,
+        input: {} as InputParsed<TRouteDefinition, TInputSchema>,
       })
     }
 
-    if (this._clientExtractFnsHasOnlyHeadFnsOrEmpty()) {
-      return React.createElement(this._layout, {
-        data: data as FinalClientData<TData, TClientData>,
-        location,
-        children,
-        query,
+    const input = this._getUnsafeInputRawByLocation(location)
+    const result = this.useLoader(input as never, this._defaultLayoutQueryOptions)
+    if (result.error) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        ...result,
+      } as never)
+    }
+    if (result.loading) {
+      return React.createElement(loadingComponent, {
+        type: 'page',
+        ...result,
       })
     }
-
-    if (!this._hasClientAsyncLoader()) {
-      try {
-        const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
-        return React.createElement(this._layout, {
-          data: clientData as FinalClientData<TData, TClientData>,
-          location,
-          children,
-          query,
-        })
-      } catch (error: unknown) {
-        return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location, query })
-      }
-    }
-
-    const [loading, setLoading] = React.useState(true)
-    const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [clientData, setClientData] = React.useState<Data>({})
-    React.useEffect(() => {
-      void (async () => {
-        setLoading(true)
-        try {
-          const { clientData } = await this._extractClientAsync({ data, location, skipHeads: true })
-          setClientData(clientData)
-          setLoading(false)
-        } catch (error) {
-          setError(Error0.from(error))
-          setLoading(false)
-        }
-      })()
-    }, [data, location])
-
-    if (loading) {
-      return React.createElement(loadingComponent, { type: 'page', location, query })
-    }
-    if (error) {
-      return React.createElement(errorComponent, { type: 'page', error, location, query })
+    if (!result.data) {
+      return React.createElement(errorComponent, {
+        type: 'page',
+        ...result,
+        error: new Error0('No data'),
+      } as never)
     }
     return React.createElement(this._layout, {
-      data: clientData as FinalClientData<TData, TClientData>,
-      location,
+      ...result,
       children,
-      query,
-    })
-  }
-
-  _Layout: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-
-    if (!this._hasLoader()) {
-      return React.createElement(this._LayoutInner, {
-        data: {} as FinalData<TData>,
-        location: location as
-          | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
-          | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
-        children,
-        query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-      })
-    }
-
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-    const input = this._getUnsafeInputRawByLocation(location)
-    const { queryCache } = this.useQueryCache(input)
-    const isInitalSsrLocation = useIsInitalSsrLocation()
-    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
-    const query = useQueryMethod(input, {
-      enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-      ...this._defaultPageQueryOptions,
     } as never)
-    if (query.error) {
-      return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
-    }
-    if (query.isLoading) {
-      return React.createElement(loadingComponent, { type: 'page', location, query })
-    }
-    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
-      | FinalData<TData>
-      | undefined
-    if (!data) {
-      return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
-    }
-    return React.createElement(this._LayoutInner, {
-      data,
-      location: location as
-        | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
-        | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>,
-      children,
-      query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-    })
   }
 
   _ClientCtxReactContext: React.Context<FinalClientData<TData, TClientData>> = React.createContext<
     FinalClientData<TData, TClientData>
   >(null as never)
 
-  _ClientCtxProviderInner: React.ComponentType<{
-    children: React.ReactNode
-    location: AnyLocation
-    data: FinalData<TData>
-    query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
-  }> = ({ children, location, data, query }) => {
-    const errorComponent = this._getErrorComponent({ type: 'page' })
+  // _ClientCtxProviderInner: React.ComponentType<{
+  //   children: React.ReactNode
+  //   location: AnyLocation
+  //   data: FinalData<TData>
+  //   query: ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>
+  // }> = ({ children, location, data, query }) => {
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
+
+  //   if (this._pointType !== 'clientCtx') {
+  //     return React.createElement(errorComponent, {
+  //       type: 'page',
+  //       error: new Error0('Point type is not clientCtx'),
+  //       location,
+  //       query,
+  //     })
+  //   }
+
+  //   const _clientCtxSetter = this._clientCtxSetter
+
+  //   if (!_clientCtxSetter) {
+  //     return React.createElement(errorComponent, {
+  //       type: 'page',
+  //       error: new Error0('No clientCtx setter'),
+  //       location,
+  //       query,
+  //     })
+  //   }
+
+  //   if (!this._hasClientAsyncLoader()) {
+  //     try {
+  //       const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
+  //       const clientCtxValue = _clientCtxSetter({ data: clientData, location })
+  //       return React.createElement(this._ClientCtxReactContext.Provider, {
+  //         value: clientCtxValue,
+  //         children,
+  //       })
+  //     } catch (error: unknown) {
+  //       return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location, query })
+  //     }
+  //   }
+
+  //   const [loading, setLoading] = React.useState(true)
+  //   const [error, setError] = React.useState<Error0 | undefined>(undefined)
+  //   const [clientCtxValue, setClientCtxValue] = React.useState<FinalClientData<TData, TClientData>>({} as never)
+  //   React.useEffect(() => {
+  //     void (async () => {
+  //       setLoading(true)
+  //       try {
+  //         const { clientData } = await this._extractClientAsync({
+  //           data,
+  //           location: location as AnyLocation<CurrentRouteDefinition<TRouteDefinition>>,
+  //           skipHeads: true,
+  //         })
+  //         const clientCtxValue = _clientCtxSetter({ data: clientData, location })
+  //         setClientCtxValue(clientCtxValue)
+  //         setLoading(false)
+  //       } catch (error) {
+  //         setError(Error0.from(error))
+  //         setLoading(false)
+  //       }
+  //     })()
+  //   }, [data, location])
+
+  //   if (loading) {
+  //     return React.createElement(loadingComponent, { type: 'page', location, query })
+  //   }
+  //   if (error) {
+  //     return React.createElement(errorComponent, { type: 'page', error, location, query })
+  //   }
+  //   return React.createElement(this._ClientCtxReactContext.Provider, {
+  //     value: resukl,
+  //     children,
+  //   })
+  // }
+
+  // // client ctx provider
+  // Provider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
+  //   if (!this._hasLoader()) {
+  //     return React.createElement(this._ClientCtxProviderInner, {
+  //       data: {} as FinalData<TData>,
+  //       location: useLocation<CurrentRouteDefinition<TRouteDefinition>>(),
+  //       query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //       children,
+  //     })
+  //   }
+
+  //   // TODO: allow input as prop
+  //   const input = {} as never
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
+  //   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+  //   const isInitalSsrLocation = useIsInitalSsrLocation()
+  //   const { queryCache } = this.useQueryCache(input)
+  //   const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useLoader
+  //   const query = useQueryMethod(input, {
+  //     enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
+  //     ...this._defaultClientCtxQueryOptions,
+  //   } as never)
+  //   if (query.error) {
+  //     return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
+  //   }
+  //   if (query.isLoading) {
+  //     return React.createElement(loadingComponent, { type: 'page', location, query })
+  //   }
+  //   const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
+  //     | FinalData<TData>
+  //     | undefined
+  //   if (!data) {
+  //     return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
+  //   }
+  //   return React.createElement(this._ClientCtxProviderInner, {
+  //     data,
+  //     location,
+  //     children,
+  //     query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
+  //   })
+  // }
+
+  Provider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
 
-    if (this._pointType !== 'clientCtx') {
+    // TODO: allow pass input via props
+    const result = this.useLoader({} as never, this._defaultClientCtxQueryOptions)
+    if (result.error) {
       return React.createElement(errorComponent, {
         type: 'page',
-        error: new Error0('Point type is not clientCtx'),
-        location,
-        query,
+        ...result,
+      } as never)
+    }
+    if (result.loading) {
+      return React.createElement(loadingComponent, {
+        type: 'page',
+        ...result,
       })
     }
-
-    const _clientCtxSetter = this._clientCtxSetter
-
-    if (!_clientCtxSetter) {
+    if (!result.data) {
       return React.createElement(errorComponent, {
         type: 'page',
-        error: new Error0('No clientCtx setter'),
-        location,
-        query,
-      })
-    }
-
-    if (!this._hasClientAsyncLoader()) {
-      try {
-        const { clientData } = this._extractClientSync({ data, location, skipHeads: true })
-        const clientCtxValue = _clientCtxSetter({ data: clientData, location })
-        return React.createElement(this._ClientCtxReactContext.Provider, {
-          value: clientCtxValue,
-          children,
-        })
-      } catch (error: unknown) {
-        return React.createElement(errorComponent, { type: 'page', error: Error0.from(error), location, query })
-      }
-    }
-
-    const [loading, setLoading] = React.useState(true)
-    const [error, setError] = React.useState<Error0 | undefined>(undefined)
-    const [clientCtxValue, setClientCtxValue] = React.useState<FinalClientData<TData, TClientData>>({} as never)
-    React.useEffect(() => {
-      void (async () => {
-        setLoading(true)
-        try {
-          const { clientData } = await this._extractClientAsync({
-            data,
-            location: location as AnyLocation<CurrentRouteDefinition<TRouteDefinition>>,
-            skipHeads: true,
-          })
-          const clientCtxValue = _clientCtxSetter({ data: clientData, location })
-          setClientCtxValue(clientCtxValue)
-          setLoading(false)
-        } catch (error) {
-          setError(Error0.from(error))
-          setLoading(false)
-        }
-      })()
-    }, [data, location])
-
-    if (loading) {
-      return React.createElement(loadingComponent, { type: 'page', location, query })
-    }
-    if (error) {
-      return React.createElement(errorComponent, { type: 'page', error, location, query })
+        ...result,
+        error: new Error0('No data'),
+      } as never)
     }
     return React.createElement(this._ClientCtxReactContext.Provider, {
-      value: clientCtxValue,
+      value: result.data,
       children,
-    })
-  }
-
-  // client ctx provider
-  Provider: React.ComponentType<{ children: React.ReactNode }> = ({ children }) => {
-    if (!this._hasLoader()) {
-      return React.createElement(this._ClientCtxProviderInner, {
-        data: {} as FinalData<TData>,
-        location: useLocation<CurrentRouteDefinition<TRouteDefinition>>(),
-        query: undefined as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-        children,
-      })
-    }
-
-    // TODO: allow input as prop
-    const input = {} as never
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const isInitalSsrLocation = useIsInitalSsrLocation()
-    const { queryCache } = this.useQueryCache(input)
-    const useQueryMethod = this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery : this.useQuery
-    const query = useQueryMethod(input, {
-      enabled: !isInitalSsrLocation || queryCache?.state.status !== 'error',
-      ...this._defaultClientCtxQueryOptions,
     } as never)
-    if (query.error) {
-      return React.createElement(errorComponent, { type: 'page', error: Error0.from(query.error), location, query })
-    }
-    if (query.isLoading) {
-      return React.createElement(loadingComponent, { type: 'page', location, query })
-    }
-    const data = (this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(0) : query.data) as
-      | FinalData<TData>
-      | undefined
-    if (!data) {
-      return React.createElement(errorComponent, { type: 'page', error: new Error0('No data'), location, query })
-    }
-    return React.createElement(this._ClientCtxProviderInner, {
-      data,
-      location,
-      children,
-      query: query as ServerQueryComponentProp<TQueryResultType, TData, TResponseOutput, 'success'>,
-    })
   }
 
   useClientCtx = (): FinalClientData<TData, TClientData> => {
@@ -3601,28 +3601,98 @@ export class Point0<
         pointType: EndPointType
         pointName: PointName
         outputType: string
+        isInfiniteQuery: boolean
         input: InputRaw
       }
     | undefined {
-    const [check, serverOrClient, pointType, pointName, outputType, input] = queryKey
+    const [check, serverOrClient, pointType, pointName, outputType, finiteOrInfinite, input] = queryKey
     if (
       check !== 'point0' ||
       typeof serverOrClient !== 'string' ||
       typeof pointType !== 'string' ||
       typeof pointName !== 'string' ||
       typeof outputType !== 'string' ||
+      typeof finiteOrInfinite !== 'string' ||
       typeof input !== 'string'
     ) {
       return undefined
     }
     return {
-      isServer: serverOrClient === 'server',
-      isClient: serverOrClient === 'client',
+      isServer: serverOrClient === 'server' || serverOrClient === 'combined',
+      isClient: serverOrClient === 'client' || serverOrClient === 'combined',
       pointType: pointType as EndPointType,
       pointName,
       outputType,
+      isInfiniteQuery: finiteOrInfinite === 'infinite',
       input: JSON.parse(input) as InputRaw,
     }
+  }
+
+  _getServerQueryKey({
+    input,
+    outputType = this._pointType === 'response' ? 'response' : 'data',
+    isInfiniteQuery,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    outputType?: FetchOutputType
+    isInfiniteQuery: boolean
+  }): QueryKey {
+    if (!this._name) {
+      throw new Error('Point name is not provided')
+    }
+    return [
+      'point0',
+      'server',
+      this._pointType,
+      this._name,
+      outputType,
+      isInfiniteQuery ? 'infinite' : 'finite',
+      stringify(input),
+    ]
+  }
+
+  _getClientQueryKey({
+    input = {} as never,
+    isInfiniteQuery,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    isInfiniteQuery: boolean
+  }): QueryKey {
+    if (!this._name) {
+      throw new Error('Point name is not provided')
+    }
+    return [
+      'point0',
+      'client',
+      this._pointType,
+      this._name,
+      'data',
+      isInfiniteQuery ? 'infinite' : 'finite',
+      stringify(input),
+    ]
+  }
+
+  _getCombinedQueryKey({
+    input = {} as never,
+    outputType = this._pointType === 'response' ? 'response' : 'data',
+    isInfiniteQuery,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    outputType?: FetchOutputType
+    isInfiniteQuery: boolean
+  }): QueryKey {
+    if (!this._name) {
+      throw new Error('Point name is not provided')
+    }
+    return [
+      'point0',
+      'combined',
+      this._pointType,
+      this._name,
+      outputType,
+      isInfiniteQuery ? 'infinite' : 'finite',
+      stringify(input),
+    ]
   }
 
   getQueryKey(
@@ -3633,29 +3703,44 @@ export class Point0<
     if (!this._name) {
       throw new Error('Point name is not provided')
     }
-    const [input = {}] = args
-    const outputType = args[1] ?? (this._pointType === 'response' ? 'response' : 'data')
-    return ['point0', 'server', this._pointType, this._name, outputType, stringify(input)]
+    const [input, outputType] = args
+    const hasClientLoader = this._hasClientLoader()
+    const hasServerLoader = this._hasLoader()
+    if (hasClientLoader && hasServerLoader) {
+      return this._getCombinedQueryKey({
+        input: input as never,
+        outputType,
+        isInfiniteQuery: this._queryResultType === 'infiniteQuery',
+      })
+    }
+    if (hasClientLoader) {
+      return this._getClientQueryKey({
+        input: input as never,
+        isInfiniteQuery: this._queryResultType === 'infiniteQuery',
+      })
+    }
+    if (hasServerLoader) {
+      return this._getServerQueryKey({
+        input: input as never,
+        outputType,
+        isInfiniteQuery: this._queryResultType === 'infiniteQuery',
+      })
+    }
+    throw new Error('No loader found')
   }
 
-  getQueryOptions(
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [
-          input?: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: ExtraUseQueryOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-      : [
-          input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: ExtraUseQueryOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-  ): UseQueryOptions<FetchOutput<TResponseOutput, TData>, Error0, FetchOutput<TResponseOutput, TData>, QueryKey> {
-    const [input, queryOptions, fetchOptions, outputType] = args
-    const queryKey = this.getQueryKey(input as never, outputType)
-    console.log(1110, queryKey)
+  _getServerQueryOptions({
+    input,
+    queryOptions,
+    fetchOptions,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    queryOptions?: ExtraUseQueryOptions | undefined
+    fetchOptions?: FetchOptions | undefined
+    outputType?: FetchOutputType
+  }): UseQueryOptions<FetchOutput<TResponseOutput, TData>, Error0, FetchOutput<TResponseOutput, TData>, QueryKey> {
+    const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
     const queryFn = async () => {
       const data = await this.fetch(input as never, fetchOptions, outputType)
       return data
@@ -3667,53 +3752,162 @@ export class Point0<
       queryKey,
       queryFn,
     } as never
-    console.log(1111, result)
     return result
   }
 
-  getInfiniteQueryOptions(
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [
-          input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
-          queryOptions:
-            | ExtraUseInfiniteQueryOptions<
-                InputRaw<TRouteDefinition, TInputSchema>,
-                FinalData<TData>,
-                Error0,
-                FinalData<TData>,
-                QueryKey,
-                unknown
-              >
-            | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-      : [
-          input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions:
-            | ExtraUseInfiniteQueryOptions<
-                InputRaw<TRouteDefinition, TInputSchema>,
-                FinalData<TData>,
-                Error0,
-                FinalData<TData>,
-                QueryKey,
-                unknown
-              >
-            | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-  ): UseInfiniteQueryOptions<
+  _getClientQueryOptions({
+    input,
+    queryOptions,
+    location,
+    data,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryOptions?: ExtraUseQueryOptions | undefined
+    data?: Data
+  }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
+    const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
+    const queryFn = this._hasClientAsyncLoader()
+      ? async () => {
+          const clientData = await this._extractClientAsync({ data: data || {}, location, skipHeads: false, input })
+          return clientData
+        }
+      : () => {
+          const clientData = this._extractClientSync({ data: data || {}, location, skipHeads: false, input })
+          return clientData
+        }
+    return {
+      ...this._defaultQueryOptions,
+      ...this._queryOptions,
+      ...queryOptions,
+      queryKey,
+      queryFn,
+    } as never
+  }
+
+  _getCombinedQueryOptions({
+    input,
+    location,
+    queryClient,
+    queryOptions,
+    fetchOptions,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryClient: QueryClient
+    queryOptions?: ExtraUseQueryOptions | undefined
+    fetchOptions?: FetchOptions | undefined
+  }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
+    const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
+    const queryFn = async () => {
+      const serverData = await (async () => {
+        const serverKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
+        const cachedServerData = queryClient.getQueryData(serverKey)
+        if (cachedServerData) {
+          return cachedServerData
+        }
+        const serverOpts = this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType: 'data' })
+        return await queryClient.fetchQuery(serverOpts as any)
+      })()
+
+      const clientOpts = this._getClientQueryOptions({
+        input: input as never,
+        queryOptions,
+        location,
+        data: serverData as never,
+      })
+      return await queryClient.fetchQuery(clientOpts as any)
+    }
+    const result = {
+      ...this._defaultQueryOptions,
+      ...this._queryOptions,
+      ...queryOptions,
+      queryKey,
+      queryFn,
+    } as never
+    return result
+  }
+
+  getQueryOptions({
+    input,
+    location,
+    queryClient,
+    queryOptions,
+    fetchOptions,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryClient?: QueryClient
+    queryOptions?: ExtraUseQueryOptions | undefined
+    fetchOptions?: FetchOptions | undefined
+    outputType?: FetchOutputType
+  }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
+    const hasClientLoader = this._hasClientLoader()
+    const hasServerLoader = this._hasLoader()
+    if (hasClientLoader && hasServerLoader) {
+      if (!queryClient) {
+        throw new Error('Query client is not provided')
+      }
+      return this._getCombinedQueryOptions({
+        input: input as never,
+        queryClient,
+        queryOptions,
+        fetchOptions,
+        location,
+      }) as never
+    }
+    if (hasClientLoader) {
+      return this._getClientQueryOptions({
+        input: input as never,
+        queryOptions,
+        location,
+      }) as never
+    }
+    if (hasServerLoader) {
+      return this._getServerQueryOptions({
+        input: input as never,
+        queryOptions,
+        fetchOptions,
+        outputType,
+      }) as never
+    }
+    throw new Error('No loader found')
+  }
+
+  _getServerInfiniteQueryOptions({
+    input,
+    queryOptions,
+    fetchOptions,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    queryOptions:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalData<TData>,
+          Error0,
+          FinalData<TData>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+    fetchOptions?: FetchOptions | undefined
+    outputType?: FetchOutputType
+  }): UseInfiniteQueryOptions<
     InfiniteData<FetchOutput<TResponseOutput, TData>>,
     Error0,
     FetchOutput<TResponseOutput, TData>,
     QueryKey
   > {
-    const [input = {}, queryOptions, fetchOptions, outputType] = args
-    const queryKey = this.getQueryKey(input as never, outputType)
+    const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-      const data = await this.fetch({ ...input, [pageParamFromInput]: pageParam } as never, fetchOptions, outputType)
+      const data = await this.fetch(
+        { ...input, [pageParamFromInput]: pageParam || this._infiniteQueryOptions.initialPageParam } as never,
+        fetchOptions,
+        outputType,
+      )
       return data
     }
     const result = {
@@ -3727,99 +3921,50 @@ export class Point0<
     return result as never
   }
 
-  getClientQueryKey({
-    input = {} as never,
-    data = {} as never,
-  }: {
-    input: InputRaw<TRouteDefinition, TInputSchema>
-    data: FinalData<TData>
-  }): QueryKey {
-    if (!this._name) {
-      throw new Error('Point name is not provided')
-    }
-    const inputAndData = { input, data }
-    return ['point0', 'client', this._pointType, this._name, 'data', stringify(inputAndData)]
-  }
-
-  getClientQueryOptions({
+  _getClientInfiniteQueryOptions({
     input,
-    data,
-    skipHeads,
     queryOptions,
+    data,
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    data: FinalData<TData>
-    skipHeads: boolean
-    location: AnyLocation
-    queryOptions?: ExtraUseQueryOptions | undefined
-  }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
-    const queryKey = this.getClientQueryKey({ input, data })
-    const queryFn = this._hasClientAsyncLoader()
-      ? async () => {
-          const clientData = await this._extractClientAsync({ data, location, skipHeads, input })
-          return clientData
-        }
-      : () => {
-          const clientData = this._extractClientSync({ data, location, skipHeads, input })
-          return clientData
-        }
-    return {
-      ...this._defaultQueryOptions,
-      ...this._queryOptions,
-      ...queryOptions,
-      queryKey,
-      queryFn,
-    } as never
-  }
-
-  getClientInfiniteQueryOptions({
-    input,
-    data,
-    skipHeads,
-    queryOptions,
-    location,
-  }: {
-    input: InputRaw<TRouteDefinition, TInputSchema>
-    data: FinalData<TData>
-    skipHeads: boolean
+    data?: Data
     location: AnyLocation
     queryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
           FinalClientData<TData, TClientData>,
           Error0,
-          FinalClientData<TData, TClientData>,
+          InfiniteData<FinalClientData<TData, TClientData>>,
           QueryKey,
           unknown
         >
       | undefined
   }): UseInfiniteQueryOptions<
-    InfiniteData<FetchOutput<TResponseOutput, TData>>,
+    FinalClientData<TData, TClientData>,
     Error0,
-    FetchOutput<TResponseOutput, TData>,
+    InfiniteData<FinalClientData<TData, TClientData>>,
     QueryKey
   > {
-    const queryKey = this.getClientQueryKey({ input, data })
-    console.log(999, data, queryKey)
+    const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: true })
     const queryFn = this._hasClientAsyncLoader()
       ? async ({ pageParam }: { pageParam: unknown }) => {
           const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-          const clientData = await this._extractClientAsync({
-            data,
+          const { clientData } = await this._extractClientAsync({
+            data: data || {},
             location,
-            skipHeads,
-            input: { ...input, [pageParamFromInput]: pageParam },
+            skipHeads: false,
+            input: { ...input, [pageParamFromInput]: pageParam || this._infiniteQueryOptions.initialPageParam },
           })
           return clientData
         }
       : ({ pageParam }: { pageParam: unknown }) => {
           const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-          const clientData = this._extractClientSync({
-            data,
+          const { clientData } = this._extractClientSync({
+            data: data || {},
             location,
-            skipHeads,
-            input: { ...input, [pageParamFromInput]: pageParam },
+            skipHeads: false,
+            input: { ...input, [pageParamFromInput]: pageParam || this._infiniteQueryOptions.initialPageParam },
           })
           return clientData
         }
@@ -3831,6 +3976,268 @@ export class Point0<
       queryKey,
       queryFn,
     } as never
+  }
+
+  _getCombinedInfiniteQueryOptions({
+    input,
+    queryOptions,
+    fetchOptions,
+    location,
+    queryClient,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    fetchOptions?: FetchOptions | undefined
+    queryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+    queryClient: QueryClient
+  }): UseInfiniteQueryOptions<
+    FinalClientData<TData, TClientData>,
+    Error0,
+    InfiniteData<FinalClientData<TData, TClientData>>,
+    QueryKey
+  > {
+    const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
+    const queryFn = async (ctx: { pageParam: unknown }) => {
+      const pageParam = ctx.pageParam || this._infiniteQueryOptions.initialPageParam
+      const serverData = await (async () => {
+        const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
+        const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
+        if (infiniteCachedServerData) {
+          const pageParamIndex = (infiniteCachedServerData as any).pageParams.findIndex((p: unknown) => p === pageParam)
+          if (pageParamIndex !== -1) {
+            return (infiniteCachedServerData as any).pages[pageParamIndex]
+          }
+        }
+        const inputWithPageParam = { ...input, [this._infiniteQueryOptions.pageParamFromInput]: pageParam }
+        const finiteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
+        const finiteCachedServerData = queryClient.getQueryData(finiteServerKey)
+        if (finiteCachedServerData) {
+          return finiteCachedServerData
+        }
+        const serverFinityOpts = this._getServerQueryOptions({
+          input: inputWithPageParam as never,
+          queryOptions,
+          fetchOptions,
+          outputType: 'data',
+        })
+        return await queryClient.fetchQuery(serverFinityOpts as any)
+      })()
+
+      const clientOpts = this._getClientInfiniteQueryOptions({
+        input: input as never,
+        data: serverData as never,
+        queryOptions,
+        location,
+      })
+      return await (clientOpts as any).queryFn({ ...input, pageParam })
+    }
+    const result = {
+      ...this._defaultQueryOptions,
+      ...this._defaultInfiniteQueryOptions,
+      ...this._infiniteQueryOptions,
+      ...queryOptions,
+      queryKey,
+      queryFn,
+    } as never
+    return result
+  }
+
+  getInfiniteQueryOptions({
+    input,
+    location,
+    queryOptions,
+    queryClient,
+    fetchOptions,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema> | undefined
+    location: AnyLocation
+    queryOptions:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+    queryClient?: QueryClient
+    fetchOptions?: FetchOptions | undefined
+    outputType?: FetchOutputType
+  }): UseInfiniteQueryOptions<
+    InputRaw<TRouteDefinition, TInputSchema>,
+    FinalClientData<TData, TClientData>,
+    Error0,
+    InfiniteData<FinalClientData<TData, TClientData>>,
+    QueryKey
+  > {
+    const hasClientLoader = this._hasClientLoader()
+    const hasServerLoader = this._hasLoader()
+    if (hasClientLoader && hasServerLoader) {
+      if (!queryClient) {
+        throw new Error('Query client is not provided')
+      }
+      return this._getCombinedInfiniteQueryOptions({
+        input: input as never,
+        queryOptions,
+        fetchOptions,
+        queryClient,
+        location,
+      }) as never
+    }
+    if (hasClientLoader) {
+      return this._getClientInfiniteQueryOptions({
+        input: input as never,
+        queryOptions: queryOptions as any,
+        location,
+      }) as never
+    }
+    if (hasServerLoader) {
+      return this._getServerInfiniteQueryOptions({
+        input: input as never,
+        queryOptions: queryOptions as any,
+        fetchOptions,
+        outputType,
+      }) as never
+    }
+    throw new Error('No loader found')
+  }
+
+  _useServerQuery = ({
+    input,
+    queryOptions,
+    fetchOptions,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    queryOptions?: ExtraUseQueryOptions | undefined
+    fetchOptions?: FetchOptions | undefined
+    outputType?: FetchOutputType
+  }): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
+    return useQuery(this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType }))
+  }
+
+  _useClientQuery = ({
+    input,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryOptions?: ExtraUseQueryOptions | undefined
+  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
+    return useQuery(
+      this._getClientQueryOptions({
+        input,
+        queryOptions,
+        location,
+      }),
+    )
+  }
+
+  _useCombinedQuery = ({
+    input,
+    queryOptions,
+    location,
+    fetchOptions,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryOptions?: ExtraUseQueryOptions | undefined
+    fetchOptions?: FetchOptions | undefined
+  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
+    const queryClient = useQueryClient()
+    return useQuery(
+      this._getCombinedQueryOptions({
+        input,
+        queryOptions,
+        location,
+        queryClient,
+        fetchOptions,
+      }),
+    )
+  }
+
+  _useServerInfiniteQuery = ({
+    input,
+    queryOptions,
+    fetchOptions,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    queryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
+    fetchOptions?: FetchOptions | undefined
+    outputType?: FetchOutputType
+  }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> => {
+    const infiniteQueryOptions = this._getServerInfiniteQueryOptions({ input, queryOptions, fetchOptions, outputType })
+    return useInfiniteQuery(infiniteQueryOptions) as never
+  }
+
+  _useClientInfiniteQuery = ({
+    input,
+    queryOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
+    const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
+      input,
+      queryOptions: queryOptions as any,
+      location,
+    })
+    return useInfiniteQuery(infiniteQueryOptions) as never
+  }
+
+  _useCombinedInfiniteQuery = ({
+    input,
+    queryOptions,
+    fetchOptions,
+    location,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
+    fetchOptions?: FetchOptions | undefined
+  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
+    const queryClient = useQueryClient()
+    const infiniteQueryOptions = this._getCombinedInfiniteQueryOptions({
+      input,
+      queryOptions: queryOptions as any,
+      queryClient,
+      location,
+      fetchOptions,
+    })
+    return useInfiniteQuery(infiniteQueryOptions) as never
   }
 
   getMutationOptions(
@@ -3848,146 +4255,6 @@ export class Point0<
     } as MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>>
   }
 
-  useQuery = (
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [
-          input?: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: ExtraUseQueryOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-      : [
-          input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: ExtraUseQueryOptions | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-  ): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
-    return useQuery(this.getQueryOptions(...args))
-  }
-
-  useInfiniteQuery = (
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [
-          input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
-          queryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-      : [
-          input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _outputType?: FetchOutputType,
-        ]
-  ): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> => {
-    const infiniteQueryOptions = this.getInfiniteQueryOptions(...args)
-    return useInfiniteQuery(infiniteQueryOptions) as never
-  }
-
-  useQueryCache = (
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
-      : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
-  ): {
-    queryCache: Query<FetchOutput<TResponseOutput, TData>, Error0, QueryKey> | undefined
-    queryKey: QueryKey
-  } => {
-    const queryClient = useQueryClient()
-    const cache = queryClient.getQueryCache()
-    const queryKey = this.getQueryKey(...args)
-    const query = cache.find({ queryKey })
-    return { queryCache: query, queryKey } as never
-  }
-
-  useClientQuery = ({
-    input,
-    data,
-    skipHeads,
-    queryOptions,
-    location,
-  }: {
-    input: InputRaw<TRouteDefinition, TInputSchema>
-    data: FinalData<TData>
-    skipHeads: boolean
-    location: AnyLocation
-    queryOptions?: ExtraUseQueryOptions | undefined
-  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
-    return useQuery(
-      this.getClientQueryOptions({
-        input,
-        data,
-        skipHeads,
-        queryOptions,
-        location,
-      }),
-    )
-  }
-
-  useClientInfiniteQuery = ({
-    input,
-    data,
-    skipHeads,
-    queryOptions,
-    location,
-  }: {
-    input: InputRaw<TRouteDefinition, TInputSchema>
-    data: FinalData<TData>
-    skipHeads: boolean
-    location: AnyLocation
-    queryOptions?:
-      | ExtraUseInfiniteQueryOptions<
-          InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TData, TClientData>,
-          Error0,
-          FinalClientData<TData, TClientData>,
-          QueryKey,
-          unknown
-        >
-      | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
-    const infiniteQueryOptions = this.getClientInfiniteQueryOptions({
-      input,
-      data,
-      skipHeads,
-      queryOptions,
-      location,
-    })
-    return useInfiniteQuery(infiniteQueryOptions) as never
-  }
-
-  useClientQueryCache = ({
-    input,
-    data,
-    skipHeads,
-    queryOptions,
-    location,
-  }: {
-    input: InputRaw<TRouteDefinition, TInputSchema>
-    data: FinalData<TData>
-    skipHeads: boolean
-    location: AnyLocation
-    queryOptions?:
-      | ExtraUseInfiniteQueryOptions<
-          InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TData, TClientData>,
-          Error0,
-          FinalClientData<TData, TClientData>,
-          QueryKey,
-          unknown
-        >
-      | undefined
-  }): {
-    queryCache: Query<FinalClientData<TData, TClientData>, Error0, QueryKey> | undefined
-    queryKey: QueryKey
-  } => {
-    const queryClient = useQueryClient()
-    const cache = queryClient.getQueryCache()
-    const queryKey = this.getClientQueryKey({ input, data })
-    const query = cache.find({ queryKey })
-    return { queryCache: query, queryKey } as never
-  }
-
   useMutation = (
     mutationOptions?: MutationOptions | undefined,
     fetchOptions?: FetchOptions | undefined,
@@ -3995,30 +4262,23 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 
-  async prefetchQuery(
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [
-          input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
-          options: {
-            queryClient: QueryClient
-            queryOptions?: ExtraUseQueryOptions
-            fetchOptions?: FetchOptions
-            force?: boolean
-          },
-          _outputType?: FetchOutputType,
-        ]
-      : [
-          input: InputRaw<TRouteDefinition, TInputSchema>,
-          options: {
-            queryClient: QueryClient
-            queryOptions?: ExtraUseQueryOptions
-            fetchOptions?: FetchOptions
-            force?: boolean
-          },
-          _outputType?: FetchOutputType,
-        ]
-  ): Promise<undefined | QueryKey> {
-    const [input, { queryClient, queryOptions: providedQueryOptions, fetchOptions, force }, outputType] = args
+  async prefetchQuery({
+    input,
+    location,
+    queryClient,
+    queryOptions: providedQueryOptions,
+    fetchOptions,
+    force,
+    outputType,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryClient: QueryClient
+    queryOptions?: ExtraUseQueryOptions
+    fetchOptions?: FetchOptions
+    force?: boolean
+    outputType?: FetchOutputType
+  }): Promise<undefined | QueryKey> {
     if (!this._hasLoader()) {
       return
     }
@@ -4026,7 +4286,14 @@ export class Point0<
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }
-    const queryOptions = this.getQueryOptions(input as any, providedQueryOptions, fetchOptions, outputType)
+    const queryOptions = this.getQueryOptions({
+      input: input as never,
+      location,
+      queryOptions: providedQueryOptions as any,
+      queryClient,
+      fetchOptions,
+      outputType,
+    })
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
@@ -4036,38 +4303,39 @@ export class Point0<
     return queryOptions.queryKey
   }
 
-  async prefetchPage(
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [
-          input: InputRaw<TRouteDefinition, TInputSchema> | undefined,
-          options: {
-            queryClient: QueryClient
-            queryOptions?: QueryOptions
-            fetchOptions?: FetchOptions
-            force?: boolean
-          },
-        ]
-      : [
-          input: InputRaw<TRouteDefinition, TInputSchema>,
-          options: {
-            queryClient: QueryClient
-            queryOptions?: QueryOptions
-            fetchOptions?: FetchOptions
-            force?: boolean
-          },
-        ]
-  ): Promise<void> {
+  async prefetchPage({
+    input,
+    location,
+    queryClient,
+    queryOptions,
+    fetchOptions,
+    force,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    location: AnyLocation
+    queryClient: QueryClient
+    queryOptions?: ExtraUseQueryOptions
+    fetchOptions?: FetchOptions
+    force?: boolean
+  }): Promise<void> {
     if (this._pointType !== 'page') {
       throw new Error('Point type is not page')
     }
     if (!this._hasLoader()) {
       return
     }
-    const queryKey = await this.prefetchQuery(...(args as never), 'dehydratedState')
+    const queryKey = await this.prefetchQuery({
+      input,
+      location,
+      queryClient,
+      queryOptions,
+      fetchOptions,
+      force,
+      outputType: 'dehydratedState',
+    })
     if (!queryKey) {
       return
     }
-    const [, { queryClient }] = args
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryKey as never })
     const data = query?.state.data as { dehydratedState: DehydratedState } | undefined

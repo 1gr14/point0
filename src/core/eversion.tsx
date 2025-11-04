@@ -600,7 +600,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         point._pointType === 'clientCtx' ||
         point._pointType === 'component')
     ) {
-      const queryKey = point.getQueryKey(input)
+      const queryKey = point._getServerQueryKey({
+        input,
+        isInfiniteQuery: point._queryResultType === 'infiniteQuery',
+      })
       const query = this.queryClient.getQueryCache().build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
       if (error) {
         query.setState({
@@ -614,10 +617,13 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           .getQueryCache()
           .build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
         if (point._queryResultType === 'infiniteQuery') {
+          const pageParam =
+            (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
+            point._infiniteQueryOptions.initialPageParam
           query.setState({
             data: {
               pages: Array.isArray(data) ? data : [data],
-              pageParams: [undefined], // or your actual param if known
+              pageParams: [pageParam], // or your actual param if known
             },
             error: null,
             status: 'success',
@@ -646,7 +652,14 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input }: { pagePoint: AnyPoint; input: InputRaw }): void {
-    const prefetchPageQueryOptions = pagePoint.getQueryOptions(input, undefined, undefined, 'dehydratedState')
+    const prefetchPageQueryOptions = pagePoint.getQueryOptions({
+      input,
+      location: this.pageLocation as AnyLocation,
+      queryClient: this.queryClient,
+      queryOptions: undefined,
+      fetchOptions: undefined,
+      outputType: 'dehydratedState',
+    })
 
     // you said you already have this:
     const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()

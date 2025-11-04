@@ -418,14 +418,14 @@ export class Points<TReady extends boolean = boolean> {
       await Promise.all(
         [result.page, ...result.layouts].map(async (p) => {
           const input = p._getUnsafeInputRawByLocation(location)
-          await p.prefetchQuery(input, { queryClient })
+          await p.prefetchQuery({ queryClient, input, location })
         }),
       )
       return result.page
     }
 
     const input = result.page._getUnsafeInputRawByLocation(location)
-    await result.page.prefetchPage(input, { queryClient })
+    await result.page.prefetchPage({ queryClient, input, location })
 
     return result.page
   }

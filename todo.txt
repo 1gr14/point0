@@ -1,9 +1,10 @@
-useMemo, useClientAsyncLoader, useClientSyncLoader
-head is part of .page(), in base we have head() but it static if meta, maybe ({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
-prefetchInfinityQuery
+separate useLoader and useQuery
+allow pass portps to layout and component and clientCtx
+rename clientctx to provider
 
-no title all should be just head
-head(true, {always,success,error,loading})
+head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
+.head(head) .head(string) as always shorthand
+.head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
 
 wrapper
 merge .input schemas

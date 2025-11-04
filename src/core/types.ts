@@ -1003,10 +1003,11 @@ export type IsEmptyObject<T> = keyof T extends never ? true : false
 // export type QueryKey = readonly [string, ...string[]]
 export type QueryKey = readonly [
   point0: 'point0',
-  serverOrClient: 'server' | 'client',
+  serverOrClient: 'server' | 'client' | 'combined',
   pointType: PointType,
   pointName: PointName,
   outputType: FetchOutputType,
+  finiteOrInfinite: 'finite' | 'infinite',
   input: string,
 ]
 
