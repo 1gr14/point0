@@ -2163,7 +2163,12 @@ export class Point0<
   // }
 
   query(
-    queryOptions: ExtraUseQueryOptions = {},
+    queryOptions: ExtraUseQueryOptions<
+      FinalClientData<TData, TClientData>,
+      Error0,
+      FinalClientData<TData, TClientData>,
+      QueryKey
+    > = {},
   ): Point0<
     'query',
     TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
@@ -2206,9 +2211,9 @@ export class Point0<
   infiniteQuery(
     infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
       InputRaw<TRouteDefinition, TInputSchema>,
-      TData,
+      FinalClientData<TData, TClientData>,
       Error0,
-      TData,
+      FinalClientData<TData, TClientData>,
       QueryKey,
       unknown
     >,
