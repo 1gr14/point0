@@ -656,6 +656,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input }: { pagePoint: AnyPoint; input: InputRaw }): void {
+    if (!pagePoint._hasLoader()) {
+      return
+    }
     const prefetchPageQueryOptions = pagePoint.getQueryOptions({
       input,
       location: this.pageLocation as AnyLocation,

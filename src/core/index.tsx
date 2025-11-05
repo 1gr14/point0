@@ -2726,6 +2726,13 @@ export class Point0<
       } as never)
     }
 
+    if (!this._hasClientLoader() && !this._hasLoader()) {
+      return React.createElement(this._page, {
+        ...(props as any),
+        location,
+      })
+    }
+
     const { input, restProps } = React.useMemo<{
       input: InputRaw<TRouteDefinition, TInputSchema>
       restProps: FinalProps<TProps>
@@ -3681,6 +3688,7 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 
+  // TODO: add option to allow prefetch only server or only client, or combined query
   async prefetchQuery({
     input,
     location,

@@ -266,6 +266,8 @@ export async function renderAppAsReadableStream({
     points: eversionRun.eversion.points,
     queryClient: eversionRun.queryClient,
   })
+  const x = eversionRun.getQueryClientDehydratedState()
+  console.log(123, x.queries.length)
   return await renderReadableStream({
     ...props,
     pageLocation,
