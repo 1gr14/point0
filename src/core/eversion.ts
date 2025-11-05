@@ -6,6 +6,7 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
+import { GlobalStorage } from './global-storage.js'
 import type { HydratedAppComponent } from './hydrate.js'
 import { Point0 } from './index.js'
 import { Points } from './points.js'
@@ -31,7 +32,6 @@ import type {
   UndefinedCtx,
   UndefinedResponseOutput,
 } from './types.js'
-import { GlobalStorage } from './global-store.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -314,26 +314,32 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   eversion: Eversion<TRequiredCtx>
   extractFnsWithOutput: ExtractFnWithOutput[]
-  queryClient: QueryClient
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   dehydratedState: DehydratedState
+  serverStore: { queryClient: QueryClient; [key: string]: unknown }
 
   private constructor({
     eversion,
     pageLocation,
     requiredCtx,
+    extractFnsWithOutput,
+    dehydratedState,
+    serverStore,
   }: {
     eversion: Eversion<TRequiredCtx>
-    requiredCtx: TRequiredCtx
+    extractFnsWithOutput: ExtractFnWithOutput[]
     pageLocation: AnyLocation | undefined
+    requiredCtx: TRequiredCtx
+    dehydratedState: DehydratedState
+    serverStore: { queryClient: QueryClient; [key: string]: unknown }
   }) {
     this.eversion = eversion
-    this.extractFnsWithOutput = []
-    this.queryClient = this.eversion.root.getQueryClient()
+    this.extractFnsWithOutput = extractFnsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
-    this.dehydratedState = dehydrate(this.queryClient)
+    this.dehydratedState = dehydratedState
+    this.serverStore = serverStore
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
@@ -345,163 +351,180 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
   }): Promise<EversionRun<TRequiredCtx>> {
-    return new EversionRun<TRequiredCtx>({ eversion, pageLocation, requiredCtx })
+    const serverStore = {}
+    return await GlobalStorage.run(serverStore, async () => {
+      const queryClient = eversion.root.getQueryClient()
+      return new EversionRun<TRequiredCtx>({
+        eversion,
+        pageLocation,
+        requiredCtx,
+        extractFnsWithOutput: [],
+        dehydratedState: dehydrate(queryClient),
+        serverStore: { queryClient, ...serverStore },
+      })
+    })
+  }
+
+  async withGlobalStorage<T>(callback: () => Promise<T>): Promise<T> {
+    return await GlobalStorage.run(this.serverStore, callback)
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
-    // TODO: maybe remove it, we will prefetch everything in createPrefetchedAppElement
-    // But it is faster, becouse we should not always rerender our app for every layout
-    if (point?._pointType === 'page') {
-      for (const layout of point._layouts) {
-        if (!layout._hasLoader()) {
-          continue
-        }
-        await this.extract({
-          point: layout,
-          input,
-        })
-      }
-    }
-
-    // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
-
-    const { parsedInput, inputError } = (() => {
-      if (point?._inputSchema) {
-        const parseResult = point._inputSchema.safeParse(input)
-        if (parseResult.success) {
-          return { parsedInput: parseResult.data, inputError: undefined }
-        }
-        return { parsedInput: {}, inputError: parseResult.error }
-      }
-      return { parsedInput: input, inputError: undefined }
-    })()
-    if (inputError) {
-      return {
-        ctx: this.requiredCtx ?? {},
-        data: {},
-        head: [],
-        error: inputError,
-        status: 422,
-        response: undefined,
-      }
-    }
-
-    let currentCtx: Ctx = this.requiredCtx ?? {}
-    let currentData: Data = {}
-    const extractFns = [
-      ...this.eversion._getParents().flatMap((source) => source._extractFns),
-      ...(point?._extractFns ?? []),
-    ]
-    const curretHead = [
-      ...this.eversion._getParents().flatMap((source) => source._staticHeads),
-      ...(point?._staticHeads ?? []),
-    ]
-    // TODO: get status from real point data
-
-    try {
-      for (const extractFn of extractFns) {
-        switch (extractFn.type) {
-          case 'ctx': {
-            const ex = this.extractFnsWithOutput.find(
-              (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'ctx',
-            )
-            if (ex) {
-              currentCtx = { ...ex.output }
-            } else {
-              currentCtx = await extractFn.fn({
-                ctx: { ...currentCtx },
-                data: { ...currentData },
-                input: parsedInput,
-                eversionRun: this as never,
-              })
-              this.extractFnsWithOutput.push({
-                output: currentCtx,
-                record: extractFn,
-              })
-            }
-            break
+    return await this.withGlobalStorage(async () => {
+      // TODO: maybe remove it, we will prefetch everything in createPrefetchedAppElement
+      // But it is faster, becouse we should not always rerender our app for every layout
+      if (point?._pointType === 'page') {
+        for (const layout of point._layouts) {
+          if (!layout._hasLoader()) {
+            continue
           }
-          case 'loader': {
-            const ex = this.extractFnsWithOutput.find(
-              (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'loader',
-            )
-            if (ex) {
-              currentData = { ...ex.output }
-            } else {
-              currentData = await extractFn.fn({
-                ctx: { ...currentCtx },
-                data: { ...currentData },
-                input: parsedInput,
-                eversionRun: this as never,
-              })
-              this.extractFnsWithOutput.push({
-                output: currentData,
-                record: extractFn,
-              })
-            }
-            break
-          }
-          // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
-          default:
-            throw new Error(`Unknown extend function type: ${(extractFn as any).type}`)
-        }
-      }
-
-      const pageLocation = this.pageLocation
-      if (pageLocation && point?._pointType === 'page') {
-        curretHead.push(
-          ...point
-            ._getClientHeadFnsUntilFirstClientLoader()
-            .map((headFn) => headFn.fn({ data: currentData, location: pageLocation, input: parsedInput })),
-        )
-      }
-
-      const response = await (async () => {
-        if (point?._pointType === 'response') {
-          if (!point._responseFn) {
-            throw new Error('Response function not found')
-          }
-          return await point._responseFn({
-            ctx: currentCtx,
-            data: currentData,
-            input: parsedInput,
+          await this.extract({
+            point: layout,
+            input,
           })
         }
-        return undefined
-      })()
-      if (point) {
-        this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
-        return {
-          ctx: currentCtx,
-          data: currentData,
-          head: curretHead,
-          response,
-          error: undefined,
-          status: 200,
+      }
+
+      // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
+
+      const { parsedInput, inputError } = (() => {
+        if (point?._inputSchema) {
+          const parseResult = point._inputSchema.safeParse(input)
+          if (parseResult.success) {
+            return { parsedInput: parseResult.data, inputError: undefined }
+          }
+          return { parsedInput: {}, inputError: parseResult.error }
         }
-      } else {
-        const error = new Error0(`Point Not Found`)
-        this.appendQueryClientCache({ data: currentData, point, error, input })
+        return { parsedInput: input, inputError: undefined }
+      })()
+      if (inputError) {
+        return {
+          ctx: this.requiredCtx ?? {},
+          data: {},
+          head: [],
+          error: inputError,
+          status: 422,
+          response: undefined,
+        }
+      }
+
+      let currentCtx: Ctx = this.requiredCtx ?? {}
+      let currentData: Data = {}
+      const extractFns = [
+        ...this.eversion._getParents().flatMap((source) => source._extractFns),
+        ...(point?._extractFns ?? []),
+      ]
+      const curretHead = [
+        ...this.eversion._getParents().flatMap((source) => source._staticHeads),
+        ...(point?._staticHeads ?? []),
+      ]
+      // TODO: get status from real point data
+
+      try {
+        for (const extractFn of extractFns) {
+          switch (extractFn.type) {
+            case 'ctx': {
+              const ex = this.extractFnsWithOutput.find(
+                (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'ctx',
+              )
+              if (ex) {
+                currentCtx = { ...ex.output }
+              } else {
+                currentCtx = await extractFn.fn({
+                  ctx: { ...currentCtx },
+                  data: { ...currentData },
+                  input: parsedInput,
+                  eversionRun: this as never,
+                })
+                this.extractFnsWithOutput.push({
+                  output: currentCtx,
+                  record: extractFn,
+                })
+              }
+              break
+            }
+            case 'loader': {
+              const ex = this.extractFnsWithOutput.find(
+                (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'loader',
+              )
+              if (ex) {
+                currentData = { ...ex.output }
+              } else {
+                currentData = await extractFn.fn({
+                  ctx: { ...currentCtx },
+                  data: { ...currentData },
+                  input: parsedInput,
+                  eversionRun: this as never,
+                })
+                this.extractFnsWithOutput.push({
+                  output: currentData,
+                  record: extractFn,
+                })
+              }
+              break
+            }
+            // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+            default:
+              throw new Error(`Unknown extend function type: ${(extractFn as any).type}`)
+          }
+        }
+
+        const pageLocation = this.pageLocation
+        if (pageLocation && point?._pointType === 'page') {
+          curretHead.push(
+            ...point
+              ._getClientHeadFnsUntilFirstClientLoader()
+              .map((headFn) => headFn.fn({ data: currentData, location: pageLocation, input: parsedInput })),
+          )
+        }
+
+        const response = await (async () => {
+          if (point?._pointType === 'response') {
+            if (!point._responseFn) {
+              throw new Error('Response function not found')
+            }
+            return await point._responseFn({
+              ctx: currentCtx,
+              data: currentData,
+              input: parsedInput,
+            })
+          }
+          return undefined
+        })()
+        if (point) {
+          await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
+          return {
+            ctx: currentCtx,
+            data: currentData,
+            head: curretHead,
+            response,
+            error: undefined,
+            status: 200,
+          }
+        } else {
+          const error = new Error0(`Point Not Found`)
+          await this.appendQueryClientCache({ data: currentData, point, error, input })
+          return {
+            ctx: currentCtx,
+            data: currentData,
+            head: curretHead,
+            error,
+            status: 404,
+            response: undefined,
+          }
+        }
+      } catch (error) {
+        await this.appendQueryClientCache({ data: currentData, point, error, input })
         return {
           ctx: currentCtx,
           data: currentData,
           head: curretHead,
           error,
-          status: 404,
+          status: 500,
           response: undefined,
         }
       }
-    } catch (error) {
-      this.appendQueryClientCache({ data: currentData, point, error, input })
-      return {
-        ctx: currentCtx,
-        data: currentData,
-        head: curretHead,
-        error,
-        status: 500,
-        response: undefined,
-      }
-    }
+    })
   }
 
   async prefetchAppPagePoints({
@@ -519,72 +542,71 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     seenQueryHashes?: Set<string>
     level?: number
   }): Promise<void> {
-    const stream = await GlobalStorage.run(
-      async () =>
-        await renderToReadableStream(
-          React.createElement(App, {
-            ssrLocation: this.pageLocation,
-            root: this.eversion.root,
-            points: this.eversion.points,
-            queryClient: this.queryClient,
-          }),
-        ),
-    )
-    await stream.allReady
-    const queryClientState = this.queryClient.getQueryCache().findAll()
-    const suitableMarkers = queryClientState.flatMap((query) => {
-      const hash = query.queryHash
-      if (seenQueryHashes.has(hash)) {
-        return []
-      }
-      const parsedQueryKey = Point0.parseQueryKey(query.queryKey)
-      if (!parsedQueryKey) {
-        return []
-      }
-      if (!parsedQueryKey.isServer) {
-        return []
-      }
-      if (parsedQueryKey.outputType !== 'data') {
-        return []
-      }
-      seenQueryHashes.add(hash)
-      return parsedQueryKey
-    })
-
-    if (suitableMarkers.length === 0) {
-      if (level === 0 && pagePoint) {
-        this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
-      }
-      return
-    }
-
-    for (const suitableMarker of suitableMarkers) {
-      const suitable = this.eversion.getSuitable({
-        pointType: suitableMarker.pointType,
-        pointName: suitableMarker.pointName,
-        input: suitableMarker.input,
-        rootId: this.eversion.root._rootId,
-        fallbackRootId: this.eversion.root._rootId,
+    await this.withGlobalStorage(async () => {
+      const stream = await renderToReadableStream(
+        React.createElement(App, {
+          ssrLocation: this.pageLocation,
+          root: this.eversion.root,
+          points: this.eversion.points,
+          queryClient: this.serverStore.queryClient,
+        }),
+      )
+      await stream.allReady
+      const queryClientState = this.serverStore.queryClient.getQueryCache().findAll()
+      const suitableMarkers = queryClientState.flatMap((query) => {
+        const hash = query.queryHash
+        if (seenQueryHashes.has(hash)) {
+          return []
+        }
+        const parsedQueryKey = Point0.parseQueryKey(query.queryKey)
+        if (!parsedQueryKey) {
+          return []
+        }
+        if (!parsedQueryKey.isServer) {
+          return []
+        }
+        if (parsedQueryKey.outputType !== 'data') {
+          return []
+        }
+        seenQueryHashes.add(hash)
+        return parsedQueryKey
       })
-      if (suitable.point) {
-        await this.extract({ point: suitable.point, input: suitableMarker.input })
+
+      if (suitableMarkers.length === 0) {
+        if (level === 0 && pagePoint) {
+          await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+        }
+        return
       }
-    }
 
-    await this.prefetchAppPagePoints({
-      App,
-      renderToReadableStream,
-      pagePoint,
-      input,
-      seenQueryHashes,
+      for (const suitableMarker of suitableMarkers) {
+        const suitable = this.eversion.getSuitable({
+          pointType: suitableMarker.pointType,
+          pointName: suitableMarker.pointName,
+          input: suitableMarker.input,
+          rootId: this.eversion.root._rootId,
+          fallbackRootId: this.eversion.root._rootId,
+        })
+        if (suitable.point) {
+          await this.extract({ point: suitable.point, input: suitableMarker.input })
+        }
+      }
+
+      await this.prefetchAppPagePoints({
+        App,
+        renderToReadableStream,
+        pagePoint,
+        input,
+        seenQueryHashes,
+      })
+
+      if (level === 0 && pagePoint) {
+        await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+      }
     })
-
-    if (level === 0 && pagePoint) {
-      this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
-    }
   }
 
-  appendQueryClientCache({
+  async appendQueryClientCache({
     data,
     input,
     error,
@@ -594,93 +616,109 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: InputParsed
     error: unknown
     point: AnyPoint | undefined
-  }): void {
-    if (
-      point &&
-      (point._pointType === 'query' ||
-        point._pointType === 'infiniteQuery' ||
-        point._pointType === 'page' ||
-        point._pointType === 'layout' ||
-        point._pointType === 'provider' ||
-        point._pointType === 'component')
-    ) {
-      const queryKey = point._getServerQueryKey({
-        input,
-        isInfiniteQuery: point._queryResultType === 'infiniteQuery',
-      })
-      const query = this.queryClient.getQueryCache().build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
-      if (error) {
-        query.setState({
-          data: undefined,
-          error: { ...Error0.toJSON(error), name: 'Error0' },
-          status: 'error',
-          fetchStatus: 'idle',
+  }): Promise<void> {
+    await this.withGlobalStorage(async () => {
+      if (
+        point &&
+        (point._pointType === 'query' ||
+          point._pointType === 'infiniteQuery' ||
+          point._pointType === 'page' ||
+          point._pointType === 'layout' ||
+          point._pointType === 'provider' ||
+          point._pointType === 'component')
+      ) {
+        const queryKey = point._getServerQueryKey({
+          input,
+          isInfiniteQuery: point._queryResultType === 'infiniteQuery',
         })
-      } else {
-        const query = this.queryClient
+        const query = this.serverStore.queryClient
           .getQueryCache()
-          .build(this.queryClient, { queryKey, queryHash: hashKey(queryKey) })
-        if (point._queryResultType === 'infiniteQuery') {
-          const pageParam =
-            (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
-            point._infiniteQueryOptions.initialPageParam
+          .build(this.serverStore.queryClient, { queryKey, queryHash: hashKey(queryKey) })
+        if (error) {
           query.setState({
-            data: {
-              pages: Array.isArray(data) ? data : [data],
-              pageParams: [pageParam], // or your actual param if known
-            },
-            error: null,
-            status: 'success',
+            data: undefined,
+            error: { ...Error0.toJSON(error), name: 'Error0' },
+            status: 'error',
             fetchStatus: 'idle',
           })
         } else {
-          query.setState({
-            data,
-            error: null,
-            status: 'success',
-            fetchStatus: 'idle',
-          })
+          const query = this.serverStore.queryClient
+            .getQueryCache()
+            .build(this.serverStore.queryClient, { queryKey, queryHash: hashKey(queryKey) })
+          if (point._queryResultType === 'infiniteQuery') {
+            const pageParam =
+              (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
+              point._infiniteQueryOptions.initialPageParam
+            query.setState({
+              data: {
+                pages: Array.isArray(data) ? data : [data],
+                pageParams: [pageParam], // or your actual param if known
+              },
+              error: null,
+              status: 'success',
+              fetchStatus: 'idle',
+            })
+          } else {
+            query.setState({
+              data,
+              error: null,
+              status: 'success',
+              fetchStatus: 'idle',
+            })
+          }
         }
       }
-    }
+    })
   }
 
-  getQueryClientDehydratedState(): DehydratedState {
-    const dehydratedState = dehydrate(this.queryClient, {
-      shouldDehydrateQuery: (query) => {
-        // This will include all queries, including failed ones
-        return true
-      },
+  async getQueryClientDehydratedState(): Promise<DehydratedState> {
+    return await this.withGlobalStorage(async () => {
+      const dehydratedState = dehydrate(this.serverStore.queryClient, {
+        shouldDehydrateQuery: (query) => {
+          // This will include all queries, including failed ones
+          return true
+        },
+      })
+      return dehydratedState
     })
-    return dehydratedState
   }
 
-  addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input }: { pagePoint: AnyPoint; input: InputRaw }): void {
-    if (!pagePoint._hasLoader()) {
-      return
-    }
-    const prefetchPageQueryOptions = pagePoint.getQueryOptions({
-      input,
-      location: this.pageLocation as AnyLocation,
-      queryClient: this.queryClient,
-      queryOptions: undefined,
-      fetchOptions: undefined,
-      outputType: 'dehydratedState',
+  async addPrefetchPageDehydratedStateToQueryClient({
+    pagePoint,
+    input,
+  }: {
+    pagePoint: AnyPoint
+    input: InputRaw
+  }): Promise<void> {
+    await this.withGlobalStorage(async () => {
+      if (!pagePoint._hasLoader()) {
+        return
+      }
+      const prefetchPageQueryOptions = pagePoint.getQueryOptions({
+        input,
+        location: this.pageLocation as AnyLocation,
+        queryClient: this.serverStore.queryClient,
+        queryOptions: undefined,
+        fetchOptions: undefined,
+        outputType: 'dehydratedState',
+      })
+
+      // you said you already have this:
+      const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
+
+      // register per-key options (retry, gcTime, etc.)
+      const tempQueryClient = GlobalStorage.getNew<QueryClient>('queryClient')
+      const { queryKey, ...restOptions } = prefetchPageQueryOptions
+      tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
+        ...(restOptions as any),
+      })
+      tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
+        dehydratedState: relatedQueriesDehydratedState,
+      })
+      const tempDehydratedState = dehydrate(tempQueryClient)
+
+      hydrate(this.serverStore.queryClient, tempDehydratedState)
     })
-
-    // you said you already have this:
-    const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
-
-    // register per-key options (retry, gcTime, etc.)
-    const tempQueryClient = pagePoint._generalStore._createQueryClient()
-    const { queryKey, ...restOptions } = prefetchPageQueryOptions
-    tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
-      ...(restOptions as any),
-    })
-    tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, { dehydratedState: relatedQueriesDehydratedState })
-    const tempDehydratedState = dehydrate(tempQueryClient)
-
-    hydrate(this.queryClient, tempDehydratedState)
   }
 }
 

@@ -6,6 +6,8 @@ import { renderToReadableStream } from 'react-dom/server'
 import z from 'zod'
 import { Eversion } from '../../core/eversion.js'
 import type { IsEmptyObject, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
+import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
+import { renderAppAsReadableStream } from '../../server/render.js'
 import type {
   ServerAdapterClientInputParsed,
   ServerAdapterLogger,
@@ -13,8 +15,6 @@ import type {
   ServerAdapterServerInputParsed,
 } from '../../server/server.js'
 import { parseServerAdapterInput } from '../../server/server.js'
-import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
-import { renderAppAsReadableStream } from '../../server/render.js'
 import { isPathnameUnderBasepath } from '../../server/utils.js'
 
 // TODO: allow public dir per each client also
@@ -424,7 +424,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             pagePoint: suitable.point,
             input,
           })
-          const dehydratedState = eversionRun.getQueryClientDehydratedState()
+          const dehydratedState = await eversionRun.getQueryClientDehydratedState()
           return new Response(JSON.stringify({ dehydratedState }), {
             headers: { 'Content-Type': 'application/json' },
             status: 200,

@@ -7,6 +7,9 @@ const getQueryClient = Point0.global('queryClient', () => {}), Point0.get('query
 already add client only env var in client process in package.json
 Point0.getter('queryClient', () => {client}, () => {server}); Point0.get('queryClient'); Point0.call(() => {client}, () => {server})
 
+on prefetchQuery allow pass serverOnly: true
+on useCombinedQuery prefetch infinity server query as it is
+
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}

@@ -1,4 +1,5 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
+import { getEnv } from './utils.js'
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class GlobalStorage {
@@ -7,7 +8,8 @@ export class GlobalStorage {
   static getters: { [key: string]: GetterRecord } = {}
   static unnamedGetterIndex = 0
 
-  static async init(isServer: boolean) {
+  static async init(isServer?: boolean) {
+    isServer ??= getEnv('SERVER_ONLY') === '1'
     if (isServer) {
       const { AsyncLocalStorage } = await import('node:async_hooks')
       this.serverStorage = new AsyncLocalStorage<Record<string, any>>()
@@ -92,6 +94,30 @@ export class GlobalStorage {
     }
   }
 
+  static getNew<TClientResult, TServerResult = undefined>(
+    key: string,
+  ): TServerResult extends undefined ? TClientResult : TServerResult | TClientResult {
+    if (this.serverStorage) {
+      const store = this.serverStorage.getStore()
+      if (!store) {
+        throw new Error('Server store not found. You should call GlobalStorage.get() only inside server context')
+      }
+      const getter = this.getters[key] as GetterRecord | undefined
+      if (!getter) {
+        throw new Error(`Getter for key ${key} not found`)
+      }
+      return getter.serverGetter() as never
+    } else if (this.clientStore) {
+      const getter = this.getters[key] as GetterRecord | undefined
+      if (!getter) {
+        throw new Error(`Getter for key ${key} not found`)
+      }
+      return getter.clientGetter() as never
+    } else {
+      throw new Error('Server storage and client store are not initialized. Please, call await SafeSsr.init() first')
+    }
+  }
+
   static set(key: string, value: any): void {
     if (this.serverStorage) {
       const store = this.serverStorage.getStore()
@@ -106,22 +132,22 @@ export class GlobalStorage {
     }
   }
 
-  static run<T>(callback: () => T): T {
+  static run<T>(serverStore: GlobalStorageServerStore, callback: () => T): T {
     if (this.serverStorage) {
-      return this.serverStorage.run({}, callback)
+      return this.serverStorage.run(serverStore, callback)
     } else {
       return callback()
     }
   }
 }
 
-await GlobalStorage.init(process.env.SERVER_ONLY === '1')
-
 export type GetterFn<T = unknown> = () => T
 export type GetterRecord<TClientResult = unknown, TServerResult = unknown> = {
   clientGetter: GetterFn<TClientResult>
   serverGetter: TServerResult extends undefined ? GetterFn<TClientResult> : GetterFn<TServerResult>
 }
-export type GlobalStorageServerStoree = { [key: string]: any }
-export type GlobalStorageServerStorage = AsyncLocalStorage<GlobalStorageServerStoree>
+export type GlobalStorageServerStore = { [key: string]: any }
+export type GlobalStorageServerStorage = AsyncLocalStorage<GlobalStorageServerStore>
 export type GlobalStorageClientStore = { [key: string]: any }
+
+// await GlobalStorage.init()

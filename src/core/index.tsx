@@ -9,8 +9,9 @@ import type {
   UseInfiniteQueryResult,
   UseMutationResult,
   UseQueryResult,
+  QueryClient,
 } from '@tanstack/react-query'
-import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
@@ -45,7 +46,6 @@ import type {
   FinalClientData,
   FinalData,
   FinalProps,
-  GeneralStore,
   HeadFn,
   IfAnyThenElse,
   Infer,
@@ -97,6 +97,7 @@ import type {
   WrapperComponentType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
+import { GlobalStorage } from './global-storage.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -126,8 +127,6 @@ export class Point0<
   }
 
   point: typeof this // this, needed for generator to collect points
-
-  _generalStore: GeneralStore
 
   _base: BasePoint<any, any, TRequiredCtx> | undefined
   _sourceBaseUrl: string | undefined
@@ -232,7 +231,6 @@ export class Point0<
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint<any, any, TRequiredCtx> | undefined
-    _generalStore: GeneralStore
     _sourceBaseUrl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
@@ -405,9 +403,6 @@ export class Point0<
 
     // calculated
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
-
-    // general store, it one for each point0 instance
-    this._generalStore = props._generalStore
   }
 
   _continue<
@@ -561,7 +556,6 @@ export class Point0<
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
-      _generalStore: this._generalStore,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -660,10 +654,6 @@ export class Point0<
       _hasSourceBase: false,
       _rootId: rootId,
       _letsEndPointType: 'base',
-      _generalStore: {
-        _queryClient: undefined,
-        _createQueryClient: () => new QueryClient(),
-      },
     })
   }
 
@@ -703,10 +693,6 @@ export class Point0<
       _letsEndPointType: 'base',
       _hasSourceBase: true as never,
       _rootId: rootId,
-      _generalStore: {
-        _queryClient: undefined,
-        _createQueryClient: () => new QueryClient(),
-      },
     })
   }
 
@@ -873,7 +859,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    this._generalStore._createQueryClient = createQueryClient
+    GlobalStorage.getter('queryClient', createQueryClient)
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -1964,11 +1950,7 @@ export class Point0<
   }
 
   getQueryClient(): QueryClient {
-    if (typeof window === 'undefined') {
-      return this._generalStore._createQueryClient()
-    }
-    this._generalStore._queryClient ??= this._generalStore._createQueryClient()
-    return this._generalStore._queryClient
+    return GlobalStorage.get('queryClient')
   }
 
   page<

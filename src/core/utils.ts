@@ -108,3 +108,32 @@ export const emptyDehydratedState: DehydratedState = {
 //     await walkElementsAsync(props.children, visitor)
 //   }
 // }
+
+export const getEnv = <T = unknown>(keys: string | string[]): T | undefined => {
+  if (Array.isArray(keys)) {
+    const values = keys.map((key) => getEnv<T>(key))
+    return values.find((value) => value !== undefined)
+  }
+
+  const key = keys
+
+  const fromProcessEnv = (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+      return Function('return process.env["' + key + '"]')() as T | undefined
+    } catch {
+      return undefined
+    }
+  })()
+
+  const fromImportMeta = (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+      return Function('return import.meta.env["' + key + '"]')() as T | undefined
+    } catch {
+      return undefined
+    }
+  })()
+
+  return fromProcessEnv ?? fromImportMeta
+}

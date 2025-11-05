@@ -1,3 +1,8 @@
+/* eslint-disable import/first */
+await import('point0/core/global-storage').then(async ({ GlobalStorage }) => {
+  await GlobalStorage.init()
+})
+
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Router, RouterRoutes } from 'point0/adapters/wouter'
 import type { HydratedAppProps } from 'point0/core/hydrate'

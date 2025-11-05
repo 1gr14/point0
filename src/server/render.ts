@@ -8,7 +8,6 @@ import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, Payload } from '../core/eversion.js'
 import type { HydratedAppComponent } from '../core/hydrate.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
-import { GlobalStorage } from '../core/global-store.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -178,12 +177,14 @@ export async function getReadableStreamWithWrapper({
   suffix,
   renderer = renderToReadableStream,
   clientBundlePath,
+  eversionRun,
 }: {
   element: React.ReactElement
   suffix?: string
   prefix?: string
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
+  eversionRun: EversionRun
 }) {
   const encoder = new TextEncoder()
   const transform = new TransformStream({
@@ -197,12 +198,13 @@ export async function getReadableStreamWithWrapper({
       controller.enqueue(encoder.encode(suffix))
     },
   })
-  const reactStream = await GlobalStorage.run(
+  const reactStream = await eversionRun.withGlobalStorage(
     async () =>
       await renderer(element, {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
       }),
   )
+
   return reactStream.pipeThrough(transform)
 }
 
@@ -215,6 +217,7 @@ export async function renderReadableStream({
   renderer = renderToReadableStream,
   originalIndexHtml,
   rootElementId,
+  eversionRun,
 }: {
   element: React.ReactElement
   dehydratedState: DehydratedState
@@ -224,6 +227,7 @@ export async function renderReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   rootElementId?: string
+  eversionRun: EversionRun
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
@@ -232,7 +236,7 @@ export async function renderReadableStream({
     head,
     rootElementId,
   })
-  return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath })
+  return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath, eversionRun })
 }
 
 export async function renderAppAsReadableStream({
@@ -264,14 +268,14 @@ export async function renderAppAsReadableStream({
     ssrLocation: pageLocation,
     root: eversionRun.eversion.root,
     points: eversionRun.eversion.points,
-    queryClient: eversionRun.queryClient,
+    queryClient: eversionRun.serverStore.queryClient,
   })
-  const x = eversionRun.getQueryClientDehydratedState()
-  console.log(123, x.queries.length)
+  const dehydratedState = await eversionRun.getQueryClientDehydratedState()
   return await renderReadableStream({
     ...props,
     pageLocation,
     element,
-    dehydratedState: eversionRun.getQueryClientDehydratedState(),
+    eversionRun,
+    dehydratedState,
   })
 }
