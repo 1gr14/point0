@@ -1,13 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type {
-  AnyLocation,
-  AnyRoute,
-  CallabelRoute,
-  ChildrenLocation,
-  ExactLocation,
-  Extended,
-  KnownLocation,
-} from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallabelRoute, Extended, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -18,22 +10,12 @@ import type {
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import {
-  QueryClient,
-  hydrate,
-  useInfiniteQuery,
-  useMutation,
-  usePrefetchInfiniteQuery,
-  usePrefetchQuery,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, ExtractResult } from './eversion.js'
-import { useIsInitalSsrLocation, useLocation } from './router.js'
+import { useLocation } from './router.js'
 import type {
   AnyDataOrInfiniteData,
   AppendCtx,
@@ -91,7 +73,6 @@ import type {
   ResponseOutput,
   RootId,
   RouteDefinition,
-  ServerQueryComponentProp,
   StaticHeadsCollection,
   TitleFn,
   UndefinedComponentComponent,

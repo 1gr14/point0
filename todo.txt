@@ -1,6 +1,8 @@
 separate useLoader and useQuery
-allow pass portps to layout and component and clientCtx
+allow pass props to layout and component and clientCtx
 rename clientctx to provider
+location optional prop and get it from getCurrentLocation router
+queryClient optional propa get it from this.getQueryClient
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
@@ -10,8 +12,10 @@ wrapper
 merge .input schemas
 
 chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
-chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
-chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); so we need in extract also add base extracctFns
+→ chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
+→ chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 
+? so we need in extract also add base extracctFns
+lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
 
 elysia example
 auth
@@ -35,6 +39,8 @@ preventSsr
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
+router export function getCurrentLocation()
+fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
 basepath replace with cwd
 default client query options, default client page query options, default client component query options
