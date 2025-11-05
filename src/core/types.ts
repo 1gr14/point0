@@ -696,7 +696,7 @@ export type MountableComponent<
   TWithChildren extends boolean | null,
 > = React.ComponentType<MountableComponentProps<TInputSchema, TProps, TWithChildren>>
 
-export type DestinationComponentType = 'app' | 'page' | 'component'
+export type DestinationComponentType = 'page' | 'component'
 export type LoadingComponentProps<
   TType extends DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,

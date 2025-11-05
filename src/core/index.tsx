@@ -227,15 +227,6 @@ export class Point0<
     TInputSchema,
     TRouteDefinition
   >
-  _appLoadingComponent?: LoadingComponentType<
-    'app',
-    TQueryResultType,
-    TData,
-    TResponseOutput,
-    TClientData,
-    TInputSchema,
-    TRouteDefinition
-  >
 
   private constructor(props: {
     _pointType: TPointType
@@ -333,15 +324,6 @@ export class Point0<
       TInputSchema,
       TRouteDefinition
     >
-    _appLoadingComponent?: LoadingComponentType<
-      'app',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition
-    >
     _unstableId?: number
   }) {
     this.point = this
@@ -420,7 +402,6 @@ export class Point0<
         TRouteDefinition
       >)
     this._componentLoadingComponent = props._componentLoadingComponent
-    this._appLoadingComponent = props._appLoadingComponent
 
     // calculated
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
@@ -542,15 +523,6 @@ export class Point0<
       TInputSchema,
       TRouteDefinition
     >
-    _appLoadingComponent?: LoadingComponentType<
-      'app',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition
-    >
   }): Point0<
     TPointType,
     TLetsEndPointType,
@@ -644,7 +616,6 @@ export class Point0<
       _loadingComponent: (overrides._loadingComponent ?? this._loadingComponent) as never,
       _pageLoadingComponent: (overrides._pageLoadingComponent ?? this._pageLoadingComponent) as never,
       _componentLoadingComponent: (overrides._componentLoadingComponent ?? this._componentLoadingComponent) as never,
-      _appLoadingComponent: (overrides._appLoadingComponent ?? this._appLoadingComponent) as never,
     })
   }
 
@@ -845,7 +816,6 @@ export class Point0<
       _loadingComponent: this._base?._loadingComponent as never,
       _pageLoadingComponent: this._base?._pageLoadingComponent as never,
       _componentLoadingComponent: this._base?._componentLoadingComponent as never,
-      _appLoadingComponent: this._base?._appLoadingComponent as never,
     })
   }
 
@@ -1404,51 +1374,6 @@ export class Point0<
     >({
       _pointType: 'middleware',
       _componentLoadingComponent: componentLoadingComponent,
-    })
-  }
-
-  appLoading(
-    appLoadingComponent: LoadingComponentType<
-      'app',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition
-    >,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue<
-      'middleware',
-      TLetsEndPointType,
-      TConnectedRootSourcePoint,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >({
-      _pointType: 'middleware',
-      _appLoadingComponent: appLoadingComponent,
     })
   }
 
@@ -2511,7 +2436,6 @@ export class Point0<
     type: TType
   }): ErrorComponentType<TType, TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition> {
     return ({
-      app: this._errorComponent,
       page: this._pageErrorComponent,
       component: this._componentErrorComponent,
     }[type] ?? this._errorComponent) as never
@@ -2531,7 +2455,6 @@ export class Point0<
     TRouteDefinition
   > {
     return ({
-      app: this._loadingComponent,
       page: this._pageLoadingComponent,
       component: this._componentLoadingComponent,
     }[type] ?? this._loadingComponent) as never
