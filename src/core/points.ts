@@ -156,7 +156,7 @@ export class Points<TReady extends boolean = boolean> {
                       default: (await point())._Component,
                     }))
                   : point._Component
-                : record.type === 'clientCtx'
+                : record.type === 'provider'
                   ? typeof point === 'function'
                     ? React.lazy(async () => ({
                         default: (await point()).Provider,

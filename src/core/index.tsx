@@ -14,13 +14,15 @@ import { QueryClient, hydrate, useInfiniteQuery, useMutation, useQuery, useQuery
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
+import type { Context } from 'use-context-selector'
+import { createContext, useContextSelector } from 'use-context-selector'
 import type { EversionRun, ExtractResult } from './eversion.js'
 import { useLocation } from './router.js'
 import type {
   AnyDataOrInfiniteData,
+  AnyPoint,
   AppendCtx,
   BasePoint,
-  ClientCtxFn,
   ClientExtractFnRecord,
   ClientLoaderFn,
   ComponentComponent,
@@ -64,6 +66,7 @@ import type {
   PointType,
   PrependCtx,
   Props,
+  ProviderValueSetterFn,
   QueryKey,
   QueryResultType,
   RequiredCtx,
@@ -141,7 +144,7 @@ export class Point0<
   _defaultPageQueryOptions: ExtraUseQueryOptions
   _defaultLayoutQueryOptions: ExtraUseQueryOptions
   _defaultComponentQueryOptions: ExtraUseQueryOptions
-  _defaultClientCtxQueryOptions: ExtraUseQueryOptions
+  _defaultProviderQueryOptions: ExtraUseQueryOptions
   _queryOptions: ExtraUseQueryOptions
   _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
   _queryResultType: TQueryResultType
@@ -150,7 +153,8 @@ export class Point0<
   _hasSourceBase: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
   _extractFns: ExtractFnRecord[]
   _clientExtractFns: ClientExtractFnRecord[]
-  _clientCtxSetter: ClientCtxFn<any, any, any, FinalClientData<TData, TClientData>> | undefined
+  _providerValueSetter: ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>> | undefined
+  _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   _route: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
   _prevRoute: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
   _page:
@@ -166,6 +170,7 @@ export class Point0<
   _name: PointName | UndefinedPointName
   _unstableId: number
   _fetchOptions: FetchOptionsFn
+  _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
 
   // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loadingComponent
   _errorComponent: ErrorComponentType<
@@ -250,14 +255,16 @@ export class Point0<
     _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
-    _defaultClientCtxQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultProviderQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
     _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
     _queryResultType?: TQueryResultType
     _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
-    _clientCtxSetter?: ClientCtxFn<any, any, any, any>
+    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any>
+    _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
+    _useValue?: any
     _route?: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
     _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
     _page?:
@@ -353,7 +360,7 @@ export class Point0<
     this._defaultInfiniteQueryOptions = props._defaultInfiniteQueryOptions ?? {}
     this._defaultLayoutQueryOptions = props._defaultLayoutQueryOptions ?? {}
     this._defaultComponentQueryOptions = props._defaultComponentQueryOptions ?? {}
-    this._defaultClientCtxQueryOptions = props._defaultClientCtxQueryOptions ?? {}
+    this._defaultProviderQueryOptions = props._defaultProviderQueryOptions ?? {}
     this._defaultPageQueryOptions = props._defaultPageQueryOptions ?? {}
     this._queryOptions = props._queryOptions ?? {}
     this._infiniteQueryOptions = props._infiniteQueryOptions ?? ({} as never)
@@ -363,7 +370,9 @@ export class Point0<
       : true
     this._extractFns = props._extractFns ?? []
     this._clientExtractFns = props._clientExtractFns ?? []
-    this._clientCtxSetter = props._clientCtxSetter ?? undefined
+    this._providerValueSetter = props._providerValueSetter ?? undefined
+    this._ProviderReactContext = props._ProviderReactContext ?? undefined
+    this._useValue = props._useValue ? props._useValue.bind(this) : undefined
     this._route =
       props._route ??
       (undefined as TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute)
@@ -449,14 +458,16 @@ export class Point0<
     _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
-    _defaultClientCtxQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultProviderQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
     _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
     _queryResultType?: TQueryResultType
     _wrapper?: WrapperComponentType | undefined
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
-    _clientCtxSetter?: ClientCtxFn<any, any, any, any> | undefined
+    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any> | undefined
+    _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
+    _useValue?: any
     _route?: IfAnyThenElse<
       TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
@@ -474,6 +485,7 @@ export class Point0<
     _layout?:
       | LayoutComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
       | UndefinedLayoutComponent
+    _layouts?: LayoutPoint[]
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
     _errorComponent?: ErrorComponentType<
@@ -592,8 +604,8 @@ export class Point0<
       _defaultComponentQueryOptions: overrides._defaultComponentQueryOptions ?? {
         ...this._defaultComponentQueryOptions,
       },
-      _defaultClientCtxQueryOptions: overrides._defaultClientCtxQueryOptions ?? {
-        ...this._defaultClientCtxQueryOptions,
+      _defaultProviderQueryOptions: overrides._defaultProviderQueryOptions ?? {
+        ...this._defaultProviderQueryOptions,
       },
       _queryOptions: overrides._queryOptions ?? { ...this._queryOptions },
       _infiniteQueryOptions: (overrides._infiniteQueryOptions ?? {
@@ -605,13 +617,15 @@ export class Point0<
         : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
       _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
-      _clientCtxSetter: overrides._clientCtxSetter ?? this._clientCtxSetter,
+      _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
+      _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
+      _useValue: overrides._useValue ?? this._useValue,
       _route: (overrides._route ?? this._route) as never,
       _prevRoute: (overrides._prevRoute ?? this._prevRoute) as never,
-      _page: overrides._page ?? undefined,
-      _component: overrides._component ?? undefined,
-      _layout: overrides._layout ?? undefined,
-      _layouts: !this._layout ? this._layouts : [...this._layouts, this as unknown as LayoutPoint],
+      _page: (overrides._page ?? this._page) as never,
+      _component: (overrides._component ?? this._component) as never,
+      _layout: (overrides._layout ?? this._layout) as never,
+      _layouts: overrides._layouts ?? this._layouts,
       _name: overrides._name ?? this._name,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as
@@ -644,7 +658,7 @@ export class Point0<
       pointType === 'infiniteQuery' ||
       pointType === 'mutation' ||
       pointType === 'component' ||
-      pointType === 'clientCtx'
+      pointType === 'provider'
     )
   }
   _isEndpoint(): boolean {
@@ -805,18 +819,24 @@ export class Point0<
       _name: pointName,
       _route: undefined,
       _prevRoute: this._route as never,
+      _page: undefined,
+      _component: undefined,
+      _layout: undefined,
+      _ProviderReactContext: undefined,
+      _providerValueSetter: undefined,
+      _useValue: undefined,
+      _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
       _sourceBaseUrl: this._base?._sourceBaseUrl,
       _staticHeads: this._base?._staticHeads,
       _defaultQueryOptions: this._base?._defaultQueryOptions,
       _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
       _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
       _defaultComponentQueryOptions: this._base?._defaultComponentQueryOptions,
-      _defaultClientCtxQueryOptions: this._base?._defaultClientCtxQueryOptions,
+      _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
       _infiniteQueryOptions: {} as never,
       _queryResultType: undefined,
-      _clientCtxSetter: undefined,
       _clientExtractFns: [],
       _fetchOptions: this._base?._fetchOptions,
       _errorComponent: this._base?._errorComponent as never,
@@ -1051,8 +1071,8 @@ export class Point0<
     })
   }
 
-  clientCtxQueryOptions(
-    clientCtxQueryOptions: UseQueryOptions,
+  providerQueryOptions(
+    providerQueryOptions: UseQueryOptions,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -1084,7 +1104,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _defaultClientCtxQueryOptions: clientCtxQueryOptions,
+      _defaultProviderQueryOptions: providerQueryOptions,
     })
   }
 
@@ -2223,15 +2243,15 @@ export class Point0<
     return layoutWithPoint as never
   }
 
-  clientCtx<TNewClientData extends Data = Data>(
-    clientCtxSetter: ClientCtxFn<
+  provider<TNewClientData extends Data = Data>(
+    valueSetter: ProviderValueSetterFn<
       TLetsEndPointType,
       TRouteDefinition,
       FinalClientData<TData, TClientData>,
       TNewClientData
     >,
   ): Point0<
-    'clientCtx',
+    'provider',
     UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
@@ -2245,8 +2265,8 @@ export class Point0<
     TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
     TProps
   >
-  clientCtx(): Point0<
-    'clientCtx',
+  provider(): Point0<
+    'provider',
     UndefinedEndPointType,
     TConnectedRootSourcePoint,
     TRequiredCtx,
@@ -2260,10 +2280,9 @@ export class Point0<
     TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
     TProps
   >
-  clientCtx(clientCtxSetter?: ClientCtxFn<any, any, any, any>) {
-    return this._continue({
-      _pointType: 'clientCtx',
-      _clientCtxSetter: clientCtxSetter || (({ data }) => data),
+  provider(providerValueSetter?: ProviderValueSetterFn<any, any, any, any>) {
+    const point = this._continue({
+      _pointType: 'provider',
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2274,7 +2293,41 @@ export class Point0<
           ? undefined
           : 'query'
         : TQueryResultType,
-    }) as never
+      _providerValueSetter: providerValueSetter || (({ data }) => data),
+      _ProviderReactContext: createContext<FinalClientData<TData, TClientData>>(null as never) as never,
+      _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
+        if (!point._ProviderReactContext) {
+          throw new Error('ProviderReactContext 2 not found on point: ' + point._name)
+        }
+
+        if (keys == null) {
+          // no keys — return full context
+          return useContextSelector(point._ProviderReactContext, (ctx) => {
+            if (!ctx) throw new Error('useValue must be used within a Provider.')
+            return ctx
+          })
+        }
+
+        if (Array.isArray(keys)) {
+          // multiple keys — build a memoized object
+          return useContextSelector(point._ProviderReactContext, (ctx) => {
+            if (!ctx) throw new Error('useValue must be used within a Provider.')
+            const picked = {} as any
+            for (const key of keys) {
+              picked[key] = ctx[key]
+            }
+            return picked
+          })
+        }
+
+        // single key
+        return useContextSelector(point._ProviderReactContext, (ctx) => {
+          if (!ctx) throw new Error('useValue must be used within a Provider.')
+          return ctx[keys]
+        })
+      },
+    })
+    return point as never
   }
 
   response<TNewResponseOutput extends ResponseOutput = ResponseOutput>(
@@ -2889,13 +2942,16 @@ export class Point0<
     } as never)
   }
 
-  _ClientCtxReactContext: React.Context<FinalClientData<TData, TClientData>> = React.createContext<
-    FinalClientData<TData, TClientData>
-  >(null as never)
-
   Provider: MountableComponent<TInputSchema, UndefinedProps, true> = (props) => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    if (!this._ProviderReactContext) {
+      throw new Error('ProviderReactContext not found on point: ' + this._name)
+    }
+    if (!this._providerValueSetter) {
+      throw new Error('providerValueSetter not found on point: ' + this._name)
+    }
 
     const { input, children } = React.useMemo<{
       input: InputRaw<TRouteDefinition, TInputSchema>
@@ -2905,7 +2961,7 @@ export class Point0<
       const input = { ...providedInput }
       return { input, children }
     }, [props])
-    const result = this._useLoader(input as never, this._defaultClientCtxQueryOptions)
+    const result = this._useLoader(input as never, this._defaultProviderQueryOptions)
     if (result.error) {
       return React.createElement(errorComponent, {
         ...(result as any),
@@ -2925,23 +2981,64 @@ export class Point0<
         error: new Error0('No data'),
       })
     }
-    return React.createElement(this._ClientCtxReactContext.Provider, {
-      value: result.data,
+    const value = this._providerValueSetter(result)
+    return React.createElement(this._ProviderReactContext.Provider, {
+      value,
       children,
     })
   }
 
-  useClientCtx = (): FinalClientData<TData, TClientData> => {
-    const ctx = React.useContext(this._ClientCtxReactContext)
-
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!ctx) {
-      throw new Error(
-        `useClientCtx on must be used within a ClientCtxProvider. Please, add clientCtx.Provider wrapper somewhere in the tree.`,
-      )
+  useValue<K extends keyof FinalClientData<TData, TClientData>>(key: K): FinalClientData<TData, TClientData>[K]
+  useValue<K extends keyof FinalClientData<TData, TClientData>>(keys: K[]): Pick<FinalClientData<TData, TClientData>, K>
+  useValue(): FinalClientData<TData, TClientData>
+  useValue(keys?: keyof FinalClientData<TData, TClientData> | Array<keyof FinalClientData<TData, TClientData>>) {
+    if (!this._useValue) {
+      throw new Error('useValue not found on point: ' + this._name)
     }
-    return ctx
+    return (this as any)._useValue(this, keys)
   }
+
+  // bun crashes just when see this code, even if it is not executed, so we need hack with _useValue
+  // lets check time to time if crashes no more exists, then uncomment
+
+  // useValue<K extends keyof FinalClientData<TData, TClientData>>(key: K): FinalClientData<TData, TClientData>[K]
+  // useValue<K extends keyof FinalClientData<TData, TClientData>>(keys: K[]): Pick<FinalClientData<TData, TClientData>, K>
+  // useValue(): FinalClientData<TData, TClientData>
+  // useValue(keys?: keyof FinalClientData<TData, TClientData> | Array<keyof FinalClientData<TData, TClientData>>) {
+  //   if (!this._ProviderReactContext) {
+  //     throw new Error('ProviderReactContext not found on point: ' + this._name)
+  //   }
+
+  //   if (keys == null) {
+  //     // no keys — return full context
+  //     return useContextSelector(this._ProviderReactContext, (ctx) => {
+  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //       if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //       return ctx
+  //     })
+  //   }
+
+  //   if (Array.isArray(keys)) {
+  //     // multiple keys — build a memoized object
+  //     return useContextSelector(this._ProviderReactContext, (ctx) => {
+  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //       if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //       const picked = {} as any
+  //       for (const key of keys) {
+  //         picked[key] = ctx[key]
+  //       }
+  //       return picked
+  //     })
+  //   }
+
+  //   // single key
+  //   return useContextSelector(this._ProviderReactContext, (ctx) => {
+  //     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //     if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //     return ctx[keys]
+  //   })
+  //   return null
+  // }
 
   async fetch(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
@@ -3681,7 +3778,7 @@ export class Point0<
     if (!this._hasLoader()) {
       return
     }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'clientCtx']
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
     if (!suitablePointTypes.includes(this._pointType)) {
       return
     }

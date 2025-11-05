@@ -303,7 +303,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               'query',
               'infiniteQuery',
               'mutation',
-              'clientCtx',
+              'provider',
             ]),
             outputType: z.enum(['data', 'response', 'dehydratedState']),
             pointInput: z.record(z.string(), z.any()),

@@ -10,11 +10,11 @@ export default function App({ queryClient, ssrLocation, points }: HydratedAppPro
       <QueryClientProvider client={queryClient}>
         <Unhead>
           <Router ssrLocation={ssrLocation} policy="prefetch">
-            <clientCtx1.Provider>
-              <clientCtx2.Provider>
+            <clientCtx2.Provider>
+              <clientCtx1.Provider>
                 <RouterRoutes />
-              </clientCtx2.Provider>
-            </clientCtx1.Provider>
+              </clientCtx1.Provider>
+            </clientCtx2.Provider>
           </Router>
         </Unhead>
       </QueryClientProvider>

@@ -120,7 +120,7 @@ export type PointType =
   | 'mutation'
   | 'layout'
   | 'client-middleware'
-  | 'clientCtx'
+  | 'provider'
 export type EndPointType = Exclude<PointType, 'middleware' | 'client-middleware'>
 export type RenderablePointType = Extract<PointType, 'page' | 'component' | 'layout'>
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
@@ -372,7 +372,7 @@ export type ResponsePoint<
   TProps
 >
 
-export type ClientCtxPoint<
+export type ProviderPoint<
   TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
     | InferredRootSourcePoint
     | UndefinedInferredRootSourcePoint,
@@ -387,7 +387,7 @@ export type ClientCtxPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
-  'clientCtx',
+  'provider',
   UndefinedEndPointType,
   TConnectedRootSourcePoint,
   TRequiredCtx,
@@ -914,7 +914,7 @@ export type ClientLoaderFn<
   props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TInputSchema, TClientData>,
 ) => Promise<TClientDataOutput> | TClientDataOutput
 
-export type ClientCtxFnProps<
+export type ProviderValueSetterFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientData extends Data | UndefinedData,
@@ -922,12 +922,12 @@ export type ClientCtxFnProps<
   data: FinalClientData<any, TClientData>
   location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
 }
-export type ClientCtxFn<
+export type ProviderValueSetterFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientData extends Data | UndefinedData,
   TClientDataOutput extends Data,
-> = (props: ClientCtxFnProps<TLetsEndPointType, TRouteDefinition, TClientData>) => TClientDataOutput
+> = (props: ProviderValueSetterFnProps<TLetsEndPointType, TRouteDefinition, TClientData>) => TClientDataOutput
 
 export type HeadFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,

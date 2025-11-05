@@ -1,10 +1,8 @@
-separate useLoader and useQuery
-allow pass props to layout and component and clientCtx
-rename clientctx to provider
+remove _appLoadingComponent
+
 location optional prop and get it from getCurrentLocation router
 location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
 queryClient optional propa get it from this.getQueryClient
-remove _appLoadingComponent
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand

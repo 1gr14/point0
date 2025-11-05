@@ -597,7 +597,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         point._pointType === 'infiniteQuery' ||
         point._pointType === 'page' ||
         point._pointType === 'layout' ||
-        point._pointType === 'clientCtx' ||
+        point._pointType === 'provider' ||
         point._pointType === 'component')
     ) {
       const queryKey = point._getServerQueryKey({

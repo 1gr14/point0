@@ -67,7 +67,7 @@ const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   query: 'query',
   infiniteQuery: 'infiniteQuery',
   response: 'response',
-  clientCtx: 'clientCtx',
+  provider: 'provider',
   base: 'base',
 }
 const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(

@@ -53,7 +53,7 @@
 //   mutation: 'mutation',
 //   query: 'query',
 //   response: 'response',
-//   'client-ctx': 'clientCtx',
+//   'client-ctx': 'provider',
 //   base: 'base',
 // }
 // const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(

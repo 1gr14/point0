@@ -35,13 +35,18 @@ export default generalLayout
   })
   .loader()
   .page(() => {
-    const ctx1 = clientCtx1.useClientCtx()
-    const ctx2 = clientCtx2.useClientCtx()
+    const ctx1 = clientCtx1.useValue()
+    const ctx2 = clientCtx2.useValue()
+    const x = clientCtx1.useValue('shmest')
+    const y = clientCtx1.useValue(['test', 'shmest'])
     return (
       <div>
         <h1>Welcome to IdeaNick</h1>
         <p>Test: {ctx1.test}</p>
         <p>Test: {ctx2.ideasCountX3}</p>
+        <p>X: {x}</p>
+        <p>Y.test: {y.test}</p>
+        <p>Y.shmest: {y.shmest}</p>
         <p>Discover and share innovative ideas that can change the world!</p>
         <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />
         <nav>

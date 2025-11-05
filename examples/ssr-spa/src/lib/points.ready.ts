@@ -7,7 +7,7 @@ import { ideaPage as ideaPage_hr2d3acswa } from '../pages/idea.js'
 import { ideasNewsPage as ideasNewsPage_1molf60443b } from '../pages/idea-news.js'
 import { generalLayout as generalLayout_1sm4sgw7w4h } from '../layouts/general.js'
 import { ideaLayout as ideaLayout_15r5wfdlfdu } from '../layouts/idea.js'
-import { clientCtx1 as clientCtx1_oe0hkc1t9, clientCtx2 as clientCtx2_22uurk5z8jj, clientCtx3 as clientCtx3_a9hpemkq62 } from './client-ctx.js'
+import { clientCtx1 as clientCtx1_1fcj193ea8l, clientCtx2 as clientCtx2_1qoylysk392, clientCtx3 as clientCtx3_kjm4ujslwt } from './client-ctx.js'
 import { client as client_29b1dq6qbu2 } from './client.js'
 
 export const points = Points.ready([
@@ -22,8 +22,8 @@ export const points = Points.ready([
     BestIdeaComponent_3qkxiugr0k.point,
     createIdeaMutation_210fo46cs0t.point,
     generateIdeaMutation_qlhpr7tzjc.point,
-    clientCtx1_oe0hkc1t9.point,
-    clientCtx2_22uurk5z8jj.point,
-    clientCtx3_a9hpemkq62.point,
+    clientCtx1_1fcj193ea8l.point,
+    clientCtx2_1qoylysk392.point,
+    clientCtx3_kjm4ujslwt.point,
     client_29b1dq6qbu2.point,
 ])
