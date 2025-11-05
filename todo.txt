@@ -32,7 +32,7 @@ env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
 ? maybe move config to Point0.extend and Point0.create and extract it from there
 cli for simplify commands, like build with bun: point0 build
 
-workspace packages: @point0/core @point0/server @point0/wouter
+workspace packages: @point0/core @point0/server @point0/wouter @point0/bun
 start0 without mono0
 
 status: .loader(() => [201, <div />]).loader(() => [404, <div />])

@@ -8,6 +8,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, Payload } from '../core/eversion.js'
 import type { HydratedAppComponent } from '../core/hydrate.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
+import { GlobalStorage } from '../core/global-store.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -196,9 +197,12 @@ export async function getReadableStreamWithWrapper({
       controller.enqueue(encoder.encode(suffix))
     },
   })
-  const reactStream = await renderer(element, {
-    ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
-  })
+  const reactStream = await GlobalStorage.run(
+    async () =>
+      await renderer(element, {
+        ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
+      }),
+  )
   return reactStream.pipeThrough(transform)
 }
 

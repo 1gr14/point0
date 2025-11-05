@@ -2,6 +2,7 @@ import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
+import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
@@ -30,6 +31,7 @@ import type {
   UndefinedCtx,
   UndefinedResponseOutput,
 } from './types.js'
+import { GlobalStorage } from './global-store.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -517,15 +519,17 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     seenQueryHashes?: Set<string>
     level?: number
   }): Promise<void> {
-    const probeTree = (
-      <App
-        ssrLocation={this.pageLocation}
-        root={this.eversion.root}
-        points={this.eversion.points}
-        queryClient={this.queryClient}
-      />
+    const stream = await GlobalStorage.run(
+      async () =>
+        await renderToReadableStream(
+          React.createElement(App, {
+            ssrLocation: this.pageLocation,
+            root: this.eversion.root,
+            points: this.eversion.points,
+            queryClient: this.queryClient,
+          }),
+        ),
     )
-    const stream = await renderToReadableStream(probeTree)
     await stream.allReady
     const queryClientState = this.queryClient.getQueryCache().findAll()
     const suitableMarkers = queryClientState.flatMap((query) => {
@@ -732,3 +736,5 @@ export type Payload = {
   dehydratedState: DehydratedState
   location: AnyLocation
 }
+
+export type ServerStore = AsyncLocalStorage<Record<string, any>>
