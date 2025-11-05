@@ -1,5 +1,4 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import { getEnv } from './utils.js'
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class GlobalStorage {
@@ -7,9 +6,13 @@ export class GlobalStorage {
   static serverStorage: GlobalStorageServerStorage | null
   static getters: { [key: string]: GetterRecord } = {}
   static unnamedGetterIndex = 0
+  static initialized = false
 
   static async init(isServer?: boolean) {
-    isServer ??= getEnv('SERVER_ONLY') === '1'
+    if (this.initialized) {
+      return
+    }
+    isServer ??= typeof process !== 'undefined' && process.env.SERVER_ONLY === '1'
     if (isServer) {
       const { AsyncLocalStorage } = await import('node:async_hooks')
       this.serverStorage = new AsyncLocalStorage<Record<string, any>>()
@@ -18,6 +21,7 @@ export class GlobalStorage {
       this.serverStorage = null
       this.clientStore = {}
     }
+    this.initialized = true
   }
 
   static getter<TClientAndServerResult>(
