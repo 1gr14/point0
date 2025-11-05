@@ -2,11 +2,15 @@ separate useLoader and useQuery
 allow pass props to layout and component and clientCtx
 rename clientctx to provider
 location optional prop and get it from getCurrentLocation router
+location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
 queryClient optional propa get it from this.getQueryClient
+remove _appLoadingComponent
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
+
+Сделать простой клон поинтов с учётом клона генерал стора, чтобы дать возможность при сср прокидывать туда хотя бы поле из сср, а ещё лучге и квери клиент
 
 wrapper
 merge .input schemas
@@ -39,12 +43,14 @@ preventSsr
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
+preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
 router export function getCurrentLocation()
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
 basepath replace with cwd
 default client query options, default client page query options, default client component query options
 not errorComponent, but just error
+mutation client, server, combined
 .isLoading(({queryType, query}) => )
 on server when returning ssr loactio replace it with toBasOlcation of requestest origin
 .wrapper() → it is like useLayout, so anything with children, But may be then it will be just wrapped in place?
