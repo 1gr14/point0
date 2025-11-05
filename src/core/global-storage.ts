@@ -60,6 +60,7 @@ export class GlobalStorage {
 
   static get<TClientResult, TServerResult = undefined>(
     key: string,
+    fallback?: GetterRecord<TClientResult, TServerResult>,
   ): TServerResult extends undefined ? TClientResult : TServerResult | TClientResult {
     if (this.serverStorage) {
       const store = this.serverStorage.getStore()
@@ -70,7 +71,7 @@ export class GlobalStorage {
       if (existingValue) {
         return existingValue
       }
-      const getter = this.getters[key] as GetterRecord | undefined
+      const getter = (this.getters[key] as GetterRecord | undefined) || fallback
       if (!getter) {
         throw new Error(`Neither getter nor value for key ${key} found`)
       }
@@ -82,7 +83,7 @@ export class GlobalStorage {
       if (existingValue) {
         return existingValue
       }
-      const getter = this.getters[key] as GetterRecord | undefined
+      const getter = (this.getters[key] as GetterRecord | undefined) || fallback
       if (!getter) {
         throw new Error(`Neither getter nor value for key ${key} found`)
       }
@@ -149,5 +150,3 @@ export type GetterRecord<TClientResult = unknown, TServerResult = unknown> = {
 export type GlobalStorageServerStore = { [key: string]: any }
 export type GlobalStorageServerStorage = AsyncLocalStorage<GlobalStorageServerStore>
 export type GlobalStorageClientStore = { [key: string]: any }
-
-// await GlobalStorage.init()

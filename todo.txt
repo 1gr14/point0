@@ -4,7 +4,6 @@ queryClient optional propa get it from this.getQueryClient
 queryClient хранить в глобал сторе реальном, и тогда убрать хуки связанные с бейзом
 
 const getQueryClient = Point0.global('queryClient', () => {}), Point0.get('queryClient'), currentLocation, 'provider': {'name': value}
-already add client only env var in client process in package.json
 Point0.getter('queryClient', () => {client}, () => {server}); Point0.get('queryClient'); Point0.call(() => {client}, () => {server})
 
 on prefetchQuery allow pass serverOnly: true

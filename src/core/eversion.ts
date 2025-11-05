@@ -1,13 +1,13 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
-import type { DehydratedState, QueryClient } from '@tanstack/react-query'
-import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
+import type { DehydratedState } from '@tanstack/react-query'
+import { QueryClient, dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 import { GlobalStorage } from './global-storage.js'
-import type { HydratedAppComponent } from './hydrate.js'
+import type { HydratedAppComponent } from './mount.js'
 import { Point0 } from './index.js'
 import { Points } from './points.js'
 import type {
@@ -353,7 +353,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }): Promise<EversionRun<TRequiredCtx>> {
     const serverStore = {}
     return await GlobalStorage.run(serverStore, async () => {
-      const queryClient = eversion.root.getQueryClient()
+      const queryClient = GlobalStorage.get('queryClient', {
+        clientGetter: () => new QueryClient(),
+        serverGetter: () => new QueryClient(),
+      })
       return new EversionRun<TRequiredCtx>({
         eversion,
         pageLocation,

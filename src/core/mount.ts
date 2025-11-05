@@ -1,3 +1,9 @@
+/* eslint-disable import/first */
+// IMPORTANT: Should be before any other imports
+await import('./global-storage.js').then(async ({ GlobalStorage }) => {
+  await GlobalStorage.init()
+})
+
 import type { AnyLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import { createElement } from 'react'

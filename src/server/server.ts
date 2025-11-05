@@ -1,4 +1,10 @@
-import type { HydratedAppComponent } from '../core/hydrate.js'
+/* eslint-disable import/first */
+// IMPORTANT: Should be before any other imports
+await import('../core/global-storage.js').then(async ({ GlobalStorage }) => {
+  await GlobalStorage.init()
+})
+
+import type { HydratedAppComponent } from '../core/mount.js'
 import { Points } from '../core/points.js'
 import type { RequiredCtx, RootId, RootPoint } from '../core/types.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'

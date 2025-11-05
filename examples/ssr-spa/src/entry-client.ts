@@ -1,4 +1,4 @@
-import { mount } from 'point0/core/hydrate.js'
+import { mount } from 'point0/core/mount.js'
 import App from './app.js'
 import { client } from './lib/client.js'
 import { points } from './lib/points.lazy.js'

@@ -6,7 +6,7 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun, Payload } from '../core/eversion.js'
-import type { HydratedAppComponent } from '../core/hydrate.js'
+import type { HydratedAppComponent } from '../core/mount.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
