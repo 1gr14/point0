@@ -47,6 +47,7 @@ router export function getCurrentLocation()
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
 basepath replace with cwd
+allow pass env object or "PREFIX_*" to env for clients
 default client query options, default client page query options, default client component query options
 not errorComponent, but just error
 mutation client, server, combined
