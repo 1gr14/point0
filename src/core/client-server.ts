@@ -1,4 +1,21 @@
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      IS_CLIENT?: string
+      IS_SERVER?: string
+    }
+  }
+}
+
+if (typeof globalThis.process === 'undefined') {
+  ;(globalThis as any).process = {
+    env: {},
+  }
+}
+
 export const isClient = (): boolean => {
+  if (process.env.IS_CLIENT === '1' || process.env.IS_CLIENT === 'true') return true
+
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 

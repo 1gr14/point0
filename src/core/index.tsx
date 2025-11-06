@@ -859,7 +859,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    GlobalStore.memoize('queryClient', createQueryClient)
+    GlobalStore.memoize('__QUERY_CLIENT__', createQueryClient)
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -1950,7 +1950,7 @@ export class Point0<
   }
 
   getQueryClient(): QueryClient {
-    return GlobalStore.get('queryClient')
+    return GlobalStore.get('__QUERY_CLIENT__')
   }
 
   page<

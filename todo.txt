@@ -3,8 +3,7 @@ queryClient optional propa get it from this.getQueryClient
 provider.getValue()
 on prefetchQuery allow pass serverOnly: true
 on useCombinedQuery prefetch infinity server query as it is
-ifClient, ifServer, ifClientServer
-response available by route and can have method
+
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
@@ -48,6 +47,7 @@ basepath replace with cwd
 default client query options, default client page query options, default client component query options
 not errorComponent, but just error
 mutation client, server, combined
+response available by route and can have method, other do not have method
 .isLoading(({queryType, query}) => )
 on server when returning ssr loactio replace it with toBasOlcation of requestest origin
 .wrapper() → it is like useLayout, so anything with children, But may be then it will be just wrapped in place?

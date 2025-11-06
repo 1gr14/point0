@@ -1,9 +1,3 @@
-/* eslint-disable import/first */
-// IMPORTANT: Should be before any other imports
-await import('./global-store.js').then(async ({ GlobalStore }) => {
-  await GlobalStore.init()
-})
-
 import type { AnyLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import { hydrate } from '@tanstack/react-query'
@@ -100,7 +94,7 @@ export function mount({
 }
 
 const hydrateQueryClient = ({ dehydratedState }: { dehydratedState: DehydratedState }) => {
-  const queryClient = GlobalStore.get<QueryClient>('queryClient')
+  const queryClient = GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
   hydrate(queryClient, dehydratedState)
 
   const prefetchPageQuery = queryClient

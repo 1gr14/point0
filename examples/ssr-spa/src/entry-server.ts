@@ -1,3 +1,7 @@
+/* eslint-disable import/first */
+// IMPORTANT: Should be before any other imports
+await import('./lib/global-store.js')
+
 import { Server } from 'point0/adapters/bun/server.js'
 import { points } from './lib/points.ready.js'
 import { source } from './lib/server.js'

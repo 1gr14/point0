@@ -318,7 +318,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   dehydratedState: DehydratedState
-  serverStore: { queryClient: QueryClient; [key: string]: unknown }
+  serverStore: { __QUERY_CLIENT__: QueryClient; [key: string]: unknown }
 
   private constructor({
     eversion,
@@ -333,7 +333,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     dehydratedState: DehydratedState
-    serverStore: { queryClient: QueryClient; [key: string]: unknown }
+    serverStore: { __QUERY_CLIENT__: QueryClient; [key: string]: unknown }
   }) {
     this.eversion = eversion
     this.extractFnsWithOutput = extractFnsWithOutput
@@ -353,8 +353,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
   }): Promise<EversionRun<TRequiredCtx>> {
     const serverStore = {}
-    return await GlobalStore.run(serverStore, async () => {
-      const queryClientGetter = GlobalStore.memoize<QueryClient>('queryClient', () => new QueryClient())
+    return await GlobalStore.runWithServerStoreProvider(serverStore, async () => {
+      const queryClientGetter = GlobalStore.memoize<QueryClient>('__QUERY_CLIENT__', () => new QueryClient())
       const queryClient = queryClientGetter()
       return new EversionRun<TRequiredCtx>({
         eversion,
@@ -362,17 +362,17 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         requiredCtx,
         extractFnsWithOutput: [],
         dehydratedState: dehydrate(queryClient),
-        serverStore: { queryClient, ...serverStore },
+        serverStore: { __QUERY_CLIENT__: queryClient, ...serverStore },
       })
     })
   }
 
   getQueryClient(): QueryClient {
-    return isServer() ? this.serverStore.queryClient : GlobalStore.get('queryClient')
+    return isServer() ? this.serverStore.__QUERY_CLIENT__ : GlobalStore.get('__QUERY_CLIENT__')
   }
 
   async withGlobalStore<T>(callback: () => Promise<T>): Promise<T> {
-    return await GlobalStore.run(this.serverStore, callback)
+    return await GlobalStore.runWithServerStoreProvider(this.serverStore, callback)
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
@@ -713,7 +713,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = GlobalStore.getFreshFromMemoizedGetter<QueryClient>('queryClient')
+      const tempQueryClient = GlobalStore.getFreshFromMemoizedGetter<QueryClient>('__QUERY_CLIENT__')
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
         ...(restOptions as any),
