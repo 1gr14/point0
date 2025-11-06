@@ -1042,8 +1042,3 @@ export type QueryKey = readonly [
 export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
-
-export type GeneralStore = {
-  _queryClient: QueryClient | undefined
-  _createQueryClient: () => QueryClient
-}

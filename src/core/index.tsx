@@ -3202,10 +3202,11 @@ export class Point0<
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location: AnyLocation
-    queryClient: QueryClient
+    queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
+    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
     const queryFn = async () => {
       const serverData = await (async () => {
@@ -3312,7 +3313,7 @@ export class Point0<
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
       const data = await this.fetch(
-        { ...input, [pageParamFromInput]: pageParam || this._infiniteQueryOptions.initialPageParam } as never,
+        { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
         fetchOptions,
         outputType,
       )
@@ -3362,7 +3363,7 @@ export class Point0<
             data: data || {},
             location,
             skipHeads: false,
-            input: { ...input, [pageParamFromInput]: pageParam || this._infiniteQueryOptions.initialPageParam },
+            input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
           })
           return clientData
         }
@@ -3372,7 +3373,7 @@ export class Point0<
             data: data || {},
             location,
             skipHeads: false,
-            input: { ...input, [pageParamFromInput]: pageParam || this._infiniteQueryOptions.initialPageParam },
+            input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
           })
           return clientData
         }
@@ -3406,7 +3407,7 @@ export class Point0<
           unknown
         >
       | undefined
-    queryClient: QueryClient
+    queryClient?: QueryClient
   }): UseInfiniteQueryOptions<
     FinalClientData<TData, TClientData>,
     Error0,
@@ -3415,8 +3416,9 @@ export class Point0<
   > {
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
     const queryFn = async (ctx: { pageParam: unknown }) => {
-      const pageParam = ctx.pageParam || this._infiniteQueryOptions.initialPageParam
+      const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
       const serverData = await (async () => {
+        queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
         const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
         const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
         if (infiniteCachedServerData) {
@@ -3437,7 +3439,18 @@ export class Point0<
           fetchOptions,
           outputType: 'data',
         })
-        return await queryClient.fetchQuery(serverFinityOpts as any)
+        const serverFinityResult = await queryClient.fetchQuery(serverFinityOpts as any)
+        queryClient.setQueryData(infiniteServerKey, (data: any) => {
+          const pageParamIndex = data.pageParams.findIndex((p: unknown) => p === pageParam)
+          if (pageParamIndex === -1) {
+            return data
+          }
+          return {
+            pages: [...data.pages, serverFinityResult],
+            pageParams: [...data.pageParams, pageParam],
+          }
+        })
+        return serverFinityResult
       })()
 
       const clientOpts = this._getClientInfiniteQueryOptions({
@@ -3682,7 +3695,7 @@ export class Point0<
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location: AnyLocation
-    queryClient: QueryClient
+    queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
     force?: boolean
@@ -3703,6 +3716,7 @@ export class Point0<
       fetchOptions,
       outputType,
     })
+    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
@@ -3722,7 +3736,7 @@ export class Point0<
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location: AnyLocation
-    queryClient: QueryClient
+    queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
     force?: boolean
@@ -3733,6 +3747,7 @@ export class Point0<
     if (!this._hasLoader()) {
       return
     }
+    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
     const queryKey = await this.prefetchQuery({
       input,
       location,

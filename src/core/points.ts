@@ -406,7 +406,7 @@ export class Points<TReady extends boolean = boolean> {
     partial = false,
   }: {
     location: AnyLocation
-    queryClient: QueryClient
+    queryClient?: QueryClient
     partial?: boolean
   }): Promise<PagePoint | undefined> => {
     const result = await this.loadSuitablePage({ location })

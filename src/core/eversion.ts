@@ -700,10 +700,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       if (!pagePoint._hasLoader()) {
         return
       }
-      const prefetchPageQueryOptions = pagePoint.getQueryOptions({
+      const prefetchPageQueryOptions = pagePoint._getServerQueryOptions({
         input,
-        location: this.pageLocation as AnyLocation,
-        queryClient: this.getQueryClient(),
+        // location: this.pageLocation as AnyLocation,
+        // queryClient: this.getQueryClient(),
         queryOptions: undefined,
         fetchOptions: undefined,
         outputType: 'dehydratedState',
