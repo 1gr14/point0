@@ -1,15 +1,15 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import { isClient, isServer } from './client-server.js'
 
-export class GlobalStore<TStore extends GlobalStoreContent> {
-  private static instance: GlobalStore<GlobalStoreContent> | null = null
+export class GlobalStore<TStore extends GlobalState> {
+  private static instance: GlobalStore<GlobalState> | null = null
 
-  private static clientStore: GlobalStoreContent | null = null
+  private static clientStore: GlobalState | null = null
   private static serverStorage: GlobalStoreServerStorage | null = null
   private static memoizedGetters: { [key: string]: MemoizedGetterRecord<any, any> } = {}
   private static unnamedGetterIndex = 0
 
-  static async create<TStore extends GlobalStoreContent>(): Promise<GlobalStore<TStore>> {
+  static async create<TStore extends GlobalState>(): Promise<GlobalStore<TStore>> {
     if (this.instance) {
       return this.instance as never
     }
@@ -29,17 +29,17 @@ export class GlobalStore<TStore extends GlobalStoreContent> {
 
   private static initIfClientAndNotInitialized(): void {
     if (isClient() && !this.instance) {
-      this.instance = new GlobalStore<GlobalStoreContent>()
+      this.instance = new GlobalStore<GlobalState>()
       GlobalStore.serverStorage = null
       GlobalStore.clientStore = {}
     }
   }
 
-  memoize<TKey extends StoreKey<TStore>, TClientAndServerResult>(
+  memoize<TKey extends GlobalStoreKey<TStore>, TClientAndServerResult>(
     key: TKey,
     clientAndServerGetter: () => TClientAndServerResult,
   ): () => TClientAndServerResult
-  memoize<TKey extends StoreKey<TStore>, TClientResult, TServerResult>(
+  memoize<TKey extends GlobalStoreKey<TStore>, TClientResult, TServerResult>(
     key: TKey,
     clientGetter: () => TClientResult,
     serverGetter: () => TServerResult,
@@ -91,7 +91,7 @@ export class GlobalStore<TStore extends GlobalStoreContent> {
     return () => GlobalStore.get(key as never)
   }
 
-  get<TKey extends StoreKey<TStore>>(key: TKey): TStore[TKey] {
+  get<TKey extends GlobalStoreKey<TStore>>(key: TKey): TStore[TKey] {
     return GlobalStore.get(key as never)
   }
   static get<TClientResult, TServerResult = undefined>(
@@ -133,7 +133,7 @@ export class GlobalStore<TStore extends GlobalStoreContent> {
     }
   }
 
-  getFreshFromMemoizedGetter<TKey extends StoreKey<TStore>>(key: TKey): TStore[TKey] {
+  getFreshFromMemoizedGetter<TKey extends GlobalStoreKey<TStore>>(key: TKey): TStore[TKey] {
     return GlobalStore.getFreshFromMemoizedGetter(key as never)
   }
   static getFreshFromMemoizedGetter<TClientResult, TServerResult = undefined>(
@@ -163,21 +163,21 @@ export class GlobalStore<TStore extends GlobalStoreContent> {
     }
   }
 
-  set<TPartialStore extends Partial<TStore>>({ store }: { store: TPartialStore }): void
-  set<TKey extends StoreKey<TStore>>(key: TKey, value: TStore[TKey]): void
-  set(arg1: any, arg2?: any): void {
-    GlobalStore.set(arg1, arg2)
+  set<TPartialStore extends Partial<TStore>>({ store }: { store: TPartialStore }): GlobalStore<TStore>
+  set<TKey extends GlobalStoreKey<TStore>>(key: TKey, value: TStore[TKey]): GlobalStore<TStore>
+  set(arg1: any, arg2?: any): GlobalStore<TStore> {
+    return GlobalStore.set(arg1, arg2) as GlobalStore<TStore>
   }
 
-  static set({ store }: { store: GlobalStoreContent }): void
-  static set(key: string, value: unknown): void
-  static set(...args: any[]): void {
+  static set({ store }: { store: GlobalState }): GlobalStore<GlobalState>
+  static set(key: string, value: unknown): GlobalStore<GlobalState>
+  static set(...args: any[]): GlobalStore<GlobalState> {
     this.initIfClientAndNotInitialized()
-    const partialStore = ((): Partial<GlobalStoreContent> => {
+    const partialStore = ((): Partial<GlobalState> => {
       if (typeof args[0] === 'string') {
-        return { [args[0]]: args[1] } as Partial<GlobalStoreContent>
+        return { [args[0]]: args[1] } as Partial<GlobalState>
       } else {
-        return args[0] as Partial<GlobalStoreContent>
+        return args[0] as Partial<GlobalState>
       }
     })()
     if (this.serverStorage) {
@@ -197,16 +197,17 @@ export class GlobalStore<TStore extends GlobalStoreContent> {
         'Server storage and client store are not initialized. Please, call await GlobalState.init() first',
       )
     }
+    return this.instance as GlobalStore<GlobalState>
   }
 
-  runWithServerStoreProvider<TStore extends GlobalStoreContent = GlobalStoreContent, TResult = unknown>(
+  runWithServerStoreProvider<TStore extends GlobalState = GlobalState, TResult = unknown>(
     serverStore: TStore,
     callback: () => TResult,
   ): TResult {
     return GlobalStore.runWithServerStoreProvider(serverStore, callback)
   }
 
-  static runWithServerStoreProvider<TResult>(serverStore: GlobalStoreContent, callback: () => TResult): TResult {
+  static runWithServerStoreProvider<TResult>(serverStore: GlobalState, callback: () => TResult): TResult {
     this.initIfClientAndNotInitialized()
     if (this.serverStorage) {
       return this.serverStorage.run(serverStore, callback)
@@ -221,6 +222,6 @@ export type MemoizedGetterRecord<TClientResult = unknown, TServerResult = unknow
   clientGetter: MemoizedGetterFn<TClientResult>
   serverGetter: TServerResult extends undefined ? MemoizedGetterFn<TClientResult> : MemoizedGetterFn<TServerResult>
 }
-export type GlobalStoreContent = { [key: string]: unknown }
-export type GlobalStoreServerStorage = AsyncLocalStorage<GlobalStoreContent>
-type StoreKey<TStore extends GlobalStoreContent> = Extract<keyof TStore, string>
+export type GlobalState = { [key: string]: unknown }
+export type GlobalStoreServerStorage = AsyncLocalStorage<GlobalState>
+export type GlobalStoreKey<TStore extends GlobalState> = Extract<keyof TStore, string>

@@ -1,6 +1,10 @@
 location optional prop and get it from getCurrentLocation router
 provider.getValue()
-on prefetchQuery allow pass serverOnly: true
+shring hydat=rated app props and use global storage to provide correct
+process.env.IS_CLIENT visible in dev mode on cliend
+.prefetchOnInit(boolean)
+.prefetchMode(MODE)
+check zustand behaviour, meybe it is enough on ssr also provide current global store to client. Just n payload, and use it on top of mount.ts
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
