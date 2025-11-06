@@ -81,12 +81,25 @@ function prependBodyElement({ html, content }: { html: string; content: string }
   return html.replace(pattern, replacement)
 }
 
+function prependHeadElement({ html, content }: { html: string; content: string }) {
+  // Match the <head> tag and capture its existing content
+  const pattern = /<head\b[^>]*>([\s\S]*?)<\/head>/i
+
+  const replacement = (match: string, inner: string) => {
+    const newContent = `${content}${inner}` // prepend payload to the beginning of <head>
+    return match.replace(inner, newContent)
+  }
+
+  return html.replace(pattern, replacement)
+}
+
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,
   content,
   dehydratedState,
   pageLocation,
   head,
+  env,
   rootElementId,
   clientBundlePath,
 }: {
@@ -96,6 +109,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   dehydratedState: DehydratedState
   pageLocation: AnyLocation
   head: ResolvableHead[]
+  env?: Record<string, string | number | boolean | undefined>
   rootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
@@ -121,6 +135,10 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   if (head.length > 0) {
     html = await transformHtmlTemplate(createHead({ init: head }), html)
   }
+  html = prependHeadElement({
+    content: `<script id="__POINT0_ENV__" type="text/javascript">window.process={env:${escapeForInlineJSON(JSON.stringify({ ...env, IS_CLIENT: '1' }))}}</script>`,
+    html,
+  })
 
   if (html.includes('<!-- __POINT0_TARGET__ -->')) {
     const [prefix, suffix] = html.split('<!-- __POINT0_TARGET__ -->')
@@ -144,6 +162,7 @@ export async function renderStatic({
   dehydratedState,
   head,
   pageLocation,
+  env,
   renderer = renderToStaticMarkup,
   clientBundlePath,
   originalIndexHtml,
@@ -153,6 +172,7 @@ export async function renderStatic({
   dehydratedState: DehydratedState
   pageLocation: AnyLocation
   head: ResolvableHead[]
+  env?: Record<string, string>
   renderer?: StaticRenderer
   clientBundlePath: string
   originalIndexHtml: string
@@ -164,6 +184,7 @@ export async function renderStatic({
       dehydratedState,
       pageLocation,
       head,
+      env,
       clientBundlePath,
       originalIndexHtml,
       rootElementId,
@@ -213,6 +234,7 @@ export async function renderReadableStream({
   dehydratedState,
   pageLocation,
   head,
+  env,
   clientBundlePath,
   renderer = renderToReadableStream,
   originalIndexHtml,
@@ -223,6 +245,7 @@ export async function renderReadableStream({
   dehydratedState: DehydratedState
   pageLocation: AnyLocation
   head: ResolvableHead[]
+  env?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
@@ -234,6 +257,7 @@ export async function renderReadableStream({
     dehydratedState,
     pageLocation,
     head,
+    env,
     rootElementId,
   })
   return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath, eversionRun })
@@ -252,6 +276,7 @@ export async function renderAppAsReadableStream({
   pageLocation: AnyLocation
   pagePoint: AnyPoint | undefined
   input: InputRaw
+  env?: Record<string, string | number | boolean | undefined>
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string

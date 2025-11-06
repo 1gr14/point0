@@ -387,6 +387,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               pageLocation: suitable.pageLocation,
               pagePoint: suitable.point,
               input,
+              env: { NODE_ENV: process.env.NODE_ENV },
               originalIndexHtml,
               rootElementId: relatedClient.rootElementId,
             })
