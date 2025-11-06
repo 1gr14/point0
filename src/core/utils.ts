@@ -120,7 +120,7 @@ export const emptyDehydratedState: DehydratedState = {
 //   const fromProcessEnv = (() => {
 //     try {
 //       // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-//       return Function('return process.env["' + key + '"]')() as T | undefined
+//       return Function('return process.env.' + key)() as T | undefined
 //     } catch {
 //       return undefined
 //     }
@@ -129,7 +129,7 @@ export const emptyDehydratedState: DehydratedState = {
 //   const fromImportMeta = (() => {
 //     try {
 //       // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-//       return Function('return import.meta.env["' + key + '"]')() as T | undefined
+//       return Function('return import.meta.env.' + key)() as T | undefined
 //     } catch {
 //       return undefined
 //     }
