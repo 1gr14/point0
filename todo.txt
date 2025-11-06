@@ -1,8 +1,6 @@
 location optional prop and get it from getCurrentLocation router
-queryClient optional propa get it from this.getQueryClient
 provider.getValue()
 on prefetchQuery allow pass serverOnly: true
-on useCombinedQuery prefetch infinity server query as it is
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand

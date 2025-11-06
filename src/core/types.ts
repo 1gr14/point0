@@ -4,7 +4,6 @@ import type {
   InfiniteData,
   UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
   UseQueryOptions as OriginalUseQueryOptions,
-  QueryClient,
   UseInfiniteQueryResult,
   UseQueryResult,
 } from '@tanstack/react-query'

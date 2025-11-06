@@ -184,7 +184,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
         await pointsCtx.prefetchSuitablePagePoint({
           location,
           queryClient,
-          partial: false,
+          mode: 'any',
         })
 
         routerContext.setStatus('transit-success')

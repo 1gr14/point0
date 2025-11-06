@@ -403,30 +403,22 @@ export class Points<TReady extends boolean = boolean> {
   prefetchSuitablePagePoint = async ({
     location,
     queryClient, // kept for signature parity if you need it later
-    partial = false,
+    mode = 'any',
   }: {
     location: AnyLocation
     queryClient?: QueryClient
-    partial?: boolean
+    mode?: 'server' | 'client' | 'any' | 'dehydratedState' | 'all'
   }): Promise<PagePoint | undefined> => {
     const result = await this.loadSuitablePage({ location })
     if (!result) {
       return undefined
     }
-
-    if (partial) {
-      await Promise.all(
-        [result.page, ...result.layouts].map(async (p) => {
-          const input = p._getUnsafeInputRawByLocation(location)
-          await p.prefetchQuery({ queryClient, input, location })
-        }),
-      )
-      return result.page
-    }
-
-    const input = result.page._getUnsafeInputRawByLocation(location)
-    await result.page.prefetchPage({ queryClient, input, location })
-
+    await result.page.prefetchPage({
+      queryClient,
+      input: result.page._getUnsafeInputRawByLocation(location),
+      location,
+      mode,
+    })
     return result.page
   }
 
