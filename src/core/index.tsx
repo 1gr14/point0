@@ -97,7 +97,7 @@ import type {
   WrapperComponentType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
-import { GlobalStorage } from './global-storage.js'
+import { GlobalStore } from './global-store.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -859,7 +859,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    GlobalStorage.getter('queryClient', createQueryClient)
+    GlobalStore.memoize('queryClient', createQueryClient)
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -1950,7 +1950,7 @@ export class Point0<
   }
 
   getQueryClient(): QueryClient {
-    return GlobalStorage.get('queryClient')
+    return GlobalStore.get('queryClient')
   }
 
   page<

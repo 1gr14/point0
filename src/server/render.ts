@@ -198,7 +198,7 @@ export async function getReadableStreamWithWrapper({
       controller.enqueue(encoder.encode(suffix))
     },
   })
-  const reactStream = await eversionRun.withGlobalStorage(
+  const reactStream = await eversionRun.withGlobalStore(
     async () =>
       await renderer(element, {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
@@ -268,7 +268,7 @@ export async function renderAppAsReadableStream({
     ssrLocation: pageLocation,
     root: eversionRun.eversion.root,
     points: eversionRun.eversion.points,
-    queryClient: eversionRun.serverStore.queryClient,
+    queryClient: eversionRun.getQueryClient(),
   })
   const dehydratedState = await eversionRun.getQueryClientDehydratedState()
   return await renderReadableStream({

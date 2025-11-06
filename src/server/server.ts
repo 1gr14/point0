@@ -1,7 +1,7 @@
 /* eslint-disable import/first */
 // IMPORTANT: Should be before any other imports
-await import('../core/global-storage.js').then(async ({ GlobalStorage }) => {
-  await GlobalStorage.init()
+await import('../core/global-store.js').then(async ({ GlobalStore }) => {
+  await GlobalStore.init()
 })
 
 import type { HydratedAppComponent } from '../core/mount.js'

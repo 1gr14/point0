@@ -3,6 +3,7 @@ import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useContext, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
+import { isServer } from '../../core/client-server.js'
 import { Points, type PagesTree } from '../../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
@@ -56,7 +57,7 @@ export const Router = ({
     throw new Error('Points context not found')
   }
   const wouterRouterProps = useMemo(() => {
-    if (typeof window !== 'undefined') {
+    if (!isServer()) {
       return {}
     }
     if (!ssrLocation) {

@@ -6,7 +6,7 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import { GlobalStorage } from './global-storage.js'
+import { GlobalStore } from './global-store.js'
 import type { HydratedAppComponent } from './mount.js'
 import { Point0 } from './index.js'
 import { Points } from './points.js'
@@ -32,6 +32,7 @@ import type {
   UndefinedCtx,
   UndefinedResponseOutput,
 } from './types.js'
+import { isServer } from './client-server.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -352,11 +353,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
   }): Promise<EversionRun<TRequiredCtx>> {
     const serverStore = {}
-    return await GlobalStorage.run(serverStore, async () => {
-      const queryClient = GlobalStorage.get('queryClient', {
-        clientGetter: () => new QueryClient(),
-        serverGetter: () => new QueryClient(),
-      })
+    return await GlobalStore.run(serverStore, async () => {
+      const queryClientGetter = GlobalStore.memoize<QueryClient>('queryClient', () => new QueryClient())
+      const queryClient = queryClientGetter()
       return new EversionRun<TRequiredCtx>({
         eversion,
         pageLocation,
@@ -368,12 +367,16 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  async withGlobalStorage<T>(callback: () => Promise<T>): Promise<T> {
-    return await GlobalStorage.run(this.serverStore, callback)
+  getQueryClient(): QueryClient {
+    return isServer() ? this.serverStore.queryClient : GlobalStore.get('queryClient')
+  }
+
+  async withGlobalStore<T>(callback: () => Promise<T>): Promise<T> {
+    return await GlobalStore.run(this.serverStore, callback)
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
-    return await this.withGlobalStorage(async () => {
+    return await this.withGlobalStore(async () => {
       // TODO: maybe remove it, we will prefetch everything in createPrefetchedAppElement
       // But it is faster, becouse we should not always rerender our app for every layout
       if (point?._pointType === 'page') {
@@ -545,17 +548,17 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     seenQueryHashes?: Set<string>
     level?: number
   }): Promise<void> {
-    await this.withGlobalStorage(async () => {
+    await this.withGlobalStore(async () => {
       const stream = await renderToReadableStream(
         React.createElement(App, {
           ssrLocation: this.pageLocation,
           root: this.eversion.root,
           points: this.eversion.points,
-          queryClient: this.serverStore.queryClient,
+          queryClient: this.getQueryClient(),
         }),
       )
       await stream.allReady
-      const queryClientState = this.serverStore.queryClient.getQueryCache().findAll()
+      const queryClientState = this.getQueryClient().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
         const hash = query.queryHash
         if (seenQueryHashes.has(hash)) {
@@ -620,7 +623,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     error: unknown
     point: AnyPoint | undefined
   }): Promise<void> {
-    await this.withGlobalStorage(async () => {
+    await this.withGlobalStore(async () => {
       if (
         point &&
         (point._pointType === 'query' ||
@@ -634,9 +637,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           input,
           isInfiniteQuery: point._queryResultType === 'infiniteQuery',
         })
-        const query = this.serverStore.queryClient
+        const query = this.getQueryClient()
           .getQueryCache()
-          .build(this.serverStore.queryClient, { queryKey, queryHash: hashKey(queryKey) })
+          .build(this.getQueryClient(), { queryKey, queryHash: hashKey(queryKey) })
         if (error) {
           query.setState({
             data: undefined,
@@ -645,9 +648,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             fetchStatus: 'idle',
           })
         } else {
-          const query = this.serverStore.queryClient
+          const query = this.getQueryClient()
             .getQueryCache()
-            .build(this.serverStore.queryClient, { queryKey, queryHash: hashKey(queryKey) })
+            .build(this.getQueryClient(), { queryKey, queryHash: hashKey(queryKey) })
           if (point._queryResultType === 'infiniteQuery') {
             const pageParam =
               (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
@@ -675,8 +678,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {
-    return await this.withGlobalStorage(async () => {
-      const dehydratedState = dehydrate(this.serverStore.queryClient, {
+    return await this.withGlobalStore(async () => {
+      const dehydratedState = dehydrate(this.getQueryClient(), {
         shouldDehydrateQuery: (query) => {
           // This will include all queries, including failed ones
           return true
@@ -693,14 +696,14 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pagePoint: AnyPoint
     input: InputRaw
   }): Promise<void> {
-    await this.withGlobalStorage(async () => {
+    await this.withGlobalStore(async () => {
       if (!pagePoint._hasLoader()) {
         return
       }
       const prefetchPageQueryOptions = pagePoint.getQueryOptions({
         input,
         location: this.pageLocation as AnyLocation,
-        queryClient: this.serverStore.queryClient,
+        queryClient: this.getQueryClient(),
         queryOptions: undefined,
         fetchOptions: undefined,
         outputType: 'dehydratedState',
@@ -710,7 +713,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = GlobalStorage.getNew<QueryClient>('queryClient')
+      const tempQueryClient = GlobalStore.getFreshFromMemoizedGetter<QueryClient>('queryClient')
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
         ...(restOptions as any),
@@ -720,7 +723,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
       const tempDehydratedState = dehydrate(tempQueryClient)
 
-      hydrate(this.serverStore.queryClient, tempDehydratedState)
+      hydrate(this.getQueryClient(), tempDehydratedState)
     })
   }
 }

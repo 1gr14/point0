@@ -1,18 +1,19 @@
 /* eslint-disable import/first */
 // IMPORTANT: Should be before any other imports
-await import('./global-storage.js').then(async ({ GlobalStorage }) => {
-  await GlobalStorage.init()
+await import('./global-store.js').then(async ({ GlobalStore }) => {
+  await GlobalStore.init()
 })
 
 import type { AnyLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
+import { hydrate } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { Payload } from './eversion.js'
 import type { Points } from './points.js'
 import type { RootPoint } from './types.js'
-import { hydrate } from '@tanstack/react-query'
+import { GlobalStore } from './global-store.js'
 
 export type HydrateResult = {
   payload: Payload
@@ -70,9 +71,8 @@ export function mount({
     }
   }
 
-  const queryClient = hydrateQueryClient({ root, dehydratedState: payload.dehydratedState })
   const appElement = createElement(App, {
-    queryClient,
+    queryClient: hydrateQueryClient({ dehydratedState: payload.dehydratedState }),
     ssrLocation: payload.location,
     points,
     root,
@@ -99,9 +99,8 @@ export function mount({
   return result
 }
 
-const hydrateQueryClient = ({ root, dehydratedState }: { root: RootPoint; dehydratedState: DehydratedState }) => {
-  const queryClient = root.getQueryClient()
-
+const hydrateQueryClient = ({ dehydratedState }: { dehydratedState: DehydratedState }) => {
+  const queryClient = GlobalStore.get<QueryClient>('queryClient')
   hydrate(queryClient, dehydratedState)
 
   const prefetchPageQuery = queryClient

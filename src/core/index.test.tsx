@@ -19,8 +19,8 @@ import type {
 } from './types.js'
 import { Points } from './points.js'
 
-await import('./global-storage.js').then(async ({ GlobalStorage }) => {
-  await GlobalStorage.init()
+await import('./global-store.js').then(async ({ GlobalStore: GlobalStore }) => {
+  await GlobalStore.init()
 })
 
 // TODO: move all tests to separate files in test dir and refactor it
