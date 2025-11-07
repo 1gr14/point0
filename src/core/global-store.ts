@@ -2,7 +2,7 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 
 export class GlobalStore<TState extends GlobalState> {
   private static instance: GlobalStore<GlobalState> | null = null
-  private static config: GlobalStoreConfig<GlobalState> = {}
+  static config: GlobalStoreConfig<GlobalState> = {}
 
   private static clientState: GlobalState | null = null
   private static serverStorage: GlobalStoreServerStorage | null = null
@@ -86,13 +86,23 @@ export class GlobalStore<TState extends GlobalState> {
 
   // lets call this fn only on server, no need to call it on client
   static pack = () => {
-    const state = this.getState()
+    this.getState() // just for validation
     const packed: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(state)) {
-      const configItem = this.config[key]
-      const packedValue = configItem.pack(value)
-      if (packedValue !== undefined) {
-        packed[key] = packedValue
+    for (const [configItemKey, configItem] of Object.entries(this.config)) {
+      try {
+        if (!configItem.pack) {
+          continue
+        }
+        const stateValue = this.get(configItemKey)
+        const packedValue = configItem.pack(stateValue)
+        if (packedValue !== undefined) {
+          packed[configItemKey] = packedValue
+        }
+      } catch (error: unknown) {
+        throw new Error(
+          `Error packing global store for key "${configItemKey}": ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        )
       }
     }
     return packed
@@ -101,13 +111,19 @@ export class GlobalStore<TState extends GlobalState> {
   // lets call this fn only on client, no need to call it on server
   static unpack = (packed: Record<string, unknown>): GlobalState => {
     const state: GlobalState = {}
-    for (const [key, value] of Object.entries(packed)) {
-      const configItem = this.config[key]
-      const unpackedValue = configItem.unpack(value)
-      if (unpackedValue !== undefined) {
-        state[key] = unpackedValue
-      } else {
-        state[key] = configItem.init()
+    for (const [configItemKey, configItem] of Object.entries(this.config)) {
+      try {
+        if (!configItem.unpack) {
+          continue
+        }
+        const packedValue = packed[configItemKey]
+        const unpackedValue = configItem.unpack(packedValue, configItem.init)
+        state[configItemKey] = unpackedValue
+      } catch (error: unknown) {
+        throw new Error(
+          `Error unpacking global store for key "${configItemKey}": ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        )
       }
     }
     return state
@@ -117,11 +133,11 @@ export class GlobalStore<TState extends GlobalState> {
     return GlobalStore.get(key)
   }
   static get<TValue = unknown>(key: string): TValue {
+    const state = this.getState()
     const configItem = this.config[key] as GlobalStoreConfigItem<GlobalState, unknown> | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
-    const state = this.getState()
     const existingValue = state[key]
     if (existingValue) {
       return existingValue as TValue
@@ -166,6 +182,7 @@ export class GlobalStore<TState extends GlobalState> {
 
   static runWithServerStoreProvider<TResult>(serverStore: Partial<GlobalState>, callback: () => TResult): TResult {
     this.initIfClientAndNotInitialized()
+    this.getState() // just for validation
     if (this.serverStorage) {
       return this.serverStorage.run(serverStore, callback)
     } else {
@@ -180,22 +197,25 @@ export type GlobalState = { [key: string]: unknown }
 export type GlobalStoreKey<TStore extends GlobalState> = Extract<keyof TStore, string>
 
 export type GlobalStoreConfigItemInitFn<TValue = unknown> = () => TValue
-export type GlobalStoreConfigItem<TValue = unknown, TPackedValue = unknown> = {
+export type GlobalStoreConfigItem<TValue, TPackedValue> = {
   init: () => TValue
-  pack: (value: TValue) => TPackedValue // | TPackedValue // in case it is not packable here will be null
-  unpack: (packedValue: TPackedValue) => TValue // | TPackedValue // and here
+  pack: ((value: TValue) => TPackedValue) | undefined // | TPackedValue // in case it is not packable here will be null
+  unpack: ((packedValue: TPackedValue, init: () => TValue) => TValue) | undefined // | TPackedValue // and here
 }
-export type GlobalStoreConfig<TStore extends GlobalState> = Record<GlobalStoreKey<TStore>, GlobalStoreConfigItem>
+export type GlobalStoreConfig<TStore extends GlobalState> = Record<
+  GlobalStoreKey<TStore>,
+  GlobalStoreConfigItem<any, any>
+>
 export type GlobalStateByConfig<TConfig extends GlobalStoreConfig<GlobalState>> = {
   [key in keyof TConfig]: ReturnType<TConfig[key]['init']>
 }
 
-export type GlobalStoreConfigInputItem<TValue = unknown, TPackedValue = unknown> =
+export type GlobalStoreConfigInputItem<TValue, TPackedValue> =
   | GlobalStoreConfigItem<TValue, TPackedValue>
   | GlobalStoreConfigItemInitFn<TValue>
 export type GlobalStoreConfigInput<TStore extends GlobalState> = Record<
   GlobalStoreKey<TStore>,
-  GlobalStoreConfigInputItem
+  GlobalStoreConfigInputItem<any, any>
 >
 
 export type GlobalStoreConfigByInput<TConfigInput extends GlobalStoreConfigInput<GlobalState>> = {

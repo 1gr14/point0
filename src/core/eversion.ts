@@ -317,29 +317,25 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   extractFnsWithOutput: ExtractFnWithOutput[]
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
-  dehydratedState: DehydratedState
-  serverStore: { __QUERY_CLIENT__: QueryClient; [key: string]: unknown }
+  serverStore: { queryClient: QueryClient; [key: string]: unknown }
 
   private constructor({
     eversion,
     pageLocation,
     requiredCtx,
     extractFnsWithOutput,
-    dehydratedState,
     serverStore,
   }: {
     eversion: Eversion<TRequiredCtx>
     extractFnsWithOutput: ExtractFnWithOutput[]
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
-    dehydratedState: DehydratedState
-    serverStore: { __QUERY_CLIENT__: QueryClient; [key: string]: unknown }
+    serverStore: { queryClient: QueryClient; [key: string]: unknown }
   }) {
     this.eversion = eversion
     this.extractFnsWithOutput = extractFnsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
-    this.dehydratedState = dehydratedState
     this.serverStore = serverStore
   }
 
@@ -354,21 +350,61 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }): Promise<EversionRun<TRequiredCtx>> {
     const serverStore = {}
     return await GlobalStore.runWithServerStoreProvider(serverStore, async () => {
-      const queryClientGetter = GlobalStore.memoize<QueryClient>('__QUERY_CLIENT__', () => new QueryClient())
-      const queryClient = queryClientGetter()
+      // GlobalStore.fix('queryClient', () => new QueryClient())
+      // const queryClient = queryClientGetter()
+      EversionRun.normalizeGlobalStoreQueryClientConfig()
+      const queryClient = GlobalStore.get<QueryClient>('queryClient')
       return new EversionRun<TRequiredCtx>({
         eversion,
         pageLocation,
         requiredCtx,
         extractFnsWithOutput: [],
-        dehydratedState: dehydrate(queryClient),
-        serverStore: { __QUERY_CLIENT__: queryClient, ...serverStore },
+        serverStore: { queryClient, ...serverStore },
       })
     })
   }
 
+  private static normalizeGlobalStoreQueryClientConfig(): void {
+    if (!(GlobalStore.config.queryClient as unknown)) {
+      GlobalStore.config.queryClient = {
+        init: () => new QueryClient(),
+        pack: () => undefined,
+        unpack: () => undefined,
+      }
+    }
+    GlobalStore.config.queryClient.pack = (queryClient: QueryClient) =>
+      dehydrate(queryClient, {
+        shouldDehydrateQuery: () => {
+          // This will include all queries, including failed ones
+          return true
+        },
+      })
+    GlobalStore.config.queryClient.unpack = (
+      dehydratedState: DehydratedState,
+      createQueryClient: () => QueryClient,
+    ) => {
+      const queryClient = createQueryClient()
+      hydrate(queryClient, dehydratedState)
+
+      const prefetchPageQuery = queryClient
+        .getQueryCache()
+        .getAll()
+        .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
+
+      if (!prefetchPageQuery) {
+        return queryClient
+      }
+
+      const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
+        .dehydratedState
+      hydrate(queryClient, relatedQueriesDehydratedState)
+
+      return queryClient
+    }
+  }
+
   getQueryClient(): QueryClient {
-    return isServer() ? this.serverStore.__QUERY_CLIENT__ : GlobalStore.get('__QUERY_CLIENT__')
+    return isServer() ? this.serverStore.queryClient : GlobalStore.get('queryClient')
   }
 
   async withGlobalStore<T>(callback: () => Promise<T>): Promise<T> {
@@ -713,7 +749,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = GlobalStore.getFreshFromMemoizedGetter<QueryClient>('__QUERY_CLIENT__')
+      const tempQueryClient = GlobalStore.config.queryClient.init()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
         ...(restOptions as any),

@@ -94,7 +94,7 @@ export function mount({
 }
 
 const hydrateQueryClient = ({ dehydratedState }: { dehydratedState: DehydratedState }) => {
-  const queryClient = GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
+  const queryClient = GlobalStore.get<QueryClient>('queryClient')
   hydrate(queryClient, dehydratedState)
 
   const prefetchPageQuery = queryClient

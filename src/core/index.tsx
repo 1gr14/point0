@@ -842,43 +842,6 @@ export class Point0<
     })
   }
 
-  queryClient(
-    createQueryClient: () => QueryClient,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TConnectedRootSourcePoint,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  > {
-    GlobalStore.memoize('__QUERY_CLIENT__', createQueryClient)
-    return this._continue<
-      'middleware',
-      TLetsEndPointType,
-      TConnectedRootSourcePoint,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >({
-      _pointType: 'middleware',
-    })
-  }
-
   queryOptions(
     queryOptions: ExtraUseQueryOptions,
   ): Point0<
@@ -1950,7 +1913,7 @@ export class Point0<
   }
 
   getQueryClient(): QueryClient {
-    return GlobalStore.get('__QUERY_CLIENT__')
+    return GlobalStore.get<QueryClient>('queryClient')
   }
 
   page<
@@ -3206,7 +3169,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
-    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
+    queryClient ??= GlobalStore.get<QueryClient>('queryClient')
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
     const queryFn = async () => {
       const serverData = await (async () => {
@@ -3417,7 +3380,7 @@ export class Point0<
     const queryFn = async (ctx: { pageParam: unknown }) => {
       const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
       const serverData = await (async () => {
-        queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
+        queryClient ??= GlobalStore.get<QueryClient>('queryClient')
         const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
         const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
         if (infiniteCachedServerData) {
@@ -3723,7 +3686,7 @@ export class Point0<
       outputType,
       mode,
     })
-    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
+    queryClient ??= GlobalStore.get<QueryClient>('queryClient')
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
@@ -3775,7 +3738,7 @@ export class Point0<
       outputType,
       mode,
     })
-    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
+    queryClient ??= GlobalStore.get<QueryClient>('queryClient')
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
@@ -3802,7 +3765,7 @@ export class Point0<
     if (this._pointType !== 'page') {
       throw new Error('Point type is not page')
     }
-    queryClient ??= GlobalStore.get<QueryClient>('__QUERY_CLIENT__')
+    queryClient ??= GlobalStore.get<QueryClient>('queryClient')
     const _queryOptions = this._getServerQueryOptions({
       input,
       queryOptions,
