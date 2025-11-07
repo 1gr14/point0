@@ -1,11 +1,5 @@
-import { getEnv } from './utils.js'
-
 export const isClient = (): boolean => {
-  // if (import.meta.env.IS_CLIENT === '1' || import.meta.env.IS_CLIENT === 'true') return true
-  // const IS_CLIENT =
-  //   typeof process !== 'undefined' && (process.env.IS_CLIENT === '1' || process.env.IS_CLIENT === 'true')
-  const IS_CLIENT = getEnv('IS_CLIENT')
-  if (IS_CLIENT === '1' || IS_CLIENT === 'true') return true
+  if (process.env.IS_CLIENT) return true
 
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true

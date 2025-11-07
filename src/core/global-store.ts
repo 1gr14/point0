@@ -1,213 +1,170 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import { isClient, isServer } from './client-server.js'
 
-export class GlobalStore<TStore extends GlobalState> {
+export class GlobalStore<TState extends GlobalState> {
   private static instance: GlobalStore<GlobalState> | null = null
+  private static config: GlobalStoreConfig<GlobalState> = {}
 
-  private static clientStore: GlobalState | null = null
+  private static clientState: GlobalState | null = null
   private static serverStorage: GlobalStoreServerStorage | null = null
-  private static memoizedGetters: { [key: string]: MemoizedGetterRecord<any, any> } = {}
-  private static unnamedGetterIndex = 0
 
-  static async create<TStore extends GlobalState>(): Promise<GlobalStore<TStore>> {
+  static async init<TConfigInput extends GlobalStoreConfigInput<GlobalState>>(
+    config: TConfigInput,
+  ): Promise<GlobalStoreConfigByInput<TConfigInput>> {
     if (this.instance) {
-      return this.instance as never
+      // TODO: add better check about not same confg for existing keys, or maybe it is enough
+      if (Object.keys(this.config).join(',') !== Object.keys(config).join(',')) {
+        throw new Error('GlobalStore was already initialized with different config')
+      }
+      return this.instance as GlobalStoreConfigByInput<TConfigInput>
     }
 
-    const instance = new GlobalStore<TStore>()
+    const instance = new GlobalStore<GlobalStateByConfigInput<TConfigInput>>()
     this.instance = instance
-    if (isServer()) {
+    this.config = this.configInputToConfig(config)
+    if (!process.env.IS_CLIENT) {
       const { AsyncLocalStorage } = await import('node:async_hooks')
-      GlobalStore.serverStorage = new AsyncLocalStorage<TStore>()
-      GlobalStore.clientStore = null
+      this.serverStorage = new AsyncLocalStorage<GlobalStateByConfigInput<TConfigInput>>()
+      this.clientState = null
     } else {
-      GlobalStore.serverStorage = null
-      GlobalStore.clientStore = {}
+      this.serverStorage = null
+      this.clientState = {}
     }
-    return instance
+    return instance as GlobalStoreConfigByInput<TConfigInput>
   }
 
   private static initIfClientAndNotInitialized(): void {
-    if (isClient() && !this.instance) {
+    if (process.env.IS_CLIENT && !this.instance) {
       this.instance = new GlobalStore<GlobalState>()
-      GlobalStore.serverStorage = null
-      GlobalStore.clientStore = {}
+      this.config = this.configInputToConfig({})
+      this.serverStorage = null
+      this.clientState = {}
     }
   }
 
-  memoize<TKey extends GlobalStoreKey<TStore>, TClientAndServerResult>(
-    key: TKey,
-    clientAndServerGetter: () => TClientAndServerResult,
-  ): () => TClientAndServerResult
-  memoize<TKey extends GlobalStoreKey<TStore>, TClientResult, TServerResult>(
-    key: TKey,
-    clientGetter: () => TClientResult,
-    serverGetter: () => TServerResult,
-  ): () => TClientResult | TServerResult
-  memoize<TClientAndServerResult>(clientAndServerGetter: () => TClientAndServerResult): () => TClientAndServerResult
-  memoize<TClientResult, TServerResult>(
-    clientGetter: () => TClientResult,
-    serverGetter: () => TServerResult,
-  ): () => TClientResult | TServerResult
-  memoize(arg1: any, arg2?: any, arg3?: any): any {
-    return GlobalStore.memoize(arg1, arg2, arg3)
-  }
-
-  static memoize<TClientAndServerResult>(
-    key: string,
-    clientAndServerGetter: () => TClientAndServerResult,
-  ): () => TClientAndServerResult
-  static memoize<TClientResult, TServerResult>(
-    key: string,
-    clientGetter: () => TClientResult,
-    serverGetter: () => TServerResult,
-  ): () => TClientResult | TServerResult
-  static memoize<TClientAndServerResult>(
-    clientAndServerGetter: () => TClientAndServerResult,
-  ): () => TClientAndServerResult
-  static memoize<TClientResult, TServerResult>(
-    clientGetter: () => TClientResult,
-    serverGetter: () => TServerResult,
-  ): () => TClientResult | TServerResult
-  static memoize(...args: any[]): any {
-    const { key, clientGetter, serverGetter } = ((): {
-      key: string
-      clientGetter: () => any
-      serverGetter: () => any
-    } => {
-      if (typeof args[0] === 'string') {
-        const key = args[0]
-        const clientGetter = args[1]
-        const serverGetter = args[2] || args[1]
-        return { clientGetter, serverGetter, key }
+  private static readonly configInputToConfig = (
+    configInput: GlobalStoreConfigInput<GlobalState>,
+  ): GlobalStoreConfig<GlobalState> => {
+    const config: GlobalStoreConfig<GlobalState> = {}
+    for (const [key, value] of Object.entries(configInput)) {
+      const configItem = value
+      if (typeof configItem === 'function') {
+        config[key] = {
+          init: configItem,
+          pack: () => undefined,
+          unpack: () => undefined,
+        }
       } else {
-        const key = '__UNNAMED__' + GlobalStore.unnamedGetterIndex++
-        const clientGetter = args[0]
-        const serverGetter = args[1] || args[0]
-        return { clientGetter, serverGetter, key }
+        config[key] = configItem as never
       }
-    })()
-    GlobalStore.memoizedGetters[key] = { clientGetter, serverGetter }
-    return () => GlobalStore.get(key as never)
+    }
+    return config
   }
 
-  get<TKey extends GlobalStoreKey<TStore>>(key: TKey): TStore[TKey] {
-    return GlobalStore.get(key as never)
+  getState = (): TState => {
+    return GlobalStore.getState() as TState
   }
-  static get<TClientResult, TServerResult = undefined>(
-    key: string,
-  ): TServerResult extends undefined ? TClientResult : TServerResult | TClientResult {
+  static getState = (): GlobalState => {
     this.initIfClientAndNotInitialized()
-    if (this.serverStorage) {
-      const store = this.serverStorage.getStore()
-      if (!store) {
-        throw new Error('Server store not found. You should call GlobalStore.get() only inside server context')
+    if (process.env.IS_CLIENT) {
+      if (!this.clientState) {
+        throw new Error('Client state not found. Please, call await GlobalStore.init() first')
       }
-      const existingValue = (store as any)[key]
-      if (existingValue) {
-        return existingValue
-      }
-      const getter = (this.memoizedGetters as any)[key]
-      if (!getter) {
-        throw new Error(`Neither memoized getter nor value for key ${key} found`)
-      }
-      const newValue = getter.serverGetter()
-      ;(store as any)[key] = newValue
-      return newValue as never
-    } else if (this.clientStore) {
-      const existingValue = (this.clientStore as any)[key]
-      if (existingValue) {
-        return existingValue
-      }
-      const getter = (this.memoizedGetters as any)[key]
-      if (!getter) {
-        throw new Error(`Neither memoized getter nor value for key ${key} found`)
-      }
-      const newValue = getter.clientGetter()
-      ;(this.clientStore as any)[key] = newValue
-      return newValue as never
+      return this.clientState
     } else {
-      throw new Error(
-        'Server storage and client store are not initialized. Please, call await GlobalState.init() first',
-      )
+      if (!this.serverStorage || !this.instance) {
+        throw new Error('Server storage and instance are not initialized. Please, call await GlobalStore.init() first')
+      }
+      const serverStore = this.serverStorage.getStore()
+      if (!serverStore) {
+        throw new Error(
+          'Server store not found. You should call this function on server only inside server context wrapped in GlobalStore.runWithServerStoreProvider',
+        )
+      }
+      return serverStore
     }
   }
 
-  getFreshFromMemoizedGetter<TKey extends GlobalStoreKey<TStore>>(key: TKey): TStore[TKey] {
-    return GlobalStore.getFreshFromMemoizedGetter(key as never)
-  }
-  static getFreshFromMemoizedGetter<TClientResult, TServerResult = undefined>(
-    key: string,
-  ): TServerResult extends undefined ? TClientResult : TServerResult | TClientResult {
-    this.initIfClientAndNotInitialized()
-    if (this.serverStorage) {
-      const store = this.serverStorage.getStore()
-      if (!store) {
-        throw new Error('Server store not found. You should call GlobalStore.get() only inside server context')
+  // lets call this fn only on server, no need to call it on client
+  static pack = () => {
+    const state = this.getState()
+    const packed: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(state)) {
+      const configItem = this.config[key]
+      const packedValue = configItem.pack(value)
+      if (packedValue !== undefined) {
+        packed[key] = packedValue
       }
-      const getter = this.memoizedGetters[key] as MemoizedGetterRecord | undefined
-      if (!getter) {
-        throw new Error(`Memoized getter for key ${key} not found`)
-      }
-      return getter.serverGetter() as never
-    } else if (this.clientStore) {
-      const getter = this.memoizedGetters[key] as MemoizedGetterRecord | undefined
-      if (!getter) {
-        throw new Error(`Memoized getter for key ${key} not found`)
-      }
-      return getter.clientGetter() as never
-    } else {
-      throw new Error(
-        'Server storage and client store are not initialized. Please, call await GlobalState.init() first',
-      )
     }
+    return packed
   }
 
-  set<TPartialStore extends Partial<TStore>>({ store }: { store: TPartialStore }): GlobalStore<TStore>
-  set<TKey extends GlobalStoreKey<TStore>>(key: TKey, value: TStore[TKey]): GlobalStore<TStore>
-  set(arg1: any, arg2?: any): GlobalStore<TStore> {
-    return GlobalStore.set(arg1, arg2) as GlobalStore<TStore>
+  // lets call this fn only on client, no need to call it on server
+  static unpack = (packed: Record<string, unknown>): GlobalState => {
+    const state: GlobalState = {}
+    for (const [key, value] of Object.entries(packed)) {
+      const configItem = this.config[key]
+      const unpackedValue = configItem.unpack(value)
+      if (unpackedValue !== undefined) {
+        state[key] = unpackedValue
+      } else {
+        state[key] = configItem.init()
+      }
+    }
+    return state
   }
 
-  static set({ store }: { store: GlobalState }): GlobalStore<GlobalState>
+  get<TKey extends GlobalStoreKey<TState>>(key: TKey): TState[TKey] {
+    return GlobalStore.get(key)
+  }
+  static get<TValue = unknown>(key: string): TValue {
+    const configItem = this.config[key] as GlobalStoreConfigItem<GlobalState, unknown> | undefined
+    if (!configItem) {
+      throw new Error(`Key "${key}" not found in config`)
+    }
+    const state = this.getState()
+    const existingValue = state[key]
+    if (existingValue) {
+      return existingValue as TValue
+    }
+    const initialValue = configItem.init()
+    state[key] = initialValue
+    return initialValue as TValue
+  }
+
+  set<TKey extends GlobalStoreKey<TState>>(key: TKey, value: TState[TKey]): GlobalStore<TState>
+  set<TPartialState extends Partial<TState>>(state: TPartialState): GlobalStore<TState>
+  set(arg1: any, arg2?: any): GlobalStore<TState> {
+    return GlobalStore.set(arg1, arg2) as GlobalStore<TState>
+  }
   static set(key: string, value: unknown): GlobalStore<GlobalState>
+  static set(state: GlobalState): GlobalStore<GlobalState>
   static set(...args: any[]): GlobalStore<GlobalState> {
-    this.initIfClientAndNotInitialized()
-    const partialStore = ((): Partial<GlobalState> => {
+    const state = this.getState()
+    const partialState = ((): Partial<GlobalState> => {
       if (typeof args[0] === 'string') {
         return { [args[0]]: args[1] } as Partial<GlobalState>
       } else {
         return args[0] as Partial<GlobalState>
       }
     })()
-    if (this.serverStorage) {
-      const store = this.serverStorage.getStore()
-      if (!store) {
-        throw new Error('Server store not found. You should call GlobalStore.get() only inside server context')
+    for (const [key, value] of Object.entries(partialState)) {
+      const configItem = this.config[key] as GlobalStoreConfigItem<GlobalState, unknown> | undefined
+      if (!configItem) {
+        throw new Error(`Key "${key}" not found in config`)
       }
-      for (const [key, value] of Object.entries(partialStore)) {
-        store[key] = value
-      }
-    } else if (this.clientStore) {
-      for (const [key, value] of Object.entries(partialStore)) {
-        this.clientStore[key] = value
-      }
-    } else {
-      throw new Error(
-        'Server storage and client store are not initialized. Please, call await GlobalState.init() first',
-      )
+      state[key] = value
     }
     return this.instance as GlobalStore<GlobalState>
   }
 
-  runWithServerStoreProvider<TStore extends GlobalState = GlobalState, TResult = unknown>(
-    serverStore: TStore,
+  runWithServerStoreProvider<TState extends GlobalState = GlobalState, TResult = unknown>(
+    serverStore: Partial<TState>,
     callback: () => TResult,
   ): TResult {
     return GlobalStore.runWithServerStoreProvider(serverStore, callback)
   }
 
-  static runWithServerStoreProvider<TResult>(serverStore: GlobalState, callback: () => TResult): TResult {
+  static runWithServerStoreProvider<TResult>(serverStore: Partial<GlobalState>, callback: () => TResult): TResult {
     this.initIfClientAndNotInitialized()
     if (this.serverStorage) {
       return this.serverStorage.run(serverStore, callback)
@@ -217,11 +174,37 @@ export class GlobalStore<TStore extends GlobalState> {
   }
 }
 
-export type MemoizedGetterFn<T = unknown> = () => T
-export type MemoizedGetterRecord<TClientResult = unknown, TServerResult = unknown> = {
-  clientGetter: MemoizedGetterFn<TClientResult>
-  serverGetter: TServerResult extends undefined ? MemoizedGetterFn<TClientResult> : MemoizedGetterFn<TServerResult>
-}
-export type GlobalState = { [key: string]: unknown }
 export type GlobalStoreServerStorage = AsyncLocalStorage<GlobalState>
+
+export type GlobalState = { [key: string]: unknown }
 export type GlobalStoreKey<TStore extends GlobalState> = Extract<keyof TStore, string>
+
+export type GlobalStoreConfigItemInitFn<TValue = unknown> = () => TValue
+export type GlobalStoreConfigItem<TValue = unknown, TPackedValue = unknown> = {
+  init: () => TValue
+  pack: (value: TValue) => TPackedValue // | TPackedValue // in case it is not packable here will be null
+  unpack: (packedValue: TPackedValue) => TValue // | TPackedValue // and here
+}
+export type GlobalStoreConfig<TStore extends GlobalState> = Record<GlobalStoreKey<TStore>, GlobalStoreConfigItem>
+export type GlobalStateByConfig<TConfig extends GlobalStoreConfig<GlobalState>> = {
+  [key in keyof TConfig]: ReturnType<TConfig[key]['init']>
+}
+
+export type GlobalStoreConfigInputItem<TValue = unknown, TPackedValue = unknown> =
+  | GlobalStoreConfigItem<TValue, TPackedValue>
+  | GlobalStoreConfigItemInitFn<TValue>
+export type GlobalStoreConfigInput<TStore extends GlobalState> = Record<
+  GlobalStoreKey<TStore>,
+  GlobalStoreConfigInputItem
+>
+
+export type GlobalStoreConfigByInput<TConfigInput extends GlobalStoreConfigInput<GlobalState>> = {
+  [key in keyof TConfigInput]: TConfigInput[key] extends GlobalStoreConfigItemInitFn<infer TValue>
+    ? GlobalStoreConfigItem<TValue, TValue>
+    : TConfigInput[key] extends GlobalStoreConfigItem<infer TValue, infer TPackedValue>
+      ? GlobalStoreConfigItem<TValue, TPackedValue>
+      : never
+}
+export type GlobalStateByConfigInput<TConfigInput extends GlobalStoreConfigInput<GlobalState>> = {
+  [key in keyof TConfigInput]: ReturnType<GlobalStoreConfigByInput<TConfigInput>[key]['init']>
+}
