@@ -1,5 +1,3 @@
-import type { AnyLocation } from '@devp0nt/route0'
-import type { QueryClient } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
@@ -10,8 +8,6 @@ import type { Points } from './points.js'
 import type { RootPoint } from './types.js'
 
 export type HydratedAppProps = {
-  ssrLocation: AnyLocation | undefined
-  queryClient: QueryClient
   root: RootPoint
   points: Points
 }
@@ -58,8 +54,6 @@ export function mount({
   GlobalStore.unpack(packedGlobalStore)
 
   const appElement = createElement(App, {
-    ssrLocation: undefined,
-    queryClient: GlobalStore.get<QueryClient>('queryClient'),
     points,
     root,
   })

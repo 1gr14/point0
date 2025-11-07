@@ -6,7 +6,6 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import { isServer } from './client-server.js'
 import { GlobalStore } from './global-store.js'
 import { Point0 } from './index.js'
 import type { HydratedAppComponent } from './mount.js'
@@ -550,10 +549,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(
         React.createElement(App, {
-          ssrLocation: this.pageLocation,
           root: this.eversion.root,
           points: this.eversion.points,
-          queryClient: this.getQueryClient(),
         }),
       )
       await stream.allReady
@@ -728,10 +725,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   createHydratedAppElement(App: HydratedAppComponent): React.ReactElement {
     return React.createElement(App, {
-      ssrLocation: this.pageLocation,
       root: this.eversion.root,
       points: this.eversion.points,
-      queryClient: this.getQueryClient(),
     })
   }
 }

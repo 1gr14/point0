@@ -11,13 +11,13 @@ export class GlobalStore<TState extends GlobalState> {
 
   static async init<TConfigInput extends GlobalStoreConfigInput<GlobalState>>(
     config: TConfigInput,
-  ): Promise<GlobalStoreConfigByInput<TConfigInput>> {
+  ): Promise<GlobalStoreByConfigInput<TConfigInput>> {
     if (this.instance) {
       // TODO: add better check about not same confg for existing keys, or maybe it is enough
       if (Object.keys(this.config).join(',') !== Object.keys(config).join(',')) {
         throw new Error('GlobalStore was already initialized with different config')
       }
-      return this.instance as GlobalStoreConfigByInput<TConfigInput>
+      return this.instance as GlobalStoreByConfigInput<TConfigInput>
     }
 
     const instance = new GlobalStore<GlobalStateByConfigInput<TConfigInput>>()
@@ -32,7 +32,7 @@ export class GlobalStore<TState extends GlobalState> {
       this.clientState = {}
     }
     this.normalizeGlobalStoreConfig()
-    return instance as GlobalStoreConfigByInput<TConfigInput>
+    return instance as GlobalStoreByConfigInput<TConfigInput>
   }
 
   private static initIfClientAndNotInitialized(): void {
@@ -283,3 +283,6 @@ export type GlobalStoreConfigByInput<TConfigInput extends GlobalStoreConfigInput
 export type GlobalStateByConfigInput<TConfigInput extends GlobalStoreConfigInput<GlobalState>> = {
   [key in keyof TConfigInput]: ReturnType<GlobalStoreConfigByInput<TConfigInput>[key]['init']>
 }
+export type GlobalStoreByConfigInput<TConfigInput extends GlobalStoreConfigInput<GlobalState>> = GlobalStore<
+  GlobalStateByConfigInput<TConfigInput>
+>

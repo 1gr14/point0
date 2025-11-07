@@ -3,13 +3,14 @@ import { Router, RouterRoutes } from 'point0/adapters/wouter'
 import type { HydratedAppProps } from 'point0/core/mount'
 import { Unhead } from 'point0/core/unhead'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'
+import { globalStore } from './lib/global-store'
 
-export default function App({ queryClient, ssrLocation, points }: HydratedAppProps) {
+export default function App({ points }: HydratedAppProps) {
   return (
     <points.Provider>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={globalStore.get('queryClient')}>
         <Unhead>
-          <Router ssrLocation={ssrLocation} policy="prefetch">
+          <Router policy="prefetch">
             <clientCtx2.Provider>
               <clientCtx1.Provider>
                 <RouterRoutes />
