@@ -4,31 +4,15 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import superjson from 'superjson'
 import type { GlobalState } from './global-store.js'
 import { GlobalStore } from './global-store.js'
-import type { Points } from './points.js'
-import type { RootPoint } from './types.js'
 
-export type HydratedAppProps = {
-  root: RootPoint
-  points: Points
-}
-export type HydratedAppComponent = (props: HydratedAppProps) => React.ReactElement
+export type AppComponent = () => React.ReactElement
 
 let reactRoot: Root | null = null
 
-export function mount({
-  App,
-  root,
-  points,
-  domRootElement,
-}: {
-  App: HydratedAppComponent
-  root: RootPoint
-  points: Points
-  domRootElement?: HTMLElement | null
-}) {
+export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
   if (domRootElement !== undefined) {
     if (!domRootElement) {
-      throw new Error(`Provided domRootElement is null, please provide correct domRootElement`)
+      throw new Error(`Provided domRootElement is not found, please provide correct domRootElement`)
     }
   } else {
     domRootElement = document.getElementById('root')
@@ -53,10 +37,7 @@ export function mount({
   })()
   GlobalStore.unpack(packedGlobalStore)
 
-  const appElement = createElement(App, {
-    points,
-    root,
-  })
+  const appElement = createElement(App)
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.

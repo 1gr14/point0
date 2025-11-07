@@ -8,7 +8,7 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 import { GlobalStore } from './global-store.js'
 import { Point0 } from './index.js'
-import type { HydratedAppComponent } from './mount.js'
+import type { AppComponent } from './mount.js'
 import { Points } from './points.js'
 import type {
   AnyPoint,
@@ -539,7 +539,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     seenQueryHashes = new Set<string>(),
     level = 0,
   }: {
-    App: HydratedAppComponent
+    App: AppComponent
     renderToReadableStream: typeof RenderToReadableStream
     pagePoint: AnyPoint | undefined
     input: InputRaw
@@ -547,12 +547,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     level?: number
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
-      const stream = await renderToReadableStream(
-        React.createElement(App, {
-          root: this.eversion.root,
-          points: this.eversion.points,
-        }),
-      )
+      const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
       const queryClientState = this.getQueryClient().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
@@ -720,13 +715,6 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const tempDehydratedState = dehydrate(tempQueryClient)
 
       hydrate(this.getQueryClient(), tempDehydratedState)
-    })
-  }
-
-  createHydratedAppElement(App: HydratedAppComponent): React.ReactElement {
-    return React.createElement(App, {
-      root: this.eversion.root,
-      points: this.eversion.points,
     })
   }
 }

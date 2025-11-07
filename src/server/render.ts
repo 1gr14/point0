@@ -5,7 +5,7 @@ import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun } from '../core/eversion.js'
 import { GlobalStore } from '../core/global-store.js'
-import type { HydratedAppComponent } from '../core/mount.js'
+import type { AppComponent } from '../core/mount.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
@@ -166,7 +166,7 @@ export async function getReadableStreamWithWrapper({
   clientBundlePath,
   eversionRun,
 }: {
-  App: HydratedAppComponent
+  App: AppComponent
   suffix?: string
   prefix?: string
   clientBundlePath?: string
@@ -205,7 +205,7 @@ export async function renderReadableStream({
   rootElementId,
   eversionRun,
 }: {
-  App: HydratedAppComponent
+  App: AppComponent
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
@@ -231,7 +231,7 @@ export async function renderAppAsReadableStream({
   input,
   ...props
 }: {
-  App: HydratedAppComponent
+  App: AppComponent
   eversionRun: EversionRun
   pagePoint: AnyPoint | undefined
   input: InputRaw
