@@ -1,4 +1,5 @@
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
+import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
@@ -187,7 +188,7 @@ export async function getReadableStreamWithWrapper({
   })
   const reactStream = await eversionRun.withServerGlobalState(
     async () =>
-      await renderer(eversionRun.createHydratedAppElement(App), {
+      await renderer(createElement(App), {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
       }),
   )
