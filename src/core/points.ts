@@ -73,6 +73,19 @@ export class Points<TReady extends boolean = boolean> {
     return new Points<false>({ collection: routedPoints, pagesTree, pagesTreeSource, routes, ready: false })
   }
 
+  static readonly create = (
+    points: ReadyPointsCollection | LazyPointsCollection | RawPointsCollection | Points,
+  ): Points<boolean> => {
+    if (points instanceof Points) {
+      return points
+    }
+    if (Points.isLazyPointsCollection(points)) {
+      return Points.lazy(points)
+    } else {
+      return Points.ready(points)
+    }
+  }
+
   async load(): Promise<Points<true>> {
     if (this.ready) {
       return this as Points<true>
@@ -102,6 +115,10 @@ export class Points<TReady extends boolean = boolean> {
 
   private static isRawPointsCollection(points: any): points is RawPointsCollection {
     return points.length && points.every((p: any) => p instanceof Point0)
+  }
+
+  private static isLazyPointsCollection(points: any): points is LazyPointsCollection {
+    return points.length && points.some((p: any) => typeof p.point === 'function')
   }
 
   private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
@@ -547,6 +564,8 @@ export type ReadyRoutedPointsCollectionRecord = {
 }
 export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
+
+export type AnyPointsCollection = ReadyPointsCollection | LazyPointsCollection | RawPointsCollection | Points
 
 export type PagesTreeSourceRecord = {
   layout: string | undefined

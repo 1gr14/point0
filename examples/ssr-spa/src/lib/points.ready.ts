@@ -1,4 +1,4 @@
-import { Points } from 'point0/core/points.js'
+import type { RawPointsCollection } from 'point0/core/points.js'
 import unnamed_6l07mdq734, { BestIdeaComponent as BestIdeaComponent_3qkxiugr0k } from '../pages/home.js'
 import { empty as empty_n50wzpyog6 } from '../pages/empty.js'
 import { ideasPage as ideasPage_1ez06sxoz6e } from '../pages/ideas.js'
@@ -10,7 +10,7 @@ import { ideaLayout as ideaLayout_15r5wfdlfdu } from '../layouts/idea.js'
 import { clientCtx1 as clientCtx1_1fcj193ea8l, clientCtx2 as clientCtx2_1qoylysk392, clientCtx3 as clientCtx3_kjm4ujslwt } from './client-ctx.js'
 import { client as client_29b1dq6qbu2 } from './client.js'
 
-export const points = Points.ready([
+export const points = [
     unnamed_6l07mdq734.point,
     empty_n50wzpyog6.point,
     ideasPage_1ez06sxoz6e.point,
@@ -26,4 +26,4 @@ export const points = Points.ready([
     clientCtx2_1qoylysk392.point,
     clientCtx3_kjm4ujslwt.point,
     client_29b1dq6qbu2.point,
-])
+] as RawPointsCollection

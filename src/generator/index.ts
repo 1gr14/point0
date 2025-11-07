@@ -322,13 +322,14 @@ export class FileGenerator {
     if (this.banner) {
       lines.push(this.banner)
     }
+    lines.push(`import type { LazyPointsCollection } from 'point0/core/points.js'`)
     lines.push(`import { Points } from 'point0/core/points.js'`)
     lines.push(``)
 
     if (this.points.length === 0) {
-      lines.push(`export const points = Points.lazy([])`)
+      lines.push(`export const points = [] as LazyPointsCollection`)
     } else {
-      lines.push(`export const points = Points.lazy([`)
+      lines.push(`export const points = [`)
       for (const point of points) {
         lines.push(`  {`)
         if (point.root) {
@@ -353,9 +354,11 @@ export class FileGenerator {
         )
         lines.push(`  },`)
       }
-      lines.push(`])`)
+      lines.push(`] as LazyPointsCollection`)
     }
 
+    lines.push(``)
+    lines.push(`export const initializePoints = () => Points.create(points)`)
     lines.push(``)
     return lines.join('\n')
   }
@@ -368,7 +371,7 @@ export class FileGenerator {
     if (this.banner) {
       lines.push(this.banner)
     }
-    lines.push(`import { Points } from 'point0/core/points.js'`)
+    lines.push(`import type { RawPointsCollection } from 'point0/core/points.js'`)
 
     const hashedPoints = points.map((p) => ({
       ...p,
@@ -410,10 +413,10 @@ export class FileGenerator {
 
     if (this.points.length === 0) {
       lines.push(``)
-      lines.push(`export const points = Points.ready([])`)
+      lines.push(`export const points = [] as RawPointsCollection`)
     } else {
       lines.push(``)
-      lines.push(`export const points = Points.ready([`)
+      lines.push(`export const points = [`)
       for (const point of hashedPoints) {
         if (point.exportName === 'default') {
           lines.push(`    unnamed_${point.hash}.point,`)
@@ -421,7 +424,7 @@ export class FileGenerator {
           lines.push(`    ${point.exportName}_${point.hash}.point,`)
         }
       }
-      lines.push(`])`)
+      lines.push(`] as RawPointsCollection`)
     }
 
     lines.push(``)

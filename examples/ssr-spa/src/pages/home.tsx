@@ -1,10 +1,11 @@
 import { Link } from 'point0/adapters/wouter'
+import { useState } from 'react'
 import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
-import { routes } from '../lib/routes.js'
 import { $ } from '../lib/global-store.js'
+import { routes } from '../lib/routes.js'
 
 const something = $.define('something', () => {
   return {
@@ -44,6 +45,7 @@ export default generalLayout
   })
   .loader()
   .page(() => {
+    const [state, setState] = useState(0)
     const ctx1 = clientCtx1.useValue()
     const ctx2 = clientCtx2.useValue()
     const x = clientCtx1.useValue('shmest')
@@ -51,6 +53,14 @@ export default generalLayout
     something.stable = 456
     return (
       <div>
+        <button
+          onClick={() => {
+            setState(state + 1)
+          }}
+        >
+          Click me
+        </button>
+        <p>State: {state}</p>
         <p>Something random: {something.random}</p>
         <p>Something date: {something.date.getTime()}</p>
         <p>Something stable: {something.stable}</p>

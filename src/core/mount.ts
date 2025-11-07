@@ -1,12 +1,13 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
+import type { Points } from './points.js'
 
-export type AppComponent = () => React.ReactElement
+export type AppComponent = (props: { points: Points }) => React.ReactElement
 
 let reactRoot: Root | null = null
 
-export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
+export function mount(App: AppComponent, points: Points, domRootElement?: HTMLElement | null) {
   if (domRootElement !== undefined) {
     if (!domRootElement) {
       throw new Error(`Provided domRootElement is not found, please provide correct domRootElement`)
@@ -20,7 +21,7 @@ export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
     }
   }
 
-  const appElement = createElement(App)
+  const appElement = createElement(App, { points })
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.

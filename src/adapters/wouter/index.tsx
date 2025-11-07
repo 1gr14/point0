@@ -44,17 +44,19 @@ export const Router = ({
   Page404 = DefaultPage404,
   policy,
   status,
+  pagesTree,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
   Page404?: React.ComponentType
   policy?: RouterPolicy
   status?: RouterStatus
+  pagesTree?: PagesTree
   children?: React.ReactNode
 }): React.ReactElement => {
-  const pointsCtx = useContext(Points.Context)
-  if (!pointsCtx) {
-    throw new Error('Points context not found')
+  pagesTree ??= useContext(Points.Context)?.pagesTree
+  if (!pagesTree && !children) {
+    throw new Error('pagesTree or children is required')
   }
   const wouterRouterProps = useMemo(() => {
     if (process.env.IS_CLIENT) {
@@ -79,18 +81,29 @@ export const Router = ({
         policy={policy}
         status={status}
       >
-        {children ?? <RenderPagesTree pagesTree={pointsCtx.pagesTree} Page404={Page404} />}
+        {children ??
+          (pagesTree ? (
+            <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
+          ) : (
+            <>Pages tree or children is required</>
+          ))}
       </RouterContextProvider>
     </WouterRouter>
   )
 }
 
-export const RouterRoutes = ({ Page404 = DefaultPage404 }: { Page404?: React.ComponentType }): React.ReactElement => {
-  const pointsCtx = useContext(Points.Context)
-  if (!pointsCtx) {
-    throw new Error('Points context not found')
+export const RouterRoutes = ({
+  Page404 = DefaultPage404,
+  pagesTree,
+}: {
+  Page404?: React.ComponentType
+  pagesTree?: PagesTree
+}): React.ReactElement => {
+  pagesTree ??= useContext(Points.Context)?.pagesTree
+  if (!pagesTree) {
+    throw new Error('pagesTree is required')
   }
-  return <RenderPagesTree pagesTree={pointsCtx.pagesTree} Page404={Page404} />
+  return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
 }
 
 const DefaultPage404 = () => {

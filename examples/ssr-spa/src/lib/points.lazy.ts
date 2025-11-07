@@ -1,6 +1,7 @@
+import type { LazyPointsCollection } from 'point0/core/points.js'
 import { Points } from 'point0/core/points.js'
 
-export const points = Points.lazy([
+export const points = [
   {
     type: 'page',
     name: 'home',
@@ -90,4 +91,6 @@ export const points = Points.lazy([
     name: 'client',
     point: async () => (await import('./client.js')).client.point,
   },
-])
+] as LazyPointsCollection
+
+export const initializePoints = () => Points.create(points)

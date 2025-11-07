@@ -1,4 +1,5 @@
 import type { AppComponent } from '../core/mount.js'
+import type { RawPointsCollection, ReadyPointsCollection } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { RequiredCtx, RootId, RootPoint } from '../core/types.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
@@ -9,7 +10,7 @@ export type ServerAdapterLogger = {
 }
 export type ServerAdapterClientInput = {
   ssr?: boolean
-  points?: Points
+  points?: ReadyPointsCollection | RawPointsCollection | Points<true>
   root: RootPoint
   basepath?: string
   distDir?: string
@@ -21,7 +22,7 @@ export type ServerAdapterClientInput = {
 }
 export type ServerAdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   root: RootPoint<TRequiredCtx>
-  points?: Points
+  points?: ReadyPointsCollection | RawPointsCollection | Points<true>
   port?: number | string | undefined
   clientsDevServerPort?: number | string | undefined
   logger?: ServerAdapterLogger
@@ -73,7 +74,7 @@ const parseServerAdapterClientInput = (
   const ssr = input.ssr ?? true
   return {
     ssr,
-    points: input.points ?? Points.ready([]),
+    points: Points.create(input.points ?? []),
     root: input.root,
     basepath,
     distDir,
@@ -112,7 +113,7 @@ export const parseServerAdapterInput = <TRequiredCtx extends RequiredCtx = Requi
     )
   }
   return {
-    points: points ?? Points.ready([]),
+    points: Points.create(points ?? []),
     port,
     clientsDevServerPort: input.clientsDevServerPort,
     logger,

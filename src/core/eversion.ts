@@ -546,7 +546,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     level?: number
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
-      const stream = await renderToReadableStream(React.createElement(App))
+      const stream = await renderToReadableStream(React.createElement(App, { points: this.eversion.points }))
       await stream.allReady
       const queryClientState = this.getQueryClient().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
