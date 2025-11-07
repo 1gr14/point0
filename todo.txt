@@ -1,12 +1,13 @@
-env
+.define()
 getter toProxy()
+
 simplify renderer
 
-
+env
 
 location optional prop and get it from getCurrentLocation router
 provider.getValue()
-shring hydat=rated app props and use global storage to provide correct
+
 .prefetchOnInit(boolean)
 .prefetchMode(MODE)
 
