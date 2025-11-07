@@ -2151,6 +2151,14 @@ export class Point0<
     TProps
   >
   provider(providerValueSetter?: ProviderValueSetterFn<any, any, any, any>) {
+    GlobalStore.define<FinalClientData<TData, TClientData> | undefined>(
+      `__PROVIDER_VALUE_${this._rootId}_${this._name}`,
+      {
+        init: () => undefined as never,
+        pack: undefined,
+        unpack: undefined,
+      },
+    )
     const point = this._continue({
       _pointType: 'provider',
       _letsEndPointType: undefined,
@@ -2834,6 +2842,25 @@ export class Point0<
     } as never)
   }
 
+  getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
+    const value = GlobalStore.getOrUndefined<FinalClientData<TData, TClientData>>(
+      `__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input || {})}`,
+    )
+    if (!value) {
+      throw new Error(
+        `Provider value not found on point: provider.${this._name}. You should call getValue only after Provider component is mounted.`,
+      )
+    }
+    return value
+  }
+
+  getValueSafe(): FinalClientData<TData, TClientData> | undefined {
+    const value = GlobalStore.get<FinalClientData<TData, TClientData> | undefined>(
+      `__PROVIDER_VALUE_${this._rootId}_${this._name}`,
+    )
+    return value
+  }
+
   Provider: MountableComponent<TInputSchema, UndefinedProps, true> = (props) => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -2874,6 +2901,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
+    GlobalStore.setWeak(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, value)
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,

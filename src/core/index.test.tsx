@@ -4,6 +4,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Eversion } from './eversion.js'
 import { Point0 } from './index.js'
+import { Points } from './points.js'
 import type {
   AnyPoint,
   EmptyCtx,
@@ -17,7 +18,10 @@ import type {
   UndefinedRoute,
   UndefinedRouteDefinition,
 } from './types.js'
-import { Points } from './points.js'
+
+await import('./global-store.js').then(async ({ GlobalStore }) => {
+  return await GlobalStore.init({})
+})
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -182,7 +186,11 @@ describe('Point0', () => {
       root: clientPointBase02,
       points: Points.ready([clientPoint02.point]),
     })
-    const run = await eversion2Connection.createRun({ pageLocation: Route0.getLocation('/'), requiredCtx: undefined })
+    const run = await eversion2Connection.createRun({
+      pageLocation: Route0.getLocation('/'),
+      currentLocation: Route0.getLocation('/'),
+      requiredCtx: undefined,
+    })
     const x: AnyPoint = clientPoint02.point
     x._route.get()
     expect(await run.extract({ point: clientPoint02.point, input: {} })).toEqual({
@@ -300,7 +308,11 @@ describe('Point0', () => {
       root: clientPointBase01,
       points: Points.ready([clientPoint01]),
     })
-    const run = await eversion1Connection.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: undefined })
+    const run = await eversion1Connection.createRun({
+      pageLocation: Route0.getLocation(url),
+      currentLocation: Route0.getLocation(url),
+      requiredCtx: undefined,
+    })
     expect(await run.extract({ point: clientPoint01, input: {} })).toEqual({
       ctx: {
         a: 1,
@@ -324,7 +336,11 @@ describe('Point0', () => {
       root: clientPointBase02,
       points: Points.ready([clientPoint02]),
     })
-    const run2 = await eversion2Connection.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: undefined })
+    const run2 = await eversion2Connection.createRun({
+      pageLocation: Route0.getLocation(url),
+      currentLocation: Route0.getLocation(url),
+      requiredCtx: undefined,
+    })
     expect(await run2.extract({ point: clientPoint02, input: {} })).toEqual({
       ctx: {
         a: 3,
@@ -347,7 +363,11 @@ describe('Point0', () => {
       root: clientPointBase03,
       points: Points.ready([clientPoint03]),
     })
-    const run3 = await eversion3Connection.createRun({ pageLocation: Route0.getLocation(url), requiredCtx: undefined })
+    const run3 = await eversion3Connection.createRun({
+      pageLocation: Route0.getLocation(url),
+      currentLocation: Route0.getLocation(url),
+      requiredCtx: undefined,
+    })
     expect(
       await run3.extract({
         point: clientPoint03,
@@ -383,6 +403,7 @@ describe('Point0', () => {
     })
     const run1 = await eversion1Connection.createRun({
       pageLocation: Route0.getLocation(url),
+      currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
     expect(
@@ -416,6 +437,7 @@ describe('Point0', () => {
     })
     const run2 = await eversion2Connection.createRun({
       pageLocation: Route0.getLocation(url),
+      currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
     expect(await run2.extract({ point: clientPoint02, input: {} })).toEqual({
@@ -444,6 +466,7 @@ describe('Point0', () => {
     })
     const run3 = await eversion3Connection.createRun({
       pageLocation: Route0.getLocation(url),
+      currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
     expect(await run3.extract({ point: clientPoint03, input: {} })).toEqual({

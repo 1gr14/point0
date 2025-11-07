@@ -14,8 +14,9 @@ export class GlobalStore<TState extends GlobalState> {
   private static serverStorage: GlobalStoreServerStorage | null = null
 
   static async init<TConfigInput extends GlobalStoreConfigInput<GlobalState>>(
-    config: TConfigInput,
+    config?: TConfigInput,
   ): Promise<GlobalStoreProxy<GlobalStateByConfigInput<TConfigInput>>> {
+    config ??= {} as TConfigInput
     if (this.instance) {
       Object.assign(this.config, this.configInputToConfig(config))
       this.instance.proxy ||= await this.instance.createProxy()
@@ -275,6 +276,17 @@ export class GlobalStore<TState extends GlobalState> {
     return initialValue as TValue
   }
 
+  static getOrUndefined<TValue = unknown>(key: string): TValue | undefined {
+    try {
+      return this.get<TValue>(key)
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found in config')) {
+        return undefined
+      }
+      throw error
+    }
+  }
+
   set<TKey extends GlobalStoreKey<TState>>(key: TKey, value: TState[TKey]): GlobalStore<TState>
   set<TPartialState extends Partial<TState>>(state: TPartialState): GlobalStore<TState>
   set(arg1: any, arg2?: any): GlobalStore<TState> {
@@ -299,6 +311,18 @@ export class GlobalStore<TState extends GlobalState> {
       state[key] = value
     }
     return this.instance as GlobalStore<GlobalState>
+  }
+
+  static setWeak<TValue = unknown>(key: string, value: TValue): void {
+    if (key in this.config) {
+      this.set(key, value)
+      return
+    }
+    this.define(key, {
+      init: () => value,
+      pack: undefined,
+      unpack: undefined,
+    })
   }
 
   runWithServerStateProvider<TState extends GlobalState = GlobalState, TResult = unknown>(
