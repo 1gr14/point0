@@ -1,3 +1,4 @@
+import { Route0 } from '@devp0nt/route0'
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
@@ -362,9 +363,18 @@ export class GlobalStore<TState extends GlobalState> {
     }
   }
 
+  private static normalizeCurrentLocationConfig(): void {
+    this.config.currentLocation = {
+      init: () => Route0.getLocation('/'),
+      pack: (value) => value,
+      unpack: (value) => value,
+    }
+  }
+
   private static normalizeGlobalStoreConfig(): void {
     this.normalizeQueryClientConfig()
     this.normalizeSsrLocationConfig()
+    this.normalizeCurrentLocationConfig()
   }
 }
 

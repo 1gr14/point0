@@ -1,4 +1,3 @@
-location optional prop and get it from getCurrentLocation router
 provider.getValue() do not with global store
 points.reload()
 

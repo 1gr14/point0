@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Points } from './points.js'
+import { GlobalStore } from './global-store.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -52,6 +53,9 @@ export function RouterContextProvider({
   const [nextLocation, setNextLocation] = useState<AnyLocation | undefined>()
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()
+  useEffect(() => {
+    GlobalStore.set('currentLocation', currentLocation)
+  }, [currentLocation])
 
   const value = useMemo(
     () => ({
@@ -93,12 +97,12 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   }, [route, location, routerCtx.currentLocation, pointsCtx.routesHash])
 }
 
-export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useIsInitalSsrLocation must be used within RouterContextProvider')
-  const location = useLocation()
-  return !!ctx.ssrLocation && ctx.ssrLocation.href === location.href
-}
+// export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
+//   const ctx = React.useContext(RouterContext)
+//   if (!ctx) throw new Error('useIsInitalSsrLocation must be used within RouterContextProvider')
+//   const location = useLocation()
+//   return !!ctx.ssrLocation && ctx.ssrLocation.href === location.href
+// }
 
 export const useRouterPolicy: UseRouterPolicyFn = () => {
   const ctx = React.useContext(RouterContext)

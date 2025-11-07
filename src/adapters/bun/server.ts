@@ -331,6 +331,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
       const eversionRun = await suitable.eversion.createRun({
         pageLocation: suitable.pageLocation,
+        currentLocation: suitable.pageLocation ?? Route0.toRelLocation(Route0.getLocation(request.url)),
         requiredCtx,
       })
 
@@ -381,6 +382,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               throw new Error('Page Not Found')
             }
             eversionRun.setSsrLocation(suitable.pageLocation)
+            eversionRun.setCurrentLocation(suitable.pageLocation)
             const readableStream = await renderAppAsReadableStream({
               App,
               eversionRun,
@@ -419,6 +421,8 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             // I think it will never throw, but who knows
             throw new Error('Page for dehydrated state not found')
           }
+          eversionRun.setCurrentLocation(suitable.pageLocation)
+          eversionRun.setSsrLocation(suitable.pageLocation)
           await eversionRun.prefetchAppPagePoints({
             App,
             renderToReadableStream,

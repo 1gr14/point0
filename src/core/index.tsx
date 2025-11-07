@@ -2447,7 +2447,7 @@ export class Point0<
     input,
   }: {
     data: Data
-    location: AnyLocation
+    location?: AnyLocation
     skipHeads: boolean
     input: InputRaw<TRouteDefinition, TInputSchema>
   }): Promise<{ clientData: Data; clientHeadMerged: ResolvableHead }> => {
@@ -2466,6 +2466,7 @@ export class Point0<
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
+    location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
         case 'head': {
@@ -2502,7 +2503,7 @@ export class Point0<
     input,
   }: {
     data: AnyDataOrInfiniteData
-    location: AnyLocation
+    location?: AnyLocation
     skipHeads: boolean
     input: InputRaw<TRouteDefinition, TInputSchema>
   }): { clientData: AnyDataOrInfiniteData; clientHead: ResolvableHead[] } => {
@@ -2521,6 +2522,7 @@ export class Point0<
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
+    location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
         case 'head': {
@@ -2547,20 +2549,35 @@ export class Point0<
     return { clientData: currentClientData, clientHead }
   }
 
-  _getSelfLocationByAnotherLocation(location: AnyLocation): KnownLocation<CurrentRouteDefinition<TRouteDefinition>> {
-    const route = this._getRouteForce()
+  _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
+    const route = this._route
+    if (!route) {
+      return GlobalStore.get<AnyLocation>('currentLocation')
+    }
     return route.getLocation(route.flat({ ...location.searchParams, ...location.params })) as KnownLocation<
       CurrentRouteDefinition<TRouteDefinition>
     >
   }
 
+  _getSelfLocationByAnotherLocationOrInput(
+    location?: AnyLocation | undefined,
+    input?: InputRaw<TRouteDefinition, TInputSchema>,
+  ): AnyLocation {
+    const route = this._route
+    if (!route) {
+      return location ?? GlobalStore.get<AnyLocation>('currentLocation')
+    }
+    if (!input && !location) {
+      return GlobalStore.get<AnyLocation>('currentLocation')
+    }
+    if (location) {
+      return route.getLocation(route.flat({ ...location.searchParams, ...location.params, ...input }))
+    }
+    return route.getLocation(route.flat({ ...input }))
+  }
+
   _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw<TRouteDefinition, TInputSchema> {
     const selfLocation = this._getSelfLocationByAnotherLocation(location)
-    if (!selfLocation.exact) {
-      throw new Error(
-        `Location is not exact or children. Name: ${this._name}. Route: ${JSON.stringify(this._getRouteForce().getDefinition())}. Other Location: ${JSON.stringify(location)}. Self Location: ${JSON.stringify(selfLocation)}.`,
-      )
-    }
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRouteDefinition, TInputSchema>
   }
 
@@ -3133,7 +3150,7 @@ export class Point0<
     data,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     data?: Data
   }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
@@ -3164,7 +3181,7 @@ export class Point0<
     fetchOptions,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
@@ -3210,7 +3227,7 @@ export class Point0<
     mode = 'any',
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
@@ -3300,7 +3317,7 @@ export class Point0<
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     data?: Data
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
@@ -3357,7 +3374,7 @@ export class Point0<
     queryClient,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     fetchOptions?: FetchOptions | undefined
     queryOptions?:
       | ExtraUseInfiniteQueryOptions<
@@ -3444,7 +3461,7 @@ export class Point0<
     mode = 'any',
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema> | undefined
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
@@ -3515,7 +3532,7 @@ export class Point0<
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
   }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
     return useQuery(
@@ -3534,7 +3551,7 @@ export class Point0<
     fetchOptions,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
@@ -3571,7 +3588,7 @@ export class Point0<
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
@@ -3598,7 +3615,7 @@ export class Point0<
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
@@ -3656,7 +3673,7 @@ export class Point0<
     outputType,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
@@ -3708,7 +3725,7 @@ export class Point0<
     outputType,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
     fetchOptions?: FetchOptions
@@ -3756,7 +3773,6 @@ export class Point0<
     force,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
     queryClient?: QueryClient
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
@@ -3807,7 +3823,7 @@ export class Point0<
     mode?: 'server' | 'client' | 'any' | 'dehydratedState' | 'all'
   }): Promise<void> {
     if (mode === 'dehydratedState' || mode === 'all') {
-      await this.prefetchPageDehydratedState({ queryClient, input, location, queryOptions, fetchOptions, force })
+      await this.prefetchPageDehydratedState({ queryClient, input, queryOptions, fetchOptions, force })
       if (mode === 'dehydratedState') {
         return
       }

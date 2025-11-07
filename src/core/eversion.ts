@@ -89,14 +89,17 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   async createRun({
     pageLocation,
+    currentLocation,
     requiredCtx,
   }: {
     pageLocation: AnyLocation | undefined
+    currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
   }): Promise<EversionRun<TRequiredCtx>> {
     return await EversionRun.create({
       eversion: this,
       pageLocation,
+      currentLocation,
       requiredCtx,
     })
   }
@@ -316,7 +319,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   extractFnsWithOutput: ExtractFnWithOutput[]
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
-  serverGlobalState: { queryClient: QueryClient; ssrLocation: AnyLocation | undefined }
+  serverGlobalState: { queryClient: QueryClient; ssrLocation: AnyLocation | undefined; currentLocation: AnyLocation }
 
   private constructor({
     eversion,
@@ -329,7 +332,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     extractFnsWithOutput: ExtractFnWithOutput[]
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
-    serverGlobalState: { queryClient: QueryClient; ssrLocation: AnyLocation | undefined }
+    serverGlobalState: { queryClient: QueryClient; ssrLocation: AnyLocation | undefined; currentLocation: AnyLocation }
   }) {
     this.eversion = eversion
     this.extractFnsWithOutput = extractFnsWithOutput
@@ -341,9 +344,11 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
     eversion,
     pageLocation,
+    currentLocation,
     requiredCtx,
   }: {
     eversion: Eversion<TRequiredCtx>
+    currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
   }): Promise<EversionRun<TRequiredCtx>> {
@@ -355,7 +360,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pageLocation,
         requiredCtx,
         extractFnsWithOutput: [],
-        serverGlobalState: { queryClient, ssrLocation: undefined, ...serverGlobalState },
+        serverGlobalState: { queryClient, ssrLocation: undefined, currentLocation, ...serverGlobalState },
       })
     })
   }
@@ -364,8 +369,12 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return process.env.IS_CLIENT ? GlobalStore.get('queryClient') : this.serverGlobalState.queryClient
   }
 
-  setSsrLocation(pageLocation: AnyLocation | undefined): void {
-    this.serverGlobalState.ssrLocation = pageLocation
+  setSsrLocation(ssrLocation: AnyLocation): void {
+    this.serverGlobalState.ssrLocation = ssrLocation
+  }
+
+  setCurrentLocation(currentLocation: AnyLocation): void {
+    this.serverGlobalState.currentLocation = currentLocation
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
