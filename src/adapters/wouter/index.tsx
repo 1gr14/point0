@@ -3,7 +3,7 @@ import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useContext, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import { isServer } from '../../core/client-server.js'
+import { GlobalStore } from '../../core/global-store.js'
 import { Points, type PagesTree } from '../../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
@@ -40,7 +40,7 @@ export const Link = (props: LinkProps) => {
 }
 
 export const Router = ({
-  ssrLocation,
+  ssrLocation = GlobalStore.get('ssrLocation'),
   Page404 = DefaultPage404,
   policy,
   status,
@@ -57,11 +57,11 @@ export const Router = ({
     throw new Error('Points context not found')
   }
   const wouterRouterProps = useMemo(() => {
-    if (!isServer()) {
+    if (process.env.IS_CLIENT) {
       return {}
     }
     if (!ssrLocation) {
-      throw new Error('ssrLocation is required on ssr')
+      throw new Error(`ssrLocation is required on ssr, process.env.IS_CLIENT: ${process.env.IS_CLIENT}`)
     }
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   }, [ssrLocation])

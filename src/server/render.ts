@@ -1,11 +1,10 @@
-import type { AnyLocation } from '@devp0nt/route0'
-import type { DehydratedState } from '@tanstack/react-query'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
-import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
-import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server'
+import { renderToReadableStream } from 'react-dom/server'
+import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun, Payload } from '../core/eversion.js'
+import type { EversionRun } from '../core/eversion.js'
+import { GlobalStore } from '../core/global-store.js'
 import type { HydratedAppComponent } from '../core/mount.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
 
@@ -20,10 +19,6 @@ export function escapeForInlineJSON(json: string) {
     .replace(/</g, '\\u003C')
     .replace(/-->/g, '\\u002D\\u002D\\u003E')
     .replace(/<\/script/gi, '\\u003C/script')
-}
-
-export function serializePayload(payload: Payload) {
-  return escapeForInlineJSON(JSON.stringify(payload))
 }
 
 export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) {
@@ -96,8 +91,7 @@ function prependHeadElement({ html, content }: { html: string; content: string }
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,
   content,
-  dehydratedState,
-  pageLocation,
+  eversionRun,
   head,
   env,
   rootElementId,
@@ -105,18 +99,18 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
 }: {
   originalIndexHtml: string
   content?: TContent
-  // TODO: make it choosable by settings
-  dehydratedState: DehydratedState
-  pageLocation: AnyLocation
+  eversionRun: EversionRun
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   rootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
-  const serializedPayload = serializePayload({ dehydratedState, location: pageLocation })
+  const packedGlobalStore = await eversionRun.withServerGlobalState(async () => {
+    return superjson.stringify(GlobalStore.pack())
+  })
 
   let html = prependBodyElement({
-    content: `<script id="__POINT0_PAYLOAD__" type="application/json">${serializedPayload}</script>`,
+    content: `<script id="__PACKED_GLOBAL_STORE__" type="application/json">${packedGlobalStore}</script>`,
     html: originalIndexHtml,
   })
   if (clientBundlePath) {
@@ -136,7 +130,14 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html = await transformHtmlTemplate(createHead({ init: head }), html)
   }
   html = prependHeadElement({
-    content: `<script id="__POINT0_ENV__" type="text/javascript">window.process={env:${escapeForInlineJSON(JSON.stringify({ ...env, IS_CLIENT: '1' }))}}</script>`,
+    content: `<script id="__POINT0_ENV__" type="text/javascript">
+  const __ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env, IS_CLIENT: '1' }))};
+  window.process = window.process || {};
+  window.process.env = { ...(window.process.env || {}), ...__ENV__ };
+  window.import = window.import || {};
+  window.import.meta = window.import.meta || {};
+  window.import.meta.env = { ...(window.import.meta.env || {}), ...__ENV__ };
+</script>`,
     html,
   })
 
@@ -157,50 +158,15 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   }
 }
 
-export async function renderStatic({
-  element,
-  dehydratedState,
-  head,
-  pageLocation,
-  env,
-  renderer = renderToStaticMarkup,
-  clientBundlePath,
-  originalIndexHtml,
-  rootElementId,
-}: {
-  element: React.ReactElement
-  dehydratedState: DehydratedState
-  pageLocation: AnyLocation
-  head: ResolvableHead[]
-  env?: Record<string, string>
-  renderer?: StaticRenderer
-  clientBundlePath: string
-  originalIndexHtml: string
-  rootElementId: string
-}): Promise<string> {
-  return (
-    await overrideDocumentHtml({
-      content: renderer(element),
-      dehydratedState,
-      pageLocation,
-      head,
-      env,
-      clientBundlePath,
-      originalIndexHtml,
-      rootElementId,
-    })
-  ).html
-}
-
 export async function getReadableStreamWithWrapper({
-  element,
+  App,
   prefix,
   suffix,
   renderer = renderToReadableStream,
   clientBundlePath,
   eversionRun,
 }: {
-  element: React.ReactElement
+  App: HydratedAppComponent
   suffix?: string
   prefix?: string
   clientBundlePath?: string
@@ -219,9 +185,9 @@ export async function getReadableStreamWithWrapper({
       controller.enqueue(encoder.encode(suffix))
     },
   })
-  const reactStream = await eversionRun.withGlobalStore(
+  const reactStream = await eversionRun.withServerGlobalState(
     async () =>
-      await renderer(element, {
+      await renderer(eversionRun.createHydratedAppElement(App), {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
       }),
   )
@@ -230,9 +196,7 @@ export async function getReadableStreamWithWrapper({
 }
 
 export async function renderReadableStream({
-  element,
-  dehydratedState,
-  pageLocation,
+  App,
   head,
   env,
   clientBundlePath,
@@ -241,9 +205,7 @@ export async function renderReadableStream({
   rootElementId,
   eversionRun,
 }: {
-  element: React.ReactElement
-  dehydratedState: DehydratedState
-  pageLocation: AnyLocation
+  App: HydratedAppComponent
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
@@ -254,26 +216,23 @@ export async function renderReadableStream({
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
-    dehydratedState,
-    pageLocation,
+    eversionRun,
     head,
     env,
     rootElementId,
   })
-  return await getReadableStreamWithWrapper({ element, prefix, suffix, renderer, clientBundlePath, eversionRun })
+  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, eversionRun })
 }
 
 export async function renderAppAsReadableStream({
   App,
   eversionRun,
-  pageLocation,
   pagePoint,
   input,
   ...props
 }: {
   App: HydratedAppComponent
   eversionRun: EversionRun
-  pageLocation: AnyLocation
   pagePoint: AnyPoint | undefined
   input: InputRaw
   env?: Record<string, string | number | boolean | undefined>
@@ -289,18 +248,9 @@ export async function renderAppAsReadableStream({
     pagePoint,
     input,
   })
-  const element = createElement(App, {
-    ssrLocation: pageLocation,
-    root: eversionRun.eversion.root,
-    points: eversionRun.eversion.points,
-    queryClient: eversionRun.getQueryClient(),
-  })
-  const dehydratedState = await eversionRun.getQueryClientDehydratedState()
   return await renderReadableStream({
     ...props,
-    pageLocation,
-    element,
+    App,
     eversionRun,
-    dehydratedState,
   })
 }

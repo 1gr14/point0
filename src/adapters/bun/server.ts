@@ -380,11 +380,11 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               // I think it will never throw, but who knows
               throw new Error('Page Not Found')
             }
+            eversionRun.setSsrLocation(suitable.pageLocation)
             const readableStream = await renderAppAsReadableStream({
               App,
               eversionRun,
               head: extractResult.head,
-              pageLocation: suitable.pageLocation,
               pagePoint: suitable.point,
               input,
               env: { NODE_ENV: process.env.NODE_ENV },

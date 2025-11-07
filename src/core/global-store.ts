@@ -1,3 +1,5 @@
+import type { DehydratedState } from '@tanstack/react-query'
+import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
 
 export class GlobalStore<TState extends GlobalState> {
@@ -29,6 +31,7 @@ export class GlobalStore<TState extends GlobalState> {
       this.serverStorage = null
       this.clientState = {}
     }
+    this.normalizeGlobalStoreConfig()
     return instance as GlobalStoreConfigByInput<TConfigInput>
   }
 
@@ -38,6 +41,7 @@ export class GlobalStore<TState extends GlobalState> {
       this.config = this.configInputToConfig({})
       this.serverStorage = null
       this.clientState = {}
+      this.normalizeGlobalStoreConfig()
     }
   }
 
@@ -110,7 +114,7 @@ export class GlobalStore<TState extends GlobalState> {
 
   // lets call this fn only on client, no need to call it on server
   static unpack = (packed: Record<string, unknown>): GlobalState => {
-    const state: GlobalState = {}
+    const state = this.getState()
     for (const [configItemKey, configItem] of Object.entries(this.config)) {
       try {
         if (!configItem.unpack) {
@@ -173,21 +177,72 @@ export class GlobalStore<TState extends GlobalState> {
     return this.instance as GlobalStore<GlobalState>
   }
 
-  runWithServerStoreProvider<TState extends GlobalState = GlobalState, TResult = unknown>(
-    serverStore: Partial<TState>,
+  runWithServerStateProvider<TState extends GlobalState = GlobalState, TResult = unknown>(
+    serverGlobalState: Partial<TState>,
     callback: () => TResult,
   ): TResult {
-    return GlobalStore.runWithServerStoreProvider(serverStore, callback)
+    return GlobalStore.runWithServerStateProvider(serverGlobalState, callback)
   }
 
-  static runWithServerStoreProvider<TResult>(serverStore: Partial<GlobalState>, callback: () => TResult): TResult {
+  static runWithServerStateProvider<TResult>(
+    serverGlobalState: Partial<GlobalState>,
+    callback: () => TResult,
+  ): TResult {
     this.initIfClientAndNotInitialized()
-    this.getState() // just for validation
     if (this.serverStorage) {
-      return this.serverStorage.run(serverStore, callback)
+      return this.serverStorage.run(serverGlobalState, callback)
     } else {
       return callback()
     }
+  }
+
+  private static normalizeQueryClientConfig(): void {
+    if (!(this.config.queryClient as unknown)) {
+      this.config.queryClient = {
+        init: () => new QueryClient(),
+        pack: () => undefined,
+        unpack: () => undefined,
+      }
+    }
+    this.config.queryClient.pack = (queryClient: QueryClient) =>
+      dehydrate(queryClient, {
+        shouldDehydrateQuery: () => {
+          // This will include all queries, including failed ones
+          return true
+        },
+      })
+    this.config.queryClient.unpack = (dehydratedState: DehydratedState, createQueryClient: () => QueryClient) => {
+      const queryClient = createQueryClient()
+      hydrate(queryClient, dehydratedState)
+
+      const prefetchPageQuery = queryClient
+        .getQueryCache()
+        .getAll()
+        .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
+
+      if (!prefetchPageQuery) {
+        return queryClient
+      }
+
+      const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
+        .dehydratedState
+      hydrate(queryClient, relatedQueriesDehydratedState)
+
+      return queryClient
+    }
+  }
+
+  private static normalizeSsrLocationConfig(): void {
+    this.config.ssrLocation = {
+      init: () => undefined,
+      pack: (value) => value,
+      unpack: (value) => value,
+    }
+  }
+
+  private static normalizeGlobalStoreConfig(): void {
+    this.normalizeQueryClientConfig()
+    this.normalizeSsrLocationConfig()
   }
 }
 
