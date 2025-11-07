@@ -2,8 +2,7 @@ env
 getter toProxy()
 simplify renderer
 
-try to remove root and points form App props
-try to remove ssrLocation and Query client form App props
+
 
 location optional prop and get it from getCurrentLocation router
 provider.getValue()

@@ -1,14 +1,14 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Router, RouterRoutes } from 'point0/adapters/wouter'
-import type { HydratedAppProps } from 'point0/core/mount'
 import { Unhead } from 'point0/core/unhead'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'
-import { globalStore } from './lib/global-store'
+import { $ } from './lib/global-store'
+import { points } from './lib/points.lazy'
 
-export default function App({ points }: HydratedAppProps) {
+export default function App() {
   return (
     <points.Provider>
-      <QueryClientProvider client={globalStore.get('queryClient')}>
+      <QueryClientProvider client={$.get('queryClient')}>
         <Unhead>
           <Router policy="prefetch">
             <clientCtx2.Provider>
