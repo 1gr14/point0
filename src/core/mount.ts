@@ -1,9 +1,6 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import superjson from 'superjson'
-import type { GlobalState } from './global-store.js'
-import { GlobalStore } from './global-store.js'
 
 export type AppComponent = () => React.ReactElement
 
@@ -22,20 +19,6 @@ export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
       )
     }
   }
-
-  const packedGlobalStoreEl = document.getElementById('__PACKED_GLOBAL_STORE__')
-  const packedGlobalStoreStringified = packedGlobalStoreEl?.textContent
-  if (!packedGlobalStoreStringified) {
-    throw new Error('Missing __PACKED_GLOBAL_STORE__')
-  }
-  const packedGlobalStore: GlobalState = (() => {
-    try {
-      return superjson.parse(packedGlobalStoreStringified)
-    } catch (error) {
-      throw new Error('Invalid __PACKED_GLOBAL_STORE__', { cause: error })
-    }
-  })()
-  GlobalStore.unpack(packedGlobalStore)
 
   const appElement = createElement(App)
 

@@ -1,6 +1,5 @@
-.define()
-getter toProxy()
-
+Point0.global.init()
+remove mount at all
 location optional prop and get it from getCurrentLocation router
 provider.getValue()
 

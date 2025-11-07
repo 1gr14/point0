@@ -1,8 +1,10 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
+import superjson from 'superjson'
 
 export class GlobalStore<TState extends GlobalState> {
+  private static packed: Record<string, unknown> = {}
   private static instance: GlobalStore<GlobalState> | null = null
   static config: GlobalStoreConfig<GlobalState> = {}
   private proxy: GlobalStoreProxy<GlobalState> | null = null
@@ -21,19 +23,48 @@ export class GlobalStore<TState extends GlobalState> {
 
     const instance = new GlobalStore<GlobalStateByConfigInput<TConfigInput>>()
     this.instance = instance
-    Object.assign(this.config, this.configInputToConfig(config))
-    if (!process.env.IS_CLIENT) {
-      const { AsyncLocalStorage } = await import('node:async_hooks')
-      this.serverStorage = new AsyncLocalStorage<GlobalStateByConfigInput<TConfigInput>>()
-      this.clientState = null
+
+    if (process.env.IS_CLIENT) {
+      this.initClient(config)
     } else {
-      this.serverStorage = null
-      this.clientState = {}
+      await this.initServer(config)
     }
-    this.normalizeGlobalStoreConfig()
+
     this.instance.proxy ||= await instance.createProxy()
     return this.instance.proxy as GlobalStoreProxy<GlobalStateByConfigInput<TConfigInput>>
   }
+
+  private static initClient(config?: GlobalStoreConfigInput<GlobalState>, packed?: Record<string, unknown>): void {
+    this.instance = new GlobalStore<GlobalState>()
+    Object.assign(this.config, this.configInputToConfig(config ?? {}))
+    this.serverStorage = null
+    this.clientState ??= {}
+    this.normalizeGlobalStoreConfig()
+    if (packed) {
+      this.packed = packed
+    } else {
+      if (typeof window !== 'undefined' && typeof (window as any)?.__PACKED_GLOBAL_STORE_VALUE__ !== 'undefined') {
+        this.packed = superjson.parse((window as any).__PACKED_GLOBAL_STORE_VALUE__)
+      }
+    }
+  }
+
+  private static async initServer(config?: GlobalStoreConfigInput<GlobalState>): Promise<void> {
+    const instance = new GlobalStore<GlobalState>()
+    this.instance = instance
+    Object.assign(this.config, this.configInputToConfig(config ?? {}))
+    const { AsyncLocalStorage } = await import('node:async_hooks')
+    this.serverStorage = new AsyncLocalStorage<GlobalState>()
+    this.clientState = null
+    this.normalizeGlobalStoreConfig()
+  }
+
+  private static initIfClientAndNotInitialized(): void {
+    if (process.env.IS_CLIENT && !this.instance) {
+      this.initClient()
+    }
+  }
+
   // create proxy for whole state and for instance.get(prop)
   private createProxy<TState>(): GlobalStoreProxy<TState> {
     // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
@@ -149,16 +180,6 @@ export class GlobalStore<TState extends GlobalState> {
     return this.createPropertyProxy<TValue>(key)
   }
 
-  private static initIfClientAndNotInitialized(): void {
-    if (process.env.IS_CLIENT && !this.instance) {
-      this.instance = new GlobalStore<GlobalState>()
-      Object.assign(this.config, this.configInputToConfig({}))
-      this.serverStorage = null
-      this.clientState ??= {}
-      this.normalizeGlobalStoreConfig()
-    }
-  }
-
   private static readonly configInputToConfig = (
     configInput: GlobalStoreConfigInput<GlobalState>,
   ): GlobalStoreConfig<GlobalState> => {
@@ -226,27 +247,6 @@ export class GlobalStore<TState extends GlobalState> {
     return packed
   }
 
-  // lets call this fn only on client, no need to call it on server
-  static unpack = (packed: Record<string, unknown>): GlobalState => {
-    const state = this.getState()
-    for (const [configItemKey, configItem] of Object.entries(this.config)) {
-      try {
-        if (!configItem.unpack) {
-          continue
-        }
-        const packedValue = packed[configItemKey]
-        const unpackedValue = configItem.unpack(packedValue, configItem.init)
-        state[configItemKey] = unpackedValue
-      } catch (error: unknown) {
-        throw new Error(
-          `Error unpacking global store for key "${configItemKey}": ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error },
-        )
-      }
-    }
-    return state
-  }
-
   get<TKey extends GlobalStoreKey<TState>>(key: TKey): TState[TKey] {
     return GlobalStore.get(key)
   }
@@ -259,6 +259,15 @@ export class GlobalStore<TState extends GlobalState> {
     const existingValue = state[key]
     if (existingValue) {
       return existingValue as TValue
+    }
+    const packedValue = this.packed[key]
+    if (packedValue) {
+      if (!configItem.unpack) {
+        throw new Error(`Key "${key}" is packed but no unpack function is defined`)
+      }
+      const unpackedValue = configItem.unpack(packedValue, configItem.init)
+      state[key] = unpackedValue
+      return unpackedValue as TValue
     }
     const initialValue = configItem.init()
     state[key] = initialValue
@@ -403,5 +412,8 @@ export type GlobalStoreByConfigInput<TConfigInput extends GlobalStoreConfigInput
 >
 
 export type GlobalStoreProxy<TState> = TState & {
-  define: () => any
+  define: <TValue, TPackedValue = TValue>(
+    key: string,
+    config: GlobalStoreConfigInputItem<TValue, TPackedValue>,
+  ) => TValue
 }

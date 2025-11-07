@@ -15,11 +15,13 @@ export type ReadableStreamRenderer = (
   options?: RenderToReadableStreamOptions,
 ) => Promise<ReactDOMServerReadableStream>
 
-export function escapeForInlineJSON(json: string) {
+function escapeForInlineJSON(json: string) {
   return json
     .replace(/</g, '\\u003C')
-    .replace(/-->/g, '\\u002D\\u002D\\u003E')
-    .replace(/<\/script/gi, '\\u003C/script')
+    .replace(/>/g, '\\u003E')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
 }
 
 export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) {
@@ -106,16 +108,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   rootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
-  const packedGlobalStore = await eversionRun.withServerGlobalState(async () => {
-    const packed = GlobalStore.pack()
-    const stringified = superjson.stringify(packed)
-    return stringified
-  })
-
-  let html = prependBodyElement({
-    content: `<script id="__PACKED_GLOBAL_STORE__" type="application/json">${packedGlobalStore}</script>`,
-    html: originalIndexHtml,
-  })
+  let html = originalIndexHtml
   if (clientBundlePath) {
     html = prependBodyElement({
       content: `<script src="${clientBundlePath}" defer></script>`,
@@ -141,6 +134,10 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   window.import.meta = window.import.meta || {};
   window.import.meta.env = { ...(window.import.meta.env || {}), ...__ENV__ };
 </script>`,
+    html,
+  })
+  html = prependHeadElement({
+    content: '<!-- __PACKED_GLOBAL_STORE__ -->',
     html,
   })
 
@@ -177,25 +174,38 @@ export async function getReadableStreamWithWrapper({
   eversionRun: EversionRun
 }) {
   const encoder = new TextEncoder()
-  const transform = new TransformStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(prefix))
-    },
-    transform(chunk, controller) {
-      controller.enqueue(chunk)
-    },
-    flush(controller) {
-      controller.enqueue(encoder.encode(suffix))
-    },
-  })
-  const reactStream = await eversionRun.withServerGlobalState(
-    async () =>
-      await renderer(createElement(App), {
-        ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
-      }),
-  )
 
-  return reactStream.pipeThrough(transform)
+  // one scope for both render and pack ensures consistency
+  return await eversionRun.withServerGlobalState(async () => {
+    // Kick off the render first; any randoms used during render happen now
+    const reactStream = await renderer(createElement(App), {
+      ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
+    })
+
+    // Snapshot AFTER render started, in the same state scope
+    const packed = GlobalStore.pack()
+    const escapedJS = escapeForInlineJSON(superjson.stringify(packed))
+    const compiledPrefix = (prefix ?? '').replace(
+      '<!-- __PACKED_GLOBAL_STORE__ -->',
+      `<script id="__PACKED_GLOBAL_STORE__">
+         window.__PACKED_GLOBAL_STORE_VALUE__ = ${JSON.stringify(escapedJS)};
+       </script>`,
+    )
+
+    const transform = new TransformStream<Uint8Array, Uint8Array>({
+      start(controller) {
+        if (compiledPrefix) controller.enqueue(encoder.encode(compiledPrefix))
+      },
+      transform(chunk, controller) {
+        controller.enqueue(chunk)
+      },
+      flush(controller) {
+        if (suffix) controller.enqueue(encoder.encode(suffix))
+      },
+    })
+
+    return reactStream.pipeThrough(transform)
+  })
 }
 
 export async function renderReadableStream({

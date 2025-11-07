@@ -1,15 +1,18 @@
 import { Link } from 'point0/adapters/wouter'
-import { GlobalStore } from 'point0/core/global-store.js'
 import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
+import { $ } from '../lib/global-store.js'
 
-const something = GlobalStore.define('something', () => ({
-  random: 1234, // Math.random(),
-  date: new Date(1234567890), // new Date(),
-}))
+const something = $.define('something', () => {
+  return {
+    random: Math.random(),
+    date: new Date(),
+    stable: 123,
+  }
+})
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
@@ -45,10 +48,12 @@ export default generalLayout
     const ctx2 = clientCtx2.useValue()
     const x = clientCtx1.useValue('shmest')
     const y = clientCtx1.useValue(['test', 'shmest'])
+    something.stable = 456
     return (
       <div>
         <p>Something random: {something.random}</p>
         <p>Something date: {something.date.getTime()}</p>
+        <p>Something stable: {something.stable}</p>
         <h1>Welcome to IdeaNick</h1>
         <p>Test: {ctx1.test}</p>
         <p>Test: {ctx2.ideasCountX3}</p>

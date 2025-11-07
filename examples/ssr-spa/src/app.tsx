@@ -5,6 +5,8 @@ import { clientCtx1, clientCtx2 } from './lib/client-ctx'
 import { $ } from './lib/global-store'
 import { points } from './lib/points.lazy'
 
+await import('./lib/global-store')
+
 export default function App() {
   return (
     <points.Provider>
