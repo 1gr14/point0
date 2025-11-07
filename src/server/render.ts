@@ -107,7 +107,9 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
   const packedGlobalStore = await eversionRun.withServerGlobalState(async () => {
-    return superjson.stringify(GlobalStore.pack())
+    const packed = GlobalStore.pack()
+    const stringified = superjson.stringify(packed)
+    return stringified
   })
 
   let html = prependBodyElement({

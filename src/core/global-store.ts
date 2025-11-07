@@ -143,9 +143,7 @@ export class GlobalStore<TState extends GlobalState> {
   ): TValue {
     // Merge a single-key config using the same transformer as init()
     const normalized = this.configInputToConfig({ [key]: config } as GlobalStoreConfigInput<GlobalState>)
-    console.log('normalized', normalized)
     this.config[key] = normalized[key]
-    console.log('this.config', this.config)
 
     // Return a live proxy to that property
     return this.createPropertyProxy<TValue>(key)
@@ -170,8 +168,8 @@ export class GlobalStore<TState extends GlobalState> {
       if (typeof configItem === 'function') {
         config[key] = {
           init: configItem,
-          pack: () => undefined,
-          unpack: () => undefined,
+          pack: (value) => value,
+          unpack: (value) => value,
         }
       } else {
         config[key] = configItem as never
@@ -254,7 +252,6 @@ export class GlobalStore<TState extends GlobalState> {
   }
   static get<TValue = unknown>(key: string): TValue {
     const state = this.getState()
-    console.log(Object.keys(this.config))
     const configItem = this.config[key] as GlobalStoreConfigItem<GlobalState, unknown> | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
