@@ -5,24 +5,23 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 export class GlobalStore<TState extends GlobalState> {
   private static instance: GlobalStore<GlobalState> | null = null
   static config: GlobalStoreConfig<GlobalState> = {}
+  private proxy: GlobalStoreProxy<GlobalState> | null = null
 
   private static clientState: GlobalState | null = null
   private static serverStorage: GlobalStoreServerStorage | null = null
 
   static async init<TConfigInput extends GlobalStoreConfigInput<GlobalState>>(
     config: TConfigInput,
-  ): Promise<GlobalStoreByConfigInput<TConfigInput>> {
+  ): Promise<GlobalStoreProxy<GlobalStateByConfigInput<TConfigInput>>> {
     if (this.instance) {
-      // TODO: add better check about not same confg for existing keys, or maybe it is enough
-      if (Object.keys(this.config).join(',') !== Object.keys(config).join(',')) {
-        throw new Error('GlobalStore was already initialized with different config')
-      }
-      return this.instance as GlobalStoreByConfigInput<TConfigInput>
+      Object.assign(this.config, this.configInputToConfig(config))
+      this.instance.proxy ||= await this.instance.createProxy()
+      return this.instance.proxy as GlobalStoreProxy<GlobalStateByConfigInput<TConfigInput>>
     }
 
     const instance = new GlobalStore<GlobalStateByConfigInput<TConfigInput>>()
     this.instance = instance
-    this.config = this.configInputToConfig(config)
+    Object.assign(this.config, this.configInputToConfig(config))
     if (!process.env.IS_CLIENT) {
       const { AsyncLocalStorage } = await import('node:async_hooks')
       this.serverStorage = new AsyncLocalStorage<GlobalStateByConfigInput<TConfigInput>>()
@@ -32,15 +31,132 @@ export class GlobalStore<TState extends GlobalState> {
       this.clientState = {}
     }
     this.normalizeGlobalStoreConfig()
-    return instance as GlobalStoreByConfigInput<TConfigInput>
+    this.instance.proxy ||= await instance.createProxy()
+    return this.instance.proxy as GlobalStoreProxy<GlobalStateByConfigInput<TConfigInput>>
+  }
+  // create proxy for whole state and for instance.get(prop)
+  private createProxy<TState>(): GlobalStoreProxy<TState> {
+    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+    const self = this
+
+    const proxy = new Proxy(
+      {},
+      {
+        get(_target, prop, _receiver) {
+          // expose define() on the proxy
+          if (prop === 'define') {
+            return self.define.bind(self)
+          }
+          // ignore symbol-based meta props
+          if (typeof prop !== 'string' || isPromiseKey(prop)) return undefined
+          // delegate to store getter
+          return self.get(prop as never)
+        },
+
+        set(_target, prop, value, _receiver) {
+          if (typeof prop !== 'string' || isPromiseKey(prop)) return false
+          self.set(prop as never, value)
+          return true
+        },
+
+        has(_target, prop) {
+          if (typeof prop !== 'string' || isPromiseKey(prop)) return false
+          return prop in GlobalStore.config
+        },
+
+        ownKeys() {
+          return Object.keys(GlobalStore.config)
+        },
+
+        getOwnPropertyDescriptor(_target, prop) {
+          if (typeof prop === 'string' && prop in GlobalStore.config) {
+            return { enumerable: true, configurable: true }
+          }
+          return undefined
+        },
+      },
+    )
+
+    return proxy as GlobalStoreProxy<TState>
+  }
+
+  // this one create proxy for just one value, and return it
+  private static createPropertyProxy<TValue>(key: string): TValue {
+    const handler: ProxyHandler<any> = {
+      get(_t, prop, _r) {
+        // Prevent thenable detection & ignore symbols
+        if (typeof prop !== 'string' || isPromiseKey(prop)) return undefined
+
+        const v = GlobalStore.get<TValue>(key)
+
+        if (prop === 'valueOf') return () => GlobalStore.get<TValue>(key)
+        if (prop === 'toJSON') return () => GlobalStore.get<TValue>(key)
+        if (prop === 'toString') return () => String(GlobalStore.get<TValue>(key))
+
+        if (v !== null && typeof v === 'object') {
+          return (v as any)[prop]
+        }
+        return (v as any)?.[prop]
+      },
+
+      set(_t, prop, newVal, _r) {
+        if (typeof prop !== 'string' || isPromiseKey(prop)) return false
+
+        const cur = GlobalStore.get<any>(key)
+
+        if (cur !== null && typeof cur === 'object') {
+          const next = Array.isArray(cur) ? cur.slice() : { ...cur }
+          next[prop] = newVal
+          GlobalStore.set(key, next)
+          return true
+        }
+
+        GlobalStore.set(key, newVal)
+        return true
+      },
+
+      ownKeys() {
+        const v = GlobalStore.get<any>(key)
+        return v && typeof v === 'object' ? Reflect.ownKeys(v) : []
+      },
+
+      getOwnPropertyDescriptor(_t, prop) {
+        const v = GlobalStore.get<any>(key)
+        if (v && typeof v === 'object' && prop in v) {
+          return { enumerable: true, configurable: true }
+        }
+        return undefined
+      },
+    }
+
+    return new Proxy({}, handler) as unknown as TValue
+  }
+
+  // here we can define one prop and get back this proxied value
+  define<TValue, TPackedValue = TValue>(key: string, config: GlobalStoreConfigInputItem<TValue, TPackedValue>): TValue {
+    return GlobalStore.define(key, config)
+  }
+
+  static define<TValue, TPackedValue = TValue>(
+    key: string,
+    config: GlobalStoreConfigInputItem<TValue, TPackedValue>,
+  ): TValue {
+    // Merge a single-key config using the same transformer as init()
+    const normalized = this.configInputToConfig({ [key]: config } as GlobalStoreConfigInput<GlobalState>)
+    console.log('normalized', normalized)
+    this.config[key] = normalized[key]
+    console.log('this.config', this.config)
+
+    // Return a live proxy to that property
+    return this.createPropertyProxy<TValue>(key)
   }
 
   private static initIfClientAndNotInitialized(): void {
     if (process.env.IS_CLIENT && !this.instance) {
       this.instance = new GlobalStore<GlobalState>()
-      this.config = this.configInputToConfig({})
+      Object.assign(this.config, this.configInputToConfig({}))
       this.serverStorage = null
-      this.clientState = {}
+      this.clientState ??= {}
       this.normalizeGlobalStoreConfig()
     }
   }
@@ -138,6 +254,7 @@ export class GlobalStore<TState extends GlobalState> {
   }
   static get<TValue = unknown>(key: string): TValue {
     const state = this.getState()
+    console.log(Object.keys(this.config))
     const configItem = this.config[key] as GlobalStoreConfigItem<GlobalState, unknown> | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
@@ -195,7 +312,6 @@ export class GlobalStore<TState extends GlobalState> {
       return callback()
     }
   }
-
   private static normalizeQueryClientConfig(): void {
     if (!(this.config.queryClient as unknown)) {
       this.config.queryClient = {
@@ -246,6 +362,8 @@ export class GlobalStore<TState extends GlobalState> {
   }
 }
 
+const isPromiseKey = (prop: PropertyKey) => prop === 'then' || prop === 'catch' || prop === 'finally'
+
 export type GlobalStoreServerStorage = AsyncLocalStorage<GlobalState>
 
 export type GlobalState = { [key: string]: unknown }
@@ -286,3 +404,7 @@ export type GlobalStateByConfigInput<TConfigInput extends GlobalStoreConfigInput
 export type GlobalStoreByConfigInput<TConfigInput extends GlobalStoreConfigInput<GlobalState>> = GlobalStore<
   GlobalStateByConfigInput<TConfigInput>
 >
+
+export type GlobalStoreProxy<TState> = TState & {
+  define: () => any
+}

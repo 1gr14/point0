@@ -351,6 +351,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await GlobalStore.runWithServerStateProvider(serverGlobalState, async () => {
       const queryClient = GlobalStore.get<QueryClient>('queryClient')
       // const queryClient = new QueryClient()
+      console.log('NEW EVERSION', GlobalStore.config)
       return new EversionRun<TRequiredCtx>({
         eversion,
         pageLocation,

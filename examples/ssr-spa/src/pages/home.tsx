@@ -4,6 +4,14 @@ import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
+import { GlobalStore } from 'point0/core/global-store.js'
+import { QueryClient, useQuery } from '@tanstack/react-query'
+
+console.log(343434)
+const something = GlobalStore.define<Record<string, any>>('something', () => ({}))
+
+// something.random = Math.random()
+// something.date = new Date()
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
@@ -41,6 +49,8 @@ export default generalLayout
     const y = clientCtx1.useValue(['test', 'shmest'])
     return (
       <div>
+        {/* <p>Something random: {something.random}</p>
+        <p>Something date: {something.date.getTime()}</p> */}
         <h1>Welcome to IdeaNick</h1>
         <p>Test: {ctx1.test}</p>
         <p>Test: {ctx2.ideasCountX3}</p>

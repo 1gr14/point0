@@ -8,7 +8,7 @@ import { points } from './lib/points.lazy'
 export default function App() {
   return (
     <points.Provider>
-      <QueryClientProvider client={$.get('queryClient')}>
+      <QueryClientProvider client={$.queryClient}>
         <Unhead>
           <Router policy="prefetch">
             <clientCtx2.Provider>
