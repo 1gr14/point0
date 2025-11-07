@@ -1,15 +1,12 @@
 .define()
 getter toProxy()
 
-simplify renderer
-
-env
-
 location optional prop and get it from getCurrentLocation router
 provider.getValue()
 
-.prefetchOnInit(boolean)
-.prefetchMode(MODE)
+no root
+env
+simplify renderer
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
@@ -47,6 +44,7 @@ preventSsr
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
+.prefetchOnInit(boolean).prefetchMode(MODE)
 request prefetchPageDehydratedState state but prefetchPagePayload becouse there can be zustand or what else
 check zustand behaviour, meybe it is enough on ssr also provide current global store to client. Just n payload, and use it on top of mount.ts
 preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
