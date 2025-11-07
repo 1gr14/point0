@@ -1,11 +1,11 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Router, RouterRoutes } from 'point0/adapters/wouter'
-import type { Points } from 'point0/core/points'
+import type { AppProps } from 'point0/core/mount'
 import { Unhead } from 'point0/core/unhead'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'
 import { $ } from './lib/global-store'
 
-export default function App({ points }: { points: Points }) {
+export default function App({ points }: AppProps) {
   return (
     <points.Provider>
       <QueryClientProvider client={$.queryClient}>

@@ -1,13 +1,11 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { Points } from './points.js'
-
-export type AppComponent = (props: { points: Points }) => React.ReactElement
+import type { LazyPoints, Points } from './points.js'
 
 let reactRoot: Root | null = null
 
-export function mount(App: AppComponent, points: Points, domRootElement?: HTMLElement | null) {
+export function mount(App: AppComponent, points: LazyPoints, domRootElement?: HTMLElement | null) {
   if (domRootElement !== undefined) {
     if (!domRootElement) {
       throw new Error(`Provided domRootElement is not found, please provide correct domRootElement`)
@@ -40,3 +38,6 @@ export function mount(App: AppComponent, points: Points, domRootElement?: HTMLEl
     reactRoot.render(appElement)
   }
 }
+
+export type AppProps = { points: Points }
+export type AppComponent = (props: AppProps) => React.ReactElement

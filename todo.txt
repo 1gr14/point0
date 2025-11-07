@@ -1,11 +1,6 @@
-Point0.global.init()
-remove mount at all
 location optional prop and get it from getCurrentLocation router
-provider.getValue()
-
-no root
-env
-simplify renderer
+provider.getValue() do not with global store
+points.reload()
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
@@ -15,6 +10,7 @@ wrapper
 merge .input schemas
 
 vite
+env
 elysia example
 auth
 
@@ -43,6 +39,9 @@ preventSsr
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
+no root
+simplify renderer
+Point0.global.init()
 .prefetchOnInit(boolean).prefetchMode(MODE)
 request prefetchPageDehydratedState state but prefetchPagePayload becouse there can be zustand or what else
 check zustand behaviour, meybe it is enough on ssr also provide current global store to client. Just n payload, and use it on top of mount.ts
@@ -128,6 +127,7 @@ client input
 .output(z.object({}))
 allow not to pass server root at all to server, so client only apps
 websocket
+если поинт не касается 
 pageParamFromInput as fn or path
 .onError and combine them and clear them to base on lets
 batch query

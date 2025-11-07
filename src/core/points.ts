@@ -566,6 +566,8 @@ export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
 
 export type AnyPointsCollection = ReadyPointsCollection | LazyPointsCollection | RawPointsCollection | Points
+export type LazyPoints = Points<false>
+export type ReadyPoints = Points<true>
 
 export type PagesTreeSourceRecord = {
   layout: string | undefined

@@ -358,7 +358,7 @@ export class FileGenerator {
     }
 
     lines.push(``)
-    lines.push(`export const initializePoints = () => Points.create(points)`)
+    lines.push(`export const initializePoints = () => Points.lazy(points)`)
     lines.push(``)
     return lines.join('\n')
   }

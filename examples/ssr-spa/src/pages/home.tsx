@@ -1,17 +1,19 @@
 import { Link } from 'point0/adapters/wouter'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { $ } from '../lib/global-store.js'
 import { routes } from '../lib/routes.js'
+import { HomeHelper } from './home.helper.js'
 
 const something = $.define('something', () => {
   return {
     random: Math.random(),
     date: new Date(),
     stable: 123,
+    var: 0,
   }
 })
 
@@ -45,7 +47,10 @@ export default generalLayout
   })
   .loader()
   .page(() => {
-    const [state, setState] = useState(0)
+    const [state, setState] = useState(something.var)
+    useEffect(() => {
+      something.var = state
+    }, [state])
     const ctx1 = clientCtx1.useValue()
     const ctx2 = clientCtx2.useValue()
     const x = clientCtx1.useValue('shmest')
@@ -61,6 +66,9 @@ export default generalLayout
           Click me
         </button>
         <p>State: {state}</p>
+        <hr />
+        <HomeHelper initialState={state} />
+        <hr />
         <p>Something random: {something.random}</p>
         <p>Something date: {something.date.getTime()}</p>
         <p>Something stable: {something.stable}</p>

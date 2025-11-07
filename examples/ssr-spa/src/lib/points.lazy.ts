@@ -93,4 +93,4 @@ export const points = [
   },
 ] as LazyPointsCollection
 
-export const initializePoints = () => Points.create(points)
+export const initializePoints = () => Points.lazy(points)
