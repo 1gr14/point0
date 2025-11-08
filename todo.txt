@@ -1,5 +1,3 @@
-wouter in dev do not lazy import
-
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
@@ -53,6 +51,7 @@ allow pass env object or "PREFIX_*" to env for clients
 default client query options, default client page query options, default client component query options
 not errorComponent, but just error
 mutation client, server, combined
+slover problem with hmr isnide page(() => )
 response available by route and can have method, other do not have method
 .isLoading(({queryType, query}) => )
 on server when returning ssr loactio replace it with toBasOlcation of requestest origin
