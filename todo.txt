@@ -1,5 +1,5 @@
-provider.getValue() do not with global store
 points.reload()
+hmr update only related point
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
