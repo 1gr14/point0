@@ -1,8 +1,9 @@
-import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, KnownLocation, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { LazyPointsModule, ReadyPointsModule } from './points.js'
 import { Points } from './points.js'
 import { GlobalStore } from './global-store.js'
 
@@ -26,6 +27,7 @@ type RouterContextValue = {
   nextLocation: AnyLocation | undefined
   policy: RouterPolicy
   status: RouterStatus
+  routes: Routes
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
@@ -41,6 +43,7 @@ export type RouterContextProviderProps = {
   status?: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | undefined
+  points: LazyPointsModule | ReadyPointsModule
 }
 
 export function RouterContextProvider({
@@ -49,6 +52,7 @@ export function RouterContextProvider({
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
+  points,
 }: RouterContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | undefined>()
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
@@ -56,6 +60,10 @@ export function RouterContextProvider({
   useEffect(() => {
     GlobalStore.set('currentLocation', currentLocation)
   }, [currentLocation])
+
+  const routes = useMemo(() => {
+    return Points.toRoutes({ points })
+  }, [points])
 
   const value = useMemo(
     () => ({
@@ -67,8 +75,17 @@ export function RouterContextProvider({
       setNextLocation,
       setStatus,
       useAdapterLocation,
+      routes,
     }),
-    [ssrLocation, currentLocation, nextLocation, policy, routerStatus, useAdapterLocation],
+    [
+      ssrLocation,
+      currentLocation,
+      nextLocation,
+      policy,
+      routerStatus,
+      useAdapterLocation,
+      routes._.pathsOrdering.join(','),
+    ],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>

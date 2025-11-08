@@ -178,7 +178,7 @@ export async function getReadableStreamWithWrapper({
   // one scope for both render and pack ensures consistency
   return await eversionRun.withServerGlobalState(async () => {
     // Kick off the render first; any randoms used during render happen now
-    const reactStream = await renderer(createElement(App, { points: eversionRun.eversion.points }), {
+    const reactStream = await renderer(createElement(App), {
       ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
     })
 

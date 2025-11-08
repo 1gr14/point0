@@ -1,10 +1,18 @@
 import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import React, { Fragment, useCallback, useContext, useMemo } from 'react'
+import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
 import { GlobalStore } from '../../core/global-store.js'
-import { Points, type PagesTree } from '../../core/points.js'
+import type {
+  LazyPointsModule,
+  LazyRoutedPointsCollection,
+  PagesTree,
+  PagesTreeSource,
+  ReadyPointsModule,
+  ReadyRoutedPointsCollection,
+} from '../../core/points.js'
+import { Points } from '../../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
 
@@ -44,20 +52,16 @@ export const Router = ({
   Page404 = DefaultPage404,
   policy,
   status,
-  pagesTree,
+  points,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
   Page404?: React.ComponentType
   policy?: RouterPolicy
   status?: RouterStatus
-  pagesTree?: PagesTree
+  points: LazyPointsModule | ReadyPointsModule
   children?: React.ReactNode
 }): React.ReactElement => {
-  pagesTree ??= useContext(Points.Context)?.pagesTree
-  if (!pagesTree && !children) {
-    throw new Error('pagesTree or children is required')
-  }
   const wouterRouterProps = useMemo(() => {
     if (process.env.IS_CLIENT) {
       return {}
@@ -80,13 +84,9 @@ export const Router = ({
         ssrLocation={ssrLocation}
         policy={policy}
         status={status}
+        points={points}
       >
-        {children ??
-          (pagesTree ? (
-            <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
-          ) : (
-            <>Pages tree or children is required</>
-          ))}
+        {children ?? <RenderPagesTree points={points} Page404={Page404} />}
       </RouterContextProvider>
     </WouterRouter>
   )
@@ -94,16 +94,13 @@ export const Router = ({
 
 export const RouterRoutes = ({
   Page404 = DefaultPage404,
-  pagesTree,
+  points,
 }: {
   Page404?: React.ComponentType
   pagesTree?: PagesTree
+  points: LazyPointsModule | ReadyPointsModule
 }): React.ReactElement => {
-  pagesTree ??= useContext(Points.Context)?.pagesTree
-  if (!pagesTree) {
-    throw new Error('pagesTree is required')
-  }
-  return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
+  return <RenderPagesTree points={points} Page404={Page404} />
 }
 
 const DefaultPage404 = () => {
@@ -118,13 +115,20 @@ const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
 
 export const RenderPagesTree = ({
   pagesTree,
+  pagesTreeSource,
+  points,
   Page404,
   level = 0,
 }: {
-  pagesTree: PagesTree
+  pagesTree?: PagesTree
+  pagesTreeSource?: PagesTreeSource
+  points: LazyPointsModule | ReadyPointsModule | LazyRoutedPointsCollection | ReadyRoutedPointsCollection
   Page404: React.ComponentType
   level?: number
 }) => {
+  points = Points.toRoutedPointsCollection(points)
+  pagesTreeSource ??= Points.toPagesTreeSource({ points })
+  pagesTree ??= Points.toPagesTree({ points, pagesTreeSource: [] })
   return (
     <Switch>
       {pagesTree.map((node) => {
@@ -143,7 +147,15 @@ export const RenderPagesTree = ({
                       </Route>
                     )
                   })}
-                  {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
+                  {node.nested && (
+                    <RenderPagesTree
+                      points={points}
+                      pagesTree={node.nested}
+                      pagesTreeSource={pagesTreeSource}
+                      Page404={Page404}
+                      level={level + 1}
+                    />
+                  )}
                 </Switch>
               </Layout>
             </Route>
@@ -161,7 +173,15 @@ export const RenderPagesTree = ({
               )
             })}
 
-            {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
+            {node.nested && (
+              <RenderPagesTree
+                points={points}
+                pagesTree={node.nested}
+                pagesTreeSource={pagesTreeSource}
+                Page404={Page404}
+                level={level + 1}
+              />
+            )}
           </Fragment>
         )
       })}

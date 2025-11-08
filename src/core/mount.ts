@@ -1,11 +1,11 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { LazyPoints, Points } from './points.js'
+import type { LazyPointsModule, ReadyPointsModule } from './points.js'
 
 let reactRoot: Root | null = null
 
-export function mount(App: AppComponent, points: LazyPoints, domRootElement?: HTMLElement | null) {
+export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
   if (domRootElement !== undefined) {
     if (!domRootElement) {
       throw new Error(`Provided domRootElement is not found, please provide correct domRootElement`)
@@ -19,7 +19,7 @@ export function mount(App: AppComponent, points: LazyPoints, domRootElement?: HT
     }
   }
 
-  const appElement = createElement(App, { points })
+  const appElement = createElement(App)
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.
@@ -39,5 +39,5 @@ export function mount(App: AppComponent, points: LazyPoints, domRootElement?: HT
   }
 }
 
-export type AppProps = { points: Points }
+export type AppProps = { points: LazyPointsModule | ReadyPointsModule }
 export type AppComponent = (props: AppProps) => React.ReactElement

@@ -17,6 +17,8 @@ export default defineConfig([
       '**/.git/**',
       '**/templates/**',
       '**/point0.config.js',
+      '**/points.lazy.ts',
+      '**/points.ready.ts',
       'tsup.config.ts',
       'eslint.config.js',
       '.commitlintrc.js',

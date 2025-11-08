@@ -52,7 +52,12 @@ export class Points<TReady extends boolean = boolean> {
     this._ = { pagesTreeSource }
   }
 
-  static readonly ready = (readyPoints: ReadyPointsCollection | RawPointsCollection): Points<true> => {
+  static readonly ready = (
+    readyPoints: ReadyPointsCollection | RawPointsCollection | ReadyPointsModule,
+  ): Points<true> => {
+    if (Points.isReadyPointsModule(readyPoints)) {
+      readyPoints = Object.values(readyPoints).map((p) => p.point)
+    }
     if (Points.isRawPointsCollection(readyPoints)) {
       readyPoints = Points.rawToReadyPointsCollection(readyPoints)
     }
@@ -64,7 +69,10 @@ export class Points<TReady extends boolean = boolean> {
     return new Points<true>({ collection: routedPoints, pagesTree, pagesTreeSource, routes, ready: true })
   }
 
-  static readonly lazy = (lazyPoints: LazyPointsCollection): Points<false> => {
+  static readonly lazy = (lazyPoints: LazyPointsCollection | LazyPointsModule): Points<false> => {
+    if (Points.isLazyPointsModule(lazyPoints)) {
+      lazyPoints = Object.values(lazyPoints)
+    }
     Points.validate(lazyPoints)
     const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
@@ -74,15 +82,29 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   static readonly create = (
-    points: ReadyPointsCollection | LazyPointsCollection | RawPointsCollection | Points,
+    points:
+      | ReadyPointsCollection
+      | LazyPointsCollection
+      | RawPointsCollection
+      | Points
+      | ReadyPointsModule
+      | LazyPointsModule,
   ): Points<boolean> => {
     if (points instanceof Points) {
       return points
     }
     if (Points.isLazyPointsCollection(points)) {
       return Points.lazy(points)
-    } else {
+    } else if (Points.isLazyPointsModule(points)) {
+      return Points.lazy(points)
+    } else if (Points.isReadyPointsModule(points)) {
       return Points.ready(points)
+    } else if (Points.isRawPointsCollection(points)) {
+      return Points.ready(points)
+    } else if (Points.isEmptyPoints(points)) {
+      return Points.ready(points)
+    } else {
+      throw new Error('Invalid points input')
     }
   }
 
@@ -117,8 +139,49 @@ export class Points<TReady extends boolean = boolean> {
     return points.length && points.every((p: any) => p instanceof Point0)
   }
 
+  private static isEmptyPoints(points: any): points is ReadyPointsCollection {
+    if (Array.isArray(points) && points.length === 0) {
+      return true
+    }
+    if (!Array.isArray(points) && Object.keys(points).length === 0) {
+      return true
+    }
+    return false
+  }
+
   private static isLazyPointsCollection(points: any): points is LazyPointsCollection {
     return points.length && points.some((p: any) => typeof p.point === 'function')
+  }
+
+  private static isLazyPointsModule(points: any): points is LazyPointsModule {
+    return (
+      !Array.isArray(points) &&
+      Object.keys(points).length > 0 &&
+      Object.values(points).every((p: any) => typeof p.name === 'string')
+    )
+  }
+
+  private static isReadyPointsModule(points: any): points is ReadyPointsModule {
+    return (
+      !Array.isArray(points) &&
+      Object.keys(points).length > 0 &&
+      Object.values(points).every((p: any) => typeof p.point?._name === 'string')
+    )
+  }
+
+  // private static isRoutedPointsCollection(
+  //   points: any,
+  // ): points is LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
+  //   return points.filter((p: any) => p.type).length > 0
+  // }
+  static isRoutedPointsCollection(points: any): points is LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
+    if (!Array.isArray(points)) {
+      return false
+    }
+    if (points.length === 0) {
+      return true
+    }
+    return points.every((p: any) => 'Component' in p)
   }
 
   private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
@@ -134,18 +197,61 @@ export class Points<TReady extends boolean = boolean> {
     })
   }
 
-  //         typeof point === 'function'
-  //           ? React.lazy(async () => ({
-  //               default: (await point())._Layout,
-  //             }))
-  //           : point._Layout,
+  private static moduleToReadyPointsCollection(points: ReadyPointsModule): ReadyPointsCollection {
+    return this.rawToReadyPointsCollection(Object.values(points).map((p) => p.point))
+  }
 
-  private static toRoutedPointsCollection(points: LazyPointsCollection): LazyRoutedPointsCollection
-  private static toRoutedPointsCollection(points: ReadyPointsCollection): ReadyRoutedPointsCollection
-  private static toRoutedPointsCollection(
-    points: LazyPointsCollection | ReadyPointsCollection,
+  private static moduleToLazyPointsCollection(points: LazyPointsModule): LazyPointsCollection {
+    return Object.values(points)
+  }
+
+  private static toPointsCollection(
+    points:
+      | LazyPointsCollection
+      | ReadyPointsCollection
+      | LazyPointsModule
+      | ReadyPointsModule
+      | LazyRoutedPointsCollection
+      | ReadyRoutedPointsCollection,
+  ): LazyPointsCollection | ReadyPointsCollection | LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
+    if (Points.isLazyPointsModule(points)) {
+      return Points.moduleToLazyPointsCollection(points)
+    }
+    if (Points.isReadyPointsModule(points)) {
+      return Points.moduleToReadyPointsCollection(points)
+    }
+    return points
+  }
+
+  static toRoutedPointsCollection(
+    points: LazyPointsCollection | LazyPointsModule | LazyRoutedPointsCollection,
+  ): LazyRoutedPointsCollection
+  static toRoutedPointsCollection(
+    points: ReadyPointsCollection | ReadyPointsModule | ReadyRoutedPointsCollection,
+  ): ReadyRoutedPointsCollection
+  static toRoutedPointsCollection(
+    points:
+      | LazyPointsCollection
+      | ReadyPointsCollection
+      | LazyPointsModule
+      | ReadyPointsModule
+      | LazyRoutedPointsCollection
+      | ReadyRoutedPointsCollection,
+  ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection
+  static toRoutedPointsCollection(
+    points:
+      | LazyPointsCollection
+      | ReadyPointsCollection
+      | LazyPointsModule
+      | ReadyPointsModule
+      | LazyRoutedPointsCollection
+      | ReadyRoutedPointsCollection,
   ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
-    return points.map((record, index) => {
+    if (this.isRoutedPointsCollection(points)) {
+      return points
+    }
+    const pointsCollection = Points.toPointsCollection(points)
+    return pointsCollection.map((record) => {
       const point = record.point
       return {
         type: record.type,
@@ -184,16 +290,25 @@ export class Points<TReady extends boolean = boolean> {
     }) as LazyRoutedPointsCollection | ReadyRoutedPointsCollection
   }
 
-  private static readonly toRoutes = ({
-    points,
+  static readonly toRoutes = ({
+    points: providedPoints,
   }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection | ReadyPointsModule | LazyPointsModule
   }): Routes => {
     const routes: Record<string, AnyRoute> = {}
-    for (const record of points) {
-      if (record.route && record.type === 'page') {
-        routes[record.name] = record.route
+    const pointsCollection = Points.toPointsCollection(providedPoints)
+    for (const item of pointsCollection) {
+      const type = item.type
+      const routeSrc = item.route
+      if (type !== 'page' || !routeSrc) {
+        continue
       }
+      const route = Route0.from(routeSrc)
+      const name = item.name
+      if (!name) {
+        throw new Error('Invalid point name')
+      }
+      routes[name] = route
     }
     return Routes.create(routes)
   }
@@ -252,9 +367,10 @@ export class Points<TReady extends boolean = boolean> {
   static readonly toPagesTreeSource = ({
     points,
   }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection // | LazyPointsModule | ReadyPointsModule
   }): PagesTreeSource => {
-    const pages = points.filter((p) => p.type === 'page')
+    const pointsCollection = points // Points.toRoutedPointsCollection(points)
+    const pages = pointsCollection.filter((p) => p.type === 'page')
     const tree: PagesTreeSource = []
 
     const pagesWithoutLayout = pages.filter((p) => !p.layouts.length)
@@ -315,17 +431,20 @@ export class Points<TReady extends boolean = boolean> {
     return tree
   }
 
-  private static readonly toPagesTree = ({
+  static readonly toPagesTree = ({
     points,
     pagesTreeSource,
   }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection
+    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection // | LazyPointsModule | ReadyPointsModule
     pagesTreeSource: PagesTreeSource
   }): PagesTree => {
+    const pointsCollection = points // this.toRoutedPointsCollection(points)
     const pagesTree: PagesTree = []
     for (const pagesTreeSourceRecord of pagesTreeSource) {
-      const layoutRecord = points.find((l) => l.type === 'layout' && l.name === pagesTreeSourceRecord.layout)
-      const pagesRecords = points.filter((p) => p.type === 'page' && pagesTreeSourceRecord.pages.includes(p.name))
+      const layoutRecord = pointsCollection.find((l) => l.type === 'layout' && l.name === pagesTreeSourceRecord.layout)
+      const pagesRecords = pointsCollection.filter(
+        (p) => p.type === 'page' && pagesTreeSourceRecord.pages.includes(p.name),
+      )
       const pagesTreeRecord: PagesTreeRecord = {
         Layout: layoutRecord?.Component as React.ComponentType<{ children: React.ReactNode }> | undefined,
         layoutName: layoutRecord?.name,
@@ -565,7 +684,9 @@ export type ReadyRoutedPointsCollectionRecord = {
 export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
 
-export type AnyPointsCollection = ReadyPointsCollection | LazyPointsCollection | RawPointsCollection | Points
+export type LazyPointsModule = Record<string, LazyPointsCollectionRecord>
+export type ReadyPointsModule = Record<string, { point: EndPoint }>
+
 export type LazyPoints = Points<false>
 export type ReadyPoints = Points<true>
 

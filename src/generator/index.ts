@@ -314,6 +314,62 @@ export class FileGenerator {
 
   // emit
 
+  private emitSuperStoreInitialization(): string[] {
+    const lines: string[] = []
+    lines.push(
+      `await import('point0/core/global-store.js').then(async ({ GlobalStore }) => await GlobalStore.init({}))`,
+    )
+    return lines
+  }
+
+  private emitNamedImports({
+    points,
+    what,
+    outputAbs,
+  }: {
+    points: CollectedPoint[]
+    what: 'import' | 'export'
+    outputAbs: string
+  }): {
+    importLines: string[]
+    importedPoints: Array<CollectedPoint & { hash: string; renamedExportName: string }>
+  } {
+    const importLines: string[] = []
+
+    const importPathsAndExportNames: Array<{
+      importPath: string
+      exports: Array<{ originalExportName: string; renamedExportName: string }>
+    }> = []
+
+    const importedPoints = points.map((point) => {
+      const importPath = FileGenerator.toRelativeJsImportPath(outputAbs, point.fileAbs)
+      const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
+      const hash = FileGenerator.hash(point)
+      const renamedExportName = point.exportName === 'default' ? `unnamed_${hash}` : `${point.exportName}_${hash}`
+      const originalExportName = point.exportName === 'default' ? 'default' : point.exportName
+      const newItem = { originalExportName, renamedExportName }
+      if (importPathAndExportNames) {
+        importPathAndExportNames.exports.push(newItem)
+      } else {
+        importPathsAndExportNames.push({ importPath, exports: [newItem] })
+      }
+      return {
+        ...point,
+        hash,
+        renamedExportName,
+      }
+    })
+
+    for (const importPathAndExportNames of importPathsAndExportNames) {
+      if (!importPathAndExportNames.exports.length) {
+        continue
+      }
+      const namedPart = `{ ${importPathAndExportNames.exports.map((e) => `${e.originalExportName} as ${e.renamedExportName}`).join(', ')} }`
+      importLines.push(`${what} ${namedPart} from '${importPathAndExportNames.importPath}'`)
+    }
+    return { importLines, importedPoints }
+  }
+
   private emitLazyPointsFile(points: CollectedPoint[]): string {
     if (!this.outputLazyAbs) {
       throw new Error('outputLazyAbs is not set')
@@ -322,47 +378,49 @@ export class FileGenerator {
     if (this.banner) {
       lines.push(this.banner)
     }
-    lines.push(`import type { LazyPointsCollection } from 'point0/core/points.js'`)
-    lines.push(`import { Points } from 'point0/core/points.js'`)
+    lines.push(...this.emitSuperStoreInitialization())
+    lines.push(`import type { LazyPointsCollectionRecord } from 'point0/core/points.js'`)
     lines.push(``)
 
+    const { importedPoints } = this.emitNamedImports({
+      points,
+      what: 'import',
+      outputAbs: this.outputLazyAbs,
+    })
+
     if (this.points.length === 0) {
-      lines.push(`export const points = [] as LazyPointsCollection`)
+      lines.push(`export {}`)
     } else {
-      lines.push(`export const points = [`)
-      for (const point of points) {
-        lines.push(`  {`)
+      for (const point of importedPoints) {
+        lines.push(`export const ${point.renamedExportName}_lazy = {`)
         if (point.root) {
-          lines.push(`    root: true,`)
+          lines.push(`  root: true,`)
         }
-        lines.push(`    type: '${point.type}',`)
-        lines.push(`    name: '${point.name}',`)
+        lines.push(`  type: '${point.type}',`)
+        lines.push(`  name: '${point.name}',`)
         if (point.route) {
-          lines.push(`    route: '${point.route.definition}',`)
+          lines.push(`  route: '${point.route.definition}',`)
         }
         if (point.type === 'page' && point.layouts?.length) {
           const arr = point.layouts
             .map((r) => `'${r}'`)
             .reverse()
             .join(', ')
-          lines.push(`    layouts: [${arr}],`)
+          lines.push(`  layouts: [${arr}],`)
         }
         // const exportNameSuffix = point.type === 'component' ? '.point' : ''
         const exportNameSuffix = '.point'
         lines.push(
-          `    point: async () => (await import('${FileGenerator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+          `  point: async () => (await import('${FileGenerator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
         )
-        lines.push(`  },`)
+        lines.push(`} as LazyPointsCollectionRecord`)
+        lines.push(``)
       }
-      lines.push(`] as LazyPointsCollection`)
     }
 
     lines.push(``)
-    lines.push(`export const initializePoints = () => Points.lazy(points)`)
-    lines.push(``)
     return lines.join('\n')
   }
-
   private emitReadyPointsFile(points: CollectedPoint[]): string {
     if (!this.outputReadyAbs) {
       throw new Error('outputReadyAbs is not set')
@@ -371,60 +429,18 @@ export class FileGenerator {
     if (this.banner) {
       lines.push(this.banner)
     }
-    lines.push(`import type { RawPointsCollection } from 'point0/core/points.js'`)
 
-    const hashedPoints = points.map((p) => ({
-      ...p,
-      hash: FileGenerator.hash(p),
-    }))
-
-    const importPathsAndExportNames: Array<{
-      importPath: string
-      exports: Array<{ originalExportName: string; renamedExportName: string }>
-    }> = []
-    for (const point of hashedPoints) {
-      const importPath = FileGenerator.toRelativeJsImportPath(this.outputReadyAbs, point.fileAbs)
-      const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
-      const newItem =
-        point.exportName === 'default'
-          ? { originalExportName: 'default', renamedExportName: `unnamed_${point.hash}` }
-          : { originalExportName: point.exportName, renamedExportName: `${point.exportName}_${point.hash}` }
-      if (importPathAndExportNames) {
-        importPathAndExportNames.exports.push(newItem)
-      } else {
-        importPathsAndExportNames.push({ importPath, exports: [newItem] })
-      }
-    }
-
-    for (const importPathAndExportNames of importPathsAndExportNames) {
-      const defaultItem = importPathAndExportNames.exports.find((e) => e.originalExportName === 'default')
-      const defaultPart = defaultItem ? defaultItem.renamedExportName : undefined
-      const namedItems = importPathAndExportNames.exports.filter((e) => e.originalExportName !== 'default')
-      const namedPart =
-        namedItems.length > 0
-          ? `{ ${namedItems.map((e) => `${e.originalExportName} as ${e.renamedExportName}`).join(', ')} }`
-          : undefined
-      const combinedPart = defaultPart ? `${defaultPart}, ${namedPart}` : namedPart
-      if (!combinedPart) {
-        continue
-      }
-      lines.push(`import ${combinedPart} from '${importPathAndExportNames.importPath}'`)
-    }
+    lines.push(...this.emitSuperStoreInitialization())
 
     if (this.points.length === 0) {
-      lines.push(``)
-      lines.push(`export const points = [] as RawPointsCollection`)
+      lines.push(`export {}`)
     } else {
-      lines.push(``)
-      lines.push(`export const points = [`)
-      for (const point of hashedPoints) {
-        if (point.exportName === 'default') {
-          lines.push(`    unnamed_${point.hash}.point,`)
-        } else {
-          lines.push(`    ${point.exportName}_${point.hash}.point,`)
-        }
-      }
-      lines.push(`] as RawPointsCollection`)
+      const { importLines } = this.emitNamedImports({
+        points,
+        what: 'export',
+        outputAbs: this.outputReadyAbs,
+      })
+      lines.push(...importLines)
     }
 
     lines.push(``)

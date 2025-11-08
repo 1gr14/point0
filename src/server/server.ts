@@ -1,5 +1,5 @@
 import type { AppComponent } from '../core/mount.js'
-import type { RawPointsCollection, ReadyPointsCollection } from '../core/points.js'
+import type { ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { RequiredCtx, RootId, RootPoint } from '../core/types.js'
 import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
@@ -10,7 +10,7 @@ export type ServerAdapterLogger = {
 }
 export type ServerAdapterClientInput = {
   ssr?: boolean
-  points?: ReadyPointsCollection | RawPointsCollection | Points<true>
+  points?: ReadyPointsModule
   root: RootPoint
   basepath?: string
   distDir?: string
@@ -22,7 +22,7 @@ export type ServerAdapterClientInput = {
 }
 export type ServerAdapterServerInput<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   root: RootPoint<TRequiredCtx>
-  points?: ReadyPointsCollection | RawPointsCollection | Points<true>
+  points?: ReadyPointsModule
   port?: number | string | undefined
   clientsDevServerPort?: number | string | undefined
   logger?: ServerAdapterLogger
