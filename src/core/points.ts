@@ -649,6 +649,16 @@ export class Points<TReady extends boolean = boolean> {
   Provider = ({ children }: { children: React.ReactNode }) => {
     return React.createElement(Points.Context.Provider, { value: this }, children)
   }
+  static Provider = ({
+    children,
+    points: providedPoints,
+  }: {
+    children: React.ReactNode
+    points: LazyPointsModule | ReadyPointsModule
+  }) => {
+    const points = Points.create(providedPoints)
+    return React.createElement(Points.Context.Provider, { value: points }, children)
+  }
 }
 
 export type LazyPointsCollectionRecord = {

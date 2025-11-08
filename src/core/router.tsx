@@ -3,9 +3,9 @@ import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { GlobalStore } from './global-store.js'
 import type { LazyPointsModule, ReadyPointsModule } from './points.js'
 import { Points } from './points.js'
-import { GlobalStore } from './global-store.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -103,15 +103,13 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   location?: AnyLocation,
 ) {
   const routerCtx = React.useContext(RouterContext)
-  const pointsCtx = React.useContext(Points.Context)
-  if (!pointsCtx) throw new Error('useLocation must be used within Points.Context')
   if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
   return useMemo(() => {
     if (!route) {
-      return pointsCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
+      return routerCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
     }
     return Route0.from(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
-  }, [route, location, routerCtx.currentLocation, pointsCtx.routesHash])
+  }, [route, location, routerCtx.currentLocation, routerCtx.routes])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -180,7 +178,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = pointsCtx.routes._.getLocation(href)
+      const location = routerContext.routes._.getLocation(href)
       routerContext.setNextLocation(location)
 
       // simple mode

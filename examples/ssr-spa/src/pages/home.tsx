@@ -6,7 +6,6 @@ import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { $ } from '../lib/global-store.js'
 import { routes } from '../lib/routes.js'
-import { HomeHelper } from './home.helper.js'
 
 const something = $.define('something', () => {
   return {
@@ -66,8 +65,6 @@ export default generalLayout
           Click me
         </button>
         <p>State: {state}</p>
-        <hr />
-        <HomeHelper initialState={state} />
         <hr />
         <p>Something random: {something.random}</p>
         <p>Something date: {something.date.getTime()}</p>

@@ -1,5 +1,7 @@
-points.reload()
-hmr update only related point
+routes provides by points context
+merge back
+superstore
+input of page component omit params and query params
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
