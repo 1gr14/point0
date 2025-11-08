@@ -24,6 +24,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { EndPointType, PointName } from '../core/types.js'
+import type { PagesTreeSource } from '../core/points.js'
 import { Points } from '../core/points.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
@@ -542,58 +543,92 @@ export class FileGenerator {
   //   lines.push(``)
   //   return lines.join('\n')
   // }
+
   private emitWouterRoutesFile(points: CollectedPoint[]): string {
     if (!this.outputWouterRoutesAbs) {
       throw new Error('outputWouterRoutesAbs is not set')
     }
 
+    // Build a nested tree (layout -> pages + children)
     const pagesTreeSource = Points.toPagesTreeSource({ points })
 
     const lines: string[] = []
     if (this.banner) lines.push(this.banner)
 
-    // --- imports ---
-    lines.push(`import React, { Fragment } from 'react'`)
-    lines.push(`import { Route, Switch } from 'wouter'`)
+    // Minimal imports (match your shown output)
     lines.push(`import { Route0 } from '@devp0nt/route0'`)
+    lines.push(`import { Route, Switch } from 'wouter'`)
+    lines.push(``)
+
+    // Import & normalize all points we may need to reference
     const { importedPoints } = this.emitNamedImports({
       points,
       what: 'import',
       outputAbs: this.outputWouterRoutesAbs,
     })
-    lines.push(``)
 
-    // --- collect routed points ---
-    const routedPoints = importedPoints.filter((p) => p.route && p.type === 'page')
-    const layoutPoints = importedPoints.filter((p) => p.type === 'layout')
+    // Index by name for quick lookup
+    const pageByName = new Map<string, (typeof importedPoints)[number] & { route: AnyRoute }>()
+    const layoutByName = new Map<string, (typeof importedPoints)[number]>()
 
-    // --- helpers ---
-    const toRouteRegexVar = (layoutName: string) => `layout_${layoutName}_regex`
-    const toRouteComponentVar = (point: (typeof importedPoints)[number]) => `Component_${point.renamedExportName}`
-
-    // --- route regexes for layouts ---
-    for (const layout of layoutPoints) {
-      const pagesRoutesUnderLayout = routedPoints
-        .filter((p) => p.layouts?.includes(layout.name))
-        .flatMap((p) => (p.route ? [p.route] : []))
-      const regexVar = toRouteRegexVar(layout.name)
-      if (!pagesRoutesUnderLayout.length) continue
-      lines.push(
-        `const ${regexVar} = new RegExp('^(' + [${pagesRoutesUnderLayout
-          .map((route) => `Route0.from('${route.definition}').getRegexBaseString()`)
-          .join(', ')}].join('|') + ')(?:/|$)')`,
-      )
+    for (const p of importedPoints) {
+      if (p.type === 'page' && p.route) {
+        pageByName.set(p.name, p as any)
+      } else if (p.type === 'layout') {
+        layoutByName.set(p.name, p)
+      }
     }
 
-    lines.push(``)
+    // Helpers
+    const toLayoutRouteRegexVar = (layoutName: string) => `layout_${layoutName}_regex`
+    const toComponentVar = (point: (typeof importedPoints)[number]) => `Component_${point.renamedExportName}`
 
-    // --- Components shorthand (so we can reuse them easily) ---
-    for (const p of importedPoints) {
-      const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
-      const componentVar = toRouteComponentVar(p)
-      if (p.type !== 'page' && p.type !== 'layout') {
-        continue
+    // Gather all page routes (definitions) in a subtree
+    const collectRoutesForTree = (tree: PagesTreeSource): string[] => {
+      const defs: string[] = []
+      const walk = (node: PagesTreeSource[number]) => {
+        // add page routes for this node
+        for (const pageName of node.pages) {
+          const page = pageByName.get(pageName)
+          if (page?.route) {
+            defs.push(page.route.definition)
+          }
+        }
+        // descend to nested layouts
+        node.nested?.forEach(walk)
       }
+      tree.forEach(walk)
+      return defs
+    }
+
+    // Emit regex for each layout record using *subtree* routes
+    // We need a deterministic walk that mirrors rendering later.
+    const regexLines: string[] = []
+    const emitRegexForTree = (tree: PagesTreeSource): void => {
+      for (const node of tree) {
+        if (node.layout) {
+          const subtreeRoutes = collectRoutesForTree([node])
+          if (subtreeRoutes.length > 0) {
+            const varName = toLayoutRouteRegexVar(node.layout)
+            const pieces = subtreeRoutes.map((def) => `Route0.from('${def}').getRegexBaseString()`).join(', ')
+            regexLines.push(`const ${varName} = new RegExp('^(' + [${pieces}].join('|') + ')(?:/|$)')`)
+          }
+        }
+        if (node.nested?.length) emitRegexForTree(node.nested)
+      }
+    }
+
+    emitRegexForTree(pagesTreeSource)
+    if (regexLines.length) {
+      lines.push(...regexLines)
+      lines.push(``)
+    }
+
+    // Emit component vars (pages + layouts only)
+    for (const p of importedPoints) {
+      if (p.type !== 'page' && p.type !== 'layout') continue
+      const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
+      const componentVar = toComponentVar(p)
       const suffix = p.type === 'page' ? '.point._Page' : '.point._Layout'
       lines.push(
         `const ${componentVar} = (await import('${relImportPath}')).${
@@ -603,32 +638,85 @@ export class FileGenerator {
     }
 
     lines.push(``)
-
-    // --- Component body ---
     lines.push(`export const WouterRoutes = ({ Page404 = () => <div>Page Not Found</div> }) => {`)
     lines.push(`  return (`)
     lines.push(`    <Switch>`)
 
-    const layoutlessPages = routedPoints.filter((p) => !p.layouts?.length)
-    for (const page of layoutlessPages) {
-      if (!page.route) continue
-      lines.push(`      <Route path="${page.route.definition}"><${toRouteComponentVar(page)} /></Route>`)
+    // Rendering helpers (static code emission)
+
+    // Emit <Route> for a single page name
+    const emitPageRoute = (pageName: string, indent: string) => {
+      const page = pageByName.get(pageName)
+      if (!page?.route) return
+      lines.push(`${indent}<Route path="${page.route.definition}"><${toComponentVar(page)} /></Route>`)
     }
 
-    for (const layout of layoutPoints) {
-      const regexVar = toRouteRegexVar(layout.name)
-      const pagesUnderLayout = routedPoints.filter((p) => p.layouts?.includes(layout.name))
-      if (!pagesUnderLayout.length) continue
-      lines.push(`      <Route path={${regexVar}}>`)
-      lines.push(`        <${toRouteComponentVar(layout)}>`)
-      lines.push(`          <Switch>`)
-      for (const page of pagesUnderLayout) {
-        if (!page.route) continue
-        lines.push(`            <Route path="${page.route.definition}"><${toRouteComponentVar(page)} /></Route>`)
+    // Emit a layout subtree (layout route + layout wrapper + its pages + nested layouts)
+    const emitLayoutNode = (node: PagesTreeSource[number], indent: string) => {
+      if (!node.layout) return // not a layout node; handled elsewhere
+
+      const layout = layoutByName.get(node.layout)
+      if (!layout) return
+
+      const layoutRegexVar = toLayoutRouteRegexVar(node.layout)
+      lines.push(`${indent}<Route path={${layoutRegexVar}}>`)
+      lines.push(`${indent}  <${toComponentVar(layout)}>`)
+      lines.push(`${indent}    <Switch>`)
+
+      // pages directly under this layout
+      for (const pageName of node.pages) {
+        emitPageRoute(pageName, `${indent}      `)
       }
-      lines.push(`          </Switch>`)
-      lines.push(`        </${toRouteComponentVar(layout)}>`)
-      lines.push(`      </Route>`)
+
+      // nested layouts/pages
+      if (node.nested?.length) {
+        for (const child of node.nested) {
+          if (child.layout) {
+            // child is a layout → recurse
+            emitLayoutNode(child, `${indent}      `)
+          } else {
+            // child is a "layout-less" bucket at this depth → emit its pages + descend
+            for (const pageName of child.pages) {
+              emitPageRoute(pageName, `${indent}      `)
+            }
+            child.nested?.forEach((grand) => {
+              if (grand.layout) emitLayoutNode(grand, `${indent}      `)
+            })
+          }
+        }
+      }
+
+      lines.push(`${indent}    </Switch>`)
+      lines.push(`${indent}  </${toComponentVar(layout)}>`)
+      lines.push(`${indent}</Route>`)
+    }
+
+    // Top-level emission:
+    // 1) pages with no layout
+    // 2) each top-level layout subtree
+    for (const node of pagesTreeSource) {
+      if (!node.layout) {
+        // Layout-less pages at the root
+        for (const pageName of node.pages) {
+          emitPageRoute(pageName, `      `)
+        }
+        // If there are nested layout groups under the layout-less bucket, render them
+        node.nested?.forEach((child) => {
+          if (child.layout) emitLayoutNode(child, `      `)
+          else {
+            // additional layout-less bucket at root (rare but supported)
+            for (const pageName of child.pages) {
+              emitPageRoute(pageName, `      `)
+            }
+            child.nested?.forEach((grand) => {
+              if (grand.layout) emitLayoutNode(grand, `      `)
+            })
+          }
+        })
+      } else {
+        // A top-level layout subtree
+        emitLayoutNode(node, `      `)
+      }
     }
 
     // 404
