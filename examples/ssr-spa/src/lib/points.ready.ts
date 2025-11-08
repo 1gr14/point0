@@ -1,4 +1,4 @@
-await import('point0/core/global-store.js').then(async ({ GlobalStore }) => await GlobalStore.init({}))
+await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))
 export { default as unnamed_6l07mdq734, BestIdeaComponent as BestIdeaComponent_3qkxiugr0k } from '../pages/home.js'
 export { empty as empty_n50wzpyog6 } from '../pages/empty.js'
 export { ideasPage as ideasPage_1ez06sxoz6e } from '../pages/ideas.js'

@@ -340,9 +340,7 @@ export class FileGenerator {
 
   private emitSuperStoreInitialization(): string[] {
     const lines: string[] = []
-    lines.push(
-      `await import('point0/core/global-store.js').then(async ({ GlobalStore }) => await GlobalStore.init({}))`,
-    )
+    lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
     return lines
   }
 

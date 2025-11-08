@@ -19,8 +19,8 @@ import type {
   UndefinedRouteDefinition,
 } from './types.js'
 
-await import('./global-store.js').then(async ({ GlobalStore }) => {
-  return await GlobalStore.init({})
+await import('./super-store.js').then(async ({ SuperStore }) => {
+  return await SuperStore.init({})
 })
 
 // TODO: move all tests to separate files in test dir and refactor it

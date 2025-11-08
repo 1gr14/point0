@@ -5,7 +5,7 @@ import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
 import type { EversionRun } from '../core/eversion.js'
-import { GlobalStore } from '../core/global-store.js'
+import { SuperStore } from '../core/super-store.js'
 import type { AppComponent } from '../core/mount.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
 
@@ -137,7 +137,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
   })
   html = prependHeadElement({
-    content: '<!-- __PACKED_GLOBAL_STORE__ -->',
+    content: '<!-- __DEHYDRATED_SUPER_STORE__ -->',
     html,
   })
 
@@ -183,12 +183,12 @@ export async function getReadableStreamWithWrapper({
     })
 
     // Snapshot AFTER render started, in the same state scope
-    const packed = GlobalStore.pack()
-    const escapedJS = escapeForInlineJSON(superjson.stringify(packed))
+    const dehydrated = SuperStore.dehydrate()
+    const escapedJS = escapeForInlineJSON(superjson.stringify(dehydrated))
     const compiledPrefix = (prefix ?? '').replace(
-      '<!-- __PACKED_GLOBAL_STORE__ -->',
-      `<script id="__PACKED_GLOBAL_STORE__">
-         window.__PACKED_GLOBAL_STORE_VALUE__ = ${JSON.stringify(escapedJS)};
+      '<!-- __DEHYDRATED_SUPER_STORE__ -->',
+      `<script id="__DEHYDRATED_SUPER_STORE_SCRIPT__">
+         window.__DEHYDRATED_SUPER_STORE__ = ${JSON.stringify(escapedJS)};
        </script>`,
     )
 

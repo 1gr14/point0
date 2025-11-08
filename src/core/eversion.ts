@@ -6,7 +6,7 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import { GlobalStore } from './global-store.js'
+import { SuperStore } from './super-store.js'
 import { Point0 } from './index.js'
 import type { AppComponent } from './mount.js'
 import { Points } from './points.js'
@@ -353,8 +353,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
   }): Promise<EversionRun<TRequiredCtx>> {
     const serverGlobalState = {}
-    return await GlobalStore.runWithServerStateProvider(serverGlobalState, async () => {
-      const queryClient = GlobalStore.get<QueryClient>('queryClient')
+    return await SuperStore.runWithServerStateProvider(serverGlobalState, async () => {
+      const queryClient = SuperStore.get<QueryClient>('queryClient')
       return new EversionRun<TRequiredCtx>({
         eversion,
         pageLocation,
@@ -366,7 +366,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   getQueryClient(): QueryClient {
-    return process.env.IS_CLIENT ? GlobalStore.get('queryClient') : this.serverGlobalState.queryClient
+    return process.env.IS_CLIENT ? SuperStore.get('queryClient') : this.serverGlobalState.queryClient
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
@@ -378,7 +378,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
-    return await GlobalStore.runWithServerStateProvider(this.serverGlobalState, callback)
+    return await SuperStore.runWithServerStateProvider(this.serverGlobalState, callback)
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
@@ -712,7 +712,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = GlobalStore.config.queryClient.init()
+      const tempQueryClient = SuperStore.config.queryClient.init()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
         ...(restOptions as any),

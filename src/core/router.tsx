@@ -3,7 +3,7 @@ import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { GlobalStore } from './global-store.js'
+import { SuperStore } from './super-store.js'
 import { Points } from './points.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
@@ -54,7 +54,7 @@ export function RouterContextProvider({
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
-    GlobalStore.set('currentLocation', currentLocation)
+    SuperStore.set('currentLocation', currentLocation)
   }, [currentLocation])
 
   const value = useMemo(

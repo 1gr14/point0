@@ -3,7 +3,7 @@ import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import { GlobalStore } from '../../core/global-store.js'
+import { SuperStore } from '../../core/super-store.js'
 import type {
   LazyPointsModule,
   LazyRoutedPointsCollection,
@@ -48,7 +48,7 @@ export const Link = (props: LinkProps) => {
 }
 
 export const Router = ({
-  ssrLocation = GlobalStore.get('ssrLocation'),
+  ssrLocation = SuperStore.get('ssrLocation'),
   policy,
   status,
   children,

@@ -1,7 +1,12 @@
-wouter lazy
-merge back
-superstore
-input of page component omit params and query params
+superstore partial config on define
+superstore partial config on set but not weak set
+superstore partial config return get and set
+superstore partial __SSR_LOCATION__ should be like this
+helers for set get __SSR_LOCATION__ nad other, 
+remove specific config normalizers form super store, and use it inside eversion
+Point0.defineQueryCLient(() => ) and __QUEY_CLIENT__
+Point0.store.define etc
+wouter in dev do not lazy import
 
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
@@ -50,6 +55,7 @@ preserve client loaders also, and then on lets we have middleware-client but if 
 router export function getCurrentLocation()
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
+input of page component omit params and query params
 basepath replace with cwd
 allow pass env object or "PREFIX_*" to env for clients
 default client query options, default client page query options, default client component query options

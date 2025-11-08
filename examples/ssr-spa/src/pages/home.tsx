@@ -4,18 +4,22 @@ import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
-import { $ } from '../lib/global-store.js'
 import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
+import { SuperStore } from 'point0/core/super-store.js'
 
-const something = $.define('something', () => {
-  return {
-    random: Math.random(),
-    date: new Date(),
-    stable: 123,
-    var: 0,
-  }
-})
+// const something = SuperStore.define('something', () => {
+//   return {
+//     random: Math.random(),
+//     date: new Date(),
+//     stable: 123,
+//     var: 0,
+//   }
+// })
+const someRandom = SuperStore.define('someRandom', () => Math.random())
+const someDate = SuperStore.define('someDate', () => new Date())
+const someStable = SuperStore.define('someStable', () => 123)
+const someVar = SuperStore.define('someVar', () => 0)
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
@@ -47,16 +51,16 @@ export default generalLayout
   })
   .loader()
   .page(() => {
-    const [state, setState] = useState(something.var)
+    const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
-      something.var = state
+      someVar.set(state)
     }, [state])
     const ctx1 = clientCtx1.useValue()
     const ctx2 = clientCtx2.useValue()
     const x = clientCtx1.useValue('shmest')
     const y = clientCtx1.useValue(['test', 'shmest'])
-    something.stable = 456
+    someStable.set(456)
     return (
       <div>
         <button
@@ -74,9 +78,9 @@ export default generalLayout
         <hr />
         <ExternalHelperComponent />
         <hr />
-        <p>Something random: {something.random}</p>
-        <p>Something date: {something.date.getTime()}</p>
-        <p>Something stable: {something.stable}</p>
+        <p>Something random: {someRandom.get()}</p>
+        <p>Something date: {someDate.get().getTime()}</p>
+        <p>Something stable: {someStable.get()}</p>
         <h1>Welcome to IdeaNick</h1>
         <p>Test: {ctx1.test}</p>
         <p>Test: {ctx2.ideasCountX3}</p>
