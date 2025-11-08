@@ -24,6 +24,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { EndPointType, PointName } from '../core/types.js'
+import { Points } from '../core/points.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -545,6 +546,8 @@ export class FileGenerator {
     if (!this.outputWouterRoutesAbs) {
       throw new Error('outputWouterRoutesAbs is not set')
     }
+
+    const pagesTreeSource = Points.toPagesTreeSource({ points })
 
     const lines: string[] = []
     if (this.banner) lines.push(this.banner)

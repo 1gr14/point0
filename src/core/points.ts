@@ -367,10 +367,18 @@ export class Points<TReady extends boolean = boolean> {
   static readonly toPagesTreeSource = ({
     points,
   }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection // | LazyPointsModule | ReadyPointsModule
+    points:
+      | Array<{ type: EndPointType; name: PointName; route?: string | undefined | AnyRoute; layouts?: string[] }>
+      | ReadyRoutedPointsCollection
+      | LazyRoutedPointsCollection
   }): PagesTreeSource => {
     const pointsCollection = points // Points.toRoutedPointsCollection(points)
-    const pages = pointsCollection.filter((p) => p.type === 'page')
+    const pages = pointsCollection.filter((p) => p.type === 'page' && p.layouts) as Array<{
+      type: 'page'
+      name: PointName
+      route?: string | undefined
+      layouts: string[]
+    }>
     const tree: PagesTreeSource = []
 
     const pagesWithoutLayout = pages.filter((p) => !p.layouts.length)
