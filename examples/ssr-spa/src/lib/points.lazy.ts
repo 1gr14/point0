@@ -1,4 +1,3 @@
-await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))
 import type { LazyPointsCollectionRecord } from 'point0/core/points.js'
 
 export const unnamed_6l07mdq734_lazy = {

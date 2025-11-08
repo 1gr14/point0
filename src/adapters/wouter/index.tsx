@@ -48,7 +48,7 @@ export const Link = (props: LinkProps) => {
 }
 
 export const Router = ({
-  ssrLocation = SuperStore.get('ssrLocation'),
+  ssrLocation = SuperStore.get<AnyLocation | undefined>('__SSR_LOCATION__'),
   policy,
   status,
   children,

@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { LazyPointsModule, ReadyPointsModule } from './points.js'
+import { SuperStore } from './super-store.js'
 
 let reactRoot: Root | null = null
 
@@ -19,6 +20,9 @@ export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
     }
   }
 
+  if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
+    SuperStore.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
+  }
   const appElement = createElement(App)
 
   // First invocation: create the root once.

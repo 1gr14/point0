@@ -314,12 +314,74 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 }
 
+// private static normalizeQueryClientConfig(): void {
+//   if (!(this.config.queryClient as unknown)) {
+//     this.config.queryClient = {
+//       init: () => new QueryClient(),
+//       dehydrate: () => undefined,
+//       hydrate: () => undefined,
+//     }
+//   }
+//   this.config.queryClient.dehydrate = (queryClient: QueryClient) =>
+//     dehydrate(queryClient, {
+//       shouldDehydrateQuery: () => {
+//         // This will include all queries, including failed ones
+//         return true
+//       },
+//     })
+//   this.config.queryClient.hydrate = (dehydratedState: DehydratedState, createQueryClient: () => QueryClient) => {
+//     const queryClient = createQueryClient()
+//     hydrate(queryClient, dehydratedState)
+
+//     const prefetchPageQuery = queryClient
+//       .getQueryCache()
+//       .getAll()
+//       .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
+
+//     if (!prefetchPageQuery) {
+//       return queryClient
+//     }
+
+//     const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
+//       .dehydratedState
+//     hydrate(queryClient, relatedQueriesDehydratedState)
+
+//     return queryClient
+//   }
+// }
+
+// private static normalizeSsrLocationConfig(): void {
+//   this.config.ssrLocation = {
+//     init: () => undefined,
+//     dehydrate: (value) => value,
+//     hydrate: (value) => value,
+//   }
+// }
+
+// private static normalizeCurrentLocationConfig(): void {
+//   this.config.currentLocation = {
+//     init: () => Route0.getLocation('/'),
+//     dehydrate: (value) => value,
+//     hydrate: (value) => value,
+//   }
+// }
+
+// private static normalizeSuperStoreConfig(): void {
+//   this.normalizeQueryClientConfig()
+//   this.normalizeSsrLocationConfig()
+//   this.normalizeCurrentLocationConfig()
+// }
+
 export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   eversion: Eversion<TRequiredCtx>
   extractFnsWithOutput: ExtractFnWithOutput[]
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
-  serverGlobalState: { queryClient: QueryClient; ssrLocation: AnyLocation | undefined; currentLocation: AnyLocation }
+  serverGlobalState: {
+    __QUERY_CLIENT__: QueryClient
+    __SSR_LOCATION__: AnyLocation | undefined
+    __CURRENT_LOCATION__: AnyLocation
+  }
 
   private constructor({
     eversion,
@@ -332,7 +394,11 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     extractFnsWithOutput: ExtractFnWithOutput[]
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
-    serverGlobalState: { queryClient: QueryClient; ssrLocation: AnyLocation | undefined; currentLocation: AnyLocation }
+    serverGlobalState: {
+      __QUERY_CLIENT__: QueryClient
+      __SSR_LOCATION__: AnyLocation | undefined
+      __CURRENT_LOCATION__: AnyLocation
+    }
   }) {
     this.eversion = eversion
     this.extractFnsWithOutput = extractFnsWithOutput
@@ -353,32 +419,36 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
   }): Promise<EversionRun<TRequiredCtx>> {
     const serverGlobalState = {}
-    return await SuperStore.runWithServerStateProvider(serverGlobalState, async () => {
-      const queryClient = SuperStore.get<QueryClient>('queryClient')
+    return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new EversionRun<TRequiredCtx>({
         eversion,
         pageLocation,
         requiredCtx,
         extractFnsWithOutput: [],
-        serverGlobalState: { queryClient, ssrLocation: undefined, currentLocation, ...serverGlobalState },
+        serverGlobalState: {
+          __QUERY_CLIENT__: SuperStore.get<QueryClient>('__QUERY_CLIENT__'),
+          __SSR_LOCATION__: undefined,
+          __CURRENT_LOCATION__: currentLocation,
+          ...serverGlobalState,
+        },
       })
     })
   }
 
   getQueryClient(): QueryClient {
-    return process.env.IS_CLIENT ? SuperStore.get('queryClient') : this.serverGlobalState.queryClient
+    return process.env.IS_CLIENT ? SuperStore.get('__QUERY_CLIENT__') : this.serverGlobalState.__QUERY_CLIENT__
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
-    this.serverGlobalState.ssrLocation = ssrLocation
+    this.serverGlobalState.__SSR_LOCATION__ = ssrLocation
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
-    this.serverGlobalState.currentLocation = currentLocation
+    this.serverGlobalState.__CURRENT_LOCATION__ = currentLocation
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
-    return await SuperStore.runWithServerStateProvider(this.serverGlobalState, callback)
+    return await SuperStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
@@ -712,7 +782,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = SuperStore.config.queryClient.init()
+      const tempQueryClient = SuperStore.getConfig('__QUERY_CLIENT__')?.init()
+      if (!tempQueryClient) {
+        throw new Error('Query client not found')
+      }
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
       tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
         ...(restOptions as any),

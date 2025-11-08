@@ -338,11 +338,11 @@ export class FileGenerator {
 
   // emit
 
-  private emitSuperStoreInitialization(): string[] {
-    const lines: string[] = []
-    lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
-    return lines
-  }
+  // private emitSuperStoreInitialization(): string[] {
+  //   const lines: string[] = []
+  //   lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
+  //   return lines
+  // }
 
   private emitNamedImports({
     points,
@@ -400,7 +400,7 @@ export class FileGenerator {
     if (this.banner) {
       lines.push(this.banner)
     }
-    lines.push(...this.emitSuperStoreInitialization())
+    // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from 'point0/core/points.js'`)
     lines.push(``)
 
@@ -452,7 +452,7 @@ export class FileGenerator {
       lines.push(this.banner)
     }
 
-    lines.push(...this.emitSuperStoreInitialization())
+    // lines.push(...this.emitSuperStoreInitialization())
 
     if (this.points.length === 0) {
       lines.push(`export {}`)
@@ -479,7 +479,7 @@ export class FileGenerator {
     const lines: string[] = []
     if (this.banner) lines.push(this.banner)
 
-    lines.push(...this.emitSuperStoreInitialization())
+    // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import React from 'react'`)
     lines.push(`import { Route, Switch } from 'wouter'`)
     lines.push(``)

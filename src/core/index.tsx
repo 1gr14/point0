@@ -6,20 +6,27 @@ import type {
   InfiniteData,
   MutationOptions,
   QueryKey as OriginalQueryKey,
-  QueryClient,
   UseInfiniteQueryResult,
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  QueryClient,
+  dehydrate,
+  hydrate,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { EversionRun, ExtractResult } from './eversion.js'
-import { SuperStore } from './super-store.js'
 import { useLocation } from './router.js'
+import { SuperStore } from './super-store.js'
 import type {
   AnyDataOrInfiniteData,
   AnyPoint,
@@ -1912,10 +1919,6 @@ export class Point0<
     return this._name === this._rootId
   }
 
-  getQueryClient(): QueryClient {
-    return SuperStore.get<QueryClient>('queryClient')
-  }
-
   page<
     TPage extends PageComponent<
       TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
@@ -2151,13 +2154,10 @@ export class Point0<
     TProps
   >
   provider(providerValueSetter?: ProviderValueSetterFn<any, any, any, any>) {
-    SuperStore.define<FinalClientData<TData, TClientData> | undefined>(
+    SuperStore.define<FinalClientData<TData, TClientData> | undefined, false>(
       `__PROVIDER_VALUE_${this._rootId}_${this._name}`,
-      {
-        init: () => undefined as never,
-        dehydrate: undefined,
-        hydrate: undefined,
-      },
+      () => undefined,
+      false,
     )
     const point = this._continue({
       _pointType: 'provider',
@@ -2560,7 +2560,7 @@ export class Point0<
   _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
     const route = this._route
     if (!route) {
-      return SuperStore.get<AnyLocation>('currentLocation')
+      return Point0._currentLocation.get()
     }
     return route.getLocation(route.flat({ ...location.searchParams, ...location.params })) as KnownLocation<
       CurrentRouteDefinition<TRouteDefinition>
@@ -2573,10 +2573,10 @@ export class Point0<
   ): AnyLocation {
     const route = this._route
     if (!route) {
-      return location ?? SuperStore.get<AnyLocation>('currentLocation')
+      return location ?? Point0._currentLocation.get()
     }
     if (!input && !location) {
-      return SuperStore.get<AnyLocation>('currentLocation')
+      return Point0._currentLocation.get()
     }
     if (location) {
       return route.getLocation(route.flat({ ...location.searchParams, ...location.params, ...input }))
@@ -2848,15 +2848,15 @@ export class Point0<
     )
     if (!value) {
       throw new Error(
-        `Provider value not found on point: provider.${this._name}. You should call getValue only after Provider component is mounted.`,
+        `Provider value not found on point: provider.${this._name}. You should call getValue only after Provider component is mounted and loaded.`,
       )
     }
     return value
   }
 
-  getValueSafe(): FinalClientData<TData, TClientData> | undefined {
-    const value = SuperStore.get<FinalClientData<TData, TClientData> | undefined>(
-      `__PROVIDER_VALUE_${this._rootId}_${this._name}`,
+  getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
+    const value = SuperStore.getWeak<FinalClientData<TData, TClientData> | undefined>(
+      `__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input || {})}`,
     )
     return value
   }
@@ -2901,7 +2901,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.setWeak(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, value)
+    SuperStore.redefine(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, () => value, false)
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,
@@ -3214,7 +3214,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
-    queryClient ??= SuperStore.get<QueryClient>('queryClient')
+    queryClient ??= Point0.getQueryClient()
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
     const queryFn = async () => {
       const serverData = await (async () => {
@@ -3425,7 +3425,7 @@ export class Point0<
     const queryFn = async (ctx: { pageParam: unknown }) => {
       const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
       const serverData = await (async () => {
-        queryClient ??= SuperStore.get<QueryClient>('queryClient')
+        queryClient ??= Point0.getQueryClient()
         const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
         const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
         if (infiniteCachedServerData) {
@@ -3731,7 +3731,7 @@ export class Point0<
       outputType,
       mode,
     })
-    queryClient ??= SuperStore.get<QueryClient>('queryClient')
+    queryClient ??= Point0.getQueryClient()
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
@@ -3783,7 +3783,7 @@ export class Point0<
       outputType,
       mode,
     })
-    queryClient ??= SuperStore.get<QueryClient>('queryClient')
+    queryClient ??= Point0.getQueryClient()
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey: queryOptions.queryKey as never })
     if (query && !force) {
@@ -3809,7 +3809,7 @@ export class Point0<
     if (this._pointType !== 'page') {
       throw new Error('Point type is not page')
     }
-    queryClient ??= SuperStore.get<QueryClient>('queryClient')
+    queryClient ??= Point0.getQueryClient()
     const _queryOptions = this._getServerQueryOptions({
       input,
       queryOptions,
@@ -3880,4 +3880,49 @@ export class Point0<
       }),
     )
   }
+
+  static defineQueryClient(init: () => QueryClient): { get: () => QueryClient; set: (value: QueryClient) => void } {
+    return SuperStore.redefine<QueryClient>('__QUERY_CLIENT__', init)
+  }
+
+  static getQueryClient(): QueryClient {
+    return Point0._queryClient.get()
+  }
+
+  static _ssrLocation = SuperStore.define<AnyLocation | undefined, true>('__SSR_LOCATION__', () => undefined, true)
+  static _currentLocation = SuperStore.define<AnyLocation, true>(
+    '__CURRENT_LOCATION__',
+    () => Route0.getLocation('/'),
+    true,
+  )
+  static _queryClient = SuperStore.define<QueryClient, DehydratedState>(
+    '__QUERY_CLIENT__',
+    () => new QueryClient(),
+    (queryClient) =>
+      dehydrate(queryClient, {
+        shouldDehydrateQuery: () => {
+          // This will include all queries, including failed ones
+          return true
+        },
+      }),
+    (dehydratedState, createQueryClient) => {
+      const queryClient = createQueryClient()
+      hydrate(queryClient, dehydratedState)
+
+      const prefetchPageQuery = queryClient
+        .getQueryCache()
+        .getAll()
+        .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
+
+      if (!prefetchPageQuery) {
+        return queryClient
+      }
+
+      const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
+        .dehydratedState
+      hydrate(queryClient, relatedQueriesDehydratedState)
+
+      return queryClient
+    },
+  )
 }

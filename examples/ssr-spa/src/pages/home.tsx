@@ -16,10 +16,10 @@ import { SuperStore } from 'point0/core/super-store.js'
 //     var: 0,
 //   }
 // })
-const someRandom = SuperStore.define('someRandom', () => Math.random())
-const someDate = SuperStore.define('someDate', () => new Date())
-const someStable = SuperStore.define('someStable', () => 123)
-const someVar = SuperStore.define('someVar', () => 0)
+const someRandom = SuperStore.define('someRandom', () => Math.random(), true)
+const someDate = SuperStore.define('someDate', () => new Date(), true)
+const someStable = SuperStore.define('someStable', () => 123, true)
+const someVar = SuperStore.define('someVar', () => 0, true)
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?

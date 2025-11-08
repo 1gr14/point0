@@ -1,4 +1,3 @@
-await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))
 import React from 'react'
 import { Route, Switch } from 'wouter'
 

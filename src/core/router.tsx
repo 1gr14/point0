@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SuperStore } from './super-store.js'
 import { Points } from './points.js'
+import { Point0 } from './index.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -54,7 +55,7 @@ export function RouterContextProvider({
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
-    SuperStore.set('currentLocation', currentLocation)
+    Point0._currentLocation.set(currentLocation)
   }, [currentLocation])
 
   const value = useMemo(
