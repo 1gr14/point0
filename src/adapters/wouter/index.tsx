@@ -15,6 +15,7 @@ import type {
 import { Points } from '../../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
+import { Point0 } from '../../core/index.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 
@@ -48,7 +49,7 @@ export const Link = (props: LinkProps) => {
 }
 
 export const Router = ({
-  ssrLocation = SuperStore.get<AnyLocation | undefined>('__SSR_LOCATION__'),
+  ssrLocation = Point0._ssrLocation.get(),
   policy,
   status,
   children,

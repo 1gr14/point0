@@ -440,10 +440,18 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
+    if (process.env.IS_CLIENT) {
+      SuperStore.set('__SSR_LOCATION__', ssrLocation)
+      return
+    }
     this.serverGlobalState.__SSR_LOCATION__ = ssrLocation
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
+    if (process.env.IS_CLIENT) {
+      SuperStore.set('__CURRENT_LOCATION__', currentLocation)
+      return
+    }
     this.serverGlobalState.__CURRENT_LOCATION__ = currentLocation
   }
 

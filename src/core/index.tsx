@@ -26,6 +26,7 @@ import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { EversionRun, ExtractResult } from './eversion.js'
 import { useLocation } from './router.js'
+import type { SuperDefinedItem } from './super-store.js'
 import { SuperStore } from './super-store.js'
 import type {
   AnyDataOrInfiniteData,
@@ -2901,7 +2902,9 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.redefine(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, () => value, false)
+    SuperStore.define(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, () => value, false).set(
+      value,
+    )
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,
@@ -3881,8 +3884,9 @@ export class Point0<
     )
   }
 
-  static defineQueryClient(init: () => QueryClient): { get: () => QueryClient; set: (value: QueryClient) => void } {
-    return SuperStore.redefine<QueryClient>('__QUERY_CLIENT__', init)
+  static defineQueryClient(init: () => QueryClient): SuperDefinedItem<QueryClient, DehydratedState> {
+    Point0._queryClient.config.init = init
+    return Point0._queryClient
   }
 
   static getQueryClient(): QueryClient {

@@ -41,9 +41,9 @@ export class SuperStore {
         hydrate: args[3],
       }
     })()
-    if (key in this.config) {
-      throw new Error(`Key "${key}" already defined`)
-    }
+    // if (key in this.config) {
+    //   throw new Error(`Key "${key}" already defined`)
+    // }
     this.config[key] = { init, dehydrate, hydrate }
     return {
       get: this.get.bind(this, key),
@@ -52,65 +52,104 @@ export class SuperStore {
     }
   }
 
-  static redefine<TValue>(key: string, init: () => TValue): SuperDefinedItem<TValue, any>
-  static redefine<TValue, TTranfarable extends boolean>(
-    key: string,
-    init: () => TValue,
-    transferable: TTranfarable,
-  ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
-  static redefine<TValue, TDehydratedValue>(
-    key: string,
-    init: () => TValue,
-    dehydrate: (value: TValue) => TDehydratedValue,
-    hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  ): SuperDefinedItem<TValue, TDehydratedValue>
-  static redefine(...args: any[]): any {
-    const { key, init, dehydrate, hydrate, transferable } = (() => {
-      if (args.length === 2) {
-        return {
-          key: args[0],
-          init: args[1],
-          dehydrate: undefined,
-          hydrate: undefined,
-          transferable: undefined,
-        }
-      }
-      if (args.length === 3) {
-        return {
-          key: args[0],
-          init: args[1],
-          dehydrate: args[2] ? (value: any) => value : undefined,
-          hydrate: args[2] ? (dehydratedValue: any) => dehydratedValue : undefined,
-          transferable: args[2],
-        }
-      }
-      return {
-        key: args[0],
-        init: args[1],
-        dehydrate: args[2],
-        hydrate: args[3],
-        transferable: false,
-      }
-    })()
-    if (!(key in this.config)) {
-      if (transferable === undefined) {
-        throw new Error(`Key "${key}" was not previously defined. You should provide dehydrate and hydrate fns`)
-      }
-      return this.define(key, init, dehydrate, hydrate)
-    }
-    if (transferable === undefined) {
-      this.config[key].init = init
-    } else {
-      this.config[key].init = init
-      this.config[key].dehydrate = dehydrate
-      this.config[key].hydrate = hydrate
-    }
-    return {
-      get: this.get.bind(this, key),
-      set: this.set.bind(this, key as never),
-      config: this.config[key],
-    }
-  }
+  // static define<TValue, TTranfarable extends boolean>(
+  //   key: string,
+  //   init: () => TValue,
+  //   transferable: TTranfarable,
+  // ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  // static define<TValue, TDehydratedValue>(
+  //   key: string,
+  //   init: () => TValue,
+  //   dehydrate: (value: TValue) => TDehydratedValue,
+  //   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
+  // ): SuperDefinedItem<TValue, TDehydratedValue>
+  // static define(...args: any[]): any {
+  //   const { key, init, dehydrate, hydrate } = (() => {
+  //     if (args.length === 3) {
+  //       return {
+  //         key: args[0],
+  //         init: args[1],
+  //         dehydrate: args[2] ? (value: any) => value : undefined,
+  //         hydrate: args[2] ? (dehydratedValue: any) => dehydratedValue : undefined,
+  //       }
+  //     }
+  //     return {
+  //       key: args[0],
+  //       init: args[1],
+  //       dehydrate: args[2],
+  //       hydrate: args[3],
+  //     }
+  //   })()
+  //   if (key in this.config) {
+  //     throw new Error(`Key "${key}" already defined`)
+  //   }
+  //   this.config[key] = { init, dehydrate, hydrate }
+  //   return {
+  //     get: this.get.bind(this, key),
+  //     set: this.set.bind(this, key as never),
+  //     config: this.config[key],
+  //   }
+  // }
+
+  // static redefine<TValue>(key: string, init: () => TValue): SuperDefinedItem<TValue, any>
+  // static redefine<TValue, TTranfarable extends boolean>(
+  //   key: string,
+  //   init: () => TValue,
+  //   transferable: TTranfarable,
+  // ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  // static redefine<TValue, TDehydratedValue>(
+  //   key: string,
+  //   init: () => TValue,
+  //   dehydrate: (value: TValue) => TDehydratedValue,
+  //   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
+  // ): SuperDefinedItem<TValue, TDehydratedValue>
+  // static redefine(...args: any[]): any {
+  //   const { key, init, dehydrate, hydrate, transferable } = (() => {
+  //     if (args.length === 2) {
+  //       return {
+  //         key: args[0],
+  //         init: args[1],
+  //         dehydrate: undefined,
+  //         hydrate: undefined,
+  //         transferable: undefined,
+  //       }
+  //     }
+  //     if (args.length === 3) {
+  //       return {
+  //         key: args[0],
+  //         init: args[1],
+  //         dehydrate: args[2] ? (value: any) => value : undefined,
+  //         hydrate: args[2] ? (dehydratedValue: any) => dehydratedValue : undefined,
+  //         transferable: args[2],
+  //       }
+  //     }
+  //     return {
+  //       key: args[0],
+  //       init: args[1],
+  //       dehydrate: args[2],
+  //       hydrate: args[3],
+  //       transferable: false,
+  //     }
+  //   })()
+  //   if (!(key in this.config)) {
+  //     if (transferable === undefined) {
+  //       throw new Error(`Key "${key}" was not previously defined. You should provide dehydrate and hydrate fns`)
+  //     }
+  //     return this.define(key, init, dehydrate, hydrate)
+  //   }
+  //   if (transferable === undefined) {
+  //     this.config[key].init = init
+  //   } else {
+  //     this.config[key].init = init
+  //     this.config[key].dehydrate = dehydrate
+  //     this.config[key].hydrate = hydrate
+  //   }
+  //   return {
+  //     get: this.get.bind(this, key),
+  //     set: this.set.bind(this, key as never),
+  //     config: this.config[key],
+  //   }
+  // }
 
   static get<TValue = unknown>(key: string): TValue {
     const state = this.getState()
