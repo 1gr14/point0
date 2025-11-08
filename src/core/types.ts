@@ -682,7 +682,9 @@ export type MountableComponentProps<
   TProps extends Props | UndefinedProps,
   TWithChildren extends boolean | null,
 > = (TInputSchema extends InputSchemaZod
-  ? { input: ZodInfer<TInputSchema> } & FinalProps<TProps>
+  ? IsInputOptional<UndefinedRouteDefinition, TInputSchema> extends true
+    ? { input?: ZodInfer<TInputSchema> } & FinalProps<TProps>
+    : { input: ZodInfer<TInputSchema> } & FinalProps<TProps>
   : FinalProps<TProps>) &
   (TWithChildren extends true
     ? { children: React.ReactNode }

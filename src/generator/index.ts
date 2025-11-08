@@ -36,8 +36,9 @@ export type FileGeneratorOptions = {
   banner?: string
   routes?: Routes | string
   glob: string | string[]
-  ready: string
-  lazy: string
+  ready?: string
+  lazy?: string
+  wouterRoutes?: string
   basepath: string
 }
 
@@ -83,6 +84,7 @@ export class FileGenerator {
   readonly outputReadyAbs: string | undefined
   readonly outputLazyAbs: string | undefined
   readonly outputRoutesAbs: string | undefined
+  readonly outputWouterRoutesAbs: string | undefined
   readonly basepath: string
   readonly jiti: Jiti
   readonly tempDir: string
@@ -100,8 +102,9 @@ export class FileGenerator {
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g.slice(1)))
-    this.outputReadyAbs = nodePath.resolve(this.basepath, opts.ready)
-    this.outputLazyAbs = nodePath.resolve(this.basepath, opts.lazy)
+    this.outputReadyAbs = opts.ready ? nodePath.resolve(this.basepath, opts.ready) : undefined
+    this.outputLazyAbs = opts.lazy ? nodePath.resolve(this.basepath, opts.lazy) : undefined
+    this.outputWouterRoutesAbs = opts.wouterRoutes ? nodePath.resolve(this.basepath, opts.wouterRoutes) : undefined
     this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.basepath, opts.routes) : undefined
     this.jiti = this.createFreshJiti()
     this.tempDir = FileGenerator.resolveTempDirPath()
@@ -259,6 +262,13 @@ export class FileGenerator {
         content: this.emitRoutesPointsFile(this.points),
         outputAbs: this.outputRoutesAbs,
         tempOutputAbs: nodePath.join(this.tempDir, 'routes.ts'),
+      })
+    }
+    if (this.outputWouterRoutesAbs) {
+      tasks.push({
+        content: this.emitWouterRoutesFile(this.points),
+        outputAbs: this.outputWouterRoutesAbs,
+        tempOutputAbs: nodePath.join(this.tempDir, 'wouter-routes.ts'),
       })
     }
     if (!tasks.length) {
@@ -531,6 +541,105 @@ export class FileGenerator {
   //   lines.push(``)
   //   return lines.join('\n')
   // }
+  private emitWouterRoutesFile(points: CollectedPoint[]): string {
+    if (!this.outputWouterRoutesAbs) {
+      throw new Error('outputWouterRoutesAbs is not set')
+    }
+
+    const lines: string[] = []
+    if (this.banner) lines.push(this.banner)
+
+    // --- imports ---
+    lines.push(`import React, { Fragment } from 'react'`)
+    lines.push(`import { Route, Switch } from 'wouter'`)
+    lines.push(`import { Route0 } from '@devp0nt/route0'`)
+    const { importedPoints } = this.emitNamedImports({
+      points,
+      what: 'import',
+      outputAbs: this.outputWouterRoutesAbs,
+    })
+    lines.push(``)
+
+    // --- collect routed points ---
+    const routedPoints = importedPoints.filter((p) => p.route && p.type === 'page')
+    const layoutPoints = importedPoints.filter((p) => p.type === 'layout')
+
+    // --- helpers ---
+    const toRouteRegexVar = (layoutName: string) => `layout_${layoutName}_regex`
+    const toRouteComponentVar = (point: (typeof importedPoints)[number]) => `Component_${point.renamedExportName}`
+
+    // --- route regexes for layouts ---
+    for (const layout of layoutPoints) {
+      const pagesRoutesUnderLayout = routedPoints
+        .filter((p) => p.layouts?.includes(layout.name))
+        .flatMap((p) => (p.route ? [p.route] : []))
+      const regexVar = toRouteRegexVar(layout.name)
+      if (!pagesRoutesUnderLayout.length) continue
+      lines.push(
+        `const ${regexVar} = new RegExp('^(' + [${pagesRoutesUnderLayout
+          .map((route) => `Route0.from('${route.definition}').getRegexBaseString()`)
+          .join(', ')}].join('|') + ')(?:/|$)')`,
+      )
+    }
+
+    lines.push(``)
+
+    // --- Components shorthand (so we can reuse them easily) ---
+    for (const p of importedPoints) {
+      const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
+      const componentVar = toRouteComponentVar(p)
+      if (p.type !== 'page' && p.type !== 'layout') {
+        continue
+      }
+      const suffix = p.type === 'page' ? '.point._Page' : '.point._Layout'
+      lines.push(
+        `const ${componentVar} = (await import('${relImportPath}')).${
+          p.exportName === 'default' ? 'default' : p.exportName
+        }${suffix}`,
+      )
+    }
+
+    lines.push(``)
+
+    // --- Component body ---
+    lines.push(`export const WouterRoutes = ({ Page404 = () => <div>Page Not Found</div> }) => {`)
+    lines.push(`  return (`)
+    lines.push(`    <Switch>`)
+
+    const layoutlessPages = routedPoints.filter((p) => !p.layouts?.length)
+    for (const page of layoutlessPages) {
+      if (!page.route) continue
+      lines.push(`      <Route path="${page.route.definition}"><${toRouteComponentVar(page)} /></Route>`)
+    }
+
+    for (const layout of layoutPoints) {
+      const regexVar = toRouteRegexVar(layout.name)
+      const pagesUnderLayout = routedPoints.filter((p) => p.layouts?.includes(layout.name))
+      if (!pagesUnderLayout.length) continue
+      lines.push(`      <Route path={${regexVar}}>`)
+      lines.push(`        <${toRouteComponentVar(layout)}>`)
+      lines.push(`          <Switch>`)
+      for (const page of pagesUnderLayout) {
+        if (!page.route) continue
+        lines.push(`            <Route path="${page.route.definition}"><${toRouteComponentVar(page)} /></Route>`)
+      }
+      lines.push(`          </Switch>`)
+      lines.push(`        </${toRouteComponentVar(layout)}>`)
+      lines.push(`      </Route>`)
+    }
+
+    // 404
+    lines.push(`      <Route path="*">`)
+    lines.push(`        <Page404 />`)
+    lines.push(`      </Route>`)
+
+    lines.push(`    </Switch>`)
+    lines.push(`  )`)
+    lines.push(`}`)
+    lines.push(``)
+
+    return lines.join('\n')
+  }
 
   private emitRoutesPointsFile(points: CollectedPoint[]): string {
     if (!this.outputRoutesAbs) {
