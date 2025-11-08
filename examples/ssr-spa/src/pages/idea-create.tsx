@@ -38,93 +38,91 @@ export const generateIdeaMutation = client.lets('response', 'generateIdea').resp
   })
 })
 
-export default generalLayout
-  .lets('page', 'newIdea')
-  .route('/ideas/new')
-  .title('New Idea')
-  .page(() => {
-    // any hook or whatever here, it is just client code
-    const mutation = useMutation(createIdeaMutation.getMutationOptions())
-    const [title, setTitle] = useState('a')
-    const [description, setDescription] = useState('b')
-    const [content, setContent] = useState('c')
-    const [generated, setGenerated] = useState('')
-    return (
+const Page = () => {
+  // any hook or whatever here, it is just client code
+  const mutation = useMutation(createIdeaMutation.getMutationOptions())
+  const [title, setTitle] = useState(() => 'a')
+  const [description, setDescription] = useState('b')
+  const [content, setContent] = useState('c')
+  const [generated, setGenerated] = useState('')
+  return (
+    <div>
       <div>
-        <div>
-          <label>Title</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value)
-            }}
-          />
-          <label>Description</label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value)
-            }}
-          />
-          <label>Content</label>
-          <input
-            type="text"
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value)
-            }}
-          />
-          <button
-            onClick={() => {
-              mutation
-                .mutateAsync({ title, description, content })
-                .then((res) => {
-                  console.info('res', res)
-                })
-                .catch((err: unknown) => {
-                  console.info('err', err)
-                })
-            }}
-          >
-            Create Idea
-          </button>
-        </div>
-        <div>
-          <p>{generated}</p>
-          <button
-            onClick={() => {
-              generateIdeaMutation
-                .fetch()
-                .then(async (res) => {
-                  if (!res.body) {
-                    setGenerated('No body')
-                    return
-                  }
-                  const reader = res.body.getReader()
-                  const decoder = new TextDecoder()
-                  let result = ''
-
-                  while (true) {
-                    const { done, value } = await reader.read()
-                    if (done) break
-                    const chunk = decoder.decode(value, { stream: true })
-                    result += chunk
-                    setGenerated(result)
-                  }
-
-                  console.info('Final result:', result)
-                })
-                .catch((err: unknown) => {
-                  console.error('err', err)
-                  setGenerated(`Error generating idea: ${err instanceof Error ? err.message : String(err)}`)
-                })
-            }}
-          >
-            Generate Idea
-          </button>
-        </div>
+        <label>Title</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value)
+          }}
+        />
+        <label>Description</label>
+        <input
+          type="text"
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value)
+          }}
+        />
+        <label>Content</label>
+        <input
+          type="text"
+          value={content}
+          onChange={(e) => {
+            setContent(e.target.value)
+          }}
+        />
+        <button
+          onClick={() => {
+            mutation
+              .mutateAsync({ title, description, content })
+              .then((res) => {
+                console.info('res', res)
+              })
+              .catch((err: unknown) => {
+                console.info('err', err)
+              })
+          }}
+        >
+          Create Idea
+        </button>
       </div>
-    )
-  })
+      <div>
+        <p>{generated}</p>
+        <button
+          onClick={() => {
+            generateIdeaMutation
+              .fetch()
+              .then(async (res) => {
+                if (!res.body) {
+                  setGenerated('No body')
+                  return
+                }
+                const reader = res.body.getReader()
+                const decoder = new TextDecoder()
+                let result = ''
+
+                while (true) {
+                  const { done, value } = await reader.read()
+                  if (done) break
+                  const chunk = decoder.decode(value, { stream: true })
+                  result += chunk
+                  setGenerated(result)
+                }
+
+                console.info('Final result:', result)
+              })
+              .catch((err: unknown) => {
+                console.error('err', err)
+                setGenerated(`Error generating idea: ${err instanceof Error ? err.message : String(err)}`)
+              })
+          }}
+        >
+          Generate Idea
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default generalLayout.lets('page', 'newIdea').route('/ideas/new').title('New Idea').page(Page)

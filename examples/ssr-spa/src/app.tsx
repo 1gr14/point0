@@ -12,7 +12,7 @@ export default function App() {
     <Points.Provider points={points}>
       <QueryClientProvider client={$.queryClient}>
         <Unhead>
-          <Router policy="prefetch" points={points}>
+          <Router policy="prefetch">
             <clientCtx2.Provider>
               <clientCtx1.Provider>
                 <WouterRoutes />

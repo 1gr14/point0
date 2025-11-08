@@ -6,6 +6,7 @@ import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { $ } from '../lib/global-store.js'
 import { routes } from '../lib/routes.js'
+import { ExternalHelperComponent } from './home.helper.js'
 
 const something = $.define('something', () => {
   return {
@@ -47,6 +48,7 @@ export default generalLayout
   .loader()
   .page(() => {
     const [state, setState] = useState(something.var)
+    const [state2, setState2] = useState(0)
     useEffect(() => {
       something.var = state
     }, [state])
@@ -60,11 +62,17 @@ export default generalLayout
         <button
           onClick={() => {
             setState(state + 1)
+            setState2(state2 + 1)
           }}
         >
           Click me
         </button>
         <p>State: {state}</p>
+        <p>State2: {state2}</p>
+        <hr />
+        <HelperComponent />
+        <hr />
+        <ExternalHelperComponent />
         <hr />
         <p>Something random: {something.random}</p>
         <p>Something date: {something.date.getTime()}</p>
@@ -83,3 +91,19 @@ export default generalLayout
       </div>
     )
   })
+
+const HelperComponent = () => {
+  const [state, setState] = useState(0)
+  return (
+    <div>
+      <p>Helper: {state}</p>
+      <button
+        onClick={() => {
+          setState(state + 1)
+        }}
+      >
+        Click mex
+      </button>
+    </div>
+  )
+}

@@ -20,36 +20,22 @@ import type {
 export class Points<TReady extends boolean = boolean> {
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
-  pagesTree: PagesTree
   routes: Routes
   routesHash: string
 
-  private readonly pagesTreeSource: PagesTreeSource
-
-  readonly _: {
-    pagesTreeSource: Points['pagesTreeSource']
-  }
-
   private constructor({
     collection,
-    pagesTree,
-    pagesTreeSource,
     routes,
     ready,
   }: {
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
-    pagesTree: PagesTree
-    pagesTreeSource: PagesTreeSource
     routes: Routes
     ready: boolean
   }) {
-    this.collection = collection
-    this.pagesTree = pagesTree
     this.routes = routes
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
-    this.pagesTreeSource = pagesTreeSource
-    this._ = { pagesTreeSource }
+    this.collection = Points.sortCollection({ points: collection, routes })
   }
 
   static readonly ready = (
@@ -63,10 +49,8 @@ export class Points<TReady extends boolean = boolean> {
     }
     Points.validate(readyPoints)
     const routedPoints = Points.toRoutedPointsCollection(readyPoints)
-    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
-    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<true>({ collection: routedPoints, pagesTree, pagesTreeSource, routes, ready: true })
+    return new Points<true>({ collection: routedPoints, routes, ready: true })
   }
 
   static readonly lazy = (lazyPoints: LazyPointsCollection | LazyPointsModule): Points<false> => {
@@ -75,10 +59,8 @@ export class Points<TReady extends boolean = boolean> {
     }
     Points.validate(lazyPoints)
     const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
-    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
-    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<false>({ collection: routedPoints, pagesTree, pagesTreeSource, routes, ready: false })
+    return new Points<false>({ collection: routedPoints, routes, ready: false })
   }
 
   static readonly create = (
@@ -116,10 +98,8 @@ export class Points<TReady extends boolean = boolean> {
     for (const error of errors) {
       console.error(error)
     }
-    const pagesTreeSource = this.pagesTreeSource
-    const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
     const routes = Points.toRoutes({ points: readyPoints })
-    return new Points<true>({ collection: readyPoints, pagesTree, pagesTreeSource, routes, ready: true })
+    return new Points<true>({ collection: readyPoints, routes, ready: true })
   }
 
   private static validate(points: ReadyPointsCollection | LazyPointsCollection): void {
@@ -129,6 +109,25 @@ export class Points<TReady extends boolean = boolean> {
         'Multiple root points are not allowed. Please, check why you have multiple root points. Maybe in generator your server base point comes to client points?',
       )
     }
+  }
+
+  static sortCollection<T extends Array<{ type: PointType; name: PointName; route?: AnyRoute | undefined }>>({
+    routes,
+    points,
+  }: {
+    routes?: Routes
+    points: T
+  }): T {
+    routes ??= this.toRoutes({ points })
+    const order = routes._.pathsOrdering
+    return points.sort((a, b) => {
+      if (!a.route || !b.route) {
+        return 0
+      }
+      const aIndex = order.indexOf(a.route.definition)
+      const bIndex = order.indexOf(b.route.definition)
+      return aIndex - bIndex
+    })
   }
 
   _getRootPoint(): RootPoint | undefined {
@@ -291,13 +290,12 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   static readonly toRoutes = ({
-    points: providedPoints,
+    points,
   }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection | ReadyPointsModule | LazyPointsModule
+    points: Array<{ type: PointType; name: PointName; route?: string | undefined | AnyRoute }>
   }): Routes => {
     const routes: Record<string, AnyRoute> = {}
-    const pointsCollection = Points.toPointsCollection(providedPoints)
-    for (const item of pointsCollection) {
+    for (const item of points) {
       const type = item.type
       const routeSrc = item.route
       if (type !== 'page' || !routeSrc) {

@@ -49,18 +49,14 @@ export const Link = (props: LinkProps) => {
 
 export const Router = ({
   ssrLocation = GlobalStore.get('ssrLocation'),
-  Page404 = DefaultPage404,
   policy,
   status,
-  points,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
-  Page404?: React.ComponentType
   policy?: RouterPolicy
   status?: RouterStatus
-  points: LazyPointsModule | ReadyPointsModule
-  children?: React.ReactNode
+  children: React.ReactNode
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
     if (process.env.IS_CLIENT) {
@@ -84,27 +80,22 @@ export const Router = ({
         ssrLocation={ssrLocation}
         policy={policy}
         status={status}
-        points={points}
       >
-        {children ?? <RenderPagesTree points={points} Page404={Page404} />}
+        {children}
       </RouterContextProvider>
     </WouterRouter>
   )
 }
 
-export const RouterRoutes = ({
-  Page404 = DefaultPage404,
+// Do not use it if you want nice HMR. Use generated WouterRoutes instead.
+export const DynmicWouterRoutes = ({
+  Page404 = () => <div>Page Not Found</div>,
   points,
 }: {
   Page404?: React.ComponentType
-  pagesTree?: PagesTree
   points: LazyPointsModule | ReadyPointsModule
 }): React.ReactElement => {
   return <RenderPagesTree points={points} Page404={Page404} />
-}
-
-const DefaultPage404 = () => {
-  return <div>Page Not Found</div>
 }
 
 const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
@@ -162,7 +153,6 @@ export const RenderPagesTree = ({
           )
         }
 
-        // Layout-less pages
         return (
           <Fragment key={`nolayout-${node.layoutName}`}>
             {node.pages.map(({ pageRoute, Page }) => {

@@ -1,10 +1,9 @@
-import type { AnyLocation, AnyRouteOrDefinition, KnownLocation, Routes } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { GlobalStore } from './global-store.js'
-import type { LazyPointsModule, ReadyPointsModule } from './points.js'
 import { Points } from './points.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
@@ -27,7 +26,6 @@ type RouterContextValue = {
   nextLocation: AnyLocation | undefined
   policy: RouterPolicy
   status: RouterStatus
-  routes: Routes
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
@@ -43,7 +41,6 @@ export type RouterContextProviderProps = {
   status?: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | undefined
-  points: LazyPointsModule | ReadyPointsModule
 }
 
 export function RouterContextProvider({
@@ -52,7 +49,6 @@ export function RouterContextProvider({
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
-  points,
 }: RouterContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | undefined>()
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
@@ -60,10 +56,6 @@ export function RouterContextProvider({
   useEffect(() => {
     GlobalStore.set('currentLocation', currentLocation)
   }, [currentLocation])
-
-  const routes = useMemo(() => {
-    return Points.toRoutes({ points })
-  }, [points])
 
   const value = useMemo(
     () => ({
@@ -75,17 +67,8 @@ export function RouterContextProvider({
       setNextLocation,
       setStatus,
       useAdapterLocation,
-      routes,
     }),
-    [
-      ssrLocation,
-      currentLocation,
-      nextLocation,
-      policy,
-      routerStatus,
-      useAdapterLocation,
-      routes._.pathsOrdering.join(','),
-    ],
+    [ssrLocation, currentLocation, nextLocation, policy, routerStatus, useAdapterLocation],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
@@ -103,13 +86,15 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   location?: AnyLocation,
 ) {
   const routerCtx = React.useContext(RouterContext)
+  const pointsCtx = React.useContext(Points.Context)
   if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
+  if (!pointsCtx) throw new Error('useLocation must be used within Points.Context')
   return useMemo(() => {
     if (!route) {
-      return routerCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
+      return pointsCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
     }
     return Route0.from(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
-  }, [route, location, routerCtx.currentLocation, routerCtx.routes])
+  }, [route, location, routerCtx.currentLocation, pointsCtx.routesHash])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -178,7 +163,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = routerContext.routes._.getLocation(href)
+      const location = pointsCtx.routes._.getLocation(href)
       routerContext.setNextLocation(location)
 
       // simple mode

@@ -15,7 +15,8 @@ describe('points', () => {
         base.lets('page', '1').route('/1').page(PC).point,
         base.lets('page', '2').route('/2').page(PC).point,
       ])
-      expect(points._.pagesTreeSource).toEqual([
+      const pagesTreeSource = Points.toPagesTreeSource({ points: points.collection })
+      expect(pagesTreeSource).toEqual([
         {
           layout: undefined,
           pages: ['1', '2'],
@@ -31,7 +32,8 @@ describe('points', () => {
         base.lets('page', '1').route('/1').page(PC).point,
         layout.lets('page', '2').route('/2').page(PC).point,
       ])
-      expect(points._.pagesTreeSource).toEqual([
+      const pagesTreeSource = Points.toPagesTreeSource({ points: points.collection })
+      expect(pagesTreeSource).toEqual([
         {
           layout: undefined,
           pages: ['1'],
@@ -54,7 +56,8 @@ describe('points', () => {
         layout1.lets('page', '2').route('/2').page(PC).point,
         layout2.lets('page', '3').route('/3').page(PC).point,
       ])
-      expect(points._.pagesTreeSource).toEqual([
+      const pagesTreeSource = Points.toPagesTreeSource({ points: points.collection })
+      expect(pagesTreeSource).toEqual([
         {
           layout: undefined,
           pages: ['1'],
@@ -86,7 +89,8 @@ describe('points', () => {
         layout2.lets('page', '4').route('/4').page(PC).point,
         layout2.lets('page', '5').route('/5').page(PC).point,
       ])
-      expect(points._.pagesTreeSource).toEqual([
+      const pagesTreeSource = Points.toPagesTreeSource({ points: points.collection })
+      expect(pagesTreeSource).toEqual([
         {
           layout: undefined,
           pages: ['0', '1'],
