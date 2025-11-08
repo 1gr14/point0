@@ -106,7 +106,7 @@ const HelperComponent = () => {
           setState(state + 1)
         }}
       >
-        Click mex
+        Click me
       </button>
     </div>
   )

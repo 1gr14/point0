@@ -513,6 +513,11 @@ export class FileGenerator {
       //     p.exportName === 'default' ? 'default' : p.exportName
       //   }${suffix}`,
       // )
+
+      // lines.push(
+      //   `const ${componentVar} = process.env.NODE_ENV === 'production' ? React.lazy(async () => ({ default: (await import('${relImportPath}')).${p.exportName}${suffix} })) : (await import('${relImportPath}')).${p.exportName}${suffix}`,
+      // )
+
       lines.push(
         `const ${componentVar} = React.lazy(async () => ({ default: (await import('${relImportPath}')).${p.exportName === 'default' ? 'default' : p.exportName}${suffix} }))`,
       )
