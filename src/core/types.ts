@@ -11,7 +11,6 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, infer as ZodInfer, input as ZodInput, ZodObject, ZodOptional } from 'zod'
 import type { EversionRun } from './eversion.js'
 import type { Point0 } from './index.js'
-import type { LazyPoints } from './points.js'
 
 // basic
 

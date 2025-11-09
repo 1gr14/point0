@@ -13,10 +13,10 @@ export class SuperStore {
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>)
 
-  static define<TValue, TTranfarable extends boolean>(
+  static define<TValue, TTranfarable extends boolean = true>(
     key: string,
     init: () => TValue,
-    transferable: TTranfarable,
+    transferable?: TTranfarable,
   ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   static define<TValue, TDehydratedValue>(
     key: string,
@@ -24,31 +24,41 @@ export class SuperStore {
     dehydrate: (value: TValue) => TDehydratedValue,
     hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
   ): SuperDefinedItem<TValue, TDehydratedValue>
+  static define<TValue, TDehydratedValue>(
+    key: string,
+    config: SuperStoreConfigItem<TValue, TDehydratedValue>,
+  ): SuperDefinedItem<TValue, TDehydratedValue>
   static define(...args: any[]): any {
     const { key, init, dehydrate, hydrate } = (() => {
-      if (args.length === 3) {
+      if (typeof args[1] === 'object') {
+        return {
+          key: args[0],
+          init: args[1].init,
+          dehydrate: args[1].dehydrate,
+          hydrate: args[1].hydrate,
+        }
+      }
+      if (args.length === 4) {
         return {
           key: args[0],
           init: args[1],
-          dehydrate: args[2] ? (value: any) => value : undefined,
-          hydrate: args[2] ? (dehydratedValue: any) => dehydratedValue : undefined,
+          dehydrate: args[2],
+          hydrate: args[3],
         }
       }
+      const transferable = args[2] ?? true
       return {
         key: args[0],
         init: args[1],
-        dehydrate: args[2],
-        hydrate: args[3],
+        dehydrate: transferable ? (value: any) => value : undefined,
+        hydrate: transferable ? (dehydratedValue: any) => dehydratedValue : undefined,
       }
     })()
-    // if (key in this.config) {
-    //   throw new Error(`Key "${key}" already defined`)
-    // }
-    this.config[key] = { init, dehydrate, hydrate }
+    SuperStore.config[key] = { init, dehydrate, hydrate }
     return {
-      get: this.get.bind(this, key),
-      set: this.set.bind(this, key as never),
-      config: this.config[key],
+      get: SuperStore.get.bind(SuperStore, key),
+      set: SuperStore.set.bind(SuperStore, key as never),
+      config: SuperStore.config[key],
     }
   }
 
@@ -80,14 +90,14 @@ export class SuperStore {
   //       hydrate: args[3],
   //     }
   //   })()
-  //   if (key in this.config) {
+  //   if (key in SuperStore.config) {
   //     throw new Error(`Key "${key}" already defined`)
   //   }
-  //   this.config[key] = { init, dehydrate, hydrate }
+  //   SuperStore.config[key] = { init, dehydrate, hydrate }
   //   return {
-  //     get: this.get.bind(this, key),
-  //     set: this.set.bind(this, key as never),
-  //     config: this.config[key],
+  //     get: SuperStore.get.bind(this, key),
+  //     set: SuperStore.set.bind(this, key as never),
+  //     config: SuperStore.config[key],
   //   }
   // }
 
@@ -131,29 +141,29 @@ export class SuperStore {
   //       transferable: false,
   //     }
   //   })()
-  //   if (!(key in this.config)) {
+  //   if (!(key in SuperStore.config)) {
   //     if (transferable === undefined) {
   //       throw new Error(`Key "${key}" was not previously defined. You should provide dehydrate and hydrate fns`)
   //     }
-  //     return this.define(key, init, dehydrate, hydrate)
+  //     return SuperStore.define(key, init, dehydrate, hydrate)
   //   }
   //   if (transferable === undefined) {
-  //     this.config[key].init = init
+  //     SuperStore.config[key].init = init
   //   } else {
-  //     this.config[key].init = init
-  //     this.config[key].dehydrate = dehydrate
-  //     this.config[key].hydrate = hydrate
+  //     SuperStore.config[key].init = init
+  //     SuperStore.config[key].dehydrate = dehydrate
+  //     SuperStore.config[key].hydrate = hydrate
   //   }
   //   return {
-  //     get: this.get.bind(this, key),
-  //     set: this.set.bind(this, key as never),
-  //     config: this.config[key],
+  //     get: SuperStore.get.bind(this, key),
+  //     set: SuperStore.set.bind(this, key as never),
+  //     config: SuperStore.config[key],
   //   }
   // }
 
   static get<TValue = unknown>(key: string): TValue {
-    const state = this.getState()
-    const configItem = this.config[key] as SuperStoreConfigItem | undefined
+    const state = SuperStore.getState()
+    const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -161,7 +171,7 @@ export class SuperStore {
     if (existingValue) {
       return existingValue as TValue
     }
-    const dehydratedValue = this.dehydrated[key]
+    const dehydratedValue = SuperStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem.hydrate) {
         throw new Error(`Key "${key}" is dehydrated but no hydrate function is defined`)
@@ -176,7 +186,7 @@ export class SuperStore {
   }
 
   static getConfig(key: string): SuperStoreConfigItem | undefined {
-    const configItem = this.config[key] as SuperStoreConfigItem | undefined
+    const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -184,13 +194,13 @@ export class SuperStore {
   }
 
   static getWeak<TValue = unknown>(key: string): TValue | undefined {
-    const state = this.getState()
+    const state = SuperStore.getState()
     const existingValue = state[key]
     if (existingValue) {
       return existingValue as TValue
     }
-    const configItem = this.config[key] as SuperStoreConfigItem | undefined
-    const dehydratedValue = this.dehydrated[key]
+    const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
+    const dehydratedValue = SuperStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem) {
         throw new Error(`Key "${key}" is dehydrated but no config item is defined`)
@@ -211,24 +221,30 @@ export class SuperStore {
   }
 
   static set<TValue = unknown>(key: string, value: TValue): void {
-    this.get(key)
-    const state = this.getState()
+    SuperStore.get(key) // so if no config for this key, it will throw an error
+    const state = SuperStore.getState()
+    state[key] = value
+  }
+
+  static setWeak<TValue = unknown>(key: string, value: TValue): void {
+    // this only sets value, if no config for this key, it will not throw an error, and value will be accessible by getWeak
+    const state = SuperStore.getState()
     state[key] = value
   }
 
   static getState = (): SuperState => {
     if (process.env.IS_CLIENT) {
-      return this.clientState
+      return SuperStore.clientState
     } else {
-      if (!this.serverStorage) {
+      if (!SuperStore.serverStorage) {
         throw new Error(
           'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers.',
         )
       }
-      const serverStore = this.serverStorage.getStore()
+      const serverStore = SuperStore.serverStorage.getStore()
       if (!serverStore) {
         throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStorageProvider',
+          'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
         )
       }
       return serverStore
@@ -237,12 +253,12 @@ export class SuperStore {
 
   static dehydrate = () => {
     const dehydrated: Record<string, unknown> = {}
-    for (const [configItemKey, configItem] of Object.entries(this.config)) {
+    for (const [configItemKey, configItem] of Object.entries(SuperStore.config)) {
       try {
         if (!configItem.dehydrate) {
           continue
         }
-        const stateValue = this.get(configItemKey)
+        const stateValue = SuperStore.get(configItemKey)
         const dehydratedValue = configItem.dehydrate(stateValue)
         if (dehydratedValue !== undefined) {
           dehydrated[configItemKey] = dehydratedValue
@@ -258,16 +274,16 @@ export class SuperStore {
   }
 
   static hydrate(dehydrated: Record<string, unknown>): void {
-    this.dehydrated = dehydrated
+    SuperStore.dehydrated = dehydrated
   }
 
   static hydrateFromString(dehydratedString: string): void {
-    this.dehydrated = superjson.parse(dehydratedString)
+    SuperStore.dehydrated = superjson.parse(dehydratedString)
   }
 
   static hydrateFromWindow(): void {
     if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-      this.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
+      SuperStore.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
     }
   }
 
@@ -275,8 +291,8 @@ export class SuperStore {
     serverSuperState: Partial<SuperState>,
     callback: () => TResult,
   ): TResult {
-    if (this.serverStorage) {
-      return this.serverStorage.run(serverSuperState, callback)
+    if (SuperStore.serverStorage) {
+      return SuperStore.serverStorage.run(serverSuperState, callback)
     } else {
       return callback()
     }

@@ -5,10 +5,10 @@ head as argument of .page() it can be string | head | (loaderResult) => string |
 wrapper
 merge .input schemas
 
+auth
 vite
 env
 elysia example
-auth
 
 expo example, just define all queries and mutations as plugins and use them in site and expo
 expo router
@@ -69,7 +69,6 @@ points collection allow to route: undefined, hasLoader undefined we can know on 
 Router accept points and Routes get pagesTree from Context
 remove server code from client
 query client nice () => provider safe for ssr
-store each point location to normalize errors messages for example in No route or id provided for this point
 layout scroll position
 location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
 on navigate to same page do not prefetch, or at least not show preloading
@@ -83,6 +82,8 @@ find unused code
 ? asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
 refactor error0
+normzliae all errors texts everyhere and user error0
+store each point location to normalize errors messages for example in No route or id provided for this point
 remove wrapper
 before start generate parse existing output file and use it like initial state until success generates new
 html template parsing by provided vars

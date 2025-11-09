@@ -1,4 +1,5 @@
 import { Link } from 'point0/adapters/wouter'
+import { Point0 } from 'point0/core/index.js'
 import { useEffect, useState } from 'react'
 import z from 'zod'
 import { generalLayout } from '../layouts/general.js'
@@ -6,7 +7,6 @@ import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
-import { SuperStore } from 'point0/core/super-store.js'
 
 // const something = SuperStore.define('something', () => {
 //   return {
@@ -16,10 +16,10 @@ import { SuperStore } from 'point0/core/super-store.js'
 //     var: 0,
 //   }
 // })
-const someRandom = SuperStore.define('someRandom', () => Math.random(), true)
-const someDate = SuperStore.define('someDate', () => new Date(), true)
-const someStable = SuperStore.define('someStable', () => 123, true)
-const someVar = SuperStore.define('someVar', () => 0, true)
+const someRandom = Point0.define('someRandom', () => Math.random(), true)
+const someDate = Point0.define('someDate', () => new Date(), true)
+const someStable = Point0.define('someStable', () => 123, true)
+const someVar = Point0.define('someVar', () => 0, true)
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
@@ -56,6 +56,11 @@ export default generalLayout
     useEffect(() => {
       someVar.set(state)
     }, [state])
+    useEffect(() => {
+      setTimeout(() => {
+        // console.log(clientCtx1.getValue())
+      }, 1000)
+    }, [])
     const ctx1 = clientCtx1.useValue()
     const ctx2 = clientCtx2.useValue()
     const x = clientCtx1.useValue('shmest')

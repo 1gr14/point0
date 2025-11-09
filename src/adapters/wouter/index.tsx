@@ -4,15 +4,7 @@ import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
 import { Point0 } from '../../core/index.js'
-import type {
-  LazyPointsModule,
-  LazyRoutedPointsCollection,
-  PagesTree,
-  PagesTreeSource,
-  ReadyPointsModule,
-  ReadyRoutedPointsCollection,
-} from '../../core/points.js'
-import { Points } from '../../core/points.js'
+import type { PagesTree } from '../../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../../core/router.js'
 
@@ -88,14 +80,14 @@ export const Router = ({
 }
 
 // Do not use it if you want nice HMR. Use generated WouterRoutes instead.
-export const DynmicWouterRoutes = ({
+export const RouterRoutes = ({
   Page404 = () => <div>Page Not Found</div>,
-  points,
+  pagesTree = Point0.getPoints().pagesTree,
 }: {
   Page404?: React.ComponentType
-  points: LazyPointsModule | ReadyPointsModule
+  pagesTree?: PagesTree
 }): React.ReactElement => {
-  return <RenderPagesTree points={points} Page404={Page404} />
+  return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
 }
 
 const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
@@ -105,21 +97,14 @@ const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
 }
 
 export const RenderPagesTree = ({
-  pagesTree,
-  pagesTreeSource,
-  points,
-  Page404,
+  pagesTree = Point0.getPoints().pagesTree,
+  Page404 = () => <div>Page Not Found</div>,
   level = 0,
 }: {
   pagesTree?: PagesTree
-  pagesTreeSource?: PagesTreeSource
-  points: LazyPointsModule | ReadyPointsModule | LazyRoutedPointsCollection | ReadyRoutedPointsCollection
   Page404: React.ComponentType
   level?: number
 }) => {
-  points = Points.toRoutedPointsCollection(points)
-  pagesTreeSource ??= Points.toPagesTreeSource({ points })
-  pagesTree ??= Points.toPagesTree({ points, pagesTreeSource: [] })
   return (
     <Switch>
       {pagesTree.map((node) => {
@@ -138,15 +123,7 @@ export const RenderPagesTree = ({
                       </Route>
                     )
                   })}
-                  {node.nested && (
-                    <RenderPagesTree
-                      points={points}
-                      pagesTree={node.nested}
-                      pagesTreeSource={pagesTreeSource}
-                      Page404={Page404}
-                      level={level + 1}
-                    />
-                  )}
+                  {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
                 </Switch>
               </Layout>
             </Route>
@@ -163,15 +140,7 @@ export const RenderPagesTree = ({
               )
             })}
 
-            {node.nested && (
-              <RenderPagesTree
-                points={points}
-                pagesTree={node.nested}
-                pagesTreeSource={pagesTreeSource}
-                Page404={Page404}
-                level={level + 1}
-              />
-            )}
+            {node.nested && <RenderPagesTree pagesTree={node.nested} Page404={Page404} level={level + 1} />}
           </Fragment>
         )
       })}

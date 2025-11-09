@@ -3,8 +3,6 @@ import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SuperStore } from './super-store.js'
-import { Points } from './points.js'
 import { Point0 } from './index.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
@@ -87,15 +85,13 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   location?: AnyLocation,
 ) {
   const routerCtx = React.useContext(RouterContext)
-  const pointsCtx = React.useContext(Points.Context)
   if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
-  if (!pointsCtx) throw new Error('useLocation must be used within Points.Context')
   return useMemo(() => {
     if (!route) {
-      return pointsCtx.routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
+      return Point0.getPoints().routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
     }
     return Route0.from(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
-  }, [route, location, routerCtx.currentLocation, pointsCtx.routesHash])
+  }, [route, location, routerCtx.currentLocation, Point0.getPoints().routesHash])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -156,15 +152,13 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: AnyLocation }> {
   return () => {
     const routerContext = React.useContext(RouterContext)
-    const pointsCtx = React.useContext(Points.Context)
     if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
-    if (!pointsCtx) throw new Error('useNavigate must be used within Points.Context')
     const queryClient = useQueryClient()
     const adapterNavigate = useAdapterNavigate()
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = pointsCtx.routes._.getLocation(href)
+      const location = Point0.getPoints().routes._.getLocation(href)
       routerContext.setNextLocation(location)
 
       // simple mode
@@ -186,7 +180,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       routerContext.setStatus('fetching')
 
       try {
-        await pointsCtx.prefetchSuitablePagePoint({
+        await Point0.getPoints().prefetchSuitablePagePoint({
           location,
           queryClient,
           mode: 'any',

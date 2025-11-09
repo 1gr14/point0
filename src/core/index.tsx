@@ -25,6 +25,8 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { EversionRun, ExtractResult } from './eversion.js'
+import type { LazyPointsModule, ReadyPointsModule } from './points.js'
+import { Points } from './points.js'
 import { useLocation } from './router.js'
 import type { SuperDefinedItem } from './super-store.js'
 import { SuperStore } from './super-store.js'
@@ -2155,11 +2157,6 @@ export class Point0<
     TProps
   >
   provider(providerValueSetter?: ProviderValueSetterFn<any, any, any, any>) {
-    SuperStore.define<FinalClientData<TData, TClientData> | undefined, false>(
-      `__PROVIDER_VALUE_${this._rootId}_${this._name}`,
-      () => undefined,
-      false,
-    )
     const point = this._continue({
       _pointType: 'provider',
       _letsEndPointType: undefined,
@@ -2856,7 +2853,7 @@ export class Point0<
   }
 
   getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
-    const value = SuperStore.getWeak<FinalClientData<TData, TClientData> | undefined>(
+    const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
       `__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input || {})}`,
     )
     return value
@@ -2902,9 +2899,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.define(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, () => value, false).set(
-      value,
-    )
+    SuperStore.setWeak(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, value)
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,
@@ -3884,6 +3879,10 @@ export class Point0<
     )
   }
 
+  // super store
+
+  static define = SuperStore.define.bind(SuperStore)
+
   static defineQueryClient(init: () => QueryClient): SuperDefinedItem<QueryClient, DehydratedState> {
     Point0._queryClient.config.init = init
     return Point0._queryClient
@@ -3929,4 +3928,19 @@ export class Point0<
       return queryClient
     },
   )
+
+  // points
+
+  static _points: Points | undefined
+  static setPoints = (points: LazyPointsModule | ReadyPointsModule) => {
+    Point0._points = Points.create(points)
+  }
+  static getPoints = (): Points => {
+    // const points = SuperStore.getWeak<Points>('__POINTS__')
+    const points = Point0._points
+    if (!points) {
+      throw new Error('Points not found. Forget to call Point0.setPoints()?')
+    }
+    return points
+  }
 }

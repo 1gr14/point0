@@ -7,7 +7,7 @@ const generator = FileGenerator.create({
   ready: './lib/points.ready.ts',
   lazy: './lib/points.lazy.ts',
   routes,
-  wouterRoutes: './lib/wouter-routes.tsx',
+  // wouterRoutes: './lib/wouter-routes.tsx',
 })
 
 await generator.sync()

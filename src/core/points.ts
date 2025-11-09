@@ -2,7 +2,6 @@ import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { Point0 } from './index.js'
 import type {
   EndPoint,
   EndPointType,
@@ -22,20 +21,28 @@ export class Points<TReady extends boolean = boolean> {
   ready: TReady
   routes: Routes
   routesHash: string
+  pagesTreeSource: PagesTreeSource
+  pagesTree: PagesTree
 
   private constructor({
     collection,
     routes,
     ready,
+    pagesTreeSource,
+    pagesTree,
   }: {
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
     routes: Routes
     ready: boolean
+    pagesTreeSource: PagesTreeSource
+    pagesTree: PagesTree
   }) {
     this.routes = routes
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
     this.collection = Points.sortCollection({ points: collection, routes })
+    this.pagesTreeSource = pagesTreeSource
+    this.pagesTree = pagesTree
   }
 
   static readonly ready = (
@@ -50,7 +57,9 @@ export class Points<TReady extends boolean = boolean> {
     Points.validate(readyPoints)
     const routedPoints = Points.toRoutedPointsCollection(readyPoints)
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<true>({ collection: routedPoints, routes, ready: true })
+    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
+    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
+    return new Points<true>({ collection: routedPoints, routes, ready: true, pagesTreeSource, pagesTree })
   }
 
   static readonly lazy = (lazyPoints: LazyPointsCollection | LazyPointsModule): Points<false> => {
@@ -60,7 +69,9 @@ export class Points<TReady extends boolean = boolean> {
     Points.validate(lazyPoints)
     const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
     const routes = Points.toRoutes({ points: routedPoints })
-    return new Points<false>({ collection: routedPoints, routes, ready: false })
+    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
+    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
+    return new Points<false>({ collection: routedPoints, routes, ready: false, pagesTreeSource, pagesTree })
   }
 
   static readonly create = (
@@ -99,7 +110,9 @@ export class Points<TReady extends boolean = boolean> {
       console.error(error)
     }
     const routes = Points.toRoutes({ points: readyPoints })
-    return new Points<true>({ collection: readyPoints, routes, ready: true })
+    const pagesTreeSource = Points.toPagesTreeSource({ points: readyPoints })
+    const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
+    return new Points<true>({ collection: readyPoints, routes, ready: true, pagesTreeSource, pagesTree })
   }
 
   private static validate(points: ReadyPointsCollection | LazyPointsCollection): void {
@@ -135,7 +148,7 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   private static isRawPointsCollection(points: any): points is RawPointsCollection {
-    return points.length && points.every((p: any) => p instanceof Point0)
+    return points.length && points.every((p: any) => typeof p._pointType === 'string')
   }
 
   private static isEmptyPoints(points: any): points is ReadyPointsCollection {
@@ -641,21 +654,6 @@ export class Points<TReady extends boolean = boolean> {
       }
     }
     return undefined
-  }
-
-  static Context = React.createContext<Points | undefined>(undefined)
-  Provider = ({ children }: { children: React.ReactNode }) => {
-    return React.createElement(Points.Context.Provider, { value: this }, children)
-  }
-  static Provider = ({
-    children,
-    points: providedPoints,
-  }: {
-    children: React.ReactNode
-    points: LazyPointsModule | ReadyPointsModule
-  }) => {
-    const points = Points.create(providedPoints)
-    return React.createElement(Points.Context.Provider, { value: points }, children)
   }
 }
 

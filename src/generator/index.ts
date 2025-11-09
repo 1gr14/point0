@@ -1,3 +1,7 @@
+import babel from '@babel/parser'
+import type traverseType from '@babel/traverse'
+import type { NodePath } from '@babel/traverse'
+import traverseModule from '@babel/traverse'
 import type {
   CallExpression,
   ClassDeclaration,
@@ -7,10 +11,6 @@ import type {
   Node,
   TSDeclareFunction,
 } from '@babel/types'
-import type traverseType from '@babel/traverse'
-import type { NodePath } from '@babel/traverse'
-import traverseModule from '@babel/traverse'
-import babel from '@babel/parser'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
@@ -24,8 +24,6 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { EndPointType, PointName } from '../core/types.js'
-import type { PagesTreeSource } from '../core/points.js'
-import { Points } from '../core/points.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -40,7 +38,7 @@ export type FileGeneratorOptions = {
   glob: string | string[]
   ready?: string
   lazy?: string
-  wouterRoutes?: string
+  // wouterRoutes?: string
   basepath: string
 }
 
@@ -86,7 +84,7 @@ export class FileGenerator {
   readonly outputReadyAbs: string | undefined
   readonly outputLazyAbs: string | undefined
   readonly outputRoutesAbs: string | undefined
-  readonly outputWouterRoutesAbs: string | undefined
+  // readonly outputWouterRoutesAbs: string | undefined
   readonly basepath: string
   readonly jiti: Jiti
   readonly tempDir: string
@@ -106,7 +104,7 @@ export class FileGenerator {
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g.slice(1)))
     this.outputReadyAbs = opts.ready ? nodePath.resolve(this.basepath, opts.ready) : undefined
     this.outputLazyAbs = opts.lazy ? nodePath.resolve(this.basepath, opts.lazy) : undefined
-    this.outputWouterRoutesAbs = opts.wouterRoutes ? nodePath.resolve(this.basepath, opts.wouterRoutes) : undefined
+    // this.outputWouterRoutesAbs = opts.wouterRoutes ? nodePath.resolve(this.basepath, opts.wouterRoutes) : undefined
     this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.basepath, opts.routes) : undefined
     this.jiti = this.createFreshJiti()
     this.tempDir = FileGenerator.resolveTempDirPath()
@@ -278,13 +276,13 @@ export class FileGenerator {
         tempOutputAbs: nodePath.join(this.tempDir, 'routes.ts'),
       })
     }
-    if (this.outputWouterRoutesAbs) {
-      tasks.push({
-        content: this.emitWouterRoutesFile(this.points),
-        outputAbs: this.outputWouterRoutesAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, 'wouter-routes.ts'),
-      })
-    }
+    // if (this.outputWouterRoutesAbs) {
+    //   tasks.push({
+    //     content: this.emitWouterRoutesFile(this.points),
+    //     outputAbs: this.outputWouterRoutesAbs,
+    //     tempOutputAbs: nodePath.join(this.tempDir, 'wouter-routes.ts'),
+    //   })
+    // }
     if (!tasks.length) {
       return
     }
@@ -469,119 +467,119 @@ export class FileGenerator {
     return lines.join('\n')
   }
 
-  private emitWouterRoutesFile(points: CollectedPoint[]): string {
-    if (!this.outputWouterRoutesAbs) {
-      throw new Error('outputWouterRoutesAbs is not set')
-    }
+  // private emitWouterRoutesFile(points: CollectedPoint[]): string {
+  //   if (!this.outputWouterRoutesAbs) {
+  //     throw new Error('outputWouterRoutesAbs is not set')
+  //   }
 
-    const pagesTreeSource = Points.toPagesTreeSource({ points })
+  //   const pagesTreeSource = Points.toPagesTreeSource({ points })
 
-    const lines: string[] = []
-    if (this.banner) lines.push(this.banner)
+  //   const lines: string[] = []
+  //   if (this.banner) lines.push(this.banner)
 
-    // lines.push(...this.emitSuperStoreInitialization())
-    lines.push(`import React from 'react'`)
-    lines.push(`import { Route, Switch } from 'wouter'`)
-    lines.push(``)
+  //   // lines.push(...this.emitSuperStoreInitialization())
+  //   lines.push(`import React from 'react'`)
+  //   lines.push(`import { Route, Switch } from 'wouter'`)
+  //   lines.push(``)
 
-    const { importedPoints } = this.emitNamedImports({
-      points,
-      what: 'import',
-      outputAbs: this.outputWouterRoutesAbs,
-    })
+  //   const { importedPoints } = this.emitNamedImports({
+  //     points,
+  //     what: 'import',
+  //     outputAbs: this.outputWouterRoutesAbs,
+  //   })
 
-    const pageByName = new Map<string, (typeof importedPoints)[number] & { route: AnyRoute }>()
-    const layoutByName = new Map<string, (typeof importedPoints)[number]>()
-    for (const p of importedPoints) {
-      if (p.type === 'page' && p.route) {
-        pageByName.set(p.name, p as any)
-      } else if (p.type === 'layout') {
-        layoutByName.set(p.name, p)
-      }
-    }
+  //   const pageByName = new Map<string, (typeof importedPoints)[number] & { route: AnyRoute }>()
+  //   const layoutByName = new Map<string, (typeof importedPoints)[number]>()
+  //   for (const p of importedPoints) {
+  //     if (p.type === 'page' && p.route) {
+  //       pageByName.set(p.name, p as any)
+  //     } else if (p.type === 'layout') {
+  //       layoutByName.set(p.name, p)
+  //     }
+  //   }
 
-    const toComponentVar = (point: (typeof importedPoints)[number]) => `Component_${point.renamedExportName}`
+  //   const toComponentVar = (point: (typeof importedPoints)[number]) => `Component_${point.renamedExportName}`
 
-    for (const p of importedPoints) {
-      if (p.type !== 'page' && p.type !== 'layout') continue
-      const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
-      const componentVar = toComponentVar(p)
-      const suffix = p.type === 'page' ? '.point._Page' : '.point._Layout'
-      // TODO: use when we will have preloaded pages and layouts
-      // lines.push(
-      //   `const ${componentVar} = (await import('${relImportPath}')).${
-      //     p.exportName === 'default' ? 'default' : p.exportName
-      //   }${suffix}`,
-      // )
+  //   for (const p of importedPoints) {
+  //     if (p.type !== 'page' && p.type !== 'layout') continue
+  //     const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
+  //     const componentVar = toComponentVar(p)
+  //     const suffix = p.type === 'page' ? '.point._Page' : '.point._Layout'
+  //     // TODO: use when we will have preloaded pages and layouts
+  //     // lines.push(
+  //     //   `const ${componentVar} = (await import('${relImportPath}')).${
+  //     //     p.exportName === 'default' ? 'default' : p.exportName
+  //     //   }${suffix}`,
+  //     // )
 
-      // lines.push(
-      //   `const ${componentVar} = process.env.NODE_ENV === 'production' ? React.lazy(async () => ({ default: (await import('${relImportPath}')).${p.exportName}${suffix} })) : (await import('${relImportPath}')).${p.exportName}${suffix}`,
-      // )
+  //     // lines.push(
+  //     //   `const ${componentVar} = process.env.NODE_ENV === 'production' ? React.lazy(async () => ({ default: (await import('${relImportPath}')).${p.exportName}${suffix} })) : (await import('${relImportPath}')).${p.exportName}${suffix}`,
+  //     // )
 
-      lines.push(
-        `const ${componentVar} = React.lazy(async () => ({ default: (await import('${relImportPath}')).${p.exportName === 'default' ? 'default' : p.exportName}${suffix} }))`,
-      )
-    }
-    lines.push(``)
+  //     lines.push(
+  //       `const ${componentVar} = React.lazy(async () => ({ default: (await import('${relImportPath}')).${p.exportName === 'default' ? 'default' : p.exportName}${suffix} }))`,
+  //     )
+  //   }
+  //   lines.push(``)
 
-    const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
-      const compiled = routes.map((r) => r.getRegexBaseString())
-      const pattern = `^(${compiled.join('|')})(?:/|$)`
-      return `new RegExp('${pattern}')`
-    }
+  //   const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
+  //     const compiled = routes.map((r) => r.getRegexBaseString())
+  //     const pattern = `^(${compiled.join('|')})(?:/|$)`
+  //     return `new RegExp('${pattern}')`
+  //   }
 
-    const emitPagesTree = (tree: PagesTreeSource, indent: string): void => {
-      for (const node of tree) {
-        if (node.layout) {
-          const layout = layoutByName.get(node.layout)
-          if (!layout) throw new Error(`Layout ${node.layout} not found`)
-          const pages = node.pages.flatMap((p) => pageByName.get(p) || [])
-          const layoutPagesRoutesRegexString = combinePagesRoutesToRegexForLayout(pages.map((p) => p.route))
-          const layoutComponentVar = toComponentVar(layout)
-          lines.push(`${indent}<Route path={${layoutPagesRoutesRegexString}}>`)
-          lines.push(`${indent}  <${layoutComponentVar}>`)
-          lines.push(`${indent}    <Switch>`)
-          for (const page of pages) {
-            const pageComponentVar = toComponentVar(page)
-            lines.push(`${indent}      <Route path="${page.route.getDefinition()}"><${pageComponentVar} /></Route>`)
-          }
-          if (node.nested) {
-            emitPagesTree(node.nested, `${indent}    `)
-          }
-          lines.push(`${indent}    </Switch>`)
-          lines.push(`${indent}  </${layoutComponentVar}>`)
-          lines.push(`${indent}</Route>`)
-        } else {
-          for (const pageName of node.pages) {
-            const page = pageByName.get(pageName)
-            if (!page) throw new Error(`Page ${pageName} not found`)
-            const pageComponentVar = toComponentVar(page)
-            lines.push(`${indent}<Route path="${page.route.getDefinition()}"><${pageComponentVar} /></Route>`)
-          }
-          if (node.nested) {
-            emitPagesTree(node.nested, `${indent}    `)
-          }
-        }
-      }
-    }
+  //   const emitPagesTree = (tree: PagesTreeSource, indent: string): void => {
+  //     for (const node of tree) {
+  //       if (node.layout) {
+  //         const layout = layoutByName.get(node.layout)
+  //         if (!layout) throw new Error(`Layout ${node.layout} not found`)
+  //         const pages = node.pages.flatMap((p) => pageByName.get(p) || [])
+  //         const layoutPagesRoutesRegexString = combinePagesRoutesToRegexForLayout(pages.map((p) => p.route))
+  //         const layoutComponentVar = toComponentVar(layout)
+  //         lines.push(`${indent}<Route path={${layoutPagesRoutesRegexString}}>`)
+  //         lines.push(`${indent}  <${layoutComponentVar}>`)
+  //         lines.push(`${indent}    <Switch>`)
+  //         for (const page of pages) {
+  //           const pageComponentVar = toComponentVar(page)
+  //           lines.push(`${indent}      <Route path="${page.route.getDefinition()}"><${pageComponentVar} /></Route>`)
+  //         }
+  //         if (node.nested) {
+  //           emitPagesTree(node.nested, `${indent}    `)
+  //         }
+  //         lines.push(`${indent}    </Switch>`)
+  //         lines.push(`${indent}  </${layoutComponentVar}>`)
+  //         lines.push(`${indent}</Route>`)
+  //       } else {
+  //         for (const pageName of node.pages) {
+  //           const page = pageByName.get(pageName)
+  //           if (!page) throw new Error(`Page ${pageName} not found`)
+  //           const pageComponentVar = toComponentVar(page)
+  //           lines.push(`${indent}<Route path="${page.route.getDefinition()}"><${pageComponentVar} /></Route>`)
+  //         }
+  //         if (node.nested) {
+  //           emitPagesTree(node.nested, `${indent}    `)
+  //         }
+  //       }
+  //     }
+  //   }
 
-    lines.push(`export const WouterRoutes = ({ Page404 = () => <div>Page Not Found</div> }) => {`)
-    lines.push(`  return (`)
-    lines.push(`    <Switch>`)
+  //   lines.push(`export const WouterRoutes = ({ Page404 = () => <div>Page Not Found</div> }) => {`)
+  //   lines.push(`  return (`)
+  //   lines.push(`    <Switch>`)
 
-    emitPagesTree(pagesTreeSource, `      `)
+  //   emitPagesTree(pagesTreeSource, `      `)
 
-    lines.push(`      <Route path="*">`)
-    lines.push(`        <Page404 />`)
-    lines.push(`      </Route>`)
+  //   lines.push(`      <Route path="*">`)
+  //   lines.push(`        <Page404 />`)
+  //   lines.push(`      </Route>`)
 
-    lines.push(`    </Switch>`)
-    lines.push(`  )`)
-    lines.push(`}`)
-    lines.push(``)
+  //   lines.push(`    </Switch>`)
+  //   lines.push(`  )`)
+  //   lines.push(`}`)
+  //   lines.push(``)
 
-    return lines.join('\n')
-  }
+  //   return lines.join('\n')
+  // }
 
   private emitRoutesPointsFile(points: CollectedPoint[]): string {
     if (!this.outputRoutesAbs) {
