@@ -23,7 +23,11 @@ export class Engine {
       parsedInput.clients.map(async (clientOptions) => {
         await eversion.connect({ points: clientOptions.points })
         // TODO: fix it when vite will be implemented
-        return await ClientBun.create({ ...clientOptions, logger: parsedInput.general.logger, eversion })
+        return await ClientBun.create({
+          ...clientOptions,
+          logger: parsedInput.general.logger,
+          eversion,
+        })
       }),
     )
     const server = await ServerBun.create({

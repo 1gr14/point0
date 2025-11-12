@@ -12,10 +12,12 @@ export type EngineGeneralOptions = {
   fallbackRootId?: RootId | undefined
   logger?: EngineLogger
   cwd?: string | undefined
+  onResponse?: (response: Response) => Response
 }
 export type EngineServerOptions = {
   points: ReadyPointsModule
   publicDir?: string
+  onResponse?: (response: Response) => Response
   port?: number | string
 }
 export type EngineClientOptions = {
@@ -30,6 +32,8 @@ export type EngineClientOptions = {
   srcIndexHtml?: string
   distIndexHtml?: string
   domRootElementId?: string
+  env?: Record<string, any>
+  onResponse?: (response: Response) => Response
   port?: number | string
 }
 export type EngineOptions = EngineGeneralOptions & {
@@ -41,6 +45,7 @@ export type EngineGeneralOptionsParsed = {
   fallbackRootId: RootId
   logger: EngineLogger
   cwd: string | undefined
+  onResponse: ((response: Response) => Response) | undefined
 }
 export type EngineClientOptionsParsed = {
   points: Points
@@ -54,12 +59,15 @@ export type EngineClientOptionsParsed = {
   srcIndexHtml: string | undefined
   distIndexHtml: string | undefined
   domRootElementId: string
+  env: Record<string, any>
+  onResponse: ((response: Response) => Response) | undefined
   port: number | undefined
   index: number
 }
 export type EngineServerOptionsParsed = {
   points: Points
   publicDir: string | undefined
+  onResponse: ((response: Response) => Response) | undefined
   port: number
 }
 export type EngineOptionsParsed = {
@@ -87,6 +95,7 @@ const parseEngineGeneralOptions = ({
       error: console.error.bind(console),
     },
     cwd: generalOptions.cwd,
+    onResponse: generalOptions.onResponse,
   }
 }
 export const parseEngineServerOptions = ({
@@ -100,6 +109,7 @@ export const parseEngineServerOptions = ({
     points: Points.create(serverOptions.points),
     port: typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000,
     publicDir: absPath(generalOptionsParsed.cwd, serverOptions.publicDir),
+    onResponse: serverOptions.onResponse,
   }
 }
 const parseEngineClientOptions = ({
@@ -138,8 +148,10 @@ const parseEngineClientOptions = ({
     srcIndexHtml,
     distIndexHtml,
     domRootElementId: clientOptions.domRootElementId || 'root',
+    onResponse: clientOptions.onResponse,
     port: typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1,
     index,
+    env: clientOptions.env || {},
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

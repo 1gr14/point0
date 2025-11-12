@@ -54,6 +54,10 @@ request prefetchPageDehydratedState state but prefetchPagePayload becouse there 
 check zustand behaviour, meybe it is enough on ssr also provide current global store to client. Just n payload, and use it on top of mount.ts
 preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
 router export function getCurrentLocation()
+onResponse onRequest → onReq onRes req res
+add engine client options serveByServer: boolean default true
+in engine remove undefined and set it to null
+__POINT0_ENV__ and other make simple, remove POINT0 prefix
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
 rename all location to loc, becouse ReferenceError: location is not defined
@@ -88,6 +92,7 @@ on navigate to same page do not prefetch, or at least not show preloading
 on navigate on unknown location do window location change
 force page to have route
 test if layout can have no route
+default route of page is its name
 prevent endless loop hmr after code changes
 allow router policy prefetch-partial to use by default inside prefetchSuitablePagePoint
 find unused code
@@ -141,6 +146,7 @@ allow not to pass server root at all to server, so client only apps
 websocket
 если поинт не касается 
 pageParamFromInput as fn or path
+allow .reponse() to return undefined, in this case it can be found multiple suitable points and they will looped, or mayebe .middleware() idk
 .onError and combine them and clear them to base on lets
 batch query
 persistent zustand helper, and also .store()
@@ -150,5 +156,4 @@ layout can provide its own 404 page, but it can do it already (not exactl, but c
 ? clientOnlyCtx and clientCtx query key
 now it pretty enough
 
-default route of page is its name
 ? interstallar

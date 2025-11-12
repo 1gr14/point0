@@ -302,7 +302,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return { point: undefined, pageLocation, eversion: suitableEversion }
   }
 
-  async extractByRequest({
+  async prepareEversionRunByRequest({
     request,
     parsedUrl,
     fallbackRootId,
@@ -316,7 +316,6 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx: TRequiredCtx
   }): Promise<{
     task: FetchTask | undefined
-    extractResult: ExtractResult
     input: InputParsed
     suitable: GetSuitableResult
     eversionRun: EversionRun
@@ -378,13 +377,8 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       requiredCtx,
     })
     const input = task?.pointInput ?? { ...location.searchParams, ...suitable.pageLocation?.params }
-    const extractResult = await eversionRun.extract({
-      point: suitable.point,
-      input,
-    })
     return {
       task,
-      extractResult,
       input,
       suitable,
       eversionRun,

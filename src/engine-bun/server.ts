@@ -3,7 +3,7 @@ import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
-import type { ClientBun } from './client-bun.js'
+import { ClientBun } from './client-bun.js'
 import type { ClientVite } from './client-vite.js'
 import { engineFetch } from './fetch.js'
 import { StaticDir } from './static-dir.js'
@@ -42,14 +42,19 @@ export class ServerBun {
     points: Points
     port: number
     publicDir: string | undefined
-
     fallbackRootId: RootId
     logger: EngineLogger
     clients: Array<ClientBun | ClientVite>
     eversion: Eversion
   }): Promise<ServerBun> {
     const publicDir = input.publicDir
-      ? await StaticDir.create({ hostname: undefined, absPath: input.publicDir, routePath: '/' })
+      ? await StaticDir.create({
+          hostname: undefined,
+          absPath: input.publicDir,
+          routePath: '/',
+          root: input.points.root,
+          eversion: input.eversion,
+        })
       : undefined
     const server = new ServerBun({
       ...input,
@@ -77,6 +82,10 @@ export class ServerBun {
     request: Request
     requiredCtx: RequiredCtx
   }): Promise<Response> {
+    const clientsStaticDirs = this.clients.flatMap((client) =>
+      client instanceof ClientBun ? [client.distDir || [], client.publicDir || []] : [],
+    )
+    const allStaticDirs = [this.publicDir || [], ...clientsStaticDirs].flatMap((dir) => dir)
     return await engineFetch({
       clients: this.clients,
       eversion: this.eversion,
@@ -84,12 +93,18 @@ export class ServerBun {
       parsedUrl,
       fallbackRootId: this.fallbackRootId,
       requiredCtx,
-      staticDirs: [this.publicDir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
+      staticDirs: allStaticDirs,
       logger: this.logger,
     })
   }
 
-  fetchStatic({ parsedUrl }: { parsedUrl: ParsedUrl }): Response | undefined {
-    return this.publicDir?.fetch(parsedUrl)
+  async fetchStatic({
+    parsedUrl,
+    request,
+  }: {
+    parsedUrl?: ParsedUrl
+    request: Request
+  }): Promise<Response | undefined> {
+    return await this.publicDir?.fetch({ parsedUrl, request })
   }
 }

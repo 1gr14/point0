@@ -23,6 +23,7 @@ export class ClientBun {
   port: number | undefined
   index: number
   logger: EngineLogger
+  env: Record<string, any>
 
   distDir: StaticDir | undefined
   publicDir: StaticDir | undefined
@@ -42,6 +43,7 @@ export class ClientBun {
     port: number | undefined
     index: number
     logger: EngineLogger
+    env: Record<string, any>
 
     distDir: StaticDir | undefined
     publicDir: StaticDir | undefined
@@ -59,6 +61,9 @@ export class ClientBun {
     this.port = input.port
     this.index = input.index
     this.logger = input.logger
+    this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
+    this.distDir = input.distDir
+    this.publicDir = input.publicDir
   }
 
   static async create(input: {
@@ -76,15 +81,28 @@ export class ClientBun {
     port: number | undefined
     index: number
     logger: EngineLogger
+    env: Record<string, any>
 
     eversion: Eversion
   }): Promise<ClientBun> {
     const distDir =
       input.distDir && input.distRoute
-        ? await StaticDir.create({ hostname: input.hostname, absPath: input.distDir, routePath: input.distRoute })
+        ? await StaticDir.create({
+            hostname: input.hostname,
+            absPath: input.distDir,
+            routePath: input.distRoute,
+            root: input.points.root,
+            eversion: input.eversion,
+          })
         : undefined
     const publicDir = input.publicDir
-      ? await StaticDir.create({ hostname: input.hostname, absPath: input.publicDir, routePath: '/' })
+      ? await StaticDir.create({
+          hostname: input.hostname,
+          absPath: input.publicDir,
+          routePath: '/',
+          root: input.points.root,
+          eversion: input.eversion,
+        })
       : undefined
     const client = new ClientBun({
       ...input,
@@ -185,18 +203,13 @@ export class ClientBun {
     }
     eversionRun.setSsrLocation(pageLocation)
     eversionRun.setCurrentLocation(pageLocation)
-    console.log(3333, {
-      pageLocation,
-      'process.env.IS_CLIENT': process.env.IS_CLIENT,
-      'eversionRun.serverGlobalState': eversionRun.serverGlobalState,
-    })
     return await renderAppAsReadableStream({
       App: this.App,
       eversionRun,
       head: extractResult.head,
       pagePoint,
       input,
-      env: { NODE_ENV: process.env.NODE_ENV },
+      env: this.env,
       originalIndexHtml: await this.getOriginalIndexHtml(),
       domRootElementId: this.domRootElementId,
     })

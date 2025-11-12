@@ -1,6 +1,8 @@
 import * as nodePath from 'node:path'
-import type { ParsedUrl } from '../core/utils.js'
+import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import { dedupeSlashes } from '../engine-shared/utils.js'
+import type { RootPoint } from '../core/types.js'
+import type { Eversion } from '../core/eversion.js'
 
 export class StaticDir {
   hostname: string | undefined
@@ -8,15 +10,32 @@ export class StaticDir {
   dirRoutePath: string
   // <fileRoutePath, fileAbsPath>
   files: Map<string, string>
+  eversion: Eversion
 
-  private constructor(input: { hostname: string | undefined; absPath: string; routePath: string }) {
+  root: RootPoint
+
+  private constructor(input: {
+    hostname: string | undefined
+    absPath: string
+    routePath: string
+    root: RootPoint
+    eversion: Eversion
+  }) {
     this.hostname = input.hostname
     this.dirAbsPath = input.absPath
     this.dirRoutePath = input.routePath
     this.files = new Map<string, string>()
+    this.root = input.root
+    this.eversion = input.eversion
   }
 
-  static async create(input: { hostname: string | undefined; absPath: string; routePath: string }): Promise<StaticDir> {
+  static async create(input: {
+    hostname: string | undefined
+    absPath: string
+    routePath: string
+    root: RootPoint
+    eversion: Eversion
+  }): Promise<StaticDir> {
     const staticDir = new StaticDir(input)
     await staticDir.loadFiles()
     return staticDir
@@ -31,7 +50,8 @@ export class StaticDir {
     }
   }
 
-  fetch(parsedUrl: ParsedUrl): Response | undefined {
+  async fetch({ parsedUrl, request }: { parsedUrl?: ParsedUrl; request: Request }): Promise<Response | undefined> {
+    parsedUrl ??= parseUrl(request.url)
     if (this.hostname && parsedUrl.urlObj.hostname !== this.hostname) {
       return undefined
     }
@@ -39,6 +59,36 @@ export class StaticDir {
     if (!fileAbsPath) {
       return undefined
     }
-    return new Response(Bun.file(fileAbsPath))
+
+    const responseFromSourceRootWrapRequest = await this.eversion.points.root._wrapRequest({
+      request,
+    })
+    if (responseFromSourceRootWrapRequest) {
+      return responseFromSourceRootWrapRequest
+    }
+    if (this.root !== this.eversion.points.root) {
+      const responseFromRootWrapRequest = await this.root._wrapRequest({
+        request,
+      })
+      if (responseFromRootWrapRequest) {
+        return responseFromRootWrapRequest
+      }
+    }
+
+    const response = new Response(Bun.file(fileAbsPath))
+    if (this.eversion.points.root !== this.root) {
+      return await this.eversion.points.root._wrapResponse({
+        request,
+        response: await this.root._wrapResponse({
+          request,
+          response,
+        }),
+      })
+    } else {
+      return await this.root._wrapResponse({
+        request,
+        response,
+      })
+    }
   }
 }

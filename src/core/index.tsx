@@ -71,6 +71,8 @@ import type {
   LoaderFn,
   LoadingComponentType,
   MountableComponent,
+  OnRequestFn,
+  OnResponseFn,
   PageComponent,
   PartialUseInfiniteQueryOptions,
   PointName,
@@ -105,6 +107,8 @@ import type {
   UseLoaderResult,
   UsePointQueryResult,
   UseQueryOptions,
+  WrapRequestFn,
+  WrapResponseFn,
   WrapperComponentType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
@@ -146,6 +150,8 @@ export class Point0<
   _responseFn: TResponseOutput extends ResponseOutput
     ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
     : undefined
+  _onResponseFns: OnResponseFn[]
+  _onRequestFns: OnRequestFn[]
   _rootId: RootId
   _staticHeads: StaticHeadsCollection
   _defaultQueryOptions: ExtraUseQueryOptions
@@ -246,6 +252,8 @@ export class Point0<
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
+    _onResponseFns?: OnResponseFn[]
+    _onRequestFns?: OnRequestFn[]
     _rootId: RootId
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
@@ -342,6 +350,8 @@ export class Point0<
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
+    this._onResponseFns = props._onResponseFns ?? []
+    this._onRequestFns = props._onRequestFns ?? []
     this._pointType = props._pointType
     this._letsEndPointType = props._letsEndPointType
     this._wrapper = props._wrapper
@@ -438,6 +448,8 @@ export class Point0<
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
+    _onResponseFns?: OnResponseFn[]
+    _onRequestFns?: OnRequestFn[]
     _staticHeads?: StaticHeadsCollection
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
     _defaultQueryOptions?: ExtraUseQueryOptions | undefined
@@ -570,6 +582,8 @@ export class Point0<
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
         : undefined, // remove end artefact on continue
+      _onResponseFns: overrides._onResponseFns ?? this._onResponseFns,
+      _onRequestFns: overrides._onRequestFns ?? this._onRequestFns,
       // _useLocation: overrides._useLocation ?? this._useLocation,
       _wrapper: overrides._wrapper ?? this._wrapper,
       _staticHeads: overrides._staticHeads ?? this._staticHeads,
@@ -664,6 +678,8 @@ export class Point0<
       _hasSourceBase: false,
       _rootId: rootId,
       _letsEndPointType: 'base',
+      _onResponseFns: [({ response }) => response],
+      _onRequestFns: [() => undefined],
     })
   }
 
@@ -703,6 +719,8 @@ export class Point0<
       _letsEndPointType: 'base',
       _hasSourceBase: true as never,
       _rootId: rootId,
+      _onResponseFns: [({ response }) => response],
+      _onRequestFns: [() => undefined],
     })
   }
 
@@ -1649,6 +1667,80 @@ export class Point0<
       _pointType: 'middleware',
       _route: newRoute as CallabelRoute,
     }) as never
+  }
+
+  onRequest(
+    onRequest: OnRequestFn,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _onRequestFns: [...this._onRequestFns, onRequest],
+    })
+  }
+
+  onResponse(
+    onResponse: OnResponseFn,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TConnectedRootSourcePoint,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TConnectedRootSourcePoint,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _onResponseFns: [...this._onResponseFns, onResponse],
+    })
   }
 
   loader(): Point0<
@@ -3877,6 +3969,26 @@ export class Point0<
         })
       }),
     )
+  }
+
+  // server helpers
+
+  _wrapRequest: WrapRequestFn = async ({ request }) => {
+    for (const onRequestFn of this._onRequestFns) {
+      const response = await onRequestFn({ request })
+      if (response) {
+        return response
+      }
+    }
+    return undefined
+  }
+
+  _wrapResponse: WrapResponseFn = async ({ request, response }) => {
+    let modifiedResponse = response
+    for (const onResponseFn of this._onResponseFns) {
+      modifiedResponse = await onResponseFn({ request, response: modifiedResponse })
+    }
+    return modifiedResponse
   }
 
   // super store

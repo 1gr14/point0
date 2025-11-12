@@ -2,7 +2,8 @@ import { Point0 } from 'point0/core/index.js'
 import type { source } from './server.js'
 
 export const client = Point0.connect<typeof source>('client')
-  .sourceBaseUrl('http://localhost:3000')
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  .sourceBaseUrl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,
     refetchOnMount: false,

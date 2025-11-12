@@ -26,6 +26,9 @@ const engine = await Engine.create({
       distDir: process.env.NODE_ENV === 'production' ? '../client' : undefined, // only when NODE_ENV=production
       distRoute: process.env.NODE_ENV === 'production' ? '/dist/client' : undefined, // only when NODE_ENV=production
       port: 3001,
+      env: {
+        SOURCE_BASE_URL: process.env.SOURCE_BASE_URL,
+      },
     },
   ],
 })
