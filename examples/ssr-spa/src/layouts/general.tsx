@@ -1,4 +1,4 @@
-import { Link } from 'point0/adapters/wouter'
+import { Link } from 'point0/wouter'
 import { useIsRouterFetching } from 'point0/core/router'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'

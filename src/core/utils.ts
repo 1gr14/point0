@@ -73,6 +73,18 @@ export const emptyDehydratedState: DehydratedState = {
   mutations: [],
 }
 
+export const parseUrl = (url: string) => {
+  const urlObj = new URL(url)
+  return {
+    urlObj,
+    urlStr: url,
+  }
+}
+export type ParsedUrl = {
+  urlObj: URL
+  urlStr: string
+}
+
 // type VisitorFn = (element: React.ReactElement<any>) => void | Promise<void>
 // export async function walkElementsAsync(node: ReactNode, visitor: VisitorFn): Promise<void> {
 //   if (node == null) return

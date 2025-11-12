@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { RouterRoutes, Router } from 'point0/adapters/wouter'
+import { RouterRoutes, Router } from 'point0/wouter'
 import { Point0 } from 'point0/core'
 import { Unhead } from 'point0/core/unhead'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'

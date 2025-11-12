@@ -24,6 +24,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { EndPointType, PointName } from '../core/types.js'
+import type { GeneratorOptions } from './config.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -31,16 +32,6 @@ import type { EndPointType, PointName } from '../core/types.js'
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType
-
-export type FileGeneratorOptions = {
-  banner?: string
-  routes?: Routes | string
-  glob: string | string[]
-  ready?: string
-  lazy?: string
-  // wouterRoutes?: string
-  basepath: string
-}
 
 type CollectedPoint = {
   root: boolean
@@ -76,7 +67,7 @@ const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntrie
 )
 const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
 
-export class FileGenerator {
+export class Generator {
   readonly routes: Routes | undefined
   readonly banner: string | undefined
   readonly globInclude: string[]
@@ -85,7 +76,7 @@ export class FileGenerator {
   readonly outputLazyAbs: string | undefined
   readonly outputRoutesAbs: string | undefined
   // readonly outputWouterRoutesAbs: string | undefined
-  readonly basepath: string
+  readonly cwd: string
   readonly jiti: Jiti
   readonly tempDir: string
 
@@ -95,19 +86,19 @@ export class FileGenerator {
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
 
-  constructor(opts: FileGeneratorOptions) {
+  constructor(opts: GeneratorOptions) {
     this.routes = typeof opts.routes === 'string' ? undefined : opts.routes
     this.banner = opts.banner
-    this.basepath = opts.basepath
+    this.cwd = opts.cwd
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
-    this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g))
-    this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.basepath, g.slice(1)))
-    this.outputReadyAbs = opts.ready ? nodePath.resolve(this.basepath, opts.ready) : undefined
-    this.outputLazyAbs = opts.lazy ? nodePath.resolve(this.basepath, opts.lazy) : undefined
+    this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
+    this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
+    this.outputReadyAbs = opts.ready ? nodePath.resolve(this.cwd, opts.ready) : undefined
+    this.outputLazyAbs = opts.lazy ? nodePath.resolve(this.cwd, opts.lazy) : undefined
     // this.outputWouterRoutesAbs = opts.wouterRoutes ? nodePath.resolve(this.basepath, opts.wouterRoutes) : undefined
-    this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.basepath, opts.routes) : undefined
+    this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.cwd, opts.routes) : undefined
     this.jiti = this.createFreshJiti()
-    this.tempDir = FileGenerator.resolveTempDirPath()
+    this.tempDir = Generator.resolveTempDirPath()
   }
 
   static resolveTempDirPath(): string {
@@ -134,8 +125,8 @@ export class FileGenerator {
     return fallback
   }
 
-  static create(opts: FileGeneratorOptions) {
-    return new FileGenerator(opts)
+  static create(opts: GeneratorOptions) {
+    return new Generator(opts)
   }
 
   async sync() {
@@ -156,9 +147,9 @@ export class FileGenerator {
   private async collectFiles() {
     for (const pattern of this.globInclude) {
       // Convert absolute pattern to relative pattern for fast-glob
-      const relativePattern = nodePath.relative(this.basepath, pattern)
+      const relativePattern = nodePath.relative(this.cwd, pattern)
       const entries = await fg([relativePattern], {
-        cwd: this.basepath,
+        cwd: this.cwd,
         absolute: true,
         onlyFiles: true,
         ignore: this.globExclude,
@@ -223,8 +214,8 @@ export class FileGenerator {
   // TODO: not chunk size, but max in same time processing files
   async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
     const files = [...this.files]
-    const chunks = FileGenerator.chunk(files, chunkSize)
-    const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
+    const chunks = Generator.chunk(files, chunkSize)
+    const collector = new PointsCollector({ basepath: this.cwd, routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(
@@ -236,9 +227,8 @@ export class FileGenerator {
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
     const prevPoints = [...this.points]
-    const newPoints =
-      errors.length === 0 ? collectedPoints : FileGenerator.mergePointsSafely(this.points, collectedPoints)
-    const diff = FileGenerator.getCollectedPointsDiff(prevPoints, newPoints)
+    const newPoints = errors.length === 0 ? collectedPoints : Generator.mergePointsSafely(this.points, collectedPoints)
+    const diff = Generator.getCollectedPointsDiff(prevPoints, newPoints)
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
     if (diff.changed) {
@@ -362,9 +352,9 @@ export class FileGenerator {
     }> = []
 
     const importedPoints = points.map((point) => {
-      const importPath = FileGenerator.toRelativeJsImportPath(outputAbs, point.fileAbs)
+      const importPath = Generator.toRelativeJsImportPath(outputAbs, point.fileAbs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
-      const hash = FileGenerator.hash(point)
+      const hash = Generator.hash(point)
       const renamedExportName = point.exportName === 'default' ? `unnamed_${hash}` : `${point.exportName}_${hash}`
       const originalExportName = point.exportName === 'default' ? 'default' : point.exportName
       const newItem = { originalExportName, renamedExportName }
@@ -431,7 +421,7 @@ export class FileGenerator {
         // const exportNameSuffix = point.type === 'component' ? '.point' : ''
         const exportNameSuffix = '.point'
         lines.push(
-          `  point: async () => (await import('${FileGenerator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+          `  point: async () => (await import('${Generator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
         )
         lines.push(`} as LazyPointsCollectionRecord`)
         lines.push(``)
@@ -619,8 +609,8 @@ export class FileGenerator {
     added: CollectedPoint[]
     changed: boolean
   } {
-    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
-    const added = newPoints.filter((p) => !prevPoints.some((cp) => FileGenerator.isSameCollectedPoint(p, cp)))
+    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => Generator.isSameCollectedPoint(p, cp)))
+    const added = newPoints.filter((p) => !prevPoints.some((cp) => Generator.isSameCollectedPoint(p, cp)))
     const changed = added.length > 0 || deleted.length > 0
     return { deleted, added, changed }
   }
@@ -629,14 +619,12 @@ export class FileGenerator {
   private static mergePointsSafely(prevPoints: CollectedPoint[], newPoints: CollectedPoint[]): CollectedPoint[] {
     const result = [...prevPoints]
     for (const newPoint of newPoints) {
-      const prevConflictedPointIndex = result.findIndex((p) =>
-        FileGenerator.isSameNameAndTypeCollectedPoint(p, newPoint),
-      )
+      const prevConflictedPointIndex = result.findIndex((p) => Generator.isSameNameAndTypeCollectedPoint(p, newPoint))
       if (prevConflictedPointIndex !== -1) {
         result[prevConflictedPointIndex] = newPoint
         continue
       }
-      const prevPointIndex = result.findIndex((p) => FileGenerator.isSameCollectedPoint(p, newPoint))
+      const prevPointIndex = result.findIndex((p) => Generator.isSameCollectedPoint(p, newPoint))
       if (prevPointIndex === -1) {
         result.push(newPoint)
         continue
@@ -646,7 +634,7 @@ export class FileGenerator {
   }
 
   private createFreshJiti() {
-    return createJiti(this.basepath, {
+    return createJiti(this.cwd, {
       cache: false,
       interopDefault: true,
       moduleCache: false,
@@ -673,7 +661,7 @@ export class FileGenerator {
   // Convenience for short suffixes
   private static hash(input: unknown, seed = 0): string {
     const s = typeof input === 'string' ? input : JSON.stringify(input)
-    return FileGenerator.cyrb53(s, seed).toString(36) // short, URL/file-safe
+    return Generator.cyrb53(s, seed).toString(36) // short, URL/file-safe
   }
 
   private static chunk<T>(array: readonly T[], size: number): T[][] {
@@ -1694,12 +1682,12 @@ export class PointsCollector {
 }
 
 export type FileWatcherOptions = {
-  generators: FileGenerator[]
+  generators: Generator[]
   ignore?: string[]
 }
 
 export class FileWatcher {
-  readonly generators: FileGenerator[]
+  readonly generators: Generator[]
   readonly ignore: string[]
   readonly watchDir: string
   readonly patterns: string[]

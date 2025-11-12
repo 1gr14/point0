@@ -6,16 +6,16 @@ import { renderToReadableStream } from 'react-dom/server'
 import z from 'zod'
 import { Eversion } from '../../core/eversion.js'
 import type { IsEmptyObject, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
-import { toJsonErrorResponse, toSuitableErrorResponse } from '../../server/error.js'
-import { renderAppAsReadableStream } from '../../server/render.js'
+import { toJsonErrorResponse, toSuitableErrorResponse } from '../../engine-shared/error.js'
+import { renderAppAsReadableStream } from '../../engine-shared/render.js'
 import type {
-  ServerAdapterClientInputParsed,
-  ServerAdapterLogger,
-  ServerAdapterServerInput,
-  ServerAdapterServerInputParsed,
-} from '../../server/server.js'
-import { parseServerAdapterInput } from '../../server/server.js'
-import { isPathnameUnderBasepath } from '../../server/utils.js'
+  EngineClientInputParsed,
+  EngineLogger,
+  EngineServerInput,
+  EngineServerInputParsed,
+} from '../../engine-shared/config.js'
+import { parseEngineInput } from '../../engine-shared/config.js'
+import { isPathnameUnderBasepath } from '../../engine-shared/utils.js'
 
 // TODO: allow public dir per each client also
 // TODO: allow special origin per each client also
@@ -28,7 +28,7 @@ type ParsedRequest = {
   isJsonAcceptable: boolean
 }
 
-type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = ServerAdapterClientInputParsed & {
+type ClientWithEversion<TRequiredCtx extends RequiredCtx = RequiredCtx> = EngineClientInputParsed & {
   eversion: Eversion<TRequiredCtx>
 }
 
@@ -39,7 +39,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   clientsDevServer: Bun.Server<unknown> | undefined
   clientsDevServerPort: number
   root: RootPoint<TRequiredCtx>
-  logger: ServerAdapterLogger
+  logger: EngineLogger
   dirname?: string
   publicDir?: string
   fallbackRootId: RootId
@@ -51,7 +51,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   indexHtmlContents: Record<string, string | undefined> = {}
 
   private constructor(
-    input: Omit<ServerAdapterServerInputParsed<TRequiredCtx>, 'clients'> & {
+    input: Omit<EngineServerInputParsed<TRequiredCtx>, 'clients'> & {
       eversion: Eversion<TRequiredCtx>
       clients: Array<ClientWithEversion<TRequiredCtx>>
     },
@@ -70,9 +70,9 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-    input: ServerAdapterServerInput<TRequiredCtx>,
+    input: EngineServerInput<TRequiredCtx>,
   ): Promise<Server<TRequiredCtx>> {
-    const parsedInput = parseServerAdapterInput(input)
+    const parsedInput = parseEngineInput(input)
     const eversion = await Eversion.create({ root: parsedInput.root, points: parsedInput.points })
     // for (const client of parsedInput.clients) {
     //   await eversion.connect({ root: client.root, points: client.points })
@@ -185,7 +185,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   this.indexHtmlContents = indexHtmlContents
   // }
 
-  async _loadSrcIndexHtmlContents(client: ServerAdapterClientInputParsed): Promise<string> {
+  async _loadSrcIndexHtmlContents(client: EngineClientInputParsed): Promise<string> {
     if (this.devServerTarget === 'server') {
       return await (
         await fetch(
@@ -423,7 +423,7 @@ export class Server<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
           eversionRun.setCurrentLocation(suitable.pageLocation)
           eversionRun.setSsrLocation(suitable.pageLocation)
-          await eversionRun.prefetchAppPagePoints({
+          await eversionRun.prefetchAppPagePointDeep({
             App,
             renderToReadableStream,
             pagePoint: suitable.point,

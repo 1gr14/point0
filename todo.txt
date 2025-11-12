@@ -1,3 +1,14 @@
+wouter → dir to root
+server → server-shared
+bun/server → server-bun → dir to root
+? server-bun split to files
+config + cli
+extract required ctx type from root points
+config has same props as generator and engine, but also has additional things whuch allow to simplify. Like just srcDir and then we extract everyting by orselves, and we can pass with config to generator and engine as input
+vite
+rename super store to eversion store
+on fetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
+
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
@@ -6,7 +17,6 @@ wrapper
 merge .input schemas
 
 auth
-vite
 env
 elysia example
 
@@ -18,6 +28,7 @@ chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)),
 → chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 
 ? so we need in extract also add base extracctFns
 lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
+? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
 
 like always do general fns
 config to forward settings to client and server. jsut {server, clients, generators}

@@ -8,41 +8,41 @@ export const toPathsOrUndefined = (path: string | string[] | undefined): string[
   return Array.isArray(path) ? path : [path]
 }
 
-export const absPath = (dirname: string | undefined, path: string | undefined): string | undefined => {
+export const absPath = (cwd: string | undefined, path: string | undefined): string | undefined => {
   if (!path) {
     return undefined
   }
-  if (!dirname) {
+  if (!cwd) {
     if (!nodePath.isAbsolute(path)) {
       throw new Error(`Path "${path}" is not absolute, but should be`)
     }
     return path
   }
-  if (!nodePath.isAbsolute(dirname)) {
-    throw new Error(`Basepath "${dirname}" is not absolute, but should be`)
+  if (!nodePath.isAbsolute(cwd)) {
+    throw new Error(`Cwd "${cwd}" is not absolute, but should be`)
   }
-  return nodePath.resolve(dirname, path)
+  return nodePath.resolve(cwd, path)
 }
 
-export const relPath = (dirname: string | undefined, path: string | undefined): string | undefined => {
+export const relPath = (cwd: string | undefined, path: string | undefined): string | undefined => {
   if (!path) {
     return undefined
   }
-  if (!dirname) {
+  if (!cwd) {
     return path
   }
-  if (!nodePath.isAbsolute(dirname)) {
-    throw new Error(`Basepath "${dirname}" is not absolute, but should be`)
+  if (!nodePath.isAbsolute(cwd)) {
+    throw new Error(`Cwd "${cwd}" is not absolute, but should be`)
   }
-  return nodePath.relative(dirname, path)
+  return nodePath.relative(cwd, path)
 }
 
-export const parsePaths = (dirname: string | undefined, path: string[] | string | undefined): string[] => {
+export const parsePaths = (cwd: string | undefined, path: string[] | string | undefined): string[] => {
   if (!path) {
     return []
   }
   const paths = Array.isArray(path) ? path : [path]
-  return paths.flatMap((path) => absPath(dirname, path) ?? [])
+  return paths.flatMap((path) => absPath(cwd, path) ?? [])
 }
 
 export const findFirstExistsFilePath = (path: string[] | string | undefined): string | undefined => {
@@ -80,6 +80,10 @@ export const throwOnNonUniqueArrayElements = (array: Array<string | undefined>, 
         .join(', ')}`,
     )
   }
+}
+
+export const dedupeSlashes = (path: string) => {
+  return path.replace(/\/\/+/g, '/')
 }
 
 export const prependAndAppendSlash = <T extends string | undefined>(path: T): T => {

@@ -1,8 +1,8 @@
-import { FileGenerator } from 'point0/generator'
+import { Generator } from 'point0/generator'
 import { routes } from './lib/routes'
 
-const generator = FileGenerator.create({
-  basepath: import.meta.dir,
+const generator = Generator.create({
+  cwd: import.meta.dir,
   glob: ['./**/*.{ts,tsx}', '!./lib/server.ts'],
   ready: './lib/points.ready.ts',
   lazy: './lib/points.lazy.ts',

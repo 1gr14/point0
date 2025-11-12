@@ -1,5 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, ExactLocation } from '@devp0nt/route0'
+import { Route0, type AnyLocation, type ExactLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
@@ -32,6 +32,8 @@ import type {
   UndefinedCtx,
   UndefinedResponseOutput,
 } from './types.js'
+import { parseUrl, type ParsedUrl } from './utils.js'
+import z from 'zod'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -312,65 +314,95 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     return { point: undefined, pageLocation, eversion: suitableEversion }
   }
+
+  async extractByRequest({
+    request,
+    parsedUrl,
+    fallbackRootId,
+    rootId,
+    requiredCtx,
+  }: {
+    request: Request
+    parsedUrl?: ParsedUrl
+    fallbackRootId: RootId
+    rootId?: RootId
+    requiredCtx: TRequiredCtx
+  }): Promise<{
+    task: FetchTask | undefined
+    extractResult: ExtractResult
+    input: InputParsed
+    suitable: GetSuitableResult
+    eversionRun: EversionRun
+  }> {
+    parsedUrl ??= parseUrl(request.url)
+    const task = await (async () => {
+      if (parsedUrl.urlObj.pathname !== '/_point0') {
+        return undefined
+      }
+      const bodyRaw = await (async () => {
+        try {
+          return await request.json()
+        } catch (error) {
+          return {}
+        }
+      })()
+      const parsed = z
+        .object({
+          pointType: z.enum([
+            'page',
+            'layout',
+            'component',
+            'response',
+            'query',
+            'infiniteQuery',
+            'mutation',
+            'provider',
+          ]),
+          outputType: z.enum(['data', 'response', 'dehydratedState']),
+          pointInput: z.record(z.string(), z.any()),
+          rootId: z.string().min(1),
+          pointName: z.string().min(1),
+        })
+        .parse({
+          pointType: bodyRaw.pointType,
+          outputType: bodyRaw.outputType,
+          pointInput: bodyRaw.pointInput,
+          rootId: bodyRaw.rootId,
+          pointName: bodyRaw.pointName,
+        })
+      if (rootId && parsed.rootId !== rootId) {
+        throw new Error(`Root id "${parsed.rootId}" does not match "${rootId}"`)
+      }
+      return parsed
+    })()
+    const location = Route0.getLocation(parsedUrl.urlStr)
+    const suitable = this.getSuitable({
+      pointType: task?.pointType ?? 'page',
+      rootId: task?.rootId || rootId,
+      pointName: task?.pointName,
+      pageLocation: !task ? location : undefined,
+      input: task?.pointInput,
+      fallbackRootId,
+    })
+    const eversionRun = await suitable.eversion.createRun({
+      pageLocation: suitable.pageLocation,
+      currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
+      requiredCtx,
+    })
+    const input = task?.pointInput ?? { ...location.searchParams, ...suitable.pageLocation?.params }
+    const extractResult = await eversionRun.extract({
+      point: suitable.point,
+      input,
+    })
+    return {
+      task,
+      extractResult,
+      input,
+      suitable,
+      eversionRun,
+    }
+  }
 }
-
-// private static normalizeQueryClientConfig(): void {
-//   if (!(this.config.queryClient as unknown)) {
-//     this.config.queryClient = {
-//       init: () => new QueryClient(),
-//       dehydrate: () => undefined,
-//       hydrate: () => undefined,
-//     }
-//   }
-//   this.config.queryClient.dehydrate = (queryClient: QueryClient) =>
-//     dehydrate(queryClient, {
-//       shouldDehydrateQuery: () => {
-//         // This will include all queries, including failed ones
-//         return true
-//       },
-//     })
-//   this.config.queryClient.hydrate = (dehydratedState: DehydratedState, createQueryClient: () => QueryClient) => {
-//     const queryClient = createQueryClient()
-//     hydrate(queryClient, dehydratedState)
-
-//     const prefetchPageQuery = queryClient
-//       .getQueryCache()
-//       .getAll()
-//       .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
-
-//     if (!prefetchPageQuery) {
-//       return queryClient
-//     }
-
-//     const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
-//       .dehydratedState
-//     hydrate(queryClient, relatedQueriesDehydratedState)
-
-//     return queryClient
-//   }
-// }
-
-// private static normalizeSsrLocationConfig(): void {
-//   this.config.ssrLocation = {
-//     init: () => undefined,
-//     dehydrate: (value) => value,
-//     hydrate: (value) => value,
-//   }
-// }
-
-// private static normalizeCurrentLocationConfig(): void {
-//   this.config.currentLocation = {
-//     init: () => Route0.getLocation('/'),
-//     dehydrate: (value) => value,
-//     hydrate: (value) => value,
-//   }
-// }
-
-// private static normalizeSuperStoreConfig(): void {
-//   this.normalizeQueryClientConfig()
-//   this.normalizeSsrLocationConfig()
-//   this.normalizeCurrentLocationConfig()
-// }
 
 export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   eversion: Eversion<TRequiredCtx>
@@ -617,7 +649,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  async prefetchAppPagePoints({
+  async prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
     pagePoint,
@@ -675,7 +707,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
 
-      await this.prefetchAppPagePoints({
+      await this.prefetchAppPagePointDeep({
         App,
         renderToReadableStream,
         pagePoint,
@@ -865,3 +897,11 @@ export type Payload = {
 }
 
 export type ServerStore = AsyncLocalStorage<Record<string, any>>
+
+export type FetchTask = {
+  pointType: EndPointType
+  outputType: 'data' | 'response' | 'dehydratedState'
+  pointInput: InputParsed
+  rootId: RootId
+  pointName: PointName
+}

@@ -1,4 +1,4 @@
-import { Link } from 'point0/adapters/wouter'
+import { Link } from 'point0/wouter'
 import { Point0 } from 'point0/core/index.js'
 import { useEffect, useState } from 'react'
 import z from 'zod'

@@ -17,6 +17,8 @@ import type {
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
 export class Points<TReady extends boolean = boolean> {
+  // TODO:ASAP made points required, and in module export root as preloaded
+  root: RootPoint
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
   routes: Routes
@@ -25,12 +27,14 @@ export class Points<TReady extends boolean = boolean> {
   pagesTree: PagesTree
 
   private constructor({
+    root,
     collection,
     routes,
     ready,
     pagesTreeSource,
     pagesTree,
   }: {
+    root: RootPoint
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
     routes: Routes
     ready: boolean
@@ -43,6 +47,7 @@ export class Points<TReady extends boolean = boolean> {
     this.collection = Points.sortCollection({ points: collection, routes })
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
+    this.root = root
   }
 
   static readonly ready = (
@@ -59,7 +64,9 @@ export class Points<TReady extends boolean = boolean> {
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<true>({ collection: routedPoints, routes, ready: true, pagesTreeSource, pagesTree })
+    // TODO:ASAP fix it
+    const root = routedPoints.find((p) => p.root)?.point as RootPoint
+    return new Points<true>({ root, collection: routedPoints, routes, ready: true, pagesTreeSource, pagesTree })
   }
 
   static readonly lazy = (lazyPoints: LazyPointsCollection | LazyPointsModule): Points<false> => {
@@ -71,7 +78,9 @@ export class Points<TReady extends boolean = boolean> {
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<false>({ collection: routedPoints, routes, ready: false, pagesTreeSource, pagesTree })
+    // TODO:ASAP fix it
+    const root = routedPoints.find((p) => p.root)?.point as never as RootPoint
+    return new Points<false>({ root, collection: routedPoints, routes, ready: false, pagesTreeSource, pagesTree })
   }
 
   static readonly create = (
@@ -112,7 +121,9 @@ export class Points<TReady extends boolean = boolean> {
     const routes = Points.toRoutes({ points: readyPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: readyPoints })
     const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
-    return new Points<true>({ collection: readyPoints, routes, ready: true, pagesTreeSource, pagesTree })
+    // TODO:ASAP fix it
+    const root = readyPoints.find((p) => p.root)?.point as RootPoint
+    return new Points<true>({ root, collection: readyPoints, routes, ready: true, pagesTreeSource, pagesTree })
   }
 
   private static validate(points: ReadyPointsCollection | LazyPointsCollection): void {

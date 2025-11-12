@@ -1,4 +1,4 @@
-import { Link } from 'point0/adapters/wouter'
+import { Link } from 'point0/wouter'
 import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 

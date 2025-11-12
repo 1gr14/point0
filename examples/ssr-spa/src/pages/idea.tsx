@@ -1,4 +1,4 @@
-import { Link } from 'point0/adapters/wouter'
+import { Link } from 'point0/wouter'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'

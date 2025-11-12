@@ -46,22 +46,22 @@ export type DocumentHtmlResult<TContent extends string | undefined> = {
 export function fillRootElement({
   html,
   content,
-  rootElementId = 'root',
+  domRootElementId = 'root',
   position = 'append',
 }: {
   html: string
   content: string
-  rootElementId?: string
+  domRootElementId?: string
   position?: 'append' | 'prepend'
 }) {
   // Match <div ... id="root" ...> ... </div> without eating siblings
   const pattern = new RegExp(
-    `<div\\b([^>]*?)\\bid=["']${rootElementId}["']([^>]*)>(.*?)</div>`,
+    `<div\\b([^>]*?)\\bid=["']${domRootElementId}["']([^>]*)>(.*?)</div>`,
     'is', // i = case-insensitive, s = dotAll (so . matches newlines)
   )
   const replacement = (_: string, before: string, after: string, inner: string) => {
     const newInner = position === 'prepend' ? `${content}${inner}` : `${inner}${content}`
-    return `<div${before.trimEnd()} id="${rootElementId}"${after}>${newInner}</div>`
+    return `<div${before.trimEnd()} id="${domRootElementId}"${after}>${newInner}</div>`
   }
 
   return html.replace(pattern, replacement)
@@ -97,7 +97,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   eversionRun,
   head,
   env,
-  rootElementId,
+  domRootElementId,
   clientBundlePath,
 }: {
   originalIndexHtml: string
@@ -105,7 +105,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   eversionRun: EversionRun
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
-  rootElementId?: string
+  domRootElementId?: string
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
   let html = originalIndexHtml
@@ -120,7 +120,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
       ? `<!-- __POINT0_TARGET_START__ -->${content}<!-- __POINT0_TARGET_END__ -->`
       : '<!-- __POINT0_TARGET__ -->',
     html,
-    rootElementId,
+    domRootElementId,
   })
   if (head.length > 0) {
     html = await transformHtmlTemplate(createHead({ init: head }), html)
@@ -215,7 +215,7 @@ export async function renderReadableStream({
   clientBundlePath,
   renderer = renderToReadableStream,
   originalIndexHtml,
-  rootElementId,
+  domRootElementId,
   eversionRun,
 }: {
   App: AppComponent
@@ -224,7 +224,7 @@ export async function renderReadableStream({
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
-  rootElementId?: string
+  domRootElementId?: string
   eversionRun: EversionRun
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
@@ -232,7 +232,7 @@ export async function renderReadableStream({
     eversionRun,
     head,
     env,
-    rootElementId,
+    domRootElementId,
   })
   return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, eversionRun })
 }
@@ -253,9 +253,9 @@ export async function renderAppAsReadableStream({
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
-  rootElementId?: string
+  domRootElementId?: string
 }): Promise<ReadableStream> {
-  await eversionRun.prefetchAppPagePoints({
+  await eversionRun.prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
     pagePoint,
