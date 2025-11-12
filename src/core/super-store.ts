@@ -1,6 +1,7 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 import type { IfAnyThenElse } from './types.js'
+import { isClient } from './client-server.js'
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class SuperStore {
@@ -8,7 +9,7 @@ export class SuperStore {
   static config: SuperStoreConfig = {}
 
   private static readonly clientState: SuperState = {}
-  private static readonly serverStorage: SuperServerStorage | null = process.env.IS_CLIENT
+  private static readonly serverStorage: SuperServerStorage | null = isClient()
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>)
@@ -233,7 +234,7 @@ export class SuperStore {
   }
 
   static getState = (): SuperState => {
-    if (process.env.IS_CLIENT) {
+    if (isClient()) {
       return SuperStore.clientState
     } else {
       if (!SuperStore.serverStorage) {

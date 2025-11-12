@@ -61,6 +61,7 @@ export const engineFetch = async ({
             // I think it will never throw, but who knows
             throw new Error('Page Critical Error: Not Found')
           }
+          // console.log(2222, { suitable })
           const readableStream = await relatedClient.renderAsReadableStream({
             eversionRun,
             extractResult,
@@ -68,6 +69,7 @@ export const engineFetch = async ({
             pageLocation: suitable.pageLocation,
             input,
           })
+          // console.log(3333, { readableStream })
           return new Response(readableStream, {
             headers: { 'Content-Type': 'text/html' },
             status: extractResult.status,

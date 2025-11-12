@@ -56,6 +56,8 @@ preserve client loaders also, and then on lets we have middleware-client but if 
 router export function getCurrentLocation()
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
+rename all location to loc, becouse ReferenceError: location is not defined
+try catch evrywhere in engine to show real error in real place
 input of page component omit params and query params
 basepath replace with cwd
 allow pass env object or "PREFIX_*" to env for clients

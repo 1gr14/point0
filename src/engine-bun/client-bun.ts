@@ -185,6 +185,11 @@ export class ClientBun {
     }
     eversionRun.setSsrLocation(pageLocation)
     eversionRun.setCurrentLocation(pageLocation)
+    console.log(3333, {
+      pageLocation,
+      'process.env.IS_CLIENT': process.env.IS_CLIENT,
+      'eversionRun.serverGlobalState': eversionRun.serverGlobalState,
+    })
     return await renderAppAsReadableStream({
       App: this.App,
       eversionRun,

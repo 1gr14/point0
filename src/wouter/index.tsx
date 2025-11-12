@@ -7,6 +7,7 @@ import { Point0 } from '../core/index.js'
 import type { PagesTree } from '../core/points.js'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../core/router.js'
 import { _wrapUseNavigate, RouterContextProvider } from '../core/router.js'
+import { isClient } from '../core/client-server.js'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 
@@ -51,11 +52,11 @@ export const Router = ({
   children: React.ReactNode
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
-    if (process.env.IS_CLIENT) {
+    if (isClient()) {
       return {}
     }
     if (!ssrLocation) {
-      throw new Error(`ssrLocation is required on ssr, process.env.IS_CLIENT: ${process.env.IS_CLIENT}`)
+      throw new Error(`ssrLocation is required on ssr`)
     }
     return { ssrPath: ssrLocation.pathname, ssrSearch: ssrLocation.search }
   }, [ssrLocation])

@@ -118,10 +118,10 @@ const parseEngineClientOptions = ({
   const distIndexHtml = absPath(generalOptionsParsed.cwd, clientOptions.distIndexHtml)
   const basepath = prependAndAppendSlash(clientOptions.basepath) || '/'
   const distRoute = prependAndAppendSlash(clientOptions.distRoute)
-  if (distRoute !== 'undefined' && !distDir) {
+  if (typeof distRoute !== 'undefined' && !distDir) {
     throw new Error(`client ad index ${index} has distRoute but no distDir`)
   }
-  if (distDir !== 'undefined' && !distRoute) {
+  if (typeof distDir !== 'undefined' && !distRoute) {
     throw new Error(`client ad index ${index} has distDir but no distRoute`)
   }
   const publicDir = absPath(generalOptionsParsed.cwd, clientOptions.publicDir)

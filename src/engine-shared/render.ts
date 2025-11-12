@@ -127,7 +127,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   }
   html = prependHeadElement({
     content: `<script id="__POINT0_ENV__" type="text/javascript">
-  const __ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env, IS_CLIENT: '1', NODE_ENV: process.env.NODE_ENV }))};
+  const __ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env, NODE_ENV: process.env.NODE_ENV }))};
   window.process = window.process || {};
   window.process.env = { ...(window.process.env || {}), ...__ENV__ };
   window.import = window.import || {};

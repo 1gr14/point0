@@ -34,6 +34,7 @@ import type {
 } from './types.js'
 import { parseUrl, type ParsedUrl } from './utils.js'
 import z from 'zod'
+import { isClient } from './client-server.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -363,6 +364,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })()
     const location = Route0.getLocation(parsedUrl.urlStr)
     const suitable = this.getSuitable({
+      // TODO:ASAP add allowedRootIds, so in engine fetch we will filter them by basepath and hostname. And better have .hostname() and .basepath() in root point
       pointType: task?.pointType ?? 'page',
       rootId: task?.rootId || rootId,
       pointName: task?.pointName,
@@ -454,11 +456,11 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   getQueryClient(): QueryClient {
-    return process.env.IS_CLIENT ? SuperStore.get('__QUERY_CLIENT__') : this.serverGlobalState.__QUERY_CLIENT__
+    return isClient() ? SuperStore.get('__QUERY_CLIENT__') : this.serverGlobalState.__QUERY_CLIENT__
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
-    if (process.env.IS_CLIENT) {
+    if (isClient()) {
       SuperStore.set('__SSR_LOCATION__', ssrLocation)
       return
     }
@@ -466,7 +468,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
-    if (process.env.IS_CLIENT) {
+    if (isClient()) {
       SuperStore.set('__CURRENT_LOCATION__', currentLocation)
       return
     }

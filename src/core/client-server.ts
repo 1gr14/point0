@@ -1,5 +1,6 @@
 export const isClient = (): boolean => {
-  if (process.env.IS_CLIENT) return true
+  // do not do this. We us process.env.IS_CLIENT only on build phase to remove unused server code
+  // if (process.env.IS_CLIENT) return true
 
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
