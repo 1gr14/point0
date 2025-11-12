@@ -177,10 +177,9 @@ describe('Point0', () => {
     const pageComponent = () => <div>Hello</div>
     const clientPointBase02 = Point0.connect<typeof server2>('client').base()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent)
-    const eversion2 = await Eversion.create({ root: server2 })
+    const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     const eversion2Connection = await eversion2.connect({
-      root: clientPointBase02,
-      points: Points.ready([clientPoint02.point]),
+      points: Points.ready({ root: clientPointBase02 }),
     })
     const run = await eversion2Connection.createRun({
       pageLocation: Route0.getLocation('/'),
@@ -299,10 +298,9 @@ describe('Point0', () => {
       .page(({ query }) => <div>Hello{query.data.pages[0].x}</div>).point
     expectTypeOf<(typeof clientPoint0111)['Infer']['QueryResultType']>().toEqualTypeOf<'infiniteQuery'>()
 
-    const eversion1 = await Eversion.create({ root: server1 })
+    const eversion1 = await Eversion.create({ points: Points.ready({ root: server1 }) })
     const eversion1Connection = await eversion1.connect({
-      root: clientPointBase01,
-      points: Points.ready([clientPoint01]),
+      points: Points.ready({ root: clientPointBase01 }),
     })
     const run = await eversion1Connection.createRun({
       pageLocation: Route0.getLocation(url),
@@ -320,17 +318,19 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server2 = server1.ctx(({ ctx }) => ({
-      ...ctx,
-      a: 3,
-      c: 4,
-    }))
+    const server2 = server1
+      .lets('base', 'server2')
+      .ctx(({ ctx }) => ({
+        ...ctx,
+        a: 3,
+        c: 4,
+      }))
+      .base()
     const clientPointBase02 = Point0.connect<typeof server2>('client').base()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
-    const eversion2 = await Eversion.create({ root: server2 })
+    const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     const eversion2Connection = await eversion2.connect({
-      root: clientPointBase02,
-      points: Points.ready([clientPoint02]),
+      points: Points.ready({ root: clientPointBase02 }),
     })
     const run2 = await eversion2Connection.createRun({
       pageLocation: Route0.getLocation(url),
@@ -349,15 +349,17 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server3 = server1.ctx(({ ctx }) => ({
-      c: 5,
-    }))
+    const server3 = server1
+      .lets('base', 'server3')
+      .ctx(({ ctx }) => ({
+        c: 5,
+      }))
+      .base()
     const clientPointBase03 = Point0.connect<typeof server3>('client').base()
     const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
-    const eversion3 = await Eversion.create({ root: server3 })
+    const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     const eversion3Connection = await eversion3.connect({
-      root: clientPointBase03,
-      points: Points.ready([clientPoint03]),
+      points: Points.ready({ root: clientPointBase03 }),
     })
     const run3 = await eversion3Connection.createRun({
       pageLocation: Route0.getLocation(url),
@@ -384,18 +386,20 @@ describe('Point0', () => {
   it('extract ctx with required ctx input', async () => {
     const server = Point0.source('server').requireCtx<{ r: string }>().base()
     const url = '/z/x/c'
-    const server1 = server.ctx(({ ctx }) => ({
-      ...ctx,
-      a: 1,
-      b: 2,
-    }))
+    const server1 = server
+      .lets('base', 'server1')
+      .ctx(({ ctx }) => ({
+        ...ctx,
+        a: 1,
+        b: 2,
+      }))
+      .base()
     const pageComponent = () => <div>Hello</div>
     const clientPointBase01 = Point0.connect<typeof server1>('client').base()
     const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
-    const eversion1 = await Eversion.create({ root: server1 })
+    const eversion1 = await Eversion.create({ points: Points.ready({ root: server1 }) })
     const eversion1Connection = await eversion1.connect({
-      root: clientPointBase01,
-      points: Points.ready([clientPoint01]),
+      points: Points.ready({ root: clientPointBase01 }),
     })
     const run1 = await eversion1Connection.createRun({
       pageLocation: Route0.getLocation(url),
@@ -419,17 +423,19 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server2 = server1.ctx(({ ctx }) => ({
-      ...ctx,
-      a: 3,
-      c: 4,
-    }))
+    const server2 = server1
+      .lets('base', 'server2')
+      .ctx(({ ctx }) => ({
+        ...ctx,
+        a: 3,
+        c: 4,
+      }))
+      .base()
     const clientPointBase02 = Point0.connect<typeof server2>('client').base()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
-    const eversion2 = await Eversion.create({ root: server2 })
+    const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     const eversion2Connection = await eversion2.connect({
-      root: clientPointBase02,
-      points: Points.ready([clientPoint02]),
+      points: Points.ready({ root: clientPointBase02 }),
     })
     const run2 = await eversion2Connection.createRun({
       pageLocation: Route0.getLocation(url),
@@ -449,16 +455,18 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server3 = server1.ctx(({ ctx }) => ({
-      r: ctx.r,
-      c: 5,
-    }))
+    const server3 = server1
+      .lets('base', 'server3')
+      .ctx(({ ctx }) => ({
+        r: ctx.r,
+        c: 5,
+      }))
+      .base()
     const clientPointBase03 = Point0.connect<typeof server3>('client').base()
     const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
-    const eversion3 = await Eversion.create({ root: server3 })
+    const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     const eversion3Connection = await eversion3.connect({
-      root: clientPointBase03,
-      points: Points.ready([clientPoint03]),
+      points: Points.ready({ root: clientPointBase03 }),
     })
     const run3 = await eversion3Connection.createRun({
       pageLocation: Route0.getLocation(url),

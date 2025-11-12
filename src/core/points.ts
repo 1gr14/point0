@@ -17,7 +17,6 @@ import type {
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
 export class Points<TReady extends boolean = boolean> {
-  // TODO:ASAP made points required, and in module export root as preloaded
   root: RootPoint
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
@@ -50,64 +49,45 @@ export class Points<TReady extends boolean = boolean> {
     this.root = root
   }
 
-  static readonly ready = (
-    readyPoints: ReadyPointsCollection | RawPointsCollection | ReadyPointsModule,
-  ): Points<true> => {
-    if (Points.isReadyPointsModule(readyPoints)) {
-      readyPoints = Object.values(readyPoints).map((p) => p.point)
-    }
-    if (Points.isRawPointsCollection(readyPoints)) {
-      readyPoints = Points.rawToReadyPointsCollection(readyPoints)
-    }
-    Points.validate(readyPoints)
-    const routedPoints = Points.toRoutedPointsCollection(readyPoints)
+  static readonly ready = (readyPoints: ReadyPointsModule): Points<true> => {
+    const { root, ...rest } = readyPoints
+    const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
+    const rawPoints = Points.rawToReadyPointsCollection(readyPointsWithoutRoot)
+    const routedPoints = Points.toRoutedPointsCollection(rawPoints)
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    // TODO:ASAP fix it
-    const root = routedPoints.find((p) => p.root)?.point as RootPoint
     return new Points<true>({ root, collection: routedPoints, routes, ready: true, pagesTreeSource, pagesTree })
   }
 
-  static readonly lazy = (lazyPoints: LazyPointsCollection | LazyPointsModule): Points<false> => {
-    if (Points.isLazyPointsModule(lazyPoints)) {
-      lazyPoints = Object.values(lazyPoints)
-    }
-    Points.validate(lazyPoints)
-    const routedPoints = Points.toRoutedPointsCollection(lazyPoints)
+  static readonly lazy = (lazyPoints: LazyPointsModule): Points<false> => {
+    const { root_lazy, ...rest } = lazyPoints
+    const lazyPointsWithoutRoot = Object.values(rest)
+    const routedPoints = Points.toRoutedPointsCollection(lazyPointsWithoutRoot)
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    // TODO:ASAP fix it
-    const root = routedPoints.find((p) => p.root)?.point as never as RootPoint
-    return new Points<false>({ root, collection: routedPoints, routes, ready: false, pagesTreeSource, pagesTree })
+    return new Points<false>({
+      root: root_lazy.point,
+      collection: routedPoints,
+      routes,
+      ready: false,
+      pagesTreeSource,
+      pagesTree,
+    })
   }
 
-  static readonly create = (
-    points:
-      | ReadyPointsCollection
-      | LazyPointsCollection
-      | RawPointsCollection
-      | Points
-      | ReadyPointsModule
-      | LazyPointsModule,
-  ): Points<boolean> => {
+  static readonly create = (points: ReadyPointsModule | LazyPointsModule | Points): Points<boolean> => {
     if (points instanceof Points) {
       return points
     }
-    if (Points.isLazyPointsCollection(points)) {
+    if (Points.isLazyPointsModule(points)) {
       return Points.lazy(points)
-    } else if (Points.isLazyPointsModule(points)) {
-      return Points.lazy(points)
-    } else if (Points.isReadyPointsModule(points)) {
-      return Points.ready(points)
-    } else if (Points.isRawPointsCollection(points)) {
-      return Points.ready(points)
-    } else if (Points.isEmptyPoints(points)) {
-      return Points.ready(points)
-    } else {
-      throw new Error('Invalid points input')
     }
+    if (Points.isReadyPointsModule(points)) {
+      return Points.ready(points)
+    }
+    throw new Error('Invalid points input')
   }
 
   async load(): Promise<Points<true>> {
@@ -121,18 +101,14 @@ export class Points<TReady extends boolean = boolean> {
     const routes = Points.toRoutes({ points: readyPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: readyPoints })
     const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
-    // TODO:ASAP fix it
-    const root = readyPoints.find((p) => p.root)?.point as RootPoint
-    return new Points<true>({ root, collection: readyPoints, routes, ready: true, pagesTreeSource, pagesTree })
-  }
-
-  private static validate(points: ReadyPointsCollection | LazyPointsCollection): void {
-    const rootRecordsCount = points.filter((r) => r.root).length
-    if (rootRecordsCount > 1) {
-      throw new Error(
-        'Multiple root points are not allowed. Please, check why you have multiple root points. Maybe in generator your server base point comes to client points?',
-      )
-    }
+    return new Points<true>({
+      root: this.root,
+      collection: readyPoints,
+      routes,
+      ready: true,
+      pagesTreeSource,
+      pagesTree,
+    })
   }
 
   static sortCollection<T extends Array<{ type: PointType; name: PointName; route?: AnyRoute | undefined }>>({
@@ -158,24 +134,6 @@ export class Points<TReady extends boolean = boolean> {
     return this.collection.find((record) => record.root)?.point as RootPoint | undefined
   }
 
-  private static isRawPointsCollection(points: any): points is RawPointsCollection {
-    return points.length && points.every((p: any) => typeof p._pointType === 'string')
-  }
-
-  private static isEmptyPoints(points: any): points is ReadyPointsCollection {
-    if (Array.isArray(points) && points.length === 0) {
-      return true
-    }
-    if (!Array.isArray(points) && Object.keys(points).length === 0) {
-      return true
-    }
-    return false
-  }
-
-  private static isLazyPointsCollection(points: any): points is LazyPointsCollection {
-    return points.length && points.some((p: any) => typeof p.point === 'function')
-  }
-
   private static isLazyPointsModule(points: any): points is LazyPointsModule {
     return (
       !Array.isArray(points) &&
@@ -192,11 +150,6 @@ export class Points<TReady extends boolean = boolean> {
     )
   }
 
-  // private static isRoutedPointsCollection(
-  //   points: any,
-  // ): points is LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
-  //   return points.filter((p: any) => p.type).length > 0
-  // }
   static isRoutedPointsCollection(points: any): points is LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
     if (!Array.isArray(points)) {
       return false
@@ -221,11 +174,12 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   private static moduleToReadyPointsCollection(points: ReadyPointsModule): ReadyPointsCollection {
-    return this.rawToReadyPointsCollection(Object.values(points).map((p) => p.point))
+    const { root, ...rest } = points
+    return this.rawToReadyPointsCollection(Object.values(rest).map((p) => p.point))
   }
 
   private static moduleToLazyPointsCollection(points: LazyPointsModule): LazyPointsCollection {
-    return Object.values(points)
+    return Object.values(points).flatMap((p) => ('_pointType' in p ? [] : p))
   }
 
   private static toPointsCollection(
@@ -247,11 +201,11 @@ export class Points<TReady extends boolean = boolean> {
   }
 
   static toRoutedPointsCollection(
-    points: LazyPointsCollection | LazyPointsModule | LazyRoutedPointsCollection,
-  ): LazyRoutedPointsCollection
-  static toRoutedPointsCollection(
     points: ReadyPointsCollection | ReadyPointsModule | ReadyRoutedPointsCollection,
   ): ReadyRoutedPointsCollection
+  static toRoutedPointsCollection(
+    points: LazyPointsCollection | LazyPointsModule | LazyRoutedPointsCollection,
+  ): LazyRoutedPointsCollection
   static toRoutedPointsCollection(
     points:
       | LazyPointsCollection
@@ -673,7 +627,7 @@ export type LazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
-  point: () => Promise<EndPoint>
+  point: (() => Promise<EndPoint>) | EndPoint
   layouts?: string[]
 }
 export type LazyPointsCollection = LazyPointsCollectionRecord[]
@@ -709,8 +663,10 @@ export type ReadyRoutedPointsCollectionRecord = {
 export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
 
-export type LazyPointsModule = Record<string, LazyPointsCollectionRecord>
-export type ReadyPointsModule = Record<string, { point: EndPoint }>
+export type LazyPointsModule = {
+  root_lazy: { point: RootPoint; type: 'base'; root: true; name: string }
+} & Record<string, LazyPointsCollectionRecord>
+export type ReadyPointsModule = { root: RootPoint } & Record<string, { point: EndPoint }>
 
 export type LazyPoints = Points<false>
 export type ReadyPoints = Points<true>

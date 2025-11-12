@@ -211,6 +211,21 @@ export class Generator {
 
   // processing
 
+  validateRootExists(): void {
+    if (!this.outputLazyAbs && !this.outputReadyAbs) {
+      return
+    }
+    const rootPoints = this.points.filter((p) => p.root)
+    if (rootPoints.length === 0) {
+      throw new Error('Root point not found')
+    }
+    if (rootPoints.length > 1) {
+      throw new Error(
+        `Multiple root points are not allowed. Please, check why you have multiple root points. Found ${rootPoints.length} root points in ${rootPoints.map((p) => p.fileAbs).join(', ')}`,
+      )
+    }
+  }
+
   // TODO: not chunk size, but max in same time processing files
   async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
     const files = [...this.files]
@@ -343,25 +358,37 @@ export class Generator {
   }): {
     importLines: string[]
     importedPoints: Array<CollectedPoint & { hash: string; renamedExportName: string }>
+    // rootSingleReexportLine: string // for lazy points file
+    rootSingleImportLine: string // for lazy points file
   } {
     const importLines: string[] = []
+    // let rootSingleReexportLine: string | undefined
+    let rootSingleImportLine: string | undefined
 
     const importPathsAndExportNames: Array<{
+      hasRoot: boolean
       importPath: string
-      exports: Array<{ originalExportName: string; renamedExportName: string }>
+      exports: Array<{ originalExportName: string; renamedExportName: string; root: boolean }>
     }> = []
 
     const importedPoints = points.map((point) => {
       const importPath = Generator.toRelativeJsImportPath(outputAbs, point.fileAbs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const hash = Generator.hash(point)
-      const renamedExportName = point.exportName === 'default' ? `unnamed_${hash}` : `${point.exportName}_${hash}`
+      const renamedExportName = point.root
+        ? 'root'
+        : point.exportName === 'default'
+          ? `unnamed_${hash}`
+          : `${point.exportName}_${hash}`
       const originalExportName = point.exportName === 'default' ? 'default' : point.exportName
-      const newItem = { originalExportName, renamedExportName }
+      const newItem = { originalExportName, renamedExportName, root: point.root }
       if (importPathAndExportNames) {
         importPathAndExportNames.exports.push(newItem)
+        if (point.root) {
+          importPathAndExportNames.hasRoot = true
+        }
       } else {
-        importPathsAndExportNames.push({ importPath, exports: [newItem] })
+        importPathsAndExportNames.push({ importPath, exports: [newItem], hasRoot: point.root })
       }
       return {
         ...point,
@@ -376,8 +403,19 @@ export class Generator {
       }
       const namedPart = `{ ${importPathAndExportNames.exports.map((e) => `${e.originalExportName} as ${e.renamedExportName}`).join(', ')} }`
       importLines.push(`${what} ${namedPart} from '${importPathAndExportNames.importPath}'`)
+      if (importPathAndExportNames.hasRoot) {
+        const rootImportPathAndExportName = importPathAndExportNames.exports.find((e) => e.root)
+        if (!rootImportPathAndExportName) {
+          throw new Error(`Root import path and export name not found for ${importPathAndExportNames.importPath}`)
+        }
+        // rootSingleReexportLine = `export { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
+        rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
+      }
     }
-    return { importLines, importedPoints }
+    if (!rootSingleImportLine) {
+      throw new Error('Root single import line not found')
+    }
+    return { importLines, importedPoints, rootSingleImportLine }
   }
 
   private emitLazyPointsFile(points: CollectedPoint[]): string {
@@ -390,23 +428,28 @@ export class Generator {
     }
     // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from 'point0/core/points.js'`)
-    lines.push(``)
 
-    const { importedPoints } = this.emitNamedImports({
+    const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
       what: 'import',
       outputAbs: this.outputLazyAbs,
     })
 
+    lines.push(rootSingleImportLine)
+    lines.push(``)
+
     if (this.points.length === 0) {
       lines.push(`export {}`)
     } else {
       for (const point of importedPoints) {
+        // if (point.root) {
+        //   continue
+        // }
         lines.push(`export const ${point.renamedExportName}_lazy = {`)
         if (point.root) {
-          lines.push(`  root: true,`)
+          lines.push(`  root: true as const,`)
         }
-        lines.push(`  type: '${point.type}',`)
+        lines.push(`  type: '${point.type}'${point.root ? ' as const' : ''},`)
         lines.push(`  name: '${point.name}',`)
         if (point.route) {
           lines.push(`  route: '${point.route.definition}',`)
@@ -420,10 +463,16 @@ export class Generator {
         }
         // const exportNameSuffix = point.type === 'component' ? '.point' : ''
         const exportNameSuffix = '.point'
-        lines.push(
-          `  point: async () => (await import('${Generator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
-        )
-        lines.push(`} as LazyPointsCollectionRecord`)
+        if (point.root) {
+          lines.push(`  point: root.point,`)
+
+          lines.push(`}`)
+        } else {
+          lines.push(
+            `  point: async () => (await import('${Generator.toRelativeJsImportPath(this.outputLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+          )
+          lines.push(`} as LazyPointsCollectionRecord`)
+        }
         lines.push(``)
       }
     }

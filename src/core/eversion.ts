@@ -9,7 +9,7 @@ import type { ResolvableHead } from 'unhead/types'
 import { SuperStore } from './super-store.js'
 import { Point0 } from './index.js'
 import type { AppComponent } from './mount.js'
-import { Points } from './points.js'
+import type { Points } from './points.js'
 import type {
   AnyPoint,
   Ctx,
@@ -38,50 +38,36 @@ import z from 'zod'
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
 export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  root: RootPoint<TRequiredCtx>
   source: Eversion<TRequiredCtx> | undefined
   points: Points<true>
   connections: Array<Eversion<TRequiredCtx>>
 
   private constructor({
-    root,
     source,
     points,
     connections,
   }: {
-    root: RootPoint
     source?: Eversion<TRequiredCtx> | undefined
     points: Points<true>
     connections?: Array<Eversion<TRequiredCtx>>
   }) {
-    this.root = root as RootPoint<TRequiredCtx>
     this.points = points
     this.connections = connections ?? []
     this.source = source
   }
 
   static async create<TRootPoint extends RootPoint>({
-    root,
-    points = Points.ready([]),
+    points,
   }: {
-    root: TRootPoint
-    points?: Points
+    points: Points
   }): Promise<Eversion<TRootPoint['Infer']['RequiredCtx']>> {
     return new Eversion<TRootPoint['Infer']['RequiredCtx']>({
-      root,
       points: await points.load(),
     })
   }
 
-  async connect({
-    root,
-    points = Points.ready([]),
-  }: {
-    root: RootPoint
-    points?: Points
-  }): Promise<Eversion<TRequiredCtx>> {
+  async connect({ points }: { points: Points }): Promise<Eversion<TRequiredCtx>> {
     const connection = new Eversion<TRequiredCtx>({
-      root,
       points: await points.load(),
       source: this,
     })
@@ -110,7 +96,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const sources: Array<RootSourcePoint | RootConnectedPoint> = []
     let current: Eversion<TRequiredCtx> | undefined = this.source
     while (current) {
-      sources.push(current.root as RootSourcePoint | RootConnectedPoint)
+      sources.push(current.points.root)
       current = current.source
     }
     return sources.reverse() as [RootSourcePoint, ...RootConnectedPoint[]] | []
@@ -135,7 +121,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         eversion: Eversion<TRequiredCtx>
       }
     | undefined {
-    if (rootId && this.root._rootId !== rootId) {
+    if (rootId && this.points.root._rootId !== rootId) {
       return undefined
     }
     const suitablePoint = this.points.getSuitablePoint({ pageLocation, pointType, pointName, input })
@@ -188,10 +174,10 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation
   }): Eversion<TRequiredCtx> | undefined {
     // TODO: fix it later, it now not used
-    if (rootId && this.root._rootId !== rootId) {
+    if (rootId && this.points.root._rootId !== rootId) {
       return undefined
     }
-    const route = this.root._route
+    const route = this.points.root._route
     if (!route) {
       return undefined
     }
@@ -230,7 +216,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
   _getSuitableEversionByRootId({ rootId }: { rootId: RootId | undefined }): Eversion<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this.root._rootId === rootId ? this : undefined
+    const suitableSelfEversion = this.points.root._rootId === rootId ? this : undefined
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
@@ -699,8 +685,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           pointType: suitableMarker.pointType,
           pointName: suitableMarker.pointName,
           input: suitableMarker.input,
-          rootId: this.eversion.root._rootId,
-          fallbackRootId: this.eversion.root._rootId,
+          rootId: this.eversion.points.root._rootId,
+          fallbackRootId: this.eversion.points.root._rootId,
         })
         if (suitable.point) {
           await this.extract({ point: suitable.point, input: suitableMarker.input })

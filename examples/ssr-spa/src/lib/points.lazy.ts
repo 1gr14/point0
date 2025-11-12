@@ -1,4 +1,5 @@
 import type { LazyPointsCollectionRecord } from 'point0/core/points.js'
+import { client as root } from './client.js'
 
 export const unnamed_6l07mdq734_lazy = {
   type: 'page',
@@ -97,10 +98,10 @@ export const clientCtx3_kjm4ujslwt_lazy = {
   point: async () => (await import('./client-ctx.js')).clientCtx3.point,
 } as LazyPointsCollectionRecord
 
-export const client_29b1dq6qbu2_lazy = {
-  root: true,
-  type: 'base',
+export const root_lazy = {
+  root: true as const,
+  type: 'base' as const,
   name: 'client',
-  point: async () => (await import('./client.js')).client.point,
-} as LazyPointsCollectionRecord
+  point: root.point,
+}
 

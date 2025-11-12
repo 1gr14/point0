@@ -7,4 +7,4 @@ export { ideasNewsPage as ideasNewsPage_1molf60443b } from '../pages/idea-news.j
 export { generalLayout as generalLayout_1sm4sgw7w4h } from '../layouts/general.js'
 export { ideaLayout as ideaLayout_15r5wfdlfdu } from '../layouts/idea.js'
 export { clientCtx1 as clientCtx1_1fcj193ea8l, clientCtx2 as clientCtx2_1qoylysk392, clientCtx3 as clientCtx3_kjm4ujslwt } from './client-ctx.js'
-export { client as client_29b1dq6qbu2 } from './client.js'
+export { client as root } from './client.js'

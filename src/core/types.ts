@@ -199,7 +199,7 @@ export type RootSourcePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
-  'base' | 'middleware',
+  'base',
   UndefinedEndPointType,
   TConnectedRootSourcePoint,
   TRequiredCtx,
@@ -227,7 +227,7 @@ export type RootConnectedPoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
-  'base' | 'middleware',
+  'base',
   UndefinedEndPointType,
   TConnectedRootSourcePoint,
   TRequiredCtx,

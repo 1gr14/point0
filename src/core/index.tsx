@@ -3932,7 +3932,7 @@ export class Point0<
   // points
 
   static _points: Points | undefined
-  static setPoints = (points: LazyPointsModule | ReadyPointsModule) => {
+  static setPoints = (points: ReadyPointsModule | LazyPointsModule) => {
     Point0._points = Points.create(points)
   }
   static getPoints = (): Points => {

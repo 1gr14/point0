@@ -44,11 +44,11 @@ export const engineFetch = async ({
     })
     const pointType = task?.pointType ?? 'page'
     const outputType = task?.outputType ?? 'html'
-    rootId = suitable.eversion.root._rootId
+    rootId = suitable.eversion.points.root._rootId
 
     // TODO: fix this when ClientVite will be implemented
     const relatedClient = clients.find(
-      (client) => client.points.root === suitable.eversion.root && client instanceof ClientBun,
+      (client) => client.points.root === suitable.eversion.points.root && client instanceof ClientBun,
     ) as ClientBun | undefined
     if (extractResult.error) {
       logger.error(extractResult.error, { rootId })
@@ -75,7 +75,7 @@ export const engineFetch = async ({
         } catch (error) {
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
-            logger.error(error, { rootId: suitable.eversion.root._rootId })
+            logger.error(error, { rootId: suitable.eversion.points.root._rootId })
             return new Response(await relatedClient.getOriginalIndexHtml(), {
               headers: { 'Content-Type': 'text/html' },
               status: 500,
