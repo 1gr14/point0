@@ -8,9 +8,9 @@ export const toPathsOrUndefined = (path: string | string[] | undefined): string[
   return Array.isArray(path) ? path : [path]
 }
 
-export const absPath = (cwd: string | undefined, path: string | undefined): string | undefined => {
+export const toAbsPath = <T extends string | undefined>(cwd: string | undefined, path: T): T => {
   if (!path) {
-    return undefined
+    return undefined as T
   }
   if (!cwd) {
     if (!nodePath.isAbsolute(path)) {
@@ -21,10 +21,10 @@ export const absPath = (cwd: string | undefined, path: string | undefined): stri
   if (!nodePath.isAbsolute(cwd)) {
     throw new Error(`Cwd "${cwd}" is not absolute, but should be`)
   }
-  return nodePath.resolve(cwd, path)
+  return nodePath.resolve(cwd, path) as T
 }
 
-export const relPath = (cwd: string | undefined, path: string | undefined): string | undefined => {
+export const toRelPath = (cwd: string | undefined, path: string | undefined): string | undefined => {
   if (!path) {
     return undefined
   }
@@ -37,12 +37,12 @@ export const relPath = (cwd: string | undefined, path: string | undefined): stri
   return nodePath.relative(cwd, path)
 }
 
-export const parsePaths = (cwd: string | undefined, path: string[] | string | undefined): string[] => {
+export const toAbsPaths = (cwd: string | undefined, path: Array<string | undefined> | string | undefined): string[] => {
   if (!path) {
     return []
   }
   const paths = Array.isArray(path) ? path : [path]
-  return paths.flatMap((path) => absPath(cwd, path) ?? [])
+  return paths.flatMap((path) => toAbsPath(cwd, path) ?? [])
 }
 
 export const findFirstExistsFilePath = (path: string[] | string | undefined): string | undefined => {
@@ -86,14 +86,21 @@ export const dedupeSlashes = (path: string) => {
   return path.replace(/\/\/+/g, '/')
 }
 
-export const prependAndAppendSlash = <T extends string | undefined>(path: T): T => {
+export const prependAndDeappendSlash = <T extends string | undefined>(path: T): T => {
   if (!path) {
     return undefined as T
   }
   let result = '/' + path.replace(/^\//, '')
-  result = result.replace(/\/$/, '') + '/'
   result = result.replace(/\/\/+/g, '/')
+  result = result.replace(/\/$/, '')
   return result as T
+}
+
+export const prependAndAppendSlash = <T extends string | undefined>(path: T): T => {
+  if (!path) {
+    return undefined as T
+  }
+  return (prependAndAppendSlash(path) + '/') as T
 }
 
 export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {

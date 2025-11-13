@@ -1,45 +1,46 @@
+import { minimatch } from 'minimatch'
 import type { AppComponent } from '../core/mount.js'
-import type { ReadyPointsModule } from '../core/points.js'
+import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { RootId } from '../core/types.js'
-import { absPath, prependAndAppendSlash, throwOnNonUniqueArrayElements } from './utils.js'
+import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
 
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
   error: (error: unknown, meta?: Record<string, any>) => any
 }
+export type EngineOptionsPublicDir =
+  | string
+  | Record<string, string>
+  | Array<string | Record<string, string> | [string, string]>
+export type EngineOptionsPublicDirParsed = Array<[string, string]>
+export type EngineOptionsEnv = string | Record<string, any> | Array<string | Record<string, any>>
+export type EngineOptionsEnvParsed = Record<string, any>
 export type EngineGeneralOptions = {
   fallbackRootId?: RootId | undefined
   logger?: EngineLogger
   cwd?: string | undefined
-  onResponse?: (response: Response) => Response
 }
 export type EngineServerOptions = {
   points: ReadyPointsModule
-  publicDir?: string
-  onResponse?: (response: Response) => Response
+  publicDir?: EngineOptionsPublicDir
   port?: number | string
 }
 export type EngineClientOptions = {
-  points: ReadyPointsModule
+  points: string | ReadyPointsModule | LazyPointsModule
   ssr?: boolean
-  App?: AppComponent
-  appPath?: string
+  app?: string | AppComponent
   hostname?: string
   basepath?: string
-  distDir?: string
-  distRoute?: string
-  publicDir?: string
-  srcIndexHtml?: string
-  distIndexHtml?: string
+  publicDir?: EngineOptionsPublicDir
+  indexHtml?: string
   domRootElementId?: string
-  env?: Record<string, any>
-  onResponse?: (response: Response) => Response
+  env?: EngineOptionsEnv
   port?: number | string
   viteConfig?:
     | import('vite').UserConfig
     | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
-    | undefined
+    | ReturnType<typeof import('vite').defineConfig>
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -49,41 +50,83 @@ export type EngineOptions = EngineGeneralOptions & {
 export type EngineGeneralOptionsParsed = {
   fallbackRootId: RootId
   logger: EngineLogger
-  cwd: string | undefined
-  onResponse: ((response: Response) => Response) | undefined
+  cwd: string
 }
 export type EngineClientOptionsParsed = {
   points: Points
   ssr: boolean
-  App: AppComponent | undefined
-  appPath: string | undefined
-  hostname: string | undefined
+  app: string | AppComponent | null
+  hostname: string | null
   basepath: string
-  distDir: string | undefined
-  distRoute: string | undefined
-  publicDir: string | undefined
-  srcIndexHtml: string | undefined
-  distIndexHtml: string | undefined
+  publicDir: EngineOptionsPublicDirParsed
+  indexHtml: string | null
+  env: EngineOptionsEnvParsed
   domRootElementId: string
-  env: Record<string, any>
-  onResponse: ((response: Response) => Response) | undefined
-  port: number | undefined
+  port: number | null
   index: number
   viteConfig:
     | import('vite').UserConfig
     | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
-    | undefined
+    | ReturnType<typeof import('vite').defineConfig>
+    | null
 }
 export type EngineServerOptionsParsed = {
   points: Points
-  publicDir: string | undefined
-  onResponse: ((response: Response) => Response) | undefined
+  publicDir: EngineOptionsPublicDirParsed | null
   port: number
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
   server: EngineServerOptionsParsed
   clients: EngineClientOptionsParsed[]
+}
+
+const parsePublicDir = (input: EngineOptionsPublicDir, cwd: string): EngineOptionsPublicDirParsed => {
+  if (typeof input === 'string') {
+    return [['/', toAbsPath(cwd, input)]]
+  }
+  if (!Array.isArray(input)) {
+    return Object.entries(input).map(([routePath, absPath]) => [
+      prependAndDeappendSlash(routePath),
+      toAbsPath(cwd, absPath),
+    ])
+  }
+  const result: EngineOptionsPublicDirParsed = []
+  for (const item of input) {
+    if (typeof item === 'string') {
+      result.push(...parsePublicDir(item, cwd))
+      continue
+    }
+    if (!Array.isArray(item)) {
+      result.push(...parsePublicDir(item, cwd))
+      continue
+    }
+    result.push([prependAndDeappendSlash(item[0]), toAbsPath(cwd, item[1])])
+  }
+  return result
+}
+
+const parseEnv = (input: EngineOptionsEnv): EngineOptionsEnvParsed => {
+  if (typeof input === 'string') {
+    if (input.includes('*')) {
+      // for (const key of Object.keys(process.env)) {
+      //   if (minimatch(key, input)) {
+      //     result[key] = process.env[key]
+      //   }
+      // }
+      return Object.fromEntries(Object.entries(process.env).filter(([key]) => minimatch(key, input)))
+    } else {
+      return { [input]: process.env[input] }
+    }
+  }
+  if (!Array.isArray(input)) {
+    return input
+  }
+  const result: EngineOptionsEnvParsed = {}
+  for (const item of input) {
+    Object.assign(result, parseEnv(item))
+  }
+  return result
 }
 
 const parseEngineGeneralOptions = ({
@@ -96,16 +139,16 @@ const parseEngineGeneralOptions = ({
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
   return {
-    fallbackRootId:
-      generalOptions.fallbackRootId ||
-      clientsOptions?.[0]?.points.root.point._rootId ||
-      serverOptions.points.root.point._rootId,
+    fallbackRootId: generalOptions.fallbackRootId || '',
+    // will be set after parsing clients and server
+    // ||
+    // clientsOptions?.[0]?.points.root.point._rootId ||
+    // serverOptions.points.root.point._rootId,
     logger: generalOptions.logger || {
       info: console.info.bind(console),
       error: console.error.bind(console),
     },
-    cwd: generalOptions.cwd,
-    onResponse: generalOptions.onResponse,
+    cwd: generalOptions.cwd || process.cwd(),
   }
 }
 export const parseEngineServerOptions = ({
@@ -118,8 +161,7 @@ export const parseEngineServerOptions = ({
   return {
     points: Points.create(serverOptions.points),
     port: typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000,
-    publicDir: absPath(generalOptionsParsed.cwd, serverOptions.publicDir),
-    onResponse: serverOptions.onResponse,
+    publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
   }
 }
 const parseEngineClientOptions = ({
@@ -133,37 +175,22 @@ const parseEngineClientOptions = ({
   serverOptionsParsed: EngineServerOptionsParsed
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineClientOptionsParsed => {
-  const distDir = prependAndAppendSlash(absPath(generalOptionsParsed.cwd, clientOptions.distDir))
-  const srcIndexHtml = absPath(generalOptionsParsed.cwd, clientOptions.srcIndexHtml)
-  const distIndexHtml = absPath(generalOptionsParsed.cwd, clientOptions.distIndexHtml)
-  const basepath = prependAndAppendSlash(clientOptions.basepath) || '/'
-  const distRoute = prependAndAppendSlash(clientOptions.distRoute)
-  if (typeof distRoute !== 'undefined' && !distDir) {
-    throw new Error(`client ad index ${index} has distRoute but no distDir`)
-  }
-  if (typeof distDir !== 'undefined' && !distRoute) {
-    throw new Error(`client ad index ${index} has distDir but no distRoute`)
-  }
-  const publicDir = absPath(generalOptionsParsed.cwd, clientOptions.publicDir)
-  const ssr = clientOptions.ssr ?? true
   return {
-    points: Points.create(clientOptions.points),
-    ssr,
-    App: clientOptions.App,
-    appPath: clientOptions.appPath,
-    basepath,
-    hostname: clientOptions.hostname,
-    distDir,
-    distRoute,
-    publicDir,
-    srcIndexHtml,
-    distIndexHtml,
+    points:
+      typeof clientOptions.points === 'string'
+        ? Points.read(toAbsPath(generalOptionsParsed.cwd, clientOptions.points))
+        : clientOptions.points,
+    ssr: clientOptions.ssr ?? false,
+    app: clientOptions.app ?? null,
+    hostname: clientOptions.hostname ?? null,
+    basepath: prependAndAppendSlash(clientOptions.basepath) || '/',
+    publicDir: parsePublicDir(clientOptions.publicDir ?? [], generalOptionsParsed.cwd),
+    indexHtml: toAbsPath(generalOptionsParsed.cwd, clientOptions.indexHtml) ?? null,
     domRootElementId: clientOptions.domRootElementId || 'root',
-    onResponse: clientOptions.onResponse,
     port: typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1,
     index,
-    env: clientOptions.env || {},
-    viteConfig: clientOptions.viteConfig,
+    env: parseEnv(clientOptions.env ?? {}),
+    viteConfig: clientOptions.viteConfig ?? null,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
@@ -185,25 +212,8 @@ export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed 
       generalOptionsParsed,
     }),
   )
-  if (process.env.NODE_ENV === 'production') {
-    throwOnNonUniqueArrayElements(
-      clientsOptionsParsed.map((client) => client.distDir),
-      'each client distDir must be unique',
-    )
-    throwOnNonUniqueArrayElements(
-      clientsOptionsParsed.map((client) => client.distRoute),
-      'each client distRoute must be unique',
-    )
-    throwOnNonUniqueArrayElements(
-      clientsOptionsParsed.map((client) => client.distIndexHtml),
-      'each client distIndexHtml must be unique',
-    )
-  } else {
-    throwOnNonUniqueArrayElements(
-      clientsOptionsParsed.map((client) => client.srcIndexHtml),
-      'each client srcIndexHtml must be unique',
-    )
-  }
+  generalOptionsParsed.fallbackRootId ||=
+    clientsOptionsParsed.at(0)?.points.root.point._rootId || serverOptionsParsed.points.root.point._rootId
   return {
     general: generalOptionsParsed,
     server: serverOptionsParsed,

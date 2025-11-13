@@ -1,3 +1,6 @@
+appPath — app: string | App, points: string | LazyPointsModule, indexHtml just one not for src and dist different
+vite client uses express for hmr in dev mode, in prod mode it just uses dist files
+
 wouter → dir to root
 server → server-shared
 head on ssr should also just stored in super store, not needed to extract it additionally
@@ -8,7 +11,7 @@ config + cli
 what is 'use client'
 onReq onRes normalize, make more straight forward
 lets static relative to config dir, .lets('static', 'public').static(({glob, cwd}) => Record<route, abs | () => Response>() | [cwd, 'glob/relative/to/config-or-root/**/*'] | [cwd, 'glob/**/*'[]] )
-isClient() || process.env.CLIENT_ONLY
+isClient() || process.env.CLIENT_ONLY || process.env.BUILD_TARGET === 'server' | 'client'
 extract required ctx type from root points
 config has same props as generator and engine, but also has additional things whuch allow to simplify. Like just srcDir and then we extract everyting by orselves, and we can pass with config to generator and engine as input
 vite

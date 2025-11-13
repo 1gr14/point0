@@ -1,13 +1,17 @@
+import type { AnyLocation } from '@devp0nt/route0'
 import type { ViteDevServer } from 'vite'
 import { createServer as createViteServer } from 'vite'
-import type { Eversion, EversionRun } from '../core/eversion.js'
+import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
 import type { Points } from '../core/points.js'
-import type { RequiredCtx } from '../core/types.js'
+import type { AnyPoint, InputParsed, RequiredCtx } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
-import type { ClientViteUtils } from './client-vite-utils.js'
+import { renderAppAsReadableStream } from '../engine-shared/render.js'
 import { engineFetch } from './fetch.js'
 import { StaticDir } from './static-dir.js'
+import type { AppComponent } from '../core/mount.js'
+import { renderToReadableStream } from 'react-dom/server'
+import { connect } from 'bun'
 
 export class ClientVite {
   eversion: Eversion
@@ -36,13 +40,6 @@ export class ClientVite {
   // viteEnvironment: ViteEnvironment
   bunServer: Bun.Server<unknown> | undefined
 
-  prefetchAppPagePointDeepByUrl: (
-    props: Parameters<typeof ClientViteUtils.prefetchAppPagePointDeepByUrl>[1],
-  ) => Promise<EversionRun>
-  renderAppAsReadableStreamByUrl: (
-    props: Parameters<typeof ClientViteUtils.renderAppAsReadableStreamByUrl>[1],
-  ) => Promise<ReadableStream>
-
   private constructor(input: {
     points: Points
     ssr: boolean
@@ -66,12 +63,6 @@ export class ClientVite {
     distDir: StaticDir | undefined
     publicDir: StaticDir | undefined
     eversion: Eversion
-    prefetchAppPagePointDeepByUrl: (
-      props: Parameters<typeof ClientViteUtils.prefetchAppPagePointDeepByUrl>[1],
-    ) => Promise<EversionRun>
-    renderAppAsReadableStreamByUrl: (
-      props: Parameters<typeof ClientViteUtils.renderAppAsReadableStreamByUrl>[1],
-    ) => Promise<ReadableStream>
   }) {
     this.eversion = input.eversion
     this.points = input.points
@@ -91,8 +82,6 @@ export class ClientVite {
     this.publicDir = input.publicDir
     this.viteServer = input.viteServer
     // this.viteEnvironment = input.viteEnvironment
-    this.prefetchAppPagePointDeepByUrl = input.prefetchAppPagePointDeepByUrl
-    this.renderAppAsReadableStreamByUrl = input.renderAppAsReadableStreamByUrl
   }
 
   static async create(input: {
@@ -148,67 +137,45 @@ export class ClientVite {
       appType: 'custom',
     })
     // const viteEnvironment = await createViteEnvironment(viteServer, { ssr: true, sandbox: false })
-    const { prefetchAppPagePointDeepByUrl, renderAppAsReadableStreamByUrl } =
-      await viteServer.ssrLoadModule('/entry-server.js')
     const client = new ClientVite({
       ...input,
       distDir,
       publicDir,
       viteServer,
       // viteEnvironment,
-      prefetchAppPagePointDeepByUrl,
-      renderAppAsReadableStreamByUrl,
     })
     await client.preloadDistIndexHtmlContent()
     return client
   }
 
   async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
-    if (process.env.NODE_ENV === 'development') {
-      // Start Bun server that uses Vite middleware
-      this.bunServer = Bun.serve({
-        port: this.port,
-        hostname: this.hostname,
-        fetch: async (request) => {
-          const url = new URL(request.url)
-          const pathname = url.pathname
+    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+    const self = this
+    this.bunServer = Bun.serve({
+      port: self.port,
+      hostname: self.hostname,
+      async fetch(request) {
+        const url = new URL(request.url)
 
-          // Handle Vite-specific requests (HMR, client, etc.)
-          if (pathname.startsWith('/@') || pathname.startsWith('/node_modules/') || pathname.includes('.')) {
-            try {
-              // Try to use Vite's transformRequest for static assets
-              const result = await this.viteServer.transformRequest(pathname, { ssr: false })
-              if (result?.code) {
-                // Vite handled it - return the transformed content
-                return new Response(result.code, {
-                  headers: {
-                    'Content-Type': pathname.endsWith('.js')
-                      ? 'application/javascript'
-                      : pathname.endsWith('.css')
-                        ? 'text/css'
-                        : 'text/plain',
-                  },
-                })
-              }
-            } catch (error) {
-              // If Vite can't handle it, fall through to normal handler
-            }
-          }
+        const app = connect({})
+        app.use(self.viteServer.middlewares)
 
-          // For SSR and routing, use the normal fetch handler
-          const parsedUrl = parseUrl(request.url)
-          return await this.fetch({ parsedUrl, request, requiredCtx })
-        },
-      })
+        // Fall through to your SSR/app handler
+        const parsedUrl = parseUrl(request.url)
+        return await self.fetch({ parsedUrl, request, requiredCtx })
+      },
 
-      this.logger.info(
-        `Vite dev server for client${this.index > 0 ? ` "${this.points.root._rootId}"` : ''} is ready on http://localhost:${this.port}`,
-      )
-    } else {
-      // In production, we don't need to start a separate server
-      // The server will handle requests through fetch()
-      this.logger.info(`Client${this.index > 0 ? ` "${this.points.root._rootId}"` : ''} is ready (production mode)`)
-    }
+      // --- Needed for HMR ---
+      // websocket: {
+      //   open(ws) {
+      //     self.viteServer.ws.handleUpgrade?.(ws.data?.request, ws)
+      //   },
+      // },
+    })
+
+    this.logger.info(
+      `Vite dev server for client${this.index > 0 ? ` "${this.points.root._rootId}"` : ''} is ready on http://localhost:${this.port}`,
+    )
   }
 
   async fetch({
@@ -265,76 +232,73 @@ export class ClientVite {
     throw new Error('NODE_ENV is not development or production')
   }
 
-  // async loadAppComponent({ eversionRun }: { eversionRun: EversionRun }): Promise<AppComponent> {
-  //   // return await eversionRun.withServerGlobalState(async () => {
-  //   //   const { default: App } = await this.viteServer.ssrLoadModule(this.appPath)
-  //   //   if (!App) {
-  //   //     throw new Error(`App not found: ${this.appPath}`)
-  //   //   }
-  //   //   return App
-  //   // })
+  async loadAppComponent(): Promise<AppComponent> {
+    // return await eversionRun.withServerGlobalState(async () => {
+    //   const { default: App } = await this.viteServer.ssrLoadModule(this.appPath)
+    //   if (!App) {
+    //     throw new Error(`App not found: ${this.appPath}`)
+    //   }
+    //   return App
+    // })
 
-  //   // const { default: App } = await viteImport(this.viteServer, this.appPath)
-  //   // if (!App) {
-  //   //   throw new Error(`App not found: ${this.appPath}`)
-  //   // }
-  //   // return App
+    const { default: App } = await this.viteServer.ssrLoadModule(this.appPath)
+    if (!App) {
+      throw new Error(`App not found: ${this.appPath}`)
+    }
+    return App
 
-  //   // const {} = await this.viteServer.ssrLoadModule('/entry-server.js')
-  //   // return await getAppElement({ eversionRun })
-  //   // const { default: App } = await this.viteEnvironment.importModule(this.appPath)
-  // }
+    // const {} = await this.viteServer.ssrLoadModule('/entry-server.js')
+    // return await getAppElement({ eversionRun })
+    // const { default: App } = await this.viteEnvironment.importModule(this.appPath)
+  }
 
-  // async renderAsReadableStream({
-  //   eversionRun,
-  //   extractResult,
-  //   pagePoint,
-  //   pageLocation,
-  //   input,
-  // }: {
-  //   eversionRun: EversionRun
-  //   extractResult: ExtractResult
-  //   pagePoint: AnyPoint | undefined
-  //   pageLocation: AnyLocation
-  //   input: InputParsed
-  // }): Promise<ReadableStream> {
-  //   eversionRun.setSsrLocation(pageLocation)
-  //   eversionRun.setCurrentLocation(pageLocation)
-  //   const App = await this.loadAppComponent({ eversionRun })
-  //   return await renderAppAsReadableStream({
-  //     App,
-  //     // getApp: async () => await this.loadAppComponent({ eversionRun }),
-  //     eversionRun,
-  //     head: extractResult.head,
-  //     pagePoint,
-  //     input,
-  //     env: this.env,
-  //     originalIndexHtml: await this.getOriginalIndexHtml(),
-  //     domRootElementId: this.domRootElementId,
-  //   })
-  // }
+  async renderAsReadableStream({
+    eversionRun,
+    extractResult,
+    pagePoint,
+    pageLocation,
+    input,
+  }: {
+    eversionRun: EversionRun
+    extractResult: ExtractResult
+    pagePoint: AnyPoint | undefined
+    pageLocation: AnyLocation
+    input: InputParsed
+  }): Promise<ReadableStream> {
+    eversionRun.setSsrLocation(pageLocation)
+    eversionRun.setCurrentLocation(pageLocation)
+    const App = await this.loadAppComponent()
+    return await renderAppAsReadableStream({
+      App,
+      eversionRun,
+      head: extractResult.head,
+      pagePoint,
+      input,
+      env: this.env,
+      originalIndexHtml: await this.getOriginalIndexHtml(),
+      domRootElementId: this.domRootElementId,
+    })
+  }
 
-  // async prefetchAppPagePointDeep({
-  //   eversionRun,
-  //   pagePoint,
-  //   pageLocation,
-  //   input,
-  // }: {
-  //   eversionRun: EversionRun
-  //   pagePoint: AnyPoint | undefined
-  //   pageLocation: AnyLocation
-  //   input: InputParsed
-  // }): Promise<EversionRun> {
-  //   eversionRun.setCurrentLocation(pageLocation)
-  //   eversionRun.setSsrLocation(pageLocation)
-  //   const App = await this.loadAppComponent({ eversionRun })
-  //   await eversionRun.prefetchAppPagePointDeep({
-  //     App,
-  //     // getApp: async () => await this.loadAppComponent({ eversionRun }),
-  //     renderToReadableStream,
-  //     pagePoint,
-  //     input,
-  //   })
-  //   return eversionRun
-  // }
+  async prefetchAppPagePointDeep({
+    eversionRun,
+    pagePoint,
+    pageLocation,
+    input,
+  }: {
+    eversionRun: EversionRun
+    pagePoint: AnyPoint | undefined
+    pageLocation: AnyLocation
+    input: InputParsed
+  }): Promise<void> {
+    eversionRun.setCurrentLocation(pageLocation)
+    eversionRun.setSsrLocation(pageLocation)
+    const App = await this.loadAppComponent()
+    await eversionRun.prefetchAppPagePointDeep({
+      App,
+      renderToReadableStream,
+      pagePoint,
+      input,
+    })
+  }
 }

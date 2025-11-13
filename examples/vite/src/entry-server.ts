@@ -1,15 +1,14 @@
 import { Engine } from 'point0/engine-bun/index.js'
 // import * as points from './lib/points.ready.js'
 import { source } from './lib/server.js'
-// import * as points from './lib/points.ready.js'
+import * as points from './lib/points.ready.js'
+import viteConfig from '../vite.config.js'
 
-// @ts-expect-error - no types
-const points = (await import('../dist/client/points.js')) as typeof import('./lib/points.ready.js')
+// // @ts-expect-error - no types
+// const points = (await import('../dist/client/points.js')) as typeof import('./lib/points.ready.js')
 
-// @ts-expect-error - no types
-const App = (await import('../dist/client/app.js').then((m) => m.default)) as typeof import('./app.js').default
-
-console.log({ App })
+// // @ts-expect-error - no types
+// const App = (await import('../dist/client/app.js').then((m) => m.default)) as typeof import('./app.js').default
 
 const engine = await Engine.create({
   cwd: import.meta.dir,
@@ -26,7 +25,7 @@ const engine = await Engine.create({
   clients: [
     {
       ssr: true,
-      App,
+      appPath: '/src/app.tsx',
       points,
       // TODO: use without src or dist prefixes
       srcIndexHtml: './index.html', // only when NODE_ENV=development
@@ -34,7 +33,7 @@ const engine = await Engine.create({
       distDir: process.env.NODE_ENV === 'production' ? '../client' : undefined, // only when NODE_ENV=production
       distRoute: process.env.NODE_ENV === 'production' ? '/dist/client' : undefined, // only when NODE_ENV=production
       port: 3001,
-      // viteConfig: viteConfig as never,
+      viteConfig: viteConfig as never,
       env: {
         SOURCE_BASE_URL: process.env.SOURCE_BASE_URL,
       },
