@@ -9,13 +9,23 @@ export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
   error: (error: unknown, meta?: Record<string, any>) => any
 }
+
 export type EngineOptionsPublicDir =
   | string
-  | Record<string, string>
-  | Array<string | Record<string, string> | [string, string]>
-export type EngineOptionsPublicDirParsed = Array<[string, string]>
+  | Record<string, string | Response | (() => Response | Promise<Response>)>
+  | Array<
+      | string
+      | Record<string, string | Response | (() => Response | Promise<Response>)>
+      | [string, string | Response | (() => Response | Promise<Response>)]
+    >
+export type EngineOptionsPublicDirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
+
 export type EngineOptionsEnv = string | Record<string, any> | Array<string | Record<string, any>>
 export type EngineOptionsEnvParsed = Record<string, any>
+
+export type LoadedViteConfig = import('vite').UserConfig
+export type EngineOptionsViteConfig = LoadedViteConfig | ReturnType<typeof import('vite').defineConfig>
+
 export type EngineGeneralOptions = {
   fallbackRootId?: RootId
   logger?: EngineLogger
@@ -25,11 +35,7 @@ export type EngineServerOptions = {
   points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
   port?: number | string
-  viteConfig:
-    | import('vite').UserConfig
-    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
-    | ReturnType<typeof import('vite').defineConfig>
-    | null
+  viteConfig?: EngineOptionsViteConfig
 }
 export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
@@ -42,10 +48,7 @@ export type EngineClientOptions = {
   domRootElementId?: string
   env?: EngineOptionsEnv
   port?: number | string
-  viteConfig?:
-    | import('vite').UserConfig
-    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
-    | ReturnType<typeof import('vite').defineConfig>
+  viteConfig?: EngineOptionsViteConfig
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -69,21 +72,13 @@ export type EngineClientOptionsParsed = {
   domRootElementId: string
   port: number | null
   index: number
-  viteConfig:
-    | import('vite').UserConfig
-    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
-    | ReturnType<typeof import('vite').defineConfig>
-    | null
+  viteConfig: EngineOptionsViteConfig | null
 }
 export type EngineServerOptionsParsed = {
   points: Points | string
   publicDir: EngineOptionsPublicDirParsed | null
   port: number
-  viteConfig:
-    | import('vite').UserConfig
-    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
-    | ReturnType<typeof import('vite').defineConfig>
-    | null
+  viteConfig: EngineOptionsViteConfig | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -96,9 +91,9 @@ const parsePublicDir = (input: EngineOptionsPublicDir, cwd: string): EngineOptio
     return [['/', toAbsPath(cwd, input)]]
   }
   if (!Array.isArray(input)) {
-    return Object.entries(input).map(([routePath, absPath]) => [
+    return Object.entries(input).map(([routePath, absPathOrResponseOrFn]) => [
       prependAndDeappendSlash(routePath),
-      toAbsPath(cwd, absPath),
+      typeof absPathOrResponseOrFn === 'string' ? toAbsPath(cwd, absPathOrResponseOrFn) : absPathOrResponseOrFn,
     ])
   }
   const result: EngineOptionsPublicDirParsed = []
@@ -111,7 +106,7 @@ const parsePublicDir = (input: EngineOptionsPublicDir, cwd: string): EngineOptio
       result.push(...parsePublicDir(item, cwd))
       continue
     }
-    result.push([prependAndDeappendSlash(item[0]), toAbsPath(cwd, item[1])])
+    result.push([prependAndDeappendSlash(item[0]), typeof item[1] === 'string' ? toAbsPath(cwd, item[1]) : item[1]])
   }
   return result
 }

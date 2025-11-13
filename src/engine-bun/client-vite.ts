@@ -8,7 +8,7 @@ import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
 import { renderAppAsReadableStream } from '../engine-shared/render.js'
 import { engineFetch } from './fetch.js'
-import { StaticDir } from './static-dir.js'
+import { PublicDir } from './public-dir.js'
 import type { AppComponent } from '../core/mount.js'
 import { renderToReadableStream } from 'react-dom/server'
 import { connect } from 'bun'
@@ -32,8 +32,8 @@ export class ClientVite {
     | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
     | undefined
 
-  distDir: StaticDir | undefined
-  publicDir: StaticDir | undefined
+  distDir: PublicDir | undefined
+  publicDir: PublicDir | undefined
 
   distIndexHtmlContent: string | undefined
   viteServer: ViteDevServer
@@ -60,8 +60,8 @@ export class ClientVite {
       | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
       | undefined
 
-    distDir: StaticDir | undefined
-    publicDir: StaticDir | undefined
+    distDir: PublicDir | undefined
+    publicDir: PublicDir | undefined
     eversion: Eversion
   }) {
     this.eversion = input.eversion
@@ -109,7 +109,7 @@ export class ClientVite {
   }): Promise<ClientVite> {
     const distDir =
       input.distDir && input.distRoute
-        ? await StaticDir.create({
+        ? await PublicDir.create({
             hostname: input.hostname,
             absPath: input.distDir,
             routePath: input.distRoute,
@@ -118,7 +118,7 @@ export class ClientVite {
           })
         : undefined
     const publicDir = input.publicDir
-      ? await StaticDir.create({
+      ? await PublicDir.create({
           hostname: input.hostname,
           absPath: input.publicDir,
           routePath: '/',

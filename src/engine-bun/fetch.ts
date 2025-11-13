@@ -3,11 +3,11 @@ import type { RequiredCtx, RootId, WrapResponseFn } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
 import { toJsonErrorResponse } from '../engine-shared/error.js'
-import type { ClientBun } from './client-bun.js'
-import type { ClientVite } from './client-vite.js'
-import type { StaticDir } from './static-dir.js'
+import type { ClientBun } from './client.js'
+import type { ServerBun } from './server.js'
 
 export const engineFetch = async ({
+  server,
   clients,
   eversion,
   request,
@@ -15,17 +15,16 @@ export const engineFetch = async ({
   rootId,
   fallbackRootId,
   requiredCtx,
-  staticDirs,
   logger,
 }: {
-  clients: Array<ClientBun | ClientVite>
+  server: ServerBun
+  clients: ClientBun[]
   eversion: Eversion
   request: Request
   parsedUrl?: ParsedUrl
   rootId?: RootId
   fallbackRootId: RootId
   requiredCtx: RequiredCtx
-  staticDirs: StaticDir[]
   logger: EngineLogger
 }): Promise<Response> => {
   parsedUrl ??= parseUrl(request.url)
@@ -36,8 +35,9 @@ export const engineFetch = async ({
   }
 
   try {
-    for (const staticDir of staticDirs) {
-      const staticResponse = await staticDir.fetch({ parsedUrl, request })
+    const publicDirs = [server.publicDir, ...clients.map((client) => client.publicDir)]
+    for (const publicDir of publicDirs) {
+      const staticResponse = await publicDir.fetch({ parsedUrl, request })
       if (staticResponse) {
         return staticResponse // already wrapped
       }
@@ -115,23 +115,6 @@ export const engineFetch = async ({
             pageLocation: suitable.pageLocation,
             input,
           })
-          // const readableStream =
-          //   relatedClient instanceof ClientBun
-          //     ? await relatedClient.renderAsReadableStream({
-          //         eversionRun,
-          //         extractResult,
-          //         pagePoint: suitable.point,
-          //         pageLocation: suitable.pageLocation,
-          //         input,
-          //       })
-          //     : await relatedClient.renderAppAsReadableStreamByUrl({
-          //         eversion,
-          //         rootId: suitable.eversion.points.root._rootId,
-          //         url: request.url,
-          //         env: relatedClient.env,
-          //         originalIndexHtml: await relatedClient.getOriginalIndexHtml(),
-          //         domRootElementId: relatedClient.domRootElementId,
-          //       })
           return await wrapResponse({
             request,
             response: new Response(readableStream, {
@@ -154,7 +137,7 @@ export const engineFetch = async ({
           }
           throw error
         }
-      } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.distIndexHtml) {
+      } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
         const indexHtml = await relatedClient.getOriginalIndexHtml(request.url)
         return await wrapResponse({
           request,
@@ -174,20 +157,6 @@ export const engineFetch = async ({
           pageLocation: suitable.pageLocation,
           input,
         })
-        // if (relatedClient instanceof ClientBun) {
-        //   await relatedClient.prefetchAppPagePointDeep({
-        //     eversionRun,
-        //     pagePoint: suitable.point,
-        //     pageLocation: suitable.pageLocation,
-        //     input,
-        //   })
-        // } else {
-        //   await relatedClient.prefetchAppPagePointDeepByUrl({
-        //     eversion,
-        //     rootId: suitable.eversion.points.root._rootId,
-        //     url: request.url,
-        //   })
-        // }
         const dehydratedState = await eversionRun.getQueryClientDehydratedState()
         return await wrapResponse({
           request,

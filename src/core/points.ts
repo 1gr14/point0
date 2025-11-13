@@ -123,23 +123,27 @@ export class Points<TReady extends boolean = boolean> {
     throw new Error('Invalid points input')
   }
 
+  async replace(points: Points): Promise<void> {
+    this.absPath = points.absPath
+    this.readFn = points.readFn
+    this.root = points.root
+    this.collection = points.collection as TReady extends true
+      ? ReadyRoutedPointsCollection
+      : LazyRoutedPointsCollection
+    this.routes = points.routes
+    this.routesHash = points.routesHash
+    this.pagesTreeSource = points.pagesTreeSource
+    this.pagesTree = points.pagesTree
+    if (this.ready && !points.ready) {
+      await this.load()
+    }
+  }
+
   async read(): Promise<void> {
     if (this.readFn && this.absPath) {
       const freshPointsModule = await this.readFn(this.absPath)
       const freshPoints = Points.create(freshPointsModule, this.absPath, this.readFn)
-      this.absPath = freshPoints.absPath
-      this.readFn = freshPoints.readFn
-      this.root = freshPoints.root
-      this.collection = freshPoints.collection as TReady extends true
-        ? ReadyRoutedPointsCollection
-        : LazyRoutedPointsCollection
-      this.routes = freshPoints.routes
-      this.routesHash = freshPoints.routesHash
-      this.pagesTreeSource = freshPoints.pagesTreeSource
-      this.pagesTree = freshPoints.pagesTree
-      if (this.ready && !freshPoints.ready) {
-        await this.load()
-      }
+      await this.replace(freshPoints)
     }
   }
 

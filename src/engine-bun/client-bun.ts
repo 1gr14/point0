@@ -5,48 +5,43 @@ import type { AppComponent } from '../core/mount.js'
 import type { Points } from '../core/points.js'
 import type { AnyPoint, InputParsed, RequiredCtx } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import type { EngineLogger } from '../engine-shared/config.js'
+import type { EngineLogger, EngineOptionsEnvParsed, EngineOptionsPublicDirParsed } from '../engine-shared/config.js'
 import { renderAppAsReadableStream } from '../engine-shared/render.js'
 import { engineFetch } from './fetch.js'
-import { StaticDir } from './static-dir.js'
+import { PublicDir } from './public-dir.js'
 
 export class ClientBun {
   eversion: Eversion
   points: Points
   ssr: boolean
-  App: AppComponent | undefined
-  hostname: string | undefined
+  providedAppComponent: AppComponent | null
+  appPath: string | null
+  hostname: string | null
   basepath: string
-  srcIndexHtml: string | undefined
-  distIndexHtml: string | undefined
+  indexHtml: string | null
   domRootElementId: string
-  port: number | undefined
+  port: number | null
   index: number
   logger: EngineLogger
-  env: Record<string, any>
-
-  distDir: StaticDir | undefined
-  publicDir: StaticDir | undefined
-
-  distIndexHtmlContent: string | undefined
-  bunServer: Bun.Server<unknown> | undefined
+  env: EngineOptionsEnvParsed
+  publicDir: EngineOptionsPublicDirParsed
+  distIndexHtmlContent: string | null
+  bunServer: Bun.Server<unknown> | null
 
   private constructor(input: {
     points: Points
     ssr: boolean
-    App: AppComponent | undefined
+    providedAppComponent: AppComponent | null
+    appPath: string | null
     hostname: string | undefined
     basepath: string
-    srcIndexHtml: string | undefined
-    distIndexHtml: string | undefined
+    indexHtml: string | null
     domRootElementId: string
     port: number | undefined
     index: number
     logger: EngineLogger
-    env: Record<string, any>
-
-    distDir: StaticDir | undefined
-    publicDir: StaticDir | undefined
+    env: EngineOptionsEnvParsed
+    publicDir: EngineOptionsPublicDirParsed
     eversion: Eversion
   }) {
     this.eversion = input.eversion
@@ -87,7 +82,7 @@ export class ClientBun {
   }): Promise<ClientBun> {
     const distDir =
       input.distDir && input.distRoute
-        ? await StaticDir.create({
+        ? await PublicDir.create({
             hostname: input.hostname,
             absPath: input.distDir,
             routePath: input.distRoute,
@@ -96,7 +91,7 @@ export class ClientBun {
           })
         : undefined
     const publicDir = input.publicDir
-      ? await StaticDir.create({
+      ? await PublicDir.create({
           hostname: input.hostname,
           absPath: input.publicDir,
           routePath: '/',

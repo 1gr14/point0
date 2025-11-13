@@ -5,7 +5,7 @@ import { ClientBun } from './client-bun.js'
 import { ClientVite } from './client-vite.js'
 import { ServerBun } from './server.js'
 
-export class Engine {
+export class EngineBun {
   clients: Array<ClientBun | ClientVite>
   server: ServerBun
   logger: EngineLogger
@@ -16,7 +16,7 @@ export class Engine {
     this.logger = input.logger
   }
 
-  static async create(input: EngineOptions): Promise<Engine> {
+  static async create(input: EngineOptions): Promise<EngineBun> {
     const parsedInput = parseEngineOptions(input)
     const eversion = await Eversion.create({ points: parsedInput.server.points })
     const clients = await Promise.all(
@@ -47,7 +47,7 @@ export class Engine {
       clients,
       eversion,
     })
-    return new Engine({ clients, server, logger: parsedInput.general.logger })
+    return new EngineBun({ clients, server, logger: parsedInput.general.logger })
   }
 
   async serve(

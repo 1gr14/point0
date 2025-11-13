@@ -38,6 +38,7 @@ import { parseUrl, type ParsedUrl } from './utils.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
+// TODO: add generic and type EversionSource, and EversionConnection so we can understand which ine used now
 export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   source: Eversion<TRequiredCtx> | undefined
   points: Points<true>
