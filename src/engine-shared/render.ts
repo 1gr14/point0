@@ -252,18 +252,18 @@ export async function renderAppAsReadableStream({
   pageLocation: AnyLocation
   input: InputRaw
   env?: Record<string, string | number | boolean | undefined>
+  // TODO: remove head from here, lets extract it from Super Store
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
 }): Promise<ReadableStream> {
-  eversionRun.setSsrLocation(pageLocation)
-  eversionRun.setCurrentLocation(pageLocation)
   await eversionRun.prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
     pagePoint,
+    pageLocation,
     input,
   })
   return await renderReadableStream({
