@@ -17,14 +17,19 @@ export type EngineOptionsPublicDirParsed = Array<[string, string]>
 export type EngineOptionsEnv = string | Record<string, any> | Array<string | Record<string, any>>
 export type EngineOptionsEnvParsed = Record<string, any>
 export type EngineGeneralOptions = {
-  fallbackRootId?: RootId | undefined
+  fallbackRootId?: RootId
   logger?: EngineLogger
-  cwd?: string | undefined
+  cwd?: string
 }
 export type EngineServerOptions = {
-  points: ReadyPointsModule
+  points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
   port?: number | string
+  viteConfig:
+    | import('vite').UserConfig
+    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
+    | ReturnType<typeof import('vite').defineConfig>
+    | null
 }
 export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
@@ -48,12 +53,12 @@ export type EngineOptions = EngineGeneralOptions & {
 }
 
 export type EngineGeneralOptionsParsed = {
-  fallbackRootId: RootId
+  fallbackRootId: RootId | null
   logger: EngineLogger
   cwd: string
 }
 export type EngineClientOptionsParsed = {
-  points: Points
+  points: Points | string
   ssr: boolean
   app: string | AppComponent | null
   hostname: string | null
@@ -71,9 +76,14 @@ export type EngineClientOptionsParsed = {
     | null
 }
 export type EngineServerOptionsParsed = {
-  points: Points
+  points: Points | string
   publicDir: EngineOptionsPublicDirParsed | null
   port: number
+  viteConfig:
+    | import('vite').UserConfig
+    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
+    | ReturnType<typeof import('vite').defineConfig>
+    | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -139,11 +149,8 @@ const parseEngineGeneralOptions = ({
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
   return {
-    fallbackRootId: generalOptions.fallbackRootId || '',
-    // will be set after parsing clients and server
-    // ||
-    // clientsOptions?.[0]?.points.root.point._rootId ||
-    // serverOptions.points.root.point._rootId,
+    // will be resolved after parsing clients and server
+    fallbackRootId: generalOptions.fallbackRootId || null,
     logger: generalOptions.logger || {
       info: console.info.bind(console),
       error: console.error.bind(console),
@@ -159,9 +166,10 @@ export const parseEngineServerOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   return {
-    points: Points.create(serverOptions.points),
+    points: typeof serverOptions.points === 'string' ? serverOptions.points : Points.create(serverOptions.points),
     port: typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
+    viteConfig: serverOptions.viteConfig ?? null,
   }
 }
 const parseEngineClientOptions = ({
@@ -176,10 +184,7 @@ const parseEngineClientOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineClientOptionsParsed => {
   return {
-    points:
-      typeof clientOptions.points === 'string'
-        ? Points.read(toAbsPath(generalOptionsParsed.cwd, clientOptions.points))
-        : clientOptions.points,
+    points: typeof clientOptions.points === 'string' ? clientOptions.points : Points.create(clientOptions.points),
     ssr: clientOptions.ssr ?? false,
     app: clientOptions.app ?? null,
     hostname: clientOptions.hostname ?? null,
@@ -212,8 +217,10 @@ export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed 
       generalOptionsParsed,
     }),
   )
-  generalOptionsParsed.fallbackRootId ||=
-    clientsOptionsParsed.at(0)?.points.root.point._rootId || serverOptionsParsed.points.root.point._rootId
+  // we can not do it here, becouse points may be readable via vite config
+  // so we will do it after engine initialization
+  // generalOptionsParsed.fallbackRootId ||=
+  //   clientsOptionsParsed.at(0)?.points.root.point._rootId || serverOptionsParsed.points.root.point._rootId
   return {
     general: generalOptionsParsed,
     server: serverOptionsParsed,

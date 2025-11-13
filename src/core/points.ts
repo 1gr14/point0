@@ -17,7 +17,8 @@ import type {
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
 export class Points<TReady extends boolean = boolean> {
-  read: PointsReadFn | null
+  absPath: string | null
+  readFn: PointsReadFn | null
   root: RootPoint
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
@@ -27,7 +28,8 @@ export class Points<TReady extends boolean = boolean> {
   pagesTree: PagesTree
 
   private constructor({
-    read,
+    absPath,
+    readFn,
     root,
     collection,
     routes,
@@ -35,7 +37,8 @@ export class Points<TReady extends boolean = boolean> {
     pagesTreeSource,
     pagesTree,
   }: {
-    read: PointsReadFn | null
+    absPath: string | null
+    readFn: PointsReadFn | null
     root: RootPoint
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
     routes: Routes
@@ -43,7 +46,8 @@ export class Points<TReady extends boolean = boolean> {
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
   }) {
-    this.read = read
+    this.absPath = absPath
+    this.readFn = readFn
     this.routes = routes
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
@@ -53,7 +57,7 @@ export class Points<TReady extends boolean = boolean> {
     this.root = root
   }
 
-  static readonly ready = (readyPoints: ReadyPointsModule, read?: PointsReadFn): Points<true> => {
+  static readonly ready = (readyPoints: ReadyPointsModule, absPath?: string, readFn?: PointsReadFn): Points<true> => {
     const { root, ...rest } = readyPoints
     const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
     const rawPoints = Points.rawToReadyPointsCollection(readyPointsWithoutRoot)
@@ -68,11 +72,12 @@ export class Points<TReady extends boolean = boolean> {
       ready: true,
       pagesTreeSource,
       pagesTree,
-      read: read ?? null,
+      absPath: absPath ?? null,
+      readFn: readFn ?? null,
     })
   }
 
-  static readonly lazy = (lazyPoints: LazyPointsModule, read?: PointsReadFn): Points<false> => {
+  static readonly lazy = (lazyPoints: LazyPointsModule, absPath?: string, readFn?: PointsReadFn): Points<false> => {
     const { root_lazy, ...rest } = lazyPoints
     const lazyPointsWithoutRoot = Object.values(rest)
     const routedPoints = Points.toRoutedPointsCollection(lazyPointsWithoutRoot)
@@ -86,32 +91,56 @@ export class Points<TReady extends boolean = boolean> {
       ready: false,
       pagesTreeSource,
       pagesTree,
-      read: read ?? null,
+      absPath: absPath ?? null,
+      readFn: readFn ?? null,
     })
   }
 
   static readonly read = async <TReady extends boolean>(
-    read: () => Promise<TReady extends true ? ReadyPointsModule : LazyPointsModule>,
+    absPath: string,
+    readFn: PointsReadFn,
   ): Promise<Points<TReady>> => {
-    const pointsModule = await read()
-    return Points.create(pointsModule, read) as Points<TReady>
+    const pointsModule = await readFn(absPath)
+    return Points.create(pointsModule, absPath, readFn) as Points<TReady>
   }
 
   static readonly create = (
     points: ReadyPointsModule | LazyPointsModule | Points,
-    read?: PointsReadFn,
+    absPath?: string,
+    readFn?: PointsReadFn,
   ): Points<boolean> => {
     if (points instanceof Points) {
-      points.read = read ?? points.read
+      points.readFn = readFn ?? points.readFn
+      points.absPath = absPath ?? points.absPath
       return points
     }
     if (Points.isLazyPointsModule(points)) {
-      return Points.lazy(points, read)
+      return Points.lazy(points, absPath, readFn)
     }
     if (Points.isReadyPointsModule(points)) {
-      return Points.ready(points, read)
+      return Points.ready(points, absPath, readFn)
     }
     throw new Error('Invalid points input')
+  }
+
+  async read(): Promise<void> {
+    if (this.readFn && this.absPath) {
+      const freshPointsModule = await this.readFn(this.absPath)
+      const freshPoints = Points.create(freshPointsModule, this.absPath, this.readFn)
+      this.absPath = freshPoints.absPath
+      this.readFn = freshPoints.readFn
+      this.root = freshPoints.root
+      this.collection = freshPoints.collection as TReady extends true
+        ? ReadyRoutedPointsCollection
+        : LazyRoutedPointsCollection
+      this.routes = freshPoints.routes
+      this.routesHash = freshPoints.routesHash
+      this.pagesTreeSource = freshPoints.pagesTreeSource
+      this.pagesTree = freshPoints.pagesTree
+      if (this.ready && !freshPoints.ready) {
+        await this.load()
+      }
+    }
   }
 
   async load(): Promise<Points<true>> {
@@ -132,7 +161,8 @@ export class Points<TReady extends boolean = boolean> {
       ready: true,
       pagesTreeSource,
       pagesTree,
-      read: this.read,
+      readFn: this.readFn,
+      absPath: this.absPath,
     })
   }
 
@@ -720,4 +750,4 @@ export type PagesTreeRecord = {
 }
 export type PagesTree = PagesTreeRecord[]
 
-export type PointsReadFn = () => Promise<ReadyPointsModule | LazyPointsModule>
+export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
