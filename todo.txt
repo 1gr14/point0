@@ -1,8 +1,13 @@
 wouter → dir to root
 server → server-shared
 bun/server → server-bun → dir to root
+each client should have it own process and it own envs
 ? server-bun split to files
 config + cli
+what is 'use client'
+onReq onRes normalize, make more straight forward
+lets static relative to config dir, .lets('static', 'public').static(({glob, cwd}) => Record<route, abs | () => Response>() | [cwd, 'glob/relative/to/config-or-root/**/*'] | [cwd, 'glob/**/*'[]] )
+isClient() || process.env.CLIENT_ONLY
 extract required ctx type from root points
 config has same props as generator and engine, but also has additional things whuch allow to simplify. Like just srcDir and then we extract everyting by orselves, and we can pass with config to generator and engine as input
 vite
@@ -15,7 +20,7 @@ head as argument of .page() it can be string | head | (loaderResult) => string |
 
 wrapper
 merge .input schemas
-
+ у на
 auth
 env
 elysia example
@@ -47,6 +52,7 @@ props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
 no root
+Unieind and hero ui right inside examples
 simplify renderer
 Point0.global.init()
 .prefetchOnInit(boolean).prefetchMode(MODE)
@@ -68,6 +74,7 @@ allow pass env object or "PREFIX_*" to env for clients
 default client query options, default client page query options, default client component query options
 not errorComponent, but just error
 mutation client, server, combined
+engine shuld be work fine without target server at all
 slover problem with hmr isnide page(() => )
 response available by route and can have method, other do not have method
 .isLoading(({queryType, query}) => )
