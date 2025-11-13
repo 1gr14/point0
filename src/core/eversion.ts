@@ -6,10 +6,12 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import { SuperStore } from './super-store.js'
+import z from 'zod'
+import { isClient } from './client-server.js'
 import { Point0 } from './index.js'
 import type { AppComponent } from './mount.js'
 import type { Points } from './points.js'
+import { SuperStore } from './super-store.js'
 import type {
   AnyPoint,
   Ctx,
@@ -33,8 +35,6 @@ import type {
   UndefinedResponseOutput,
 } from './types.js'
 import { parseUrl, type ParsedUrl } from './utils.js'
-import z from 'zod'
-import { isClient } from './client-server.js'
 
 // TODO: when find suitable allow porvide "rootId", then it will find only inside that
 // so remove force
@@ -316,6 +316,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx: TRequiredCtx
   }): Promise<{
     task: FetchTask | undefined
+    // TODO: it is not parsed input it is raw input
     input: InputParsed
     suitable: GetSuitableResult
     eversionRun: EversionRun
@@ -384,6 +385,43 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       eversionRun,
     }
   }
+
+  // async preparePageEversionRunByUrl({
+  //   url,
+  //   fallbackRootId,
+  //   rootId,
+  //   requiredCtx,
+  // }: {
+  //   url: string
+  //   fallbackRootId: RootId
+  //   rootId?: RootId
+  //   requiredCtx: TRequiredCtx
+  // }): Promise<{
+  //   suitable: GetSuitableResult
+  //   eversionRun: EversionRun
+  //   input: InputParsed
+  //   location: AnyLocation
+  // }> {
+  //   const location = Route0.getLocation(url)
+  //   const suitable = this.getSuitable({
+  //     pointType: 'page',
+  //     rootId,
+  //     pageLocation: location,
+  //     fallbackRootId,
+  //   })
+  //   const eversionRun = await suitable.eversion.createRun({
+  //     pageLocation: suitable.pageLocation,
+  //     currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
+  //     requiredCtx,
+  //   })
+  //   const input = { ...location.searchParams, ...suitable.pageLocation?.params }
+  //   return {
+  //     suitable,
+  //     eversionRun,
+  //     input,
+  //     location: suitable.pageLocation || location,
+  //   }
+  // }
 }
 
 export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {

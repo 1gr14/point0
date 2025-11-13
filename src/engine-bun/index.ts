@@ -2,7 +2,7 @@ import { Eversion } from '../core/eversion.js'
 import type { RequiredCtx } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import { ClientBun } from './client-bun.js'
-import type { ClientVite } from './client-vite.js'
+import { ClientVite } from './client-vite.js'
 import { ServerBun } from './server.js'
 
 export class Engine {
@@ -22,7 +22,17 @@ export class Engine {
     const clients = await Promise.all(
       parsedInput.clients.map(async (clientOptions) => {
         await eversion.connect({ points: clientOptions.points })
-        // TODO: fix it when vite will be implemented
+        if (clientOptions.viteConfig) {
+          if (!clientOptions.appPath) {
+            throw new Error('appPath is required for vite clients')
+          }
+          return await ClientVite.create({
+            ...clientOptions,
+            appPath: clientOptions.appPath,
+            logger: parsedInput.general.logger,
+            eversion,
+          })
+        }
         return await ClientBun.create({
           ...clientOptions,
           logger: parsedInput.general.logger,
@@ -49,19 +59,16 @@ export class Engine {
       this.logger.info(`Server is running on http://localhost:${this.server.port}`)
     } else if (target === 'client') {
       const clientsWithPort = this.clients.flatMap((client) => {
-        if (client instanceof ClientBun && typeof client.port === 'number') {
+        if (typeof client.port === 'number') {
           return client
         }
         return []
       })
       for (const client of clientsWithPort) {
-        if (client instanceof ClientBun) {
-          // TODO: fix it when vite will be implemented
-          await client.serve({ requiredCtx })
-          this.logger.info(
-            `Client${clientsWithPort.length > 1 ? ` "${client.points.root._rootId}"` : ''} is running on http://localhost:${client.port}`,
-          )
-        }
+        await client.serve({ requiredCtx })
+        this.logger.info(
+          `Client${clientsWithPort.length > 1 ? ` "${client.points.root._rootId}"` : ''} is running on http://localhost:${client.port}`,
+        )
       }
     } else {
       throw new Error(

@@ -24,6 +24,7 @@ export type EngineClientOptions = {
   points: ReadyPointsModule
   ssr?: boolean
   App?: AppComponent
+  appPath?: string
   hostname?: string
   basepath?: string
   distDir?: string
@@ -35,6 +36,10 @@ export type EngineClientOptions = {
   env?: Record<string, any>
   onResponse?: (response: Response) => Response
   port?: number | string
+  viteConfig?:
+    | import('vite').UserConfig
+    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
+    | undefined
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -51,6 +56,7 @@ export type EngineClientOptionsParsed = {
   points: Points
   ssr: boolean
   App: AppComponent | undefined
+  appPath: string | undefined
   hostname: string | undefined
   basepath: string
   distDir: string | undefined
@@ -63,6 +69,10 @@ export type EngineClientOptionsParsed = {
   onResponse: ((response: Response) => Response) | undefined
   port: number | undefined
   index: number
+  viteConfig:
+    | import('vite').UserConfig
+    | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
+    | undefined
 }
 export type EngineServerOptionsParsed = {
   points: Points
@@ -140,6 +150,7 @@ const parseEngineClientOptions = ({
     points: Points.create(clientOptions.points),
     ssr,
     App: clientOptions.App,
+    appPath: clientOptions.appPath,
     basepath,
     hostname: clientOptions.hostname,
     distDir,
@@ -152,6 +163,7 @@ const parseEngineClientOptions = ({
     port: typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1,
     index,
     env: clientOptions.env || {},
+    viteConfig: clientOptions.viteConfig,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

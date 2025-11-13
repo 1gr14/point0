@@ -3,7 +3,7 @@ import type { RequiredCtx, RootId, WrapResponseFn } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
 import { toJsonErrorResponse } from '../engine-shared/error.js'
-import { ClientBun } from './client-bun.js'
+import type { ClientBun } from './client-bun.js'
 import type { ClientVite } from './client-vite.js'
 import type { StaticDir } from './static-dir.js'
 
@@ -50,6 +50,8 @@ export const engineFetch = async ({
       return responseFromSourceRootWrapRequest
     }
 
+    // TODO: lets provide here wrapResponse and wrapRequest and call it
+    // TODO: also there on error fo input not throw it but return as error
     const { task, input, suitable, eversionRun } = await eversion.prepareEversionRunByRequest({
       request,
       parsedUrl,
@@ -94,10 +96,7 @@ export const engineFetch = async ({
     meta.pointName = task?.pointName
     meta.pointType = task?.pointType
 
-    // TODO: fix this when ClientVite will be implemented
-    const relatedClient = clients.find(
-      (client) => client.points.root === suitable.eversion.points.root && client instanceof ClientBun,
-    ) as ClientBun | undefined
+    const relatedClient = clients.find((client) => client.points.root === suitable.eversion.points.root)
     if (extractResult.error) {
       logger.error(extractResult.error, meta)
     }
@@ -116,6 +115,23 @@ export const engineFetch = async ({
             pageLocation: suitable.pageLocation,
             input,
           })
+          // const readableStream =
+          //   relatedClient instanceof ClientBun
+          //     ? await relatedClient.renderAsReadableStream({
+          //         eversionRun,
+          //         extractResult,
+          //         pagePoint: suitable.point,
+          //         pageLocation: suitable.pageLocation,
+          //         input,
+          //       })
+          //     : await relatedClient.renderAppAsReadableStreamByUrl({
+          //         eversion,
+          //         rootId: suitable.eversion.points.root._rootId,
+          //         url: request.url,
+          //         env: relatedClient.env,
+          //         originalIndexHtml: await relatedClient.getOriginalIndexHtml(),
+          //         domRootElementId: relatedClient.domRootElementId,
+          //       })
           return await wrapResponse({
             request,
             response: new Response(readableStream, {
@@ -127,9 +143,10 @@ export const engineFetch = async ({
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
             logger.error(error, meta)
+            const indexHtml = await relatedClient.getOriginalIndexHtml(request.url)
             return await wrapResponse({
               request,
-              response: new Response(await relatedClient.getOriginalIndexHtml(), {
+              response: new Response(indexHtml, {
                 headers: { 'Content-Type': 'text/html' },
                 status: 500,
               }),
@@ -138,9 +155,10 @@ export const engineFetch = async ({
           throw error
         }
       } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.distIndexHtml) {
+        const indexHtml = await relatedClient.getOriginalIndexHtml(request.url)
         return await wrapResponse({
           request,
-          response: new Response(await relatedClient.getOriginalIndexHtml(), {
+          response: new Response(indexHtml, {
             headers: { 'Content-Type': 'text/html' },
             status: 200,
           }),
@@ -156,6 +174,20 @@ export const engineFetch = async ({
           pageLocation: suitable.pageLocation,
           input,
         })
+        // if (relatedClient instanceof ClientBun) {
+        //   await relatedClient.prefetchAppPagePointDeep({
+        //     eversionRun,
+        //     pagePoint: suitable.point,
+        //     pageLocation: suitable.pageLocation,
+        //     input,
+        //   })
+        // } else {
+        //   await relatedClient.prefetchAppPagePointDeepByUrl({
+        //     eversion,
+        //     rootId: suitable.eversion.points.root._rootId,
+        //     url: request.url,
+        //   })
+        // }
         const dehydratedState = await eversionRun.getQueryClientDehydratedState()
         return await wrapResponse({
           request,

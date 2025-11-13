@@ -833,6 +833,7 @@ export class PointsCollector {
           (async () => {
             const decl = p.node.declaration
             if (decl?.type === 'VariableDeclaration') {
+              // Handle: export const client = ...
               for (const d of decl.declarations) {
                 const id = d.id
                 if (id.type === 'Identifier') {
@@ -879,6 +880,61 @@ export class PointsCollector {
           })(),
         )
       },
+      // TODO: check if it is work
+      // ExportSpecifier: (p) => {
+      //   // Handle: export { client } or export { client as otherName }
+      //   // This visitor catches ExportSpecifier nodes directly
+      //   promises.push(
+      //     (async () => {
+      //       const exportedName = p.node.exported.type === 'Identifier' ? p.node.exported.name : null
+      //       // p.node.local is always Identifier in ExportSpecifier
+      //       const localName = p.node.local.name
+      //       if (!exportedName || !localName) return null
+
+      //       // Find the variable declaration for this identifier
+      //       const varDecl = this.findVariableDeclarationByName(ast, localName)
+      //       if (!varDecl?.init) return null
+
+      //       const {
+      //         pointType,
+      //         pointName,
+      //         root,
+      //         errors: detectPointTypeAndNameFromInitErrors,
+      //       } = this.detectPointTypeAndNameFromInit({ fileAbs, node: varDecl.init })
+      //       errors.push(...detectPointTypeAndNameFromInitErrors)
+      //       if (pointType && pointName) {
+      //         const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
+      //         const { route, errors: routeErrors } = shouldHaveRoute
+      //           ? await this.resolveFullRoute({ fileAbs, baseIdentifier: localName })
+      //           : { route: undefined, errors: [] }
+      //         errors.push(...routeErrors)
+
+      //         const { layouts, errors: layoutsErrors } =
+      //           pointType === 'page'
+      //             ? await this.resolveLayoutsChain({ fileAbs, baseIdentifier: localName })
+      //             : { layouts: [], errors: [] }
+      //         errors.push(...layoutsErrors)
+
+      //         if (shouldHaveRoute && !route) {
+      //           const message = `route not detected for ${pointType}.${pointName}`
+      //           console.warn(`🔴 ${nodePath.relative(this.basepath, fileAbs)}: ${message}`)
+      //           throw new Error(message)
+      //         }
+
+      //         return {
+      //           root,
+      //           type: pointType,
+      //           name: pointName,
+      //           exportName: exportedName,
+      //           fileAbs,
+      //           route,
+      //           layouts,
+      //         }
+      //       }
+      //       return null
+      //     })(),
+      //   )
+      // },
       ExportDefaultDeclaration: (p) => {
         promises.push(
           (async () => {
@@ -1330,6 +1386,31 @@ export class PointsCollector {
     }
     return undefined
   }
+
+  // /**
+  //  * Find a variable declaration by identifier name in the AST.
+  //  * Handles: const client = ... or let client = ... or var client = ...
+  //  */
+  // private findVariableDeclarationByName(
+  //   ast: babel.ParseResult<any>,
+  //   identifierName: string,
+  // ): { id: string; init: Expression | null } | null {
+  //   let found: { id: string; init: Expression | null } | null = null
+  //   traverse(ast, {
+  //     VariableDeclaration: (p) => {
+  //       for (const d of p.node.declarations) {
+  //         if (d.id.type === 'Identifier' && d.id.name === identifierName) {
+  //           found = {
+  //             id: d.id.name,
+  //             init: d.init || null,
+  //           }
+  //           p.stop() // Stop traversal once found
+  //         }
+  //       }
+  //     },
+  //   })
+  //   return found
+  // }
 
   /**
    * Given an init node like:

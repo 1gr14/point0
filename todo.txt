@@ -1,5 +1,6 @@
 wouter → dir to root
 server → server-shared
+head on ssr should also just stored in super store, not needed to extract it additionally
 bun/server → server-bun → dir to root
 each client should have it own process and it own envs
 ? server-bun split to files

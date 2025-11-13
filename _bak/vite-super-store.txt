@@ -1,27 +1,38 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
-import type { IfAnyThenElse } from './types.js'
 import { isClient } from './client-server.js'
-;(globalThis as any).serverStorage =
-  (globalThis as any).serverStorage ||
-  (isClient()
-    ? null
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>))
+import type { IfAnyThenElse } from './types.js'
 
-// console.log(1312321, (globalThis as any).serverStorage)
+class FakeAsyncLocalStorage {
+  _store: Record<string, unknown> = {}
+
+  getStore: () => Record<string, unknown> = () => this._store
+
+  run<TResult>(state: any, callback: () => TResult): TResult {
+    this._store = state
+    console.log('FAKE RUN', state)
+    return callback()
+  }
+}
+
+// console.log({'IS_VITE_VM'})
+
+const isAsyncLocalStorageUnacceptableBecouseOfViteVM = () => process.env.IS_VITE_VM || isClient()
+
+const AsyncLocalStorageForServerOrClient = isClient()
+  ? FakeAsyncLocalStorage
+  : isAsyncLocalStorageUnacceptableBecouseOfViteVM()
+    ? FakeAsyncLocalStorage
+    : await import('node:async_hooks').then((m) => m.AsyncLocalStorage)
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class SuperStore {
   private static dehydrated: Record<string, unknown> = {}
   static config: SuperStoreConfig = {}
 
-  private static readonly clientState: SuperState = {}
-  private static readonly serverStorage: SuperServerStorage | null = (globalThis as any).serverStorage
-  // private static readonly serverStorage: SuperServerStorage | null = isClient()
-  //   ? null
-  //   : // eslint-disable-next-line @typescript-eslint/no-require-imports
-  //     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>)
+  private static readonly storage: SuperServerStorage | FakeAsyncLocalStorage = isClient()
+    ? new AsyncLocalStorageForServerOrClient()
+    : new AsyncLocalStorageForServerOrClient()
 
   static define<TValue, TTranfarable extends boolean = true>(
     key: string,
@@ -243,22 +254,22 @@ export class SuperStore {
   }
 
   static getState = (): SuperState => {
-    if (isClient()) {
-      return SuperStore.clientState
-    } else {
-      if (!SuperStore.serverStorage) {
-        throw new Error(
-          'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers.',
-        )
-      }
-      const serverStore = SuperStore.serverStorage.getStore()
-      if (!serverStore) {
-        throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
-        )
-      }
-      return serverStore
+    // if (isClient()) {
+    //   return SuperStore.clientState
+    // } else {
+    // if (!SuperStore.serverStorage) {
+    //   throw new Error(
+    //     'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers.',
+    //   )
+    // }
+    const serverStore = SuperStore.storage.getStore()
+    if (!serverStore) {
+      throw new Error(
+        'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
+      )
     }
+    return serverStore
+    // }
   }
 
   static dehydrate = () => {
@@ -301,11 +312,18 @@ export class SuperStore {
     serverSuperState: Partial<SuperState>,
     callback: () => TResult,
   ): TResult {
-    if (SuperStore.serverStorage) {
-      return SuperStore.serverStorage.run(serverSuperState, callback)
-    } else {
-      return callback()
-    }
+    console.log(
+      'runWithServerStorageProvider',
+      isClient(),
+      import.meta.env.SSR,
+      process.env.NODE_ENV,
+      process.env.IS_VITE,
+    )
+    // if (SuperStore.storage) {
+    return (SuperStore.storage as AsyncLocalStorage<SuperState>).run(serverSuperState, callback)
+    // } else {
+    //   return callback()
+    // }
   }
 }
 
