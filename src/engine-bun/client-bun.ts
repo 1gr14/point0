@@ -201,13 +201,12 @@ export class ClientBun {
     if (!this.App) {
       throw new Error('App not found')
     }
-    eversionRun.setSsrLocation(pageLocation)
-    eversionRun.setCurrentLocation(pageLocation)
     return await renderAppAsReadableStream({
       App: this.App,
       eversionRun,
       head: extractResult.head,
       pagePoint,
+      pageLocation,
       input,
       env: this.env,
       originalIndexHtml: await this.getOriginalIndexHtml(),
@@ -229,11 +228,10 @@ export class ClientBun {
     if (!this.App) {
       throw new Error(`App not provided for client "${this.points.root._rootId}"`)
     }
-    eversionRun.setCurrentLocation(pageLocation)
-    eversionRun.setSsrLocation(pageLocation)
     await eversionRun.prefetchAppPagePointDeep({
       App: this.App,
       renderToReadableStream,
+      pageLocation,
       pagePoint,
       input,
     })

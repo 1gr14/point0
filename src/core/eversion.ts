@@ -673,6 +673,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     App,
     renderToReadableStream,
     pagePoint,
+    pageLocation,
     input,
     seenQueryHashes = new Set<string>(),
     level = 0,
@@ -680,10 +681,15 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     App: AppComponent
     renderToReadableStream: typeof RenderToReadableStream
     pagePoint: AnyPoint | undefined
+    pageLocation: AnyLocation
     input: InputRaw
     seenQueryHashes?: Set<string>
     level?: number
   }): Promise<void> {
+    if (level === 0) {
+      this.setCurrentLocation(pageLocation)
+      this.setSsrLocation(pageLocation)
+    }
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(React.createElement(App))
       await stream.allReady
@@ -731,6 +737,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         App,
         renderToReadableStream,
         pagePoint,
+        pageLocation,
         input,
         seenQueryHashes,
       })

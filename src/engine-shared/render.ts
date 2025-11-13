@@ -8,6 +8,7 @@ import type { EversionRun } from '../core/eversion.js'
 import { SuperStore } from '../core/super-store.js'
 import type { AppComponent } from '../core/mount.js'
 import type { AnyPoint, InputRaw } from '../core/types.js'
+import type { AnyLocation } from '@devp0nt/route0'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -241,12 +242,14 @@ export async function renderAppAsReadableStream({
   App,
   eversionRun,
   pagePoint,
+  pageLocation,
   input,
   ...props
 }: {
   App: AppComponent
   eversionRun: EversionRun
   pagePoint: AnyPoint | undefined
+  pageLocation: AnyLocation
   input: InputRaw
   env?: Record<string, string | number | boolean | undefined>
   head: ResolvableHead[]
@@ -255,6 +258,8 @@ export async function renderAppAsReadableStream({
   originalIndexHtml: string
   domRootElementId?: string
 }): Promise<ReadableStream> {
+  eversionRun.setSsrLocation(pageLocation)
+  eversionRun.setCurrentLocation(pageLocation)
   await eversionRun.prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
