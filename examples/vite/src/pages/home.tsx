@@ -1,7 +1,7 @@
 import { Link } from 'point0/wouter'
 import { Point0 } from 'point0/core/index.js'
 import { useEffect, useState } from 'react'
-import z from 'zod'
+import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'

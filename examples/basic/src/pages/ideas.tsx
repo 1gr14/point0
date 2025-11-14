@@ -1,6 +1,6 @@
 import { Link } from 'point0/wouter/index.js'
 import { useState } from 'react'
-import z from 'zod'
+import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { routes } from '../lib/routes.js'
 

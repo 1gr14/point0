@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { z } from 'zod'
+import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { client } from '../lib/client.js'
 

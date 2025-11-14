@@ -3,7 +3,7 @@
 // import * as nodePath from 'node:path'
 // import qs from 'qs'
 // import { renderToReadableStream } from 'react-dom/server'
-// import z from 'zod'
+// import * as z from 'zod'
 // import { Eversion } from '../../core/eversion.js'
 // import type { IsEmptyObject, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
 // import { toJsonErrorResponse, toSuitableErrorResponse } from '../../engine-shared/error.js'
