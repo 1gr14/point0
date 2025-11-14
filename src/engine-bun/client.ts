@@ -20,6 +20,7 @@ import type { ServerBun } from './server.js'
 import { createFreshPoints, createJitiInstance, createViteDevServer } from '../engine-shared/utils.js'
 
 export class ClientBun {
+  cwd: string
   eversion: Eversion
   providedPoints: Points | null
   pointsPath: string | null
@@ -43,6 +44,7 @@ export class ClientBun {
   jiti: Jiti
 
   private constructor(input: {
+    cwd: string
     providedPoints: Points | null
     pointsPath: string | null
     points: Points
@@ -64,6 +66,7 @@ export class ClientBun {
     server: ServerBun
     jiti: Jiti
   }) {
+    this.cwd = input.cwd
     this.eversion = input.eversion
     this.providedPoints = input.providedPoints
     this.pointsPath = input.pointsPath
@@ -88,6 +91,7 @@ export class ClientBun {
   }
 
   static async create(input: {
+    cwd: string
     points: Points | string
     ssr: boolean
     app: AppComponent | string | null
@@ -104,7 +108,7 @@ export class ClientBun {
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
   }): Promise<ClientBun> {
-    const jiti = createJitiInstance(`client-${input.index}`)
+    const jiti = createJitiInstance(import.meta.url)
 
     const viteDevServer = !input.viteConfig
       ? null

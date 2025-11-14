@@ -9,6 +9,7 @@ import { PublicDir } from './public-dir.js'
 import { createFreshPoints, createJitiInstance, createViteDevServer } from '../engine-shared/utils.js'
 
 export class ServerBun {
+  cwd: string
   eversion: Eversion
   points: Points
   pointsPath: string | null
@@ -22,6 +23,7 @@ export class ServerBun {
   bunServer: Bun.Server<unknown> | undefined
 
   private constructor(input: {
+    cwd: string
     points: Points
     pointsPath: string | null
     providedPoints: Points | null
@@ -33,6 +35,7 @@ export class ServerBun {
     publicDir: PublicDir
     eversion: Eversion
   }) {
+    this.cwd = input.cwd
     this.eversion = input.eversion
     this.points = input.points
     this.pointsPath = input.pointsPath
@@ -45,6 +48,7 @@ export class ServerBun {
   }
 
   static async create(input: {
+    cwd: string
     points: Points | string
     viteConfig: EngineOptionsViteConfig | null
     port: number
@@ -54,7 +58,7 @@ export class ServerBun {
     clients: ClientBun[]
     // eversion: Eversion
   }): Promise<ServerBun> {
-    const jiti = createJitiInstance(`server`)
+    const jiti = createJitiInstance(input.cwd)
 
     const viteDevServer = !input.viteConfig
       ? null

@@ -59,7 +59,7 @@ export const toPathsOrUndefined = (path: string | string[] | undefined): string[
   return Array.isArray(path) ? path : [path]
 }
 
-export const toAbsPath = <T extends string | undefined>(cwd: string | undefined, path: T): T => {
+export const toAbsPath = <T extends string | undefined | null>(cwd: string | undefined, path: T): T => {
   if (!path) {
     return undefined as T
   }
@@ -137,7 +137,7 @@ export const dedupeSlashes = (path: string) => {
   return path.replace(/\/\/+/g, '/')
 }
 
-export const prependAndDeappendSlash = <T extends string | undefined>(path: T): T => {
+export const prependAndDeappendSlash = <T extends string | undefined | null>(path: T): T => {
   if (!path) {
     return undefined as T
   }
@@ -147,7 +147,7 @@ export const prependAndDeappendSlash = <T extends string | undefined>(path: T): 
   return result as T
 }
 
-export const prependAndAppendSlash = <T extends string | undefined>(path: T): T => {
+export const prependAndAppendSlash = <T extends string | undefined | null>(path: T): T => {
   if (!path) {
     return undefined as T
   }
@@ -161,8 +161,8 @@ export const isPathnameUnderBasepath = (pathname: string, basepath: string | und
   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
 }
 
-export const createJitiInstance = (name: string) =>
-  createJiti(name, {
+export const createJitiInstance = (id: string) =>
+  createJiti(id, {
     cache: false,
     interopDefault: true,
     moduleCache: false,

@@ -21,6 +21,7 @@ export class EngineBun {
     const parsedInput = parseEngineOptions(input)
     const server = await ServerBun.create({
       ...parsedInput.server,
+      cwd: parsedInput.general.cwd,
       fallbackRootId: '',
       logger: parsedInput.general.logger,
       clients: [],
@@ -32,6 +33,7 @@ export class EngineBun {
       parsedInput.clients.map(async (clientOptions) => {
         const client = await ClientBun.create({
           ...clientOptions,
+          cwd: parsedInput.general.cwd,
           logger: parsedInput.general.logger,
           eversion,
           server,
