@@ -2,22 +2,26 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 import type { IfAnyThenElse } from './types.js'
 import { isClient } from './client-server.js'
-;(globalThis as any).serverStorage =
-  (globalThis as any).serverStorage ||
+;(globalThis as any).__SUPER_STORE_SERVER_STORAGE__ =
+  (globalThis as any).__SUPER_STORE_SERVER_STORAGE__ ||
   (isClient()
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>))
-
-// console.log(1312321, (globalThis as any).serverStorage)
+;(globalThis as any).__SUPER_STORE_CONFIG__ = (globalThis as any).__SUPER_STORE_CONFIG__ || ({} as SuperStoreConfig)
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class SuperStore {
   private static dehydrated: Record<string, unknown> = {}
-  static config: SuperStoreConfig = {}
 
   private static readonly clientState: SuperState = {}
-  private static readonly serverStorage: SuperServerStorage | null = (globalThis as any).serverStorage
+  static getFullConfig(): SuperStoreConfig {
+    return (globalThis as any).__SUPER_STORE_CONFIG__ as SuperStoreConfig
+  }
+  static getServerStorage(): SuperServerStorage | null {
+    return (globalThis as any).__SUPER_STORE_SERVER_STORAGE__
+  }
+  // private static readonly serverStorage: SuperServerStorage | null = (globalThis as any).__SUPER_STORE_SERVER_STORAGE__
   // private static readonly serverStorage: SuperServerStorage | null = isClient()
   //   ? null
   //   : // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -64,11 +68,12 @@ export class SuperStore {
         hydrate: transferable ? (dehydratedValue: any) => dehydratedValue : undefined,
       }
     })()
-    SuperStore.config[key] = { init, dehydrate, hydrate }
+    const config = SuperStore.getFullConfig()
+    config[key] = { init, dehydrate, hydrate }
     return {
       get: SuperStore.get.bind(SuperStore, key),
       set: SuperStore.set.bind(SuperStore, key as never),
-      config: SuperStore.config[key],
+      config: config[key],
     }
   }
 
@@ -172,9 +177,9 @@ export class SuperStore {
   // }
 
   static get<TValue = unknown>(key: string): TValue {
-    console.log('get', key)
     const state = SuperStore.getState()
-    const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
+    const config = SuperStore.getFullConfig()
+    const configItem = config[key] as SuperStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -187,7 +192,6 @@ export class SuperStore {
       if (!configItem.hydrate) {
         throw new Error(`Key "${key}" is dehydrated but no hydrate function is defined`)
       }
-      console.log('get', key, 'dehydratedValue', dehydratedValue)
       const hydratedValue = configItem.hydrate(dehydratedValue, configItem.init)
       state[key] = hydratedValue
       return hydratedValue as TValue
@@ -198,7 +202,8 @@ export class SuperStore {
   }
 
   static getConfig(key: string): SuperStoreConfigItem | undefined {
-    const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
+    const config = SuperStore.getFullConfig()
+    const configItem = config[key] as SuperStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -211,7 +216,8 @@ export class SuperStore {
     if (existingValue) {
       return existingValue as TValue
     }
-    const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
+    const config = SuperStore.getFullConfig()
+    const configItem = config[key] as SuperStoreConfigItem | undefined
     const dehydratedValue = SuperStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem) {
@@ -248,12 +254,13 @@ export class SuperStore {
     if (isClient()) {
       return SuperStore.clientState
     } else {
-      if (!SuperStore.serverStorage) {
+      const serverStorage = SuperStore.getServerStorage()
+      if (!serverStorage) {
         throw new Error(
           'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers.',
         )
       }
-      const serverStore = SuperStore.serverStorage.getStore()
+      const serverStore = serverStorage.getStore()
       if (!serverStore) {
         throw new Error(
           'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
@@ -265,7 +272,8 @@ export class SuperStore {
 
   static dehydrate = () => {
     const dehydrated: Record<string, unknown> = {}
-    for (const [configItemKey, configItem] of Object.entries(SuperStore.config)) {
+    const config = SuperStore.getFullConfig()
+    for (const [configItemKey, configItem] of Object.entries(config)) {
       try {
         if (!configItem.dehydrate) {
           continue
@@ -290,7 +298,8 @@ export class SuperStore {
   }
 
   static hydrateFromString(dehydratedString: string): void {
-    SuperStore.dehydrated = superjson.parse(dehydratedString)
+    const dehydrated = superjson.parse(dehydratedString)
+    SuperStore.dehydrated = dehydrated as Record<string, unknown>
   }
 
   static hydrateFromWindow(): void {
@@ -303,8 +312,9 @@ export class SuperStore {
     serverSuperState: Partial<SuperState>,
     callback: () => TResult,
   ): TResult {
-    if (SuperStore.serverStorage) {
-      return SuperStore.serverStorage.run(serverSuperState, callback)
+    const serverStorage = SuperStore.getServerStorage()
+    if (serverStorage) {
+      return serverStorage.run(serverSuperState, callback)
     } else {
       return callback()
     }

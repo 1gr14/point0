@@ -21,7 +21,6 @@ export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
   }
 
   if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-    console.log('hydrate from string', (window as any).__DEHYDRATED_SUPER_STORE__)
     SuperStore.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
   }
   const appElement = createElement(App)

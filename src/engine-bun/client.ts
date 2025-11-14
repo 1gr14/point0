@@ -383,7 +383,6 @@ export class ClientBun {
       return this.providedAppComponent
     }
     if (this.appPath) {
-      console.log(1111116, !!this.viteDevServer)
       if (this.viteDevServer) {
         const appComponent = (await this.viteDevServer.ssrLoadModule(this.appPath).then((module) => module.default)) as
           | AppComponent

@@ -57,10 +57,8 @@
 //       requiredCtx: undefined,
 //       fallbackRootId: rootId,
 //     })
-//     console.log(1111114)
 //     eversionRun.setSsrLocation(location)
 //     eversionRun.setCurrentLocation(location)
-//     console.log(1111115, eversionRun.serverGlobalState)
 //     return await renderAppAsReadableStream({
 //       App,
 //       // getApp: async () => await this.loadAppComponent({ eversionRun }),

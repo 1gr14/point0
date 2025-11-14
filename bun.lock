@@ -65,8 +65,8 @@
         "zod": "^4.0.0",
       },
     },
-    "examples/ssr-spa": {
-      "name": "@point0/ssr-spa",
+    "examples/basic": {
+      "name": "@point0/basic",
       "version": "1.0.0",
       "dependencies": {
         "@devp0nt/route0": "^1.0.0-next.36",
@@ -355,7 +355,7 @@
 
     "@pnpm/npm-conf": ["@pnpm/npm-conf@2.3.1", "", { "dependencies": { "@pnpm/config.env-replace": "^1.1.0", "@pnpm/network.ca-file": "^1.0.1", "config-chain": "^1.1.11" } }, "sha512-c83qWb22rNRuB0UaVCI0uRPNRr8Z0FWnEIvT47jiHAmOIUHbBOg5XvV7pM5x+rKn9HRpjxquDbXYSXr3fAKFcw=="],
 
-    "@point0/ssr-spa": ["@point0/ssr-spa@workspace:examples/ssr-spa"],
+    "@point0/basic": ["@point0/basic@workspace:examples/basic"],
 
     "@point0/vite": ["@point0/vite@workspace:examples/vite"],
 

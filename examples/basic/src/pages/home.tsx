@@ -58,7 +58,7 @@ export default generalLayout
     }, [state])
     useEffect(() => {
       setTimeout(() => {
-        // console.log(clientCtx1.getValue())
+        // console.info(clientCtx1.getValue())
       }, 1000)
     }, [])
     const ctx1 = clientCtx1.useValue()

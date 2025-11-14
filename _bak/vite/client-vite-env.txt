@@ -27,7 +27,6 @@
 //   vite.watcher.on('change', (file) => {
 //     const normalized = '/' + file.replace(vite.config.root, '').replace(/\\/g, '/')
 //     if (cache.has(normalized)) {
-//       console.log(`[HMR] Reloading ${normalized}`)
 //       cache.delete(normalized)
 //       transformAndImport(normalized).catch(console.error)
 //     }

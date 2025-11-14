@@ -10,12 +10,9 @@ class FakeAsyncLocalStorage {
 
   run<TResult>(state: any, callback: () => TResult): TResult {
     this._store = state
-    console.log('FAKE RUN', state)
     return callback()
   }
 }
-
-// console.log({'IS_VITE_VM'})
 
 const isAsyncLocalStorageUnacceptableBecouseOfViteVM = () => process.env.IS_VITE_VM || isClient()
 
@@ -312,13 +309,6 @@ export class SuperStore {
     serverSuperState: Partial<SuperState>,
     callback: () => TResult,
   ): TResult {
-    console.log(
-      'runWithServerStorageProvider',
-      isClient(),
-      import.meta.env.SSR,
-      process.env.NODE_ENV,
-      process.env.IS_VITE,
-    )
     // if (SuperStore.storage) {
     return (SuperStore.storage as AsyncLocalStorage<SuperState>).run(serverSuperState, callback)
     // } else {
