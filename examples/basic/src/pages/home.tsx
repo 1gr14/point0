@@ -8,6 +8,7 @@ import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
 // import icon from '../assets/icon.svg'
+import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
 // import { Svg } from '../lib/svg.js'
@@ -102,8 +103,7 @@ export default generalLayout
         <p>Discover and share innovative ideas that can change the world!</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0' }}>
           {/* <IconUsual /> */}
-
-          {/* <img src={icon} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
+          <img src={iconUrl} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} />
           {/* <img src={IconUsual} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
           {/* <div dangerouslySetInnerHTML={{ __html: icon }} /> */}
           <Svg src={iconRaw} />
