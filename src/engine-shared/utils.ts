@@ -225,7 +225,7 @@ export const createFreshPoints = async ({
   providedPoints: Points | null
   pointsPath: string | null
   viteDevServer: ViteDevServer | null
-  jiti: Jiti
+  jiti?: Jiti
   clientIndex: number | null
 }): Promise<Points> => {
   if (providedPoints) {
@@ -237,8 +237,10 @@ export const createFreshPoints = async ({
         pointsPath,
         async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
       )
+      // } else if (jiti) {
+      //   return await Points.read(pointsPath, async (absPath) => await jiti.import(absPath))
     } else {
-      return await Points.read(pointsPath, async (absPath) => await jiti.import(absPath))
+      return Points.create((await import(pointsPath)) as LazyPointsModule | ReadyPointsModule)
     }
   }
   throw new Error(`Points not provided for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`)

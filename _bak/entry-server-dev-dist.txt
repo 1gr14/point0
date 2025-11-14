@@ -16,10 +16,10 @@ const engine = await EngineBun.create({
   clients: [
     {
       ssr: true,
-      app: './app.js',
-      points: './lib/points.ready.js',
+      app: '../dist/dev/client/app.js',
+      points: '../dist/dev/client/lib/points.ready.js',
       indexHtml: process.env.NODE_ENV === 'production' ? '../client/index.html' : './index.html', // only when NODE_ENV=production
-      publicDir: process.env.NODE_ENV === 'production' ? { '/': '../client' } : {}, // only when NODE_ENV=production
+      publicDir: process.env.NODE_ENV === 'production' ? { '/': '../client' } : { '/': '../dist/dev/client' }, // only when NODE_ENV=production
       port: 3001,
       env: {
         SOURCE_BASE_URL: process.env.SOURCE_BASE_URL,

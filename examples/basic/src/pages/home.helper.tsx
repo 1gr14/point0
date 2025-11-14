@@ -8,6 +8,7 @@ export const ExternalHelperComponent = () => {
       <button
         onClick={() => {
           setState(state + 1)
+          throw new Error('test')
         }}
       >
         Click me

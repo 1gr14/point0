@@ -1,4 +1,5 @@
-basic build, check what is 0.43 mb in client build 
+Simplify engine config. Just allow paths to files and nothing else. Then we will use this input as config input including generator
+
 use dist dir as public dir
 fix dist client not found
 
@@ -18,6 +19,8 @@ each client should have it own process and it own envs
 ? server-bun split to files
 config + cli
 
+we do not ever need to start server when we have one client
+not hostname but origin
 super store → eversion store, and also if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
 onReq onRes normalize, make more straight forward
 lets static relative to config dir, .lets('static', 'public').static(({glob, cwd}) => Record<route, abs | () => Response>() | [cwd, 'glob/relative/to/config-or-root/**/*'] | [cwd, 'glob/**/*'[]] )

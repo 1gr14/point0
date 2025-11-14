@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:client": "bun build ./src/index.html --outdir ./dist/client --splitting --production --sourcemap --define process.env.IS_CLIENT='1'",
+    "build:client:watch": "bun build ./src/index.html ./src/app.tsx ./src/lib/points.ready.ts --outdir ./dist/dev/client --sourcemap=inline --packages=external --watch",
     "build:client:check": "bun run clean && bun build ./src/index.html --outdir ./dist/client --outfile --splitting --sourcemap=external --define process.env.IS_CLIENT='1'",
     "build:server": "bun build ./src/entry-server.ts --packages=external --outdir dist/server --target bun --sourcemap=external --production --define process.env.IS_CLIENT=''",
     "build:public": "ncp ./public ./dist/public",

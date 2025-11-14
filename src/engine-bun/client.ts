@@ -392,7 +392,8 @@ export class ClientBun {
         }
         return appComponent
       } else {
-        const appComponent = await this.jiti.import(this.appPath, { default: true })
+        // const appComponent = await this.jiti.import(this.appPath, { default: true })
+        const appComponent = await import(this.appPath).then((module) => module.default)
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appPath} for client "${this.points.root._rootId}"`)
         }
