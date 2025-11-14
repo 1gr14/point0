@@ -42,6 +42,9 @@ export class EngineBun {
         return client
       }),
     )
+
+    server.clients = clients
+
     return new EngineBun({ clients, server, logger: parsedInput.general.logger, eversion })
   }
 

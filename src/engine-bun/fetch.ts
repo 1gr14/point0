@@ -166,6 +166,8 @@ export const engineFetch = async ({
           }),
         })
       }
+    } else if (outputType === 'html' && pointType === 'page') {
+      throw new Error(`Client not found for point "${suitable.point?._name ?? 'unknown'}" while requested page html`)
     }
 
     if (extractResult.error) {
