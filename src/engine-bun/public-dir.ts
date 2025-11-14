@@ -1,8 +1,8 @@
 import * as nodePath from 'node:path'
-import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import { dedupeSlashes } from '../engine-shared/utils.js'
-import type { RootPoint } from '../core/types.js'
 import type { Eversion } from '../core/eversion.js'
+import type { RootPoint } from '../core/types.js'
+import { parseUrl, type ParsedUrl } from '../core/utils.js'
+import { prependAndDeappendSlash } from '../engine-shared/utils.js'
 
 export class PublicDir {
   hostname: string | null
@@ -46,7 +46,7 @@ export class PublicDir {
           const dirAbsPath = dirAbsPathOrResponseOrFn
           for await (const relPath of glob.scan({ cwd: dirAbsPath, onlyFiles: true })) {
             const fileAbsPath = nodePath.resolve(dirAbsPath, relPath)
-            const fileRoutePath = dedupeSlashes(nodePath.join(dirRoutePath, relPath))
+            const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
             this.files.set(fileRoutePath, fileAbsPath)
           }
         } else {

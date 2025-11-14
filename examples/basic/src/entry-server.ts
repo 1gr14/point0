@@ -21,7 +21,7 @@ const engine = await EngineBun.create({
       app: App,
       points,
       indexHtml: process.env.NODE_ENV === 'production' ? '../client/index.html' : './index.html', // only when NODE_ENV=production
-      publicDir: process.env.NODE_ENV === 'production' ? { '/dist/client': '../client' } : {}, // only when NODE_ENV=production
+      publicDir: process.env.NODE_ENV === 'production' ? { '/': '../client' } : {}, // only when NODE_ENV=production
       port: 3001,
       env: {
         SOURCE_BASE_URL: process.env.SOURCE_BASE_URL,

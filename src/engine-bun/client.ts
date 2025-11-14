@@ -449,4 +449,22 @@ export class ClientBun {
       input,
     })
   }
+
+  async readableStreamToString({ readableStream }: { readableStream: ReadableStream }): Promise<string> {
+    const reader = readableStream.getReader()
+    const decoder = new TextDecoder()
+    let string = ''
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        string += decoder.decode(value, { stream: true })
+      }
+      // Decode any remaining bytes
+      string += decoder.decode()
+    } finally {
+      reader.releaseLock()
+    }
+    return string
+  }
 }

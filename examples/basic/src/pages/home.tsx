@@ -103,7 +103,12 @@ export default generalLayout
         <p>Discover and share innovative ideas that can change the world!</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0' }}>
           {/* <IconUsual /> */}
-          <img src={iconUrl} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} />
+          <img
+            suppressHydrationWarning
+            src={iconUrl}
+            alt="Icon"
+            style={{ width: '24px', height: '24px', color: '#007bff' }}
+          />
           {/* <img src={IconUsual} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
           {/* <div dangerouslySetInnerHTML={{ __html: icon }} /> */}
           <Svg src={iconRaw} />
