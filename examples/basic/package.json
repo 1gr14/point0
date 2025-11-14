@@ -3,7 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "sideEffects": false,
   "scripts": {
     "build:client": "bun build ./src/index.html --outdir ./dist/client --splitting --production --sourcemap --public-path /dist/client/ --define process.env.IS_CLIENT='1'",
     "build:client:check": "bun run clean && bun build ./src/index.html --outdir ./dist/client --splitting --sourcemap=external --define process.env.IS_CLIENT='1'",
