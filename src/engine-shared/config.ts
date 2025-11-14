@@ -190,7 +190,10 @@ const parseEngineClientOptions = ({
         ? toAbsPath(generalOptionsParsed.cwd, clientOptions.points)
         : Points.create(clientOptions.points),
     ssr: clientOptions.ssr ?? false,
-    app: clientOptions.app ?? null,
+    app:
+      typeof clientOptions.app === 'string'
+        ? toAbsPath(generalOptionsParsed.cwd, clientOptions.app)
+        : (clientOptions.app ?? null),
     hostname: clientOptions.hostname ?? null,
     basepath: prependAndAppendSlash(clientOptions.basepath) || '/',
     publicDir: parsePublicDir(clientOptions.publicDir ?? [], generalOptionsParsed.cwd),

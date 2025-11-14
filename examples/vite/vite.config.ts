@@ -77,7 +77,6 @@ export default defineConfig({
         points: './src/lib/points.ready.ts',
         server: './src/lib/server.ts',
       },
-      // 🧠 Всё, что не локальный путь, считаем внешним
       // external: (id) => !id.startsWith('.') && !id.startsWith('/') && !id.endsWith('.svg?react'),
       // external: (id) => id.includes('point0'),
       // external: ['point0/core/super-store.js'],

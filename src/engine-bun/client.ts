@@ -143,8 +143,7 @@ export class ClientBun {
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appPath: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
-      // TODO:ASAP add viteDevServer
-      viteDevServer: null,
+      viteDevServer,
       server: input.server,
       jiti,
     })
@@ -221,9 +220,13 @@ export class ClientBun {
       throw new Error(`indexHtml not found for client "${this.points.root._rootId}"`)
     }
     if (process.env.NODE_ENV === 'development') {
-      return await fetch(`http://localhost:${this.port}/development.index.html`).then(
-        async (response) => await response.text(),
-      )
+      if (!this.viteDevServer) {
+        return await fetch(`http://localhost:${this.port}/development.index.html`).then(
+          async (response) => await response.text(),
+        )
+      } else {
+        return await this.viteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
+      }
     }
     if (process.env.NODE_ENV === 'production') {
       if (!this.distIndexHtmlContent) {
@@ -239,6 +242,7 @@ export class ClientBun {
       return this.providedAppComponent
     }
     if (this.appPath) {
+      console.log(1111116, !!this.viteDevServer)
       if (this.viteDevServer) {
         const appComponent = (await this.viteDevServer.ssrLoadModule(this.appPath).then((module) => module.default)) as
           | AppComponent
