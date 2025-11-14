@@ -39,6 +39,7 @@ export class PublicDir {
 
   async loadFiles(): Promise<void> {
     const glob = new Bun.Glob('**/*')
+    console.log(this.definition)
     await Promise.all(
       this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
@@ -46,7 +47,7 @@ export class PublicDir {
           const dirAbsPath = dirAbsPathOrResponseOrFn
           for await (const relPath of glob.scan({ cwd: dirAbsPath, onlyFiles: true })) {
             const fileAbsPath = nodePath.resolve(dirAbsPath, relPath)
-            const fileRoutePath = dedupeSlashes(dirRoutePath + relPath)
+            const fileRoutePath = dedupeSlashes(nodePath.join(dirRoutePath, relPath))
             this.files.set(fileRoutePath, fileAbsPath)
           }
         } else {
@@ -56,6 +57,7 @@ export class PublicDir {
         }
       }),
     )
+    console.log(this.files)
   }
 
   async fetch({ parsedUrl, request }: { parsedUrl?: ParsedUrl; request: Request }): Promise<Response | undefined> {
