@@ -32,7 +32,8 @@ export class ClientBun {
   basepath: string
   indexHtml: string | null
   domRootElementId: string
-  port: number | null
+  port: number
+  hmrPort: number | null
   index: number
   logger: EngineLogger
   env: EngineOptionsEnvParsed
@@ -56,7 +57,8 @@ export class ClientBun {
     indexHtml: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
-    port: number | null
+    port: number
+    hmrPort: number | null
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
@@ -80,6 +82,7 @@ export class ClientBun {
     this.distIndexHtmlContent = input.distIndexHtmlContent
     this.domRootElementId = input.domRootElementId
     this.port = input.port
+    this.hmrPort = input.hmrPort
     this.index = input.index
     this.logger = input.logger
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
@@ -100,7 +103,8 @@ export class ClientBun {
     publicDir: EngineOptionsPublicDirParsed
     indexHtml: string | null
     domRootElementId: string
-    port: number | null
+    port: number
+    hmrPort: number | null
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
@@ -112,7 +116,13 @@ export class ClientBun {
 
     const viteDevServer = !input.viteConfig
       ? null
-      : await createViteDevServer({ viteConfig: input.viteConfig, jiti, clientIndex: input.index })
+      : await createViteDevServer({
+          viteConfig: input.viteConfig,
+          jiti,
+          clientIndex: input.index,
+          port: input.port,
+          hmrPort: input.hmrPort,
+        })
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null

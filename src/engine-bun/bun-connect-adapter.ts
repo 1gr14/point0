@@ -6,13 +6,13 @@ export function bunConnectAdapter(connectApp: connect.Server) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
 
-    // Headers → node-style объект
+    // Headers → node-style object
     const reqHeaders: Record<string, string> = {}
     request.headers.forEach((value, key) => {
       reqHeaders[key.toLowerCase()] = value
     })
 
-    // Читаем тело один раз в Buffer, превращаем в Node-стрим
+    // Read body once into Buffer, turn into Node stream
     let bodyBuffer: Buffer | null = null
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       const arrayBuffer = await request.arrayBuffer()
@@ -42,13 +42,60 @@ export function bunConnectAdapter(connectApp: connect.Server) {
 
       const nodeRes: any = {
         statusCode: 200,
-        setHeader(name: string, value: string) {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
-          resHeaders.set(name, String(value))
+        statusMessage: 'OK',
+
+        // --- header helpers ---
+
+        setHeader(name: string, value: string | number | readonly string[]) {
+          const v = Array.isArray(value) ? value.join(', ') : String(value)
+          resHeaders.set(name, v)
         },
+
+        appendHeader(name: string, value: string | number | readonly string[]) {
+          const v = Array.isArray(value) ? value.join(', ') : String(value)
+          const existing = resHeaders.get(name)
+          if (existing != null && existing !== '') {
+            resHeaders.set(name, `${existing}, ${v}`)
+          } else {
+            resHeaders.set(name, v)
+          }
+        },
+
         getHeader(name: string) {
           return resHeaders.get(name) ?? undefined
         },
+
+        removeHeader(name: string) {
+          resHeaders.delete(name)
+        },
+
+        writeHead(
+          statusCode: number,
+          statusMessageOrHeaders?: string | http.OutgoingHttpHeaders,
+          maybeHeaders?: http.OutgoingHttpHeaders,
+        ) {
+          nodeRes.statusCode = statusCode
+
+          let headers: http.OutgoingHttpHeaders | undefined
+
+          if (typeof statusMessageOrHeaders === 'string') {
+            nodeRes.statusMessage = statusMessageOrHeaders
+            headers = maybeHeaders
+          } else {
+            headers = statusMessageOrHeaders
+          }
+
+          if (headers) {
+            for (const [key, value] of Object.entries(headers)) {
+              if (value != null) {
+                nodeRes.setHeader(key, value as any)
+              }
+            }
+          }
+        },
+
+        // --- body writing ---
+
         write(chunk: any) {
           if (typeof chunk === 'string') {
             chunks.push(Buffer.from(chunk))
@@ -60,12 +107,14 @@ export function bunConnectAdapter(connectApp: connect.Server) {
             chunks.push(Buffer.from(String(chunk)))
           }
         },
+
         end(chunk?: any) {
-          if (chunk) this.write(chunk)
+          if (chunk) nodeRes.write(chunk)
           const body = Buffer.concat(chunks)
           resolve(
             new Response(body, {
               status: nodeRes.statusCode ?? 200,
+              // statusText is not used by most node code, so omit
               headers: resHeaders,
             }),
           )
@@ -81,7 +130,6 @@ export async function bunResponseToConnectResponse(upstream: Response, res: http
   // status
   res.statusCode = upstream.status
   if (upstream.statusText) {
-    // optional: only if you care about statusText
     res.statusMessage = upstream.statusText
   }
 
@@ -100,7 +148,6 @@ export async function bunResponseToConnectResponse(upstream: Response, res: http
   }
 
   for await (const chunk of body as any) {
-    // chunk is Uint8Array | Buffer | string-like
     if (typeof chunk === 'string') {
       res.write(chunk)
     } else {
@@ -142,7 +189,7 @@ export async function connectRequestToBunRequest(req: http.IncomingMessage): Pro
     }
   }
 
-  // content-length пусть пересчитает Bun / fetch сам
+  // content-length — пусть пересчитает Bun / fetch сам
   headers.delete('content-length')
   headers.delete('Content-Length')
 
@@ -168,16 +215,14 @@ export async function connectRequestToBunRequest(req: http.IncomingMessage): Pro
     })
 
     if (bodyBuffer) {
-      bodyInit = new Uint8Array(bodyBuffer) // Uint8Array входит в BodyInit
+      bodyInit = new Uint8Array(bodyBuffer) // Uint8Array ∈ BodyInit
     }
   }
 
   // --- create Bun/Web Request ---
-  const bunRequest = new Request(fullUrl, {
+  return new Request(fullUrl, {
     method,
     headers,
     body: bodyInit,
   })
-
-  return bunRequest
 }

@@ -1,4 +1,4 @@
-import type { RequiredCtx } from '../core/types.js'
+import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
@@ -44,6 +44,7 @@ export class EngineBun {
     )
 
     server.clients = clients
+    server.fallbackRootId ||= clients.at(0)?.points.root._rootId || server.points.root._rootId
 
     return new EngineBun({ clients, server, logger: parsedInput.general.logger, eversion })
   }

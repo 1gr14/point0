@@ -174,10 +174,14 @@ export const createViteDevServer = async ({
   viteConfig,
   jiti,
   clientIndex,
+  port,
+  hmrPort,
 }: {
   viteConfig: EngineOptionsViteConfig
   jiti: Jiti
   clientIndex: number | null
+  port: number
+  hmrPort: number | null
 }): Promise<ViteDevServer> => {
   const createServer = await import('vite').then((module) => module.createServer)
   const loadedViteConfig: LoadedViteConfig | undefined =
@@ -194,7 +198,20 @@ export const createViteDevServer = async ({
   return await createServer({
     ...loadedViteConfig,
     appType: 'custom',
-    server: { ...loadedViteConfig.server, middlewareMode: true },
+    server: {
+      ...loadedViteConfig.server,
+      port,
+      middlewareMode: true,
+      hmr:
+        loadedViteConfig.server?.hmr === false
+          ? false
+          : hmrPort === null
+            ? false
+            : {
+                ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+                port: hmrPort,
+              },
+    },
   })
 }
 
