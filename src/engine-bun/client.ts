@@ -17,7 +17,7 @@ import { renderAppAsReadableStream } from '../engine-shared/render.js'
 import { bunConnectAdapter, bunResponseToConnectResponse, connectRequestToBunRequest } from './bun-connect-adapter.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
-import { createFreshPoints, createJitiInstance, createViteDevServer } from './utils.js'
+import { createFreshPoints, createJitiInstance, createViteDevServer } from '../engine-shared/utils.js'
 
 export class ClientBun {
   eversion: Eversion
@@ -104,9 +104,11 @@ export class ClientBun {
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
   }): Promise<ClientBun> {
-    const viteDevServer = !input.viteConfig ? null : await createViteDevServer({ viteConfig: input.viteConfig })
-
     const jiti = createJitiInstance(`client-${input.index}`)
+
+    const viteDevServer = !input.viteConfig
+      ? null
+      : await createViteDevServer({ viteConfig: input.viteConfig, jiti, clientIndex: input.index })
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null
@@ -242,13 +244,11 @@ export class ClientBun {
         }
         return appComponent
       } else {
-        const appComponent = (await this.jiti.import(this.appPath).then((module: any) => module.default)) as
-          | AppComponent
-          | undefined
+        const appComponent = await this.jiti.import(this.appPath, { default: true })
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appPath} for client "${this.points.root._rootId}"`)
         }
-        return appComponent
+        return appComponent as AppComponent
       }
     }
     throw new Error(`App not provided for client "${this.points.root._rootId}"`)

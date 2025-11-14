@@ -24,7 +24,7 @@ export type EngineOptionsEnv = string | Record<string, any> | Array<string | Rec
 export type EngineOptionsEnvParsed = Record<string, any>
 
 export type LoadedViteConfig = import('vite').UserConfig
-export type EngineOptionsViteConfig = LoadedViteConfig | ReturnType<typeof import('vite').defineConfig>
+export type EngineOptionsViteConfig = LoadedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
 
 export type EngineGeneralOptions = {
   fallbackRootId?: RootId
@@ -40,15 +40,15 @@ export type EngineServerOptions = {
 export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
   ssr?: boolean
-  app?: string | AppComponent
-  hostname?: string
-  basepath?: string
-  publicDir?: EngineOptionsPublicDir
-  indexHtml?: string
+  app?: string | AppComponent | null
+  hostname?: string | null
+  basepath?: string | null
+  publicDir?: EngineOptionsPublicDir | null
+  indexHtml?: string | null
   domRootElementId?: string
-  env?: EngineOptionsEnv
+  env?: EngineOptionsEnv | null
   port?: number | string
-  viteConfig?: EngineOptionsViteConfig
+  viteConfig?: EngineOptionsViteConfig | null
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions

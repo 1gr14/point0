@@ -6,7 +6,7 @@ import type { EngineLogger, EngineOptionsPublicDirParsed, EngineOptionsViteConfi
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
-import { createFreshPoints, createJitiInstance, createViteDevServer } from './utils.js'
+import { createFreshPoints, createJitiInstance, createViteDevServer } from '../engine-shared/utils.js'
 
 export class ServerBun {
   eversion: Eversion
@@ -54,9 +54,11 @@ export class ServerBun {
     clients: ClientBun[]
     // eversion: Eversion
   }): Promise<ServerBun> {
-    const viteDevServer = !input.viteConfig ? null : await createViteDevServer({ viteConfig: input.viteConfig })
-
     const jiti = createJitiInstance(`server`)
+
+    const viteDevServer = !input.viteConfig
+      ? null
+      : await createViteDevServer({ viteConfig: input.viteConfig, jiti, clientIndex: null })
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null

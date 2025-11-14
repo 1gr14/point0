@@ -1,6 +1,57 @@
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 
+// export const responseWithWrappers = ({
+//   response,
+//   onResponse,
+//   generalOnResponse,
+// }: {
+//   response: Response
+//   onResponse: ((response: Response) => Response) | undefined
+//   generalOnResponse: ((response: Response) => Response) | undefined
+// }): Response => {
+//   if (generalOnResponse) {
+//     response = generalOnResponse(response)
+//   }
+//   if (onResponse) {
+//     response = onResponse(response)
+//   }
+//   return response
+// }
+
+// export const mergeWrapResponseFns = (wrapResponseFns: WrapResponseFn[]): WrapResponseFn => {
+//   return async ({ request, response }) => {
+//     for (const wrapResponseFn of wrapResponseFns) {
+//       response = await wrapResponseFn({ request, response })
+//     }
+//     return response
+//   }
+// }
+
+// export const mergeWrapRequestFns = (wrapRequestFns: WrapRequestFn[]): WrapRequestFn => {
+//   // const seen = new Set<WrapRequestFn>()
+//   return async ({ request }) => {
+//     for (const wrapRequestFn of wrapRequestFns) {
+//       // if (seen.has(wrapRequestFn)) {
+//       //   continue
+//       // }
+//       // seen.add(wrapRequestFn)
+//       const response = await wrapRequestFn({ request })
+//       if (response) {
+//         return response
+//       }
+//     }
+//     return undefined
+//   }
+// }
+
+import type { Jiti } from 'jiti'
+import { createJiti } from 'jiti'
+import type { ViteDevServer } from 'vite'
+import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
+import { Points } from '../core/points.js'
+import type { EngineOptionsViteConfig, LoadedViteConfig } from '../engine-shared/config.js'
+
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
     return undefined
@@ -110,46 +161,68 @@ export const isPathnameUnderBasepath = (pathname: string, basepath: string | und
   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
 }
 
-// export const responseWithWrappers = ({
-//   response,
-//   onResponse,
-//   generalOnResponse,
-// }: {
-//   response: Response
-//   onResponse: ((response: Response) => Response) | undefined
-//   generalOnResponse: ((response: Response) => Response) | undefined
-// }): Response => {
-//   if (generalOnResponse) {
-//     response = generalOnResponse(response)
-//   }
-//   if (onResponse) {
-//     response = onResponse(response)
-//   }
-//   return response
-// }
+export const createJitiInstance = (name: string) =>
+  createJiti(name, {
+    cache: false,
+    interopDefault: true,
+    moduleCache: false,
+    fsCache: false,
+    extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs'],
+  })
 
-// export const mergeWrapResponseFns = (wrapResponseFns: WrapResponseFn[]): WrapResponseFn => {
-//   return async ({ request, response }) => {
-//     for (const wrapResponseFn of wrapResponseFns) {
-//       response = await wrapResponseFn({ request, response })
-//     }
-//     return response
-//   }
-// }
+export const createViteDevServer = async ({
+  viteConfig,
+  jiti,
+  clientIndex,
+}: {
+  viteConfig: EngineOptionsViteConfig
+  jiti: Jiti
+  clientIndex: number | null
+}): Promise<ViteDevServer> => {
+  const createServer = await import('vite').then((module) => module.createServer)
+  const loadedViteConfig: LoadedViteConfig | undefined =
+    typeof viteConfig === 'function'
+      ? await viteConfig({ command: 'serve', mode: process.env.NODE_ENV || 'development' })
+      : typeof viteConfig === 'string'
+        ? await jiti.import(viteConfig, { default: true })
+        : await viteConfig
+  if (!loadedViteConfig) {
+    throw new Error(
+      `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
+    )
+  }
+  return await createServer({
+    ...loadedViteConfig,
+    appType: 'custom',
+    server: { ...loadedViteConfig.server, middlewareMode: true },
+  })
+}
 
-// export const mergeWrapRequestFns = (wrapRequestFns: WrapRequestFn[]): WrapRequestFn => {
-//   // const seen = new Set<WrapRequestFn>()
-//   return async ({ request }) => {
-//     for (const wrapRequestFn of wrapRequestFns) {
-//       // if (seen.has(wrapRequestFn)) {
-//       //   continue
-//       // }
-//       // seen.add(wrapRequestFn)
-//       const response = await wrapRequestFn({ request })
-//       if (response) {
-//         return response
-//       }
-//     }
-//     return undefined
-//   }
-// }
+export const createFreshPoints = async ({
+  providedPoints,
+  pointsPath,
+  viteDevServer,
+  jiti,
+  clientIndex,
+}: {
+  providedPoints: Points | null
+  pointsPath: string | null
+  viteDevServer: ViteDevServer | null
+  jiti: Jiti
+  clientIndex: number | null
+}): Promise<Points> => {
+  if (providedPoints) {
+    return providedPoints
+  }
+  if (pointsPath) {
+    if (viteDevServer) {
+      return await Points.read(
+        pointsPath,
+        async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
+      )
+    } else {
+      return await Points.read(pointsPath, async (absPath) => await jiti.import(absPath))
+    }
+  }
+  throw new Error(`Points not provided for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`)
+}
