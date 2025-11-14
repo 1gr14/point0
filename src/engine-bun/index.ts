@@ -1,8 +1,8 @@
-import type { RequiredCtx, RootId } from '../core/types.js'
+import type { Eversion } from '../core/eversion.js'
+import type { RequiredCtx } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
-import type { Eversion } from '../core/eversion.js'
 
 export class EngineBun {
   clients: ClientBun[]

@@ -172,6 +172,7 @@ export class SuperStore {
   // }
 
   static get<TValue = unknown>(key: string): TValue {
+    console.log('get', key)
     const state = SuperStore.getState()
     const configItem = SuperStore.config[key] as SuperStoreConfigItem | undefined
     if (!configItem) {
@@ -186,6 +187,7 @@ export class SuperStore {
       if (!configItem.hydrate) {
         throw new Error(`Key "${key}" is dehydrated but no hydrate function is defined`)
       }
+      console.log('get', key, 'dehydratedValue', dehydratedValue)
       const hydratedValue = configItem.hydrate(dehydratedValue, configItem.init)
       state[key] = hydratedValue
       return hydratedValue as TValue

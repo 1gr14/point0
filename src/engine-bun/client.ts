@@ -18,6 +18,8 @@ import { bunConnectAdapter, bunResponseToConnectResponse, connectRequestToBunReq
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
 import { createFreshPoints, createJitiInstance, createViteDevServer } from '../engine-shared/utils.js'
+import express, { type Express } from 'express'
+import { bunExpressAdapter, bunResponseToExpressResponse, expressRequestToBunRequest } from './bun-express-adapter.js'
 
 export class ClientBun {
   cwd: string
@@ -41,6 +43,8 @@ export class ClientBun {
   distIndexHtmlContent: string | null
   server: ServerBun
   bunDevServer: Bun.Server<unknown> | null
+  connectDevServer: connect.Server | null
+  expressDevServer: Express | null
   viteDevServer: ViteDevServer | null
   jiti: Jiti
 
@@ -90,6 +94,8 @@ export class ClientBun {
     this.viteDevServer = input.viteDevServer
     this.server = input.server
     this.bunDevServer = null
+    this.connectDevServer = null
+    this.expressDevServer = null
     this.jiti = input.jiti
   }
 
@@ -160,7 +166,7 @@ export class ClientBun {
     return client
   }
 
-  private async serveViaNativeBunDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+  private async serveViaBunNativeDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
     if (!this.port) {
       throw new Error(`Port is not set for client "${this.points.root._rootId}"`)
     }
@@ -183,7 +189,7 @@ export class ClientBun {
     })
   }
 
-  private async serveViaConnectedViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+  private async serveViaBunConnectViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
     if (!this.port) {
       throw new Error(
         `Can not serve via connected Vite dev server because port is not set for client "${this.points.root._rootId}". Please provide port in engine options.`,
@@ -197,8 +203,17 @@ export class ClientBun {
 
     const connectApp = connect()
     connectApp.use(this.viteDevServer.middlewares)
-    connectApp.use((connectRequest, connectResponse) => {
+    connectApp.use((req, res) => {
+      if (!res.headersSent && !res.writableEnded) {
+        res.statusCode = 404
+        res.end('Not Found')
+      }
+    })
+    connectApp.use((connectRequest, connectResponse, next) => {
       void (async () => {
+        if (connectResponse.headersSent || connectResponse.writableEnded) {
+          return
+        }
         try {
           const request = await connectRequestToBunRequest(connectRequest)
           const response = await this.server.fetch({ request, requiredCtx, rootId: this.points.root._rootId })
@@ -217,11 +232,127 @@ export class ClientBun {
     })
   }
 
+  private async serveViaConnectViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+    if (!this.port) {
+      throw new Error(
+        `Can not serve via connected Vite dev server because port is not set for client "${this.points.root._rootId}". Please provide port in engine options.`,
+      )
+    }
+    if (!this.viteDevServer) {
+      throw new Error(
+        `Vite dev server is not connected for client "${this.points.root._rootId}". Please provide viteConfig in engine options.`,
+      )
+    }
+
+    const connectApp = connect()
+    connectApp.use(this.viteDevServer.middlewares)
+    connectApp.use((connectRequest, connectResponse, next) => {
+      void (async () => {
+        if (connectResponse.headersSent || connectResponse.writableEnded) {
+          return
+        }
+        try {
+          const request = await connectRequestToBunRequest(connectRequest)
+          const response = await this.server.fetch({ request, requiredCtx, rootId: this.points.root._rootId })
+          await bunResponseToConnectResponse(response, connectResponse)
+        } catch (error) {
+          this.logger.error(error)
+          connectResponse.statusCode = 500
+          connectResponse.setHeader('content-type', 'text/plain')
+          connectResponse.end(`Internal Server Error: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })()
+    })
+    connectApp.use((req, res) => {
+      if (!res.headersSent && !res.writableEnded) {
+        res.statusCode = 404
+        res.end('Not Found')
+      }
+    })
+    connectApp.listen(this.port)
+    this.connectDevServer = connectApp
+  }
+
+  private async serveViaBunExpressViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+    if (!this.port) {
+      throw new Error(
+        `Can not serve via connected Vite dev server because port is not set for client "${this.points.root._rootId}". Please provide port in engine options.`,
+      )
+    }
+    if (!this.viteDevServer) {
+      throw new Error(
+        `Vite dev server is not connected for client "${this.points.root._rootId}". Please provide viteConfig in engine options.`,
+      )
+    }
+
+    const expressApp = express()
+    expressApp.use(this.viteDevServer.middlewares)
+    expressApp.use((expressRequest, expressResponse, next) => {
+      void (async () => {
+        if (expressResponse.headersSent || expressResponse.writableEnded) {
+          return
+        }
+        try {
+          const request = await expressRequestToBunRequest(expressRequest)
+          const response = await this.server.fetch({ request, requiredCtx, rootId: this.points.root._rootId })
+          await bunResponseToExpressResponse(response, expressResponse)
+        } catch (error) {
+          this.logger.error(error)
+          expressResponse.statusCode = 500
+          expressResponse.setHeader('content-type', 'text/plain')
+          expressResponse.end(`Internal Server Error: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })()
+    })
+    this.bunDevServer = Bun.serve({
+      port: this.port,
+      fetch: bunExpressAdapter(expressApp),
+    })
+  }
+
+  private async serveViaExpressViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+    if (!this.port) {
+      throw new Error(
+        `Can not serve via connected Vite dev server because port is not set for client "${this.points.root._rootId}". Please provide port in engine options.`,
+      )
+    }
+    if (!this.viteDevServer) {
+      throw new Error(
+        `Vite dev server is not connected for client "${this.points.root._rootId}". Please provide viteConfig in engine options.`,
+      )
+    }
+
+    const expressApp = express()
+    expressApp.use(this.viteDevServer.middlewares)
+    expressApp.use((expressRequest, expressResponse, next) => {
+      void (async () => {
+        if (expressResponse.headersSent || expressResponse.writableEnded) {
+          return
+        }
+        try {
+          const request = await expressRequestToBunRequest(expressRequest)
+          const response = await this.server.fetch({ request, requiredCtx, rootId: this.points.root._rootId })
+          await bunResponseToExpressResponse(response, expressResponse)
+        } catch (error) {
+          this.logger.error(error)
+          expressResponse.statusCode = 500
+          expressResponse.setHeader('content-type', 'text/plain')
+          expressResponse.end(`Internal Server Error: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })()
+    })
+    expressApp.listen(this.port)
+    this.expressDevServer = expressApp
+  }
+
   async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
     if (this.viteDevServer) {
-      await this.serveViaConnectedViteDevServer({ requiredCtx })
+      // await this.serveViaBunConnectViteDevServer({ requiredCtx })
+      await this.serveViaConnectViteDevServer({ requiredCtx })
+      // await this.serveViaBunExpressViteDevServer({ requiredCtx })
+      // await this.serveViaExpressViteDevServer({ requiredCtx })
     } else {
-      await this.serveViaNativeBunDevServer({ requiredCtx })
+      await this.serveViaBunNativeDevServer({ requiredCtx })
     }
   }
 
