@@ -7,6 +7,13 @@ import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
+// import icon from '../assets/icon.svg'
+import iconRaw from '../assets/icon.svg' with { type: 'text' }
+import { Svg } from '../lib/svg.js'
+// import { Svg } from '../lib/svg.js'
+
+// const IconText = ``
+// const IconUsual = ``
 
 // const something = SuperStore.define('something', () => {
 //   return {
@@ -93,6 +100,15 @@ export default generalLayout
         <p>Y.test: {y.test}</p>
         <p>Y.shmest: {y.shmest}</p>
         <p>Discover and share innovative ideas that can change the world!</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0' }}>
+          {/* <IconUsual /> */}
+
+          {/* <img src={icon} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
+          {/* <img src={IconUsual} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
+          {/* <div dangerouslySetInnerHTML={{ __html: icon }} /> */}
+          <Svg src={iconRaw} />
+          {/* <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span> */}
+        </div>
         <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />
         <nav>
           <Link to="/ideas">Browse Ideas</Link>

@@ -1,14 +1,23 @@
-appPath — app: string | App, points: string | LazyPointsModule, indexHtml just one not for src and dist different
-vite client uses express for hmr in dev mode, in prod mode it just uses dist files
+basic build, check what is 0.43 mb in client build 
+use dist dir as public dir
+fix dist client not found
+
+vite build
+vite remove unused helpers
+
+move vite things to somewehere so it not built
+
+assets on ssr normalize → renderToString and then parse all absoulte paths, create tem indexhtml with them import it and check paths
+or maybe build client always, and use dist-dev files in engine options. it can help use vite
 
 wouter → dir to root
 server → server-shared
-head on ssr should also just stored in super store, not needed to extract it additionally
+
 bun/server → server-bun → dir to root
 each client should have it own process and it own envs
 ? server-bun split to files
 config + cli
-what is 'use client'
+
 super store → eversion store, and also if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
 onReq onRes normalize, make more straight forward
 lets static relative to config dir, .lets('static', 'public').static(({glob, cwd}) => Record<route, abs | () => Response>() | [cwd, 'glob/relative/to/config-or-root/**/*'] | [cwd, 'glob/**/*'[]] )
@@ -19,6 +28,7 @@ vite
 rename super store to eversion store
 on fetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
 
+head on ssr should also just stored in super store, not needed to extract it additionally
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
@@ -56,6 +66,7 @@ preventSsr
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
+what is 'use client'
 no root
 Unieind and hero ui right inside examples
 simplify renderer

@@ -188,6 +188,7 @@ export async function bunResponseToExpressResponse(upstream: Response, res: expr
 
 // Express.Request → Bun/Web Request
 export async function expressRequestToBunRequest(req: express.Request): Promise<Request> {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const method = req.method ?? 'GET'
 
   const headers = new Headers()
@@ -197,6 +198,7 @@ export async function expressRequestToBunRequest(req: express.Request): Promise<
     if (Array.isArray(value)) {
       headers.set(key, value.join(', '))
     } else if (value != null) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
       headers.set(key, String(value))
     }
   }
@@ -204,8 +206,7 @@ export async function expressRequestToBunRequest(req: express.Request): Promise<
   headers.delete('content-length')
   headers.delete('Content-Length')
 
-  const hostHeader =
-    (req.headers['x-forwarded-host'] as string | undefined) ?? (req.headers.host as string | undefined) ?? 'localhost'
+  const hostHeader = (req.headers['x-forwarded-host'] as string | undefined) ?? req.headers.host ?? 'localhost'
 
   const protoHeader =
     ((req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0]?.trim() ??
@@ -213,6 +214,7 @@ export async function expressRequestToBunRequest(req: express.Request): Promise<
       ? 'https'
       : 'http'
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const fullUrl = `${protoHeader}://${hostHeader}${req.url ?? '/'}`
 
   let bodyInit: BodyInit | undefined = undefined
