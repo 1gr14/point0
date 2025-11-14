@@ -161,10 +161,16 @@ export const parseEngineServerOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   return {
-    points: typeof serverOptions.points === 'string' ? serverOptions.points : Points.create(serverOptions.points),
+    points:
+      typeof serverOptions.points === 'string'
+        ? toAbsPath(generalOptionsParsed.cwd, serverOptions.points)
+        : Points.create(serverOptions.points),
     port: typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
-    viteConfig: serverOptions.viteConfig ?? null,
+    viteConfig:
+      typeof serverOptions.viteConfig === 'string'
+        ? toAbsPath(generalOptionsParsed.cwd, serverOptions.viteConfig)
+        : (serverOptions.viteConfig ?? null),
   }
 }
 const parseEngineClientOptions = ({
@@ -179,7 +185,10 @@ const parseEngineClientOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineClientOptionsParsed => {
   return {
-    points: typeof clientOptions.points === 'string' ? clientOptions.points : Points.create(clientOptions.points),
+    points:
+      typeof clientOptions.points === 'string'
+        ? toAbsPath(generalOptionsParsed.cwd, clientOptions.points)
+        : Points.create(clientOptions.points),
     ssr: clientOptions.ssr ?? false,
     app: clientOptions.app ?? null,
     hostname: clientOptions.hostname ?? null,
@@ -190,7 +199,10 @@ const parseEngineClientOptions = ({
     port: typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1,
     index,
     env: parseEnv(clientOptions.env ?? {}),
-    viteConfig: clientOptions.viteConfig ?? null,
+    viteConfig:
+      typeof clientOptions.viteConfig === 'string'
+        ? toAbsPath(generalOptionsParsed.cwd, clientOptions.viteConfig)
+        : (clientOptions.viteConfig ?? null),
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
