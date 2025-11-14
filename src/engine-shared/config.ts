@@ -76,7 +76,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   points: Points | string
-  publicDir: EngineOptionsPublicDirParsed | null
+  publicDir: EngineOptionsPublicDirParsed
   port: number
   viteConfig: EngineOptionsViteConfig | null
 }

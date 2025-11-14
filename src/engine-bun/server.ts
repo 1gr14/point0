@@ -1,15 +1,18 @@
-import type { Eversion } from '../core/eversion.js'
+import { Eversion } from '../core/eversion.js'
 import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import type { EngineLogger, EngineOptionsPublicDirParsed } from '../engine-shared/config.js'
+import type { EngineLogger, EngineOptionsPublicDirParsed, EngineOptionsViteConfig } from '../engine-shared/config.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
+import { createFreshPoints, createJitiInstance, createViteDevServer } from './utils.js'
 
 export class ServerBun {
   eversion: Eversion
   points: Points
+  pointsPath: string | null
+  providedPoints: Points | null
   port: number
   clients: ClientBun[]
   logger: EngineLogger
@@ -20,6 +23,8 @@ export class ServerBun {
 
   private constructor(input: {
     points: Points
+    pointsPath: string | null
+    providedPoints: Points | null
     port: number
 
     fallbackRootId: RootId
@@ -30,6 +35,8 @@ export class ServerBun {
   }) {
     this.eversion = input.eversion
     this.points = input.points
+    this.pointsPath = input.pointsPath
+    this.providedPoints = input.providedPoints
     this.port = input.port
     this.clients = input.clients
     this.logger = input.logger
@@ -38,23 +45,45 @@ export class ServerBun {
   }
 
   static async create(input: {
-    points: Points
+    points: Points | string
+    viteConfig: EngineOptionsViteConfig | null
     port: number
     publicDir: EngineOptionsPublicDirParsed
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
-    eversion: Eversion
+    // eversion: Eversion
   }): Promise<ServerBun> {
+    const viteDevServer = !input.viteConfig ? null : await createViteDevServer({ viteConfig: input.viteConfig })
+
+    const jiti = createJitiInstance(`server`)
+
+    const providedPoints = typeof input.points === 'string' ? null : input.points
+    const pointsPath = typeof input.points === 'string' ? input.points : null
+    const points = await createFreshPoints({
+      providedPoints,
+      pointsPath,
+      viteDevServer,
+      jiti,
+      clientIndex: null,
+    })
+
+    const eversion = await Eversion.create({ points })
+
     const publicDir = await PublicDir.create({
       hostname: null,
       definition: input.publicDir,
-      root: input.points.root,
-      eversion: input.eversion,
+      root: points.root,
+      eversion,
     })
+
     const server = new ServerBun({
       ...input,
+      points,
+      pointsPath,
+      providedPoints,
       publicDir,
+      eversion,
     })
     return server
   }

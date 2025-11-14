@@ -1,14 +1,11 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import connect from 'connect'
 import type { Jiti } from 'jiti'
-import { createJiti } from 'jiti'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
-import { createServer as createViteDevServer } from 'vite'
 import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
 import type { AppComponent } from '../core/mount.js'
-import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
-import { Points } from '../core/points.js'
+import type { Points } from '../core/points.js'
 import type { AnyPoint, InputParsed, RequiredCtx } from '../core/types.js'
 import type {
   EngineLogger,
@@ -20,6 +17,7 @@ import { renderAppAsReadableStream } from '../engine-shared/render.js'
 import { bunConnectAdapter, bunResponseToConnectResponse, connectRequestToBunRequest } from './bun-connect-adapter.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
+import { createFreshPoints, createJitiInstance, createViteDevServer } from './utils.js'
 
 export class ClientBun {
   eversion: Eversion
@@ -106,21 +104,13 @@ export class ClientBun {
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
   }): Promise<ClientBun> {
-    const viteDevServer = !input.viteConfig
-      ? null
-      : await ClientBun.createViteDevServer({ viteConfig: input.viteConfig })
+    const viteDevServer = !input.viteConfig ? null : await createViteDevServer({ viteConfig: input.viteConfig })
 
-    const jiti = createJiti(`client-${input.index}`, {
-      cache: false,
-      interopDefault: true,
-      moduleCache: false,
-      fsCache: false,
-      extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs'],
-    })
+    const jiti = createJitiInstance(`client-${input.index}`)
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null
-    const points = await ClientBun.createPoints({
+    const points = await createFreshPoints({
       providedPoints,
       pointsPath,
       viteDevServer,
@@ -153,22 +143,6 @@ export class ClientBun {
       jiti,
     })
     return client
-  }
-
-  private static async createViteDevServer({
-    viteConfig,
-  }: {
-    viteConfig: EngineOptionsViteConfig
-  }): Promise<ViteDevServer> {
-    const loadedViteConfig =
-      typeof viteConfig === 'function'
-        ? await viteConfig({ command: 'serve', mode: process.env.NODE_ENV || 'development' })
-        : await viteConfig
-    return await createViteDevServer({
-      ...loadedViteConfig,
-      appType: 'custom',
-      server: { ...loadedViteConfig.server, middlewareMode: true },
-    })
   }
 
   private async serveViaNativeBunDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
@@ -236,28 +210,6 @@ export class ClientBun {
     }
   }
 
-  // async fetch({
-  //   parsedUrl,
-  //   request,
-  //   requiredCtx,
-  // }: {
-  //   parsedUrl?: ParsedUrl
-  //   request: Request
-  //   requiredCtx: RequiredCtx
-  // }): Promise<Response> {
-  //   return await engineFetch({
-  //     server: this.server,
-  //     clients: [this],
-  //     eversion: this.eversion,
-  //     request,
-  //     parsedUrl,
-  //     fallbackRootId: this.points.root._rootId,
-  //     rootId: this.points.root._rootId,
-  //     requiredCtx,
-  //     logger: this.logger,
-  //   })
-  // }
-
   async getOriginalIndexHtml(url: string): Promise<string> {
     if (!this.indexHtml) {
       throw new Error(`indexHtml not found for client "${this.points.root._rootId}"`)
@@ -300,35 +252,6 @@ export class ClientBun {
       }
     }
     throw new Error(`App not provided for client "${this.points.root._rootId}"`)
-  }
-
-  static async createPoints({
-    providedPoints,
-    pointsPath,
-    viteDevServer,
-    jiti,
-    clientIndex,
-  }: {
-    providedPoints: Points | null
-    pointsPath: string | null
-    viteDevServer: ViteDevServer | null
-    jiti: Jiti
-    clientIndex: number
-  }): Promise<Points> {
-    if (providedPoints) {
-      return providedPoints
-    }
-    if (pointsPath) {
-      if (viteDevServer) {
-        return await Points.read(
-          pointsPath,
-          async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
-        )
-      } else {
-        return await Points.read(pointsPath, async (absPath) => await jiti.import(absPath))
-      }
-    }
-    throw new Error(`Points not provided for client at position "${clientIndex}"`)
   }
 
   async renderAsReadableStream({
