@@ -100,15 +100,84 @@ export class ServerBun {
   async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
     this.bunServer = Bun.serve({
       port: this.port,
-      fetch: async (request) => {
-        for (const client of this.clients) {
-          const response = await client.fetchViteMiddleware(request)
-          if (response) {
-            return response
+      fetch: async (request, server) => {
+        const parsedUrl = parseUrl(request.url)
+
+        if (process.env.NODE_ENV !== 'production') {
+          for (const client of this.clients) {
+            const bunDevServerUpgradeWebSocketResult = await client.upgradeBunDevServerWebSocket(
+              request,
+              server,
+              parsedUrl,
+            )
+            if (bunDevServerUpgradeWebSocketResult) {
+              return bunDevServerUpgradeWebSocketResult.result
+            }
+            const viteDevServerResponse = await client.fetchViteDevServerMiddleware(request, parsedUrl)
+            if (viteDevServerResponse) {
+              return viteDevServerResponse
+            }
+            const bunDevServerResponse = await client.fetchBunDevServerMiddleware(request, parsedUrl)
+            if (bunDevServerResponse) {
+              return bunDevServerResponse
+            }
           }
         }
-        const parsedUrl = parseUrl(request.url)
+
         return await this.fetch({ parsedUrl, request, requiredCtx })
+      },
+      websocket: {
+        open(ws) {
+          if (process.env.NODE_ENV !== 'production') {
+            // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
+            const data = ws.data as { wsUrl?: string; upstream?: WebSocket }
+            if (!data.wsUrl) {
+              return
+            }
+
+            // Connect to upstream WebSocket when client connects
+            const upstream = new WebSocket(data.wsUrl)
+
+            upstream.onopen = () => {
+              // Store upstream reference in ws data
+              data.upstream = upstream
+            }
+
+            upstream.onmessage = (event) => {
+              // Forward messages from upstream to client
+              ws.send(event.data)
+            }
+
+            upstream.onclose = () => {
+              ws.close()
+            }
+
+            upstream.onerror = () => {
+              ws.close()
+            }
+
+            // Store upstream for later use
+            data.upstream = upstream
+          }
+        },
+        message(ws, message) {
+          // Forward messages from client to upstream (only for proxied connections)
+          if (process.env.NODE_ENV !== 'production') {
+            const data = ws.data as { upstream?: WebSocket }
+            if (data.upstream && data.upstream.readyState === WebSocket.OPEN) {
+              data.upstream.send(message)
+            }
+          }
+        },
+        close(ws) {
+          if (process.env.NODE_ENV !== 'production') {
+            // Clean up upstream connection when client disconnects
+            const data = ws.data as { upstream?: WebSocket }
+            if (data.upstream) {
+              data.upstream.close()
+            }
+          }
+        },
       },
     })
   }

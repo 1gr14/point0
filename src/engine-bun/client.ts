@@ -5,7 +5,7 @@ import type { ViteDevServer } from 'vite'
 import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
 import type { AppComponent } from '../core/mount.js'
 import type { Points } from '../core/points.js'
-import type { AnyPoint, InputParsed, RequiredCtx } from '../core/types.js'
+import type { AnyPoint, InputParsed } from '../core/types.js'
 import type {
   EngineLogger,
   EngineOptionsEnvParsed,
@@ -16,6 +16,8 @@ import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-share
 import { createFreshPoints, createViteDevServer } from '../engine-shared/utils.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
+import type { ParsedUrl } from '../core/utils.js'
+import { parseUrl } from '../core/utils.js'
 
 export class ClientBun {
   cwd: string
@@ -64,6 +66,7 @@ export class ClientBun {
     publicDir: PublicDir
     eversion: Eversion
     viteDevServer: ViteDevServer | null
+    bunDevServer: Bun.Server<unknown> | null
     server: ServerBun
   }) {
     this.cwd = input.cwd
@@ -87,8 +90,8 @@ export class ClientBun {
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
     this.publicDir = input.publicDir
     this.viteDevServer = input.viteDevServer
+    this.bunDevServer = input.bunDevServer
     this.server = input.server
-    this.bunDevServer = null
   }
 
   static async create(input: {
@@ -110,13 +113,14 @@ export class ClientBun {
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
   }): Promise<ClientBun> {
-    const viteDevServer = !input.viteConfig
-      ? null
-      : await createViteDevServer({
-          viteConfig: input.viteConfig,
-          clientIndex: input.index,
-          hmrPort: input.hmrPort,
-        })
+    const viteDevServer =
+      input.viteConfig && process.env.NODE_ENV !== 'production'
+        ? await createViteDevServer({
+            viteConfig: input.viteConfig,
+            clientIndex: input.index,
+            hmrPort: input.hmrPort,
+          })
+        : null
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null
@@ -126,6 +130,11 @@ export class ClientBun {
       viteDevServer,
       clientIndex: input.index,
     })
+
+    const bunDevServer =
+      input.indexHtml && !viteDevServer && process.env.NODE_ENV === 'development'
+        ? await ClientBun.createBunDevServer({ port: input.port, indexHtml: input.indexHtml })
+        : null
 
     const publicDir = await PublicDir.create({
       hostname: input.hostname,
@@ -147,73 +156,84 @@ export class ClientBun {
       appPath: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
       viteDevServer,
+      bunDevServer,
       server: input.server,
     })
+
     return client
   }
 
-  private async serveViaBunNativeDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
-    if (!this.port) {
-      throw new Error(`Port is not set for client "${this.points.root._rootId}"`)
-    }
-
-    const devIndexHtmlRoute =
-      this.indexHtml && process.env.NODE_ENV === 'development'
-        ? ({
-            '/development.index.html': await import(this.indexHtml).then((module) => module.default),
-          } as never)
-        : {}
-
-    this.bunDevServer = Bun.serve({
-      port: this.port,
+  private static async createBunDevServer({
+    port,
+    indexHtml,
+  }: {
+    port: number
+    indexHtml: string
+  }): Promise<Bun.Server<unknown>> {
+    return Bun.serve({
+      port,
       routes: {
-        ...devIndexHtmlRoute,
-        '/*': async (request) => {
-          return await this.server.fetch({ request, requiredCtx, rootId: this.points.root._rootId })
-        },
+        '/index.html': await import(indexHtml).then((module) => module.default),
       },
     })
   }
 
-  private async serveViaViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
-    if (!this.port) {
-      throw new Error(
-        `Can not serve via connected Vite dev server because port is not set for client "${this.points.root._rootId}". Please provide port in engine options.`,
-      )
+  async upgradeBunDevServerWebSocket(
+    request: Request,
+    server: Bun.Server<unknown>,
+    parsedUrl?: ParsedUrl,
+  ): Promise<{ result: Response | undefined } | undefined> {
+    if (!this.bunDevServer) {
+      return undefined
     }
-
-    const viteDevServer = this.viteDevServer
-    if (!viteDevServer) {
-      throw new Error(`Vite dev server not connected for client "${this.points.root._rootId}"`)
+    if (request.headers.get('upgrade') !== 'websocket') {
+      return undefined
     }
+    parsedUrl ??= parseUrl(request.url)
+    if (!parsedUrl.urlObj.pathname.startsWith('/_bun/')) {
+      return undefined
+    }
+    const bunDevServerWsUrl = `ws://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`
 
-    this.bunDevServer = Bun.serve({
-      port: this.port,
-      fetch: async (request) => {
-        const response = await this.fetchViteMiddleware(request)
-        if (response) {
-          return response
-        }
-        return await this.server.fetch({ request, requiredCtx, rootId: this.points.root._rootId })
-      },
+    // Upgrade the connection and store upstream URL in data
+    const upgraded = server.upgrade(request, {
+      data: { wsUrl: bunDevServerWsUrl },
     })
-  }
 
-  async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
-    if (this.viteConfig) {
-      await this.serveViaViteDevServer({ requiredCtx })
-    } else {
-      await this.serveViaBunNativeDevServer({ requiredCtx })
+    if (!upgraded) {
+      return { result: new Response('WebSocket upgrade failed', { status: 400 }) }
     }
+
+    // Return undefined to indicate WebSocket upgrade was successful
+    return { result: undefined }
   }
 
-  async fetchViteMiddleware(request: Request): Promise<Response | undefined> {
+  async fetchBunDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
+    const bunDevServer = this.bunDevServer
+    if (!bunDevServer) {
+      return undefined
+    }
+    parsedUrl ??= parseUrl(request.url)
+    const pathname = parsedUrl.urlObj.pathname
+    if (pathname.startsWith('/_bun/')) {
+      const bunDevServerUrl = `http://localhost:${this.port}${pathname}${parsedUrl.urlObj.search}`
+      return await fetch(bunDevServerUrl, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      })
+    }
+    return undefined
+  }
+
+  async fetchViteDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
     const viteDevServer = this.viteDevServer
     if (!viteDevServer) {
       return undefined
     }
     return await new Promise<Response | undefined>((resolve, reject) => {
-      const url = new URL(request.url)
+      parsedUrl ??= parseUrl(request.url)
+      const url = parsedUrl.urlObj
       const nodeReq = new Readable({
         read() {
           this.push(null)
@@ -337,12 +357,14 @@ export class ClientBun {
       throw new Error(`indexHtml not found for client "${this.points.root._rootId}"`)
     }
     if (process.env.NODE_ENV === 'development') {
-      if (!this.viteDevServer) {
-        return await fetch(`http://localhost:${this.port}/development.index.html`).then(
-          async (response) => await response.text(),
-        )
-      } else {
+      if (this.viteDevServer) {
         return await this.viteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
+      } else if (this.bunDevServer) {
+        return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
+      } else {
+        throw new Error(
+          `Vite dev server or bun dev server not connected for client "${this.points.root._rootId}". Please provide vite config or port for client "${this.points.root._rootId}".`,
+        )
       }
     }
     if (process.env.NODE_ENV === 'production') {

@@ -112,7 +112,7 @@
 //     const devIndexHtmlRoute =
 //       this.srcIndexHtml && process.env.NODE_ENV === 'development'
 //         ? ({
-//             '/development.index.html': await import(this.srcIndexHtml).then((module) => module.default),
+//             '/index.html': await import(this.srcIndexHtml).then((module) => module.default),
 //           } as never)
 //         : {}
 
@@ -164,7 +164,7 @@
 //       if (!this.srcIndexHtml) {
 //         throw new Error('srcIndexHtml not found')
 //       }
-//       return await fetch(`http://localhost:${this.port}/development.index.html`).then(
+//       return await fetch(`http://localhost:${this.port}/index.html`).then(
 //         async (response) => await response.text(),
 //       )
 //     }

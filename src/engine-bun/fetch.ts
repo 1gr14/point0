@@ -129,7 +129,6 @@ export const engineFetch = async ({
         } catch (error) {
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
-            logger.error(error, meta)
             const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
             return await wrapResponse({
               request,
