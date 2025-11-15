@@ -39,6 +39,7 @@ export class ClientBun {
   logger: EngineLogger
   env: EngineOptionsEnvParsed
   publicDir: PublicDir
+  distDir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
   bunDevServer: Bun.Server<unknown> | null
@@ -55,6 +56,7 @@ export class ClientBun {
     hostname: string | null
     basepath: string
     indexHtml: string | null
+    distDir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
@@ -89,6 +91,7 @@ export class ClientBun {
     this.logger = input.logger
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
     this.publicDir = input.publicDir
+    this.distDir = input.distDir
     this.viteDevServer = input.viteDevServer
     this.bunDevServer = input.bunDevServer
     this.server = input.server
@@ -102,6 +105,7 @@ export class ClientBun {
     hostname: string | null
     basepath: string
     publicDir: EngineOptionsPublicDirParsed
+    distDir: string | null
     indexHtml: string | null
     domRootElementId: string
     port: number
@@ -152,6 +156,7 @@ export class ClientBun {
       pointsPath,
       providedPoints,
       publicDir,
+      distDir: input.distDir,
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appPath: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
@@ -401,6 +406,14 @@ export class ClientBun {
     }
     throw new Error(`App not provided for client "${this.points.root._rootId}"`)
   }
+
+  async buildByViteForClient(): Promise<void> {}
+
+  async buildByViteForServer(): Promise<void> {}
+
+  async buildByBunForClient(): Promise<void> {}
+
+  async buildByBunForServer(): Promise<void> {}
 
   async renderAsReadableStream({
     eversionRun,

@@ -34,6 +34,7 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions = {
   points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
+  distDir?: string | null
   port?: number | string | null
   hmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
@@ -45,6 +46,7 @@ export type EngineClientOptions = {
   hostname?: string | null
   basepath?: string | null
   publicDir?: EngineOptionsPublicDir | null
+  distDir?: string | null
   indexHtml?: string | null
   domRootElementId?: string
   env?: EngineOptionsEnv | null
@@ -69,6 +71,7 @@ export type EngineClientOptionsParsed = {
   hostname: string | null
   basepath: string
   publicDir: EngineOptionsPublicDirParsed
+  distDir: string | null
   indexHtml: string | null
   env: EngineOptionsEnvParsed
   domRootElementId: string
@@ -80,6 +83,7 @@ export type EngineClientOptionsParsed = {
 export type EngineServerOptionsParsed = {
   points: Points | string
   publicDir: EngineOptionsPublicDirParsed
+  distDir: string | null
   port: number
   hmrPort: number
   viteConfig: EngineOptionsViteConfig | null
@@ -174,6 +178,7 @@ export const parseEngineServerOptions = ({
     port,
     hmrPort,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
+    distDir: serverOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, serverOptions.distDir) : null,
     viteConfig:
       typeof serverOptions.viteConfig === 'string'
         ? toAbsPath(generalOptionsParsed.cwd, serverOptions.viteConfig)
@@ -207,6 +212,7 @@ const parseEngineClientOptions = ({
     hostname: clientOptions.hostname ?? null,
     basepath: prependAndAppendSlash(clientOptions.basepath) || '/',
     publicDir: parsePublicDir(clientOptions.publicDir ?? [], generalOptionsParsed.cwd),
+    distDir: clientOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, clientOptions.distDir) : null,
     indexHtml: toAbsPath(generalOptionsParsed.cwd, clientOptions.indexHtml) ?? null,
     domRootElementId: clientOptions.domRootElementId || 'root',
     port,

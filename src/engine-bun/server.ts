@@ -19,6 +19,7 @@ export class ServerBun {
   clients: ClientBun[]
   logger: EngineLogger
   publicDir: PublicDir
+  distDir: string | null
   fallbackRootId: RootId
 
   bunServer: Bun.Server<unknown> | undefined
@@ -34,6 +35,7 @@ export class ServerBun {
     logger: EngineLogger
     clients: ClientBun[]
     publicDir: PublicDir
+    distDir: string | null
     eversion: Eversion
   }) {
     this.cwd = input.cwd
@@ -46,6 +48,7 @@ export class ServerBun {
     this.clients = input.clients
     this.logger = input.logger
     this.publicDir = input.publicDir
+    this.distDir = input.distDir
     this.fallbackRootId = input.fallbackRootId
   }
 
@@ -56,6 +59,7 @@ export class ServerBun {
     port: number
     hmrPort: number | null
     publicDir: EngineOptionsPublicDirParsed
+    distDir: string | null
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
