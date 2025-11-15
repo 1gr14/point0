@@ -48,7 +48,7 @@ import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
-import type { EngineOptionsViteConfig, LoadedViteConfig } from '../engine-shared/config.js'
+import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, LoadedViteConfig } from '../engine-shared/config.js'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -173,14 +173,16 @@ export const loadViteConfig = async ({
       : await viteConfig
 }
 
-export const createViteDevServerInternal = async ({
+export const createViteDevServer = async ({
   viteConfig,
   clientIndex,
-  viteInternalHmrPort,
+  hmrPort,
+  env,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   clientIndex: number | null
-  viteInternalHmrPort: number | null
+  hmrPort: number | null
+  env?: EngineOptionsEnvParsed
 }): Promise<ViteDevServer> => {
   if (!viteConfig) {
     throw new Error(
@@ -201,82 +203,45 @@ export const createViteDevServerInternal = async ({
       hmr:
         loadedViteConfig.server?.hmr === false
           ? false
-          : viteInternalHmrPort === null
+          : hmrPort === null
             ? false
             : {
                 ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-                port: viteInternalHmrPort,
+                port: hmrPort,
               },
     },
-  })
-}
-
-export const createViteDevServerExternal = async ({
-  viteConfig,
-  clientIndex,
-  viteExternalHmrPort,
-}: {
-  viteConfig: EngineOptionsViteConfig | null
-  clientIndex: number | null
-  viteExternalHmrPort: number | null
-}): Promise<ViteDevServer> => {
-  if (!viteConfig) {
-    throw new Error(
-      `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
-    )
-  }
-  const createServer = await import('vite').then((module) => module.createServer)
-  const loadedViteConfig: LoadedViteConfig = await loadViteConfig({
-    viteConfig,
-    command: 'serve',
-  })
-  return await createServer({
-    ...loadedViteConfig,
-    appType: 'custom',
-    server: {
-      ...loadedViteConfig.server,
-      middlewareMode: true,
-      hmr:
-        loadedViteConfig.server?.hmr === false
-          ? false
-          : viteExternalHmrPort === null
-            ? false
-            : {
-                ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-                port: viteExternalHmrPort,
-              },
+    define: {
+      ...loadedViteConfig.define,
+      ...Object.fromEntries(
+        Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+      ),
+      ...Object.fromEntries(
+        Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+      ),
     },
-    // define: {
-    //   ...Object.fromEntries(Object.entries(env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)])),
-    //   ...Object.fromEntries(
-    //     Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-    //   ),
-    // },
   })
 }
 
 export const createFreshPoints = async ({
   providedPoints,
   pointsPath,
-  viteDevServerInternal,
+  viteDevServer,
   clientIndex,
 }: {
   providedPoints: Points | null
   pointsPath: string | null
-  viteDevServerInternal: ViteDevServer | null
+  viteDevServer: ViteDevServer | null
   clientIndex: number | null
 }): Promise<Points> => {
   if (providedPoints) {
     return providedPoints
   }
   if (pointsPath) {
-    if (viteDevServerInternal) {
+    if (viteDevServer) {
       return await Points.read(
         pointsPath,
-        async (absPath) => (await viteDevServerInternal.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
+        async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
       )
-      // } else if (jiti) {
-      //   return await Points.read(pointsPath, async (absPath) => await jiti.import(absPath))
     } else {
       return Points.create((await import(pointsPath)) as LazyPointsModule | ReadyPointsModule)
     }

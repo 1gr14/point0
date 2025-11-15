@@ -1,6 +1,4 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type connect from 'connect'
-import type { Express } from 'express'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
@@ -14,7 +12,7 @@ import type {
   EngineOptionsViteConfig,
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
-import { createFreshPoints, createViteDevServerExternal, createViteDevServerInternal } from '../engine-shared/utils.js'
+import { createFreshPoints, createViteDevServer } from '../engine-shared/utils.js'
 import { callConnectMiddlewareWithBunRequest } from './bun-connect-middleware.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
@@ -33,8 +31,7 @@ export class ClientBun {
   indexHtml: string | null
   domRootElementId: string
   port: number
-  viteInternalHmrPort: number | null
-  viteExternalHmrPort: number | null
+  hmrPort: number | null
   viteConfig: EngineOptionsViteConfig | null
   index: number
   logger: EngineLogger
@@ -43,10 +40,7 @@ export class ClientBun {
   distIndexHtmlContent: string | null
   server: ServerBun
   bunDevServer: Bun.Server<unknown> | null
-  connectDevServer: connect.Server | null
-  expressDevServer: Express | null
-  viteDevServerExternal: ViteDevServer | null
-  viteDevServerInternal: ViteDevServer | null
+  viteDevServer: ViteDevServer | null
 
   private constructor(input: {
     cwd: string
@@ -62,15 +56,14 @@ export class ClientBun {
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
-    viteInternalHmrPort: number | null
-    viteExternalHmrPort: number | null
+    hmrPort: number | null
     viteConfig: EngineOptionsViteConfig | null
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     publicDir: PublicDir
     eversion: Eversion
-    viteDevServerInternal: ViteDevServer | null
+    viteDevServer: ViteDevServer | null
     server: ServerBun
   }) {
     this.cwd = input.cwd
@@ -87,19 +80,15 @@ export class ClientBun {
     this.distIndexHtmlContent = input.distIndexHtmlContent
     this.domRootElementId = input.domRootElementId
     this.port = input.port
-    this.viteInternalHmrPort = input.viteInternalHmrPort
-    this.viteExternalHmrPort = input.viteExternalHmrPort
+    this.hmrPort = input.hmrPort
     this.viteConfig = input.viteConfig
     this.index = input.index
     this.logger = input.logger
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
     this.publicDir = input.publicDir
-    this.viteDevServerInternal = input.viteDevServerInternal
+    this.viteDevServer = input.viteDevServer
     this.server = input.server
-    this.viteDevServerExternal = null
     this.bunDevServer = null
-    this.connectDevServer = null
-    this.expressDevServer = null
   }
 
   static async create(input: {
@@ -113,8 +102,7 @@ export class ClientBun {
     indexHtml: string | null
     domRootElementId: string
     port: number
-    viteInternalHmrPort: number | null
-    viteExternalHmrPort: number | null
+    hmrPort: number | null
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
@@ -122,12 +110,12 @@ export class ClientBun {
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
   }): Promise<ClientBun> {
-    const viteDevServerInternal = !input.viteConfig
+    const viteDevServer = !input.viteConfig
       ? null
-      : await createViteDevServerInternal({
+      : await createViteDevServer({
           viteConfig: input.viteConfig,
           clientIndex: input.index,
-          viteInternalHmrPort: input.viteInternalHmrPort,
+          hmrPort: input.hmrPort,
         })
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
@@ -135,7 +123,7 @@ export class ClientBun {
     const points = await createFreshPoints({
       providedPoints,
       pointsPath,
-      viteDevServerInternal,
+      viteDevServer,
       clientIndex: input.index,
     })
 
@@ -158,7 +146,7 @@ export class ClientBun {
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appPath: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
-      viteDevServerInternal,
+      viteDevServer,
       server: input.server,
     })
     return client
@@ -194,18 +182,15 @@ export class ClientBun {
       )
     }
 
-    const viteDevServerExternal = await createViteDevServerExternal({
-      viteConfig: this.viteConfig,
-      clientIndex: this.index,
-      viteExternalHmrPort: this.viteExternalHmrPort,
-    })
-
-    this.viteDevServerExternal = viteDevServerExternal
+    const viteDevServer = this.viteDevServer
+    if (!viteDevServer) {
+      throw new Error(`Vite dev server not connected for client "${this.points.root._rootId}"`)
+    }
 
     this.bunDevServer = Bun.serve({
       port: this.port,
       fetch: async (request) => {
-        const response = await callConnectMiddlewareWithBunRequest(viteDevServerExternal.middlewares, request)
+        const response = await callConnectMiddlewareWithBunRequest(viteDevServer.middlewares, request)
         if (response) {
           return response
         }
@@ -227,12 +212,12 @@ export class ClientBun {
       throw new Error(`indexHtml not found for client "${this.points.root._rootId}"`)
     }
     if (process.env.NODE_ENV === 'development') {
-      if (!this.viteDevServerExternal) {
+      if (!this.viteDevServer) {
         return await fetch(`http://localhost:${this.port}/development.index.html`).then(
           async (response) => await response.text(),
         )
       } else {
-        return await this.viteDevServerExternal.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
+        return await this.viteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
       }
     }
     if (process.env.NODE_ENV === 'production') {
@@ -254,10 +239,10 @@ export class ClientBun {
       return this.providedAppComponent
     }
     if (this.appPath) {
-      if (this.viteDevServerInternal) {
-        const appComponent = (await this.viteDevServerInternal
-          .ssrLoadModule(this.appPath)
-          .then((module) => module.default)) as AppComponent | undefined
+      if (this.viteDevServer) {
+        const appComponent = (await this.viteDevServer.ssrLoadModule(this.appPath).then((module) => module.default)) as
+          | AppComponent
+          | undefined
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appPath} for client "${this.points.root._rootId}"`)
         }

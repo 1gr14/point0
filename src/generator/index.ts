@@ -16,8 +16,6 @@ import { Route0 } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { subscribe } from '@parcel/watcher'
 import fg from 'fast-glob'
-import type { Jiti } from 'jiti'
-import { createJiti } from 'jiti'
 import { minimatch } from 'minimatch'
 import * as nodeFsSync from 'node:fs'
 import * as nodeFs from 'node:fs/promises'
@@ -77,7 +75,6 @@ export class Generator {
   readonly outputRoutesAbs: string | undefined
   // readonly outputWouterRoutesAbs: string | undefined
   readonly cwd: string
-  readonly jiti: Jiti
   readonly tempDir: string
 
   private readonly files = new Set<string>()
@@ -97,7 +94,6 @@ export class Generator {
     this.outputLazyAbs = opts.lazy ? nodePath.resolve(this.cwd, opts.lazy) : undefined
     // this.outputWouterRoutesAbs = opts.wouterRoutes ? nodePath.resolve(this.basepath, opts.wouterRoutes) : undefined
     this.outputRoutesAbs = typeof opts.routes === 'string' ? nodePath.resolve(this.cwd, opts.routes) : undefined
-    this.jiti = this.createFreshJiti()
     this.tempDir = Generator.resolveTempDirPath()
   }
 
@@ -680,16 +676,6 @@ export class Generator {
       }
     }
     return result
-  }
-
-  private createFreshJiti() {
-    return createJiti(this.cwd, {
-      cache: false,
-      interopDefault: true,
-      moduleCache: false,
-      fsCache: false,
-      extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs'],
-    })
   }
 
   // 53-bit non-crypto hash (by bryc). Crazy fast in JS.

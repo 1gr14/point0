@@ -4,13 +4,17 @@ export async function callConnectMiddlewareWithBunRequest(
   middleware: (req: any, res: any, next: any) => void,
   bunRequest: Request,
 ): Promise<Response | undefined> {
-  return await new Promise<Response | undefined>((resolve, reject) => {
-    const url = new URL(bunRequest.url)
+  const url = new URL(bunRequest.url)
 
+  return await new Promise<Response | undefined>((resolve, reject) => {
     // --- Fake Node req ------------------------------------------------------
+    // Don't read the body - Vite middleware typically doesn't need it,
+    // and we need to preserve it for later use in server.fetch()
     const nodeReq = new Readable({
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      read() {},
+      read() {
+        // Provide empty stream - Vite dev middleware doesn't read request bodies
+        this.push(null)
+      },
     }) as any
 
     nodeReq.method = bunRequest.method
@@ -33,19 +37,6 @@ export async function callConnectMiddlewareWithBunRequest(
       encrypted: nodeReq.secure,
       remoteAddress: '127.0.0.1',
     }
-
-    // Pipe Bun body into the Node-style req stream
-    void (async () => {
-      try {
-        if (bunRequest.body) {
-          const buf = new Uint8Array(await bunRequest.arrayBuffer())
-          if (buf.byteLength > 0) nodeReq.push(buf)
-        }
-        nodeReq.push(null)
-      } catch (err) {
-        reject(err)
-      }
-    })()
 
     // --- Fake Node res ------------------------------------------------------
     const middlewareHeaders = new Headers()
