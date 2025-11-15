@@ -101,6 +101,12 @@ export class ServerBun {
     this.bunServer = Bun.serve({
       port: this.port,
       fetch: async (request) => {
+        for (const client of this.clients) {
+          const response = await client.fetchViteMiddleware(request)
+          if (response) {
+            return response
+          }
+        }
         const parsedUrl = parseUrl(request.url)
         return await this.fetch({ parsedUrl, request, requiredCtx })
       },
