@@ -5,6 +5,8 @@ import { Points } from '../core/points.js'
 import type { RootId } from '../core/types.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
 
+// TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
+
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
   error: (error: unknown, meta?: Record<string, any>) => any
@@ -37,7 +39,6 @@ export type EngineServerOptions = {
   distDir?: string | null
   port?: number | string | null
   hmrPort?: number | string | null
-  viteConfig?: EngineOptionsViteConfig | null
 }
 export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
@@ -86,7 +87,6 @@ export type EngineServerOptionsParsed = {
   distDir: string | null
   port: number
   hmrPort: number
-  viteConfig: EngineOptionsViteConfig | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -179,10 +179,6 @@ export const parseEngineServerOptions = ({
     hmrPort,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
     distDir: serverOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, serverOptions.distDir) : null,
-    viteConfig:
-      typeof serverOptions.viteConfig === 'string'
-        ? toAbsPath(generalOptionsParsed.cwd, serverOptions.viteConfig)
-        : (serverOptions.viteConfig ?? null),
   }
 }
 const parseEngineClientOptions = ({

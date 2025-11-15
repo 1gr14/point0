@@ -60,4 +60,12 @@ export class EngineBun {
       requiredCtx,
     })
   }
+
+  async build(): Promise<void> {
+    await Promise.all(
+      this.clients.map(async (client) => {
+        await client.build()
+      }),
+    )
+  }
 }

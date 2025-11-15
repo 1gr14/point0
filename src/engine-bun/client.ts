@@ -18,6 +18,8 @@ import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
 import type { ParsedUrl } from '../core/utils.js'
 import { parseUrl } from '../core/utils.js'
+import type { BuildConfig } from 'bun'
+import nodePath from 'node:path'
 
 export class ClientBun {
   cwd: string
@@ -407,13 +409,109 @@ export class ClientBun {
     throw new Error(`App not provided for client "${this.points.root._rootId}"`)
   }
 
-  async buildByViteForClient(): Promise<void> {}
+  getAppPathOrNullOrThrow(): string | null {
+    if (this.providedAppComponent && !this.appPath) {
+      throw new Error(`If you want build client, you should provide app path, not app component itself in "app" option`)
+    }
+    return this.appPath
+  }
 
-  async buildByViteForServer(): Promise<void> {}
+  getPointsPathOrNullOrThrow(): string | null {
+    if (this.providedPoints && !this.pointsPath) {
+      throw new Error(`If you want build client, you should provide points path, not points itself in "points" option`)
+    }
+    return this.pointsPath
+  }
 
-  async buildByBunForClient(): Promise<void> {}
+  getBuildPaths(): {
+    appPath: string | null
+    pointsPath: string | null
+    indexHtml: string | null
+    distDir: string
+    entrypointsExists: boolean
+  } {
+    if (!this.distDir) {
+      throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
+    }
+    const appPath = this.getAppPathOrNullOrThrow()
+    const pointsPath = this.getPointsPathOrNullOrThrow()
+    const indexHtml = this.indexHtml
+    const entrypointsExists = !!(appPath || pointsPath || indexHtml)
+    return {
+      appPath,
+      pointsPath,
+      indexHtml,
+      distDir: this.distDir,
+      entrypointsExists,
+    }
+  }
 
-  async buildByBunForServer(): Promise<void> {}
+  // TODO option to clear dist dir
+  async buildByBunForClient(buildConfig?: BuildConfig): Promise<boolean> {
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.indexHtml) {
+      return false
+    }
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+    await Bun.build({
+      target: 'browser',
+      format: 'esm',
+      splitting: true,
+      sourcemap: true,
+      minify: NODE_ENV === 'production',
+      ...buildConfig,
+      entrypoints: [buildPaths.indexHtml],
+      outdir: buildPaths.distDir,
+      define: {
+        ...buildConfig?.define,
+        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        'process.env.BUILD_TARGET': 'client',
+      },
+    })
+    return true
+  }
+
+  async buildByBunForServer(buildConfig?: BuildConfig): Promise<boolean> {
+    const buildPaths = this.getBuildPaths()
+    if (!this.server.distDir) {
+      throw new Error(`distDir not provided for server`)
+    }
+    if (!buildPaths.appPath && !buildPaths.pointsPath) {
+      return false
+    }
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+    await Bun.build({
+      target: 'bun',
+      packages: 'external',
+      sourcemap: true,
+      minify: false,
+      ...buildConfig,
+      entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
+      outdir: nodePath.join(this.server.distDir, `clients/${this.points.root._rootId}`),
+      define: {
+        ...buildConfig?.define,
+        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        'process.env.BUILD_TARGET': 'server',
+      },
+    })
+    return true
+  }
+
+  async buildByViteForClient(): Promise<void> {
+    throw new Error('buildByViteForClient is not implemented yet')
+  }
+
+  async buildByViteForServer(): Promise<void> {
+    throw new Error('buildByViteForServer is not implemented yet')
+  }
+
+  async build(): Promise<void> {
+    if (this.viteConfig) {
+      await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
+    } else {
+      await Promise.all([this.buildByBunForClient(), this.buildByBunForServer()])
+    }
+  }
 
   async renderAsReadableStream({
     eversionRun,

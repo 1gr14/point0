@@ -2,8 +2,8 @@ import { Eversion } from '../core/eversion.js'
 import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import type { EngineLogger, EngineOptionsPublicDirParsed, EngineOptionsViteConfig } from '../engine-shared/config.js'
-import { createFreshPoints, createViteDevServer } from '../engine-shared/utils.js'
+import type { EngineLogger, EngineOptionsPublicDirParsed } from '../engine-shared/config.js'
+import { createFreshPoints } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
@@ -55,7 +55,6 @@ export class ServerBun {
   static async create(input: {
     cwd: string
     points: Points | string
-    viteConfig: EngineOptionsViteConfig | null
     port: number
     hmrPort: number | null
     publicDir: EngineOptionsPublicDirParsed
@@ -64,20 +63,13 @@ export class ServerBun {
     logger: EngineLogger
     clients: ClientBun[]
   }): Promise<ServerBun> {
-    const viteDevServer = !input.viteConfig
-      ? null
-      : await createViteDevServer({
-          viteConfig: input.viteConfig,
-          clientIndex: null,
-          hmrPort: input.hmrPort,
-        })
-
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null
+    // TODO:ASAP get pointsPath in production && distDir
     const points = await createFreshPoints({
       providedPoints,
       pointsPath,
-      viteDevServer,
+      viteDevServer: null,
       clientIndex: null,
     })
 
