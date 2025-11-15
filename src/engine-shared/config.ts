@@ -32,11 +32,13 @@ export type EngineGeneralOptions = {
   fallbackRootId?: RootId
   logger?: EngineLogger
   cwd?: string
+  built?: boolean
 }
 export type EngineServerOptions = {
   points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
   distDir?: string | null
+  clientsDistDir?: string | null
   port?: number | string | null
   hmrPort?: number | string | null
 }
@@ -64,6 +66,7 @@ export type EngineGeneralOptionsParsed = {
   fallbackRootId: RootId | null
   logger: EngineLogger
   cwd: string
+  built: boolean
 }
 export type EngineClientOptionsParsed = {
   points: Points | string
@@ -85,6 +88,7 @@ export type EngineServerOptionsParsed = {
   points: Points | string
   publicDir: EngineOptionsPublicDirParsed
   distDir: string | null
+  clientsDistDir: string | null
   port: number
   hmrPort: number
 }
@@ -151,6 +155,17 @@ const parseEngineGeneralOptions = ({
   serverOptions: EngineServerOptions
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
+  const built = generalOptions.built ?? false
+  const serverDistDir = serverOptions.distDir
+  const cwd = (() => {
+    if (built) {
+      if (!serverDistDir) {
+        throw new Error(`distDir not provided for server, while built is true`)
+      }
+      return serverDistDir
+    }
+    return generalOptions.cwd || process.cwd()
+  })()
   return {
     // will be resolved after parsing clients and server
     fallbackRootId: generalOptions.fallbackRootId || null,
@@ -158,7 +173,8 @@ const parseEngineGeneralOptions = ({
       info: console.info.bind(console),
       error: console.error.bind(console),
     },
-    cwd: generalOptions.cwd || process.cwd(),
+    cwd,
+    built,
   }
 }
 export const parseEngineServerOptions = ({
@@ -170,6 +186,15 @@ export const parseEngineServerOptions = ({
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
   const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
+  const distDir = (() => {
+    if (generalOptionsParsed.built) {
+      if (!serverOptions.distDir) {
+        throw new Error(`distDir not provided for server, while built is true`)
+      }
+      return serverOptions.distDir
+    }
+    return serverOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, serverOptions.distDir) : null
+  })()
   return {
     points:
       typeof serverOptions.points === 'string'
@@ -178,7 +203,10 @@ export const parseEngineServerOptions = ({
     port,
     hmrPort,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
-    distDir: serverOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, serverOptions.distDir) : null,
+    distDir,
+    clientsDistDir: serverOptions.clientsDistDir
+      ? toAbsPath(generalOptionsParsed.cwd, serverOptions.clientsDistDir)
+      : null,
   }
 }
 const parseEngineClientOptions = ({

@@ -40,13 +40,15 @@ import { source } from './lib/server.js'
 const engine = await EngineBun.create({
   // all paths will be relative to it. it is required to be "import.meta.dir" if you use "server.distDir"
   // before build it is right here, after build it is in dist/server or where you build it
-  cwd: import.meta.dir,
+  built: !!process.env.IT_WAS_BUILT,
+  cwd: !process.env.IT_WAS_BUILT ? import.meta.dir : '../../src',
   server: {
     points: { root: source },
     port: 3000,
     publicDir: '../public',
     // it is required to be defined like this if defined, becouse we will recalculate "cwd" based on it
     distDir: !process.env.IT_WAS_BUILT ? '../dist/server' : import.meta.dir,
+    clientsDistDir: '../dist/server-clients',
   },
   clients: [
     {
