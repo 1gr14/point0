@@ -126,7 +126,7 @@ export const engineFetch = async ({
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
             logger.error(error, meta)
-            const indexHtml = await relatedClient.getOriginalIndexHtml(request.url)
+            const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
             return await wrapResponse({
               request,
               response: new Response(indexHtml, {
@@ -138,7 +138,7 @@ export const engineFetch = async ({
           throw error
         }
       } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
-        const indexHtml = await relatedClient.getOriginalIndexHtml(request.url)
+        const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
         return await wrapResponse({
           request,
           response: new Response(indexHtml, {

@@ -80,7 +80,7 @@ function prependBodyElement({ html, content }: { html: string; content: string }
   return html.replace(pattern, replacement)
 }
 
-function prependHeadElement({ html, content }: { html: string; content: string }) {
+function prependHeadElement({ html, content }: { html: string; content: string }): string {
   // Match the <head> tag and capture its existing content
   const pattern = /<head\b[^>]*>([\s\S]*?)<\/head>/i
 
@@ -90,6 +90,27 @@ function prependHeadElement({ html, content }: { html: string; content: string }
   }
 
   return html.replace(pattern, replacement)
+}
+
+export function addEnvToDocumentHtml({
+  html,
+  env,
+}: {
+  html: string
+  env?: Record<string, string | number | boolean | undefined>
+}): string {
+  env ??= {}
+  return prependHeadElement({
+    content: `<script id="__POINT0_ENV__" type="text/javascript">
+  const __ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env }))};
+  window.process = window.process || {};
+  window.process.env = { ...(window.process.env || {}), ...__ENV__ };
+  window.import = window.import || {};
+  window.import.meta = window.import.meta || {};
+  window.import.meta.env = { ...(window.import.meta.env || {}), ...__ENV__ };
+</script>`,
+    html,
+  })
 }
 
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
@@ -126,17 +147,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   if (head.length > 0) {
     html = await transformHtmlTemplate(createHead({ init: head }), html)
   }
-  html = prependHeadElement({
-    content: `<script id="__POINT0_ENV__" type="text/javascript">
-  const __ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env }))};
-  window.process = window.process || {};
-  window.process.env = { ...(window.process.env || {}), ...__ENV__ };
-  window.import = window.import || {};
-  window.import.meta = window.import.meta || {};
-  window.import.meta.env = { ...(window.import.meta.env || {}), ...__ENV__ };
-</script>`,
-    html,
-  })
+  html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
     content: '<!-- __DEHYDRATED_SUPER_STORE__ -->',
     html,

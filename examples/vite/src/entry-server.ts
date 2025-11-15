@@ -16,12 +16,13 @@ const engine = await EngineBun.create({
   clients: [
     {
       ssr: true,
+      // ssr: false,
       app: '/src/app.tsx',
       points: process.env.NODE_ENV === 'production' ? '../client/points.js' : './lib/points.ready.js',
       indexHtml: process.env.NODE_ENV === 'production' ? '../client/index.html' : './index.html', // only when NODE_ENV=production
       publicDir: process.env.NODE_ENV === 'production' ? { '/dist/client': '../client' } : {}, // only when NODE_ENV=production
       port: 3001,
-      hmrPort: process.env.TARGET_ROOT_ID !== 'client' ? 3101 : null,
+      hmrPort: process.env.TARGET_ROOT_ID === 'client' ? 3101 : null,
       viteConfig: process.env.NODE_ENV === 'production' ? null : '../vite.config.js',
       // env: {
       //   SOURCE_BASE_URL: process.env.SOURCE_BASE_URL,

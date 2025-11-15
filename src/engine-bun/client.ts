@@ -13,7 +13,7 @@ import type {
   EngineOptionsPublicDirParsed,
   EngineOptionsViteConfig,
 } from '../engine-shared/config.js'
-import { renderAppAsReadableStream } from '../engine-shared/render.js'
+import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
 import { bunConnectAdapter, bunResponseToConnectResponse, connectRequestToBunRequest } from './bun-connect-adapter.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
@@ -376,6 +376,11 @@ export class ClientBun {
       return this.distIndexHtmlContent
     }
     throw new Error(`NODE_ENV is not development or production for client "${this.points.root._rootId}"`)
+  }
+
+  async getOriginalIndexHtmlWithEnvs(url: string): Promise<string> {
+    const html = await this.getOriginalIndexHtml(url)
+    return addEnvToDocumentHtml({ html, env: this.env })
   }
 
   async getFreshAppComponent(): Promise<AppComponent> {

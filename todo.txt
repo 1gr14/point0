@@ -1,3 +1,5 @@
+!!! 2 vite servers for client. One server do ssr work, another server do NOT ssr work at all just generates indexhtm. Get App ssr form first server, and inject it to indexhtml of second server
+
 Simplify engine config. Just allow paths to files and nothing else. Then we will use this input as config input including generator
 
 use dist dir as public dir
