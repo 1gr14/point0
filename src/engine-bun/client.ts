@@ -132,7 +132,7 @@ export class ClientBun {
     })
 
     const bunDevServer =
-      input.indexHtml && !viteDevServer && process.env.NODE_ENV === 'development'
+      input.indexHtml && !viteDevServer && process.env.NODE_ENV !== 'production'
         ? await ClientBun.createBunDevServer({ port: input.port, indexHtml: input.indexHtml })
         : null
 
@@ -356,7 +356,7 @@ export class ClientBun {
     if (!this.indexHtml) {
       throw new Error(`indexHtml not found for client "${this.points.root._rootId}"`)
     }
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV !== 'production') {
       if (this.viteDevServer) {
         return await this.viteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
       } else if (this.bunDevServer) {
@@ -367,13 +367,10 @@ export class ClientBun {
         )
       }
     }
-    if (process.env.NODE_ENV === 'production') {
-      if (!this.distIndexHtmlContent) {
-        throw new Error(`distIndexHtmlContent not preloaded for client "${this.points.root._rootId}"`)
-      }
-      return this.distIndexHtmlContent
+    if (!this.distIndexHtmlContent) {
+      throw new Error(`distIndexHtmlContent not preloaded for client "${this.points.root._rootId}"`)
     }
-    throw new Error(`NODE_ENV is not development or production for client "${this.points.root._rootId}"`)
+    return this.distIndexHtmlContent
   }
 
   async getOriginalIndexHtmlWithEnvs(url: string): Promise<string> {

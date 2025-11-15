@@ -27,7 +27,7 @@ export const engineFetch = async ({
   requiredCtx: RequiredCtx
   logger: EngineLogger
 }): Promise<Response> => {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV !== 'production') {
     // in case if some points was loaded via vite, we should refetch them
     await eversion.readPoints()
   }
@@ -89,10 +89,13 @@ export const engineFetch = async ({
       }
     }
 
-    const extractResult = await eversionRun.extract({
-      point: suitable.point,
-      input,
-    })
+    if (!suitable.point && process.env.NODE_ENV !== 'production') {
+      const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ parsedUrl, request })
+      if (responseFromAbsFilePath) {
+        return responseFromAbsFilePath
+      }
+    }
+
     const pointType = task?.pointType ?? 'page'
     const outputType = task?.outputType ?? 'html'
     meta.pointType = pointType
@@ -101,9 +104,6 @@ export const engineFetch = async ({
     meta.pointType = task?.pointType
 
     const relatedClient = clients.find((client) => client.points.root === suitable.eversion.points.root)
-    if (extractResult.error) {
-      logger.error(extractResult.error, meta)
-    }
 
     if (relatedClient) {
       if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
@@ -111,6 +111,13 @@ export const engineFetch = async ({
           if (!suitable.pageLocation) {
             // I think it will never throw, but who knows
             throw new Error('Page Critical Error: Not Found')
+          }
+          const extractResult = await eversionRun.extract({
+            point: suitable.point,
+            input,
+          })
+          if (extractResult.error) {
+            logger.error(extractResult.error, meta)
           }
           const readableStream = await relatedClient.renderAsReadableStream({
             eversionRun,
@@ -173,6 +180,14 @@ export const engineFetch = async ({
       throw new Error(`Client not found for point "${suitable.point?._name ?? 'unknown'}" while requested page html`)
     }
 
+    const extractResult = await eversionRun.extract({
+      point: suitable.point,
+      input,
+    })
+    if (extractResult.error) {
+      logger.error(extractResult.error, meta)
+    }
+
     if (extractResult.error) {
       return await wrapResponse({
         request,
@@ -202,4 +217,24 @@ export const engineFetch = async ({
       response: toJsonErrorResponse(error, 500),
     })
   }
+}
+
+async function fetchAbsFilePathOnDevServer({
+  parsedUrl,
+  request,
+}: {
+  parsedUrl?: ParsedUrl
+  request: Request
+}): Promise<Response | undefined> {
+  // if it is client bun dev serverm and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
+  if (process.env.NODE_ENV === 'production') {
+    return undefined
+  }
+  parsedUrl ??= parseUrl(request.url)
+  const absPath = parsedUrl.urlObj.pathname
+  const bunFile = Bun.file(absPath)
+  if (await bunFile.exists()) {
+    return new Response(Bun.file(absPath))
+  }
+  return undefined
 }
