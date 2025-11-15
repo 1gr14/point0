@@ -173,7 +173,6 @@ import type { PluginOption } from 'vite'
 import { defineConfig, loadEnv } from 'vite'
 import svgr from 'vite-plugin-svgr'
 
-console.log(234234)
 export default defineConfig(({ mode }) => {
   return {
     plugins: [svgr(), react()] as PluginOption[],

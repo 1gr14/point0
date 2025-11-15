@@ -35,7 +35,7 @@ export type EngineServerOptions = {
   points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
   port?: number | string | null
-  hmrPort?: number | string | null
+  viteInternalHmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
 }
 export type EngineClientOptions = {
@@ -49,7 +49,8 @@ export type EngineClientOptions = {
   domRootElementId?: string
   env?: EngineOptionsEnv | null
   port?: number | string | null
-  hmrPort?: number | string | null
+  viteInternalHmrPort?: number | string | null
+  viteExternalHmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
 }
 export type EngineOptions = EngineGeneralOptions & {
@@ -73,7 +74,8 @@ export type EngineClientOptionsParsed = {
   env: EngineOptionsEnvParsed
   domRootElementId: string
   port: number
-  hmrPort: number
+  viteInternalHmrPort: number
+  viteExternalHmrPort: number
   index: number
   viteConfig: EngineOptionsViteConfig | null
 }
@@ -81,7 +83,7 @@ export type EngineServerOptionsParsed = {
   points: Points | string
   publicDir: EngineOptionsPublicDirParsed
   port: number
-  hmrPort: number
+  viteInternalHmrPort: number
   viteConfig: EngineOptionsViteConfig | null
 }
 export type EngineOptionsParsed = {
@@ -165,14 +167,15 @@ export const parseEngineServerOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
-  const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
+  const viteInternalHmrPort =
+    typeof serverOptions.viteInternalHmrPort !== 'undefined' ? Number(serverOptions.viteInternalHmrPort) : port + 100
   return {
     points:
       typeof serverOptions.points === 'string'
         ? toAbsPath(generalOptionsParsed.cwd, serverOptions.points)
         : Points.create(serverOptions.points),
     port,
-    hmrPort,
+    viteInternalHmrPort,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
     viteConfig:
       typeof serverOptions.viteConfig === 'string'
@@ -193,7 +196,10 @@ const parseEngineClientOptions = ({
 }): EngineClientOptionsParsed => {
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
-  const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
+  const viteInternalHmrPort =
+    typeof clientOptions.viteInternalHmrPort !== 'undefined' ? Number(clientOptions.viteInternalHmrPort) : port + 100
+  const viteExternalHmrPort =
+    typeof clientOptions.viteExternalHmrPort !== 'undefined' ? Number(clientOptions.viteExternalHmrPort) : port + 200
   return {
     points:
       typeof clientOptions.points === 'string'
@@ -210,7 +216,8 @@ const parseEngineClientOptions = ({
     indexHtml: toAbsPath(generalOptionsParsed.cwd, clientOptions.indexHtml) ?? null,
     domRootElementId: clientOptions.domRootElementId || 'root',
     port,
-    hmrPort,
+    viteInternalHmrPort,
+    viteExternalHmrPort,
     index,
     env: parseEnv(clientOptions.env ?? {}),
     viteConfig:

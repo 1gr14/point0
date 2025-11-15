@@ -15,7 +15,7 @@ export class ServerBun {
   pointsPath: string | null
   providedPoints: Points | null
   port: number
-  hmrPort: number | null
+  viteInternalHmrPort: number | null
   clients: ClientBun[]
   logger: EngineLogger
   publicDir: PublicDir
@@ -29,7 +29,7 @@ export class ServerBun {
     pointsPath: string | null
     providedPoints: Points | null
     port: number
-    hmrPort: number | null
+    viteInternalHmrPort: number | null
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
@@ -42,7 +42,7 @@ export class ServerBun {
     this.pointsPath = input.pointsPath
     this.providedPoints = input.providedPoints
     this.port = input.port
-    this.hmrPort = input.hmrPort
+    this.viteInternalHmrPort = input.viteInternalHmrPort
     this.clients = input.clients
     this.logger = input.logger
     this.publicDir = input.publicDir
@@ -54,7 +54,7 @@ export class ServerBun {
     points: Points | string
     viteConfig: EngineOptionsViteConfig | null
     port: number
-    hmrPort: number | null
+    viteInternalHmrPort: number | null
     publicDir: EngineOptionsPublicDirParsed
     fallbackRootId: RootId
     logger: EngineLogger
@@ -66,7 +66,7 @@ export class ServerBun {
       : await createViteDevServerInternal({
           viteConfig: input.viteConfig,
           clientIndex: null,
-          hmrPort: input.hmrPort,
+          viteInternalHmrPort: input.viteInternalHmrPort,
         })
 
     const providedPoints = typeof input.points === 'string' ? null : input.points

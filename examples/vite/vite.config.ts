@@ -150,6 +150,8 @@ import svgr from 'vite-plugin-svgr'
 //   },
 // })
 export default defineConfig({
+  plugins: [svgr(), react()] as PluginOption[],
+  clearScreen: false,
   build: {
     minify: false,
     sourcemap: true,
