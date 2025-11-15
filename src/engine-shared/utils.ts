@@ -45,12 +45,11 @@ import * as nodePath from 'node:path'
 //   }
 // }
 
-import type { Jiti } from 'jiti'
 import { createJiti } from 'jiti'
 import type { ViteDevServer } from 'vite'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
-import type { EngineOptionsViteConfig, LoadedViteConfig } from '../engine-shared/config.js'
+import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, LoadedViteConfig } from '../engine-shared/config.js'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -170,17 +169,13 @@ export const createJitiInstance = (id: string) =>
     extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs'],
   })
 
-export const createViteDevServer = async ({
+export const createViteDevServerInternal = async ({
   viteConfig,
-  jiti,
   clientIndex,
-  port,
   hmrPort,
 }: {
   viteConfig: EngineOptionsViteConfig
-  jiti: Jiti
   clientIndex: number | null
-  port: number
   hmrPort: number | null
 }): Promise<ViteDevServer> => {
   const createServer = await import('vite').then((module) => module.createServer)
@@ -188,19 +183,29 @@ export const createViteDevServer = async ({
     typeof viteConfig === 'function'
       ? await viteConfig({ command: 'serve', mode: process.env.NODE_ENV || 'development' })
       : typeof viteConfig === 'string'
-        ? await jiti.import(viteConfig, { default: true })
+        ? await import(viteConfig)
         : await viteConfig
   if (!loadedViteConfig) {
     throw new Error(
       `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
     )
   }
+  console.log({
+    hmr:
+      loadedViteConfig.server?.hmr === false
+        ? false
+        : hmrPort === null
+          ? false
+          : {
+              ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+              port: hmrPort,
+            },
+  })
   return await createServer({
     ...loadedViteConfig,
     appType: 'custom',
     server: {
       ...loadedViteConfig.server,
-      port,
       middlewareMode: true,
       hmr:
         loadedViteConfig.server?.hmr === false
@@ -215,27 +220,83 @@ export const createViteDevServer = async ({
   })
 }
 
+export const createViteDevServerExternal = async ({
+  viteConfig,
+  clientIndex,
+  port,
+  hmrPort,
+  serverPort,
+  env,
+}: {
+  viteConfig: EngineOptionsViteConfig
+  clientIndex: number | null
+  port: number
+  hmrPort: number | null
+  serverPort: number
+  env: EngineOptionsEnvParsed
+}): Promise<ViteDevServer> => {
+  const createServer = await import('vite').then((module) => module.createServer)
+  const loadedViteConfig: LoadedViteConfig | undefined =
+    typeof viteConfig === 'function'
+      ? await viteConfig({ command: 'serve', mode: process.env.NODE_ENV || 'development' })
+      : typeof viteConfig === 'string'
+        ? // ? await jiti.import(viteConfig, { default: true })
+          await import(viteConfig)
+        : await viteConfig
+  if (!loadedViteConfig) {
+    throw new Error(
+      `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
+    )
+  }
+  return await createServer({
+    ...loadedViteConfig,
+    appType: 'custom',
+    server: {
+      ...loadedViteConfig.server,
+      port,
+      // middlewareMode: false,
+      middlewareMode: true,
+      // proxy: {
+      //   '/_point0': `http://localhost:${serverPort}`,
+      // },
+      hmr:
+        loadedViteConfig.server?.hmr === false
+          ? false
+          : hmrPort === null
+            ? false
+            : {
+                ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+                port: hmrPort,
+              },
+    },
+    // define: {
+    //   ...Object.fromEntries(Object.entries(env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)])),
+    //   ...Object.fromEntries(
+    //     Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+    //   ),
+    // },
+  })
+}
+
 export const createFreshPoints = async ({
   providedPoints,
   pointsPath,
-  viteDevServer,
-  jiti,
+  viteDevServerInternal,
   clientIndex,
 }: {
   providedPoints: Points | null
   pointsPath: string | null
-  viteDevServer: ViteDevServer | null
-  jiti?: Jiti
+  viteDevServerInternal: ViteDevServer | null
   clientIndex: number | null
 }): Promise<Points> => {
   if (providedPoints) {
     return providedPoints
   }
   if (pointsPath) {
-    if (viteDevServer) {
+    if (viteDevServerInternal) {
       return await Points.read(
         pointsPath,
-        async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
+        async (absPath) => (await viteDevServerInternal.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
       )
       // } else if (jiti) {
       //   return await Points.read(pointsPath, async (absPath) => await jiti.import(absPath))

@@ -77,6 +77,25 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return connection
   }
 
+  async forEachEversion(
+    callback: (eversion: Eversion<TRequiredCtx>) => Promise<void>,
+    skipSource = false,
+  ): Promise<void> {
+    if (this.source && !skipSource) {
+      await this.source.forEachEversion(callback, false)
+    }
+    await callback(this)
+    for (const connection of this.connections) {
+      await connection.forEachEversion(callback, true)
+    }
+  }
+
+  async readPoints(): Promise<void> {
+    await this.forEachEversion(async (eversion) => {
+      await eversion.points.read()
+    })
+  }
+
   async createRun({
     pageLocation,
     currentLocation,

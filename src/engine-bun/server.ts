@@ -3,10 +3,10 @@ import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicDirParsed, EngineOptionsViteConfig } from '../engine-shared/config.js'
+import { createFreshPoints, createViteDevServerInternal } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
-import { createFreshPoints, createJitiInstance, createViteDevServer } from '../engine-shared/utils.js'
 
 export class ServerBun {
   cwd: string
@@ -61,15 +61,11 @@ export class ServerBun {
     clients: ClientBun[]
     // eversion: Eversion
   }): Promise<ServerBun> {
-    const jiti = createJitiInstance(input.cwd)
-
-    const viteDevServer = !input.viteConfig
+    const viteDevServerInternal = !input.viteConfig
       ? null
-      : await createViteDevServer({
+      : await createViteDevServerInternal({
           viteConfig: input.viteConfig,
-          jiti,
           clientIndex: null,
-          port: input.port,
           hmrPort: input.hmrPort,
         })
 
@@ -78,8 +74,7 @@ export class ServerBun {
     const points = await createFreshPoints({
       providedPoints,
       pointsPath,
-      viteDevServer,
-      jiti,
+      viteDevServerInternal,
       clientIndex: null,
     })
 

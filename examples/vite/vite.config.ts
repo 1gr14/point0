@@ -65,10 +65,8 @@ import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 
 export default defineConfig({
-  plugins: [
-    svgr(),
-    // react()
-  ] as PluginOption[],
+  plugins: [svgr(), react()] as PluginOption[],
+  clearScreen: false,
   build: {
     outDir: 'dist/client',
     minify: false,

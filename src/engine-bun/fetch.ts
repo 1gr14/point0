@@ -27,6 +27,10 @@ export const engineFetch = async ({
   requiredCtx: RequiredCtx
   logger: EngineLogger
 }): Promise<Response> => {
+  if (process.env.NODE_ENV === 'development') {
+    // in case if some points was loaded via vite, we should refetch them
+    await eversion.readPoints()
+  }
   parsedUrl ??= parseUrl(request.url)
   let wrapResponse: WrapResponseFn = eversion.points.root._wrapResponse.bind(eversion.points.root)
   const meta: Record<string, any> = {
