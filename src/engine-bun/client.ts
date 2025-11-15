@@ -1,4 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
+import { Readable } from 'node:stream'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
@@ -13,7 +14,6 @@ import type {
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
 import { createFreshPoints, createViteDevServer } from '../engine-shared/utils.js'
-import { callConnectMiddlewareWithBunRequest } from './bun-connect-middleware.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
 
@@ -175,7 +175,7 @@ export class ClientBun {
     })
   }
 
-  private async serveViaConnectViteDevServerExternal({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+  private async serveViaViteDevServer({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
     if (!this.port) {
       throw new Error(
         `Can not serve via connected Vite dev server because port is not set for client "${this.points.root._rootId}". Please provide port in engine options.`,
@@ -190,7 +190,7 @@ export class ClientBun {
     this.bunDevServer = Bun.serve({
       port: this.port,
       fetch: async (request) => {
-        const response = await callConnectMiddlewareWithBunRequest(viteDevServer.middlewares, request)
+        const response = await this.fetchViteMiddleware(request)
         if (response) {
           return response
         }
@@ -201,10 +201,135 @@ export class ClientBun {
 
   async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
     if (this.viteConfig) {
-      await this.serveViaConnectViteDevServerExternal({ requiredCtx })
+      await this.serveViaViteDevServer({ requiredCtx })
     } else {
       await this.serveViaBunNativeDevServer({ requiredCtx })
     }
+  }
+
+  async fetchViteMiddleware(request: Request): Promise<Response | undefined> {
+    const viteDevServer = this.viteDevServer
+    if (!viteDevServer) {
+      return undefined
+    }
+    return await new Promise<Response | undefined>((resolve, reject) => {
+      const url = new URL(request.url)
+      const nodeReq = new Readable({
+        read() {
+          this.push(null)
+        },
+      }) as any
+
+      nodeReq.method = request.method
+      nodeReq.url = url.pathname + url.search
+      nodeReq.originalUrl = nodeReq.url
+
+      const headers: Record<string, string> = {}
+      request.headers.forEach((value: string, key: string) => {
+        headers[key.toLowerCase()] = value
+      })
+      nodeReq.headers = headers
+
+      nodeReq.protocol = url.protocol.replace(':', '')
+      nodeReq.hostname = url.hostname
+      nodeReq.secure = nodeReq.protocol === 'https'
+
+      nodeReq.socket = {
+        encrypted: nodeReq.secure,
+        remoteAddress: '127.0.0.1',
+      }
+
+      const middlewareHeaders = new Headers()
+      let statusCode = 200
+      let statusMessage = 'OK'
+      let ended = false
+      const chunks: Uint8Array[] = []
+
+      const nodeRes: any = {
+        statusCode,
+        statusMessage,
+
+        setHeader(name: string, value: any) {
+          const v = Array.isArray(value) ? value.join(', ') : String(value)
+          middlewareHeaders.set(name, v)
+        },
+
+        appendHeader(name: string, value: any) {
+          const v = Array.isArray(value) ? value.join(', ') : String(value)
+          const existing = middlewareHeaders.get(name)
+          middlewareHeaders.set(name, existing ? `${existing}, ${v}` : v)
+        },
+
+        getHeader(name: string) {
+          return middlewareHeaders.get(name) ?? undefined
+        },
+
+        removeHeader(name: string) {
+          middlewareHeaders.delete(name)
+        },
+
+        writeHead(code: number, statusMessageOrHeaders?: any, maybeHeaders?: any) {
+          statusCode = code
+          nodeRes.statusCode = code
+
+          let headers = undefined
+          if (typeof statusMessageOrHeaders === 'string') {
+            statusMessage = statusMessageOrHeaders
+            nodeRes.statusMessage = statusMessageOrHeaders
+            headers = maybeHeaders
+          } else {
+            headers = statusMessageOrHeaders
+          }
+
+          if (headers) {
+            for (const [k, v] of Object.entries(headers)) {
+              if (v != null) {
+                nodeRes.setHeader(k, v)
+              }
+            }
+          }
+        },
+
+        write(chunk: any) {
+          if (!chunk) return
+          if (typeof chunk === 'string') {
+            chunks.push(new TextEncoder().encode(chunk))
+          } else if (chunk instanceof Uint8Array) {
+            chunks.push(chunk)
+          } else {
+            chunks.push(Buffer.from(chunk))
+          }
+        },
+
+        end(chunk?: any) {
+          if (ended) return
+          ended = true
+          if (chunk) nodeRes.write(chunk)
+
+          const body = chunks.length === 0 ? null : new Blob(chunks as any)
+
+          const response = new Response(body, {
+            status: statusCode,
+            headers: middlewareHeaders,
+          })
+
+          resolve(response)
+        },
+      }
+
+      const next = (err?: any) => {
+        if (err) {
+          reject(err)
+        } else {
+          // Vite didn't handle this request
+          if (!ended) {
+            resolve(undefined)
+          }
+        }
+      }
+
+      viteDevServer.middlewares(nodeReq, nodeRes, next)
+    })
   }
 
   async getOriginalIndexHtml(url: string): Promise<string> {
