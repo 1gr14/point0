@@ -231,6 +231,7 @@ export class ClientBun {
     })
     return await createServer({
       ...loadedViteConfig,
+      clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',
       server: {
         ...loadedViteConfig.server,
@@ -697,66 +698,12 @@ export class ClientBun {
     const normalizedExistsingRollupOptionsOutput =
       (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
 
-    // Handle external function - it can be a function, array, or undefined
-    // const existingRollupOptionsExternal = loadedViteConfig.build?.rollupOptions?.external
-    // const createRollupOptionsExternalFunction = () => {
-    //   return (id: string, importer?: string, isResolved?: boolean) => {
-    //     // Externalize node built-ins and packages
-    //     if (id.startsWith('node:') || (!id.startsWith('.') && !id.startsWith('/') && !nodePath.isAbsolute(id))) {
-    //       return true
-    //     }
-    //     // Use custom external function if provided
-    //     if (typeof existingRollupOptionsExternal === 'function') {
-    //       try {
-    //         return existingRollupOptionsExternal(id, importer, isResolved ?? false)
-    //       } catch (e) {
-    //         console.error('Error in external function:', e)
-    //         return false
-    //       }
-    //     }
-    //     if (Array.isArray(existingRollupOptionsExternal)) {
-    //       return existingRollupOptionsExternal.includes(id)
-    //     }
-    //     return false
-    //   }
-    // }
-
     const rollupOptionsOutput: Extract<
       NonNullable<NonNullable<LoadedViteConfig['build']>['rollupOptions']>['output'],
       object
     > = {
       ...normalizedExistsingRollupOptionsOutput,
-      // Files structure and names should be as-is
-      // entryFileNames: (chunkInfo) => {
-      //   // If there's a custom entryFileNames function, use it
-      //   if (
-      //     normalizedOutput &&
-      //     typeof normalizedOutput === 'object' &&
-      //     typeof normalizedOutput.entryFileNames === 'function'
-      //   ) {
-      //     return normalizedOutput.entryFileNames(chunkInfo)
-      //   }
-      //   // Preserve original file names and directory structure
-      //   if (chunkInfo.isEntry) {
-      //     // Try to get the original file path from facadeModuleId
-      //     const facadeModuleId = chunkInfo.facadeModuleId
-      //     if (facadeModuleId && typeof facadeModuleId === 'string') {
-      //       // Calculate relative path from vite root
-      //       const relativePath = nodePath.relative(viteRoot, facadeModuleId)
-      //       // Replace extension with .js and normalize path separators
-      //       const outputPath = relativePath.replace(/\.(tsx?|jsx?)$/, '.js').replace(/\\/g, '/')
-      //       return outputPath
-      //     }
-      //     // Fallback to entry name if facadeModuleId is not available
-      //     const entryName = chunkInfo.name || 'index'
-      //     return `${entryName}.js`
-      //   }
-      //   return '[name].js'
-      // },
-      // chunkFileNames: '[name].js', // Preserve chunk names
-      // assetFileNames: '[name].[ext]', // Preserve asset names
-      // preserveModules: false, // Don't preserve module structure (we want bundles)
-      // format: 'es', // ES modules
+      // may be we will later add something here
     }
     const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
       ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]

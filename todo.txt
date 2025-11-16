@@ -1,15 +1,10 @@
-build public dir
-no bundle on bun build client for server
-get paths for points and app from dist when built === true
-build script, use dist dir as public dir
 multiple server entryFile also named
-
 engine.ts & index.server.ts
 index.client.ts
 hide import.meta.hot, allow mount(App, {settings: ...})
 
 config
-config can generate engine.ts by itself
+? config can generate engine.ts by itself. Decide what to generate and what to boilerplate
 cli 
 
 

@@ -10,7 +10,7 @@
     "build:server": "bun build ./src/entry-server.ts --packages=external --outdir dist/server --target bun --sourcemap=external --production --define process.env.IS_CLIENT=''",
     "build:public": "ncp ./public ./dist/public",
     "build": "bun run clean && bun run build:client && bun run build:server && bun run build:public",
-    "build2": "cross-env TASK=build bun run src/entry-server.ts",
+    "build2": "cross-env NODE_ENV=production TASK=build bun run src/entry-server.ts",
     "__dev:client": "cross-env NODE_ENV=development DEV_SERVER_TARGET=client IS_CLIENT='1' bun --no-clear-screen ./src/entry-server.ts",
     "__dev:server": "cross-env NODE_ENV=development DEV_SERVER_TARGET=server IS_CLIENT='' bun --no-clear-screen --hot ./src/entry-server.ts",
     "__dev:separate": "concurrently 'bun run dev:server' 'bun run dev:client' --names 'server,client' --prefix-colors 'blue,green' --prefix '{name} |' --restart-tries -2 --restart-after 100",
