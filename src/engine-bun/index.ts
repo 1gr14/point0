@@ -1,5 +1,5 @@
 import type { Eversion } from '../core/eversion.js'
-import type { RequiredCtx } from '../core/types.js'
+import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
@@ -61,12 +61,33 @@ export class EngineBun {
     })
   }
 
-  async build(): Promise<void> {
-    await Promise.all(
+  async clean(): Promise<void> {
+    await Promise.all([...this.clients.map((client) => client.clean()), this.server.clean()])
+  }
+
+  async build(): Promise<{
+    clients: Array<{
+      self: string[] | null
+      serverClient: string[] | null
+      publicDir: string[] | null
+      rootId: RootId
+      index: number
+    }>
+    server: { self: string[] | null; publicDir: string[] | null }
+  }> {
+    const clients = await Promise.all(
       this.clients.map(async (client) => {
-        await client.build()
+        const buildOutput = await client.build()
+        return {
+          self: buildOutput.self,
+          serverClient: buildOutput.serverClient,
+          publicDir: buildOutput.publicDir,
+          rootId: client.points.root._rootId,
+          index: client.index,
+        }
       }),
     )
-    await this.server.build()
+    const server = await this.server.build()
+    return { clients, server }
   }
 }

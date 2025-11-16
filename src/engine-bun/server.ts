@@ -1,4 +1,5 @@
 import type { BuildConfig } from 'bun'
+import * as nodeFs from 'node:fs/promises'
 import { Eversion } from '../core/eversion.js'
 import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
@@ -8,7 +9,6 @@ import { createFreshPoints } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
-import * as nodeFs from 'node:fs/promises'
 
 export class ServerBun {
   cwd: string
@@ -207,26 +207,30 @@ export class ServerBun {
     }
   }
 
-  async cleanSelf(): Promise<void> {
+  async cleanSelf(): Promise<boolean> {
     const distDir = this.distDir
-    if (distDir) {
-      await nodeFs.rm(distDir, { recursive: true })
+    if (!distDir) {
+      return false
     }
-    await this.publicDir.clean().catch(() => {
-      /* ignore */
-    })
+    await nodeFs.rm(distDir, { recursive: true })
+    return true
   }
 
-  async buildSelf(buildConfig?: BuildConfig): Promise<boolean> {
+  async clean(): Promise<{ self: boolean; publicDir: boolean }> {
+    const [self, publicDir] = await Promise.all([this.cleanSelf(), this.publicDir.clean()])
+    return { self, publicDir }
+  }
+
+  async buildSelf(buildConfig?: BuildConfig): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.entryFile) {
-      return false
+      return null
     }
     if (!buildPaths.distDir) {
       throw new Error(`distDir not provided for server`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
-    await Bun.build({
+    const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',
       sourcemap: true,
@@ -238,13 +242,14 @@ export class ServerBun {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
         'process.env.BUILD_TARGET': 'server',
+        'process.env.ENGINE_WAS_BUILT': JSON.stringify(true),
       },
     })
-    return true
+    return buildOutput.outputs.map((output) => output.path)
   }
 
-  async build(buildConfig?: BuildConfig): Promise<{ self: boolean; publicDir: boolean }> {
-    await Promise.all([this.cleanSelf(), this.publicDir.clean()])
+  async build(buildConfig?: BuildConfig): Promise<{ self: string[] | null; publicDir: string[] | null }> {
+    await this.clean()
     const [self, publicDir] = await Promise.all([this.buildSelf(buildConfig), this.publicDir.build()])
     return { self, publicDir }
   }

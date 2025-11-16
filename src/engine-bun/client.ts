@@ -512,16 +512,16 @@ export class ClientBun {
   }
 
   // TODO option to clear dist dir
-  async buildByBunForClient(buildConfig?: BuildConfig): Promise<boolean> {
+  async buildByBunForClient(buildConfig?: BuildConfig): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.indexHtml) {
-      return false
+      return null
     }
     if (!buildPaths.distDir) {
       throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
-    await Bun.build({
+    const buildOutput = await Bun.build({
       target: 'browser',
       format: 'esm',
       splitting: true,
@@ -536,10 +536,10 @@ export class ClientBun {
         'process.env.BUILD_TARGET': 'client',
       },
     })
-    return true
+    return buildOutput.outputs.map((output) => output.path)
   }
 
-  async buildByBunForServer(buildConfig?: BuildConfig): Promise<boolean> {
+  async buildByBunForServer(buildConfig?: BuildConfig): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appPath && this.providedAppComponent) {
       throw new Error(
@@ -552,13 +552,13 @@ export class ClientBun {
       )
     }
     if (!buildPaths.appPath && !buildPaths.pointsPath) {
-      return false
+      return null
     }
     if (!this.server.clientsDistDir) {
       throw new Error(`clientsDistDir not provided for server`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
-    await Bun.build({
+    const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',
       sourcemap: true,
@@ -572,14 +572,14 @@ export class ClientBun {
         'process.env.BUILD_TARGET': 'server',
       },
     })
-    return true
+    return buildOutput.outputs.map((output) => output.path)
   }
 
-  async buildByViteForClient(): Promise<boolean> {
+  async buildByViteForClient(): Promise<string[] | null> {
     throw new Error('buildByViteForClient is not implemented yet')
   }
 
-  async buildByViteForServer(): Promise<boolean> {
+  async buildByViteForServer(): Promise<string[] | null> {
     throw new Error('buildByViteForServer is not implemented yet')
   }
 
@@ -594,7 +594,12 @@ export class ClientBun {
     return true
   }
 
-  async buildSelf(): Promise<{ self: boolean; serverClient: boolean }> {
+  async clean(): Promise<{ self: boolean; publicDir: boolean }> {
+    const [self, publicDir] = await Promise.all([this.cleanSelf(), this.publicDir.clean()])
+    return { self, publicDir }
+  }
+
+  async buildSelf(): Promise<{ self: string[] | null; serverClient: string[] | null }> {
     if (this.viteConfig) {
       const [self, serverClient] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
       return { self, serverClient }
@@ -604,8 +609,8 @@ export class ClientBun {
     }
   }
 
-  async build(): Promise<{ self: boolean; serverClient: boolean; publicDir: boolean }> {
-    await Promise.all([this.cleanSelf(), this.publicDir.clean()])
+  async build(): Promise<{ self: string[] | null; serverClient: string[] | null; publicDir: string[] | null }> {
+    await this.clean()
     const [{ self, serverClient }, publicDir] = await Promise.all([this.buildSelf(), this.publicDir.build()])
     return { self, serverClient, publicDir }
   }

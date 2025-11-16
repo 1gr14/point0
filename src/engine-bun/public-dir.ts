@@ -122,14 +122,14 @@ export class PublicDir {
     return true
   }
 
-  async build(): Promise<boolean> {
+  async build(): Promise<string[] | null> {
     const distDir = this.distDir
     if (!distDir) {
-      return false
+      return null
     }
 
     const glob = new Bun.Glob('**/*')
-    const fileOperations: Array<Promise<void>> = []
+    const fileOperations: Array<Promise<string>> = []
 
     await Promise.all(
       this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
@@ -145,6 +145,7 @@ export class PublicDir {
                 const content = await Bun.file(fileAbsPath).text()
                 // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
                 await Bun.write(distAbsPath, content)
+                return distAbsPath
               })(),
             )
           }
@@ -158,14 +159,14 @@ export class PublicDir {
               const distAbsPath = nodePath.resolve(distDir, fileRoutePath.replace(/^\/+/, ''))
               // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
               await Bun.write(distAbsPath, content)
+              return distAbsPath
             })(),
           )
         }
       }),
     )
 
-    await Promise.all(fileOperations)
-    return true
+    return await Promise.all(fileOperations)
   }
 
   // TODO: add static checkConflicts(publicDirs: PublicDir[]): throw error if same files paths are used in different public dirs with same hostname
