@@ -90,7 +90,7 @@ describe('parseEngineOptions', () => {
     const ENGINE_WAS_BUILT = true as boolean
     const options = parseEngineOptions({
       itWasBuilt: ENGINE_WAS_BUILT,
-      cwdAfterBuild: !ENGINE_WAS_BUILT ? '../dist/server' : '/home/src',
+      cwdAfterBuild: !ENGINE_WAS_BUILT ? '../dist/server' : '/home/dist/server',
       cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../../src',
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
@@ -119,9 +119,9 @@ describe('parseEngineOptions', () => {
       {
         "clients": [
           {
-            "app": "/dist/server-clients/client/app.js",
+            "app": "/home/dist/server-clients/client/app.js",
             "basepath": "/",
-            "distDir": "/dist/client",
+            "distDir": "/home/dist/client",
             "domRootElementId": "root",
             "env": {
               "SOURCE_BASE_URL": undefined,
@@ -129,26 +129,26 @@ describe('parseEngineOptions', () => {
             "hmrPort": 3101,
             "hostname": null,
             "index": 0,
-            "indexHtml": "/dist/client/index.html",
-            "points": "/dist/server-clients/client/lib/points.ready.js",
+            "indexHtml": "/home/dist/client/index.html",
+            "points": "/home/dist/server-clients/client/lib/points.ready.js",
             "port": 3001,
             "publicDir": [
               [
                 "/",
-                "/dist/client",
+                "/home/dist/client",
               ],
             ],
-            "publicDistDir": "/dist/client",
-            "serverDistDir": "/dist/server-clients/client",
+            "publicDistDir": "/home/dist/client",
+            "serverDistDir": "/home/dist/server-clients/client",
             "ssr": true,
             "viteConfig": null,
           },
         ],
         "general": {
           "autoFixBuiltPaths": true,
-          "cwd": "/home/src",
-          "cwdAfterBuild": "/home/src",
-          "cwdBeforeBuild": "/src",
+          "cwd": "/home/dist/server",
+          "cwdAfterBuild": "/home/dist/server",
+          "cwdBeforeBuild": "/home/src",
           "fallbackRootId": null,
           "itWasBuilt": true,
           "logger": {
@@ -158,18 +158,18 @@ describe('parseEngineOptions', () => {
         },
         "server": {
           "clientsDistDir": null,
-          "distDir": "/dist/server",
-          "entryFile": "/dist/server/entry-server.js",
+          "distDir": "/home/dist/server",
+          "entryFile": "/home/dist/server/entry-server.js",
           "hmrPort": 3100,
-          "points": "/dist/server/lib/points.server.js",
+          "points": "/home/dist/server/lib/points.server.js",
           "port": 3000,
           "publicDir": [
             [
               "/",
-              "/dist/public",
+              "/home/dist/public",
             ],
           ],
-          "publicDistDir": "/dist/public",
+          "publicDistDir": "/home/dist/public",
         },
       }
     `)
