@@ -74,7 +74,7 @@ export class EngineBun {
   async build(): Promise<{
     clients: Array<{
       self: string[] | null
-      serverClient: string[] | null
+      server: string[] | null
       publicDir: string[] | null
       rootId: RootId
       index: number
@@ -86,7 +86,7 @@ export class EngineBun {
         const buildOutput = await client.build()
         return {
           self: buildOutput.self,
-          serverClient: buildOutput.serverClient,
+          server: buildOutput.server,
           publicDir: buildOutput.publicDir,
           rootId: client.points.root._rootId,
           index: client.index,

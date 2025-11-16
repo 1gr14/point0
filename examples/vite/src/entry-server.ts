@@ -49,7 +49,7 @@ const engine = await EngineBun.create({
       ssr: true,
       app: './app.js',
       points: './lib/points.ready.js',
-      indexHtml: './index.html',
+      indexHtml: '../index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],
       publicDir: '../public',

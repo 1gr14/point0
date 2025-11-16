@@ -63,6 +63,7 @@ import type { PluginOption } from 'vite'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
+import nodePath from 'node:path'
 
 // export default defineConfig({
 //   plugins: [svgr(), react()] as PluginOption[],
@@ -156,41 +157,43 @@ export default defineConfig({
     minify: false,
     sourcemap: true,
 
-    rollupOptions: {
-      input: {
-        main: new URL('./index.html', import.meta.url).pathname,
-        app: './src/app.tsx',
-        points: './src/lib/points.ready.ts',
-      },
+    // rollupOptions: {
+    //   input: {
+    //     main: new URL('./index.html', import.meta.url).pathname,
+    //     app: './src/app.tsx',
+    //     points: './src/lib/points.ready.ts',
+    //   },
 
-      // treeshake: {
-      //   // Disable tree-shaking ONLY for your re-export barrel file
-      //   moduleSideEffects(id, external) {
-      //     if (id.includes('points.ready')) {
-      //       return false // treat it as having side effects → no shake
-      //     }
-      //     return true // default behavior
-      //   },
-      //   // IMPORTANT: leave all other defaults ON
-      //   // preset: 'recommended',
-      // },
+    //   // treeshake: {
+    //   //   // Disable tree-shaking ONLY for your re-export barrel file
+    //   //   moduleSideEffects(id, external) {
+    //   //     if (id.includes('points.ready')) {
+    //   //       return false // treat it as having side effects → no shake
+    //   //     }
+    //   //     return true // default behavior
+    //   //   },
+    //   //   // IMPORTANT: leave all other defaults ON
+    //   //   // preset: 'recommended',
+    //   // },
 
-      preserveEntrySignatures: 'strict',
+    //   preserveEntrySignatures: 'strict',
 
-      output: {
-        entryFileNames: '[name].js',
-        minifyInternalExports: false,
+    //   output: {
+    //     entryFileNames: '[name].js',
+    //     minifyInternalExports: false,
 
-        // MUST remain false → React requires chunk graph
-        inlineDynamicImports: false,
-      },
-    },
+    //     // MUST remain false → React requires chunk graph
+    //     inlineDynamicImports: false,
+    //   },
+    // },
   },
 
   resolve: {
     alias: {
       '@': new URL('./src', import.meta.url).pathname,
       point0: new URL('../../src', import.meta.url).pathname,
+      // '@': nodePath.resolve(__dirname, 'src'),
+      // point0: nodePath.resolve(__dirname, '../../src'),
     },
   },
 })

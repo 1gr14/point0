@@ -1,6 +1,7 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { BuildConfig } from 'bun'
 import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import { Readable } from 'node:stream'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
@@ -568,6 +569,8 @@ export class ClientBun {
       packages: 'external',
       sourcemap: true,
       minify: false,
+      // splitting: true,
+      format: 'esm',
       ...buildConfig,
       entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
       outdir: buildPaths.serverDistDir,
@@ -581,11 +584,236 @@ export class ClientBun {
   }
 
   async buildByViteForClient(): Promise<string[] | null> {
-    throw new Error('buildByViteForClient is not implemented yet')
+    if (!this.viteConfig) {
+      throw new Error(`viteConfig not provided for client "${this.points.root._rootId}"`)
+    }
+    const { build: viteBuild } = await import('vite')
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.indexHtml) {
+      return null
+    }
+    if (!buildPaths.distDir) {
+      throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
+    }
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+    const loadedViteConfig = await ClientBun.loadViteConfig({
+      viteConfig: this.viteConfig,
+      command: 'build',
+    })
+
+    if (!(await Bun.file(buildPaths.indexHtml).exists())) {
+      throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.points.root._rootId}"`)
+    }
+
+    const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
+    const normalizedExistsingRollupOptionsOutput =
+      (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
+    const rollupOptionsOutput: Extract<
+      NonNullable<NonNullable<LoadedViteConfig['build']>['rollupOptions']>['output'],
+      object
+    > = {
+      ...normalizedExistsingRollupOptionsOutput,
+      // may be we will later add something here
+    }
+    const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
+      ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
+      : rollupOptionsOutput
+
+    const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
+
+    const config: LoadedViteConfig = {
+      ...loadedViteConfig,
+      root: viteRoot,
+      build: {
+        ...loadedViteConfig.build,
+        outDir: buildPaths.distDir,
+        minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
+        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+        rollupOptions: {
+          ...loadedViteConfig.build?.rollupOptions,
+          input: buildPaths.indexHtml,
+          output: fixedExistingRollupOptionsOutput,
+        },
+      },
+      define: {
+        ...loadedViteConfig.define,
+        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        'process.env.BUILD_TARGET': JSON.stringify('client'),
+        ...Object.fromEntries(
+          Object.entries(this.env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        ),
+      },
+    }
+
+    const buildResult = await viteBuild(config)
+
+    const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
+    const outputFiles: string[] = []
+    for (const rollupOutput of rollupOutputs) {
+      if ('output' in rollupOutput) {
+        const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
+        for (const chunk of chunks) {
+          if ('fileName' in chunk && typeof chunk.fileName === 'string') {
+            outputFiles.push(nodePath.resolve(buildPaths.distDir, chunk.fileName))
+          }
+        }
+      }
+    }
+    return outputFiles
   }
 
   async buildByViteForServer(): Promise<string[] | null> {
-    throw new Error('buildByViteForServer is not implemented yet')
+    if (!this.viteConfig) {
+      throw new Error(`viteConfig not provided for client "${this.points.root._rootId}"`)
+    }
+    const { build: viteBuild } = await import('vite')
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.appPath && this.providedAppComponent) {
+      throw new Error(
+        `To build client "${this.points.root._rootId}" for server, you should provide app path, not app component itself in "app" option`,
+      )
+    }
+    if (!buildPaths.pointsPath && this.providedPoints) {
+      throw new Error(
+        `To build client "${this.points.root._rootId}" for server, you should provide points path, not points itself in "points" option`,
+      )
+    }
+    if (!buildPaths.appPath && !buildPaths.pointsPath) {
+      return null
+    }
+    if (!buildPaths.serverDistDir) {
+      throw new Error(`serverDistDir not provided for client "${this.points.root._rootId}"`)
+    }
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+    const loadedViteConfig = await ClientBun.loadViteConfig({
+      viteConfig: this.viteConfig,
+      command: 'build',
+    })
+
+    const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
+    const normalizedExistsingRollupOptionsOutput =
+      (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
+
+    // Handle external function - it can be a function, array, or undefined
+    // const existingRollupOptionsExternal = loadedViteConfig.build?.rollupOptions?.external
+    // const createRollupOptionsExternalFunction = () => {
+    //   return (id: string, importer?: string, isResolved?: boolean) => {
+    //     // Externalize node built-ins and packages
+    //     if (id.startsWith('node:') || (!id.startsWith('.') && !id.startsWith('/') && !nodePath.isAbsolute(id))) {
+    //       return true
+    //     }
+    //     // Use custom external function if provided
+    //     if (typeof existingRollupOptionsExternal === 'function') {
+    //       try {
+    //         return existingRollupOptionsExternal(id, importer, isResolved ?? false)
+    //       } catch (e) {
+    //         console.error('Error in external function:', e)
+    //         return false
+    //       }
+    //     }
+    //     if (Array.isArray(existingRollupOptionsExternal)) {
+    //       return existingRollupOptionsExternal.includes(id)
+    //     }
+    //     return false
+    //   }
+    // }
+
+    const rollupOptionsOutput: Extract<
+      NonNullable<NonNullable<LoadedViteConfig['build']>['rollupOptions']>['output'],
+      object
+    > = {
+      ...normalizedExistsingRollupOptionsOutput,
+      // Files structure and names should be as-is
+      // entryFileNames: (chunkInfo) => {
+      //   // If there's a custom entryFileNames function, use it
+      //   if (
+      //     normalizedOutput &&
+      //     typeof normalizedOutput === 'object' &&
+      //     typeof normalizedOutput.entryFileNames === 'function'
+      //   ) {
+      //     return normalizedOutput.entryFileNames(chunkInfo)
+      //   }
+      //   // Preserve original file names and directory structure
+      //   if (chunkInfo.isEntry) {
+      //     // Try to get the original file path from facadeModuleId
+      //     const facadeModuleId = chunkInfo.facadeModuleId
+      //     if (facadeModuleId && typeof facadeModuleId === 'string') {
+      //       // Calculate relative path from vite root
+      //       const relativePath = nodePath.relative(viteRoot, facadeModuleId)
+      //       // Replace extension with .js and normalize path separators
+      //       const outputPath = relativePath.replace(/\.(tsx?|jsx?)$/, '.js').replace(/\\/g, '/')
+      //       return outputPath
+      //     }
+      //     // Fallback to entry name if facadeModuleId is not available
+      //     const entryName = chunkInfo.name || 'index'
+      //     return `${entryName}.js`
+      //   }
+      //   return '[name].js'
+      // },
+      // chunkFileNames: '[name].js', // Preserve chunk names
+      // assetFileNames: '[name].[ext]', // Preserve asset names
+      // preserveModules: false, // Don't preserve module structure (we want bundles)
+      // format: 'es', // ES modules
+    }
+    const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
+      ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
+      : rollupOptionsOutput
+
+    const viteRoot =
+      loadedViteConfig.root ||
+      (this.indexHtml && nodePath.dirname(this.indexHtml)) ||
+      (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) ||
+      this.cwd
+
+    const config: LoadedViteConfig = {
+      ...loadedViteConfig,
+      root: viteRoot,
+      build: {
+        ...loadedViteConfig.build,
+        outDir: buildPaths.serverDistDir,
+        minify: false,
+        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+        ssr: true,
+        rollupOptions: {
+          ...loadedViteConfig.build?.rollupOptions,
+          input: {
+            ...(buildPaths.appPath ? { app: buildPaths.appPath } : {}),
+            ...(buildPaths.pointsPath ? { points: buildPaths.pointsPath } : {}),
+          },
+          // external: createRollupOptionsExternalFunction(),
+          output: fixedExistingRollupOptionsOutput,
+        },
+      },
+      define: {
+        ...loadedViteConfig.define,
+        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        'process.env.BUILD_TARGET': JSON.stringify('server'),
+        ...Object.fromEntries(
+          Object.entries(this.env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        ),
+      },
+    }
+    const buildResult = await viteBuild(config)
+
+    const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
+    const outputFiles: string[] = []
+    for (const rollupOutput of rollupOutputs) {
+      if ('output' in rollupOutput) {
+        const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
+        for (const chunk of chunks) {
+          if ('fileName' in chunk && typeof chunk.fileName === 'string') {
+            outputFiles.push(nodePath.resolve(buildPaths.serverDistDir, chunk.fileName))
+          }
+        }
+      }
+    }
+    return outputFiles
   }
 
   async cleanSelf(): Promise<boolean> {
@@ -599,25 +827,36 @@ export class ClientBun {
     return true
   }
 
-  async clean(): Promise<{ self: boolean; publicDir: boolean }> {
-    const [self, publicDir] = await Promise.all([this.cleanSelf(), this.publicDir.clean()])
-    return { self, publicDir }
+  async cleanServer(): Promise<boolean> {
+    const serverDistDir = this.serverDistDir
+    if (!serverDistDir) {
+      return false
+    }
+    await nodeFs.rm(serverDistDir, { recursive: true }).catch(() => {
+      /* ignore */
+    })
+    return true
   }
 
-  async buildSelf(): Promise<{ self: string[] | null; serverClient: string[] | null }> {
+  async clean(): Promise<{ self: boolean; publicDir: boolean; server: boolean }> {
+    const [self, publicDir, server] = await Promise.all([this.cleanSelf(), this.publicDir.clean(), this.cleanServer()])
+    return { self, publicDir, server }
+  }
+
+  async buildSelf(): Promise<{ self: string[] | null; server: string[] | null }> {
     if (this.viteConfig) {
-      const [self, serverClient] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
-      return { self, serverClient }
+      const [self, server] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
+      return { self, server }
     } else {
-      const [self, serverClient] = await Promise.all([this.buildByBunForClient(), this.buildByBunForServer()])
-      return { self, serverClient }
+      const [self, server] = await Promise.all([this.buildByBunForClient(), this.buildByBunForServer()])
+      return { self, server }
     }
   }
 
-  async build(): Promise<{ self: string[] | null; serverClient: string[] | null; publicDir: string[] | null }> {
+  async build(): Promise<{ self: string[] | null; server: string[] | null; publicDir: string[] | null }> {
     await this.clean()
-    const [{ self, serverClient }, publicDir] = await Promise.all([this.buildSelf(), this.publicDir.build()])
-    return { self, serverClient, publicDir }
+    const [{ self, server }, publicDir] = await Promise.all([this.buildSelf(), this.publicDir.build()])
+    return { self, server, publicDir }
   }
 
   async renderAsReadableStream({
