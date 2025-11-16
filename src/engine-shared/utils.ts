@@ -48,7 +48,6 @@ import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
-import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, LoadedViteConfig } from '../engine-shared/config.js'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -157,69 +156,6 @@ export const isPathnameUnderBasepath = (pathname: string, basepath: string | und
     return false
   }
   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
-}
-
-export const loadViteConfig = async ({
-  viteConfig,
-  command,
-}: {
-  viteConfig: EngineOptionsViteConfig
-  command: 'serve' | 'build'
-}): Promise<LoadedViteConfig> => {
-  return typeof viteConfig === 'function'
-    ? await viteConfig({ command, mode: process.env.NODE_ENV || 'development' })
-    : typeof viteConfig === 'string'
-      ? await import(viteConfig)
-      : await viteConfig
-}
-
-export const createViteDevServer = async ({
-  viteConfig,
-  clientIndex,
-  hmrPort,
-  env,
-}: {
-  viteConfig: EngineOptionsViteConfig | null
-  clientIndex: number | null
-  hmrPort: number | null
-  env?: EngineOptionsEnvParsed
-}): Promise<ViteDevServer> => {
-  if (!viteConfig) {
-    throw new Error(
-      `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
-    )
-  }
-  const createServer = await import('vite').then((module) => module.createServer)
-  const loadedViteConfig: LoadedViteConfig = await loadViteConfig({
-    viteConfig,
-    command: 'serve',
-  })
-  return await createServer({
-    ...loadedViteConfig,
-    appType: 'custom',
-    server: {
-      ...loadedViteConfig.server,
-      middlewareMode: true,
-      hmr:
-        loadedViteConfig.server?.hmr === false
-          ? false
-          : hmrPort === null
-            ? false
-            : {
-                ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-                port: hmrPort,
-              },
-    },
-    define: {
-      ...loadedViteConfig.define,
-      ...Object.fromEntries(
-        Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-      ),
-      ...Object.fromEntries(
-        Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-      ),
-    },
-  })
 }
 
 export const createFreshPoints = async ({

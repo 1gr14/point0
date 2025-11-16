@@ -4,6 +4,7 @@ import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { RootId } from '../core/types.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
+import nodePath from 'node:path'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
 
@@ -31,16 +32,19 @@ export type EngineOptionsViteConfig = LoadedViteConfig | ReturnType<typeof impor
 export type EngineGeneralOptions = {
   fallbackRootId?: RootId
   logger?: EngineLogger
-  cwd?: string
-  built?: boolean
+  itWasBuilt?: boolean
+  cwdAfterBuild?: string
+  cwdBeforeBuild?: string
 }
 export type EngineServerOptions = {
   points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
-  distDir?: string | null
-  clientsDistDir?: string | null
   port?: number | string | null
   hmrPort?: number | string | null
+  distDir?: string | null
+  entryFile?: string | null
+  clientsDistDir?: string | null
+  publicDistDir?: string | null
 }
 export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
@@ -49,13 +53,14 @@ export type EngineClientOptions = {
   hostname?: string | null
   basepath?: string | null
   publicDir?: EngineOptionsPublicDir | null
-  distDir?: string | null
   indexHtml?: string | null
   domRootElementId?: string
   env?: EngineOptionsEnv | null
   port?: number | string | null
   hmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
+  distDir?: string | null
+  publicDistDir?: string | null
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -65,8 +70,10 @@ export type EngineOptions = EngineGeneralOptions & {
 export type EngineGeneralOptionsParsed = {
   fallbackRootId: RootId | null
   logger: EngineLogger
+  itWasBuilt: boolean
+  cwdAfterBuild: string
+  cwdBeforeBuild: string
   cwd: string
-  built: boolean
 }
 export type EngineClientOptionsParsed = {
   points: Points | string
@@ -75,7 +82,6 @@ export type EngineClientOptionsParsed = {
   hostname: string | null
   basepath: string
   publicDir: EngineOptionsPublicDirParsed
-  distDir: string | null
   indexHtml: string | null
   env: EngineOptionsEnvParsed
   domRootElementId: string
@@ -83,14 +89,18 @@ export type EngineClientOptionsParsed = {
   hmrPort: number
   index: number
   viteConfig: EngineOptionsViteConfig | null
+  distDir: string | null
+  publicDistDir: string | null
 }
 export type EngineServerOptionsParsed = {
   points: Points | string
   publicDir: EngineOptionsPublicDirParsed
-  distDir: string | null
-  clientsDistDir: string | null
   port: number
   hmrPort: number
+  entryFile: string | null
+  distDir: string | null
+  clientsDistDir: string | null
+  publicDistDir: string | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -155,16 +165,34 @@ const parseEngineGeneralOptions = ({
   serverOptions: EngineServerOptions
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
-  const built = generalOptions.built ?? false
-  const serverDistDir = serverOptions.distDir
-  const cwd = (() => {
-    if (built) {
-      if (!serverDistDir) {
-        throw new Error(`distDir not provided for server, while built is true`)
-      }
-      return serverDistDir
+  const itWasBuilt = generalOptions.itWasBuilt ?? false
+  const { cwdAfterBuild, cwdBeforeBuild, cwd } = (() => {
+    if (!generalOptions.cwdBeforeBuild && !generalOptions.cwdAfterBuild) {
+      return { cwdAfterBuild: process.cwd(), cwdBeforeBuild: process.cwd(), cwd: process.cwd() }
     }
-    return generalOptions.cwd || process.cwd()
+    if (!generalOptions.cwdAfterBuild || !generalOptions.cwdBeforeBuild) {
+      throw new Error(`You should provide both cwdAfterBuild and cwdBeforeBuild, or non of them`)
+    }
+    if (itWasBuilt) {
+      if (!nodePath.isAbsolute(generalOptions.cwdAfterBuild)) {
+        throw new Error(
+          `cwdAfterBuild "${generalOptions.cwdAfterBuild}" is not absolute, but should be, when itWasBuilt is true`,
+        )
+      }
+      const cwdBeforeBuild = toAbsPath(generalOptions.cwdAfterBuild, generalOptions.cwdBeforeBuild)
+      const cwdAfterBuild = generalOptions.cwdAfterBuild
+      const cwd = cwdAfterBuild
+      return { cwdAfterBuild, cwdBeforeBuild, cwd }
+    }
+    if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
+      throw new Error(
+        `cwdBeforeBuild "${generalOptions.cwdBeforeBuild}" is not absolute, but should be, when itWasBuilt is false`,
+      )
+    }
+    const cwdBeforeBuild = generalOptions.cwdBeforeBuild
+    const cwdAfterBuild = toAbsPath(generalOptions.cwdBeforeBuild, generalOptions.cwdAfterBuild)
+    const cwd = cwdBeforeBuild
+    return { cwdAfterBuild, cwdBeforeBuild, cwd }
   })()
   return {
     // will be resolved after parsing clients and server
@@ -173,8 +201,10 @@ const parseEngineGeneralOptions = ({
       info: console.info.bind(console),
       error: console.error.bind(console),
     },
+    itWasBuilt,
+    cwdAfterBuild,
+    cwdBeforeBuild,
     cwd,
-    built,
   }
 }
 export const parseEngineServerOptions = ({
@@ -186,15 +216,6 @@ export const parseEngineServerOptions = ({
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
   const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
-  const distDir = (() => {
-    if (generalOptionsParsed.built) {
-      if (!serverOptions.distDir) {
-        throw new Error(`distDir not provided for server, while built is true`)
-      }
-      return serverOptions.distDir
-    }
-    return serverOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, serverOptions.distDir) : null
-  })()
   return {
     points:
       typeof serverOptions.points === 'string'
@@ -202,10 +223,14 @@ export const parseEngineServerOptions = ({
         : Points.create(serverOptions.points),
     port,
     hmrPort,
+    entryFile: serverOptions.entryFile ? toAbsPath(generalOptionsParsed.cwd, serverOptions.entryFile) : null,
     publicDir: parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd),
-    distDir,
+    distDir: serverOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, serverOptions.distDir) : null,
     clientsDistDir: serverOptions.clientsDistDir
       ? toAbsPath(generalOptionsParsed.cwd, serverOptions.clientsDistDir)
+      : null,
+    publicDistDir: serverOptions.publicDistDir
+      ? toAbsPath(generalOptionsParsed.cwd, serverOptions.publicDistDir)
       : null,
   }
 }
@@ -236,7 +261,6 @@ const parseEngineClientOptions = ({
     hostname: clientOptions.hostname ?? null,
     basepath: prependAndAppendSlash(clientOptions.basepath) || '/',
     publicDir: parsePublicDir(clientOptions.publicDir ?? [], generalOptionsParsed.cwd),
-    distDir: clientOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, clientOptions.distDir) : null,
     indexHtml: toAbsPath(generalOptionsParsed.cwd, clientOptions.indexHtml) ?? null,
     domRootElementId: clientOptions.domRootElementId || 'root',
     port,
@@ -247,6 +271,10 @@ const parseEngineClientOptions = ({
       typeof clientOptions.viteConfig === 'string'
         ? toAbsPath(generalOptionsParsed.cwd, clientOptions.viteConfig)
         : (clientOptions.viteConfig ?? null),
+    distDir: clientOptions.distDir ? toAbsPath(generalOptionsParsed.cwd, clientOptions.distDir) : null,
+    publicDistDir: clientOptions.publicDistDir
+      ? toAbsPath(generalOptionsParsed.cwd, clientOptions.publicDistDir)
+      : null,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

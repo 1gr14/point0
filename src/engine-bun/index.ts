@@ -67,5 +67,6 @@ export class EngineBun {
         await client.build()
       }),
     )
+    await this.server.build()
   }
 }

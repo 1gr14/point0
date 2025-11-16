@@ -1,4 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
+import type { BuildConfig } from 'bun'
+import nodePath from 'node:path'
 import { Readable } from 'node:stream'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
@@ -6,20 +8,19 @@ import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
 import type { AppComponent } from '../core/mount.js'
 import type { Points } from '../core/points.js'
 import type { AnyPoint, InputParsed } from '../core/types.js'
+import type { ParsedUrl } from '../core/utils.js'
+import { parseUrl } from '../core/utils.js'
 import type {
   EngineLogger,
   EngineOptionsEnvParsed,
   EngineOptionsPublicDirParsed,
   EngineOptionsViteConfig,
+  LoadedViteConfig,
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
-import { createFreshPoints, createViteDevServer } from '../engine-shared/utils.js'
+import { createFreshPoints } from '../engine-shared/utils.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
-import type { ParsedUrl } from '../core/utils.js'
-import { parseUrl } from '../core/utils.js'
-import type { BuildConfig } from 'bun'
-import nodePath from 'node:path'
 
 export class ClientBun {
   cwd: string
@@ -42,6 +43,7 @@ export class ClientBun {
   env: EngineOptionsEnvParsed
   publicDir: PublicDir
   distDir: string | null
+  publicDistDir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
   bunDevServer: Bun.Server<unknown> | null
@@ -59,6 +61,7 @@ export class ClientBun {
     basepath: string
     indexHtml: string | null
     distDir: string | null
+    publicDistDir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
@@ -94,6 +97,7 @@ export class ClientBun {
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
     this.publicDir = input.publicDir
     this.distDir = input.distDir
+    this.publicDistDir = input.publicDistDir
     this.viteDevServer = input.viteDevServer
     this.bunDevServer = input.bunDevServer
     this.server = input.server
@@ -108,6 +112,7 @@ export class ClientBun {
     basepath: string
     publicDir: EngineOptionsPublicDirParsed
     distDir: string | null
+    publicDistDir: string | null
     indexHtml: string | null
     domRootElementId: string
     port: number
@@ -121,7 +126,7 @@ export class ClientBun {
   }): Promise<ClientBun> {
     const viteDevServer =
       input.viteConfig && process.env.NODE_ENV !== 'production'
-        ? await createViteDevServer({
+        ? await ClientBun.createViteDevServer({
             viteConfig: input.viteConfig,
             clientIndex: input.index,
             hmrPort: input.hmrPort,
@@ -158,13 +163,11 @@ export class ClientBun {
       pointsPath,
       providedPoints,
       publicDir,
-      distDir: input.distDir,
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appPath: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
       viteDevServer,
       bunDevServer,
-      server: input.server,
     })
 
     return client
@@ -181,6 +184,69 @@ export class ClientBun {
       port,
       routes: {
         '/index.html': await import(indexHtml).then((module) => module.default),
+      },
+    })
+  }
+
+  static async loadViteConfig({
+    viteConfig,
+    command,
+  }: {
+    viteConfig: EngineOptionsViteConfig
+    command: 'serve' | 'build'
+  }): Promise<LoadedViteConfig> {
+    return typeof viteConfig === 'function'
+      ? await viteConfig({ command, mode: process.env.NODE_ENV || 'development' })
+      : typeof viteConfig === 'string'
+        ? await import(viteConfig)
+        : await viteConfig
+  }
+
+  static async createViteDevServer({
+    viteConfig,
+    clientIndex,
+    hmrPort,
+    env,
+  }: {
+    viteConfig: EngineOptionsViteConfig | null
+    clientIndex: number | null
+    hmrPort: number | null
+    env?: EngineOptionsEnvParsed
+  }): Promise<ViteDevServer> {
+    if (!viteConfig) {
+      throw new Error(
+        `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
+      )
+    }
+    const createServer = await import('vite').then((module) => module.createServer)
+    const loadedViteConfig: LoadedViteConfig = await ClientBun.loadViteConfig({
+      viteConfig,
+      command: 'serve',
+    })
+    return await createServer({
+      ...loadedViteConfig,
+      appType: 'custom',
+      server: {
+        ...loadedViteConfig.server,
+        middlewareMode: true,
+        hmr:
+          loadedViteConfig.server?.hmr === false
+            ? false
+            : hmrPort === null
+              ? false
+              : {
+                  ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+                  port: hmrPort,
+                },
+      },
+      define: {
+        ...loadedViteConfig.define,
+        ...Object.fromEntries(
+          Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        ),
       },
     })
   }
@@ -427,12 +493,9 @@ export class ClientBun {
     appPath: string | null
     pointsPath: string | null
     indexHtml: string | null
-    distDir: string
+    distDir: string | null
     entrypointsExists: boolean
   } {
-    if (!this.distDir) {
-      throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
-    }
     const appPath = this.getAppPathOrNullOrThrow()
     const pointsPath = this.getPointsPathOrNullOrThrow()
     const indexHtml = this.indexHtml
@@ -451,6 +514,9 @@ export class ClientBun {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.indexHtml) {
       return false
+    }
+    if (!buildPaths.distDir) {
+      throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     await Bun.build({
@@ -473,11 +539,21 @@ export class ClientBun {
 
   async buildByBunForServer(buildConfig?: BuildConfig): Promise<boolean> {
     const buildPaths = this.getBuildPaths()
-    if (!this.server.distDir) {
-      throw new Error(`distDir not provided for server`)
+    if (!buildPaths.appPath && this.providedAppComponent) {
+      throw new Error(
+        `To build client "${this.points.root._rootId}" for server, you should provide app path, not app component itself in "app" option`,
+      )
+    }
+    if (!buildPaths.pointsPath && this.providedPoints) {
+      throw new Error(
+        `To build client "${this.points.root._rootId}" for server, you should provide points path, not points itself in "points" option`,
+      )
     }
     if (!buildPaths.appPath && !buildPaths.pointsPath) {
       return false
+    }
+    if (!this.server.clientsDistDir) {
+      throw new Error(`clientsDistDir not provided for server`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     await Bun.build({
@@ -487,7 +563,7 @@ export class ClientBun {
       minify: false,
       ...buildConfig,
       entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
-      outdir: nodePath.join(this.server.distDir, `clients/${this.points.root._rootId}`),
+      outdir: nodePath.join(this.server.clientsDistDir, this.points.root._rootId),
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),

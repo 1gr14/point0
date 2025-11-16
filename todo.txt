@@ -1,6 +1,15 @@
+build public dir
+get paths for points and app from dist when built === true
 build script, use dist dir as public dir
+
+engine.ts & index.server.ts
+index.client.ts
+hide import.meta.hot, allow mount(App, {settings: ...})
+
 config
+config can generate engine.ts by itself
 cli 
+
 
 onReq onRes normalize, make more straight forward
 super store → eversion store

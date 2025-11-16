@@ -1,3 +1,4 @@
+import type { BuildConfig } from 'bun'
 import { Eversion } from '../core/eversion.js'
 import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
@@ -18,8 +19,11 @@ export class ServerBun {
   hmrPort: number | null
   clients: ClientBun[]
   logger: EngineLogger
+  entryFile: string | null
   publicDir: PublicDir
   distDir: string | null
+  clientsDistDir: string | null
+  publicDistDir: string | null
   fallbackRootId: RootId
 
   bunServer: Bun.Server<unknown> | undefined
@@ -34,8 +38,11 @@ export class ServerBun {
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
+    entryFile: string | null
     publicDir: PublicDir
     distDir: string | null
+    clientsDistDir: string | null
+    publicDistDir: string | null
     eversion: Eversion
   }) {
     this.cwd = input.cwd
@@ -47,8 +54,11 @@ export class ServerBun {
     this.hmrPort = input.hmrPort
     this.clients = input.clients
     this.logger = input.logger
+    this.entryFile = input.entryFile
     this.publicDir = input.publicDir
     this.distDir = input.distDir
+    this.clientsDistDir = input.clientsDistDir
+    this.publicDistDir = input.publicDistDir
     this.fallbackRootId = input.fallbackRootId
   }
 
@@ -57,8 +67,11 @@ export class ServerBun {
     points: Points | string
     port: number
     hmrPort: number | null
+    entryFile: string | null
     publicDir: EngineOptionsPublicDirParsed
     distDir: string | null
+    clientsDistDir: string | null
+    publicDistDir: string | null
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
@@ -176,6 +189,52 @@ export class ServerBun {
         },
       },
     })
+  }
+
+  getBuildPaths(): {
+    pointsPath: string | null
+    distDir: string | null
+    entryFile: string | null
+    entrypointsExists: boolean
+  } {
+    const pointsPath = this.pointsPath
+    const entryFile = this.entryFile
+    const entrypointsExists = !!(pointsPath || entryFile)
+    return {
+      pointsPath,
+      distDir: this.distDir,
+      entryFile,
+      entrypointsExists,
+    }
+  }
+
+  async build(buildConfig?: BuildConfig): Promise<boolean> {
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.pointsPath && this.providedPoints) {
+      throw new Error(`To build server, you should provide points path, not points itself in "points" option`)
+    }
+    if (!buildPaths.entryFile && !buildPaths.pointsPath) {
+      return false
+    }
+    if (!this.distDir) {
+      throw new Error(`distDir not provided for server`)
+    }
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+    await Bun.build({
+      target: 'bun',
+      packages: 'external',
+      sourcemap: true,
+      minify: false,
+      ...buildConfig,
+      entrypoints: [buildPaths.entryFile, buildPaths.pointsPath].flatMap((p) => p || []),
+      outdir: this.distDir,
+      define: {
+        ...buildConfig?.define,
+        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        'process.env.BUILD_TARGET': 'server',
+      },
+    })
+    return true
   }
 
   async fetch({
