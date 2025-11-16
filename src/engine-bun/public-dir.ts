@@ -128,6 +128,7 @@ export class PublicDir {
       return null
     }
 
+    await nodeFs.mkdir(distDir, { recursive: true })
     const glob = new Bun.Glob('**/*')
     const fileOperations: Array<Promise<string>> = []
 
