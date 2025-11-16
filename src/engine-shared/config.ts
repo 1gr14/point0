@@ -329,8 +329,8 @@ const parseEngineClientOptions = ({
     publicDir:
       !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
         ? parsePublicDir(clientOptions.publicDir ?? [], generalOptionsParsed.cwd)
-        : clientOptions.publicDistDir
-          ? [['/', toFinalPath(clientOptions.publicDistDir, true)]]
+        : clientOptions.distDir
+          ? [['/', toFinalPath(clientOptions.distDir, true)]]
           : [],
     publicDistDir: toFinalPath(clientOptions.publicDistDir, true),
   }

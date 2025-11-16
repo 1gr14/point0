@@ -6,8 +6,8 @@ describe('parseEngineOptions', () => {
     const ENGINE_WAS_BUILT = false as boolean
     const options = parseEngineOptions({
       itWasBuilt: ENGINE_WAS_BUILT,
-      cwdAfterBuild: !ENGINE_WAS_BUILT ? '../dist/server' : '/home/src',
-      cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../../src',
+      cwdAfterBuild: !ENGINE_WAS_BUILT ? '../dist/server' : '/home/dist/server',
+      cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../src',
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         points: './lib/points.server.ts',
