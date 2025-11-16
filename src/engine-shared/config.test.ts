@@ -10,6 +10,7 @@ describe('parseEngineOptions', () => {
       cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../src',
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
+        rootId: 'server',
         points: './lib/points.server.ts',
         port: 3000,
         entryFile: './entry-server.ts',
@@ -19,6 +20,7 @@ describe('parseEngineOptions', () => {
       clients: [
         {
           ssr: true,
+          rootId: 'client',
           app: './app.js',
           points: './lib/points.ready.js',
           indexHtml: './index.html',
@@ -94,6 +96,7 @@ describe('parseEngineOptions', () => {
       cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../../src',
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
+        rootId: 'server',
         points: './lib/points.server.ts',
         port: 3000,
         entryFile: './entry-server.ts',
@@ -103,6 +106,7 @@ describe('parseEngineOptions', () => {
       clients: [
         {
           ssr: true,
+          rootId: 'client',
           app: './app.js',
           points: './lib/points.ready.js',
           indexHtml: './index.html',

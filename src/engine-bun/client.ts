@@ -533,6 +533,7 @@ export class ClientBun {
       format: 'esm',
       splitting: true,
       sourcemap: true,
+      publicPath: '/',
       minify: NODE_ENV === 'production',
       ...buildConfig,
       entrypoints: [buildPaths.indexHtml],

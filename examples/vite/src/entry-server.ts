@@ -7,6 +7,7 @@ const engine = await EngineBun.create({
   cwdBeforeBuild: !process.env.ENGINE_WAS_BUILT ? import.meta.dir : '../../src',
   // below all paths should be relative to cwdBeforeBuild like it was not built yet
   server: {
+    rootId: 'server',
     points: { root: source },
     port: 3000,
     entryFile: './entry-server.ts',
@@ -15,6 +16,7 @@ const engine = await EngineBun.create({
   },
   clients: [
     {
+      rootId: 'client',
       ssr: true,
       app: './app.js',
       points: './lib/points.ready.js',

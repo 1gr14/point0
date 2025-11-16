@@ -3,7 +3,6 @@ import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
-import * as nodePath from 'node:path'
 
 export class EngineBun {
   clients: ClientBun[]
@@ -46,11 +45,6 @@ export class EngineBun {
 
     server.clients = clients
     server.fallbackRootId ||= clients.at(0)?.points.root._rootId || server.points.root._rootId
-    for (const client of clients) {
-      if (!client.serverDistDir && server.clientsDistDir) {
-        client.serverDistDir = nodePath.resolve(server.clientsDistDir, client.points.root._rootId)
-      }
-    }
 
     return new EngineBun({ clients, server, logger: parsedInput.general.logger, eversion })
   }

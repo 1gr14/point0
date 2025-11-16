@@ -38,6 +38,7 @@ export type EngineGeneralOptions = {
   autoFixBuiltPaths?: boolean
 }
 export type EngineServerOptions = {
+  rootId: RootId
   points: ReadyPointsModule | LazyPointsModule | string
   publicDir?: EngineOptionsPublicDir
   port?: number | string | null
@@ -48,6 +49,7 @@ export type EngineServerOptions = {
   publicDistDir?: string | null
 }
 export type EngineClientOptions = {
+  rootId: RootId
   points: string | ReadyPointsModule | LazyPointsModule
   ssr?: boolean
   app?: string | AppComponent | null
@@ -79,6 +81,7 @@ export type EngineGeneralOptionsParsed = {
   autoFixBuiltPaths: boolean
 }
 export type EngineClientOptionsParsed = {
+  rootId: RootId
   points: Points | string
   ssr: boolean
   app: string | AppComponent | null
@@ -97,6 +100,7 @@ export type EngineClientOptionsParsed = {
   publicDistDir: string | null
 }
 export type EngineServerOptionsParsed = {
+  rootId: RootId
   points: Points | string
   publicDir: EngineOptionsPublicDirParsed
   port: number
@@ -300,6 +304,7 @@ export const parseEngineServerOptions = ({
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
   const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
   return {
+    rootId: serverOptions.rootId,
     points:
       typeof serverOptions.points === 'string'
         ? toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: serverOptions.distDir, path: serverOptions.points })
@@ -349,30 +354,49 @@ const parseEngineClientOptions = ({
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
   const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
+  const serverDistDirProvided =
+    clientOptions.serverDistDir ??
+    (serverOptionsParsed.clientsDistDir
+      ? nodePath.resolve(serverOptionsParsed.clientsDistDir, clientOptions.rootId)
+      : null)
+  const serverDistDir = toFinalPath({
+    ...generalOptionsParsed,
+    cwdIfWasBuilt: undefined,
+    path: serverDistDirProvided,
+  })
   return {
+    rootId: clientOptions.rootId,
     points:
       typeof clientOptions.points === 'string'
         ? generalOptionsParsed.autoFixBuiltPaths && generalOptionsParsed.itWasBuilt
-          ? clientOptions.serverDistDir
+          ? serverDistDir
             ? toFinalPath({
                 ...generalOptionsParsed,
-                cwdIfWasBuilt: clientOptions.serverDistDir,
+                cwdIfWasBuilt: serverDistDir,
                 path: clientOptions.viteConfig ? './points.js' : clientOptions.points,
               })
-            : '' // will be overrided in engine initialization
+            : toFinalPath({
+                ...generalOptionsParsed,
+                cwdIfWasBuilt: serverDistDir,
+                path: clientOptions.viteConfig ? './points.js' : clientOptions.points,
+              })
           : toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: undefined, path: clientOptions.points })
         : Points.create(clientOptions.points),
     ssr: clientOptions.ssr ?? false,
     app:
       typeof clientOptions.app === 'string'
         ? generalOptionsParsed.autoFixBuiltPaths && generalOptionsParsed.itWasBuilt
-          ? clientOptions.serverDistDir
+          ? serverDistDir
             ? toFinalPath({
                 ...generalOptionsParsed,
-                cwdIfWasBuilt: clientOptions.serverDistDir,
+                cwdIfWasBuilt: serverDistDir,
                 path: clientOptions.viteConfig ? './app.js' : clientOptions.app,
               })
-            : '' // will be overrided in engine initialization
+            : toFinalPath({
+                ...generalOptionsParsed,
+                cwdIfWasBuilt: serverDistDir,
+                path: clientOptions.viteConfig ? './app.js' : clientOptions.app,
+              })
           : toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: undefined, path: clientOptions.app })
         : (clientOptions.app ?? null),
     hostname: clientOptions.hostname ?? null,
@@ -402,11 +426,7 @@ const parseEngineClientOptions = ({
         : clientOptions.distDir
           ? [['/', toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: undefined, path: clientOptions.distDir })]]
           : [],
-    serverDistDir: toFinalPath({
-      ...generalOptionsParsed,
-      cwdIfWasBuilt: undefined,
-      path: clientOptions.serverDistDir,
-    }),
+    serverDistDir,
     publicDistDir: toFinalPath({
       ...generalOptionsParsed,
       cwdIfWasBuilt: undefined,
