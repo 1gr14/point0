@@ -45,13 +45,13 @@ describe('parseEngineOptions', () => {
             "hmrPort": 3101,
             "hostname": null,
             "index": 0,
-            "indexHtml": "/home/src/src/index.html",
-            "points": "/home/src/src/lib/points.ready.js",
+            "indexHtml": "/home/src/index.html",
+            "points": "/home/src/lib/points.ready.js",
             "port": 3001,
             "publicDir": [
               [
                 "/",
-                "/home/src/src/public",
+                "/home/src/public",
               ],
             ],
             "publicDistDir": "/home/dist/client",
