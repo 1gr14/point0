@@ -9,6 +9,7 @@ const engine = await EngineBun.create({
   server: {
     points: { root: source },
     port: 3000,
+    entryFile: './entry-server.ts',
     distDir: '../dist/server',
     publicDistDir: '../dist/public',
     clientsDistDir: '../dist/server-clients',

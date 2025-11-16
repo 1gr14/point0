@@ -11,7 +11,6 @@
     "build:public": "ncp ./public ./dist/public",
     "build": "bun run clean && bun run build:client && bun run build:server && bun run build:public",
     "build2": "cross-env TASK=build bun run src/entry-server.ts",
-    "build3": "bun run build2 && bun run build:server",
     "dev:client": "cross-env NODE_ENV=development TARGET_ROOT_ID='client' bun --no-clear-screen ./src/entry-server.ts",
     "dev:server": "cross-env NODE_ENV=development TARGET_ROOT_ID='server' bun --no-clear-screen --hot ./src/entry-server.ts",
     "dev:separate": "concurrently 'bun run dev:server' 'bun run dev:client' --names 'server,client' --prefix-colors 'blue,green' --prefix '{name} |' --restart-tries -2 --restart-after 100",

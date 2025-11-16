@@ -8,6 +8,7 @@ import { createFreshPoints } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
+import * as nodeFs from 'node:fs/promises'
 
 export class ServerBun {
   cwd: string
@@ -93,6 +94,7 @@ export class ServerBun {
       definition: input.publicDir,
       root: points.root,
       eversion,
+      distDir: input.publicDistDir,
     })
 
     const server = new ServerBun({
@@ -192,31 +194,35 @@ export class ServerBun {
   }
 
   getBuildPaths(): {
-    pointsPath: string | null
     distDir: string | null
     entryFile: string | null
     entrypointsExists: boolean
   } {
-    const pointsPath = this.pointsPath
     const entryFile = this.entryFile
-    const entrypointsExists = !!(pointsPath || entryFile)
+    const entrypointsExists = !!entryFile
     return {
-      pointsPath,
       distDir: this.distDir,
       entryFile,
       entrypointsExists,
     }
   }
 
-  async build(buildConfig?: BuildConfig): Promise<boolean> {
-    const buildPaths = this.getBuildPaths()
-    if (!buildPaths.pointsPath && this.providedPoints) {
-      throw new Error(`To build server, you should provide points path, not points itself in "points" option`)
+  async cleanSelf(): Promise<void> {
+    const distDir = this.distDir
+    if (distDir) {
+      await nodeFs.rm(distDir, { recursive: true })
     }
-    if (!buildPaths.entryFile && !buildPaths.pointsPath) {
+    await this.publicDir.clean().catch(() => {
+      /* ignore */
+    })
+  }
+
+  async buildSelf(buildConfig?: BuildConfig): Promise<boolean> {
+    const buildPaths = this.getBuildPaths()
+    if (!buildPaths.entryFile) {
       return false
     }
-    if (!this.distDir) {
+    if (!buildPaths.distDir) {
       throw new Error(`distDir not provided for server`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
@@ -226,8 +232,8 @@ export class ServerBun {
       sourcemap: true,
       minify: false,
       ...buildConfig,
-      entrypoints: [buildPaths.entryFile, buildPaths.pointsPath].flatMap((p) => p || []),
-      outdir: this.distDir,
+      entrypoints: [buildPaths.entryFile],
+      outdir: buildPaths.distDir,
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
@@ -235,6 +241,12 @@ export class ServerBun {
       },
     })
     return true
+  }
+
+  async build(buildConfig?: BuildConfig): Promise<{ self: boolean; publicDir: boolean }> {
+    await Promise.all([this.cleanSelf(), this.publicDir.clean()])
+    const [self, publicDir] = await Promise.all([this.buildSelf(buildConfig), this.publicDir.build()])
+    return { self, publicDir }
   }
 
   async fetch({

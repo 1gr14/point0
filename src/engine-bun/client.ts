@@ -1,5 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { BuildConfig } from 'bun'
+import * as nodeFs from 'node:fs/promises'
 import nodePath from 'node:path'
 import { Readable } from 'node:stream'
 import { renderToReadableStream } from 'react-dom/server'
@@ -152,6 +153,7 @@ export class ClientBun {
       definition: input.publicDir,
       root: points.root,
       eversion: input.eversion,
+      distDir: input.publicDistDir,
     })
 
     const distIndexHtmlContent =
@@ -573,20 +575,39 @@ export class ClientBun {
     return true
   }
 
-  async buildByViteForClient(): Promise<void> {
+  async buildByViteForClient(): Promise<boolean> {
     throw new Error('buildByViteForClient is not implemented yet')
   }
 
-  async buildByViteForServer(): Promise<void> {
+  async buildByViteForServer(): Promise<boolean> {
     throw new Error('buildByViteForServer is not implemented yet')
   }
 
-  async build(): Promise<void> {
-    if (this.viteConfig) {
-      await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
-    } else {
-      await Promise.all([this.buildByBunForClient(), this.buildByBunForServer()])
+  async cleanSelf(): Promise<boolean> {
+    const distDir = this.distDir
+    if (!distDir) {
+      return false
     }
+    await nodeFs.rm(distDir, { recursive: true }).catch(() => {
+      /* ignore */
+    })
+    return true
+  }
+
+  async buildSelf(): Promise<{ self: boolean; serverClient: boolean }> {
+    if (this.viteConfig) {
+      const [self, serverClient] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
+      return { self, serverClient }
+    } else {
+      const [self, serverClient] = await Promise.all([this.buildByBunForClient(), this.buildByBunForServer()])
+      return { self, serverClient }
+    }
+  }
+
+  async build(): Promise<{ self: boolean; serverClient: boolean; publicDir: boolean }> {
+    await Promise.all([this.cleanSelf(), this.publicDir.clean()])
+    const [{ self, serverClient }, publicDir] = await Promise.all([this.buildSelf(), this.publicDir.build()])
+    return { self, serverClient, publicDir }
   }
 
   async renderAsReadableStream({

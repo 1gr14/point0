@@ -1,3 +1,4 @@
+import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { Eversion } from '../core/eversion.js'
 import type { RootPoint } from '../core/types.js'
@@ -10,6 +11,7 @@ export class PublicDir {
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: Map<string, string | Response | (() => Response | Promise<Response>)>
   eversion: Eversion
+  distDir: string | null
 
   root: RootPoint
 
@@ -18,12 +20,14 @@ export class PublicDir {
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
     root: RootPoint
     eversion: Eversion
+    distDir: string | null
   }) {
     this.hostname = input.hostname
     this.definition = input.definition
     this.files = new Map<string, string | Response | (() => Response | Promise<Response>)>()
     this.root = input.root
     this.eversion = input.eversion
+    this.distDir = input.distDir
   }
 
   static async create(input: {
@@ -31,6 +35,7 @@ export class PublicDir {
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
     root: RootPoint
     eversion: Eversion
+    distDir: string | null
   }): Promise<PublicDir> {
     const publicDir = new PublicDir(input)
     await publicDir.loadFiles()
@@ -104,6 +109,63 @@ export class PublicDir {
         response,
       })
     }
+  }
+
+  async clean(): Promise<boolean> {
+    const distDir = this.distDir
+    if (!distDir) {
+      return false
+    }
+    await nodeFs.rm(distDir, { recursive: true }).catch(() => {
+      /* ignore */
+    })
+    return true
+  }
+
+  async build(): Promise<boolean> {
+    const distDir = this.distDir
+    if (!distDir) {
+      return false
+    }
+
+    const glob = new Bun.Glob('**/*')
+    const fileOperations: Array<Promise<void>> = []
+
+    await Promise.all(
+      this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
+        if (typeof dirAbsPathOrResponseOrFn === 'string') {
+          const dirRoutePath = dirRoutePathOrFilePath
+          const dirAbsPath = dirAbsPathOrResponseOrFn
+          for await (const relPath of glob.scan({ cwd: dirAbsPath, onlyFiles: true })) {
+            const fileAbsPath = nodePath.resolve(dirAbsPath, relPath)
+            const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
+            const distAbsPath = nodePath.resolve(distDir, fileRoutePath.replace(/^\/+/, ''))
+            fileOperations.push(
+              (async () => {
+                const content = await Bun.file(fileAbsPath).text()
+                // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
+                await Bun.write(distAbsPath, content)
+              })(),
+            )
+          }
+        } else {
+          const fileRoutePath = dirRoutePathOrFilePath
+          const fileResponseOrFn = dirAbsPathOrResponseOrFn
+          fileOperations.push(
+            (async () => {
+              const response = typeof fileResponseOrFn === 'function' ? await fileResponseOrFn() : fileResponseOrFn
+              const content = await response.text()
+              const distAbsPath = nodePath.resolve(distDir, fileRoutePath.replace(/^\/+/, ''))
+              // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
+              await Bun.write(distAbsPath, content)
+            })(),
+          )
+        }
+      }),
+    )
+
+    await Promise.all(fileOperations)
+    return true
   }
 
   // TODO: add static checkConflicts(publicDirs: PublicDir[]): throw error if same files paths are used in different public dirs with same hostname

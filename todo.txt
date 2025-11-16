@@ -69,6 +69,7 @@ check zustand behaviour, meybe it is enough on ssr also provide current global s
 preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
 router export function getCurrentLocation()
 onResponse onRequest → onReq onRes req res
+Point0 → Point
 add engine client options serveByServer: boolean default true
 in engine remove undefined and set it to null
 __POINT0_ENV__ and other make simple, remove POINT0 prefix
