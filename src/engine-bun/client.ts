@@ -1,7 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { BuildConfig } from 'bun'
 import * as nodeFs from 'node:fs/promises'
-import nodePath from 'node:path'
 import { Readable } from 'node:stream'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
