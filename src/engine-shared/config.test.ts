@@ -57,6 +57,7 @@ describe('parseEngineOptions', () => {
               ],
             ],
             "publicDistDir": "/home/dist/client",
+            "rootId": "client",
             "serverDistDir": "/home/dist/server-clients/client",
             "ssr": true,
             "viteConfig": null,
@@ -83,6 +84,7 @@ describe('parseEngineOptions', () => {
           "port": 3000,
           "publicDir": [],
           "publicDistDir": "/home/dist/public",
+          "rootId": "server",
         },
       }
     `)
@@ -143,6 +145,7 @@ describe('parseEngineOptions', () => {
               ],
             ],
             "publicDistDir": "/home/dist/client",
+            "rootId": "client",
             "serverDistDir": "/home/dist/server-clients/client",
             "ssr": true,
             "viteConfig": null,
@@ -174,6 +177,7 @@ describe('parseEngineOptions', () => {
             ],
           ],
           "publicDistDir": "/home/dist/public",
+          "rootId": "server",
         },
       }
     `)
