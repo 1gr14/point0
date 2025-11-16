@@ -1,6 +1,7 @@
 build public dir
 get paths for points and app from dist when built === true
 build script, use dist dir as public dir
+multiple server entryFile also named
 
 engine.ts & index.server.ts
 index.client.ts

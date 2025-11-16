@@ -15,7 +15,6 @@ describe('parseEngineOptions', () => {
         entryFile: './entry-server.ts',
         distDir: '../dist/server',
         publicDistDir: '../dist/public',
-        clientsDistDir: '../dist/server-clients',
       },
       clients: [
         {
@@ -27,6 +26,7 @@ describe('parseEngineOptions', () => {
           env: ['SOURCE_BASE_URL'],
           publicDir: './public',
           distDir: '../dist/client',
+          serverDistDir: '../dist/server-clients/client',
           publicDistDir: '../dist/client',
         },
       ],
@@ -55,6 +55,7 @@ describe('parseEngineOptions', () => {
               ],
             ],
             "publicDistDir": "/home/dist/client",
+            "serverDistDir": "/home/dist/server-clients/client",
             "ssr": true,
             "viteConfig": null,
           },
@@ -72,7 +73,7 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
-          "clientsDistDir": "/home/dist/server-clients",
+          "clientsDistDir": null,
           "distDir": "/home/dist/server",
           "entryFile": "/home/src/entry-server.ts",
           "hmrPort": 3100,
@@ -98,7 +99,6 @@ describe('parseEngineOptions', () => {
         entryFile: './entry-server.ts',
         distDir: '../dist/server',
         publicDistDir: '../dist/public',
-        clientsDistDir: '../dist/server-clients',
       },
       clients: [
         {
@@ -110,6 +110,7 @@ describe('parseEngineOptions', () => {
           env: ['SOURCE_BASE_URL'],
           publicDir: './public',
           distDir: '../dist/client',
+          serverDistDir: '../dist/server-clients/client',
           publicDistDir: '../dist/client',
         },
       ],
@@ -118,7 +119,7 @@ describe('parseEngineOptions', () => {
       {
         "clients": [
           {
-            "app": "/dist/client/app.js",
+            "app": "/dist/server-clients/client/app.js",
             "basepath": "/",
             "distDir": "/dist/client",
             "domRootElementId": "root",
@@ -129,7 +130,7 @@ describe('parseEngineOptions', () => {
             "hostname": null,
             "index": 0,
             "indexHtml": "/dist/client/index.html",
-            "points": "/dist/client/lib/points.ready.js",
+            "points": "/dist/server-clients/client/lib/points.ready.js",
             "port": 3001,
             "publicDir": [
               [
@@ -138,6 +139,7 @@ describe('parseEngineOptions', () => {
               ],
             ],
             "publicDistDir": "/dist/client",
+            "serverDistDir": "/dist/server-clients/client",
             "ssr": true,
             "viteConfig": null,
           },
@@ -155,7 +157,7 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
-          "clientsDistDir": "/dist/server-clients",
+          "clientsDistDir": null,
           "distDir": "/dist/server",
           "entryFile": "/dist/server/entry-server.js",
           "hmrPort": 3100,

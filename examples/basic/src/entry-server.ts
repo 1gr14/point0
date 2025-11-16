@@ -12,7 +12,6 @@ const engine = await EngineBun.create({
     entryFile: './entry-server.ts',
     distDir: '../dist/server',
     publicDistDir: '../dist/public',
-    clientsDistDir: '../dist/server-clients',
   },
   clients: [
     {
@@ -24,6 +23,7 @@ const engine = await EngineBun.create({
       env: ['SOURCE_BASE_URL'],
       publicDir: '../public',
       distDir: '../dist/client',
+      serverDistDir: '../dist/server-clients/client',
       publicDistDir: '../dist/client',
     },
   ],

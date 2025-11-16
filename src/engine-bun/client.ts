@@ -44,6 +44,7 @@ export class ClientBun {
   env: EngineOptionsEnvParsed
   publicDir: PublicDir
   distDir: string | null
+  serverDistDir: string | null
   publicDistDir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
@@ -62,6 +63,7 @@ export class ClientBun {
     basepath: string
     indexHtml: string | null
     distDir: string | null
+    serverDistDir: string | null
     publicDistDir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
@@ -98,6 +100,7 @@ export class ClientBun {
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
     this.publicDir = input.publicDir
     this.distDir = input.distDir
+    this.serverDistDir = input.serverDistDir
     this.publicDistDir = input.publicDistDir
     this.viteDevServer = input.viteDevServer
     this.bunDevServer = input.bunDevServer
@@ -113,6 +116,7 @@ export class ClientBun {
     basepath: string
     publicDir: EngineOptionsPublicDirParsed
     distDir: string | null
+    serverDistDir: string | null
     publicDistDir: string | null
     indexHtml: string | null
     domRootElementId: string
@@ -496,6 +500,7 @@ export class ClientBun {
     pointsPath: string | null
     indexHtml: string | null
     distDir: string | null
+    serverDistDir: string | null
     entrypointsExists: boolean
   } {
     const appPath = this.getAppPathOrNullOrThrow()
@@ -507,6 +512,7 @@ export class ClientBun {
       pointsPath,
       indexHtml,
       distDir: this.distDir,
+      serverDistDir: this.serverDistDir,
       entrypointsExists,
     }
   }
@@ -554,8 +560,8 @@ export class ClientBun {
     if (!buildPaths.appPath && !buildPaths.pointsPath) {
       return null
     }
-    if (!this.server.clientsDistDir) {
-      throw new Error(`clientsDistDir not provided for server`)
+    if (!buildPaths.serverDistDir) {
+      throw new Error(`serverDistDir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
@@ -565,7 +571,7 @@ export class ClientBun {
       minify: false,
       ...buildConfig,
       entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
-      outdir: nodePath.join(this.server.clientsDistDir, this.points.root._rootId),
+      outdir: buildPaths.serverDistDir,
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
