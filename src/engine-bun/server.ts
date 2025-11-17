@@ -4,13 +4,14 @@ import * as nodePath from 'node:path'
 import { Eversion } from '../core/eversion.js'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
-import type { RequiredCtx, PointsScope } from '../core/types.js'
+import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
 import { validateEntrypoints, withError } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
+import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from './utils.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   cwd: string
@@ -28,6 +29,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   entry: Record<string, string> | null
   publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
   outdir: string | null
+  bunBuildConfig: BunBuildConfigDefinition
+  bunPlugins: BunPluginsDefinition
   publicdirOutdir: string | null
   fallbackScope: PointsScope
   initialized: TInitialized
@@ -50,6 +53,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     entry: Record<string, string> | null
     publicdir: Publicdir | null
     outdir: string | null
+    bunBuildConfig: BunBuildConfigDefinition
+    bunPlugins: BunPluginsDefinition
     publicdirOutdir: string | null
     eversion: Eversion | null
   }) {
@@ -68,6 +73,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.entry = input.entry
     this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> : Publicdir<false>
     this.outdir = input.outdir
+    this.bunBuildConfig = input.bunBuildConfig
+    this.bunPlugins = input.bunPlugins
     this.publicdirOutdir = input.publicdirOutdir
     this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
@@ -84,6 +91,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     entry: Record<string, string> | null
     publicdir: EngineOptionsPublicdirParsed
     outdir: string | null
+    bunBuildConfig: BunBuildConfigDefinition
+    bunPlugins: BunPluginsDefinition
     publicdirOutdir: string | null
     fallbackScope: PointsScope
     logger: EngineLogger
@@ -129,7 +138,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       pointsFile: this.pointsFile,
     })
     this.eversion = await Eversion.create({ points })
-    await this.publicdir.init({ root: points.root })
+    await this.publicdir.init({ root: points.root, eversion: this.eversion })
     this.initialized = true as never
     return this as ServerBun<true>
   }
@@ -275,7 +284,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return { self, publicdir }
   }
 
-  async buildSelf(buildConfig?: BuildConfig): Promise<string[] | null> {
+  async buildSelf(bunBuildConfig: BunBuildConfigDefinition = {}): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.entrypointsExists) {
       return null
@@ -283,6 +292,19 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (!buildPaths.outdir) {
       throw new Error(`outdir not provided for server`)
     }
+
+    const thisBunBuildConfig = await extractBunBuildConfig({
+      command: 'build',
+      target: 'server',
+      bunBuildConfig: this.bunBuildConfig,
+      bunPlugins: this.bunPlugins,
+    })
+    const providedBunBuildConfig = await extractBunBuildConfig({
+      command: 'build',
+      target: 'server',
+      bunBuildConfig,
+      bunPlugins: [],
+    })
 
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const ENGINE_CWD_BEFORE_BUILD = (() => {
@@ -308,18 +330,28 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',
-      sourcemap: true,
+      sourcemap: 'linked',
       minify: true,
       splitting: true,
-      ...buildConfig,
-      entrypoints: validateEntrypoints([...buildPaths.entryFiles, buildPaths.engineFile, buildPaths.pointsFile]),
+      ...thisBunBuildConfig,
+      ...providedBunBuildConfig,
+      banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
+      entrypoints: validateEntrypoints([
+        ...buildPaths.entryFiles,
+        buildPaths.engineFile,
+        buildPaths.pointsFile,
+        ...(thisBunBuildConfig.entrypoints ?? []),
+        ...(providedBunBuildConfig.entrypoints ?? []),
+      ]),
       naming: {
+        ...(typeof thisBunBuildConfig.naming === 'object' ? thisBunBuildConfig.naming : {}),
+        ...(typeof providedBunBuildConfig.naming === 'object' ? providedBunBuildConfig.naming : {}),
         entry: '[name].js',
       },
       outdir: buildPaths.outdir,
-      banner: injectEnvsScript,
       define: {
-        ...buildConfig?.define,
+        ...thisBunBuildConfig.define,
+        ...providedBunBuildConfig.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
         ...injectedEnvs,
       },
@@ -327,9 +359,11 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return buildOutput.outputs.map((output) => output.path)
   }
 
-  async build(buildConfig?: BuildConfig): Promise<{ self: string[] | null; publicdir: string[] | null }> {
+  async build(
+    bunBuildConfig: BunBuildConfigDefinition = {},
+  ): Promise<{ self: string[] | null; publicdir: string[] | null }> {
     await this.clean()
-    const [self, publicdir] = await Promise.all([this.buildSelf(buildConfig), this.publicdir.build()])
+    const [self, publicdir] = await Promise.all([this.buildSelf(bunBuildConfig), this.publicdir.build()])
     return { self, publicdir }
   }
 

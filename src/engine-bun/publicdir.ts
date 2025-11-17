@@ -46,8 +46,9 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     })
   }
 
-  async init({ root }: { root: RootPoint }): Promise<Publicdir<true>> {
-    this.root = root as TInitialized extends true ? RootPoint : null
+  async init({ root, eversion }: { root: RootPoint; eversion: Eversion }): Promise<Publicdir<true>> {
+    this.root = root
+    this.eversion = eversion
     await this.loadFiles()
     this.initialized = true as never
     return this as Publicdir<true>

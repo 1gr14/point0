@@ -1,13 +1,15 @@
-custom config for bun on build via config settings
+serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 
 generator to engine
 cli
 
-remove server code form client
-isClient() || process.env.BUILD_TARGET === 'server' | 'client'
+remove server code from client, and client code from server
+isClient() || process.env.BUILD_TARGET === 'server' | 'client', import.meta.env.SSR for vite compatibility
 
 ? config. engine is enough
 ? config can generate engine.ts by itself. Decide what to generate and what to boilerplate
+
+----
 
 onReq onRes normalize, make more straight forward
 super store → eversion store
@@ -26,6 +28,7 @@ remove zod from dependencies, and move to peer dependencies, and allow zod mini 
 auth
 
 elysia example
+expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 expo example, just define all queries and mutations as plugins and use them in site and expo
 expo router
 
@@ -45,10 +48,13 @@ cli for simplify commands, like build with bun: point0 build
 workspace packages: @point0/core @point0/server @point0/wouter @point0/bun
 start0 without mono0
 
+----
+
 status: .loader(() => [201, <div />]).loader(() => [404, <div />])
 ? split index.ts code
 .disable()
 preventSsr
+allow in engine and eversion source = null, server = null
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
@@ -60,6 +66,7 @@ Unieind and hero ui right inside examples
 simplify renderer
 Point0.global.init()
 mount → dom/mount
+.source .connect → .server .client
 on fetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
 .prefetchOnInit(boolean).prefetchMode(MODE)
 request prefetchPageDehydratedState state but prefetchPagePayload becouse there can be zustand or what else

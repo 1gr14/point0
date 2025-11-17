@@ -4,6 +4,7 @@ import type { AppComponent } from '../core/mount.js'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { PointsScope } from '../core/types.js'
+import type { BunBuildConfigDefinition, BunPluginsDefinition } from '../engine-bun/utils.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
@@ -49,6 +50,8 @@ export type EngineServerOptions = {
   outdir?: string | null
   entry?: string | Record<string, string> | null
   publicdirOutdir?: string | null
+  bunBuildConfig?: BunBuildConfigDefinition
+  bunPlugins?: BunPluginsDefinition
 }
 export type EngineClientOptions = {
   scope: PointsScope
@@ -64,6 +67,8 @@ export type EngineClientOptions = {
   port?: number | string | null
   hmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
+  bunBuildConfig?: BunBuildConfigDefinition
+  bunPlugins?: BunPluginsDefinition
   outdir?: string | null
   serverOutdir?: string | null
   publicdirOutdir?: string | null
@@ -101,6 +106,8 @@ export type EngineClientOptionsParsed = {
   index: number
   viteConfig: EngineOptionsViteConfig | null
   outdir: string | null
+  bunBuildConfig: BunBuildConfigDefinition
+  bunPlugins: BunPluginsDefinition
   serverOutdir: string | null
   publicdirOutdir: string | null
 }
@@ -117,6 +124,8 @@ export type EngineServerOptionsParsed = {
   cwdBeforeBuild: string
   itWasBuilt: boolean
   fallbackScope: PointsScope
+  bunBuildConfig: BunBuildConfigDefinition
+  bunPlugins: BunPluginsDefinition
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -367,6 +376,8 @@ export const parseEngineServerOptions = ({
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,
     fallbackScope: generalOptionsParsed.fallbackScope,
+    bunBuildConfig: serverOptions.bunBuildConfig ?? {},
+    bunPlugins: serverOptions.bunPlugins ?? [],
   }
 }
 const parseEngineClientOptions = ({
@@ -460,6 +471,8 @@ const parseEngineClientOptions = ({
           : [],
     serverOutdir,
     publicdirOutdir,
+    bunBuildConfig: clientOptions.bunBuildConfig ?? {},
+    bunPlugins: clientOptions.bunPlugins ?? [],
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 import svgr from 'vite-plugin-svgr'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
-export default defineConfig({
-  plugins: [svgr(), react(), tsconfigPaths()] as PluginOption[],
+export default defineConfig(({ isSsrBuild }) => {
+  return {
+    plugins: [svgr(), react(), tsconfigPaths()] as PluginOption[],
+  }
 })
