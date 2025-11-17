@@ -25,10 +25,10 @@ import type {
   InputParsed,
   InputRaw,
   PointName,
+  PointsScope,
   RequiredCtx,
   ResponseOutput,
   RootConnectedPoint,
-  PointsScope,
   RootPoint,
   RootSourcePoint,
   UndefinedCtx,
@@ -450,6 +450,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverGlobalState: {
+    __SCOPE__: PointsScope
     __QUERY_CLIENT__: QueryClient
     __SSR_LOCATION__: AnyLocation | undefined
     __CURRENT_LOCATION__: AnyLocation
@@ -467,6 +468,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverGlobalState: {
+      __SCOPE__: PointsScope
       __QUERY_CLIENT__: QueryClient
       __SSR_LOCATION__: AnyLocation | undefined
       __CURRENT_LOCATION__: AnyLocation
@@ -498,6 +500,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         requiredCtx,
         extractFnsWithOutput: [],
         serverGlobalState: {
+          __SCOPE__: eversion.points.root._scope,
           __QUERY_CLIENT__: SuperStore.get<QueryClient>('__QUERY_CLIENT__'),
           __SSR_LOCATION__: undefined,
           __CURRENT_LOCATION__: currentLocation,
@@ -509,6 +512,10 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   getQueryClient(): QueryClient {
     return isClient() ? SuperStore.get('__QUERY_CLIENT__') : this.serverGlobalState.__QUERY_CLIENT__
+  }
+
+  getScope(): PointsScope {
+    return this.serverGlobalState.__SCOPE__
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
@@ -711,7 +718,11 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       this.setSsrLocation(pageLocation)
     }
     await this.withServerGlobalState(async () => {
-      const stream = await renderToReadableStream(React.createElement(App))
+      const stream = await renderToReadableStream(
+        React.createElement(App, {
+          points: this.eversion.points,
+        }),
+      )
       await stream.allReady
       const queryClientState = this.getQueryClient().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {

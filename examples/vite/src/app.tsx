@@ -1,12 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { RouterRoutes, Router } from 'point0/wouter'
-import { Point0 } from 'point0/core'
 import { Unhead } from 'point0/core/unhead'
+import { Router, RouterRoutes } from 'point0/wouter'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'
-import * as points from './lib/points.lazy.js'
 import { queryClient } from './lib/super-store'
-
-Point0.setPoints(points)
 
 export default function App() {
   return (

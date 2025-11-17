@@ -2,6 +2,8 @@ import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
+import { isClient } from './client-server.js'
+import { SuperStore } from './super-store.js'
 import type {
   EndPoint,
   EndPointType,
@@ -9,6 +11,7 @@ import type {
   LayoutPoint,
   PagePoint,
   PointName,
+  PointsScope,
   PointType,
   RootPoint,
   UndefinedRoute,
@@ -55,6 +58,10 @@ export class Points<TReady extends boolean = boolean> {
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.root = root
+    Points.setGlobalPoints(this)
+    if (isClient()) {
+      SuperStore.setWeak('__SCOPE__', this.root._scope)
+    }
   }
 
   static readonly ready = (readyPoints: ReadyPointsModule, absPath?: string, readFn?: PointsReadFn): Points<true> => {
@@ -137,6 +144,7 @@ export class Points<TReady extends boolean = boolean> {
     if (this.ready && !points.ready) {
       await this.load()
     }
+    Points.setGlobalPoints(this)
   }
 
   async read(): Promise<void> {
@@ -678,6 +686,29 @@ export class Points<TReady extends boolean = boolean> {
       }
     }
     return undefined
+  }
+
+  // global
+
+  private static readonly setGlobalPoints = (points: ReadyPointsModule | LazyPointsModule | Points) => {
+    const createdPoints = Points.create(points)
+    if (!(globalThis as any).__POINT0_POINTS__) {
+      ;(globalThis as any).__POINT0_POINTS__ = {}
+    }
+    ;(globalThis as any).__POINT0_POINTS__[createdPoints.root._scope] = createdPoints
+    return createdPoints
+  }
+  static getGlobalPoints = (scope?: PointsScope): Points => {
+    scope ??= SuperStore.getWeak<PointsScope>('__SCOPE__')
+    if (!scope) {
+      throw new Error('Points scope not found if EversionStore. You should provide scope.')
+    }
+    const points =
+      scope in (globalThis as any).__POINT0_POINTS__ ? (globalThis as any).__POINT0_POINTS__[scope] : undefined
+    if (!points) {
+      throw new Error('Points not found. Forget to call Points.create()?')
+    }
+    return points
   }
 }
 

@@ -25,7 +25,6 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { EversionRun, ExtractResult } from './eversion.js'
-import type { LazyPointsModule, ReadyPointsModule } from './points.js'
 import { Points } from './points.js'
 import { useLocation } from './router.js'
 import type { SuperDefinedItem } from './super-store.js'
@@ -77,6 +76,7 @@ import type {
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
+  PointsScope,
   PrependCtx,
   Props,
   ProviderValueSetterFn,
@@ -85,7 +85,6 @@ import type {
   RequiredCtx,
   ResponseFn,
   ResponseOutput,
-  PointsScope,
   RouteDefinition,
   StaticHeadsCollection,
   TitleFn,
@@ -4041,18 +4040,5 @@ export class Point0<
     },
   )
 
-  // points
-
-  static _points: Points | undefined
-  static setPoints = (points: ReadyPointsModule | LazyPointsModule) => {
-    Point0._points = Points.create(points)
-  }
-  static getPoints = (): Points => {
-    // const points = SuperStore.getWeak<Points>('__POINTS__')
-    const points = Point0._points
-    if (!points) {
-      throw new Error('Points not found. Forget to call Point0.setPoints()?')
-    }
-    return points
-  }
+  static getPoints = Points.getGlobalPoints.bind(Points)
 }

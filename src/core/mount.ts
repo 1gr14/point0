@@ -2,11 +2,16 @@ import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { LazyPointsModule, ReadyPointsModule } from './points.js'
+import { Points } from './points.js'
 import { SuperStore } from './super-store.js'
 
 let reactRoot: Root | null = null
 
-export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
+export function mount(
+  App: AppComponent,
+  points: LazyPointsModule | ReadyPointsModule,
+  domRootElement?: HTMLElement | null,
+) {
   if (domRootElement !== undefined) {
     if (!domRootElement) {
       throw new Error(`Provided domRootElement is not found, please provide correct domRootElement`)
@@ -23,7 +28,9 @@ export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
   if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
     SuperStore.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
   }
-  const appElement = createElement(App)
+  const appElement = createElement(App, {
+    points: Points.create(points),
+  })
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.
@@ -43,5 +50,10 @@ export function mount(App: AppComponent, domRootElement?: HTMLElement | null) {
   }
 }
 
-export type AppProps = { points: LazyPointsModule | ReadyPointsModule }
+export type AppProps = { points: Points }
 export type AppComponent = (props: AppProps) => React.ReactElement
+
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+if (import.meta.hot) {
+  import.meta.hot.accept()
+}

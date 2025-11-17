@@ -1,8 +1,5 @@
 import { mount } from 'point0/core/mount.js'
 import App from './app.js'
+import * as points from './lib/points.lazy.js'
 
-mount(App)
-
-if (import.meta.hot) {
-  import.meta.hot.accept()
-}
+mount(App, points)

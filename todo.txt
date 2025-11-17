@@ -1,13 +1,12 @@
-hide import.meta.hot, allow mount(App, {settings: ...})
-Point0.setPoints(points) → to mount, and also it should be named with scope, mount(App, points)
 custom config for bun on build via config settings
 create not init, and not ayns, init is separate and included to places where it needed
-
 generator to engine
+cli
+remove server code form client
 
 ? config. engine is enough
 ? config can generate engine.ts by itself. Decide what to generate and what to boilerplate
-cli 
+
 
 
 onReq onRes normalize, make more straight forward
@@ -61,6 +60,7 @@ extract required ctx type from root points
 Unieind and hero ui right inside examples
 simplify renderer
 Point0.global.init()
+mount → dom/mount
 on fetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
 .prefetchOnInit(boolean).prefetchMode(MODE)
 request prefetchPageDehydratedState state but prefetchPagePayload becouse there can be zustand or what else
