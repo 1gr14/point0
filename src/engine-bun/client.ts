@@ -7,7 +7,8 @@ import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { Eversion, EversionRun, ExtractResult } from '../core/eversion.js'
 import type { AppComponent } from '../core/mount.js'
-import type { Points } from '../core/points.js'
+import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
+import { Points } from '../core/points.js'
 import type { AnyPoint, InputParsed } from '../core/types.js'
 import type { ParsedUrl } from '../core/utils.js'
 import { parseUrl } from '../core/utils.js'
@@ -19,7 +20,6 @@ import type {
   LoadedViteConfig,
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
-import { createFreshPoints } from '../engine-shared/utils.js'
 import { PublicDir } from './public-dir.js'
 import type { ServerBun } from './server.js'
 
@@ -140,7 +140,7 @@ export class ClientBun {
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsPath = typeof input.points === 'string' ? input.points : null
-    const points = await createFreshPoints({
+    const points = await ClientBun.createFreshPoints({
       providedPoints,
       pointsPath,
       viteDevServer,
@@ -177,6 +177,33 @@ export class ClientBun {
     })
 
     return client
+  }
+
+  static readonly createFreshPoints = async ({
+    providedPoints,
+    pointsPath,
+    viteDevServer,
+    clientIndex,
+  }: {
+    providedPoints: Points | null
+    pointsPath: string | null
+    viteDevServer: ViteDevServer | null
+    clientIndex: number
+  }): Promise<Points> => {
+    if (providedPoints) {
+      return providedPoints
+    }
+    if (pointsPath) {
+      if (viteDevServer) {
+        return await Points.read(
+          pointsPath,
+          async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
+        )
+      } else {
+        return Points.create((await import(pointsPath)) as LazyPointsModule | ReadyPointsModule)
+      }
+    }
+    throw new Error(`Points not provided for client at position "${clientIndex}"`)
   }
 
   private static async createBunDevServer({

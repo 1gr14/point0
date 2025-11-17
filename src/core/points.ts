@@ -114,11 +114,11 @@ export class Points<TReady extends boolean = boolean> {
       points.absPath = absPath ?? points.absPath
       return points
     }
-    if (Points.isLazyPointsModule(points)) {
-      return Points.lazy(points, absPath, readFn)
-    }
     if (Points.isReadyPointsModule(points)) {
       return Points.ready(points, absPath, readFn)
+    }
+    if (Points.isLazyPointsModule(points)) {
+      return Points.lazy(points, absPath, readFn)
     }
     throw new Error('Invalid points input')
   }
@@ -196,7 +196,7 @@ export class Points<TReady extends boolean = boolean> {
   private static isLazyPointsModule(points: any): points is LazyPointsModule {
     return (
       !Array.isArray(points) &&
-      Object.keys(points).length > 0 &&
+      // Object.keys(points).length > 0 &&
       Object.values(points).every((p: any) => typeof p.name === 'string')
     )
   }
@@ -204,7 +204,7 @@ export class Points<TReady extends boolean = boolean> {
   private static isReadyPointsModule(points: any): points is ReadyPointsModule {
     return (
       !Array.isArray(points) &&
-      Object.keys(points).length > 0 &&
+      // Object.keys(points).length > 0 &&
       Object.values(points).every((p: any) => typeof p.point?._name === 'string')
     )
   }

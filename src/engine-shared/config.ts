@@ -39,7 +39,7 @@ export type EngineGeneralOptions = {
 }
 export type EngineServerOptions = {
   rootId: RootId
-  points: ReadyPointsModule | LazyPointsModule | string
+  points: ReadyPointsModule | LazyPointsModule
   publicDir?: EngineOptionsPublicDir
   port?: number | string | null
   hmrPort?: number | string | null
@@ -101,7 +101,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   rootId: RootId
-  points: Points | string
+  points: Points
   publicDir: EngineOptionsPublicDirParsed
   port: number
   hmrPort: number
@@ -217,56 +217,6 @@ const parseEngineGeneralOptions = ({
   }
 }
 
-// const toFinalPath = <T extends string | null | undefined>({
-//   autoFixBuiltPaths,
-//   itWasBuilt,
-//   cwdBeforeBuild,
-//   distDir,
-//   path,
-// }: {
-//   autoFixBuiltPaths: boolean
-//   itWasBuilt: boolean
-//   cwdBeforeBuild: string
-//   distDir?: string | null
-//   path: T
-// }): T extends null | undefined ? null : T => {
-//   if (!path) {
-//     return (path ?? null) as T extends null | undefined ? null : T
-//   }
-//   if (!itWasBuilt || !autoFixBuiltPaths) {
-//     return toAbsPath(cwdBeforeBuild, path) as T extends null | undefined ? null : T
-//   }
-//   const pathWithJsExt = path.replace(/\.tsx?$/, '.js')
-//   // const pathBeforeBuild = nodePath.resolve(cwdBeforeBuild, path)
-//   const distDirAbs = distDir ? nodePath.resolve(cwdBeforeBuild, distDir) : cwdBeforeBuild
-//   const pathAfterBuild = nodePath.resolve(distDirAbs, pathWithJsExt)
-//   return pathAfterBuild as T extends null | undefined ? null : T
-// }
-
-// const createToFinalPath =
-//   ({
-//     autoFixBuiltPaths,
-//     itWasBuilt,
-//     cwdBeforeBuild,
-//     distDir,
-//   }: {
-//     autoFixBuiltPaths: boolean
-//     itWasBuilt: boolean
-//     cwdBeforeBuild: string
-//     distDir?: string | null
-//   }) =>
-//   <T extends string | null | undefined>(
-//     path: T,
-//     overrideDistDir: boolean | null | string = true,
-//   ): T extends null | undefined ? null : T =>
-//     toFinalPath({
-//       autoFixBuiltPaths,
-//       itWasBuilt,
-//       cwdBeforeBuild,
-//       distDir: overrideDistDir === true ? distDir : !overrideDistDir ? undefined : overrideDistDir,
-//       path,
-//     })
-
 const toFinalPath = <T extends string | null | undefined>({
   autoFixBuiltPaths,
   itWasBuilt,
@@ -305,10 +255,7 @@ export const parseEngineServerOptions = ({
   const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
   return {
     rootId: serverOptions.rootId,
-    points:
-      typeof serverOptions.points === 'string'
-        ? toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: serverOptions.distDir, path: serverOptions.points })
-        : Points.create(serverOptions.points),
+    points: Points.create(serverOptions.points),
     port,
     hmrPort,
     distDir: toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: undefined, path: serverOptions.distDir }),

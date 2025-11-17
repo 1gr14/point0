@@ -4,7 +4,7 @@ import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../en
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
 
-export class EngineBun {
+export class Engine {
   clients: ClientBun[]
   server: ServerBun
   logger: EngineLogger
@@ -17,7 +17,7 @@ export class EngineBun {
     this.eversion = input.eversion
   }
 
-  static async create(input: EngineOptions): Promise<EngineBun> {
+  static async create(input: EngineOptions): Promise<Engine> {
     const parsedInput = parseEngineOptions(input)
     const server = await ServerBun.create({
       ...parsedInput.server,
@@ -46,7 +46,7 @@ export class EngineBun {
     server.clients = clients
     server.fallbackRootId ||= clients.at(0)?.points.root._rootId || server.points.root._rootId
 
-    return new EngineBun({ clients, server, logger: parsedInput.general.logger, eversion })
+    return new Engine({ clients, server, logger: parsedInput.general.logger, eversion })
   }
 
   async serve(requiredCtx?: RequiredCtx): Promise<void> {

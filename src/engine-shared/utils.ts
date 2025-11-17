@@ -157,30 +157,3 @@ export const isPathnameUnderBasepath = (pathname: string, basepath: string | und
   }
   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
 }
-
-export const createFreshPoints = async ({
-  providedPoints,
-  pointsPath,
-  viteDevServer,
-  clientIndex,
-}: {
-  providedPoints: Points | null
-  pointsPath: string | null
-  viteDevServer: ViteDevServer | null
-  clientIndex: number | null
-}): Promise<Points> => {
-  if (providedPoints) {
-    return providedPoints
-  }
-  if (pointsPath) {
-    if (viteDevServer) {
-      return await Points.read(
-        pointsPath,
-        async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
-      )
-    } else {
-      return Points.create((await import(pointsPath)) as LazyPointsModule | ReadyPointsModule)
-    }
-  }
-  throw new Error(`Points not provided for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`)
-}

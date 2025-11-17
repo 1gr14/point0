@@ -1,7 +1,7 @@
-import { EngineBun } from 'point0/engine-bun/index.js'
+import { Engine } from 'point0/engine-bun/index.js'
 import { source } from './lib/server.js'
 
-const engine = await EngineBun.create({
+const engine = await Engine.create({
   itWasBuilt: !!process.env.ENGINE_WAS_BUILT,
   cwdAfterBuild: !process.env.ENGINE_WAS_BUILT ? '../dist/server' : import.meta.dir,
   cwdBeforeBuild: !process.env.ENGINE_WAS_BUILT ? import.meta.dir : '../../src',

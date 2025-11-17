@@ -5,7 +5,6 @@ import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicDirParsed } from '../engine-shared/config.js'
-import { createFreshPoints } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { PublicDir } from './public-dir.js'
@@ -14,8 +13,6 @@ export class ServerBun {
   cwd: string
   eversion: Eversion
   points: Points
-  pointsPath: string | null
-  providedPoints: Points | null
   port: number
   hmrPort: number | null
   clients: ClientBun[]
@@ -32,8 +29,6 @@ export class ServerBun {
   private constructor(input: {
     cwd: string
     points: Points
-    pointsPath: string | null
-    providedPoints: Points | null
     port: number
     hmrPort: number | null
     fallbackRootId: RootId
@@ -49,8 +44,6 @@ export class ServerBun {
     this.cwd = input.cwd
     this.eversion = input.eversion
     this.points = input.points
-    this.pointsPath = input.pointsPath
-    this.providedPoints = input.providedPoints
     this.port = input.port
     this.hmrPort = input.hmrPort
     this.clients = input.clients
@@ -65,7 +58,7 @@ export class ServerBun {
 
   static async create(input: {
     cwd: string
-    points: Points | string
+    points: Points
     port: number
     hmrPort: number | null
     entryFile: string | null
@@ -77,31 +70,18 @@ export class ServerBun {
     logger: EngineLogger
     clients: ClientBun[]
   }): Promise<ServerBun> {
-    const providedPoints = typeof input.points === 'string' ? null : input.points
-    const pointsPath = typeof input.points === 'string' ? input.points : null
-    // TODO:ASAP get pointsPath in production && distDir
-    const points = await createFreshPoints({
-      providedPoints,
-      pointsPath,
-      viteDevServer: null,
-      clientIndex: null,
-    })
-
-    const eversion = await Eversion.create({ points })
+    const eversion = await Eversion.create({ points: input.points })
 
     const publicDir = await PublicDir.create({
       hostname: null,
       definition: input.publicDir,
-      root: points.root,
+      root: input.points.root,
       eversion,
       distDir: input.publicDistDir,
     })
 
     const server = new ServerBun({
       ...input,
-      points,
-      pointsPath,
-      providedPoints,
       publicDir,
       eversion,
     })

@@ -1,4 +1,5 @@
-multiple server entryFile also named
+all three above we can set as define on build phase
+multiple server entryFile also named,  entryFile → entry
 engine.ts & index.server.ts
 index.client.ts
 hide import.meta.hot, allow mount(App, {settings: ...})

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { parseEngineOptions } from './config.js'
+import { omit } from 'lodash'
 
 describe('parseEngineOptions', () => {
   it('should parse engine options', () => {
@@ -11,7 +12,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         rootId: 'server',
-        points: './lib/points.server.ts',
+        points: {} as never,
         port: 3000,
         entryFile: './entry-server.ts',
         distDir: '../dist/server',
@@ -33,7 +34,7 @@ describe('parseEngineOptions', () => {
         },
       ],
     })
-    expect(options).toMatchInlineSnapshot(`
+    expect(omit(options, ['server.points'])).toMatchInlineSnapshot(`
       {
         "clients": [
           {
@@ -80,7 +81,6 @@ describe('parseEngineOptions', () => {
           "distDir": "/home/dist/server",
           "entryFile": "/home/src/entry-server.ts",
           "hmrPort": 3100,
-          "points": "/home/src/lib/points.server.ts",
           "port": 3000,
           "publicDir": [],
           "publicDistDir": "/home/dist/public",
@@ -99,7 +99,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         rootId: 'server',
-        points: './lib/points.server.ts',
+        points: {} as never,
         port: 3000,
         entryFile: './entry-server.ts',
         distDir: '../dist/server',
@@ -121,7 +121,7 @@ describe('parseEngineOptions', () => {
         },
       ],
     })
-    expect(options).toMatchInlineSnapshot(`
+    expect(omit(options, ['server.points'])).toMatchInlineSnapshot(`
       {
         "clients": [
           {
@@ -168,7 +168,6 @@ describe('parseEngineOptions', () => {
           "distDir": "/home/dist/server",
           "entryFile": "/home/dist/server/entry-server.js",
           "hmrPort": 3100,
-          "points": "/home/dist/server/lib/points.server.js",
           "port": 3000,
           "publicDir": [
             [
