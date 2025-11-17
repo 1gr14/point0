@@ -1,7 +1,7 @@
 import { Engine } from 'point0/engine-bun/index.js'
 import { source } from './lib/server.js'
 
-export const engine = await Engine.create(import.meta.url, {
+export const engine = Engine.create(import.meta.url, {
   clientsServerOutdir: '../dist/server',
   clientsSelfOutdir: '../dist',
   server: {

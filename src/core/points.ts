@@ -13,13 +13,14 @@ import type {
   PointName,
   PointsScope,
   PointType,
+  RequiredCtx,
   RootPoint,
   UndefinedRoute,
 } from './types.js'
 
 // TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
-export class Points<TReady extends boolean = boolean> {
+export class Points<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
   absPath: string | null
   readFn: PointsReadFn | null
   root: RootPoint
@@ -29,6 +30,10 @@ export class Points<TReady extends boolean = boolean> {
   routesHash: string
   pagesTreeSource: PagesTreeSource
   pagesTree: PagesTree
+
+  Infer: {
+    RequiredCtx: TRequiredCtx
+  } = {} as never
 
   private constructor({
     absPath,
@@ -64,7 +69,11 @@ export class Points<TReady extends boolean = boolean> {
     }
   }
 
-  static readonly ready = (readyPoints: ReadyPointsModule, absPath?: string, readFn?: PointsReadFn): Points<true> => {
+  static readonly ready = <TReadyPointsModule extends ReadyPointsModule>(
+    readyPoints: TReadyPointsModule,
+    absPath?: string,
+    readFn?: PointsReadFn,
+  ): Points<true, TReadyPointsModule['root']['Infer']['RequiredCtx']> => {
     const { root, ...rest } = readyPoints
     const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
     const rawPoints = Points.rawToReadyPointsCollection(readyPointsWithoutRoot)
@@ -72,7 +81,7 @@ export class Points<TReady extends boolean = boolean> {
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<true>({
+    return new Points<true, TReadyPointsModule['root']['Infer']['RequiredCtx']>({
       root,
       collection: routedPoints,
       routes,
@@ -84,14 +93,18 @@ export class Points<TReady extends boolean = boolean> {
     })
   }
 
-  static readonly lazy = (lazyPoints: LazyPointsModule, absPath?: string, readFn?: PointsReadFn): Points<false> => {
+  static readonly lazy = <TLazyPointsModule extends LazyPointsModule>(
+    lazyPoints: TLazyPointsModule,
+    absPath?: string,
+    readFn?: PointsReadFn,
+  ): Points<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']> => {
     const { root_lazy, ...rest } = lazyPoints
-    const lazyPointsWithoutRoot = Object.values(rest)
+    const lazyPointsWithoutRoot = Object.values(rest) as LazyRoutedPointsCollection
     const routedPoints = Points.toRoutedPointsCollection(lazyPointsWithoutRoot)
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<false>({
+    return new Points<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']>({
       root: root_lazy.point,
       collection: routedPoints,
       routes,
@@ -111,15 +124,24 @@ export class Points<TReady extends boolean = boolean> {
     return Points.create(pointsModule, absPath, readFn) as Points<TReady>
   }
 
-  static readonly create = (
-    points: ReadyPointsModule | LazyPointsModule | Points,
+  static readonly create = <TPoints extends ReadyPointsModule | LazyPointsModule | Points>(
+    points: TPoints,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): Points<boolean> => {
+  ): Points<
+    boolean,
+    TPoints extends Points
+      ? TPoints['root']['Infer']['RequiredCtx']
+      : TPoints extends ReadyPointsModule
+        ? TPoints['root']['Infer']['RequiredCtx']
+        : TPoints extends LazyPointsModule
+          ? TPoints['root_lazy']['point']['Infer']['RequiredCtx']
+          : RequiredCtx
+  > => {
     if (points instanceof Points) {
       points.readFn = readFn ?? points.readFn
       points.absPath = absPath ?? points.absPath
-      return points
+      return points as never
     }
     if (Points.isReadyPointsModule(points)) {
       return Points.ready(points, absPath, readFn)

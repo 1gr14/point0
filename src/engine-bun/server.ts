@@ -12,32 +12,33 @@ import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 
-export class ServerBun {
+export class ServerBun<TInitialized extends boolean = boolean> {
   cwd: string
-  eversion: Eversion
+  eversion: TInitialized extends true ? Eversion : Eversion | null
   providedPoints: Points | null
   pointsFile: string | null
-  points: Points
+  points: TInitialized extends true ? Points : Points | null
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
   port: number
   hmrPort: number | null
-  clients: ClientBun[]
+  clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
   logger: EngineLogger
   entry: Record<string, string> | null
-  publicdir: Publicdir
+  publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
   outdir: string | null
   publicdirOutdir: string | null
   fallbackScope: PointsScope
-
+  initialized: TInitialized
   bunServer: Bun.Server<unknown> | undefined
 
   private constructor(input: {
+    initialized: TInitialized
     cwd: string
     providedPoints: Points | null
     pointsFile: string | null
-    points: Points
+    points: Points | null
     itWasBuilt: boolean
     engineFile: string | null
     cwdBeforeBuild: string
@@ -47,31 +48,32 @@ export class ServerBun {
     logger: EngineLogger
     clients: ClientBun[]
     entry: Record<string, string> | null
-    publicdir: Publicdir
+    publicdir: Publicdir | null
     outdir: string | null
     publicdirOutdir: string | null
-    eversion: Eversion
+    eversion: Eversion | null
   }) {
     this.cwd = input.cwd
-    this.eversion = input.eversion
+    this.eversion = input.eversion as TInitialized extends true ? Eversion : null
     this.providedPoints = input.providedPoints
     this.pointsFile = input.pointsFile
-    this.points = input.points
+    this.points = input.points as TInitialized extends true ? Points : null
     this.itWasBuilt = process.env.ENGINE_WAS_BUILT ? process.env.ENGINE_WAS_BUILT === 'true' : input.itWasBuilt
     this.engineFile = input.itWasBuilt ? (process.env.ENGINE_FILE_AFTER_BUILD ?? input.engineFile) : input.engineFile
     this.cwdBeforeBuild = process.env.ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
     this.hmrPort = input.hmrPort
-    this.clients = input.clients
+    this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.logger = input.logger
     this.entry = input.entry
-    this.publicdir = input.publicdir
+    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> : Publicdir<false>
     this.outdir = input.outdir
     this.publicdirOutdir = input.publicdirOutdir
     this.fallbackScope = input.fallbackScope
+    this.initialized = input.initialized
   }
 
-  static async create(input: {
+  static create(input: {
     cwd: string
     points: Points | string
     engineFile: string | null
@@ -86,33 +88,50 @@ export class ServerBun {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
-  }): Promise<ServerBun> {
+  }): ServerBun<false> {
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
-    const points = await ServerBun.createPoints({
-      providedPoints,
-      pointsFile,
-    })
+    const points = null
 
-    const eversion = await Eversion.create({ points })
+    const eversion = null
 
-    const publicdir = await Publicdir.create({
+    const publicdir = Publicdir.create({
       hostname: null,
       definition: input.publicdir,
-      root: points.root,
+      root: null,
       eversion,
       outdir: input.publicdirOutdir,
     })
 
-    const server = new ServerBun({
+    const server = new ServerBun<false>({
       ...input,
       publicdir,
       eversion,
       points,
       pointsFile,
       providedPoints,
+      initialized: false,
     })
     return server
+  }
+
+  isInitialized(): this is ServerBun<true> {
+    return !!this.initialized
+  }
+
+  async init(): Promise<ServerBun<true>> {
+    if (this.isInitialized()) {
+      return this as ServerBun<true>
+    }
+
+    const points = await ServerBun.createPoints({
+      providedPoints: this.providedPoints,
+      pointsFile: this.pointsFile,
+    })
+    this.eversion = await Eversion.create({ points })
+    await this.publicdir.init({ root: points.root })
+    this.initialized = true as never
+    return this as ServerBun<true>
   }
 
   static readonly createPoints = async ({
@@ -325,6 +344,10 @@ export class ServerBun {
     requiredCtx: RequiredCtx
     scope?: PointsScope
   }): Promise<Response> {
+    if (!this.isInitialized()) {
+      throw new Error('Server is not initialized')
+    }
+
     return await engineFetch({
       server: this,
       clients: this.clients,

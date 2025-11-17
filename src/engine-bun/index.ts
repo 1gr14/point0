@@ -5,66 +5,95 @@ import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../en
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
 
-export class Engine {
-  clients: ClientBun[]
-  server: ServerBun
+export class Engine<TInitialized extends boolean = boolean> {
+  clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
+  server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
   logger: EngineLogger
-  eversion: Eversion
+  eversion: TInitialized extends true ? Eversion : Eversion | null
+  initialized: TInitialized
 
-  private constructor(input: { clients: ClientBun[]; server: ServerBun; logger: EngineLogger; eversion: Eversion }) {
-    this.clients = input.clients
-    this.server = input.server
+  private constructor(input: {
+    clients: ClientBun[]
+    server: ServerBun
+    logger: EngineLogger
+    eversion: Eversion | null
+    initialized: TInitialized
+  }) {
+    this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
+    this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
     this.logger = input.logger
-    this.eversion = input.eversion
+    this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
+    this.initialized = input.initialized
   }
 
-  static async create(fileUrl: string, options: EngineOptions): Promise<Engine>
-  static async create(options: EngineOptions): Promise<Engine>
-  static async create(...args: [string, EngineOptions] | [EngineOptions]): Promise<Engine> {
+  static create(fileUrl: string, options: EngineOptions): Engine<false>
+  static create(options: EngineOptions): Engine<false>
+  static create(...args: [string, EngineOptions] | [EngineOptions]): Engine<false> {
     const options = args.length === 2 ? args[1] : args[0]
     const fileUrl = args.length === 2 ? args[0] : undefined
     if (fileUrl) {
       options.engineFile ??= fileURLToPath(fileUrl)
     }
     const parsedOptions = parseEngineOptions(options)
-    const server = await ServerBun.create({
+    const server = ServerBun.create({
       ...parsedOptions.server,
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
-      fallbackScope: '',
       logger: parsedOptions.general.logger,
       clients: [],
     })
 
     const eversion = server.eversion
 
-    const clients = await Promise.all(
-      parsedOptions.clients.map(async (clientOptions) => {
-        const client = await ClientBun.create({
-          ...clientOptions,
-          cwd: parsedOptions.general.cwd,
-          logger: parsedOptions.general.logger,
-          eversion,
-          server,
-        })
-        await eversion.connect({ points: client.points })
-        return client
-      }),
-    )
+    const clients = parsedOptions.clients.map((clientOptions) => {
+      const client = ClientBun.create({
+        ...clientOptions,
+        cwd: parsedOptions.general.cwd,
+        logger: parsedOptions.general.logger,
+        eversion,
+        server,
+      })
+      return client
+    })
 
     server.clients = clients
-    server.fallbackScope ||= clients.at(0)?.points.root._scope || server.points.root._scope
 
-    return new Engine({ clients, server, logger: parsedOptions.general.logger, eversion })
+    return new Engine({ clients, server, logger: parsedOptions.general.logger, eversion, initialized: false })
+  }
+
+  // async init(): Promise<Engine<true>> {
+  async init(): Promise<Engine<true>> {
+    if (this.isInitialized()) {
+      return this as Engine<true>
+    }
+
+    const intializedServer = await this.server.init()
+    await Promise.all(
+      this.clients.map(async (client) => {
+        const initializedClient = await client.init({ eversion: intializedServer.eversion })
+        await intializedServer.eversion.connect({ points: initializedClient.points })
+        return initializedClient
+      }),
+    )
+    this.initialized = true as never
+    return this as Engine<true>
+  }
+
+  isInitialized(): this is Engine<true> {
+    return !!this.initialized
   }
 
   async serve(requiredCtx?: RequiredCtx): Promise<void> {
-    await this.server.serve({ requiredCtx })
+    const intializedEngine = await this.init()
+    await intializedEngine.server.serve({ requiredCtx })
     this.logger.info(`🚀 http://localhost:${this.server.port}`)
   }
 
   async fetch(request: Request, requiredCtx?: RequiredCtx): Promise<Response> {
+    if (!this.isInitialized()) {
+      throw new Error('Engine is not initialized. Please call await engine.init() first.')
+    }
     return await this.server.fetch({
       request,
       requiredCtx,
@@ -85,8 +114,10 @@ export class Engine {
     }>
     server: { self: string[] | null; publicdir: string[] | null }
   }> {
+    const intializedEngine = await this.init()
+
     const clients = await Promise.all(
-      this.clients.map(async (client) => {
+      intializedEngine.clients.map(async (client) => {
         const buildOutput = await client.build()
         return {
           self: buildOutput.self,
@@ -97,7 +128,7 @@ export class Engine {
         }
       }),
     )
-    const server = await this.server.build()
+    const server = await intializedEngine.server.build()
     return { clients, server }
   }
 }

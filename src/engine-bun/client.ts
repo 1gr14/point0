@@ -24,12 +24,12 @@ import { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
 import { validateEntrypoints, withError } from '../engine-shared/utils.js'
 
-export class ClientBun {
+export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
-  eversion: Eversion
+  eversion: TInitialized extends true ? Eversion : Eversion | null
   providedPoints: Points | null
   pointsFile: string | null
-  points: Points
+  points: TInitialized extends true ? Points : Points | null
   ssr: boolean
   providedAppComponent: AppComponent | null
   appFile: string | null
@@ -43,7 +43,7 @@ export class ClientBun {
   index: number
   logger: EngineLogger
   env: EngineOptionsEnvParsed
-  publicdir: Publicdir
+  publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
   outdir: string | null
   serverOutdir: string | null
   publicdirOutdir: string | null
@@ -51,12 +51,14 @@ export class ClientBun {
   server: ServerBun
   bunDevServer: Bun.Server<unknown> | null
   viteDevServer: ViteDevServer | null
+  initialized: TInitialized
 
   private constructor(input: {
+    initialized: TInitialized
     cwd: string
     providedPoints: Points | null
     pointsFile: string | null
-    points: Points
+    points: Points | null
     ssr: boolean
     providedAppComponent: AppComponent | null
     appFile: string | null
@@ -75,16 +77,16 @@ export class ClientBun {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
-    eversion: Eversion
+    eversion: Eversion | null
     viteDevServer: ViteDevServer | null
     bunDevServer: Bun.Server<unknown> | null
     server: ServerBun
   }) {
     this.cwd = input.cwd
-    this.eversion = input.eversion
+    this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
     this.providedPoints = input.providedPoints
     this.pointsFile = input.pointsFile
-    this.points = input.points
+    this.points = input.points as TInitialized extends true ? Points : Points | null
     this.ssr = input.ssr
     this.providedAppComponent = input.providedAppComponent
     this.appFile = input.appFile
@@ -99,16 +101,17 @@ export class ClientBun {
     this.index = input.index
     this.logger = input.logger
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
-    this.publicdir = input.publicdir
+    this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> : Publicdir<false>
     this.outdir = input.outdir
     this.serverOutdir = input.serverOutdir
     this.publicdirOutdir = input.publicdirOutdir
     this.viteDevServer = input.viteDevServer
     this.bunDevServer = input.bunDevServer
     this.server = input.server
+    this.initialized = input.initialized
   }
 
-  static async create(input: {
+  static create(input: {
     cwd: string
     points: Points | string
     ssr: boolean
@@ -126,45 +129,29 @@ export class ClientBun {
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
-    eversion: Eversion
+    eversion: Eversion | null
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
-  }): Promise<ClientBun> {
-    const viteDevServer =
-      input.viteConfig && process.env.NODE_ENV !== 'production'
-        ? await ClientBun.createViteDevServer({
-            viteConfig: input.viteConfig,
-            clientIndex: input.index,
-            hmrPort: input.hmrPort,
-          })
-        : null
+  }): ClientBun<false> {
+    const viteDevServer = null
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
-    const points = await ClientBun.createPoints({
-      providedPoints,
-      pointsFile,
-      viteDevServer,
-      clientIndex: input.index,
-    })
+    const points = null
 
-    const bunDevServer =
-      input.indexHtml && !viteDevServer && process.env.NODE_ENV !== 'production'
-        ? await ClientBun.createBunDevServer({ port: input.port, indexHtml: input.indexHtml })
-        : null
+    const bunDevServer = null
 
-    const publicdir = await Publicdir.create({
+    const publicdir = Publicdir.create({
       hostname: input.hostname,
       definition: input.publicdir,
-      root: points.root,
+      root: null,
       eversion: input.eversion,
       outdir: input.publicdirOutdir,
     })
 
-    const distIndexHtmlContent =
-      process.env.NODE_ENV === 'production' && input.indexHtml ? await Bun.file(input.indexHtml).text() : null
+    const distIndexHtmlContent = null
 
-    const client = new ClientBun({
+    const client = new ClientBun<false>({
       ...input,
       points,
       pointsFile,
@@ -175,9 +162,49 @@ export class ClientBun {
       distIndexHtmlContent,
       viteDevServer,
       bunDevServer,
+      initialized: false,
     })
 
     return client
+  }
+
+  async init({ eversion }: { eversion: Eversion }): Promise<ClientBun<true>> {
+    if (this.isInitialized()) {
+      return this as ClientBun<true>
+    }
+
+    this.eversion = eversion
+
+    this.viteDevServer =
+      this.viteConfig && process.env.NODE_ENV !== 'production'
+        ? await ClientBun.createViteDevServer({
+            viteConfig: this.viteConfig,
+            clientIndex: this.index,
+            hmrPort: this.hmrPort,
+          })
+        : null
+
+    this.points = await ClientBun.createPoints({
+      providedPoints: this.providedPoints,
+      pointsFile: this.pointsFile,
+      viteDevServer: this.viteDevServer,
+      clientIndex: this.index,
+    })
+
+    this.bunDevServer =
+      this.indexHtml && !this.viteDevServer && process.env.NODE_ENV !== 'production'
+        ? await ClientBun.createBunDevServer({ port: this.port, indexHtml: this.indexHtml })
+        : null
+    await this.publicdir.init({ root: this.points.root })
+
+    this.distIndexHtmlContent =
+      process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
+    this.initialized = true as never
+    return this as ClientBun<true>
+  }
+
+  isInitialized(): this is ClientBun<true> {
+    return !!this.initialized
   }
 
   static readonly createPoints = async ({
@@ -466,6 +493,10 @@ export class ClientBun {
   }
 
   async getOriginalIndexHtml(url: string): Promise<string> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+
     if (!this.indexHtml) {
       throw new Error(`indexHtml not found for client "${this.points.root._scope}"`)
     }
@@ -492,6 +523,10 @@ export class ClientBun {
   }
 
   async getFreshAppComponent(): Promise<AppComponent> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+
     if (this.providedAppComponent) {
       return this.providedAppComponent
     }
@@ -553,6 +588,10 @@ export class ClientBun {
 
   // TODO option to clear dist dir
   async buildByBunForClient(buildConfig?: BuildConfig): Promise<string[] | null> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.indexHtml) {
       return null
@@ -581,6 +620,10 @@ export class ClientBun {
   }
 
   async buildByBunForServer(buildConfig?: BuildConfig): Promise<string[] | null> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
@@ -623,6 +666,10 @@ export class ClientBun {
   }
 
   async buildByViteForClient(): Promise<string[] | null> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+
     if (!this.viteConfig) {
       throw new Error(`viteConfig not provided for client "${this.points.root._scope}"`)
     }
@@ -705,6 +752,10 @@ export class ClientBun {
   }
 
   async buildByViteForServer(): Promise<string[] | null> {
+    if (!this.isInitialized()) {
+      throw new Error('Client is not initialized')
+    }
+
     if (!this.viteConfig) {
       throw new Error(`viteConfig not provided for client "${this.points.root._scope}"`)
     }

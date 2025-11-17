@@ -5,41 +5,56 @@ import type { RootPoint } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import { prependAndDeappendSlash, withError } from '../engine-shared/utils.js'
 
-export class Publicdir {
+export class Publicdir<TInitialized extends boolean = boolean> {
   hostname: string | null
   definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: Map<string, string | Response | (() => Response | Promise<Response>)>
-  eversion: Eversion
+  eversion: TInitialized extends true ? Eversion : Eversion | null
   outdir: string | null
+  initialized: TInitialized
 
-  root: RootPoint
+  root: TInitialized extends true ? RootPoint : RootPoint | null
 
   private constructor(input: {
+    initialized: TInitialized
     hostname: string | null
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
-    root: RootPoint
-    eversion: Eversion
+    root: RootPoint | null
+    eversion: Eversion | null
     outdir: string | null
   }) {
     this.hostname = input.hostname
     this.definition = input.definition
     this.files = new Map<string, string | Response | (() => Response | Promise<Response>)>()
-    this.root = input.root
-    this.eversion = input.eversion
+    this.root = input.root as TInitialized extends true ? RootPoint : null
+    this.eversion = input.eversion as TInitialized extends true ? Eversion : null
     this.outdir = input.outdir
+    this.initialized = input.initialized
   }
 
-  static async create(input: {
+  static create(input: {
     hostname: string | null
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
-    root: RootPoint
-    eversion: Eversion
+    root: RootPoint | null
+    eversion: Eversion | null
     outdir: string | null
-  }): Promise<Publicdir> {
-    const publicdir = new Publicdir(input)
-    await publicdir.loadFiles()
-    return publicdir
+  }): Publicdir<false> {
+    return new Publicdir<false>({
+      ...input,
+      initialized: false,
+    })
+  }
+
+  async init({ root }: { root: RootPoint }): Promise<Publicdir<true>> {
+    this.root = root as TInitialized extends true ? RootPoint : null
+    await this.loadFiles()
+    this.initialized = true as never
+    return this as Publicdir<true>
+  }
+
+  isInitialized(): this is Publicdir<true> {
+    return !!this.initialized
   }
 
   async loadFiles(): Promise<void> {
@@ -64,6 +79,10 @@ export class Publicdir {
   }
 
   async fetch({ parsedUrl, request }: { parsedUrl?: ParsedUrl; request: Request }): Promise<Response | undefined> {
+    if (!this.isInitialized()) {
+      throw new Error('Publicdir is not initialized')
+    }
+
     parsedUrl ??= parseUrl(request.url)
     if (this.hostname && parsedUrl.urlObj.hostname !== this.hostname) {
       return undefined
@@ -123,6 +142,10 @@ export class Publicdir {
   }
 
   async build(): Promise<string[] | null> {
+    if (!this.isInitialized()) {
+      throw new Error('Publicdir is not initialized')
+    }
+
     const outdir = this.outdir
     if (!outdir) {
       return null

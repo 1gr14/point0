@@ -74,7 +74,7 @@ export type EngineOptions = EngineGeneralOptions & {
 }
 
 export type EngineGeneralOptionsParsed = {
-  fallbackScope: PointsScope | null
+  fallbackScope: PointsScope
   logger: EngineLogger
   itWasBuilt: boolean
   cwdAfterBuild: string
@@ -116,6 +116,7 @@ export type EngineServerOptionsParsed = {
   engineFile: string | null
   cwdBeforeBuild: string
   itWasBuilt: boolean
+  fallbackScope: PointsScope
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -232,8 +233,7 @@ const parseEngineGeneralOptions = ({
     return { cwdAfterBuild, cwdBeforeBuild, cwd }
   })()
   const result = {
-    // will be resolved after parsing clients and server
-    fallbackScope: generalOptions.fallbackScope || null,
+    fallbackScope: generalOptions.fallbackScope || clientsOptions?.at(0)?.scope || serverOptions.scope,
     logger: generalOptions.logger || {
       info: console.info.bind(console),
       error: console.error.bind(console),
@@ -366,6 +366,7 @@ export const parseEngineServerOptions = ({
     engineFile: generalOptionsParsed.engineFile,
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,
+    fallbackScope: generalOptionsParsed.fallbackScope,
   }
 }
 const parseEngineClientOptions = ({

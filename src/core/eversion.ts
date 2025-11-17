@@ -283,7 +283,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return suitableEversionByFallbackScope
     }
     throw new Error(
-      `No suitable eversion found at location "${location.pathname}" and root id "${scope}" and fallback root id "${fallbackScope}"`,
+      `No suitable eversion found at location "${pageLocation.pathname}" and scope "${scope}" and fallback scope "${fallbackScope}"`,
     )
   }
 
@@ -317,7 +317,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     const suitableEversion = this._getSuitableEversionByScope({ scope })
     if (!suitableEversion) {
-      throw new Error(`No suitable eversion found at root id "${scope}"`)
+      throw new Error(`No suitable eversion found at scope "${scope}"`)
     }
     return { point: undefined, pageLocation, eversion: suitableEversion }
   }

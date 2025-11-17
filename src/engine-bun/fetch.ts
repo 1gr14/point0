@@ -17,8 +17,8 @@ export const engineFetch = async ({
   requiredCtx,
   logger,
 }: {
-  server: ServerBun
-  clients: ClientBun[]
+  server: ServerBun<true>
+  clients: Array<ClientBun<true>>
   eversion: Eversion
   request: Request
   parsedUrl?: ParsedUrl
