@@ -69,11 +69,11 @@ export class Engine {
     clients: Array<{
       self: string[] | null
       server: string[] | null
-      publicDir: string[] | null
+      publicdir: string[] | null
       rootId: RootId
       index: number
     }>
-    server: { self: string[] | null; publicDir: string[] | null }
+    server: { self: string[] | null; publicdir: string[] | null }
   }> {
     const clients = await Promise.all(
       this.clients.map(async (client) => {
@@ -81,7 +81,7 @@ export class Engine {
         return {
           self: buildOutput.self,
           server: buildOutput.server,
-          publicDir: buildOutput.publicDir,
+          publicdir: buildOutput.publicdir,
           rootId: client.points.root._rootId,
           index: client.index,
         }

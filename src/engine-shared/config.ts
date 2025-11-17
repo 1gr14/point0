@@ -13,7 +13,7 @@ export type EngineLogger = {
   error: (error: unknown, meta?: Record<string, any>) => any
 }
 
-export type EngineOptionsPublicDir =
+export type EngineOptionsPublicdir =
   | string
   | Record<string, string | Response | (() => Response | Promise<Response>)>
   | Array<
@@ -21,7 +21,7 @@ export type EngineOptionsPublicDir =
       | Record<string, string | Response | (() => Response | Promise<Response>)>
       | [string, string | Response | (() => Response | Promise<Response>)]
     >
-export type EngineOptionsPublicDirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
+export type EngineOptionsPublicdirParsed = Array<[string, string | Response | (() => Response | Promise<Response>)]>
 
 export type EngineOptionsEnv = string | Record<string, any> | Array<string | Record<string, any>>
 export type EngineOptionsEnvParsed = Record<string, any>
@@ -36,17 +36,18 @@ export type EngineGeneralOptions = {
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
   autoFixBuiltPaths?: boolean
+  clientsServerOutdir?: string | null
+  clientsSelfOutdir?: string | null
 }
 export type EngineServerOptions = {
   rootId: RootId
   points: ReadyPointsModule | LazyPointsModule
-  publicDir?: EngineOptionsPublicDir
+  publicdir?: EngineOptionsPublicdir
   port?: number | string | null
   hmrPort?: number | string | null
-  distDir?: string | null
+  outdir?: string | null
   entry?: string | Record<string, string> | null
-  clientsDistDir?: string | null
-  publicDistDir?: string | null
+  publicdirOutdir?: string | null
 }
 export type EngineClientOptions = {
   rootId: RootId
@@ -55,16 +56,16 @@ export type EngineClientOptions = {
   app?: string | AppComponent | null
   hostname?: string | null
   basepath?: string | null
-  publicDir?: EngineOptionsPublicDir | null
+  publicdir?: EngineOptionsPublicdir | null
   indexHtml?: string | null
   domRootElementId?: string
   env?: EngineOptionsEnv | null
   port?: number | string | null
   hmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
-  distDir?: string | null
-  serverDistDir?: string | null
-  publicDistDir?: string | null
+  outdir?: string | null
+  serverOutdir?: string | null
+  publicdirOutdir?: string | null
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -79,6 +80,8 @@ export type EngineGeneralOptionsParsed = {
   cwdBeforeBuild: string
   cwd: string
   autoFixBuiltPaths: boolean
+  clientsServerOutdir: string | null
+  clientsSelfOutdir: string | null
 }
 export type EngineClientOptionsParsed = {
   rootId: RootId
@@ -87,7 +90,7 @@ export type EngineClientOptionsParsed = {
   app: string | AppComponent | null
   hostname: string | null
   basepath: string
-  publicDir: EngineOptionsPublicDirParsed
+  publicdir: EngineOptionsPublicdirParsed
   indexHtml: string | null
   env: EngineOptionsEnvParsed
   domRootElementId: string
@@ -95,20 +98,19 @@ export type EngineClientOptionsParsed = {
   hmrPort: number
   index: number
   viteConfig: EngineOptionsViteConfig | null
-  distDir: string | null
-  serverDistDir: string | null
-  publicDistDir: string | null
+  outdir: string | null
+  serverOutdir: string | null
+  publicdirOutdir: string | null
 }
 export type EngineServerOptionsParsed = {
   rootId: RootId
   points: Points
-  publicDir: EngineOptionsPublicDirParsed
+  publicdir: EngineOptionsPublicdirParsed
   port: number
   hmrPort: number
   entry: Record<string, string> | null
-  distDir: string | null
-  clientsDistDir: string | null
-  publicDistDir: string | null
+  outdir: string | null
+  publicdirOutdir: string | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -116,7 +118,7 @@ export type EngineOptionsParsed = {
   clients: EngineClientOptionsParsed[]
 }
 
-const parsePublicDir = (input: EngineOptionsPublicDir, cwd: string): EngineOptionsPublicDirParsed => {
+const parsePublicdir = (input: EngineOptionsPublicdir, cwd: string): EngineOptionsPublicdirParsed => {
   if (typeof input === 'string') {
     return [['/', toAbsPath(cwd, input)]]
   }
@@ -126,14 +128,14 @@ const parsePublicDir = (input: EngineOptionsPublicDir, cwd: string): EngineOptio
       typeof absPathOrResponseOrFn === 'string' ? toAbsPath(cwd, absPathOrResponseOrFn) : absPathOrResponseOrFn,
     ])
   }
-  const result: EngineOptionsPublicDirParsed = []
+  const result: EngineOptionsPublicdirParsed = []
   for (const item of input) {
     if (typeof item === 'string') {
-      result.push(...parsePublicDir(item, cwd))
+      result.push(...parsePublicdir(item, cwd))
       continue
     }
     if (!Array.isArray(item)) {
-      result.push(...parsePublicDir(item, cwd))
+      result.push(...parsePublicdir(item, cwd))
       continue
     }
     result.push([prependAndDeappendSlash(item[0]), typeof item[1] === 'string' ? toAbsPath(cwd, item[1]) : item[1]])
@@ -202,7 +204,7 @@ const parseEngineGeneralOptions = ({
     const cwd = cwdBeforeBuild
     return { cwdAfterBuild, cwdBeforeBuild, cwd }
   })()
-  return {
+  const result = {
     // will be resolved after parsing clients and server
     fallbackRootId: generalOptions.fallbackRootId || null,
     logger: generalOptions.logger || {
@@ -214,6 +216,19 @@ const parseEngineGeneralOptions = ({
     cwdBeforeBuild,
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
+  }
+  return {
+    ...result,
+    clientsServerOutdir: toFinalPath({
+      ...result,
+      cwdIfWasBuilt: null,
+      path: generalOptions.clientsServerOutdir,
+    }),
+    clientsSelfOutdir: toFinalPath({
+      ...result,
+      cwdIfWasBuilt: null,
+      path: generalOptions.clientsSelfOutdir,
+    }),
   }
 }
 
@@ -255,10 +270,18 @@ const toFinalPath = <T extends string | null | undefined>({
 
   const cwdAfterBuildFinal = cwdIfWasBuilt ? nodePath.resolve(cwdBeforeBuild, cwdIfWasBuilt) : cwdBeforeBuild
 
-  const fixedPath =
-    relPathAfterBuild ?? (omitDirAfterBuild && !nodePath.isAbsolute(path) ? nodePath.basename(path) : path)
-  const pathWithJsExt = fixedPath.replace(/\.tsx?$/, '.js')
-  return nodePath.resolve(cwdAfterBuildFinal, pathWithJsExt) as T extends null | undefined ? null : T
+  if (relPathAfterBuild) {
+    const fixedPath = nodePath.resolve(cwdAfterBuildFinal, relPathAfterBuild.replace(/\.tsx?$/, '.js'))
+    return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+  }
+
+  if (omitDirAfterBuild && !nodePath.isAbsolute(path)) {
+    const fixedPath = nodePath.basename(path).replace(/\.tsx?$/, '.js')
+    return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+  }
+
+  const fixedPath = path.replace(/\.tsx?$/, '.js')
+  return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
 }
 
 export const parseEngineServerOptions = ({
@@ -272,16 +295,21 @@ export const parseEngineServerOptions = ({
   const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
   const entriesRecordInput =
     typeof serverOptions.entry === 'string' ? { main: serverOptions.entry } : serverOptions.entry
-  const distDir = toFinalPath({
+  const outdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: serverOptions.distDir,
+    path: serverOptions.outdir,
+  })
+  const publicdirOutdir = toFinalPath({
+    ...generalOptionsParsed,
+    cwdIfWasBuilt: null,
+    path: serverOptions.publicdirOutdir || (outdir && serverOptions.publicdir ? nodePath.join(outdir, 'public') : null),
   })
   const entriesRecord = entriesRecordInput
     ? Object.fromEntries(
         Object.entries(entriesRecordInput).map(([key, value]) => [
           key,
-          toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: distDir, path: value, omitDirAfterBuild: true }),
+          toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: outdir, path: value, omitDirAfterBuild: true }),
         ]),
       )
     : null
@@ -290,33 +318,15 @@ export const parseEngineServerOptions = ({
     points: Points.create(serverOptions.points),
     port,
     hmrPort,
-    distDir,
+    outdir,
     entry: entriesRecord,
-    clientsDistDir: toFinalPath({
-      ...generalOptionsParsed,
-      cwdIfWasBuilt: null,
-      path: serverOptions.clientsDistDir,
-    }),
-    publicDir:
+    publicdir:
       !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
-        ? parsePublicDir(serverOptions.publicDir ?? [], generalOptionsParsed.cwd)
-        : serverOptions.publicDistDir
-          ? [
-              [
-                '/',
-                toFinalPath({
-                  ...generalOptionsParsed,
-                  cwdIfWasBuilt: null,
-                  path: serverOptions.publicDistDir,
-                }),
-              ],
-            ]
+        ? parsePublicdir(serverOptions.publicdir ?? [], generalOptionsParsed.cwd)
+        : publicdirOutdir && serverOptions.publicdir
+          ? [['/', publicdirOutdir]]
           : [],
-    publicDistDir: toFinalPath({
-      ...generalOptionsParsed,
-      cwdIfWasBuilt: null,
-      path: serverOptions.publicDistDir,
-    }),
+    publicdirOutdir,
   }
 }
 const parseEngineClientOptions = ({
@@ -333,20 +343,28 @@ const parseEngineClientOptions = ({
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
   const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
-  const serverDistDirProvided =
-    clientOptions.serverDistDir ??
-    (serverOptionsParsed.clientsDistDir
-      ? nodePath.resolve(serverOptionsParsed.clientsDistDir, clientOptions.rootId)
-      : null)
-  const serverDistDir = toFinalPath({
+  const serverOutdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: serverDistDirProvided,
+    path:
+      clientOptions.serverOutdir ??
+      (generalOptionsParsed.clientsServerOutdir
+        ? nodePath.resolve(generalOptionsParsed.clientsServerOutdir, clientOptions.rootId)
+        : null),
   })
-  const distDir = toFinalPath({
+  const outdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: clientOptions.distDir,
+    path:
+      clientOptions.outdir ??
+      (generalOptionsParsed.clientsSelfOutdir
+        ? nodePath.resolve(generalOptionsParsed.clientsSelfOutdir, clientOptions.rootId)
+        : null),
+  })
+  const publicdirOutdir = toFinalPath({
+    ...generalOptionsParsed,
+    cwdIfWasBuilt: null,
+    path: clientOptions.publicdirOutdir || outdir,
   })
   return {
     rootId: clientOptions.rootId,
@@ -354,7 +372,7 @@ const parseEngineClientOptions = ({
       typeof clientOptions.points === 'string'
         ? toFinalPath({
             ...generalOptionsParsed,
-            cwdIfWasBuilt: serverDistDir,
+            cwdIfWasBuilt: serverOutdir,
             relPathAfterBuild: clientOptions.viteConfig ? './points.js' : undefined,
             path: clientOptions.points,
             omitDirAfterBuild: true,
@@ -365,7 +383,7 @@ const parseEngineClientOptions = ({
       typeof clientOptions.app === 'string'
         ? toFinalPath({
             ...generalOptionsParsed,
-            cwdIfWasBuilt: serverDistDir,
+            cwdIfWasBuilt: serverOutdir,
             relPathAfterBuild: clientOptions.viteConfig ? './app.js' : undefined,
             path: clientOptions.app,
             omitDirAfterBuild: true,
@@ -387,25 +405,21 @@ const parseEngineClientOptions = ({
             path: clientOptions.viteConfig,
           })
         : (clientOptions.viteConfig ?? null),
-    distDir,
+    outdir,
     indexHtml: toFinalPath({
       ...generalOptionsParsed,
-      cwdIfWasBuilt: clientOptions.distDir,
+      cwdIfWasBuilt: outdir,
       relPathAfterBuild: './index.html',
       path: clientOptions.indexHtml,
     }),
-    publicDir:
+    publicdir:
       !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
-        ? parsePublicDir(clientOptions.publicDir ?? [], generalOptionsParsed.cwd)
-        : clientOptions.distDir
-          ? [['/', toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: undefined, path: clientOptions.distDir })]]
+        ? parsePublicdir(clientOptions.publicdir ?? [], generalOptionsParsed.cwd)
+        : publicdirOutdir && clientOptions.publicdir
+          ? [['/', publicdirOutdir]]
           : [],
-    serverDistDir,
-    publicDistDir: toFinalPath({
-      ...generalOptionsParsed,
-      cwdIfWasBuilt: undefined,
-      path: clientOptions.publicDistDir,
-    }),
+    serverOutdir,
+    publicdirOutdir,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

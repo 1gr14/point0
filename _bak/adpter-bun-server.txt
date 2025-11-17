@@ -41,7 +41,7 @@
 //   root: RootPoint<TRequiredCtx>
 //   logger: EngineLogger
 //   dirname?: string
-//   publicDir?: string
+//   publicdir?: string
 //   fallbackRootId: RootId
 //   eversion: Eversion<TRequiredCtx>
 //   clients: Array<ClientWithEversion<TRequiredCtx>>
@@ -63,7 +63,7 @@
 //       : this.mainServerPort + 1
 //     this.logger = input.logger
 //     this.dirname = input.dirname
-//     this.publicDir = input.publicDir
+//     this.publicdir = input.publicdir
 //     this.fallbackRootId = input.fallbackRootId || input.clients.at(0)?.root._rootId || input.root._rootId
 //     this.eversion = input.eversion
 //     this.clients = input.clients
@@ -96,18 +96,18 @@
 //   }
 
 //   async _setPublicFilePaths(): Promise<void> {
-//     if (!this.publicDir) {
+//     if (!this.publicdir) {
 //       return
 //     }
 //     try {
 //       const glob = new Bun.Glob('**/*')
-//       for await (const relPath of glob.scan({ cwd: this.publicDir, onlyFiles: true })) {
-//         const absPath = nodePath.resolve(this.publicDir, relPath)
+//       for await (const relPath of glob.scan({ cwd: this.publicdir, onlyFiles: true })) {
+//         const absPath = nodePath.resolve(this.publicdir, relPath)
 //         this.publicFilePaths.set(relPath, absPath)
 //       }
 //     } catch (error) {
-//       // publicDir doesn't exist or is not accessible
-//       this.logger.info(`🔴 Please, fix path of publicDir provided to getBunServer: ${this.publicDir}`)
+//       // publicdir doesn't exist or is not accessible
+//       this.logger.info(`🔴 Please, fix path of publicdir provided to getBunServer: ${this.publicdir}`)
 //       throw error
 //     }
 //   }
@@ -201,17 +201,17 @@
 //     }
 //   }
 
-//   async _fetchClientDistDir({ pathname }: ParsedRequest): Promise<Response | undefined> {
+//   async _fetchClientOutdir({ pathname }: ParsedRequest): Promise<Response | undefined> {
 //     if (process.env.NODE_ENV !== 'production') {
 //       return undefined
 //     }
 //     const relatedClient = this.clients.find((client) => isPathnameUnderBasepath(pathname, client.distRoute))
-//     if (relatedClient?.distDir && relatedClient.distRoute && pathname.startsWith(relatedClient.distRoute)) {
+//     if (relatedClient?.outdir && relatedClient.distRoute && pathname.startsWith(relatedClient.distRoute)) {
 //       const clientFilePathAbs = nodePath.resolve(
-//         relatedClient.distDir,
+//         relatedClient.outdir,
 //         pathname.replace(new RegExp(`^${relatedClient.distRoute}`), ''),
 //       )
-//       if (clientFilePathAbs.startsWith(relatedClient.distDir)) {
+//       if (clientFilePathAbs.startsWith(relatedClient.outdir)) {
 //         const clientFile = Bun.file(clientFilePathAbs)
 //         if (await clientFile.exists()) {
 //           return new Response(Bun.file(clientFilePathAbs))
@@ -221,8 +221,8 @@
 //     return undefined
 //   }
 
-//   async _fetchPublicDir({ pathnameAsRelPath, isJsonAcceptable }: ParsedRequest): Promise<Response | undefined> {
-//     if (!this.publicDir) {
+//   async _fetchPublicdir({ pathnameAsRelPath, isJsonAcceptable }: ParsedRequest): Promise<Response | undefined> {
+//     if (!this.publicdir) {
 //       return undefined
 //     }
 //     const absPath = this.publicFilePaths.get(pathnameAsRelPath)
@@ -261,12 +261,12 @@
 //     }
 
 //     try {
-//       let response: Response | undefined = await this._fetchClientDistDir(parsedRequest)
+//       let response: Response | undefined = await this._fetchClientOutdir(parsedRequest)
 //       if (response) {
 //         return response
 //       }
 
-//       response = await this._fetchPublicDir(parsedRequest)
+//       response = await this._fetchPublicdir(parsedRequest)
 //       if (response) {
 //         return response
 //       }

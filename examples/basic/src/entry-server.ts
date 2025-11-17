@@ -6,15 +6,15 @@ const engine = await Engine.create({
   cwdAfterBuild: !process.env.ENGINE_WAS_BUILT ? '../dist/server' : import.meta.dir,
   cwdBeforeBuild: !process.env.ENGINE_WAS_BUILT ? import.meta.dir : '../../src',
   // below all paths should be relative to cwdBeforeBuild like it was not built yet
+  clientsServerOutdir: '../dist/clients-server',
+  clientsSelfOutdir: '../dist/clients-self',
   server: {
     rootId: 'server',
     points: { root: source },
     port: 3000,
     // entry: './entry-server.ts',
     entry: { main: './entry-server.ts' },
-    distDir: '../dist/server',
-    publicDistDir: '../dist/public',
-    clientsDistDir: '../dist/server-clients',
+    outdir: '../dist/server',
   },
   clients: [
     {
@@ -25,10 +25,7 @@ const engine = await Engine.create({
       indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],
-      publicDir: '../public',
-      distDir: '../dist/client',
-      // serverDistDir: '../dist/server-clients/client',
-      publicDistDir: '../dist/client',
+      publicdir: '../public',
     },
   ],
 })

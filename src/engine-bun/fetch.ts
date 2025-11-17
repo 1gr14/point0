@@ -39,9 +39,9 @@ export const engineFetch = async ({
   }
 
   try {
-    const publicDirs = [server.publicDir, ...clients.map((client) => client.publicDir)]
-    for (const publicDir of publicDirs) {
-      const staticResponse = await publicDir.fetch({ parsedUrl, request })
+    const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)]
+    for (const publicdir of publicdirs) {
+      const staticResponse = await publicdir.fetch({ parsedUrl, request })
       if (staticResponse) {
         return staticResponse // already wrapped
       }

@@ -8,7 +8,7 @@ const engine = await EngineBun.create({
   server: {
     points: { root: source },
     port: 3000,
-    publicDir:
+    publicdir:
       process.env.NODE_ENV === 'production'
         ? '../public' // when self location is "dist/server/entry-server.js" it points to "dist/public"
         : '../public', // when self location is "src/entry-server.ts" it points to "public"
@@ -19,7 +19,7 @@ const engine = await EngineBun.create({
       app: '../dist/dev/client/app.js',
       points: '../dist/dev/client/lib/points.ready.js',
       indexHtml: process.env.NODE_ENV === 'production' ? '../client/index.html' : './index.html', // only when NODE_ENV=production
-      publicDir: process.env.NODE_ENV === 'production' ? { '/': '../client' } : { '/': '../dist/dev/client' }, // only when NODE_ENV=production
+      publicdir: process.env.NODE_ENV === 'production' ? { '/': '../client' } : { '/': '../dist/dev/client' }, // only when NODE_ENV=production
       port: 3001,
       env: {
         SOURCE_BASE_URL: process.env.SOURCE_BASE_URL,

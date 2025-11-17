@@ -222,3 +222,12 @@ export const getDirByPaths = ({
   }
   return commonDir
 }
+
+export const withError = async <T>(fn: () => Promise<T>, subMessage?: string): Promise<T> => {
+  try {
+    return await fn()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    throw new Error([subMessage, errorMessage].filter(Boolean).join(': '), { cause: error })
+  }
+}

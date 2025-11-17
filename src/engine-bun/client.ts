@@ -15,13 +15,14 @@ import { parseUrl } from '../core/utils.js'
 import type {
   EngineLogger,
   EngineOptionsEnvParsed,
-  EngineOptionsPublicDirParsed,
+  EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   LoadedViteConfig,
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
-import { PublicDir } from './public-dir.js'
+import { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
+import { withError } from '../engine-shared/utils.js'
 
 export class ClientBun {
   cwd: string
@@ -42,10 +43,10 @@ export class ClientBun {
   index: number
   logger: EngineLogger
   env: EngineOptionsEnvParsed
-  publicDir: PublicDir
-  distDir: string | null
-  serverDistDir: string | null
-  publicDistDir: string | null
+  publicdir: Publicdir
+  outdir: string | null
+  serverOutdir: string | null
+  publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
   bunDevServer: Bun.Server<unknown> | null
@@ -62,9 +63,9 @@ export class ClientBun {
     hostname: string | null
     basepath: string
     indexHtml: string | null
-    distDir: string | null
-    serverDistDir: string | null
-    publicDistDir: string | null
+    outdir: string | null
+    serverOutdir: string | null
+    publicdirOutdir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
@@ -73,7 +74,7 @@ export class ClientBun {
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
-    publicDir: PublicDir
+    publicdir: Publicdir
     eversion: Eversion
     viteDevServer: ViteDevServer | null
     bunDevServer: Bun.Server<unknown> | null
@@ -98,10 +99,10 @@ export class ClientBun {
     this.index = input.index
     this.logger = input.logger
     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
-    this.publicDir = input.publicDir
-    this.distDir = input.distDir
-    this.serverDistDir = input.serverDistDir
-    this.publicDistDir = input.publicDistDir
+    this.publicdir = input.publicdir
+    this.outdir = input.outdir
+    this.serverOutdir = input.serverOutdir
+    this.publicdirOutdir = input.publicdirOutdir
     this.viteDevServer = input.viteDevServer
     this.bunDevServer = input.bunDevServer
     this.server = input.server
@@ -114,10 +115,10 @@ export class ClientBun {
     app: AppComponent | string | null
     hostname: string | null
     basepath: string
-    publicDir: EngineOptionsPublicDirParsed
-    distDir: string | null
-    serverDistDir: string | null
-    publicDistDir: string | null
+    publicdir: EngineOptionsPublicdirParsed
+    outdir: string | null
+    serverOutdir: string | null
+    publicdirOutdir: string | null
     indexHtml: string | null
     domRootElementId: string
     port: number
@@ -152,12 +153,12 @@ export class ClientBun {
         ? await ClientBun.createBunDevServer({ port: input.port, indexHtml: input.indexHtml })
         : null
 
-    const publicDir = await PublicDir.create({
+    const publicdir = await Publicdir.create({
       hostname: input.hostname,
-      definition: input.publicDir,
+      definition: input.publicdir,
       root: points.root,
       eversion: input.eversion,
-      distDir: input.publicDistDir,
+      outdir: input.publicdirOutdir,
     })
 
     const distIndexHtmlContent =
@@ -168,7 +169,7 @@ export class ClientBun {
       points,
       pointsPath,
       providedPoints,
-      publicDir,
+      publicdir,
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appPath: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
@@ -200,7 +201,12 @@ export class ClientBun {
           async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
         )
       } else {
-        return Points.create((await import(pointsPath)) as LazyPointsModule | ReadyPointsModule)
+        return Points.create(
+          await withError(
+            async () => (await import(pointsPath)) as LazyPointsModule | ReadyPointsModule,
+            `Failed to import points from ${pointsPath} on client at position "${clientIndex}"`,
+          ),
+        )
       }
     }
     throw new Error(`Points not provided for client at position "${clientIndex}"`)
@@ -527,8 +533,8 @@ export class ClientBun {
     appPath: string | null
     pointsPath: string | null
     indexHtml: string | null
-    distDir: string | null
-    serverDistDir: string | null
+    outdir: string | null
+    serverOutdir: string | null
     entrypointsExists: boolean
   } {
     const appPath = this.getAppPathOrNullOrThrow()
@@ -539,8 +545,8 @@ export class ClientBun {
       appPath,
       pointsPath,
       indexHtml,
-      distDir: this.distDir,
-      serverDistDir: this.serverDistDir,
+      outdir: this.outdir,
+      serverOutdir: this.serverOutdir,
       entrypointsExists,
     }
   }
@@ -551,8 +557,8 @@ export class ClientBun {
     if (!buildPaths.indexHtml) {
       return null
     }
-    if (!buildPaths.distDir) {
-      throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
+    if (!buildPaths.outdir) {
+      throw new Error(`outdir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
@@ -564,7 +570,7 @@ export class ClientBun {
       minify: NODE_ENV === 'production',
       ...buildConfig,
       entrypoints: [buildPaths.indexHtml],
-      outdir: buildPaths.distDir,
+      outdir: buildPaths.outdir,
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
@@ -589,8 +595,8 @@ export class ClientBun {
     if (!buildPaths.appPath && !buildPaths.pointsPath) {
       return null
     }
-    if (!buildPaths.serverDistDir) {
-      throw new Error(`serverDistDir not provided for client "${this.points.root._rootId}"`)
+    if (!buildPaths.serverOutdir) {
+      throw new Error(`serverOutdir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
@@ -605,7 +611,7 @@ export class ClientBun {
       },
       ...buildConfig,
       entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
-      outdir: buildPaths.serverDistDir,
+      outdir: buildPaths.serverOutdir,
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
@@ -624,8 +630,8 @@ export class ClientBun {
     if (!buildPaths.indexHtml) {
       return null
     }
-    if (!buildPaths.distDir) {
-      throw new Error(`distDir not provided for client "${this.points.root._rootId}"`)
+    if (!buildPaths.outdir) {
+      throw new Error(`outdir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.loadViteConfig({
@@ -658,7 +664,7 @@ export class ClientBun {
       root: viteRoot,
       build: {
         ...loadedViteConfig.build,
-        outDir: buildPaths.distDir,
+        outDir: buildPaths.outdir,
         minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
         sourcemap: loadedViteConfig.build?.sourcemap ?? true,
         rollupOptions: {
@@ -689,7 +695,7 @@ export class ClientBun {
         const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
         for (const chunk of chunks) {
           if ('fileName' in chunk && typeof chunk.fileName === 'string') {
-            outputFiles.push(nodePath.resolve(buildPaths.distDir, chunk.fileName))
+            outputFiles.push(nodePath.resolve(buildPaths.outdir, chunk.fileName))
           }
         }
       }
@@ -716,8 +722,8 @@ export class ClientBun {
     if (!buildPaths.appPath && !buildPaths.pointsPath) {
       return null
     }
-    if (!buildPaths.serverDistDir) {
-      throw new Error(`serverDistDir not provided for client "${this.points.root._rootId}"`)
+    if (!buildPaths.serverOutdir) {
+      throw new Error(`serverOutdir not provided for client "${this.points.root._rootId}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.loadViteConfig({
@@ -751,7 +757,7 @@ export class ClientBun {
       root: viteRoot,
       build: {
         ...loadedViteConfig.build,
-        outDir: buildPaths.serverDistDir,
+        outDir: buildPaths.serverOutdir,
         minify: false,
         sourcemap: loadedViteConfig.build?.sourcemap ?? true,
         ssr: true,
@@ -786,7 +792,7 @@ export class ClientBun {
         const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
         for (const chunk of chunks) {
           if ('fileName' in chunk && typeof chunk.fileName === 'string') {
-            outputFiles.push(nodePath.resolve(buildPaths.serverDistDir, chunk.fileName))
+            outputFiles.push(nodePath.resolve(buildPaths.serverOutdir, chunk.fileName))
           }
         }
       }
@@ -795,30 +801,30 @@ export class ClientBun {
   }
 
   async cleanSelf(): Promise<boolean> {
-    const distDir = this.distDir
-    if (!distDir) {
+    const outdir = this.outdir
+    if (!outdir) {
       return false
     }
-    await nodeFs.rm(distDir, { recursive: true }).catch(() => {
+    await nodeFs.rm(outdir, { recursive: true }).catch(() => {
       /* ignore */
     })
     return true
   }
 
   async cleanServer(): Promise<boolean> {
-    const serverDistDir = this.serverDistDir
-    if (!serverDistDir) {
+    const serverOutdir = this.serverOutdir
+    if (!serverOutdir) {
       return false
     }
-    await nodeFs.rm(serverDistDir, { recursive: true }).catch(() => {
+    await nodeFs.rm(serverOutdir, { recursive: true }).catch(() => {
       /* ignore */
     })
     return true
   }
 
-  async clean(): Promise<{ self: boolean; publicDir: boolean; server: boolean }> {
-    const [self, publicDir, server] = await Promise.all([this.cleanSelf(), this.publicDir.clean(), this.cleanServer()])
-    return { self, publicDir, server }
+  async clean(): Promise<{ self: boolean; publicdir: boolean; server: boolean }> {
+    const [self, publicdir, server] = await Promise.all([this.cleanSelf(), this.publicdir.clean(), this.cleanServer()])
+    return { self, publicdir, server }
   }
 
   async buildSelf(): Promise<{ self: string[] | null; server: string[] | null }> {
@@ -831,10 +837,10 @@ export class ClientBun {
     }
   }
 
-  async build(): Promise<{ self: string[] | null; server: string[] | null; publicDir: string[] | null }> {
+  async build(): Promise<{ self: string[] | null; server: string[] | null; publicdir: string[] | null }> {
     await this.clean()
-    const [{ self, server }, publicDir] = await Promise.all([this.buildSelf(), this.publicDir.build()])
-    return { self, server, publicDir }
+    const [{ self, server }, publicdir] = await Promise.all([this.buildSelf(), this.publicdir.build()])
+    return { self, server, publicdir }
   }
 
   async renderAsReadableStream({

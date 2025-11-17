@@ -1,6 +1,6 @@
 engine.ts & index.server.ts
 index.client.ts
-distDir → outdir
+outdir → outdir
 rootPointId
 hide import.meta.hot, allow mount(App, {settings: ...})
 

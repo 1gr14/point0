@@ -8,7 +8,7 @@
 // import type { EngineLogger } from '../engine-shared/config.js'
 // import { renderAppAsReadableStream } from '../engine-shared/render.js'
 // import { engineFetch } from './fetch.js'
-// import { PublicDir } from './public-dir.js'
+// import { Publicdir } from './public-dir.js'
 // import type { AppComponent } from '../core/mount.js'
 // import { renderToReadableStream } from 'react-dom/server'
 // import { connect } from 'bun'
@@ -32,8 +32,8 @@
 //     | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
 //     | undefined
 
-//   distDir: PublicDir | undefined
-//   publicDir: PublicDir | undefined
+//   outdir: Publicdir | undefined
+//   publicdir: Publicdir | undefined
 
 //   distIndexHtmlContent: string | undefined
 //   viteServer: ViteDevServer
@@ -60,8 +60,8 @@
 //       | (() => import('vite').UserConfig | Promise<import('vite').UserConfig>)
 //       | undefined
 
-//     distDir: PublicDir | undefined
-//     publicDir: PublicDir | undefined
+//     outdir: Publicdir | undefined
+//     publicdir: Publicdir | undefined
 //     eversion: Eversion
 //   }) {
 //     this.eversion = input.eversion
@@ -78,8 +78,8 @@
 //     this.logger = input.logger
 //     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
 //     this.viteConfig = input.viteConfig
-//     this.distDir = input.distDir
-//     this.publicDir = input.publicDir
+//     this.outdir = input.outdir
+//     this.publicdir = input.publicdir
 //     this.viteServer = input.viteServer
 //     // this.viteEnvironment = input.viteEnvironment
 //   }
@@ -90,9 +90,9 @@
 //     appPath: string
 //     hostname: string | undefined
 //     basepath: string
-//     distDir: string | undefined
+//     outdir: string | undefined
 //     distRoute: string | undefined
-//     publicDir: string | undefined
+//     publicdir: string | undefined
 //     srcIndexHtml: string | undefined
 //     distIndexHtml: string | undefined
 //     domRootElementId: string
@@ -107,20 +107,20 @@
 
 //     eversion: Eversion
 //   }): Promise<ClientVite> {
-//     const distDir =
-//       input.distDir && input.distRoute
-//         ? await PublicDir.create({
+//     const outdir =
+//       input.outdir && input.distRoute
+//         ? await Publicdir.create({
 //             hostname: input.hostname,
-//             absPath: input.distDir,
+//             absPath: input.outdir,
 //             routePath: input.distRoute,
 //             root: input.points.root,
 //             eversion: input.eversion,
 //           })
 //         : undefined
-//     const publicDir = input.publicDir
-//       ? await PublicDir.create({
+//     const publicdir = input.publicdir
+//       ? await Publicdir.create({
 //           hostname: input.hostname,
-//           absPath: input.publicDir,
+//           absPath: input.publicdir,
 //           routePath: '/',
 //           root: input.points.root,
 //           eversion: input.eversion,
@@ -139,8 +139,8 @@
 //     // const viteEnvironment = await createViteEnvironment(viteServer, { ssr: true, sandbox: false })
 //     const client = new ClientVite({
 //       ...input,
-//       distDir,
-//       publicDir,
+//       outdir,
+//       publicdir,
 //       viteServer,
 //       // viteEnvironment,
 //     })
@@ -197,7 +197,7 @@
 //       fallbackRootId: this.points.root._rootId,
 //       rootId: this.points.root._rootId,
 //       requiredCtx,
-//       staticDirs: [this.distDir, this.publicDir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
+//       staticDirs: [this.outdir, this.publicdir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
 //       logger: this.logger,
 //     })
 //   }

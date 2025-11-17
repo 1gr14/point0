@@ -4,10 +4,10 @@ import { Eversion } from '../core/eversion.js'
 import type { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import type { EngineLogger, EngineOptionsPublicDirParsed } from '../engine-shared/config.js'
+import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
-import { PublicDir } from './public-dir.js'
+import { Publicdir } from './publicdir.js'
 
 export class ServerBun {
   cwd: string
@@ -18,10 +18,9 @@ export class ServerBun {
   clients: ClientBun[]
   logger: EngineLogger
   entry: Record<string, string> | null
-  publicDir: PublicDir
-  distDir: string | null
-  clientsDistDir: string | null
-  publicDistDir: string | null
+  publicdir: Publicdir
+  outdir: string | null
+  publicdirOutdir: string | null
   fallbackRootId: RootId
 
   bunServer: Bun.Server<unknown> | undefined
@@ -35,10 +34,9 @@ export class ServerBun {
     logger: EngineLogger
     clients: ClientBun[]
     entry: Record<string, string> | null
-    publicDir: PublicDir
-    distDir: string | null
-    clientsDistDir: string | null
-    publicDistDir: string | null
+    publicdir: Publicdir
+    outdir: string | null
+    publicdirOutdir: string | null
     eversion: Eversion
   }) {
     this.cwd = input.cwd
@@ -49,10 +47,9 @@ export class ServerBun {
     this.clients = input.clients
     this.logger = input.logger
     this.entry = input.entry
-    this.publicDir = input.publicDir
-    this.distDir = input.distDir
-    this.clientsDistDir = input.clientsDistDir
-    this.publicDistDir = input.publicDistDir
+    this.publicdir = input.publicdir
+    this.outdir = input.outdir
+    this.publicdirOutdir = input.publicdirOutdir
     this.fallbackRootId = input.fallbackRootId
   }
 
@@ -62,27 +59,26 @@ export class ServerBun {
     port: number
     hmrPort: number | null
     entry: Record<string, string> | null
-    publicDir: EngineOptionsPublicDirParsed
-    distDir: string | null
-    clientsDistDir: string | null
-    publicDistDir: string | null
+    publicdir: EngineOptionsPublicdirParsed
+    outdir: string | null
+    publicdirOutdir: string | null
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
   }): Promise<ServerBun> {
     const eversion = await Eversion.create({ points: input.points })
 
-    const publicDir = await PublicDir.create({
+    const publicdir = await Publicdir.create({
       hostname: null,
-      definition: input.publicDir,
+      definition: input.publicdir,
       root: input.points.root,
       eversion,
-      distDir: input.publicDistDir,
+      outdir: input.publicdirOutdir,
     })
 
     const server = new ServerBun({
       ...input,
-      publicDir,
+      publicdir,
       eversion,
     })
     return server
@@ -174,31 +170,33 @@ export class ServerBun {
   }
 
   getBuildPaths(): {
-    distDir: string | null
+    outdir: string | null
     entry: Record<string, string> | null
     entrypointsExists: boolean
   } {
     const entry = this.entry
     const entrypointsExists = !!entry
     return {
-      distDir: this.distDir,
+      outdir: this.outdir,
       entry,
       entrypointsExists,
     }
   }
 
   async cleanSelf(): Promise<boolean> {
-    const distDir = this.distDir
-    if (!distDir) {
+    const outdir = this.outdir
+    if (!outdir) {
       return false
     }
-    await nodeFs.rm(distDir, { recursive: true })
+    await nodeFs.rm(outdir, { recursive: true }).catch(() => {
+      /* ignore */
+    })
     return true
   }
 
-  async clean(): Promise<{ self: boolean; publicDir: boolean }> {
-    const [self, publicDir] = await Promise.all([this.cleanSelf(), this.publicDir.clean()])
-    return { self, publicDir }
+  async clean(): Promise<{ self: boolean; publicdir: boolean }> {
+    const [self, publicdir] = await Promise.all([this.cleanSelf(), this.publicdir.clean()])
+    return { self, publicdir }
   }
 
   async buildSelf(buildConfig?: BuildConfig): Promise<string[] | null> {
@@ -206,8 +204,8 @@ export class ServerBun {
     if (!buildPaths.entry) {
       return null
     }
-    if (!buildPaths.distDir) {
-      throw new Error(`distDir not provided for server`)
+    if (!buildPaths.outdir) {
+      throw new Error(`outdir not provided for server`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
@@ -220,7 +218,7 @@ export class ServerBun {
       naming: {
         entry: '[name].js',
       },
-      outdir: buildPaths.distDir,
+      outdir: buildPaths.outdir,
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
@@ -231,10 +229,10 @@ export class ServerBun {
     return buildOutput.outputs.map((output) => output.path)
   }
 
-  async build(buildConfig?: BuildConfig): Promise<{ self: string[] | null; publicDir: string[] | null }> {
+  async build(buildConfig?: BuildConfig): Promise<{ self: string[] | null; publicdir: string[] | null }> {
     await this.clean()
-    const [self, publicDir] = await Promise.all([this.buildSelf(buildConfig), this.publicDir.build()])
-    return { self, publicDir }
+    const [self, publicdir] = await Promise.all([this.buildSelf(buildConfig), this.publicdir.build()])
+    return { self, publicdir }
   }
 
   async fetch({

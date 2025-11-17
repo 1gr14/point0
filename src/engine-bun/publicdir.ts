@@ -3,15 +3,15 @@ import * as nodePath from 'node:path'
 import type { Eversion } from '../core/eversion.js'
 import type { RootPoint } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import { prependAndDeappendSlash } from '../engine-shared/utils.js'
+import { prependAndDeappendSlash, withError } from '../engine-shared/utils.js'
 
-export class PublicDir {
+export class Publicdir {
   hostname: string | null
   definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: Map<string, string | Response | (() => Response | Promise<Response>)>
   eversion: Eversion
-  distDir: string | null
+  outdir: string | null
 
   root: RootPoint
 
@@ -20,14 +20,14 @@ export class PublicDir {
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
     root: RootPoint
     eversion: Eversion
-    distDir: string | null
+    outdir: string | null
   }) {
     this.hostname = input.hostname
     this.definition = input.definition
     this.files = new Map<string, string | Response | (() => Response | Promise<Response>)>()
     this.root = input.root
     this.eversion = input.eversion
-    this.distDir = input.distDir
+    this.outdir = input.outdir
   }
 
   static async create(input: {
@@ -35,11 +35,11 @@ export class PublicDir {
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
     root: RootPoint
     eversion: Eversion
-    distDir: string | null
-  }): Promise<PublicDir> {
-    const publicDir = new PublicDir(input)
-    await publicDir.loadFiles()
-    return publicDir
+    outdir: string | null
+  }): Promise<Publicdir> {
+    const publicdir = new Publicdir(input)
+    await publicdir.loadFiles()
+    return publicdir
   }
 
   async loadFiles(): Promise<void> {
@@ -112,23 +112,23 @@ export class PublicDir {
   }
 
   async clean(): Promise<boolean> {
-    const distDir = this.distDir
-    if (!distDir) {
+    const outdir = this.outdir
+    if (!outdir) {
       return false
     }
-    await nodeFs.rm(distDir, { recursive: true }).catch(() => {
+    await nodeFs.rm(outdir, { recursive: true }).catch(() => {
       /* ignore */
     })
     return true
   }
 
   async build(): Promise<string[] | null> {
-    const distDir = this.distDir
-    if (!distDir) {
+    const outdir = this.outdir
+    if (!outdir) {
       return null
     }
 
-    await nodeFs.mkdir(distDir, { recursive: true })
+    await nodeFs.mkdir(outdir, { recursive: true })
     const glob = new Bun.Glob('**/*')
     const fileOperations: Array<Promise<string>> = []
 
@@ -140,10 +140,13 @@ export class PublicDir {
           for await (const relPath of glob.scan({ cwd: dirAbsPath, onlyFiles: true })) {
             const fileAbsPath = nodePath.resolve(dirAbsPath, relPath)
             const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
-            const distAbsPath = nodePath.resolve(distDir, fileRoutePath.replace(/^\/+/, ''))
+            const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
             fileOperations.push(
               (async () => {
-                const content = await Bun.file(fileAbsPath).text()
+                const content = await withError(
+                  async () => await Bun.file(fileAbsPath).text(),
+                  `Failed while building publicdir for ${this.root._rootId}`,
+                )
                 // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
                 await Bun.write(distAbsPath, content)
                 return distAbsPath
@@ -157,7 +160,7 @@ export class PublicDir {
             (async () => {
               const response = typeof fileResponseOrFn === 'function' ? await fileResponseOrFn() : fileResponseOrFn
               const content = await response.text()
-              const distAbsPath = nodePath.resolve(distDir, fileRoutePath.replace(/^\/+/, ''))
+              const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
               // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
               await Bun.write(distAbsPath, content)
               return distAbsPath
@@ -170,5 +173,5 @@ export class PublicDir {
     return await Promise.all(fileOperations)
   }
 
-  // TODO: add static checkConflicts(publicDirs: PublicDir[]): throw error if same files paths are used in different public dirs with same hostname
+  // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same hostname
 }

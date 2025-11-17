@@ -5,10 +5,10 @@
 // import type { Points } from '../core/points.js'
 // import type { AnyPoint, InputParsed, RequiredCtx } from '../core/types.js'
 // import { parseUrl, type ParsedUrl } from '../core/utils.js'
-// import type { EngineLogger, EngineOptionsEnvParsed, EngineOptionsPublicDirParsed } from '../engine-shared/config.js'
+// import type { EngineLogger, EngineOptionsEnvParsed, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
 // import { renderAppAsReadableStream } from '../engine-shared/render.js'
 // import { engineFetch } from './fetch.js'
-// import { PublicDir } from './public-dir.js'
+// import { Publicdir } from './public-dir.js'
 
 // export class ClientBun {
 //   eversion: Eversion
@@ -24,7 +24,7 @@
 //   index: number
 //   logger: EngineLogger
 //   env: EngineOptionsEnvParsed
-//   publicDir: EngineOptionsPublicDirParsed
+//   publicdir: EngineOptionsPublicdirParsed
 //   distIndexHtmlContent: string | null
 //   bunServer: Bun.Server<unknown> | null
 
@@ -41,7 +41,7 @@
 //     index: number
 //     logger: EngineLogger
 //     env: EngineOptionsEnvParsed
-//     publicDir: EngineOptionsPublicDirParsed
+//     publicdir: EngineOptionsPublicdirParsed
 //     eversion: Eversion
 //   }) {
 //     this.eversion = input.eversion
@@ -57,8 +57,8 @@
 //     this.index = input.index
 //     this.logger = input.logger
 //     this.env = { ...input.env, NODE_ENV: process.env.NODE_ENV }
-//     this.distDir = input.distDir
-//     this.publicDir = input.publicDir
+//     this.outdir = input.outdir
+//     this.publicdir = input.publicdir
 //   }
 
 //   static async create(input: {
@@ -67,9 +67,9 @@
 //     App: AppComponent | undefined
 //     hostname: string | undefined
 //     basepath: string
-//     distDir: string | undefined
+//     outdir: string | undefined
 //     distRoute: string | undefined
-//     publicDir: string | undefined
+//     publicdir: string | undefined
 //     srcIndexHtml: string | undefined
 //     distIndexHtml: string | undefined
 //     domRootElementId: string
@@ -80,20 +80,20 @@
 
 //     eversion: Eversion
 //   }): Promise<ClientBun> {
-//     const distDir =
-//       input.distDir && input.distRoute
-//         ? await PublicDir.create({
+//     const outdir =
+//       input.outdir && input.distRoute
+//         ? await Publicdir.create({
 //             hostname: input.hostname,
-//             absPath: input.distDir,
+//             absPath: input.outdir,
 //             routePath: input.distRoute,
 //             root: input.points.root,
 //             eversion: input.eversion,
 //           })
 //         : undefined
-//     const publicDir = input.publicDir
-//       ? await PublicDir.create({
+//     const publicdir = input.publicdir
+//       ? await Publicdir.create({
 //           hostname: input.hostname,
-//           absPath: input.publicDir,
+//           absPath: input.publicdir,
 //           routePath: '/',
 //           root: input.points.root,
 //           eversion: input.eversion,
@@ -101,8 +101,8 @@
 //       : undefined
 //     const client = new ClientBun({
 //       ...input,
-//       distDir,
-//       publicDir,
+//       outdir,
+//       publicdir,
 //     })
 //     await client.preloadDistIndexHtmlContent()
 //     return client
@@ -145,7 +145,7 @@
 //       fallbackRootId: this.points.root._rootId,
 //       rootId: this.points.root._rootId,
 //       requiredCtx,
-//       staticDirs: [this.distDir, this.publicDir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
+//       staticDirs: [this.outdir, this.publicdir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
 //       logger: this.logger,
 //     })
 //   }

@@ -15,8 +15,8 @@ describe('parseEngineOptions', () => {
         points: {} as never,
         port: 3000,
         entry: './entry-server.ts',
-        distDir: '../dist/server',
-        publicDistDir: '../dist/public',
+        outdir: '../dist/server',
+        publicdirOutdir: '../dist/public',
       },
       clients: [
         {
@@ -27,10 +27,10 @@ describe('parseEngineOptions', () => {
           indexHtml: './index.html',
           port: 3001,
           env: ['SOURCE_BASE_URL'],
-          publicDir: './public',
-          distDir: '../dist/client',
-          serverDistDir: '../dist/server-clients/client',
-          publicDistDir: '../dist/client',
+          publicdir: './public',
+          outdir: '../dist/client',
+          serverOutdir: '../dist/clients-server/client',
+          publicdirOutdir: '../dist/client',
         },
       ],
     })
@@ -40,7 +40,6 @@ describe('parseEngineOptions', () => {
           {
             "app": "/home/src/app.js",
             "basepath": "/",
-            "distDir": "/home/dist/client",
             "domRootElementId": "root",
             "env": {
               "SOURCE_BASE_URL": undefined,
@@ -49,23 +48,26 @@ describe('parseEngineOptions', () => {
             "hostname": null,
             "index": 0,
             "indexHtml": "/home/src/index.html",
+            "outdir": "/home/dist/client",
             "points": "/home/src/lib/points.ready.js",
             "port": 3001,
-            "publicDir": [
+            "publicdir": [
               [
                 "/",
                 "/home/src/public",
               ],
             ],
-            "publicDistDir": "/home/dist/client",
+            "publicdirOutdir": "/home/dist/client",
             "rootId": "client",
-            "serverDistDir": "/home/dist/server-clients/client",
+            "serverOutdir": "/home/dist/clients-server/client",
             "ssr": true,
             "viteConfig": null,
           },
         ],
         "general": {
           "autoFixBuiltPaths": true,
+          "clientsSelfOutdir": null,
+          "clientsServerOutdir": null,
           "cwd": "/home/src",
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
@@ -77,15 +79,14 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
-          "clientsDistDir": null,
-          "distDir": "/home/dist/server",
           "entry": {
             "main": "/home/src/entry-server.ts",
           },
           "hmrPort": 3100,
+          "outdir": "/home/dist/server",
           "port": 3000,
-          "publicDir": [],
-          "publicDistDir": "/home/dist/public",
+          "publicdir": [],
+          "publicdirOutdir": "/home/dist/public",
           "rootId": "server",
         },
       }
@@ -104,8 +105,8 @@ describe('parseEngineOptions', () => {
         points: {} as never,
         port: 3000,
         entry: './entry-server.ts',
-        distDir: '../dist/server',
-        publicDistDir: '../dist/public',
+        outdir: '../dist/server',
+        publicdirOutdir: '../dist/public',
       },
       clients: [
         {
@@ -116,10 +117,10 @@ describe('parseEngineOptions', () => {
           indexHtml: './index.html',
           port: 3001,
           env: ['SOURCE_BASE_URL'],
-          publicDir: './public',
-          distDir: '../dist/client',
-          serverDistDir: '../dist/server-clients/client',
-          publicDistDir: '../dist/client',
+          publicdir: './public',
+          outdir: '../dist/client',
+          serverOutdir: '../dist/clients-server/client',
+          publicdirOutdir: '../dist/client',
         },
       ],
     })
@@ -127,9 +128,8 @@ describe('parseEngineOptions', () => {
       {
         "clients": [
           {
-            "app": "/home/dist/server-clients/client/app.js",
+            "app": "/home/dist/clients-server/client/app.js",
             "basepath": "/",
-            "distDir": "/home/dist/client",
             "domRootElementId": "root",
             "env": {
               "SOURCE_BASE_URL": undefined,
@@ -138,23 +138,26 @@ describe('parseEngineOptions', () => {
             "hostname": null,
             "index": 0,
             "indexHtml": "/home/dist/client/index.html",
-            "points": "/home/dist/server-clients/client/points.ready.js",
+            "outdir": "/home/dist/client",
+            "points": "/home/dist/clients-server/client/points.ready.js",
             "port": 3001,
-            "publicDir": [
+            "publicdir": [
               [
                 "/",
                 "/home/dist/client",
               ],
             ],
-            "publicDistDir": "/home/dist/client",
+            "publicdirOutdir": "/home/dist/client",
             "rootId": "client",
-            "serverDistDir": "/home/dist/server-clients/client",
+            "serverOutdir": "/home/dist/clients-server/client",
             "ssr": true,
             "viteConfig": null,
           },
         ],
         "general": {
           "autoFixBuiltPaths": true,
+          "clientsSelfOutdir": null,
+          "clientsServerOutdir": null,
           "cwd": "/home/dist/server",
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
@@ -166,20 +169,14 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
-          "clientsDistDir": null,
-          "distDir": "/home/dist/server",
           "entry": {
             "main": "/home/dist/server/entry-server.js",
           },
           "hmrPort": 3100,
+          "outdir": "/home/dist/server",
           "port": 3000,
-          "publicDir": [
-            [
-              "/",
-              "/home/dist/public",
-            ],
-          ],
-          "publicDistDir": "/home/dist/public",
+          "publicdir": [],
+          "publicdirOutdir": "/home/dist/public",
           "rootId": "server",
         },
       }
