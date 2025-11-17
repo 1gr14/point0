@@ -22,6 +22,7 @@ head as argument of .page() it can be string | head | (loaderResult) => string |
 
 wrapper
 merge .input schemas
+remove zod from dependencies, and move to peer dependencies, and allow zod mini for inputs definitions
 auth
 
 elysia example
@@ -52,6 +53,7 @@ props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
 what is 'use client'
+thorw error on Points.create() on lcient with different scope that was before
 no root
 extract required ctx type from root points
 Unieind and hero ui right inside examples
@@ -114,7 +116,7 @@ find unused code
 ? asterisk layout as .layout(true, () => <div/>)
 immutable ctx and data on extractFns calls
 refactor error0
-normzliae all errors texts everyhere and user error0
+normzliae all errors texts everyhere and use error0
 store each point location to normalize errors messages for example in No route or id provided for this point
 remove wrapper
 before start generate parse existing output file and use it like initial state until success generates new
