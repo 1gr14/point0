@@ -1,10 +1,11 @@
+rootPointId
 engine.ts & index.server.ts
 index.client.ts
-outdir → outdir
-rootPointId
 hide import.meta.hot, allow mount(App, {settings: ...})
+custom config for bun on build via config settings
+generator to engine
 
-config
+? config. engine is enough
 ? config can generate engine.ts by itself. Decide what to generate and what to boilerplate
 cli 
 
