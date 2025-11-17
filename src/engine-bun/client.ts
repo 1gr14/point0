@@ -22,7 +22,7 @@ import type {
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
-import { withError } from '../engine-shared/utils.js'
+import { validateEntrypoints, withError } from '../engine-shared/utils.js'
 
 export class ClientBun {
   cwd: string
@@ -603,14 +603,15 @@ export class ClientBun {
       target: 'bun',
       packages: 'external',
       sourcemap: true,
-      minify: false,
-      // splitting: true,
+      minify: true,
+      splitting: true,
       format: 'esm',
+      ...buildConfig,
       naming: {
+        ...(typeof buildConfig?.naming === 'object' ? buildConfig.naming : {}),
         entry: '[name].js',
       },
-      ...buildConfig,
-      entrypoints: [buildPaths.appFile, buildPaths.pointsFile].flatMap((p) => p || []),
+      entrypoints: validateEntrypoints([buildPaths.appFile, buildPaths.pointsFile]),
       outdir: buildPaths.serverOutdir,
       define: {
         ...buildConfig?.define,
@@ -758,7 +759,7 @@ export class ClientBun {
       build: {
         ...loadedViteConfig.build,
         outDir: buildPaths.serverOutdir,
-        minify: false,
+        minify: loadedViteConfig.build?.minify ?? true,
         sourcemap: loadedViteConfig.build?.sourcemap ?? true,
         ssr: true,
         rollupOptions: {
@@ -839,7 +840,8 @@ export class ClientBun {
 
   async build(): Promise<{ self: string[] | null; server: string[] | null; publicdir: string[] | null }> {
     await this.clean()
-    const [{ self, server }, publicdir] = await Promise.all([this.buildSelf(), this.publicdir.build()])
+    const publicdir = await this.publicdir.build() // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
+    const { self, server } = await this.buildSelf()
     return { self, server, publicdir }
   }
 

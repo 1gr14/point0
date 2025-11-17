@@ -11,13 +11,13 @@
 // #   path: public
 // #   enabled: true
 // # client:
-// #   entry: node_modules/@point0/entry-client.ts
+// #   entry: node_modules/@point0/index.client.ts
 // #   consumerModulePath: src/client.ts
 // #   consumerExportName: client
 // #   dist: dist/client
 // #   generate: true
 // # server:
-// #   entry: node_modules/@point0/entry-server.ts
+// #   entry: node_modules/@point0/index.server.ts
 // #   dist: dist/server
 // #   generate: true
 // #   port: 'env.PORT' # true for auto port, string for manual port, number for port, false for no port so u can serve via somethig else manually

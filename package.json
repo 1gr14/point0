@@ -24,15 +24,15 @@
       "require": "./dist/cjs/index.cjs",
       "import": "./dist/esm/index.js"
     },
-    "./entry-server": {
-      "types": "./dist/esm/entry-server.d.ts",
-      "require": "./dist/cjs/entry-server.cjs",
-      "import": "./dist/esm/entry-server.js"
+    "./index.server": {
+      "types": "./dist/esm/index.server.d.ts",
+      "require": "./dist/cjs/index.server.cjs",
+      "import": "./dist/esm/index.server.js"
     },
-    "./entry-client": {
-      "types": "./dist/esm/entry-client.d.ts",
-      "require": "./dist/cjs/entry-client.cjs",
-      "import": "./dist/esm/entry-client.js"
+    "./index.client": {
+      "types": "./dist/esm/index.client.d.ts",
+      "require": "./dist/cjs/index.client.cjs",
+      "import": "./dist/esm/index.client.js"
     }
   },
   "typesVersions": {

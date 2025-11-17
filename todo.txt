@@ -1,8 +1,9 @@
-rootPointId
+rootPointId → scopeId
 engine.ts & index.server.ts
 index.client.ts
 hide import.meta.hot, allow mount(App, {settings: ...})
 custom config for bun on build via config settings
+Point0.setPoints(points) → to mount, and also it should be named with rootId, mount(App, points)
 generator to engine
 
 ? config. engine is enough

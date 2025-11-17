@@ -14,7 +14,7 @@ describe('parseEngineOptions', () => {
         rootId: 'server',
         points: {} as never,
         port: 3000,
-        entry: './entry-server.ts',
+        entry: './index.server.ts',
         outdir: '../dist/server',
         publicdirOutdir: '../dist/public',
       },
@@ -82,7 +82,7 @@ describe('parseEngineOptions', () => {
         "server": {
           "engineFile": null,
           "entry": {
-            "main": "/home/src/entry-server.ts",
+            "main": "/home/src/index.server.ts",
           },
           "hmrPort": 3100,
           "outdir": "/home/dist/server",
@@ -106,7 +106,7 @@ describe('parseEngineOptions', () => {
         rootId: 'server',
         points: {} as never,
         port: 3000,
-        entry: './entry-server.ts',
+        entry: './index.server.ts',
         outdir: '../dist/server',
         publicdirOutdir: '../dist/public',
       },
@@ -174,7 +174,7 @@ describe('parseEngineOptions', () => {
         "server": {
           "engineFile": null,
           "entry": {
-            "main": "/home/dist/server/entry-server.js",
+            "main": "/home/dist/server/index.server.js",
           },
           "hmrPort": 3100,
           "outdir": "/home/dist/server",

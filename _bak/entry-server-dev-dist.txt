@@ -10,8 +10,8 @@ const engine = await EngineBun.create({
     port: 3000,
     publicdir:
       process.env.NODE_ENV === 'production'
-        ? '../public' // when self location is "dist/server/entry-server.js" it points to "dist/public"
-        : '../public', // when self location is "src/entry-server.ts" it points to "public"
+        ? '../public' // when self location is "dist/server/index.server.js" it points to "dist/public"
+        : '../public', // when self location is "src/index.server.ts" it points to "public"
   },
   clients: [
     {

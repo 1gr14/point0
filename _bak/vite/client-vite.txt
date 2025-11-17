@@ -247,7 +247,7 @@
 //     }
 //     return App
 
-//     // const {} = await this.viteServer.ssrLoadModule('/entry-server.js')
+//     // const {} = await this.viteServer.ssrLoadModule('/index.server.js')
 //     // return await getAppElement({ eversionRun })
 //     // const { default: App } = await this.viteEnvironment.importModule(this.appFile)
 //   }

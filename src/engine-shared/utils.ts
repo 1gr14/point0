@@ -231,3 +231,20 @@ export const withError = async <T>(fn: () => Promise<T>, subMessage?: string): P
     throw new Error([subMessage, errorMessage].filter(Boolean).join(': '), { cause: error })
   }
 }
+
+export const validateEntrypoints = (entrypoints: Array<string | null | undefined>): string[] => {
+  const uniqEntrypoints = [...new Set(entrypoints.flatMap((p) => p || []))]
+  const entrypointsBasenamesWithJsExtension = uniqEntrypoints.map((p) => ({
+    basename: nodePath.basename(p).replace(/\.tsx?$/, '.js'),
+    path: p,
+  }))
+  const notUniqueEntrypointsBasenames = entrypointsBasenamesWithJsExtension.filter(
+    (p) => entrypointsBasenamesWithJsExtension.filter((p2) => p2.basename === p.basename).length > 1,
+  )
+  if (notUniqueEntrypointsBasenames.length > 0) {
+    throw new Error(
+      `All entrypoints should have unique basenames. This paths not suitable: ${notUniqueEntrypointsBasenames.map((p) => p.path).join(', ')}`,
+    )
+  }
+  return uniqEntrypoints
+}

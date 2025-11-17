@@ -7,7 +7,7 @@ import { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
-import { withError } from '../engine-shared/utils.js'
+import { validateEntrypoints, withError } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
@@ -290,10 +290,10 @@ export class ServerBun {
       target: 'bun',
       packages: 'external',
       sourcemap: true,
-      minify: false,
+      minify: true,
       splitting: true,
       ...buildConfig,
-      entrypoints: [...buildPaths.entryFiles, buildPaths.engineFile, buildPaths.pointsFile].flatMap((p) => p || []),
+      entrypoints: validateEntrypoints([...buildPaths.entryFiles, buildPaths.engineFile, buildPaths.pointsFile]),
       naming: {
         entry: '[name].js',
       },

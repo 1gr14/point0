@@ -1,15 +1,14 @@
 import { Engine } from 'point0/engine-bun/index.js'
 
-const engine = await Engine.create(import.meta.url, {
-  clientsServerOutdir: '../dist/clients-server',
-  clientsSelfOutdir: '../dist/clients-self',
+export const engine = await Engine.create(import.meta.url, {
+  clientsServerOutdir: '../dist/server',
+  clientsSelfOutdir: '../dist',
   server: {
     rootId: 'server',
     points: './lib/points.server.js',
     port: 3000,
-    // entry: './entry-server.ts',
-    entry: { main: './entry-server.ts' },
-    outdir: '../dist/server',
+    entry: { main: './index.server.ts' },
+    outdir: '../dist/server/self',
   },
   clients: [
     {
@@ -28,6 +27,4 @@ const engine = await Engine.create(import.meta.url, {
 if (process.env.TASK === 'build') {
   await engine.build()
   process.exit(0)
-} else {
-  await engine.serve()
 }
