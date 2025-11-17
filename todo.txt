@@ -1,4 +1,3 @@
-multiple server entry also named,  entry → entry
 engine.ts & index.server.ts
 index.client.ts
 distDir → outdir
