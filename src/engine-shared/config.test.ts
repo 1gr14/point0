@@ -14,7 +14,7 @@ describe('parseEngineOptions', () => {
         rootId: 'server',
         points: {} as never,
         port: 3000,
-        entryFile: './entry-server.ts',
+        entry: './entry-server.ts',
         distDir: '../dist/server',
         publicDistDir: '../dist/public',
       },
@@ -79,7 +79,9 @@ describe('parseEngineOptions', () => {
         "server": {
           "clientsDistDir": null,
           "distDir": "/home/dist/server",
-          "entryFile": "/home/src/entry-server.ts",
+          "entry": {
+            "main": "/home/src/entry-server.ts",
+          },
           "hmrPort": 3100,
           "port": 3000,
           "publicDir": [],
@@ -101,7 +103,7 @@ describe('parseEngineOptions', () => {
         rootId: 'server',
         points: {} as never,
         port: 3000,
-        entryFile: './entry-server.ts',
+        entry: './entry-server.ts',
         distDir: '../dist/server',
         publicDistDir: '../dist/public',
       },
@@ -136,7 +138,7 @@ describe('parseEngineOptions', () => {
             "hostname": null,
             "index": 0,
             "indexHtml": "/home/dist/client/index.html",
-            "points": "/home/dist/server-clients/client/lib/points.ready.js",
+            "points": "/home/dist/server-clients/client/points.ready.js",
             "port": 3001,
             "publicDir": [
               [
@@ -166,7 +168,9 @@ describe('parseEngineOptions', () => {
         "server": {
           "clientsDistDir": null,
           "distDir": "/home/dist/server",
-          "entryFile": "/home/dist/server/entry-server.js",
+          "entry": {
+            "main": "/home/dist/server/entry-server.js",
+          },
           "hmrPort": 3100,
           "port": 3000,
           "publicDir": [

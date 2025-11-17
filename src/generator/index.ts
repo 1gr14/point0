@@ -23,6 +23,7 @@ import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { EndPointType, PointName } from '../core/types.js'
 import type { GeneratorOptions } from './config.js'
+import { getDirByPaths } from '../engine-shared/utils.js'
 
 // TODO: if no routes needed for this point: like layout or page then do not runtime
 // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
@@ -1811,7 +1812,7 @@ export class FileWatcher {
 
   private constructor(opts: FileWatcherOptions) {
     this.generators = opts.generators
-    this.watchDir = FileWatcher.getDirByPaths(opts.generators.flatMap((g) => g.globInclude))
+    this.watchDir = getDirByPaths({ paths: opts.generators.flatMap((g) => g.globInclude), fallbackDir: process.cwd() })
     this.ignore = opts.ignore ?? opts.generators.flatMap((g) => g.globExclude)
     for (const g of opts.generators) {
       if (g.outputLazyAbs) {
@@ -1834,54 +1835,6 @@ export class FileWatcher {
   static async watch(opts: FileWatcherOptions) {
     const watcher = FileWatcher.create(opts)
     await watcher.watch()
-  }
-
-  static getDirByPaths(paths: string[]): string {
-    if (paths.length === 0) {
-      return process.cwd()
-    }
-
-    function stripGlobParts(p: string): string {
-      const parts = p.split(nodePath.sep)
-      const globIndex = parts.findIndex((part) => /[*?[\]]/.test(part)) // detect glob chars
-      if (globIndex >= 0) {
-        return parts.slice(0, globIndex).join(nodePath.sep) || nodePath.sep
-      }
-      return p
-    }
-
-    const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
-    function isFile(path: string): boolean {
-      return exts.some((ext) => path.endsWith(ext))
-    }
-
-    // Strip glob parts first
-    const stripped = paths.map(stripGlobParts)
-
-    // Map each path to its directory (if path is a file) or keep as-is (if directory)
-    const dirs = stripped.map((p) => (isFile(p) ? nodePath.dirname(p) : p))
-
-    // Reduce to deepest common ancestor directory
-    let commonDir = dirs[0]
-    for (let i = 1; i < dirs.length; i++) {
-      let dir = dirs[i]
-
-      while (
-        commonDir !== dir &&
-        !dir.startsWith(commonDir.endsWith(nodePath.sep) ? commonDir : commonDir + nodePath.sep)
-      ) {
-        const next = nodePath.dirname(commonDir)
-        if (next === commonDir) break
-        commonDir = next
-      }
-      while (commonDir !== dir && !commonDir.startsWith(dir.endsWith(nodePath.sep) ? dir : dir + nodePath.sep)) {
-        const next = nodePath.dirname(dir)
-        if (next === dir) break
-        dir = next
-      }
-      commonDir = commonDir.length <= dir.length ? commonDir : dir
-    }
-    return commonDir
   }
 
   private async watch() {

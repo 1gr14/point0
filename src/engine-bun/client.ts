@@ -600,6 +600,9 @@ export class ClientBun {
       minify: false,
       // splitting: true,
       format: 'esm',
+      naming: {
+        entry: '[name].js',
+      },
       ...buildConfig,
       entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
       outdir: buildPaths.serverDistDir,

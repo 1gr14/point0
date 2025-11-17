@@ -10,7 +10,7 @@ const engine = await Engine.create({
     rootId: 'server',
     points: { root: source },
     port: 3000,
-    entryFile: './entry-server.ts',
+    entry: './entry-server.ts',
     distDir: '../dist/server',
     publicDistDir: '../dist/public',
   },

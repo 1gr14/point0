@@ -1,7 +1,8 @@
-all three above we can set as define on build phase
-multiple server entryFile also named,  entryFile → entry
+multiple server entry also named,  entry → entry
 engine.ts & index.server.ts
 index.client.ts
+distDir → outdir
+rootPointId
 hide import.meta.hot, allow mount(App, {settings: ...})
 
 config

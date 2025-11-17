@@ -45,10 +45,6 @@ import * as nodePath from 'node:path'
 //   }
 // }
 
-import type { ViteDevServer } from 'vite'
-import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
-import { Points } from '../core/points.js'
-
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
     return undefined
@@ -72,17 +68,17 @@ export const toAbsPath = <T extends string | undefined | null>(cwd: string | und
   return nodePath.resolve(cwd, path) as T
 }
 
-export const toRelPath = (cwd: string | undefined, path: string | undefined): string | undefined => {
+export const toRelPath = <T extends string | undefined | null>(cwd: string | undefined, path: T): T => {
   if (!path) {
-    return undefined
+    return undefined as T
   }
   if (!cwd) {
-    return path
+    return path as T
   }
   if (!nodePath.isAbsolute(cwd)) {
     throw new Error(`Cwd "${cwd}" is not absolute, but should be`)
   }
-  return nodePath.relative(cwd, path)
+  return nodePath.relative(cwd, path) as T
 }
 
 export const toAbsPaths = (cwd: string | undefined, path: Array<string | undefined> | string | undefined): string[] => {
@@ -151,9 +147,78 @@ export const prependAndAppendSlash = <T extends string | undefined | null>(path:
   return (prependAndAppendSlash(path) + '/') as T
 }
 
-export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {
-  if (!basepath) {
-    return false
+// export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {
+//   if (!basepath) {
+//     return false
+//   }
+//   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
+// }
+
+export const getDirByPaths = ({
+  paths,
+  fallbackDir,
+  pathsHasGlob = null,
+  pathsHasFiles = null,
+  pathsHasDirs = null,
+}: {
+  paths: string[]
+  fallbackDir: string
+  pathsHasGlob?: boolean | null
+  pathsHasFiles?: boolean | null
+  pathsHasDirs?: boolean | null
+}): string => {
+  if (paths.length === 0) {
+    return fallbackDir
   }
-  return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
+
+  function stripGlobParts(p: string): string {
+    if (pathsHasGlob === false) {
+      return p
+    }
+    const parts = p.split(nodePath.sep)
+    const globIndex = parts.findIndex((part) => /[*?[\]]/.test(part)) // detect glob chars
+    if (globIndex >= 0) {
+      return parts.slice(0, globIndex).join(nodePath.sep) || nodePath.sep
+    }
+    return p
+  }
+
+  const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
+  function isFile(path: string): boolean {
+    if (pathsHasFiles === false) {
+      return false
+    }
+    if (pathsHasDirs === false && pathsHasFiles === true) {
+      return true
+    }
+    return exts.some((ext) => path.endsWith(ext))
+  }
+
+  // Strip glob parts first
+  const stripped = paths.map(stripGlobParts)
+
+  // Map each path to its directory (if path is a file) or keep as-is (if directory)
+  const dirs = stripped.map((p) => (isFile(p) ? nodePath.dirname(p) : p))
+
+  // Reduce to deepest common ancestor directory
+  let commonDir = dirs[0]
+  for (let i = 1; i < dirs.length; i++) {
+    let dir = dirs[i]
+
+    while (
+      commonDir !== dir &&
+      !dir.startsWith(commonDir.endsWith(nodePath.sep) ? commonDir : commonDir + nodePath.sep)
+    ) {
+      const next = nodePath.dirname(commonDir)
+      if (next === commonDir) break
+      commonDir = next
+    }
+    while (commonDir !== dir && !commonDir.startsWith(dir.endsWith(nodePath.sep) ? dir : dir + nodePath.sep)) {
+      const next = nodePath.dirname(dir)
+      if (next === dir) break
+      dir = next
+    }
+    commonDir = commonDir.length <= dir.length ? commonDir : dir
+  }
+  return commonDir
 }

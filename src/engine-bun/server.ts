@@ -17,7 +17,7 @@ export class ServerBun {
   hmrPort: number | null
   clients: ClientBun[]
   logger: EngineLogger
-  entryFile: string | null
+  entry: Record<string, string> | null
   publicDir: PublicDir
   distDir: string | null
   clientsDistDir: string | null
@@ -34,7 +34,7 @@ export class ServerBun {
     fallbackRootId: RootId
     logger: EngineLogger
     clients: ClientBun[]
-    entryFile: string | null
+    entry: Record<string, string> | null
     publicDir: PublicDir
     distDir: string | null
     clientsDistDir: string | null
@@ -48,7 +48,7 @@ export class ServerBun {
     this.hmrPort = input.hmrPort
     this.clients = input.clients
     this.logger = input.logger
-    this.entryFile = input.entryFile
+    this.entry = input.entry
     this.publicDir = input.publicDir
     this.distDir = input.distDir
     this.clientsDistDir = input.clientsDistDir
@@ -61,7 +61,7 @@ export class ServerBun {
     points: Points
     port: number
     hmrPort: number | null
-    entryFile: string | null
+    entry: Record<string, string> | null
     publicDir: EngineOptionsPublicDirParsed
     distDir: string | null
     clientsDistDir: string | null
@@ -175,14 +175,14 @@ export class ServerBun {
 
   getBuildPaths(): {
     distDir: string | null
-    entryFile: string | null
+    entry: Record<string, string> | null
     entrypointsExists: boolean
   } {
-    const entryFile = this.entryFile
-    const entrypointsExists = !!entryFile
+    const entry = this.entry
+    const entrypointsExists = !!entry
     return {
       distDir: this.distDir,
-      entryFile,
+      entry,
       entrypointsExists,
     }
   }
@@ -203,7 +203,7 @@ export class ServerBun {
 
   async buildSelf(buildConfig?: BuildConfig): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
-    if (!buildPaths.entryFile) {
+    if (!buildPaths.entry) {
       return null
     }
     if (!buildPaths.distDir) {
@@ -216,7 +216,10 @@ export class ServerBun {
       sourcemap: true,
       minify: false,
       ...buildConfig,
-      entrypoints: [buildPaths.entryFile],
+      entrypoints: Object.values(buildPaths.entry),
+      naming: {
+        entry: '[name].js',
+      },
       outdir: buildPaths.distDir,
       define: {
         ...buildConfig?.define,
