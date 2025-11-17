@@ -38,7 +38,6 @@ export type EngineGeneralOptions = {
   autoFixBuiltPaths?: boolean
 }
 export type EngineServerOptions = {
-  rootDir?: string | null
   rootId: RootId
   points: ReadyPointsModule | LazyPointsModule
   publicDir?: EngineOptionsPublicDir
@@ -50,7 +49,6 @@ export type EngineServerOptions = {
   publicDistDir?: string | null
 }
 export type EngineClientOptions = {
-  rootDir?: string | null
   rootId: RootId
   points: string | ReadyPointsModule | LazyPointsModule
   ssr?: boolean
