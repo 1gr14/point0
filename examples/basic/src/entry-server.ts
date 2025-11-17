@@ -1,16 +1,11 @@
 import { Engine } from 'point0/engine-bun/index.js'
-import { source } from './lib/server.js'
 
-const engine = await Engine.create({
-  itWasBuilt: !!process.env.ENGINE_WAS_BUILT,
-  cwdAfterBuild: !process.env.ENGINE_WAS_BUILT ? '../dist/server' : import.meta.dir,
-  cwdBeforeBuild: !process.env.ENGINE_WAS_BUILT ? import.meta.dir : '../../src',
-  // below all paths should be relative to cwdBeforeBuild like it was not built yet
+const engine = await Engine.create(import.meta.url, {
   clientsServerOutdir: '../dist/clients-server',
   clientsSelfOutdir: '../dist/clients-self',
   server: {
     rootId: 'server',
-    points: { root: source },
+    points: './lib/points.server.js',
     port: 3000,
     // entry: './entry-server.ts',
     entry: { main: './entry-server.ts' },

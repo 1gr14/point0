@@ -28,11 +28,11 @@ export class ClientBun {
   cwd: string
   eversion: Eversion
   providedPoints: Points | null
-  pointsPath: string | null
+  pointsFile: string | null
   points: Points
   ssr: boolean
   providedAppComponent: AppComponent | null
-  appPath: string | null
+  appFile: string | null
   hostname: string | null
   basepath: string
   indexHtml: string | null
@@ -55,11 +55,11 @@ export class ClientBun {
   private constructor(input: {
     cwd: string
     providedPoints: Points | null
-    pointsPath: string | null
+    pointsFile: string | null
     points: Points
     ssr: boolean
     providedAppComponent: AppComponent | null
-    appPath: string | null
+    appFile: string | null
     hostname: string | null
     basepath: string
     indexHtml: string | null
@@ -83,11 +83,11 @@ export class ClientBun {
     this.cwd = input.cwd
     this.eversion = input.eversion
     this.providedPoints = input.providedPoints
-    this.pointsPath = input.pointsPath
+    this.pointsFile = input.pointsFile
     this.points = input.points
     this.ssr = input.ssr
     this.providedAppComponent = input.providedAppComponent
-    this.appPath = input.appPath
+    this.appFile = input.appFile
     this.hostname = input.hostname
     this.basepath = input.basepath
     this.indexHtml = input.indexHtml
@@ -140,10 +140,10 @@ export class ClientBun {
         : null
 
     const providedPoints = typeof input.points === 'string' ? null : input.points
-    const pointsPath = typeof input.points === 'string' ? input.points : null
-    const points = await ClientBun.createFreshPoints({
+    const pointsFile = typeof input.points === 'string' ? input.points : null
+    const points = await ClientBun.createPoints({
       providedPoints,
-      pointsPath,
+      pointsFile,
       viteDevServer,
       clientIndex: input.index,
     })
@@ -167,11 +167,11 @@ export class ClientBun {
     const client = new ClientBun({
       ...input,
       points,
-      pointsPath,
+      pointsFile,
       providedPoints,
       publicdir,
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
-      appPath: typeof input.app === 'string' ? input.app : null,
+      appFile: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
       viteDevServer,
       bunDevServer,
@@ -180,31 +180,31 @@ export class ClientBun {
     return client
   }
 
-  static readonly createFreshPoints = async ({
+  static readonly createPoints = async ({
     providedPoints,
-    pointsPath,
+    pointsFile,
     viteDevServer,
     clientIndex,
   }: {
     providedPoints: Points | null
-    pointsPath: string | null
+    pointsFile: string | null
     viteDevServer: ViteDevServer | null
     clientIndex: number
   }): Promise<Points> => {
     if (providedPoints) {
       return providedPoints
     }
-    if (pointsPath) {
+    if (pointsFile) {
       if (viteDevServer) {
         return await Points.read(
-          pointsPath,
+          pointsFile,
           async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
         )
       } else {
         return Points.create(
           await withError(
-            async () => (await import(pointsPath)) as LazyPointsModule | ReadyPointsModule,
-            `Failed to import points from ${pointsPath} on client at position "${clientIndex}"`,
+            async () => (await import(pointsFile)) as LazyPointsModule | ReadyPointsModule,
+            `Failed to import points from ${pointsFile} on client at position "${clientIndex}"`,
           ),
         )
       }
@@ -495,19 +495,19 @@ export class ClientBun {
     if (this.providedAppComponent) {
       return this.providedAppComponent
     }
-    if (this.appPath) {
+    if (this.appFile) {
       if (this.viteDevServer) {
-        const appComponent = (await this.viteDevServer.ssrLoadModule(this.appPath).then((module) => module.default)) as
+        const appComponent = (await this.viteDevServer.ssrLoadModule(this.appFile).then((module) => module.default)) as
           | AppComponent
           | undefined
         if (!appComponent) {
-          throw new Error(`App default export not found in ${this.appPath} for client "${this.points.root._rootId}"`)
+          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._rootId}"`)
         }
         return appComponent
       } else {
-        const appComponent = await import(this.appPath).then((module) => module.default)
+        const appComponent = await import(this.appFile).then((module) => module.default)
         if (!appComponent) {
-          throw new Error(`App default export not found in ${this.appPath} for client "${this.points.root._rootId}"`)
+          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._rootId}"`)
         }
         return appComponent as AppComponent
       }
@@ -516,34 +516,34 @@ export class ClientBun {
   }
 
   getAppPathOrNullOrThrow(): string | null {
-    if (this.providedAppComponent && !this.appPath) {
+    if (this.providedAppComponent && !this.appFile) {
       throw new Error(`If you want build client, you should provide app path, not app component itself in "app" option`)
     }
-    return this.appPath
+    return this.appFile
   }
 
   getPointsPathOrNullOrThrow(): string | null {
-    if (this.providedPoints && !this.pointsPath) {
+    if (this.providedPoints && !this.pointsFile) {
       throw new Error(`If you want build client, you should provide points path, not points itself in "points" option`)
     }
-    return this.pointsPath
+    return this.pointsFile
   }
 
   getBuildPaths(): {
-    appPath: string | null
-    pointsPath: string | null
+    appFile: string | null
+    pointsFile: string | null
     indexHtml: string | null
     outdir: string | null
     serverOutdir: string | null
     entrypointsExists: boolean
   } {
-    const appPath = this.getAppPathOrNullOrThrow()
-    const pointsPath = this.getPointsPathOrNullOrThrow()
+    const appFile = this.getAppPathOrNullOrThrow()
+    const pointsFile = this.getPointsPathOrNullOrThrow()
     const indexHtml = this.indexHtml
-    const entrypointsExists = !!(appPath || pointsPath || indexHtml)
+    const entrypointsExists = !!(appFile || pointsFile || indexHtml)
     return {
-      appPath,
-      pointsPath,
+      appFile,
+      pointsFile,
       indexHtml,
       outdir: this.outdir,
       serverOutdir: this.serverOutdir,
@@ -582,17 +582,17 @@ export class ClientBun {
 
   async buildByBunForServer(buildConfig?: BuildConfig): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
-    if (!buildPaths.appPath && this.providedAppComponent) {
+    if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
         `To build client "${this.points.root._rootId}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
-    if (!buildPaths.pointsPath && this.providedPoints) {
+    if (!buildPaths.pointsFile && this.providedPoints) {
       throw new Error(
         `To build client "${this.points.root._rootId}" for server, you should provide points path, not points itself in "points" option`,
       )
     }
-    if (!buildPaths.appPath && !buildPaths.pointsPath) {
+    if (!buildPaths.appFile && !buildPaths.pointsFile) {
       return null
     }
     if (!buildPaths.serverOutdir) {
@@ -610,7 +610,7 @@ export class ClientBun {
         entry: '[name].js',
       },
       ...buildConfig,
-      entrypoints: [buildPaths.appPath, buildPaths.pointsPath].flatMap((p) => p || []),
+      entrypoints: [buildPaths.appFile, buildPaths.pointsFile].flatMap((p) => p || []),
       outdir: buildPaths.serverOutdir,
       define: {
         ...buildConfig?.define,
@@ -709,17 +709,17 @@ export class ClientBun {
     }
     const { build: viteBuild } = await import('vite')
     const buildPaths = this.getBuildPaths()
-    if (!buildPaths.appPath && this.providedAppComponent) {
+    if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
         `To build client "${this.points.root._rootId}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
-    if (!buildPaths.pointsPath && this.providedPoints) {
+    if (!buildPaths.pointsFile && this.providedPoints) {
       throw new Error(
         `To build client "${this.points.root._rootId}" for server, you should provide points path, not points itself in "points" option`,
       )
     }
-    if (!buildPaths.appPath && !buildPaths.pointsPath) {
+    if (!buildPaths.appFile && !buildPaths.pointsFile) {
       return null
     }
     if (!buildPaths.serverOutdir) {
@@ -764,8 +764,8 @@ export class ClientBun {
         rollupOptions: {
           ...loadedViteConfig.build?.rollupOptions,
           input: {
-            ...(buildPaths.appPath ? { app: buildPaths.appPath } : {}),
-            ...(buildPaths.pointsPath ? { points: buildPaths.pointsPath } : {}),
+            ...(buildPaths.appFile ? { app: buildPaths.appFile } : {}),
+            ...(buildPaths.pointsFile ? { points: buildPaths.pointsFile } : {}),
           },
           // external: createRollupOptionsExternalFunction(),
           output: fixedExistingRollupOptionsOutput,

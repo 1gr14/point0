@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import type { Eversion } from '../core/eversion.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
@@ -17,24 +18,33 @@ export class Engine {
     this.eversion = input.eversion
   }
 
-  static async create(input: EngineOptions): Promise<Engine> {
-    const parsedInput = parseEngineOptions(input)
+  static async create(fileUrl: string, options: EngineOptions): Promise<Engine>
+  static async create(options: EngineOptions): Promise<Engine>
+  static async create(...args: [string, EngineOptions] | [EngineOptions]): Promise<Engine> {
+    const options = args.length === 2 ? args[1] : args[0]
+    const fileUrl = args.length === 2 ? args[0] : undefined
+    if (fileUrl) {
+      options.engineFile ??= fileURLToPath(fileUrl)
+    }
+    const parsedOptions = parseEngineOptions(options)
     const server = await ServerBun.create({
-      ...parsedInput.server,
-      cwd: parsedInput.general.cwd,
+      ...parsedOptions.server,
+      cwd: parsedOptions.general.cwd,
+      cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
+      engineFile: parsedOptions.general.engineFile,
       fallbackRootId: '',
-      logger: parsedInput.general.logger,
+      logger: parsedOptions.general.logger,
       clients: [],
     })
 
     const eversion = server.eversion
 
     const clients = await Promise.all(
-      parsedInput.clients.map(async (clientOptions) => {
+      parsedOptions.clients.map(async (clientOptions) => {
         const client = await ClientBun.create({
           ...clientOptions,
-          cwd: parsedInput.general.cwd,
-          logger: parsedInput.general.logger,
+          cwd: parsedOptions.general.cwd,
+          logger: parsedOptions.general.logger,
           eversion,
           server,
         })
@@ -46,7 +56,7 @@ export class Engine {
     server.clients = clients
     server.fallbackRootId ||= clients.at(0)?.points.root._rootId || server.points.root._rootId
 
-    return new Engine({ clients, server, logger: parsedInput.general.logger, eversion })
+    return new Engine({ clients, server, logger: parsedOptions.general.logger, eversion })
   }
 
   async serve(requiredCtx?: RequiredCtx): Promise<void> {

@@ -1,10 +1,13 @@
 import type { BuildConfig } from 'bun'
 import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import { Eversion } from '../core/eversion.js'
-import type { Points } from '../core/points.js'
+import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
+import { Points } from '../core/points.js'
 import type { RequiredCtx, RootId } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
+import { withError } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
@@ -12,7 +15,12 @@ import { Publicdir } from './publicdir.js'
 export class ServerBun {
   cwd: string
   eversion: Eversion
+  providedPoints: Points | null
+  pointsFile: string | null
   points: Points
+  itWasBuilt: boolean
+  engineFile: string | null
+  cwdBeforeBuild: string
   port: number
   hmrPort: number | null
   clients: ClientBun[]
@@ -27,7 +35,12 @@ export class ServerBun {
 
   private constructor(input: {
     cwd: string
+    providedPoints: Points | null
+    pointsFile: string | null
     points: Points
+    itWasBuilt: boolean
+    engineFile: string | null
+    cwdBeforeBuild: string
     port: number
     hmrPort: number | null
     fallbackRootId: RootId
@@ -41,7 +54,12 @@ export class ServerBun {
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion
+    this.providedPoints = input.providedPoints
+    this.pointsFile = input.pointsFile
     this.points = input.points
+    this.itWasBuilt = process.env.ENGINE_WAS_BUILT ? process.env.ENGINE_WAS_BUILT === 'true' : input.itWasBuilt
+    this.engineFile = input.itWasBuilt ? (process.env.ENGINE_FILE_AFTER_BUILD ?? input.engineFile) : input.engineFile
+    this.cwdBeforeBuild = process.env.ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
     this.hmrPort = input.hmrPort
     this.clients = input.clients
@@ -55,7 +73,10 @@ export class ServerBun {
 
   static async create(input: {
     cwd: string
-    points: Points
+    points: Points | string
+    engineFile: string | null
+    cwdBeforeBuild: string
+    itWasBuilt: boolean
     port: number
     hmrPort: number | null
     entry: Record<string, string> | null
@@ -66,12 +87,19 @@ export class ServerBun {
     logger: EngineLogger
     clients: ClientBun[]
   }): Promise<ServerBun> {
-    const eversion = await Eversion.create({ points: input.points })
+    const providedPoints = typeof input.points === 'string' ? null : input.points
+    const pointsFile = typeof input.points === 'string' ? input.points : null
+    const points = await ServerBun.createPoints({
+      providedPoints,
+      pointsFile,
+    })
+
+    const eversion = await Eversion.create({ points })
 
     const publicdir = await Publicdir.create({
       hostname: null,
       definition: input.publicdir,
-      root: input.points.root,
+      root: points.root,
       eversion,
       outdir: input.publicdirOutdir,
     })
@@ -80,8 +108,32 @@ export class ServerBun {
       ...input,
       publicdir,
       eversion,
+      points,
+      pointsFile,
+      providedPoints,
     })
     return server
+  }
+
+  static readonly createPoints = async ({
+    providedPoints,
+    pointsFile,
+  }: {
+    providedPoints: Points | null
+    pointsFile: string | null
+  }): Promise<Points> => {
+    if (providedPoints) {
+      return providedPoints
+    }
+    if (pointsFile) {
+      return Points.create(
+        await withError(
+          async () => (await import(pointsFile)) as LazyPointsModule | ReadyPointsModule,
+          `Failed to import points from ${pointsFile} on server`,
+        ),
+      )
+    }
+    throw new Error(`Points not provided for server`)
   }
 
   async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
@@ -171,14 +223,18 @@ export class ServerBun {
 
   getBuildPaths(): {
     outdir: string | null
-    entry: Record<string, string> | null
+    entryFiles: string[]
+    pointsFile: string | null
+    engineFile: string | null
     entrypointsExists: boolean
   } {
-    const entry = this.entry
-    const entrypointsExists = !!entry
+    const entryFiles = this.entry ? Object.values(this.entry) : []
+    const entrypointsExists = entryFiles.length > 0 || !!this.engineFile || !!this.pointsFile
     return {
       outdir: this.outdir,
-      entry,
+      entryFiles,
+      pointsFile: this.pointsFile,
+      engineFile: this.engineFile,
       entrypointsExists,
     }
   }
@@ -188,6 +244,7 @@ export class ServerBun {
     if (!outdir) {
       return false
     }
+    // TODO: add if exists check on all clean methods
     await nodeFs.rm(outdir, { recursive: true }).catch(() => {
       /* ignore */
     })
@@ -201,29 +258,51 @@ export class ServerBun {
 
   async buildSelf(buildConfig?: BuildConfig): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
-    if (!buildPaths.entry) {
+    if (!buildPaths.entrypointsExists) {
       return null
     }
     if (!buildPaths.outdir) {
       throw new Error(`outdir not provided for server`)
     }
+
     const NODE_ENV = process.env.NODE_ENV || 'production'
+    const ENGINE_CWD_BEFORE_BUILD = (() => {
+      if (this.cwdBeforeBuild) {
+        return this.cwdBeforeBuild
+      }
+      if (this.engineFile) {
+        return nodePath.dirname(this.engineFile)
+      }
+      return null
+    })()
+
+    const injectedEnvs = {
+      'process.env.ENGINE_WAS_BUILT': JSON.stringify('true'),
+      ...(ENGINE_CWD_BEFORE_BUILD
+        ? { 'process.env.ENGINE_CWD_BEFORE_BUILD': JSON.stringify(ENGINE_CWD_BEFORE_BUILD) }
+        : {}),
+    }
+    const injectEnvsScript =
+      Object.entries(injectedEnvs)
+        .map(([key, value]) => `${key}=${value};`)
+        .join('\n') + '\n'
     const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',
       sourcemap: true,
       minify: false,
+      splitting: true,
       ...buildConfig,
-      entrypoints: Object.values(buildPaths.entry),
+      entrypoints: [...buildPaths.entryFiles, buildPaths.engineFile, buildPaths.pointsFile].flatMap((p) => p || []),
       naming: {
         entry: '[name].js',
       },
       outdir: buildPaths.outdir,
+      banner: injectEnvsScript,
       define: {
         ...buildConfig?.define,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        'process.env.BUILD_TARGET': 'server',
-        'process.env.ENGINE_WAS_BUILT': JSON.stringify(true),
+        ...injectedEnvs,
       },
     })
     return buildOutput.outputs.map((output) => output.path)

@@ -66,6 +66,8 @@ const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntrie
 )
 const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
 
+// TODO: class Generators.create([] mnay generators options, which will have merged glob)
+
 export class Generator {
   readonly routes: Routes | undefined
   readonly banner: string | undefined
@@ -1802,6 +1804,8 @@ export type FileWatcherOptions = {
   generators: Generator[]
   ignore?: string[]
 }
+
+// TODO: move ot Generators class
 
 export class FileWatcher {
   readonly generators: Generator[]

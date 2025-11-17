@@ -15,7 +15,7 @@
 //   points: Points
 //   ssr: boolean
 //   providedAppComponent: AppComponent | null
-//   appPath: string | null
+//   appFile: string | null
 //   hostname: string | null
 //   basepath: string
 //   indexHtml: string | null
@@ -32,7 +32,7 @@
 //     points: Points
 //     ssr: boolean
 //     providedAppComponent: AppComponent | null
-//     appPath: string | null
+//     appFile: string | null
 //     hostname: string | undefined
 //     basepath: string
 //     indexHtml: string | null

@@ -35,13 +35,14 @@ export type EngineGeneralOptions = {
   itWasBuilt?: boolean
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
+  engineFile?: string
   autoFixBuiltPaths?: boolean
   clientsServerOutdir?: string | null
   clientsSelfOutdir?: string | null
 }
 export type EngineServerOptions = {
   rootId: RootId
-  points: ReadyPointsModule | LazyPointsModule
+  points: string | ReadyPointsModule | LazyPointsModule
   publicdir?: EngineOptionsPublicdir
   port?: number | string | null
   hmrPort?: number | string | null
@@ -78,6 +79,7 @@ export type EngineGeneralOptionsParsed = {
   itWasBuilt: boolean
   cwdAfterBuild: string
   cwdBeforeBuild: string
+  engineFile: string | null
   cwd: string
   autoFixBuiltPaths: boolean
   clientsServerOutdir: string | null
@@ -104,13 +106,16 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   rootId: RootId
-  points: Points
+  points: Points | string
   publicdir: EngineOptionsPublicdirParsed
   port: number
   hmrPort: number
   entry: Record<string, string> | null
   outdir: string | null
   publicdirOutdir: string | null
+  engineFile: string | null
+  cwdBeforeBuild: string
+  itWasBuilt: boolean
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -175,8 +180,30 @@ const parseEngineGeneralOptions = ({
   serverOptions: EngineServerOptions
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
-  const itWasBuilt = generalOptions.itWasBuilt ?? false
+  const itWasBuilt = generalOptions.itWasBuilt ?? process.env.ENGINE_WAS_BUILT === 'true'
   const { cwdAfterBuild, cwdBeforeBuild, cwd } = (() => {
+    generalOptions.itWasBuilt ??= process.env.ENGINE_WAS_BUILT === 'true'
+
+    if (generalOptions.engineFile) {
+      if (!itWasBuilt) {
+        generalOptions.cwdBeforeBuild ??=
+          process.env.ENGINE_CWD_BEFORE_BUILD ?? nodePath.dirname(generalOptions.engineFile)
+      } else {
+        generalOptions.cwdAfterBuild ??= nodePath.dirname(generalOptions.engineFile)
+      }
+    }
+
+    generalOptions.cwdBeforeBuild ??= process.env.ENGINE_CWD_BEFORE_BUILD
+
+    if (!generalOptions.cwdAfterBuild && generalOptions.cwdBeforeBuild && serverOptions.outdir) {
+      if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
+        throw new Error(
+          `cwdBeforeBuild "${generalOptions.cwdBeforeBuild}" is not absolute, but should be, while tryin auto detect cwdAfterBuild`,
+        )
+      }
+      generalOptions.cwdAfterBuild = nodePath.resolve(generalOptions.cwdBeforeBuild, serverOptions.outdir)
+    }
+
     if (!generalOptions.cwdBeforeBuild && !generalOptions.cwdAfterBuild) {
       return { cwdAfterBuild: process.cwd(), cwdBeforeBuild: process.cwd(), cwd: process.cwd() }
     }
@@ -214,6 +241,7 @@ const parseEngineGeneralOptions = ({
     itWasBuilt,
     cwdAfterBuild,
     cwdBeforeBuild,
+    engineFile: generalOptions.engineFile || null,
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
   }
@@ -315,7 +343,15 @@ export const parseEngineServerOptions = ({
     : null
   return {
     rootId: serverOptions.rootId,
-    points: Points.create(serverOptions.points),
+    points:
+      typeof serverOptions.points === 'string'
+        ? toFinalPath({
+            ...generalOptionsParsed,
+            cwdIfWasBuilt: outdir,
+            path: serverOptions.points,
+            omitDirAfterBuild: true,
+          })
+        : Points.create(serverOptions.points),
     port,
     hmrPort,
     outdir,
@@ -327,6 +363,9 @@ export const parseEngineServerOptions = ({
           ? [['/', publicdirOutdir]]
           : [],
     publicdirOutdir,
+    engineFile: generalOptionsParsed.engineFile,
+    cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
+    itWasBuilt: generalOptionsParsed.itWasBuilt,
   }
 }
 const parseEngineClientOptions = ({

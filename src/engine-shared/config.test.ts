@@ -71,6 +71,7 @@ describe('parseEngineOptions', () => {
           "cwd": "/home/src",
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
+          "engineFile": null,
           "fallbackRootId": null,
           "itWasBuilt": false,
           "logger": {
@@ -79,6 +80,7 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
+          "engineFile": null,
           "entry": {
             "main": "/home/src/entry-server.ts",
           },
@@ -161,6 +163,7 @@ describe('parseEngineOptions', () => {
           "cwd": "/home/dist/server",
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
+          "engineFile": null,
           "fallbackRootId": null,
           "itWasBuilt": true,
           "logger": {
@@ -169,6 +172,7 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
+          "engineFile": null,
           "entry": {
             "main": "/home/dist/server/entry-server.js",
           },

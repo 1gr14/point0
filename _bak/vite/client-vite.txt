@@ -17,7 +17,7 @@
 //   eversion: Eversion
 //   points: Points
 //   ssr: boolean
-//   appPath: string
+//   appFile: string
 //   hostname: string | undefined
 //   basepath: string
 //   srcIndexHtml: string | undefined
@@ -43,7 +43,7 @@
 //   private constructor(input: {
 //     points: Points
 //     ssr: boolean
-//     appPath: string
+//     appFile: string
 //     hostname: string | undefined
 //     basepath: string
 //     srcIndexHtml: string | undefined
@@ -67,7 +67,7 @@
 //     this.eversion = input.eversion
 //     this.points = input.points
 //     this.ssr = input.ssr
-//     this.appPath = input.appPath
+//     this.appFile = input.appFile
 //     this.hostname = input.hostname
 //     this.basepath = input.basepath
 //     this.srcIndexHtml = input.srcIndexHtml
@@ -87,7 +87,7 @@
 //   static async create(input: {
 //     points: Points
 //     ssr: boolean
-//     appPath: string
+//     appFile: string
 //     hostname: string | undefined
 //     basepath: string
 //     outdir: string | undefined
@@ -234,22 +234,22 @@
 
 //   async loadAppComponent(): Promise<AppComponent> {
 //     // return await eversionRun.withServerGlobalState(async () => {
-//     //   const { default: App } = await this.viteServer.ssrLoadModule(this.appPath)
+//     //   const { default: App } = await this.viteServer.ssrLoadModule(this.appFile)
 //     //   if (!App) {
-//     //     throw new Error(`App not found: ${this.appPath}`)
+//     //     throw new Error(`App not found: ${this.appFile}`)
 //     //   }
 //     //   return App
 //     // })
 
-//     const { default: App } = await this.viteServer.ssrLoadModule(this.appPath)
+//     const { default: App } = await this.viteServer.ssrLoadModule(this.appFile)
 //     if (!App) {
-//       throw new Error(`App not found: ${this.appPath}`)
+//       throw new Error(`App not found: ${this.appFile}`)
 //     }
 //     return App
 
 //     // const {} = await this.viteServer.ssrLoadModule('/entry-server.js')
 //     // return await getAppElement({ eversionRun })
-//     // const { default: App } = await this.viteEnvironment.importModule(this.appPath)
+//     // const { default: App } = await this.viteEnvironment.importModule(this.appFile)
 //   }
 
 //   async renderAsReadableStream({
