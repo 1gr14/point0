@@ -1,7 +1,7 @@
 // import { renderToReadableStream } from 'react-dom/server'
 // import type { Eversion, EversionRun } from '../core/eversion.js'
 // import type { AppComponent } from '../core/mount.js'
-// import type { RootId } from '../core/types.js'
+// import type { Scope } from '../core/types.js'
 // import { renderAppAsReadableStream } from '../engine-shared/render.js'
 
 // // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -10,19 +10,19 @@
 //     App: AppComponent,
 //     {
 //       eversion,
-//       rootId,
+//       scope,
 //       url,
 //     }: {
 //       eversion: Eversion
-//       rootId: RootId
+//       scope: Scope
 //       url: string
 //     },
 //   ): Promise<EversionRun> => {
 //     const { eversionRun, suitable, input } = await eversion.preparePageEversionRunByUrl({
 //       url,
-//       rootId,
+//       scope,
 //       requiredCtx: undefined,
-//       fallbackRootId: rootId,
+//       fallbackScope: scope,
 //     })
 //     await eversionRun.prefetchAppPagePointDeep({
 //       App,
@@ -37,14 +37,14 @@
 //     App: AppComponent,
 //     {
 //       eversion,
-//       rootId,
+//       scope,
 //       url,
 //       env,
 //       originalIndexHtml,
 //       domRootElementId,
 //     }: {
 //       eversion: Eversion
-//       rootId: RootId
+//       scope: Scope
 //       url: string
 //       env: Record<string, any>
 //       originalIndexHtml: string
@@ -53,9 +53,9 @@
 //   ): Promise<ReadableStream> => {
 //     const { eversionRun, suitable, input, location } = await eversion.preparePageEversionRunByUrl({
 //       url,
-//       rootId,
+//       scope,
 //       requiredCtx: undefined,
-//       fallbackRootId: rootId,
+//       fallbackScope: scope,
 //     })
 //     eversionRun.setSsrLocation(location)
 //     eversionRun.setCurrentLocation(location)

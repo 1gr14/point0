@@ -4,7 +4,7 @@ export const engine = await Engine.create(import.meta.url, {
   clientsServerOutdir: '../dist/server',
   clientsSelfOutdir: '../dist',
   server: {
-    rootId: 'server',
+    scope: 'server',
     points: './lib/points.server.js',
     port: 3000,
     entry: { main: './index.server.ts' },
@@ -12,7 +12,7 @@ export const engine = await Engine.create(import.meta.url, {
   },
   clients: [
     {
-      rootId: 'client',
+      scope: 'client',
       ssr: true,
       app: './app.js',
       points: './lib/points.ready.js',

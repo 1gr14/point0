@@ -4,7 +4,7 @@ import * as nodePath from 'node:path'
 import { Eversion } from '../core/eversion.js'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
-import type { RequiredCtx, RootId } from '../core/types.js'
+import type { RequiredCtx, PointsScope } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
 import { validateEntrypoints, withError } from '../engine-shared/utils.js'
@@ -29,7 +29,7 @@ export class ServerBun {
   publicdir: Publicdir
   outdir: string | null
   publicdirOutdir: string | null
-  fallbackRootId: RootId
+  fallbackScope: PointsScope
 
   bunServer: Bun.Server<unknown> | undefined
 
@@ -43,7 +43,7 @@ export class ServerBun {
     cwdBeforeBuild: string
     port: number
     hmrPort: number | null
-    fallbackRootId: RootId
+    fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
     entry: Record<string, string> | null
@@ -68,7 +68,7 @@ export class ServerBun {
     this.publicdir = input.publicdir
     this.outdir = input.outdir
     this.publicdirOutdir = input.publicdirOutdir
-    this.fallbackRootId = input.fallbackRootId
+    this.fallbackScope = input.fallbackScope
   }
 
   static async create(input: {
@@ -83,7 +83,7 @@ export class ServerBun {
     publicdir: EngineOptionsPublicdirParsed
     outdir: string | null
     publicdirOutdir: string | null
-    fallbackRootId: RootId
+    fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
   }): Promise<ServerBun> {
@@ -318,12 +318,12 @@ export class ServerBun {
     parsedUrl,
     request,
     requiredCtx,
-    rootId,
+    scope,
   }: {
     parsedUrl?: ParsedUrl
     request: Request
     requiredCtx: RequiredCtx
-    rootId?: RootId
+    scope?: PointsScope
   }): Promise<Response> {
     return await engineFetch({
       server: this,
@@ -331,8 +331,8 @@ export class ServerBun {
       eversion: this.eversion,
       request,
       parsedUrl,
-      fallbackRootId: rootId ?? this.fallbackRootId,
-      rootId,
+      fallbackScope: scope ?? this.fallbackScope,
+      scope,
       requiredCtx,
       logger: this.logger,
     })

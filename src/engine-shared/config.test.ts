@@ -11,7 +11,7 @@ describe('parseEngineOptions', () => {
       cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../src',
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
-        rootId: 'server',
+        scope: 'server',
         points: {} as never,
         port: 3000,
         entry: './index.server.ts',
@@ -21,7 +21,7 @@ describe('parseEngineOptions', () => {
       clients: [
         {
           ssr: true,
-          rootId: 'client',
+          scope: 'client',
           app: './app.js',
           points: './lib/points.ready.js',
           indexHtml: './index.html',
@@ -58,7 +58,7 @@ describe('parseEngineOptions', () => {
               ],
             ],
             "publicdirOutdir": "/home/dist/client",
-            "rootId": "client",
+            "scope": "client",
             "serverOutdir": "/home/dist/clients-server/client",
             "ssr": true,
             "viteConfig": null,
@@ -72,7 +72,7 @@ describe('parseEngineOptions', () => {
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
           "engineFile": null,
-          "fallbackRootId": null,
+          "fallbackScope": null,
           "itWasBuilt": false,
           "logger": {
             "error": [Function: error],
@@ -89,7 +89,7 @@ describe('parseEngineOptions', () => {
           "port": 3000,
           "publicdir": [],
           "publicdirOutdir": "/home/dist/public",
-          "rootId": "server",
+          "scope": "server",
         },
       }
     `)
@@ -103,7 +103,7 @@ describe('parseEngineOptions', () => {
       cwdBeforeBuild: !ENGINE_WAS_BUILT ? '/home/src' : '../../src',
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
-        rootId: 'server',
+        scope: 'server',
         points: {} as never,
         port: 3000,
         entry: './index.server.ts',
@@ -113,7 +113,7 @@ describe('parseEngineOptions', () => {
       clients: [
         {
           ssr: true,
-          rootId: 'client',
+          scope: 'client',
           app: './app.js',
           points: './lib/points.ready.js',
           indexHtml: './index.html',
@@ -150,7 +150,7 @@ describe('parseEngineOptions', () => {
               ],
             ],
             "publicdirOutdir": "/home/dist/client",
-            "rootId": "client",
+            "scope": "client",
             "serverOutdir": "/home/dist/clients-server/client",
             "ssr": true,
             "viteConfig": null,
@@ -164,7 +164,7 @@ describe('parseEngineOptions', () => {
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
           "engineFile": null,
-          "fallbackRootId": null,
+          "fallbackScope": null,
           "itWasBuilt": true,
           "logger": {
             "error": [Function: error],
@@ -181,7 +181,7 @@ describe('parseEngineOptions', () => {
           "port": 3000,
           "publicdir": [],
           "publicdirOutdir": "/home/dist/public",
-          "rootId": "server",
+          "scope": "server",
         },
       }
     `)

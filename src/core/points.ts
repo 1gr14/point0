@@ -14,7 +14,7 @@ import type {
   UndefinedRoute,
 } from './types.js'
 
-// TODO: when find suitable allow porvide "rootId", then it will find only inside that
+// TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
 export class Points<TReady extends boolean = boolean> {
   absPath: string | null

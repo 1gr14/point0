@@ -85,7 +85,7 @@ import type {
   RequiredCtx,
   ResponseFn,
   ResponseOutput,
-  RootId,
+  PointsScope,
   RouteDefinition,
   StaticHeadsCollection,
   TitleFn,
@@ -152,7 +152,7 @@ export class Point0<
     : undefined
   _onResponseFns: OnResponseFn[]
   _onRequestFns: OnRequestFn[]
-  _rootId: RootId
+  _scope: PointsScope
   _staticHeads: StaticHeadsCollection
   _defaultQueryOptions: ExtraUseQueryOptions
   _defaultInfiniteQueryOptions: PartialUseInfiniteQueryOptions
@@ -254,7 +254,7 @@ export class Point0<
       : undefined
     _onResponseFns?: OnResponseFn[]
     _onRequestFns?: OnRequestFn[]
-    _rootId: RootId
+    _scope: PointsScope
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
@@ -343,7 +343,7 @@ export class Point0<
     _unstableId?: number
   }) {
     this.point = this
-    this._rootId = props._rootId
+    this._scope = props._scope
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
     this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
@@ -571,7 +571,7 @@ export class Point0<
       TProps
     >({
       // persistent
-      _rootId: this._rootId,
+      _scope: this._scope,
 
       // overridable
       _base: (overrides._base ?? this._base) as BasePoint<any, any, TRequiredCtx> | undefined,
@@ -657,7 +657,7 @@ export class Point0<
   // base
 
   static source(
-    rootId: string,
+    scope: string,
   ): Point0<
     'middleware',
     'base',
@@ -676,7 +676,7 @@ export class Point0<
     return new Point0({
       _pointType: 'middleware',
       _hasSourceBase: false,
-      _rootId: rootId,
+      _scope: scope,
       _letsEndPointType: 'base',
       _onResponseFns: [({ response }) => response],
       _onRequestFns: [() => undefined],
@@ -684,7 +684,7 @@ export class Point0<
   }
 
   static connect<TConnectedRootSourcePoint extends InferredRootSourcePoint>(
-    rootId: string,
+    scope: string,
   ): Point0<
     'middleware',
     'base',
@@ -718,7 +718,7 @@ export class Point0<
       _pointType: 'middleware',
       _letsEndPointType: 'base',
       _hasSourceBase: true as never,
-      _rootId: rootId,
+      _scope: scope,
       _onResponseFns: [({ response }) => response],
       _onRequestFns: [() => undefined],
     })
@@ -758,7 +758,7 @@ export class Point0<
     >({
       _pointType: 'base',
       _base: this as never as BasePoint<any, any, TRequiredCtx>,
-      _name: this._name ?? this._rootId,
+      _name: this._name ?? this._scope,
       // _letsEndPointType: undefined,
       _letsEndPointType: (this._letsEndPointType === 'base'
         ? undefined
@@ -2011,7 +2011,7 @@ export class Point0<
   // end points
 
   _isRoot(): boolean {
-    return this._name === this._rootId
+    return this._name === this._scope
   }
 
   page<
@@ -2934,7 +2934,7 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
     const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
-      `__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input || {})}`,
+      `__PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     if (!value) {
       throw new Error(
@@ -2946,7 +2946,7 @@ export class Point0<
 
   getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
-      `__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input || {})}`,
+      `__PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     return value
   }
@@ -2991,7 +2991,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.setWeak(`__PROVIDER_VALUE_${this._rootId}_${this._name}_${stringify(input)}`, value)
+    SuperStore.setWeak(`__PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,
@@ -3065,7 +3065,7 @@ export class Point0<
     const outputType = args[2] ?? (this._pointType === 'response' ? 'response' : 'data')
     const body = stringify({
       outputType,
-      rootId: this._rootId,
+      scope: this._scope,
       pointInput: input,
       pointType: this._pointType,
       pointName: this._name,

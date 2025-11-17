@@ -467,7 +467,7 @@ export class ClientBun {
 
   async getOriginalIndexHtml(url: string): Promise<string> {
     if (!this.indexHtml) {
-      throw new Error(`indexHtml not found for client "${this.points.root._rootId}"`)
+      throw new Error(`indexHtml not found for client "${this.points.root._scope}"`)
     }
     if (process.env.NODE_ENV !== 'production') {
       if (this.viteDevServer) {
@@ -476,12 +476,12 @@ export class ClientBun {
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
       } else {
         throw new Error(
-          `Vite dev server or bun dev server not connected for client "${this.points.root._rootId}". Please provide vite config or port for client "${this.points.root._rootId}".`,
+          `Vite dev server or bun dev server not connected for client "${this.points.root._scope}". Please provide vite config or port for client "${this.points.root._scope}".`,
         )
       }
     }
     if (!this.distIndexHtmlContent) {
-      throw new Error(`distIndexHtmlContent not preloaded for client "${this.points.root._rootId}"`)
+      throw new Error(`distIndexHtmlContent not preloaded for client "${this.points.root._scope}"`)
     }
     return this.distIndexHtmlContent
   }
@@ -501,18 +501,18 @@ export class ClientBun {
           | AppComponent
           | undefined
         if (!appComponent) {
-          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._rootId}"`)
+          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._scope}"`)
         }
         return appComponent
       } else {
         const appComponent = await import(this.appFile).then((module) => module.default)
         if (!appComponent) {
-          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._rootId}"`)
+          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._scope}"`)
         }
         return appComponent as AppComponent
       }
     }
-    throw new Error(`App not provided for client "${this.points.root._rootId}"`)
+    throw new Error(`App not provided for client "${this.points.root._scope}"`)
   }
 
   getAppPathOrNullOrThrow(): string | null {
@@ -558,7 +558,7 @@ export class ClientBun {
       return null
     }
     if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for client "${this.points.root._rootId}"`)
+      throw new Error(`outdir not provided for client "${this.points.root._scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
@@ -584,19 +584,19 @@ export class ClientBun {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
-        `To build client "${this.points.root._rootId}" for server, you should provide app path, not app component itself in "app" option`,
+        `To build client "${this.points.root._scope}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
     if (!buildPaths.pointsFile && this.providedPoints) {
       throw new Error(
-        `To build client "${this.points.root._rootId}" for server, you should provide points path, not points itself in "points" option`,
+        `To build client "${this.points.root._scope}" for server, you should provide points path, not points itself in "points" option`,
       )
     }
     if (!buildPaths.appFile && !buildPaths.pointsFile) {
       return null
     }
     if (!buildPaths.serverOutdir) {
-      throw new Error(`serverOutdir not provided for client "${this.points.root._rootId}"`)
+      throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
@@ -624,7 +624,7 @@ export class ClientBun {
 
   async buildByViteForClient(): Promise<string[] | null> {
     if (!this.viteConfig) {
-      throw new Error(`viteConfig not provided for client "${this.points.root._rootId}"`)
+      throw new Error(`viteConfig not provided for client "${this.points.root._scope}"`)
     }
     const { build: viteBuild } = await import('vite')
     const buildPaths = this.getBuildPaths()
@@ -632,7 +632,7 @@ export class ClientBun {
       return null
     }
     if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for client "${this.points.root._rootId}"`)
+      throw new Error(`outdir not provided for client "${this.points.root._scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.loadViteConfig({
@@ -641,7 +641,7 @@ export class ClientBun {
     })
 
     if (!(await Bun.file(buildPaths.indexHtml).exists())) {
-      throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.points.root._rootId}"`)
+      throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.points.root._scope}"`)
     }
 
     const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
@@ -706,25 +706,25 @@ export class ClientBun {
 
   async buildByViteForServer(): Promise<string[] | null> {
     if (!this.viteConfig) {
-      throw new Error(`viteConfig not provided for client "${this.points.root._rootId}"`)
+      throw new Error(`viteConfig not provided for client "${this.points.root._scope}"`)
     }
     const { build: viteBuild } = await import('vite')
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
-        `To build client "${this.points.root._rootId}" for server, you should provide app path, not app component itself in "app" option`,
+        `To build client "${this.points.root._scope}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
     if (!buildPaths.pointsFile && this.providedPoints) {
       throw new Error(
-        `To build client "${this.points.root._rootId}" for server, you should provide points path, not points itself in "points" option`,
+        `To build client "${this.points.root._scope}" for server, you should provide points path, not points itself in "points" option`,
       )
     }
     if (!buildPaths.appFile && !buildPaths.pointsFile) {
       return null
     }
     if (!buildPaths.serverOutdir) {
-      throw new Error(`serverOutdir not provided for client "${this.points.root._rootId}"`)
+      throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.loadViteConfig({

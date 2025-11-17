@@ -5,7 +5,7 @@
 // import { renderToReadableStream } from 'react-dom/server'
 // import * as z from 'zod'
 // import { Eversion } from '../../core/eversion.js'
-// import type { IsEmptyObject, RequiredCtx, RootId, RootPoint } from '../../core/types.js'
+// import type { IsEmptyObject, RequiredCtx, Scope, RootPoint } from '../../core/types.js'
 // import { toJsonErrorResponse, toSuitableErrorResponse } from '../../engine-shared/error.js'
 // import { renderAppAsReadableStream } from '../../engine-shared/render.js'
 // import type {
@@ -42,7 +42,7 @@
 //   logger: EngineLogger
 //   dirname?: string
 //   publicdir?: string
-//   fallbackRootId: RootId
+//   fallbackScope: Scope
 //   eversion: Eversion<TRequiredCtx>
 //   clients: Array<ClientWithEversion<TRequiredCtx>>
 
@@ -64,7 +64,7 @@
 //     this.logger = input.logger
 //     this.dirname = input.dirname
 //     this.publicdir = input.publicdir
-//     this.fallbackRootId = input.fallbackRootId || input.clients.at(0)?.root._rootId || input.root._rootId
+//     this.fallbackScope = input.fallbackScope || input.clients.at(0)?.root._scope || input.root._scope
 //     this.eversion = input.eversion
 //     this.clients = input.clients
 //   }
@@ -123,11 +123,11 @@
 //           .map(async (clientWithSrcIndexHtml) => {
 //             if (!(await Bun.file(clientWithSrcIndexHtml.srcIndexHtml).exists())) {
 //               throw new Error(
-//                 `srcIndexHtml file "${clientWithSrcIndexHtml.srcIndexHtml}" not found in development mode for client "${clientWithSrcIndexHtml.client.root._rootId}"`,
+//                 `srcIndexHtml file "${clientWithSrcIndexHtml.srcIndexHtml}" not found in development mode for client "${clientWithSrcIndexHtml.client.root._scope}"`,
 //               )
 //             }
 //             return [
-//               `/development-${clientWithSrcIndexHtml.client.root._rootId}.index.html`,
+//               `/development-${clientWithSrcIndexHtml.client.root._scope}.index.html`,
 //               (await import(clientWithSrcIndexHtml.srcIndexHtml)).default,
 //             ]
 //           }),
@@ -146,14 +146,14 @@
 //       await Promise.all(
 //         this.clients.map(async (client) => {
 //           if (!client.distIndexHtml) {
-//             return [client.root._rootId, undefined]
+//             return [client.root._scope, undefined]
 //           }
 //           if (!(await Bun.file(client.distIndexHtml).exists())) {
 //             throw new Error(
-//               `"${client.distIndexHtml}" not found in production mode for client "${client.root._rootId}"`,
+//               `"${client.distIndexHtml}" not found in production mode for client "${client.root._scope}"`,
 //             )
 //           }
-//           return [client.root._rootId, await Bun.file(client.distIndexHtml).text()]
+//           return [client.root._scope, await Bun.file(client.distIndexHtml).text()]
 //         }),
 //       ),
 //     )
@@ -171,14 +171,14 @@
 //   //     await Promise.all(
 //   //       this.clients.map(async (client) => {
 //   //         if (!client.srcIndexHtml) {
-//   //           return [client.base._rootId, undefined]
+//   //           return [client.base._scope, undefined]
 //   //         }
 //   //         const content = await (
 //   //           await fetch(
-//   //             `http://localhost:${bunServer.port}${client.basepath}development-${client.base._rootId}.index.html`,
+//   //             `http://localhost:${bunServer.port}${client.basepath}development-${client.base._scope}.index.html`,
 //   //           )
 //   //         ).text()
-//   //         return [client.base._rootId, content]
+//   //         return [client.base._scope, content]
 //   //       }),
 //   //     ),
 //   //   )
@@ -189,13 +189,13 @@
 //     if (this.devServerTarget === 'server') {
 //       return await (
 //         await fetch(
-//           `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.root._rootId}.index.html`,
+//           `http://localhost:${this.clientsDevServerPort}${client.basepath}development-${client.root._scope}.index.html`,
 //         )
 //       ).text()
 //     } else {
 //       return await (
 //         await fetch(
-//           `http://localhost:${this.mainServerPort}${client.basepath}development-${client.root._rootId}.index.html`,
+//           `http://localhost:${this.mainServerPort}${client.basepath}development-${client.root._scope}.index.html`,
 //         )
 //       ).text()
 //     }
@@ -307,14 +307,14 @@
 //             ]),
 //             outputType: z.enum(['data', 'response', 'dehydratedState']),
 //             pointInput: z.record(z.string(), z.any()),
-//             rootId: z.string().min(1),
+//             scope: z.string().min(1),
 //             pointName: z.string().min(1),
 //           })
 //           .parse({
 //             pointType: bodyRaw.pointType,
 //             outputType: bodyRaw.outputType,
 //             pointInput: bodyRaw.pointInput,
-//             rootId: bodyRaw.rootId,
+//             scope: bodyRaw.scope,
 //             pointName: bodyRaw.pointName,
 //           })
 //       })()
@@ -323,11 +323,11 @@
 
 //       const suitable = this.eversion.getSuitable({
 //         pointType,
-//         rootId: task?.rootId,
+//         scope: task?.scope,
 //         pointName: task?.pointName,
 //         pageLocation: !task ? Route0.getLocation(request.url) : undefined,
 //         input: task?.pointInput,
-//         fallbackRootId: this.fallbackRootId,
+//         fallbackScope: this.fallbackScope,
 //       })
 //       const eversionRun = await suitable.eversion.createRun({
 //         pageLocation: suitable.pageLocation,
@@ -356,7 +356,7 @@
 //       if (relatedClient) {
 //         const originalIndexHtml =
 //           process.env.NODE_ENV === 'production'
-//             ? this.indexHtmlContents[relatedClient.root._rootId]
+//             ? this.indexHtmlContents[relatedClient.root._scope]
 //             : await this._loadSrcIndexHtmlContents(relatedClient)
 //         const App = relatedClient.App
 
@@ -364,18 +364,18 @@
 //           if (!originalIndexHtml) {
 //             if (process.env.NODE_ENV !== 'production') {
 //               throw new Error(
-//                 `index.html not found for client "${relatedClient.root._rootId}", please provide srcIndexHtml for client in development mode`,
+//                 `index.html not found for client "${relatedClient.root._scope}", please provide srcIndexHtml for client in development mode`,
 //               )
 //             } else {
 //               throw new Error(
-//                 `index.html not found for client "${relatedClient.root._rootId}", please provide distIndexHtml for client in production mode`,
+//                 `index.html not found for client "${relatedClient.root._scope}", please provide distIndexHtml for client in production mode`,
 //               )
 //             }
 //           }
 //           // so we render page wrapped with layouts
 //           try {
 //             if (!App) {
-//               throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
+//               throw new Error(`App not found for client "${relatedClient.root._scope}", please provide it`)
 //             }
 //             if (!suitable.pageLocation) {
 //               // I think it will never throw, but who knows
@@ -415,7 +415,7 @@
 //           })
 //         } else if (outputType === 'dehydratedState' && pointType === 'page') {
 //           if (!App) {
-//             throw new Error(`App not found for client "${relatedClient.root._rootId}", please provide it`)
+//             throw new Error(`App not found for client "${relatedClient.root._scope}", please provide it`)
 //           }
 //           if (!suitable.pageLocation) {
 //             // I think it will never throw, but who knows

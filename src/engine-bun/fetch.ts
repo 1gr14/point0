@@ -1,5 +1,5 @@
 import type { Eversion } from '../core/eversion.js'
-import type { RequiredCtx, RootId, WrapResponseFn } from '../core/types.js'
+import type { RequiredCtx, PointsScope, WrapResponseFn } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
 import { toJsonErrorResponse } from '../engine-shared/error.js'
@@ -12,8 +12,8 @@ export const engineFetch = async ({
   eversion,
   request,
   parsedUrl,
-  rootId,
-  fallbackRootId,
+  scope,
+  fallbackScope,
   requiredCtx,
   logger,
 }: {
@@ -22,8 +22,8 @@ export const engineFetch = async ({
   eversion: Eversion
   request: Request
   parsedUrl?: ParsedUrl
-  rootId?: RootId
-  fallbackRootId: RootId
+  scope?: PointsScope
+  fallbackScope: PointsScope
   requiredCtx: RequiredCtx
   logger: EngineLogger
 }): Promise<Response> => {
@@ -35,7 +35,7 @@ export const engineFetch = async ({
   let wrapResponse: WrapResponseFn = eversion.points.root._wrapResponse.bind(eversion.points.root)
   const meta: Record<string, any> = {
     url: request.url,
-    rootId,
+    scope,
   }
 
   try {
@@ -59,11 +59,11 @@ export const engineFetch = async ({
     const { task, input, suitable, eversionRun } = await eversion.prepareEversionRunByRequest({
       request,
       parsedUrl,
-      fallbackRootId,
-      rootId,
+      fallbackScope,
+      scope,
       requiredCtx,
     })
-    meta.rootId = suitable.eversion.points.root._rootId
+    meta.scope = suitable.eversion.points.root._scope
 
     wrapResponse = async ({ request, response }) => {
       const responseFromSourceRootWrapResponse = await eversion.points.root._wrapResponse({

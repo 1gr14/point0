@@ -25,8 +25,8 @@ export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | '
 export type UndefinedMethod = undefined
 export type PointName = string
 export type UndefinedPointName = undefined
-export type RootId = string
-export type UndefinedRootId = undefined
+export type PointsScope = string
+export type UndefinedPointsScope = undefined
 
 export type UndefinedRoute = undefined
 export type RouteDefinition = string

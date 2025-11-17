@@ -3,7 +3,7 @@ import nodePath from 'node:path'
 import type { AppComponent } from '../core/mount.js'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
-import type { RootId } from '../core/types.js'
+import type { PointsScope } from '../core/types.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
@@ -30,7 +30,7 @@ export type LoadedViteConfig = import('vite').UserConfig
 export type EngineOptionsViteConfig = LoadedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
 
 export type EngineGeneralOptions = {
-  fallbackRootId?: RootId
+  fallbackScope?: PointsScope
   logger?: EngineLogger
   itWasBuilt?: boolean
   cwdAfterBuild?: string
@@ -41,7 +41,7 @@ export type EngineGeneralOptions = {
   clientsSelfOutdir?: string | null
 }
 export type EngineServerOptions = {
-  rootId: RootId
+  scope: PointsScope
   points: string | ReadyPointsModule | LazyPointsModule
   publicdir?: EngineOptionsPublicdir
   port?: number | string | null
@@ -51,7 +51,7 @@ export type EngineServerOptions = {
   publicdirOutdir?: string | null
 }
 export type EngineClientOptions = {
-  rootId: RootId
+  scope: PointsScope
   points: string | ReadyPointsModule | LazyPointsModule
   ssr?: boolean
   app?: string | AppComponent | null
@@ -74,7 +74,7 @@ export type EngineOptions = EngineGeneralOptions & {
 }
 
 export type EngineGeneralOptionsParsed = {
-  fallbackRootId: RootId | null
+  fallbackScope: PointsScope | null
   logger: EngineLogger
   itWasBuilt: boolean
   cwdAfterBuild: string
@@ -86,7 +86,7 @@ export type EngineGeneralOptionsParsed = {
   clientsSelfOutdir: string | null
 }
 export type EngineClientOptionsParsed = {
-  rootId: RootId
+  scope: PointsScope
   points: Points | string
   ssr: boolean
   app: string | AppComponent | null
@@ -105,7 +105,7 @@ export type EngineClientOptionsParsed = {
   publicdirOutdir: string | null
 }
 export type EngineServerOptionsParsed = {
-  rootId: RootId
+  scope: PointsScope
   points: Points | string
   publicdir: EngineOptionsPublicdirParsed
   port: number
@@ -233,7 +233,7 @@ const parseEngineGeneralOptions = ({
   })()
   const result = {
     // will be resolved after parsing clients and server
-    fallbackRootId: generalOptions.fallbackRootId || null,
+    fallbackScope: generalOptions.fallbackScope || null,
     logger: generalOptions.logger || {
       info: console.info.bind(console),
       error: console.error.bind(console),
@@ -342,7 +342,7 @@ export const parseEngineServerOptions = ({
       )
     : null
   return {
-    rootId: serverOptions.rootId,
+    scope: serverOptions.scope,
     points:
       typeof serverOptions.points === 'string'
         ? toFinalPath({
@@ -388,7 +388,7 @@ const parseEngineClientOptions = ({
     path:
       clientOptions.serverOutdir ??
       (generalOptionsParsed.clientsServerOutdir
-        ? nodePath.resolve(generalOptionsParsed.clientsServerOutdir, clientOptions.rootId)
+        ? nodePath.resolve(generalOptionsParsed.clientsServerOutdir, clientOptions.scope)
         : null),
   })
   const outdir = toFinalPath({
@@ -397,7 +397,7 @@ const parseEngineClientOptions = ({
     path:
       clientOptions.outdir ??
       (generalOptionsParsed.clientsSelfOutdir
-        ? nodePath.resolve(generalOptionsParsed.clientsSelfOutdir, clientOptions.rootId)
+        ? nodePath.resolve(generalOptionsParsed.clientsSelfOutdir, clientOptions.scope)
         : null),
   })
   const publicdirOutdir = toFinalPath({
@@ -406,7 +406,7 @@ const parseEngineClientOptions = ({
     path: clientOptions.publicdirOutdir || outdir,
   })
   return {
-    rootId: clientOptions.rootId,
+    scope: clientOptions.scope,
     points:
       typeof clientOptions.points === 'string'
         ? toFinalPath({

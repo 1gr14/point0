@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import type { Eversion } from '../core/eversion.js'
-import type { RequiredCtx, RootId } from '../core/types.js'
+import type { RequiredCtx, PointsScope } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
@@ -32,7 +32,7 @@ export class Engine {
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
-      fallbackRootId: '',
+      fallbackScope: '',
       logger: parsedOptions.general.logger,
       clients: [],
     })
@@ -54,7 +54,7 @@ export class Engine {
     )
 
     server.clients = clients
-    server.fallbackRootId ||= clients.at(0)?.points.root._rootId || server.points.root._rootId
+    server.fallbackScope ||= clients.at(0)?.points.root._scope || server.points.root._scope
 
     return new Engine({ clients, server, logger: parsedOptions.general.logger, eversion })
   }
@@ -80,7 +80,7 @@ export class Engine {
       self: string[] | null
       server: string[] | null
       publicdir: string[] | null
-      rootId: RootId
+      scope: PointsScope
       index: number
     }>
     server: { self: string[] | null; publicdir: string[] | null }
@@ -92,7 +92,7 @@ export class Engine {
           self: buildOutput.self,
           server: buildOutput.server,
           publicdir: buildOutput.publicdir,
-          rootId: client.points.root._rootId,
+          scope: client.points.root._scope,
           index: client.index,
         }
       }),

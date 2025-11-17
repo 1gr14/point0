@@ -28,7 +28,7 @@ import type {
   RequiredCtx,
   ResponseOutput,
   RootConnectedPoint,
-  RootId,
+  PointsScope,
   RootPoint,
   RootSourcePoint,
   UndefinedCtx,
@@ -36,7 +36,7 @@ import type {
 } from './types.js'
 import { parseUrl, type ParsedUrl } from './utils.js'
 
-// TODO: when find suitable allow porvide "rootId", then it will find only inside that
+// TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
 // TODO: add generic and type EversionSource, and EversionConnection so we can understand which ine used now
 export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -124,13 +124,13 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   _getSuitableSelfPoint({
-    rootId,
+    scope,
     pageLocation,
     pointType,
     pointName,
     input,
   }: {
-    rootId?: RootId
+    scope?: PointsScope
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
@@ -142,7 +142,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         eversion: Eversion<TRequiredCtx>
       }
     | undefined {
-    if (rootId && this.points.root._rootId !== rootId) {
+    if (scope && this.points.root._scope !== scope) {
       return undefined
     }
     const suitablePoint = this.points.getSuitablePoint({ pageLocation, pointType, pointName, input })
@@ -156,25 +156,25 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
   _getSuitablePoint({
-    rootId,
+    scope,
     pageLocation,
     pointType,
     pointName,
     input,
   }: {
-    rootId?: RootId
+    scope?: PointsScope
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
     input?: InputParsed | undefined
   }): GetSuitablePointResult<TRequiredCtx> | undefined {
-    const suitableSelfPoint = this._getSuitableSelfPoint({ pageLocation, rootId, pointType, pointName, input })
+    const suitableSelfPoint = this._getSuitableSelfPoint({ pageLocation, scope, pointType, pointName, input })
     if (suitableSelfPoint) {
       return suitableSelfPoint
     }
     const suitableConnectionPoint = (() => {
       for (const connection of this.connections) {
-        const result = connection._getSuitablePoint({ pageLocation, rootId, pointType, pointName, input })
+        const result = connection._getSuitablePoint({ pageLocation, scope, pointType, pointName, input })
         if (result) {
           return result
         }
@@ -188,14 +188,14 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   _getSuitableSelfEversionByPageLocation({
-    rootId,
+    scope,
     pageLocation,
   }: {
-    rootId?: RootId | undefined
+    scope?: PointsScope | undefined
     pageLocation: AnyLocation
   }): Eversion<TRequiredCtx> | undefined {
     // TODO: fix it later, it now not used
-    if (rootId && this.points.root._rootId !== rootId) {
+    if (scope && this.points.root._scope !== scope) {
       return undefined
     }
     const route = this.points.root._route
@@ -209,13 +209,13 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
   _getSuitableEversionByPageLocationOrUndefined({
-    rootId,
+    scope,
     pageLocation,
   }: {
-    rootId?: RootId | undefined
+    scope?: PointsScope | undefined
     pageLocation: AnyLocation
   }): Eversion<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this._getSuitableSelfEversionByPageLocation({ pageLocation, rootId })
+    const suitableSelfEversion = this._getSuitableSelfEversionByPageLocation({ pageLocation, scope })
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
@@ -223,7 +223,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       for (const connection of this.connections) {
         const result = connection._getSuitableEversionByPageLocationOrUndefined({
           pageLocation,
-          rootId,
+          scope,
         })
         if (result) {
           return result
@@ -236,14 +236,14 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     return undefined
   }
-  _getSuitableEversionByRootId({ rootId }: { rootId: RootId | undefined }): Eversion<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this.points.root._rootId === rootId ? this : undefined
+  _getSuitableEversionByScope({ scope }: { scope: PointsScope | undefined }): Eversion<TRequiredCtx> | undefined {
+    const suitableSelfEversion = this.points.root._scope === scope ? this : undefined
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
     const suitableConnectionEversion = (() => {
       for (const connection of this.connections) {
-        const result = connection._getSuitableEversionByRootId({ rootId })
+        const result = connection._getSuitableEversionByScope({ scope })
         if (result) {
           return result
         }
@@ -256,12 +256,12 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
   _getSuitableEversionByPageLocation({
-    rootId,
-    fallbackRootId,
+    scope,
+    fallbackScope,
     pageLocation,
   }: {
-    rootId?: RootId | undefined
-    fallbackRootId: RootId | undefined
+    scope?: PointsScope | undefined
+    fallbackScope: PointsScope | undefined
     pageLocation?: AnyLocation | undefined
   }): Eversion<TRequiredCtx> {
     if (!pageLocation) {
@@ -269,55 +269,55 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     const suitableEversionByLoaction = this._getSuitableEversionByPageLocationOrUndefined({
       pageLocation,
-      rootId,
+      scope,
     })
     if (suitableEversionByLoaction) {
       return suitableEversionByLoaction
     }
-    const suitableEversionByRootId = this._getSuitableEversionByRootId({ rootId })
-    if (suitableEversionByRootId) {
-      return suitableEversionByRootId
+    const suitableEversionByScope = this._getSuitableEversionByScope({ scope })
+    if (suitableEversionByScope) {
+      return suitableEversionByScope
     }
-    const suitableEversionByFallbackRootId = this._getSuitableEversionByRootId({ rootId: fallbackRootId })
-    if (suitableEversionByFallbackRootId) {
-      return suitableEversionByFallbackRootId
+    const suitableEversionByFallbackScope = this._getSuitableEversionByScope({ scope: fallbackScope })
+    if (suitableEversionByFallbackScope) {
+      return suitableEversionByFallbackScope
     }
     throw new Error(
-      `No suitable eversion found at location "${location.pathname}" and root id "${rootId}" and fallback root id "${fallbackRootId}"`,
+      `No suitable eversion found at location "${location.pathname}" and root id "${scope}" and fallback root id "${fallbackScope}"`,
     )
   }
 
   getSuitable({
-    rootId,
-    fallbackRootId,
+    scope,
+    fallbackScope,
     pageLocation,
     pointType,
     pointName,
     input,
   }: {
-    rootId?: RootId
-    fallbackRootId: RootId
+    scope?: PointsScope
+    fallbackScope: PointsScope
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
     input?: InputParsed | undefined
   }): GetSuitableResult<TRequiredCtx> {
-    const suitablePoint = this._getSuitablePoint({ pageLocation, rootId, pointType, pointName, input })
+    const suitablePoint = this._getSuitablePoint({ pageLocation, scope, pointType, pointName, input })
     if (suitablePoint) {
       return suitablePoint
     }
-    // TODO: allow find just by fallbackRootId
+    // TODO: allow find just by fallbackScope
     if (pageLocation) {
       const suitableEversion = this._getSuitableEversionByPageLocation({
         pageLocation,
-        rootId,
-        fallbackRootId,
+        scope,
+        fallbackScope,
       })
       return { point: undefined, pageLocation, eversion: suitableEversion }
     }
-    const suitableEversion = this._getSuitableEversionByRootId({ rootId })
+    const suitableEversion = this._getSuitableEversionByScope({ scope })
     if (!suitableEversion) {
-      throw new Error(`No suitable eversion found at root id "${rootId}"`)
+      throw new Error(`No suitable eversion found at root id "${scope}"`)
     }
     return { point: undefined, pageLocation, eversion: suitableEversion }
   }
@@ -325,14 +325,14 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   async prepareEversionRunByRequest({
     request,
     parsedUrl,
-    fallbackRootId,
-    rootId,
+    fallbackScope,
+    scope,
     requiredCtx,
   }: {
     request: Request
     parsedUrl?: ParsedUrl
-    fallbackRootId: RootId
-    rootId?: RootId
+    fallbackScope: PointsScope
+    scope?: PointsScope
     requiredCtx: TRequiredCtx
   }): Promise<{
     task: FetchTask | undefined
@@ -367,30 +367,30 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           ]),
           outputType: z.enum(['data', 'response', 'dehydratedState']),
           pointInput: z.record(z.string(), z.any()),
-          rootId: z.string().min(1),
+          scope: z.string().min(1),
           pointName: z.string().min(1),
         })
         .parse({
           pointType: bodyRaw.pointType,
           outputType: bodyRaw.outputType,
           pointInput: bodyRaw.pointInput,
-          rootId: bodyRaw.rootId,
+          scope: bodyRaw.scope,
           pointName: bodyRaw.pointName,
         })
-      if (rootId && parsed.rootId !== rootId) {
-        throw new Error(`Root id "${parsed.rootId}" does not match "${rootId}"`)
+      if (scope && parsed.scope !== scope) {
+        throw new Error(`Root id "${parsed.scope}" does not match "${scope}"`)
       }
       return parsed
     })()
     const location = Route0.getLocation(parsedUrl.urlStr)
     const suitable = this.getSuitable({
-      // TODO:ASAP add allowedRootIds, so in engine fetch we will filter them by basepath and hostname. And better have .hostname() and .basepath() in root point
+      // TODO:ASAP add allowedScopes, so in engine fetch we will filter them by basepath and hostname. And better have .hostname() and .basepath() in root point
       pointType: task?.pointType ?? 'page',
-      rootId: task?.rootId || rootId,
+      scope: task?.scope || scope,
       pointName: task?.pointName,
       pageLocation: !task ? location : undefined,
       input: task?.pointInput,
-      fallbackRootId,
+      fallbackScope,
     })
     const eversionRun = await suitable.eversion.createRun({
       pageLocation: suitable.pageLocation,
@@ -408,13 +408,13 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   // async preparePageEversionRunByUrl({
   //   url,
-  //   fallbackRootId,
-  //   rootId,
+  //   fallbackScope,
+  //   scope,
   //   requiredCtx,
   // }: {
   //   url: string
-  //   fallbackRootId: RootId
-  //   rootId?: RootId
+  //   fallbackScope: Scope
+  //   scope?: Scope
   //   requiredCtx: TRequiredCtx
   // }): Promise<{
   //   suitable: GetSuitableResult
@@ -425,9 +425,9 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   const location = Route0.getLocation(url)
   //   const suitable = this.getSuitable({
   //     pointType: 'page',
-  //     rootId,
+  //     scope,
   //     pageLocation: location,
-  //     fallbackRootId,
+  //     fallbackScope,
   //   })
   //   const eversionRun = await suitable.eversion.createRun({
   //     pageLocation: suitable.pageLocation,
@@ -745,8 +745,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           pointType: suitableMarker.pointType,
           pointName: suitableMarker.pointName,
           input: suitableMarker.input,
-          rootId: this.eversion.points.root._rootId,
-          fallbackRootId: this.eversion.points.root._rootId,
+          scope: this.eversion.points.root._scope,
+          fallbackScope: this.eversion.points.root._scope,
         })
         if (suitable.point) {
           await this.extract({ point: suitable.point, input: suitableMarker.input })
@@ -949,6 +949,6 @@ export type FetchTask = {
   pointType: EndPointType
   outputType: 'data' | 'response' | 'dehydratedState'
   pointInput: InputParsed
-  rootId: RootId
+  scope: PointsScope
   pointName: PointName
 }

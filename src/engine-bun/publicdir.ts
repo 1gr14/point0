@@ -145,7 +145,7 @@ export class Publicdir {
               (async () => {
                 const content = await withError(
                   async () => await Bun.file(fileAbsPath).text(),
-                  `Failed while building publicdir for ${this.root._rootId}`,
+                  `Failed while building publicdir for ${this.root._scope}`,
                 )
                 // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
                 await Bun.write(distAbsPath, content)

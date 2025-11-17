@@ -142,8 +142,8 @@
 //       eversion: this.eversion,
 //       request,
 //       parsedUrl,
-//       fallbackRootId: this.points.root._rootId,
-//       rootId: this.points.root._rootId,
+//       fallbackScope: this.points.root._scope,
+//       scope: this.points.root._scope,
 //       requiredCtx,
 //       staticDirs: [this.outdir, this.publicdir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
 //       logger: this.logger,
@@ -221,7 +221,7 @@
 //     input: InputParsed
 //   }): Promise<void> {
 //     if (!this.App) {
-//       throw new Error(`App not provided for client "${this.points.root._rootId}"`)
+//       throw new Error(`App not provided for client "${this.points.root._scope}"`)
 //     }
 //     await eversionRun.prefetchAppPagePointDeep({
 //       App: this.App,
