@@ -441,10 +441,6 @@ export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed 
       generalOptionsParsed,
     }),
   )
-  // we can not do it here, becouse points may be readable via vite config
-  // so we will do it after engine initialization
-  // generalOptionsParsed.fallbackRootId ||=
-  //   clientsOptionsParsed.at(0)?.points.root.point._rootId || serverOptionsParsed.points.root.point._rootId
   return {
     general: generalOptionsParsed,
     server: serverOptionsParsed,
