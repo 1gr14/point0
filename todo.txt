@@ -1,22 +1,19 @@
 custom config for bun on build via config settings
-create not init, and not ayns, init is separate and included to places where it needed
+
 generator to engine
 cli
+
 remove server code form client
+isClient() || process.env.BUILD_TARGET === 'server' | 'client'
 
 ? config. engine is enough
 ? config can generate engine.ts by itself. Decide what to generate and what to boilerplate
-
-
 
 onReq onRes normalize, make more straight forward
 super store → eversion store
 move vite things to somewehere so it not required to install
 abs assets fetcher on 404 for bun dev server
 not hostname, not pathname, but just baseurl
-
-remove dead code
-isClient() || process.env.BUILD_TARGET === 'server' | 'client'
 
 head on ssr should also just stored in super store, not needed to extract it additionally
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
