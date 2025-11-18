@@ -35,3 +35,13 @@ if (process.env.TASK === 'build') {
   await engine.build()
   process.exit(0)
 }
+
+if (process.env.TASK === 'generate') {
+  await engine.generate()
+  process.exit(0)
+}
+
+if (process.env.TASK === 'generate-watch') {
+  await engine.generateWatch()
+  process.exit(0)
+}
