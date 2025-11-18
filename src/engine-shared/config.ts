@@ -1,11 +1,12 @@
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import type { AppComponent } from '../core/mount.js'
-import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
+import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { PointsScope } from '../core/types.js'
 import type { BunBuildConfigDefinition, BunPluginsDefinition } from '../engine-bun/utils.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
+import type { Routes } from '@devp0nt/route0'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
 
@@ -40,6 +41,9 @@ export type EngineGeneralOptions = {
   autoFixBuiltPaths?: boolean
   clientsServerOutdir?: string | null
   clientsSelfOutdir?: string | null
+  pointsGlob?: string | string[]
+  buildWatchGlob?: string | string[]
+  banner?: string | null
 }
 export type EngineServerOptions = {
   scope: PointsScope
@@ -52,6 +56,9 @@ export type EngineServerOptions = {
   publicdirOutdir?: string | null
   bunBuildConfig?: BunBuildConfigDefinition
   bunPlugins?: BunPluginsDefinition
+  routes?: Routes | string | null
+  pointsModuleType?: PointsModuleType
+  banner?: string | null
 }
 export type EngineClientOptions = {
   scope: PointsScope
@@ -72,6 +79,9 @@ export type EngineClientOptions = {
   outdir?: string | null
   serverOutdir?: string | null
   publicdirOutdir?: string | null
+  routes?: Routes | string | null
+  pointsModuleType?: PointsModuleType
+  banner?: string | null
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -89,6 +99,9 @@ export type EngineGeneralOptionsParsed = {
   autoFixBuiltPaths: boolean
   clientsServerOutdir: string | null
   clientsSelfOutdir: string | null
+  pointsGlob: string[]
+  buildWatchGlob: string[]
+  banner: string | null
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -110,6 +123,9 @@ export type EngineClientOptionsParsed = {
   bunPlugins: BunPluginsDefinition
   serverOutdir: string | null
   publicdirOutdir: string | null
+  routes: Routes | string | null
+  pointsModuleType: PointsModuleType
+  banner: string | null
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -126,6 +142,9 @@ export type EngineServerOptionsParsed = {
   fallbackScope: PointsScope
   bunBuildConfig: BunBuildConfigDefinition
   bunPlugins: BunPluginsDefinition
+  routes: Routes | string | null
+  pointsModuleType: PointsModuleType
+  banner: string | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -268,6 +287,7 @@ const parseEngineGeneralOptions = ({
     engineFile: generalOptions.engineFile || null,
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
+    banner: generalOptions.banner ?? null,
   }
   return {
     ...result,
@@ -281,6 +301,16 @@ const parseEngineGeneralOptions = ({
       cwdIfWasBuilt: null,
       path: generalOptions.clientsSelfOutdir,
     }),
+    pointsGlob: !generalOptions.pointsGlob
+      ? []
+      : Array.isArray(generalOptions.pointsGlob)
+        ? generalOptions.pointsGlob
+        : [generalOptions.pointsGlob],
+    buildWatchGlob: !generalOptions.buildWatchGlob
+      ? []
+      : Array.isArray(generalOptions.buildWatchGlob)
+        ? generalOptions.buildWatchGlob
+        : [generalOptions.buildWatchGlob],
   }
 }
 
@@ -393,6 +423,9 @@ export const parseEngineServerOptions = ({
     fallbackScope: generalOptionsParsed.fallbackScope,
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
+    routes: serverOptions.routes ?? null,
+    pointsModuleType: serverOptions.pointsModuleType ?? 'ready',
+    banner: serverOptions.banner ?? null,
   }
 }
 const parseEngineClientOptions = ({
@@ -488,6 +521,9 @@ const parseEngineClientOptions = ({
     publicdirOutdir,
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
+    routes: clientOptions.routes ?? null,
+    pointsModuleType: clientOptions.pointsModuleType ?? 'lazy',
+    banner: clientOptions.banner ?? null,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

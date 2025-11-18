@@ -135,7 +135,7 @@ export class Walker {
                   if (pointType && pointName) {
                     const { scope, errors: scopeErrors } = await this.resolveScope({
                       fileAbs,
-                      baseIdentifier: 'default',
+                      baseIdentifier: id.name,
                     })
                     errors.push(...scopeErrors)
                     if (!scope) {
@@ -1010,6 +1010,221 @@ export class Walker {
 
     cacheMap.set(cacheKey, layouts)
     return { layouts, errors }
+  }
+
+  private async resolveScope(
+    {
+      fileAbs,
+      baseIdentifier,
+    }: {
+      fileAbs: string
+      baseIdentifier: string
+    },
+    _seen = new Set<string>(),
+  ): Promise<{ scope: string | undefined; errors: unknown[] }> {
+    const errors: unknown[] = []
+
+    // cycle guard
+    const seenKey = `${fileAbs}::${baseIdentifier}`
+    if (_seen.has(seenKey)) {
+      return {
+        scope: undefined,
+        errors: [new Error(`circular scope resolution for ${seenKey}`)],
+      }
+    }
+    _seen.add(seenKey)
+
+    // parse file
+    let ast: babel.ParseResult<any>
+    try {
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
+        this.filesContentCache.set(fileAbs, content)
+        ast = babel.parse(content, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
+    } catch (e) {
+      console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)}: parse failed: ${(e as Error).message}`)
+      return { scope: undefined, errors: [...errors, e] }
+    }
+
+    //
+    // 1) find the export for baseIdentifier and extract its init expression
+    //
+    let initNode: Expression | Declaration | null | undefined = undefined
+
+    traverse(ast, {
+      ExportNamedDeclaration: (p) => {
+        const decl = p.node.declaration
+        if (decl?.type === 'VariableDeclaration') {
+          for (const d of decl.declarations) {
+            if (d.id.type === 'Identifier' && d.id.name === baseIdentifier) {
+              initNode = d.init
+            }
+          }
+        }
+      },
+      ExportDefaultDeclaration: (p) => {
+        if (baseIdentifier === 'default') {
+          initNode = p.node.declaration
+        }
+      },
+    })
+
+    if ((initNode as any) === null || (initNode as any) === undefined) {
+      // Try to find parent and recurse
+      const {
+        parentIdentifier,
+        parentImportPath,
+        errors: findParentRefErrors,
+      } = this.findParentRef({ fileAbs, ast, baseIdentifier })
+      errors.push(...findParentRefErrors)
+
+      if (!parentIdentifier || parentIdentifier === 'Point0') {
+        return {
+          scope: undefined,
+          errors: [...errors, new Error(`scope not found for ${baseIdentifier} in ${fileAbs}`)],
+        }
+      }
+
+      // Resolve parent file
+      const parentAbs = parentImportPath
+        ? await Walker.detectExistingFilePathByImportPath(nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath))
+        : fileAbs
+
+      if (!parentAbs) {
+        return {
+          scope: undefined,
+          errors: [...errors, new Error(`parent ${parentIdentifier} path not found: ${parentImportPath}`)],
+        }
+      }
+
+      // Recurse to parent
+      return await this.resolveScope(
+        {
+          fileAbs: parentAbs,
+          baseIdentifier: parentIdentifier,
+        },
+        _seen,
+      )
+    }
+
+    //
+    // 2) walk through the chain to find Point0.connect or Point0.source
+    //
+    const scope = this.extractScopeFromChain({ fileAbs, node: initNode })
+    if (scope) {
+      return { scope, errors }
+    }
+
+    //
+    // 3) if not found, try to find parent and recurse
+    //
+    const {
+      parentIdentifier,
+      parentImportPath,
+      errors: findParentRefErrors,
+    } = this.findParentRef({ fileAbs, ast, baseIdentifier })
+    errors.push(...findParentRefErrors)
+
+    if (!parentIdentifier || parentIdentifier === 'Point0') {
+      return {
+        scope: undefined,
+        errors: [...errors, new Error(`scope not found for ${baseIdentifier} in ${fileAbs}`)],
+      }
+    }
+
+    // Resolve parent file
+    const parentAbs = parentImportPath
+      ? await Walker.detectExistingFilePathByImportPath(nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath))
+      : fileAbs
+
+    if (!parentAbs) {
+      return {
+        scope: undefined,
+        errors: [...errors, new Error(`parent ${parentIdentifier} path not found: ${parentImportPath}`)],
+      }
+    }
+
+    // Recurse to parent
+    return await this.resolveScope(
+      {
+        fileAbs: parentAbs,
+        baseIdentifier: parentIdentifier,
+      },
+      _seen,
+    )
+  }
+
+  /**
+   * Extracts scope from a chain by walking left to find Point0.connect('scope') or Point0.source('scope')
+   */
+  private extractScopeFromChain({
+    fileAbs,
+    node,
+  }: {
+    fileAbs: string
+    node: Expression | Declaration | null | undefined
+  }): string | undefined {
+    if (node?.type !== 'CallExpression') {
+      return undefined
+    }
+
+    // Walk LEFT through the chain to find the root call:
+    // ... .head(...) .sourceBaseUrl(...) Point0.connect('client')
+    let current: Expression | null | undefined = node
+    let rootCall: CallExpression | null = null
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    while (current) {
+      if (current.type === 'CallExpression') {
+        rootCall = current
+        // if its callee is also a member (something.something) → go further left
+        if (current.callee.type === 'MemberExpression') {
+          current = current.callee.object
+          continue
+        }
+        break
+      } else {
+        break
+      }
+    }
+
+    if (!rootCall) return undefined
+    if (rootCall.callee.type !== 'MemberExpression') return undefined
+
+    const obj = rootCall.callee.object
+    const prop = rootCall.callee.property
+
+    // must be Point0.connect / Point0.source
+    if (obj.type !== 'Identifier' || obj.name !== 'Point0') return undefined
+    if (prop.type !== 'Identifier') return undefined
+    const method = prop.name
+    if (!['connect', 'source'].includes(method)) return undefined
+
+    // scope should be the first string arg
+    const firstArg = rootCall.arguments.at(0)
+    if (firstArg?.type === 'StringLiteral') {
+      return firstArg.value
+    }
+
+    // fallback – try to extract from template literal or other string types
+    console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} scope not found as string literal in ${method} call`)
+    return undefined
   }
 
   // helpers

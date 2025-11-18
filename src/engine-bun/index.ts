@@ -1,7 +1,9 @@
 import { fileURLToPath } from 'node:url'
 import type { Eversion } from '../core/eversion.js'
-import type { RequiredCtx, PointsScope } from '../core/types.js'
+import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
+import type { FilesGeneratorTargetOptions } from '../engine-shared/generator.js'
+import { FilesGenerator } from '../engine-shared/generator.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
 
@@ -9,6 +11,7 @@ export class Engine<TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
   server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
   logger: EngineLogger
+  generator: FilesGenerator
   eversion: TInitialized extends true ? Eversion : Eversion | null
   initialized: TInitialized
 
@@ -18,12 +21,14 @@ export class Engine<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     eversion: Eversion | null
     initialized: TInitialized
+    generator: FilesGenerator
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
     this.logger = input.logger
     this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
     this.initialized = input.initialized
+    this.generator = input.generator
   }
 
   static create(fileUrl: string, options: EngineOptions): Engine<false>
@@ -59,7 +64,29 @@ export class Engine<TInitialized extends boolean = boolean> {
 
     server.clients = clients
 
-    return new Engine({ clients, server, logger: parsedOptions.general.logger, eversion, initialized: false })
+    const generator = FilesGenerator.create({
+      cwd: parsedOptions.general.cwd,
+      glob: parsedOptions.general.pointsGlob,
+      targets: parsedOptions.clients.map(
+        (client) =>
+          ({
+            scope: client.scope,
+            routes: client.routes,
+            points: typeof client.points === 'string' ? client.points : null,
+            pointsModuleType: client.pointsModuleType,
+            banner: client.banner,
+          }) satisfies FilesGeneratorTargetOptions,
+      ),
+    })
+
+    return new Engine({
+      clients,
+      server,
+      logger: parsedOptions.general.logger,
+      eversion,
+      initialized: false,
+      generator,
+    })
   }
 
   // async init(): Promise<Engine<true>> {
@@ -84,6 +111,11 @@ export class Engine<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
+  async dev(options?: { requiredCtx?: RequiredCtx; noGenerate?: boolean }) {
+    await this.generateWatch()
+    await this.serve(options?.requiredCtx)
+  }
+
   async serve(requiredCtx?: RequiredCtx): Promise<void> {
     const intializedEngine = await this.init()
     await intializedEngine.server.serve({ requiredCtx })
@@ -104,7 +136,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
   }
 
-  async build(): Promise<{
+  async build(options?: { noGenerate?: boolean }): Promise<{
     clients: Array<{
       self: string[] | null
       server: string[] | null
@@ -114,6 +146,10 @@ export class Engine<TInitialized extends boolean = boolean> {
     }>
     server: { self: string[] | null; publicdir: string[] | null }
   }> {
+    if (!options?.noGenerate) {
+      await this.generate()
+    }
+
     const intializedEngine = await this.init()
 
     const clients = await Promise.all(
@@ -130,5 +166,14 @@ export class Engine<TInitialized extends boolean = boolean> {
     )
     const server = await intializedEngine.server.build()
     return { clients, server }
+  }
+
+  async generate(): Promise<void> {
+    await this.generator.sync({ logOnNotWritten: true })
+  }
+
+  async generateWatch(): Promise<void> {
+    await this.generator.sync({ logOnNotWritten: false })
+    await this.generator.watch()
   }
 }

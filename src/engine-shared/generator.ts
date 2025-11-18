@@ -19,22 +19,22 @@ type ChangeCollectedPointsEvent = {
   errors: unknown[]
 }
 
-export type GeneratorOptions = {
+export type FilesGeneratorOptions = {
   cwd: string
   glob: string | string[]
-  targets: GeneratorTargetOptions[]
+  targets: FilesGeneratorTargetOptions[]
   banner?: string
 }
 
-export type GeneratorTargetOptions = {
+export type FilesGeneratorTargetOptions = {
   scope: string
-  routes?: Routes | string
-  points?: string
+  routes?: Routes | string | null
+  points?: string | null
   pointsModuleType?: PointsModuleType
-  banner?: string
+  banner?: string | null
 }
 
-type GeneratorTarget = {
+type FilesGeneratorTarget = {
   scope: string
   routes: Routes | null
   banner: string | null
@@ -43,13 +43,13 @@ type GeneratorTarget = {
   outputRoutesAbs: string | null
 }
 
-export class Generator {
+export class FilesGenerator {
   readonly banner: string | undefined
   readonly globInclude: string[]
   readonly globExclude: string[]
   readonly cwd: string
   readonly tempDir: string
-  readonly targets: GeneratorTarget[]
+  readonly targets: FilesGeneratorTarget[]
   readonly routes: Record<string, Routes>
 
   readonly watchDir: string
@@ -63,13 +63,13 @@ export class Generator {
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
 
-  constructor(opts: GeneratorOptions) {
+  constructor(opts: FilesGeneratorOptions) {
     this.banner = opts.banner
     this.cwd = opts.cwd
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
-    this.tempDir = Generator.resolveTempDirPath()
+    this.tempDir = FilesGenerator.resolveTempDirPath()
     this.targets = opts.targets.map(
       (t) =>
         ({
@@ -79,7 +79,7 @@ export class Generator {
           pointsModuleType: t.pointsModuleType ?? 'ready',
           outputPointsAbs: t.points ? nodePath.resolve(this.cwd, t.points) : null,
           outputRoutesAbs: typeof t.routes === 'string' ? nodePath.resolve(this.cwd, t.routes) : null,
-        }) satisfies GeneratorTarget,
+        }) satisfies FilesGeneratorTarget,
     )
     this.routes = {}
     for (const target of this.targets) {
@@ -120,8 +120,8 @@ export class Generator {
     return fallback
   }
 
-  static create(opts: GeneratorOptions) {
-    return new Generator(opts)
+  static create(opts: FilesGeneratorOptions) {
+    return new FilesGenerator(opts)
   }
 
   async sync(options?: { logOnNotWritten?: boolean }) {
@@ -203,7 +203,7 @@ export class Generator {
 
   // processing
 
-  validateTargetRootExists(target: GeneratorTarget): void {
+  validateTargetRootExists(target: FilesGeneratorTarget): void {
     if (!target.outputPointsAbs) {
       return
     }
@@ -221,7 +221,7 @@ export class Generator {
   // TODO: not chunk size, but max in same time processing files
   async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent & { written: boolean }> {
     const files = [...this.files]
-    const chunks = Generator.chunk(files, chunkSize)
+    const chunks = FilesGenerator.chunk(files, chunkSize)
     const walker = new Walker({ cwd: this.cwd, routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
@@ -234,8 +234,9 @@ export class Generator {
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
     const prevPoints = [...this.points]
-    const newPoints = errors.length === 0 ? collectedPoints : Generator.mergePointsSafely(this.points, collectedPoints)
-    const diff = Generator.getCollectedPointsDiff(prevPoints, newPoints)
+    const newPoints =
+      errors.length === 0 ? collectedPoints : FilesGenerator.mergePointsSafely(this.points, collectedPoints)
+    const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newPoints)
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
@@ -256,7 +257,7 @@ export class Generator {
     return { written }
   }
 
-  private async writeTargetOutput(target: GeneratorTarget): Promise<{ written: boolean }> {
+  private async writeTargetOutput(target: FilesGeneratorTarget): Promise<{ written: boolean }> {
     const tasks = []
     if (target.outputPointsAbs && target.pointsModuleType === 'lazy') {
       tasks.push({
@@ -371,9 +372,9 @@ export class Generator {
     }> = []
 
     const importedPoints = points.map((point) => {
-      const importPath = Generator.toRelativeJsImportPath(outputAbs, point.fileAbs)
+      const importPath = FilesGenerator.toRelativeJsImportPath(outputAbs, point.fileAbs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
-      const hash = Generator.hash(point)
+      const hash = FilesGenerator.hash(point)
       const renamedExportName = point.root
         ? 'root'
         : point.exportName === 'default'
@@ -417,7 +418,7 @@ export class Generator {
     return { importLines, importedPoints, rootSingleImportLine }
   }
 
-  private emitLazyPointsFile(target: GeneratorTarget): string {
+  private emitLazyPointsFile(target: FilesGeneratorTarget): string {
     if (!target.outputPointsAbs) {
       throw new Error('outputPointsAbs is not set')
     }
@@ -472,7 +473,7 @@ export class Generator {
           lines.push(`}`)
         } else {
           lines.push(
-            `  point: async () => (await import('${Generator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+            `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
           )
           lines.push(`} as LazyPointsCollectionRecord`)
         }
@@ -484,7 +485,7 @@ export class Generator {
     return lines.join('\n')
   }
 
-  private emitReadyPointsFile(target: GeneratorTarget): string {
+  private emitReadyPointsFile(target: FilesGeneratorTarget): string {
     if (!target.outputPointsAbs) {
       throw new Error('outputReadyAbs is not set')
     }
@@ -628,7 +629,7 @@ export class Generator {
   //   return lines.join('\n')
   // }
 
-  private emitRoutesPointsFile(target: GeneratorTarget): string {
+  private emitRoutesPointsFile(target: FilesGeneratorTarget): string {
     if (!target.outputRoutesAbs) {
       throw new Error('outputRoutesAbs is not set')
     }
@@ -667,8 +668,8 @@ export class Generator {
     added: CollectedPoint[]
     changed: boolean
   } {
-    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => Generator.isSameCollectedPoint(p, cp)))
-    const added = newPoints.filter((p) => !prevPoints.some((cp) => Generator.isSameCollectedPoint(p, cp)))
+    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => FilesGenerator.isSameCollectedPoint(p, cp)))
+    const added = newPoints.filter((p) => !prevPoints.some((cp) => FilesGenerator.isSameCollectedPoint(p, cp)))
     const changed = added.length > 0 || deleted.length > 0
     return { deleted, added, changed }
   }
@@ -678,13 +679,13 @@ export class Generator {
     const result = [...prevPoints]
     for (const newPoint of newPoints) {
       const prevConflictedPointIndex = result.findIndex((p) =>
-        Generator.isSameNameAndTypeAndScopeCollectedPoint(p, newPoint),
+        FilesGenerator.isSameNameAndTypeAndScopeCollectedPoint(p, newPoint),
       )
       if (prevConflictedPointIndex !== -1) {
         result[prevConflictedPointIndex] = newPoint
         continue
       }
-      const prevPointIndex = result.findIndex((p) => Generator.isSameCollectedPoint(p, newPoint))
+      const prevPointIndex = result.findIndex((p) => FilesGenerator.isSameCollectedPoint(p, newPoint))
       if (prevPointIndex === -1) {
         result.push(newPoint)
         continue
@@ -711,7 +712,7 @@ export class Generator {
   // Convenience for short suffixes
   private static hash(input: unknown, seed = 0): string {
     const s = typeof input === 'string' ? input : JSON.stringify(input)
-    return Generator.cyrb53(s, seed).toString(36) // short, URL/file-safe
+    return FilesGenerator.cyrb53(s, seed).toString(36) // short, URL/file-safe
   }
 
   private static chunk<T>(array: readonly T[], size: number): T[][] {

@@ -66,6 +66,7 @@ Unieind and hero ui right inside examples
 simplify renderer
 Point0.global.init()
 mount → dom/mount
+do not remove root point on points create, why we ever need it?
 .source .connect → .server .client
 on fetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
 .prefetchOnInit(boolean).prefetchMode(MODE)
