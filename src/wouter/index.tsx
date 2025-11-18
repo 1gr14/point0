@@ -80,7 +80,6 @@ export const Router = ({
   )
 }
 
-// Do not use it if you want nice HMR. Use generated WouterRoutes instead.
 export const RouterRoutes = ({
   Page404 = () => <div>Page Not Found</div>,
   pagesTree = Point0.getPoints().pagesTree,

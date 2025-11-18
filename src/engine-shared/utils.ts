@@ -233,7 +233,7 @@ export const withError = async <T>(fn: () => Promise<T>, subMessage?: string): P
 export const validateEntrypoints = (entrypoints: Array<string | null | undefined>): string[] => {
   const uniqEntrypoints = [...new Set(entrypoints.flatMap((p) => p || []))]
   const entrypointsBasenamesWithJsExtension = uniqEntrypoints.map((p) => ({
-    basename: nodePath.basename(p).replace(/\.tsx?$/, '.js'),
+    basename: toJsExtension(nodePath.basename(p)),
     path: p,
   }))
   const notUniqueEntrypointsBasenames = entrypointsBasenamesWithJsExtension.filter(
@@ -245,4 +245,8 @@ export const validateEntrypoints = (entrypoints: Array<string | null | undefined
     )
   }
   return uniqEntrypoints
+}
+
+export const toJsExtension = (path: string) => {
+  return path.replace(/\.tsx?$/, '.js')
 }

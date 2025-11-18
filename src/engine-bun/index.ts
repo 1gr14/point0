@@ -67,16 +67,25 @@ export class Engine<TInitialized extends boolean = boolean> {
     const generator = FilesGenerator.create({
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,
-      targets: parsedOptions.clients.map(
-        (client) =>
-          ({
-            scope: client.scope,
-            routes: client.routes,
-            points: typeof client.points === 'string' ? client.points : null,
-            pointsModuleType: client.pointsModuleType,
-            banner: client.banner,
-          }) satisfies FilesGeneratorTargetOptions,
-      ),
+      targets: [
+        {
+          scope: parsedOptions.server.scope,
+          routes: parsedOptions.server.routes,
+          points: typeof parsedOptions.server.points === 'string' ? parsedOptions.server.points : null,
+          pointsModuleType: parsedOptions.server.pointsModuleType,
+          banner: parsedOptions.server.banner,
+        },
+        ...parsedOptions.clients.map(
+          (client) =>
+            ({
+              scope: client.scope,
+              routes: client.routes,
+              points: typeof client.points === 'string' ? client.points : null,
+              pointsModuleType: client.pointsModuleType,
+              banner: client.banner,
+            }) satisfies FilesGeneratorTargetOptions,
+        ),
+      ],
     })
 
     return new Engine({
@@ -98,12 +107,12 @@ export class Engine<TInitialized extends boolean = boolean> {
     const intializedServer = await this.server.init()
     await Promise.all(
       this.clients.map(async (client) => {
-        const initializedClient = await client.init({ eversion: intializedServer.eversion })
-        await intializedServer.eversion.connect({ points: initializedClient.points })
-        return initializedClient
+        return await client.init({ eversion: intializedServer.eversion })
       }),
     )
+    this.eversion = intializedServer.eversion
     this.initialized = true as never
+
     return this as Engine<true>
   }
 

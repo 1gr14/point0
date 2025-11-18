@@ -6,13 +6,20 @@ import { Points } from '../core/points.js'
 import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
-import { getDirByPaths, prependAndDeappendSlash, validateEntrypoints, withError } from '../engine-shared/utils.js'
+import {
+  getDirByPaths,
+  prependAndDeappendSlash,
+  toJsExtension,
+  validateEntrypoints,
+  withError,
+} from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from './utils.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
+  scope: PointsScope
   cwd: string
   eversion: TInitialized extends true ? Eversion : Eversion | null
   providedPoints: Points | null
@@ -38,6 +45,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   private constructor(input: {
     initialized: TInitialized
     cwd: string
+    scope: PointsScope
     providedPoints: Points | null
     pointsFile: string | null
     points: Points | null
@@ -59,6 +67,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : null
+    this.scope = input.scope
     this.providedPoints = input.providedPoints
     this.pointsFile = input.pointsFile
     this.points = input.points as TInitialized extends true ? Points : null
@@ -81,6 +90,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
   static create(input: {
     cwd: string
+    scope: PointsScope
     points: Points | string
     engineFile: string | null
     cwdBeforeBuild: string
@@ -155,7 +165,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (pointsFile) {
       return Points.create(
         await withError(
-          async () => (await import(pointsFile)) as LazyPointsModule | ReadyPointsModule,
+          async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
           `Failed to import points from ${pointsFile} on server`,
         ),
       )

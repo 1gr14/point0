@@ -1,6 +1,5 @@
 import type { Routes } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
-import { subscribe } from '@parcel/watcher'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFsSync from 'node:fs'
@@ -351,16 +350,19 @@ export class FilesGenerator {
     points,
     what,
     outputAbs,
+    target,
   }: {
     points: CollectedPoint[]
     what: 'import' | 'export'
     outputAbs: string
+    target: FilesGeneratorTarget
   }): {
     importLines: string[]
     importedPoints: Array<CollectedPoint & { hash: string; renamedExportName: string }>
     // rootSingleReexportLine: string // for lazy points file
     rootSingleImportLine: string // for lazy points file
   } {
+    points = points.filter((p) => p.scope === target.scope)
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
     let rootSingleImportLine: string | undefined
@@ -406,14 +408,16 @@ export class FilesGenerator {
       if (importPathAndExportNames.hasRoot) {
         const rootImportPathAndExportName = importPathAndExportNames.exports.find((e) => e.root)
         if (!rootImportPathAndExportName) {
-          throw new Error(`Root import path and export name not found for ${importPathAndExportNames.importPath}`)
+          throw new Error(
+            `Root import path and export name not found for ${importPathAndExportNames.importPath} for target ${target.scope}`,
+          )
         }
         // rootSingleReexportLine = `export { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
         rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
       }
     }
     if (!rootSingleImportLine) {
-      throw new Error('Root single import line not found')
+      throw new Error(`Root single import line not found for target ${target.scope}`)
     }
     return { importLines, importedPoints, rootSingleImportLine }
   }
@@ -433,10 +437,15 @@ export class FilesGenerator {
     // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from 'point0/core/points.js'`)
 
+    if (!points.find((p) => p.root)) {
+      throw new Error(`Root point not found for target ${target.scope}`)
+    }
+
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
       what: 'import',
       outputAbs: target.outputPointsAbs,
+      target,
     })
 
     lines.push(rootSingleImportLine)
@@ -492,7 +501,13 @@ export class FilesGenerator {
     if (target.pointsModuleType !== 'ready') {
       throw new Error('pointsModuleType is not ready')
     }
+
     const points = this.points.filter((p) => p.scope === target.scope)
+
+    if (!points.find((p) => p.root)) {
+      throw new Error(`Root point not found for target ${target.scope}`)
+    }
+
     const lines: string[] = []
     if (target.banner) {
       lines.push(target.banner)
@@ -507,6 +522,7 @@ export class FilesGenerator {
         points,
         what: 'export',
         outputAbs: target.outputPointsAbs,
+        target,
       })
       lines.push(...importLines)
     }
@@ -752,6 +768,7 @@ export class FilesGenerator {
   // wathcer
 
   async watch() {
+    const { subscribe } = await import('@parcel/watcher')
     const subscription = await subscribe(
       this.watchDir,
       async (err, events) => {

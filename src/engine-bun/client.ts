@@ -19,7 +19,7 @@ import type {
   LoadedViteConfig,
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
-import { validateEntrypoints, withError } from '../engine-shared/utils.js'
+import { toJsExtension, validateEntrypoints, withError } from '../engine-shared/utils.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
 import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from './utils.js'
@@ -199,6 +199,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       clientIndex: this.index,
     })
 
+    await eversion.connect({ points: this.points })
+
     this.bunDevServer =
       this.indexHtml && !this.viteDevServer && process.env.NODE_ENV !== 'production'
         ? await ClientBun.createBunDevServer({ port: this.port, indexHtml: this.indexHtml })
@@ -232,13 +234,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     if (pointsFile) {
       if (viteDevServer) {
         return await Points.read(
-          pointsFile,
-          async (absPath) => (await viteDevServer.ssrLoadModule(absPath)) as LazyPointsModule | ReadyPointsModule,
+          toJsExtension(pointsFile),
+          async (absPath) =>
+            (await viteDevServer.ssrLoadModule(toJsExtension(absPath))) as LazyPointsModule | ReadyPointsModule,
         )
       } else {
         return Points.create(
           await withError(
-            async () => (await import(pointsFile)) as LazyPointsModule | ReadyPointsModule,
+            async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
             `Failed to import points from ${pointsFile} on client at position "${clientIndex}"`,
           ),
         )
@@ -544,15 +547,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
     if (this.appFile) {
       if (this.viteDevServer) {
-        const appComponent = (await this.viteDevServer.ssrLoadModule(this.appFile).then((module) => module.default)) as
-          | AppComponent
-          | undefined
+        const appComponent = (await this.viteDevServer
+          .ssrLoadModule(toJsExtension(this.appFile))
+          .then((module) => module.default || module)) as AppComponent | undefined
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._scope}"`)
         }
         return appComponent
       } else {
-        const appComponent = await import(this.appFile).then((module) => module.default)
+        const appComponent = await import(toJsExtension(this.appFile)).then((module) => module.default || module)
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._scope}"`)
         }

@@ -164,9 +164,10 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.pagesTreeSource = points.pagesTreeSource
     this.pagesTree = points.pagesTree
     if (this.ready && !points.ready) {
-      await this.load()
+      await this.replace(await this.load(true))
+    } else {
+      Points.setGlobalPoints(this)
     }
-    Points.setGlobalPoints(this)
   }
 
   async read(): Promise<void> {
@@ -177,8 +178,8 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     }
   }
 
-  async load(): Promise<Points<true>> {
-    if (this.ready) {
+  async load(force?: boolean): Promise<Points<true>> {
+    if (this.ready && !force) {
       return this as Points<true>
     }
     const { readyPoints, errors } = await Points.toReadyPointsCollection(this.collection as LazyRoutedPointsCollection)
@@ -419,6 +420,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
           name: pointName || record.name,
           type: pointType,
           layouts: recordLayouts,
+          Component: record.Component,
         }
       }),
     )

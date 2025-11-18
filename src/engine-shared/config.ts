@@ -5,7 +5,7 @@ import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '../c
 import { Points } from '../core/points.js'
 import type { PointsScope } from '../core/types.js'
 import type { BunBuildConfigDefinition, BunPluginsDefinition } from '../engine-bun/utils.js'
-import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath } from './utils.js'
+import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
 import type { Routes } from '@devp0nt/route0'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
@@ -243,8 +243,6 @@ const parseEngineGeneralOptions = ({
         const localDir = CWD_AFTER_BUILD_CURRENT.replace(new RegExp(`${ENGINE_CWD_AFTER_BUILD_CUTTED}$`), '')
         generalOptions.cwdBeforeBuild = nodePath.join(localDir, ENGINE_CWD_BEFORE_BUILD_CUTTED)
         generalOptions.cwdAfterBuild = nodePath.join(localDir, ENGINE_CWD_AFTER_BUILD_CUTTED)
-        console.log('generalOptions.cwdBeforeBuild', generalOptions.cwdBeforeBuild)
-        console.log('generalOptions.cwdAfterBuild', generalOptions.cwdAfterBuild)
       }
     }
 
@@ -353,16 +351,16 @@ const toFinalPath = <T extends string | null | undefined>({
   const cwdAfterBuildFinal = cwdIfWasBuilt ? nodePath.resolve(cwdBeforeBuild, cwdIfWasBuilt) : cwdBeforeBuild
 
   if (relPathAfterBuild) {
-    const fixedPath = nodePath.resolve(cwdAfterBuildFinal, relPathAfterBuild.replace(/\.tsx?$/, '.js'))
+    const fixedPath = nodePath.resolve(cwdAfterBuildFinal, toJsExtension(relPathAfterBuild))
     return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
   }
 
   if (omitDirAfterBuild && !nodePath.isAbsolute(path)) {
-    const fixedPath = nodePath.basename(path).replace(/\.tsx?$/, '.js')
+    const fixedPath = toJsExtension(nodePath.basename(path))
     return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
   }
 
-  const fixedPath = path.replace(/\.tsx?$/, '.js')
+  const fixedPath = toJsExtension(path)
   return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
 }
 

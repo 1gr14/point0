@@ -73,6 +73,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       points: await points.load(),
       source: this,
     })
+    await connection.points.read()
     this.connections.push(connection)
     return connection
   }
