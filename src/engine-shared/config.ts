@@ -355,7 +355,7 @@ export const parseEngineServerOptions = ({
   const publicdirOutdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: serverOptions.publicdirOutdir || (outdir && serverOptions.publicdir ? nodePath.join(outdir, 'public') : null),
+    path: serverOptions.publicdirOutdir ?? (outdir && serverOptions.publicdir ? nodePath.join(outdir, 'public') : null),
   })
   const entriesRecord = entriesRecordInput
     ? Object.fromEntries(
@@ -430,7 +430,7 @@ const parseEngineClientOptions = ({
   const publicdirOutdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: clientOptions.publicdirOutdir || outdir,
+    path: clientOptions.publicdirOutdir ?? outdir,
   })
   return {
     scope: clientOptions.scope,
