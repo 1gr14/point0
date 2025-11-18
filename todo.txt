@@ -1,8 +1,8 @@
-serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
-
 generator to engine
+
 cli
 
+serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 remove server code from client, and client code from server
 isClient() || process.env.BUILD_TARGET === 'server' | 'client', import.meta.env.SSR for vite compatibility
 
