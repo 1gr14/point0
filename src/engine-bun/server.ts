@@ -1,4 +1,3 @@
-import type { BuildConfig } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { Eversion } from '../core/eversion.js'
@@ -7,7 +6,7 @@ import { Points } from '../core/points.js'
 import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
-import { validateEntrypoints, withError } from '../engine-shared/utils.js'
+import { getDirByPaths, prependAndDeappendSlash, validateEntrypoints, withError } from '../engine-shared/utils.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
@@ -293,21 +292,24 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       throw new Error(`outdir not provided for server`)
     }
 
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+
     const thisBunBuildConfig = await extractBunBuildConfig({
+      mode: NODE_ENV,
       command: 'build',
       target: 'server',
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
     const providedBunBuildConfig = await extractBunBuildConfig({
+      mode: NODE_ENV,
       command: 'build',
       target: 'server',
       bunBuildConfig,
       bunPlugins: [],
     })
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
-    const ENGINE_CWD_BEFORE_BUILD = (() => {
+    const ENGINE_CWD_BEFORE_BUILD_LOCAL = (() => {
       if (this.cwdBeforeBuild) {
         return this.cwdBeforeBuild
       }
@@ -316,11 +318,38 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       }
       return null
     })()
+    const ENGINE_CWD_AFTER_BUILD_LOCAL = (() => {
+      if (!ENGINE_CWD_BEFORE_BUILD_LOCAL) {
+        return null
+      }
+      if (this.outdir) {
+        return nodePath.resolve(this.cwdBeforeBuild, this.outdir)
+      }
+      return null
+    })()
+    const { ENGINE_CWD_BEFORE_BUILD_CUTTED, ENGINE_CWD_AFTER_BUILD_CUTTED } = (() => {
+      if (!ENGINE_CWD_BEFORE_BUILD_LOCAL || !ENGINE_CWD_AFTER_BUILD_LOCAL) {
+        return {
+          ENGINE_CWD_BEFORE_BUILD_CUTTED: null,
+          ENGINE_CWD_AFTER_BUILD_CUTTED: null,
+        }
+      }
+      const localDir = getDirByPaths({
+        paths: [ENGINE_CWD_BEFORE_BUILD_LOCAL, ENGINE_CWD_AFTER_BUILD_LOCAL],
+      })
+      return {
+        ENGINE_CWD_BEFORE_BUILD_CUTTED: prependAndDeappendSlash(ENGINE_CWD_BEFORE_BUILD_LOCAL.replace(localDir, '')),
+        ENGINE_CWD_AFTER_BUILD_CUTTED: prependAndDeappendSlash(ENGINE_CWD_AFTER_BUILD_LOCAL.replace(localDir, '')),
+      }
+    })()
 
     const injectedEnvs = {
       'process.env.ENGINE_WAS_BUILT': JSON.stringify('true'),
-      ...(ENGINE_CWD_BEFORE_BUILD
-        ? { 'process.env.ENGINE_CWD_BEFORE_BUILD': JSON.stringify(ENGINE_CWD_BEFORE_BUILD) }
+      ...(ENGINE_CWD_BEFORE_BUILD_CUTTED
+        ? { 'process.env.ENGINE_CWD_BEFORE_BUILD': JSON.stringify(ENGINE_CWD_BEFORE_BUILD_CUTTED) }
+        : {}),
+      ...(ENGINE_CWD_AFTER_BUILD_CUTTED
+        ? { 'process.env.ENGINE_CWD_AFTER_BUILD': JSON.stringify(ENGINE_CWD_AFTER_BUILD_CUTTED) }
         : {}),
     }
     const injectEnvsScript =

@@ -1,5 +1,4 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { BuildConfig } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { Readable } from 'node:stream'
@@ -614,12 +613,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
 
     const thisBunBuildConfig = await extractBunBuildConfig({
+      mode: process.env.NODE_ENV || 'development',
       command: 'build',
       target: 'client',
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
     const providedBunBuildConfig = await extractBunBuildConfig({
+      mode: process.env.NODE_ENV || 'development',
       command: 'build',
       target: 'client',
       bunBuildConfig,
@@ -675,20 +676,23 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
     }
 
+    const NODE_ENV = process.env.NODE_ENV || 'production'
+
     const thisBunBuildConfig = await extractBunBuildConfig({
+      mode: NODE_ENV,
       command: 'build',
       target: 'server',
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
     const providedBunBuildConfig = await extractBunBuildConfig({
+      mode: NODE_ENV,
       command: 'build',
       target: 'server',
       bunBuildConfig,
       bunPlugins: [],
     })
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
     const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',

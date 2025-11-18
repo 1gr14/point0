@@ -1816,7 +1816,8 @@ export class FileWatcher {
 
   private constructor(opts: FileWatcherOptions) {
     this.generators = opts.generators
-    this.watchDir = getDirByPaths({ paths: opts.generators.flatMap((g) => g.globInclude), fallbackDir: process.cwd() })
+    const globPaths = opts.generators.flatMap((g) => g.globInclude)
+    this.watchDir = globPaths.length > 0 ? getDirByPaths({ paths: globPaths }) : process.cwd()
     this.ignore = opts.ignore ?? opts.generators.flatMap((g) => g.globExclude)
     for (const g of opts.generators) {
       if (g.outputLazyAbs) {

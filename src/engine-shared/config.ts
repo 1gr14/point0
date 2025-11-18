@@ -194,24 +194,39 @@ const parseEngineGeneralOptions = ({
   const { cwdAfterBuild, cwdBeforeBuild, cwd } = (() => {
     generalOptions.itWasBuilt ??= process.env.ENGINE_WAS_BUILT === 'true'
 
-    if (generalOptions.engineFile) {
-      if (!itWasBuilt) {
-        generalOptions.cwdBeforeBuild ??=
-          process.env.ENGINE_CWD_BEFORE_BUILD ?? nodePath.dirname(generalOptions.engineFile)
-      } else {
-        generalOptions.cwdAfterBuild ??= nodePath.dirname(generalOptions.engineFile)
+    if (!itWasBuilt) {
+      if (generalOptions.engineFile) {
+        generalOptions.cwdBeforeBuild ??= nodePath.dirname(generalOptions.engineFile)
       }
-    }
-
-    generalOptions.cwdBeforeBuild ??= process.env.ENGINE_CWD_BEFORE_BUILD
-
-    if (!generalOptions.cwdAfterBuild && generalOptions.cwdBeforeBuild && serverOptions.outdir) {
-      if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
-        throw new Error(
-          `cwdBeforeBuild "${generalOptions.cwdBeforeBuild}" is not absolute, but should be, while tryin auto detect cwdAfterBuild`,
-        )
+      if (!generalOptions.cwdAfterBuild && generalOptions.cwdBeforeBuild && serverOptions.outdir) {
+        if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
+          throw new Error(
+            `cwdBeforeBuild "${generalOptions.cwdBeforeBuild}" is not absolute, but should be, while tryin auto detect cwdAfterBuild`,
+          )
+        }
+        generalOptions.cwdAfterBuild = nodePath.resolve(generalOptions.cwdBeforeBuild, serverOptions.outdir)
       }
-      generalOptions.cwdAfterBuild = nodePath.resolve(generalOptions.cwdBeforeBuild, serverOptions.outdir)
+    } else {
+      if (!generalOptions.cwdBeforeBuild || !generalOptions.cwdAfterBuild) {
+        const ENGINE_CWD_BEFORE_BUILD_CUTTED = process.env.ENGINE_CWD_BEFORE_BUILD ?? null
+        const ENGINE_CWD_AFTER_BUILD_CUTTED = process.env.ENGINE_CWD_AFTER_BUILD ?? null
+        if (!ENGINE_CWD_BEFORE_BUILD_CUTTED || !ENGINE_CWD_AFTER_BUILD_CUTTED || !generalOptions.engineFile) {
+          throw new Error(
+            `You should provide ENGINE_CWD_BEFORE_BUILD and ENGINE_CWD_AFTER_BUILD and engineFile if itWasBuilt is true and cwdBeforeBuild and cwdAfterBuild are not provided`,
+          )
+        }
+        const CWD_AFTER_BUILD_CURRENT = nodePath.dirname(generalOptions.engineFile)
+        if (!CWD_AFTER_BUILD_CURRENT.endsWith(ENGINE_CWD_AFTER_BUILD_CUTTED)) {
+          throw new Error(
+            `ENGINE_CWD_AFTER_BUILD_CUTTED "${ENGINE_CWD_AFTER_BUILD_CUTTED}" is not a subdirectory of CWD_AFTER_BUILD_CURRENT "${CWD_AFTER_BUILD_CURRENT}"`,
+          )
+        }
+        const localDir = CWD_AFTER_BUILD_CURRENT.replace(new RegExp(`${ENGINE_CWD_AFTER_BUILD_CUTTED}$`), '')
+        generalOptions.cwdBeforeBuild = nodePath.join(localDir, ENGINE_CWD_BEFORE_BUILD_CUTTED)
+        generalOptions.cwdAfterBuild = nodePath.join(localDir, ENGINE_CWD_AFTER_BUILD_CUTTED)
+        console.log('generalOptions.cwdBeforeBuild', generalOptions.cwdBeforeBuild)
+        console.log('generalOptions.cwdAfterBuild', generalOptions.cwdAfterBuild)
+      }
     }
 
     if (!generalOptions.cwdBeforeBuild && !generalOptions.cwdAfterBuild) {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 import { parseEngineOptions } from './config.js'
 import { omit } from 'lodash'
+import { Point0 } from '../core/index.js'
 
 describe('parseEngineOptions', () => {
   it('should parse engine options', () => {
@@ -12,7 +13,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         scope: 'server',
-        points: {} as never,
+        points: { root: Point0.source('server').base() } as never,
         port: 3000,
         entry: './index.server.ts',
         outdir: '../dist/server',
@@ -40,6 +41,8 @@ describe('parseEngineOptions', () => {
           {
             "app": "/home/src/app.js",
             "basepath": "/",
+            "bunBuildConfig": {},
+            "bunPlugins": [],
             "domRootElementId": "root",
             "env": {
               "SOURCE_BASE_URL": undefined,
@@ -72,7 +75,7 @@ describe('parseEngineOptions', () => {
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
           "engineFile": null,
-          "fallbackScope": null,
+          "fallbackScope": "client",
           "itWasBuilt": false,
           "logger": {
             "error": [Function: error],
@@ -80,11 +83,16 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
+          "bunBuildConfig": {},
+          "bunPlugins": [],
+          "cwdBeforeBuild": "/home/src",
           "engineFile": null,
           "entry": {
             "main": "/home/src/index.server.ts",
           },
+          "fallbackScope": "client",
           "hmrPort": 3100,
+          "itWasBuilt": false,
           "outdir": "/home/dist/server",
           "port": 3000,
           "publicdir": [],
@@ -104,7 +112,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         scope: 'server',
-        points: {} as never,
+        points: { root: Point0.source('server').base() } as never,
         port: 3000,
         entry: './index.server.ts',
         outdir: '../dist/server',
@@ -132,6 +140,8 @@ describe('parseEngineOptions', () => {
           {
             "app": "/home/dist/clients-server/client/app.js",
             "basepath": "/",
+            "bunBuildConfig": {},
+            "bunPlugins": [],
             "domRootElementId": "root",
             "env": {
               "SOURCE_BASE_URL": undefined,
@@ -164,7 +174,7 @@ describe('parseEngineOptions', () => {
           "cwdAfterBuild": "/home/dist/server",
           "cwdBeforeBuild": "/home/src",
           "engineFile": null,
-          "fallbackScope": null,
+          "fallbackScope": "client",
           "itWasBuilt": true,
           "logger": {
             "error": [Function: error],
@@ -172,11 +182,16 @@ describe('parseEngineOptions', () => {
           },
         },
         "server": {
+          "bunBuildConfig": {},
+          "bunPlugins": [],
+          "cwdBeforeBuild": "/home/src",
           "engineFile": null,
           "entry": {
             "main": "/home/dist/server/index.server.js",
           },
+          "fallbackScope": "client",
           "hmrPort": 3100,
+          "itWasBuilt": true,
           "outdir": "/home/dist/server",
           "port": 3000,
           "publicdir": [],

@@ -160,6 +160,7 @@ const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
 client input
+node engine
 ? Сделать простой клон поинтов с учётом клона генерал стора, чтобы дать возможность при сср прокидывать туда хотя бы поле из сср, а ещё лучге и квери клиент
 на уровне поиинта base.store(zustand).page(({stroe})); or const myStore = client.lets('store', 'myStore').store(() => createZustand()); myStore.use()
 ? statefull meta, or better ↓

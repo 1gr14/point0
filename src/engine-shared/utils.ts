@@ -156,19 +156,17 @@ export const prependAndAppendSlash = <T extends string | undefined | null>(path:
 
 export const getDirByPaths = ({
   paths,
-  fallbackDir,
   pathsHasGlob = null,
   pathsHasFiles = null,
   pathsHasDirs = null,
 }: {
   paths: string[]
-  fallbackDir: string
   pathsHasGlob?: boolean | null
   pathsHasFiles?: boolean | null
   pathsHasDirs?: boolean | null
 }): string => {
   if (paths.length === 0) {
-    return fallbackDir
+    throw new Error('paths is empty')
   }
 
   function stripGlobParts(p: string): string {
