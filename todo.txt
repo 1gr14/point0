@@ -75,6 +75,7 @@ preserve client loaders also, and then on lets we have middleware-client but if 
 router export function getCurrentLocation()
 onResponse onRequest → onReq onRes req res
 Point0 → Point
+after build validate if dist paths exists, like engine.validate()
 add engine client options serveByServer: boolean default true
 in engine remove undefined and set it to null
 __POINT0_ENV__ and other make simple, remove POINT0 prefix

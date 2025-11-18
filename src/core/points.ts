@@ -780,6 +780,8 @@ export type LazyPointsModule = {
 } & Record<string, LazyPointsCollectionRecord>
 export type ReadyPointsModule = { root: RootPoint } & Record<string, { point: EndPoint }>
 
+export type PointsModuleType = 'ready' | 'lazy'
+
 export type LazyPoints = Points<false>
 export type ReadyPoints = Points<true>
 
