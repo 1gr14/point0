@@ -4,7 +4,6 @@ import type { AppComponent } from '../core/mount.js'
 import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { PointsScope } from '../core/types.js'
-import type { BunBuildConfigDefinition, BunPluginsDefinition } from '../engine-bun/utils.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
 import type { Routes } from '@devp0nt/route0'
 
@@ -54,8 +53,6 @@ export type EngineServerOptions = {
   outdir?: string | null
   entry?: string | Record<string, string> | null
   publicdirOutdir?: string | null
-  bunBuildConfig?: BunBuildConfigDefinition
-  bunPlugins?: BunPluginsDefinition
   routes?: Routes | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
@@ -74,8 +71,6 @@ export type EngineClientOptions = {
   port?: number | string | null
   hmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
-  bunBuildConfig?: BunBuildConfigDefinition
-  bunPlugins?: BunPluginsDefinition
   outdir?: string | null
   serverOutdir?: string | null
   publicdirOutdir?: string | null
@@ -119,8 +114,6 @@ export type EngineClientOptionsParsed = {
   index: number
   viteConfig: EngineOptionsViteConfig | null
   outdir: string | null
-  bunBuildConfig: BunBuildConfigDefinition
-  bunPlugins: BunPluginsDefinition
   serverOutdir: string | null
   publicdirOutdir: string | null
   routes: Routes | string | null
@@ -140,8 +133,6 @@ export type EngineServerOptionsParsed = {
   cwdBeforeBuild: string
   itWasBuilt: boolean
   fallbackScope: PointsScope
-  bunBuildConfig: BunBuildConfigDefinition
-  bunPlugins: BunPluginsDefinition
   routes: Routes | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
@@ -419,8 +410,6 @@ export const parseEngineServerOptions = ({
     cwdBeforeBuild: generalOptionsParsed.cwdBeforeBuild,
     itWasBuilt: generalOptionsParsed.itWasBuilt,
     fallbackScope: generalOptionsParsed.fallbackScope,
-    bunBuildConfig: serverOptions.bunBuildConfig ?? {},
-    bunPlugins: serverOptions.bunPlugins ?? [],
     routes: serverOptions.routes ?? null,
     pointsModuleType: serverOptions.pointsModuleType ?? 'ready',
     banner: serverOptions.banner ?? null,
@@ -517,8 +506,6 @@ const parseEngineClientOptions = ({
           : [],
     serverOutdir,
     publicdirOutdir,
-    bunBuildConfig: clientOptions.bunBuildConfig ?? {},
-    bunPlugins: clientOptions.bunPlugins ?? [],
     routes: clientOptions.routes ?? null,
     pointsModuleType: clientOptions.pointsModuleType ?? 'lazy',
     banner: clientOptions.banner ?? null,

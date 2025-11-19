@@ -3,7 +3,8 @@ import * as nodePath from 'node:path'
 import type { Eversion } from '../core/eversion.js'
 import type { RootPoint } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import { prependAndDeappendSlash, withError } from '../engine-shared/utils.js'
+import type { RuntimeAdapter } from './adapters.js'
+import { prependAndDeappendSlash, withError } from './utils.js'
 
 export class Publicdir<TInitialized extends boolean = boolean> {
   hostname: string | null
@@ -13,6 +14,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   eversion: TInitialized extends true ? Eversion : Eversion | null
   outdir: string | null
   initialized: TInitialized
+  adapter: RuntimeAdapter
 
   root: TInitialized extends true ? RootPoint : RootPoint | null
 
@@ -23,6 +25,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     root: RootPoint | null
     eversion: Eversion | null
     outdir: string | null
+    adapter: RuntimeAdapter
   }) {
     this.hostname = input.hostname
     this.definition = input.definition
@@ -31,6 +34,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     this.eversion = input.eversion as TInitialized extends true ? Eversion : null
     this.outdir = input.outdir
     this.initialized = input.initialized
+    this.adapter = input.adapter
   }
 
   static create(input: {
@@ -39,6 +43,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     root: RootPoint | null
     eversion: Eversion | null
     outdir: string | null
+    adapter: RuntimeAdapter
   }): Publicdir<false> {
     return new Publicdir<false>({
       ...input,
@@ -59,7 +64,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   }
 
   async loadFiles(): Promise<void> {
-    const glob = new Bun.Glob('**/*')
+    const glob = this.adapter.glob('**/*')
     await Promise.all(
       this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
@@ -111,7 +116,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
 
     const response =
       typeof fileAbsPathOrResponseOrFn === 'string'
-        ? new Response(Bun.file(fileAbsPathOrResponseOrFn))
+        ? new Response(this.adapter.file(fileAbsPathOrResponseOrFn).stream())
         : typeof fileAbsPathOrResponseOrFn === 'function'
           ? await fileAbsPathOrResponseOrFn()
           : fileAbsPathOrResponseOrFn
@@ -153,7 +158,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     }
 
     await nodeFs.mkdir(outdir, { recursive: true })
-    const glob = new Bun.Glob('**/*')
+    const glob = this.adapter.glob('**/*')
     const fileOperations: Array<Promise<string>> = []
 
     await Promise.all(
@@ -168,11 +173,11 @@ export class Publicdir<TInitialized extends boolean = boolean> {
             fileOperations.push(
               (async () => {
                 const content = await withError(
-                  async () => await Bun.file(fileAbsPath).text(),
+                  async () => await this.adapter.file.text(fileAbsPath),
                   `Failed while building publicdir for ${this.root._scope}`,
                 )
                 // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
-                await Bun.write(distAbsPath, content)
+                await this.adapter.write(distAbsPath, content)
                 return distAbsPath
               })(),
             )
@@ -186,7 +191,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
               const content = await response.text()
               const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
               // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
-              await Bun.write(distAbsPath, content)
+              await this.adapter.write(distAbsPath, content)
               return distAbsPath
             })(),
           )

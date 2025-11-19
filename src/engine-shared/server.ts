@@ -4,7 +4,7 @@ import { Eversion } from '../core/eversion.js'
 import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { PointsScope, RequiredCtx } from '../core/types.js'
-import { parseUrl, type ParsedUrl } from '../core/utils.js'
+import type { ParsedUrl } from '../core/utils.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
 import {
   getDirByPaths,
@@ -13,6 +13,7 @@ import {
   validateEntrypoints,
   withError,
 } from '../engine-shared/utils.js'
+import type { RuntimeAdapter } from './adapters.js'
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
@@ -40,7 +41,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   fallbackScope: PointsScope
   initialized: TInitialized
-  bunServer: Bun.Server<unknown> | undefined
+  serverHandle: any // Bun.Server<unknown> | http.Server | undefined
+  adapter: RuntimeAdapter
 
   private constructor(input: {
     initialized: TInitialized
@@ -64,6 +66,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     bunPlugins: BunPluginsDefinition
     publicdirOutdir: string | null
     eversion: Eversion | null
+    adapter: RuntimeAdapter
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : null
@@ -86,6 +89,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.publicdirOutdir = input.publicdirOutdir
     this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
+    this.adapter = input.adapter
   }
 
   static create(input: {
@@ -106,6 +110,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
+    adapter: RuntimeAdapter
   }): ServerBun<false> {
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
@@ -119,6 +124,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       root: null,
       eversion,
       outdir: input.publicdirOutdir,
+      adapter: input.adapter,
     })
 
     const server = new ServerBun<false>({
@@ -129,6 +135,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       pointsFile,
       providedPoints,
       initialized: false,
+      adapter: input.adapter,
     })
     return server
   }
@@ -174,88 +181,21 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
-    this.bunServer = Bun.serve({
-      port: this.port,
-      fetch: async (request, server) => {
-        const parsedUrl = parseUrl(request.url)
+    if (!this.isInitialized()) {
+      throw new Error('Server is not initialized')
+    }
 
-        if (process.env.NODE_ENV !== 'production') {
-          for (const client of this.clients) {
-            const bunDevServerUpgradeWebSocketResult = await client.upgradeBunDevServerWebSocket(
-              request,
-              server,
-              parsedUrl,
-            )
-            if (bunDevServerUpgradeWebSocketResult) {
-              return bunDevServerUpgradeWebSocketResult.result
-            }
-            const viteDevServerResponse = await client.fetchViteDevServerMiddleware(request, parsedUrl)
-            if (viteDevServerResponse) {
-              return viteDevServerResponse
-            }
-            const bunDevServerResponse = await client.fetchBunDevServerMiddleware(request, parsedUrl)
-            if (bunDevServerResponse) {
-              return bunDevServerResponse
-            }
-          }
-        }
+    // Detect runtime and dynamically import the appropriate serve implementation
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const isBun = typeof Bun !== 'undefined' || (typeof process !== 'undefined' && process.versions?.bun !== undefined)
 
-        return await this.fetch({ parsedUrl, request, requiredCtx })
-      },
-      websocket: {
-        open(ws) {
-          if (process.env.NODE_ENV !== 'production') {
-            // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
-            const data = ws.data as { wsUrl?: string; upstream?: WebSocket }
-            if (!data.wsUrl) {
-              return
-            }
-
-            // Connect to upstream WebSocket when client connects
-            const upstream = new WebSocket(data.wsUrl)
-
-            upstream.onopen = () => {
-              // Store upstream reference in ws data
-              data.upstream = upstream
-            }
-
-            upstream.onmessage = (event) => {
-              // Forward messages from upstream to client
-              ws.send(event.data)
-            }
-
-            upstream.onclose = () => {
-              ws.close()
-            }
-
-            upstream.onerror = () => {
-              ws.close()
-            }
-
-            // Store upstream for later use
-            data.upstream = upstream
-          }
-        },
-        message(ws, message) {
-          // Forward messages from client to upstream (only for proxied connections)
-          if (process.env.NODE_ENV !== 'production') {
-            const data = ws.data as { upstream?: WebSocket }
-            if (data.upstream && data.upstream.readyState === WebSocket.OPEN) {
-              data.upstream.send(message)
-            }
-          }
-        },
-        close(ws) {
-          if (process.env.NODE_ENV !== 'production') {
-            // Clean up upstream connection when client disconnects
-            const data = ws.data as { upstream?: WebSocket }
-            if (data.upstream) {
-              data.upstream.close()
-            }
-          }
-        },
-      },
-    })
+    if (isBun) {
+      const { serveServerViaBun } = await import('../engine-bun/serve.js')
+      this.serverHandle = await serveServerViaBun({ server: this, requiredCtx })
+    } else {
+      const { serveServerViaNode } = await import('../engine-node/serve.js')
+      this.serverHandle = await serveServerViaNode({ server: this, requiredCtx })
+    }
   }
 
   getBuildPaths(): {
@@ -431,6 +371,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       scope,
       requiredCtx,
       logger: this.logger,
+      adapter: this.adapter,
     })
   }
 }

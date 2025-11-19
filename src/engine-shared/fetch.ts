@@ -3,6 +3,7 @@ import type { RequiredCtx, PointsScope, WrapResponseFn } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
 import type { EngineLogger } from '../engine-shared/config.js'
 import { toJsonErrorResponse } from '../engine-shared/error.js'
+import type { RuntimeAdapter } from './adapters.js'
 import type { ClientBun } from './client.js'
 import type { ServerBun } from './server.js'
 
@@ -16,6 +17,7 @@ export const engineFetch = async ({
   fallbackScope,
   requiredCtx,
   logger,
+  adapter,
 }: {
   server: ServerBun<true>
   clients: Array<ClientBun<true>>
@@ -26,6 +28,7 @@ export const engineFetch = async ({
   fallbackScope: PointsScope
   requiredCtx: RequiredCtx
   logger: EngineLogger
+  adapter: RuntimeAdapter
 }): Promise<Response> => {
   if (process.env.NODE_ENV !== 'production') {
     // in case if some points was loaded via vite, we should refetch them
@@ -90,7 +93,7 @@ export const engineFetch = async ({
     }
 
     if (!suitable.point && process.env.NODE_ENV !== 'production') {
-      const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ parsedUrl, request })
+      const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ parsedUrl, request, adapter })
       if (responseFromAbsFilePath) {
         return responseFromAbsFilePath
       }
@@ -222,9 +225,11 @@ export const engineFetch = async ({
 async function fetchAbsFilePathOnDevServer({
   parsedUrl,
   request,
+  adapter,
 }: {
   parsedUrl?: ParsedUrl
   request: Request
+  adapter: RuntimeAdapter
 }): Promise<Response | undefined> {
   // if it is client bun dev serverm and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
   if (process.env.NODE_ENV === 'production') {
@@ -232,9 +237,8 @@ async function fetchAbsFilePathOnDevServer({
   }
   parsedUrl ??= parseUrl(request.url)
   const absPath = parsedUrl.urlObj.pathname
-  const bunFile = Bun.file(absPath)
-  if (await bunFile.exists()) {
-    return new Response(Bun.file(absPath))
+  if (await adapter.file.exists(absPath)) {
+    return new Response(adapter.file(absPath).stream())
   }
   return undefined
 }

@@ -20,6 +20,7 @@ import type {
 } from '../engine-shared/config.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
 import { toJsExtension, validateEntrypoints, withError } from '../engine-shared/utils.js'
+import type { RuntimeAdapter } from './adapters.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
 import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from '../engine-bun/utils.js'
@@ -54,6 +55,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   bunDevServer: Bun.Server<unknown> | null
   viteDevServer: ViteDevServer | null
   initialized: TInitialized
+  adapter: RuntimeAdapter
 
   private constructor(input: {
     initialized: TInitialized
@@ -85,6 +87,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     viteDevServer: ViteDevServer | null
     bunDevServer: Bun.Server<unknown> | null
     server: ServerBun
+    adapter: RuntimeAdapter
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
@@ -115,6 +118,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.bunDevServer = input.bunDevServer
     this.server = input.server
     this.initialized = input.initialized
+    this.adapter = input.adapter
   }
 
   static create(input: {
@@ -140,6 +144,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     eversion: Eversion | null
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
+    adapter: RuntimeAdapter
   }): ClientBun<false> {
     const viteDevServer = null
 
@@ -155,6 +160,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       root: null,
       eversion: input.eversion,
       outdir: input.publicdirOutdir,
+      adapter: input.adapter,
     })
 
     const distIndexHtmlContent = null
@@ -171,6 +177,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       viteDevServer,
       bunDevServer,
       initialized: false,
+      adapter: input.adapter,
     })
 
     return client
@@ -208,7 +215,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     await this.publicdir.init({ root: this.points.root, eversion })
 
     this.distIndexHtmlContent =
-      process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null
+      process.env.NODE_ENV === 'production' && this.indexHtml ? await this.adapter.file.text(this.indexHtml) : null
     this.initialized = true as never
     return this as ClientBun<true>
   }
@@ -517,7 +524,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
     if (process.env.NODE_ENV !== 'production') {
       if (this.viteDevServer) {
-        return await this.viteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
+        return await this.viteDevServer.transformIndexHtml(url, await this.adapter.file.text(this.indexHtml))
       } else if (this.bunDevServer) {
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
       } else {
@@ -750,7 +757,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       isSsrBuild: false,
     })
 
-    if (!(await Bun.file(buildPaths.indexHtml).exists())) {
+    if (!(await this.adapter.file.exists(buildPaths.indexHtml))) {
       throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.points.root._scope}"`)
     }
 

@@ -6,6 +6,7 @@ import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
 import type { FilesGeneratorTargetOptions } from '../engine-shared/generator.js'
 import { FilesGenerator } from '../engine-shared/generator.js'
+import type { RuntimeAdapter } from './adapters.js'
 import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
 
@@ -33,11 +34,47 @@ export class Engine<TInitialized extends boolean = boolean> {
     this.generator = input.generator
   }
 
-  static create(fileUrl: string, options: EngineOptions): Engine<false>
-  static create(options: EngineOptions): Engine<false>
-  static create(...args: [string, EngineOptions] | [EngineOptions]): Engine<false> {
-    const options = args.length === 2 ? args[1] : args[0]
-    const fileUrl = args.length === 2 ? args[0] : undefined
+  static create(
+    fileUrl: string,
+    options: EngineOptions,
+    adapter: RuntimeAdapter,
+    extendedOptions?: {
+      server?: { bunBuildConfig?: any; bunPlugins?: any }
+      clients?: Array<{ bunBuildConfig?: any; bunPlugins?: any }>
+    },
+  ): Engine<false>
+  static create(
+    options: EngineOptions,
+    adapter: RuntimeAdapter,
+    extendedOptions?: {
+      server?: { bunBuildConfig?: any; bunPlugins?: any }
+      clients?: Array<{ bunBuildConfig?: any; bunPlugins?: any }>
+    },
+  ): Engine<false>
+  static create(
+    ...args:
+      | [
+          string,
+          EngineOptions,
+          RuntimeAdapter,
+          {
+            server?: { bunBuildConfig?: any; bunPlugins?: any }
+            clients?: Array<{ bunBuildConfig?: any; bunPlugins?: any }>
+          }?,
+        ]
+      | [
+          EngineOptions,
+          RuntimeAdapter,
+          {
+            server?: { bunBuildConfig?: any; bunPlugins?: any }
+            clients?: Array<{ bunBuildConfig?: any; bunPlugins?: any }>
+          }?,
+        ]
+  ): Engine<false> {
+    const options = args.length >= 2 && typeof args[0] === 'string' ? args[1] : args[0]
+    const fileUrl = args.length >= 2 && typeof args[0] === 'string' ? args[0] : undefined
+    const adapter = args.length >= 2 && typeof args[0] === 'string' ? args[2] : args[1]
+    const extendedOptions = (args.length >= 2 && typeof args[0] === 'string' ? args[3] : args[2]) ?? {}
     if (fileUrl) {
       options.engineFile ??= fileURLToPath(fileUrl)
     }
@@ -49,17 +86,23 @@ export class Engine<TInitialized extends boolean = boolean> {
       engineFile: parsedOptions.general.engineFile,
       logger: parsedOptions.general.logger,
       clients: [],
+      bunBuildConfig: extendedOptions.server?.bunBuildConfig ?? {},
+      bunPlugins: extendedOptions.server?.bunPlugins ?? [],
+      adapter,
     })
 
     const eversion = server.eversion
 
-    const clients = parsedOptions.clients.map((clientOptions) => {
+    const clients = parsedOptions.clients.map((clientOptions, index) => {
       const client = ClientBun.create({
         ...clientOptions,
         cwd: parsedOptions.general.cwd,
         logger: parsedOptions.general.logger,
         eversion,
         server,
+        bunBuildConfig: extendedOptions.clients?.[index]?.bunBuildConfig ?? {},
+        bunPlugins: extendedOptions.clients?.[index]?.bunPlugins ?? [],
+        adapter,
       })
       return client
     })
