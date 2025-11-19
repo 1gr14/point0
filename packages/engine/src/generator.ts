@@ -224,6 +224,9 @@ export class FilesGenerator {
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
+    for (const error of errors) {
+      console.error(`${error instanceof Error ? error.message : String(error)}`)
+    }
     return {
       points: newPoints,
       deleted: diff.deleted,

@@ -68,18 +68,6 @@ export const BestIdeaComponent_o8xolzba7d_lazy = {
   point: async () => (await import('../pages/home.js')).BestIdeaComponent.point,
 } as LazyPointsCollectionRecord
 
-export const createIdeaMutation_unrrqvlws5_lazy = {
-  type: 'mutation',
-  name: 'createIdea',
-  point: async () => (await import('../pages/idea-create.js')).createIdeaMutation.point,
-} as LazyPointsCollectionRecord
-
-export const generateIdeaMutation_13o4qpg62q6_lazy = {
-  type: 'response',
-  name: 'generateIdea',
-  point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation.point,
-} as LazyPointsCollectionRecord
-
 export const clientCtx1_1s8ucxfgvt6_lazy = {
   type: 'provider',
   name: 'testClientCtx1',
