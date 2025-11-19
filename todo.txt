@@ -1,7 +1,5 @@
-cli
+packages
 respect path aliases in generator and in imports of points or app
-
-node
 
 serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 remove server code from client, and client code from server
@@ -163,9 +161,9 @@ const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
 client input
+node
 node engine
-? Сделать простой клон поинтов с учётом клона генерал стора, чтобы дать возможность при сср прокидывать туда хотя бы поле из сср, а ещё лучге и квери клиент
-на уровне поиинта base.store(zustand).page(({stroe})); or const myStore = client.lets('store', 'myStore').store(() => createZustand()); myStore.use()
+? at the point level: base.store(zustand).page(({store})); or const myStore = client.lets('store', 'myStore').store(() => createZustand()); myStore.use()
 ? statefull meta, or better ↓
 {...head} as only or second argument in loading and error fns, and as second arg in page fn
 .output(z.object({}))
