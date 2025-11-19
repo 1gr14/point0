@@ -42,9 +42,34 @@ export class Walker {
   // Map<fileAbs:baseIdentifier, Map<string[]>>
   readonly layoutsCache = new Map<string, string[]>()
 
+  // Cache for TypeScript compiler options per directory
+  // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
+  private readonly tsConfigCache = new Map<string, any>()
+
+  // Lazy-loaded TypeScript module (null if not available)
+  private tsModule: typeof import('typescript') | null | undefined = undefined
+
   constructor({ cwd, routes }: { cwd: string; routes: Record<string, Routes> }) {
     this.cwd = cwd
     this.routes = routes
+  }
+
+  /**
+   * Lazy-loads TypeScript module if available.
+   * Returns null if TypeScript is not installed.
+   */
+  private async getTypeScriptModule(): Promise<typeof import('typescript') | null> {
+    if (this.tsModule !== undefined) {
+      return this.tsModule
+    }
+
+    try {
+      this.tsModule = await import('typescript')
+      return this.tsModule
+    } catch {
+      this.tsModule = null
+      return null
+    }
   }
 
   getRoutesByScope(scope: string): Routes | undefined {
@@ -811,7 +836,7 @@ export class Walker {
 
     // parent is in SAME file (export const child = parent....)
     const parentAbs = parentImportPath
-      ? await Walker.detectExistingFilePathByImportPath(nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath))
+      ? await this.detectExistingFilePathByImportPath(parentImportPath, fileAbs)
       : fileAbs
     if (!parentAbs) {
       console.warn(
@@ -978,7 +1003,7 @@ export class Walker {
     // 3) resolve parent file
     //
     const parentAbs = parentImportPath
-      ? await Walker.detectExistingFilePathByImportPath(nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath))
+      ? await this.detectExistingFilePathByImportPath(parentImportPath, fileAbs)
       : fileAbs
 
     if (!parentAbs) {
@@ -1103,7 +1128,7 @@ export class Walker {
 
       // Resolve parent file
       const parentAbs = parentImportPath
-        ? await Walker.detectExistingFilePathByImportPath(nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath))
+        ? await this.detectExistingFilePathByImportPath(parentImportPath, fileAbs)
         : fileAbs
 
       if (!parentAbs) {
@@ -1150,7 +1175,7 @@ export class Walker {
 
     // Resolve parent file
     const parentAbs = parentImportPath
-      ? await Walker.detectExistingFilePathByImportPath(nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath))
+      ? await this.detectExistingFilePathByImportPath(parentImportPath, fileAbs)
       : fileAbs
 
     if (!parentAbs) {
@@ -1229,12 +1254,145 @@ export class Walker {
 
   // helpers
 
-  private static async detectExistingFilePathByImportPath(importPath: string): Promise<string | undefined> {
+  /**
+   * Loads and caches TypeScript compiler options for a given directory.
+   * Searches up the directory tree to find the nearest tsconfig.json.
+   * Returns null if TypeScript is not available or no tsconfig is found.
+   */
+  private async getTsConfigForDirectory(dir: string): Promise<any | null> {
+    // Check cache first
+    if (this.tsConfigCache.has(dir)) {
+      return this.tsConfigCache.get(dir) ?? null
+    }
+
+    // Check if TypeScript is available
+    const ts = await this.getTypeScriptModule()
+    if (!ts) {
+      // Cache null for all directories to avoid repeated checks
+      this.tsConfigCache.set(dir, null)
+      return null
+    }
+
+    // Find the nearest tsconfig.json by walking up the directory tree
+    let currentDir = nodePath.resolve(dir)
+    const root = nodePath.parse(currentDir).root
+
+    while (currentDir !== root) {
+      const tsConfigPath = nodePath.join(currentDir, 'tsconfig.json')
+      try {
+        // Use synchronous read for caching (ts.sys.readFile is synchronous)
+        const configFileText = ts.sys.readFile(tsConfigPath)
+        if (configFileText) {
+          const configFile = ts.readConfigFile(tsConfigPath, ts.sys.readFile)
+          if (configFile.error) {
+            // Cache null to avoid re-reading
+            this.tsConfigCache.set(dir, null)
+            return null
+          }
+
+          const parsedConfig = ts.parseJsonConfigFileContent(
+            configFile.config,
+            ts.sys,
+            currentDir,
+            undefined,
+            tsConfigPath,
+          )
+
+          // Cache for this directory and all parent directories we checked
+          let cacheDir = dir
+          while (cacheDir !== currentDir && cacheDir !== root) {
+            this.tsConfigCache.set(cacheDir, parsedConfig)
+            cacheDir = nodePath.dirname(cacheDir)
+          }
+          this.tsConfigCache.set(currentDir, parsedConfig)
+          this.tsConfigCache.set(dir, parsedConfig)
+
+          return parsedConfig
+        }
+      } catch {
+        // File doesn't exist, continue searching up
+      }
+
+      const parentDir = nodePath.dirname(currentDir)
+      if (parentDir === currentDir) break
+      currentDir = parentDir
+    }
+
+    // No tsconfig found, cache null
+    this.tsConfigCache.set(dir, null)
+    return null
+  }
+
+  /**
+   * Resolves an import path using TypeScript's module resolution.
+   * This handles TypeScript path aliases (paths in tsconfig.json) and relative paths.
+   * TypeScript's resolver can handle:
+   * - Path aliases (e.g., @/lib/client)
+   * - Relative paths with extension resolution
+   * - Index file resolution (e.g., ./dir -> ./dir/index.ts)
+   * Returns undefined if TypeScript is not available or resolution fails.
+   */
+  private async resolveTsImport(importPath: string, containingFile: string): Promise<string | undefined> {
+    // Skip absolute paths - they don't need TypeScript resolution
+    if (nodePath.isAbsolute(importPath)) {
+      return undefined
+    }
+
+    // Check if TypeScript is available
+    const ts = await this.getTypeScriptModule()
+    if (!ts) {
+      return undefined
+    }
+
+    const containingDir = nodePath.dirname(containingFile)
+    const tsConfig = await this.getTsConfigForDirectory(containingDir)
+
+    if (!tsConfig) {
+      return undefined
+    }
+
+    try {
+      const result = ts.resolveModuleName(importPath, containingFile, tsConfig.options, ts.sys)
+      return result.resolvedModule?.resolvedFileName
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Detects the actual file path for an import path.
+   * First tries TypeScript resolution (for path aliases and relative paths),
+   * then falls back to relative path resolution with extension guessing.
+   */
+  private async detectExistingFilePathByImportPath(
+    importPath: string,
+    containingFile?: string,
+  ): Promise<string | undefined> {
+    // If we have a containing file, try TypeScript resolution first
+    // This handles both path aliases (like @/lib/client) and relative paths
+    if (containingFile) {
+      const tsResolved = await this.resolveTsImport(importPath, containingFile)
+      if (tsResolved) {
+        try {
+          await nodeFs.access(tsResolved)
+          return tsResolved
+        } catch {
+          // File doesn't exist, continue to fallback
+        }
+      }
+    }
+
+    // Fallback: try relative path resolution with extension guessing
+    // For relative paths, resolve relative to containing file
+    const basePath = containingFile && importPath.startsWith('.') ? nodePath.dirname(containingFile) : undefined
+
     const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
     const currentExt = nodePath.extname(importPath)
     const importPathWithoutExt = importPath.replace(currentExt, '')
+
     for (const ext of exts) {
-      const abs = importPathWithoutExt + ext
+      const candidatePath = importPathWithoutExt + ext
+      const abs = basePath ? nodePath.resolve(basePath, candidatePath) : candidatePath
       try {
         await nodeFs.access(abs)
         return abs
