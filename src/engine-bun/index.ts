@@ -1,3 +1,5 @@
+import nodeFs from 'node:fs'
+import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Eversion } from '../core/eversion.js'
 import type { PointsScope, RequiredCtx } from '../core/types.js'
@@ -182,7 +184,26 @@ export class Engine<TInitialized extends boolean = boolean> {
   }
 
   async generateWatch(): Promise<void> {
-    await this.generator.sync({ logOnNotWritten: false })
+    void this.generator.sync({ logOnNotWritten: false }).catch((error: unknown) => {
+      console.error(error)
+    })
     await this.generator.watch()
+  }
+
+  static findSelfFile(cwd: string = process.cwd()): string | undefined {
+    if (!nodePath.isAbsolute(cwd)) {
+      cwd = nodePath.resolve(process.cwd(), cwd)
+    }
+    const subdirs = ['.', './src']
+    const basenames = ['engine.ts', 'engine.js']
+    for (const subdir of subdirs) {
+      for (const basename of basenames) {
+        const filePath = nodePath.resolve(cwd, subdir, basename)
+        if (nodeFs.existsSync(filePath)) {
+          return filePath
+        }
+      }
+    }
+    return undefined
   }
 }

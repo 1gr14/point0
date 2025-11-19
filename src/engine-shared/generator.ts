@@ -202,21 +202,6 @@ export class FilesGenerator {
 
   // processing
 
-  validateTargetRootExists(target: FilesGeneratorTarget): void {
-    if (!target.outputPointsAbs) {
-      return
-    }
-    const rootPoints = this.points.filter((p) => p.root)
-    if (rootPoints.length === 0) {
-      throw new Error('Root point not found')
-    }
-    if (rootPoints.length > 1) {
-      throw new Error(
-        `Multiple root points are not allowed. Please, check why you have multiple root points. Found ${rootPoints.length} root points in ${rootPoints.map((p) => p.fileAbs).join(', ')}`,
-      )
-    }
-  }
-
   // TODO: not chunk size, but max in same time processing files
   async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent & { written: boolean }> {
     const files = [...this.files]
@@ -340,6 +325,36 @@ export class FilesGenerator {
 
   // emit
 
+  async isOutputFilesExists(): Promise<boolean> {
+    const results = await Promise.all(this.targets.map(async (target) => await this.isTargetOutputFilesExists(target)))
+    return results.every((r) => r)
+  }
+
+  async isTargetOutputFilesExists(target: FilesGeneratorTarget): Promise<boolean> {
+    if (!target.outputPointsAbs && !target.outputRoutesAbs) {
+      return true
+    }
+    const promises: Array<Promise<boolean>> = []
+    if (target.outputPointsAbs) {
+      promises.push(
+        nodeFs
+          .access(target.outputPointsAbs)
+          .then(() => true)
+          .catch(() => false),
+      )
+    }
+    if (target.outputRoutesAbs) {
+      promises.push(
+        nodeFs
+          .access(target.outputRoutesAbs)
+          .then(() => true)
+          .catch(() => false),
+      )
+    }
+    const results = await Promise.all(promises)
+    return results.every((r) => r)
+  }
+
   // private emitSuperStoreInitialization(): string[] {
   //   const lines: string[] = []
   //   lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
@@ -360,12 +375,12 @@ export class FilesGenerator {
     importLines: string[]
     importedPoints: Array<CollectedPoint & { hash: string; renamedExportName: string }>
     // rootSingleReexportLine: string // for lazy points file
-    rootSingleImportLine: string // for lazy points file
+    rootSingleImportLine: string | null // for lazy points file
   } {
     points = points.filter((p) => p.scope === target.scope)
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
-    let rootSingleImportLine: string | undefined
+    let rootSingleImportLine: string | null = null
 
     const importPathsAndExportNames: Array<{
       hasRoot: boolean
@@ -412,12 +427,8 @@ export class FilesGenerator {
             `Root import path and export name not found for ${importPathAndExportNames.importPath} for target ${target.scope}`,
           )
         }
-        // rootSingleReexportLine = `export { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
         rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
       }
-    }
-    if (!rootSingleImportLine) {
-      throw new Error(`Root single import line not found for target ${target.scope}`)
     }
     return { importLines, importedPoints, rootSingleImportLine }
   }
@@ -448,7 +459,9 @@ export class FilesGenerator {
       target,
     })
 
-    lines.push(rootSingleImportLine)
+    if (rootSingleImportLine) {
+      lines.push(rootSingleImportLine)
+    }
     lines.push(``)
 
     if (points.length === 0) {
