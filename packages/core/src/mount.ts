@@ -3,7 +3,7 @@ import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { LazyPointsModule, ReadyPointsModule } from './points.js'
 import { Points } from './points.js'
-import { SuperStore } from './super-store.js'
+import { EversionStore } from './eversion-store.js'
 
 let reactRoot: Root | null = null
 
@@ -25,8 +25,8 @@ export function mount(
     }
   }
 
-  if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-    SuperStore.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
+  if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_EVERSION_STORE__ !== 'undefined') {
+    EversionStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_EVERSION_STORE__)
   }
   const appElement = createElement(App, {
     points: Points.create(points),

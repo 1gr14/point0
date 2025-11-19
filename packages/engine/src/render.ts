@@ -4,8 +4,8 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun } from '@point0/core/eversion'
-import { SuperStore } from '@point0/core/super-store'
+import type { EversionRun } from '@point0/core/eversion-run'
+import { EversionStore } from '@point0/core/eversion-store'
 import type { AppComponent } from '@point0/core/mount'
 import type { AnyPoint, InputRaw } from '@point0/core/types'
 import type { AnyLocation } from '@devp0nt/route0'
@@ -102,12 +102,12 @@ export function addEnvToDocumentHtml({
   env ??= {}
   return prependHeadElement({
     content: `<script id="__POINT0_ENV__" type="text/javascript">
-  const __ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env }))};
+  const __POINT0_ENV__ = ${escapeForInlineJSON(JSON.stringify({ ...env }))};
   window.process = window.process || {};
-  window.process.env = { ...(window.process.env || {}), ...__ENV__ };
+  window.process.env = { ...(window.process.env || {}), ...__POINT0_ENV__ };
   window.import = window.import || {};
   window.import.meta = window.import.meta || {};
-  window.import.meta.env = { ...(window.import.meta.env || {}), ...__ENV__ };
+  window.import.meta.env = { ...(window.import.meta.env || {}), ...__POINT0_ENV__ };
 </script>`,
     html,
   })
@@ -149,7 +149,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   }
   html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
-    content: '<!-- __DEHYDRATED_SUPER_STORE__ -->',
+    content: '<!-- __POINT0_DEHYDRATED_EVERSION_STORE__ -->',
     html,
   })
 
@@ -200,12 +200,12 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const dehydrated = SuperStore.dehydrate()
+    const dehydrated = EversionStore.dehydrate()
     const escapedJS = escapeForInlineJSON(superjson.stringify(dehydrated))
     const compiledPrefix = (prefix ?? '').replace(
-      '<!-- __DEHYDRATED_SUPER_STORE__ -->',
-      `<script id="__DEHYDRATED_SUPER_STORE_SCRIPT__">
-         window.__DEHYDRATED_SUPER_STORE__ = ${JSON.stringify(escapedJS)};
+      '<!-- __POINT0_DEHYDRATED_EVERSION_STORE__ -->',
+      `<script id="__POINT0_DEHYDRATED_EVERSION_STORE_SCRIPT__">
+         window.__POINT0_DEHYDRATED_EVERSION_STORE__ = ${JSON.stringify(escapedJS)};
        </script>`,
     )
 

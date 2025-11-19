@@ -35,9 +35,17 @@
       "types": "./dist/router.d.ts",
       "import": "./dist/router.js"
     },
-    "./super-store": {
-      "types": "./dist/super-store.d.ts",
-      "import": "./dist/super-store.js"
+    "./eversion": {
+      "types": "./dist/eversion.d.ts",
+      "import": "./dist/eversion.js"
+    },
+    "./eversion-store": {
+      "types": "./dist/eversion-store.d.ts",
+      "import": "./dist/eversion-store.js"
+    },
+    "./eversion-run": {
+      "types": "./dist/eversion-run.d.ts",
+      "import": "./dist/eversion-run.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",
@@ -54,10 +62,6 @@
     "./client-server": {
       "types": "./dist/client-server.d.ts",
       "import": "./dist/client-server.js"
-    },
-    "./eversion": {
-      "types": "./dist/eversion.d.ts",
-      "import": "./dist/eversion.js"
     }
   },
   "files": [

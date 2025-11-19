@@ -9,6 +9,7 @@ const general = {
     'src/error.ts',
     'src/fetch.ts',
     'src/generator.ts',
+    'src/pruner.ts',
     'src/publicdir.ts',
     'src/render.ts',
     'src/server.ts',

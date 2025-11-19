@@ -2,47 +2,48 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 import type { IfAnyThenElse } from './types.js'
 import { isClient } from './client-server.js'
-;(globalThis as any).__SUPER_STORE_SERVER_STORAGE__ =
-  (globalThis as any).__SUPER_STORE_SERVER_STORAGE__ ||
+;(globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ =
+  (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ ||
   (isClient()
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>))
-// (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<SuperState>))
-;(globalThis as any).__SUPER_STORE_CONFIG__ = (globalThis as any).__SUPER_STORE_CONFIG__ || ({} as SuperStoreConfig)
+      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>))
+// (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<EversionStoreState>))
+;(globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ =
+  (globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ || ({} as EversionStoreConfig)
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
-export class SuperStore {
+export class EversionStore {
   private static dehydrated: Record<string, unknown> = {}
 
-  private static readonly clientState: SuperState = {}
-  static getFullConfig(): SuperStoreConfig {
-    return (globalThis as any).__SUPER_STORE_CONFIG__ as SuperStoreConfig
+  private static readonly clientState: EversionStoreState = {}
+  static getFullConfig(): EversionStoreConfig {
+    return (globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ as EversionStoreConfig
   }
-  static getServerStorage(): SuperServerStorage | null {
-    return (globalThis as any).__SUPER_STORE_SERVER_STORAGE__
+  static getServerStorage(): EversionStoreServerStorage | null {
+    return (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__
   }
-  // private static readonly serverStorage: SuperServerStorage | null = (globalThis as any).__SUPER_STORE_SERVER_STORAGE__
-  // private static readonly serverStorage: SuperServerStorage | null = isClient()
+  // private static readonly serverStorage: EversionStoreServerStorage | null = (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__
+  // private static readonly serverStorage: EversionStoreServerStorage | null = isClient()
   //   ? null
   //   : // eslint-disable-next-line @typescript-eslint/no-require-imports
-  //     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>)
+  //     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>)
 
   static define<TValue, TTranfarable extends boolean = true>(
     key: string,
     init: () => TValue,
     transferable?: TTranfarable,
-  ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  ): EversionStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   static define<TValue, TDehydratedValue>(
     key: string,
     init: () => TValue,
     dehydrate: (value: TValue) => TDehydratedValue,
     hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  ): SuperDefinedItem<TValue, TDehydratedValue>
+  ): EversionStoreDefinedItem<TValue, TDehydratedValue>
   static define<TValue, TDehydratedValue>(
     key: string,
-    config: SuperStoreConfigItem<TValue, TDehydratedValue>,
-  ): SuperDefinedItem<TValue, TDehydratedValue>
+    config: EversionStoreConfigItem<TValue, TDehydratedValue>,
+  ): EversionStoreDefinedItem<TValue, TDehydratedValue>
   static define(...args: any[]): any {
     const { key, init, dehydrate, hydrate } = (() => {
       if (typeof args[1] === 'object') {
@@ -69,11 +70,11 @@ export class SuperStore {
         hydrate: transferable ? (dehydratedValue: any) => dehydratedValue : undefined,
       }
     })()
-    const config = SuperStore.getFullConfig()
+    const config = EversionStore.getFullConfig()
     config[key] = { init, dehydrate, hydrate }
     return {
-      get: SuperStore.get.bind(SuperStore, key),
-      set: SuperStore.set.bind(SuperStore, key as never),
+      get: EversionStore.get.bind(EversionStore, key),
+      set: EversionStore.set.bind(EversionStore, key as never),
       config: config[key],
     }
   }
@@ -82,13 +83,13 @@ export class SuperStore {
   //   key: string,
   //   init: () => TValue,
   //   transferable: TTranfarable,
-  // ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  // ): EversionStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   // static define<TValue, TDehydratedValue>(
   //   key: string,
   //   init: () => TValue,
   //   dehydrate: (value: TValue) => TDehydratedValue,
   //   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  // ): SuperDefinedItem<TValue, TDehydratedValue>
+  // ): EversionStoreDefinedItem<TValue, TDehydratedValue>
   // static define(...args: any[]): any {
   //   const { key, init, dehydrate, hydrate } = (() => {
   //     if (args.length === 3) {
@@ -106,29 +107,29 @@ export class SuperStore {
   //       hydrate: args[3],
   //     }
   //   })()
-  //   if (key in SuperStore.config) {
+  //   if (key in EversionStore.config) {
   //     throw new Error(`Key "${key}" already defined`)
   //   }
-  //   SuperStore.config[key] = { init, dehydrate, hydrate }
+  //   EversionStore.config[key] = { init, dehydrate, hydrate }
   //   return {
-  //     get: SuperStore.get.bind(this, key),
-  //     set: SuperStore.set.bind(this, key as never),
-  //     config: SuperStore.config[key],
+  //     get: EversionStore.get.bind(this, key),
+  //     set: EversionStore.set.bind(this, key as never),
+  //     config: EversionStore.config[key],
   //   }
   // }
 
-  // static redefine<TValue>(key: string, init: () => TValue): SuperDefinedItem<TValue, any>
+  // static redefine<TValue>(key: string, init: () => TValue): EversionStoreDefinedItem<TValue, any>
   // static redefine<TValue, TTranfarable extends boolean>(
   //   key: string,
   //   init: () => TValue,
   //   transferable: TTranfarable,
-  // ): SuperDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  // ): EversionStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   // static redefine<TValue, TDehydratedValue>(
   //   key: string,
   //   init: () => TValue,
   //   dehydrate: (value: TValue) => TDehydratedValue,
   //   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  // ): SuperDefinedItem<TValue, TDehydratedValue>
+  // ): EversionStoreDefinedItem<TValue, TDehydratedValue>
   // static redefine(...args: any[]): any {
   //   const { key, init, dehydrate, hydrate, transferable } = (() => {
   //     if (args.length === 2) {
@@ -157,30 +158,30 @@ export class SuperStore {
   //       transferable: false,
   //     }
   //   })()
-  //   if (!(key in SuperStore.config)) {
+  //   if (!(key in EversionStore.config)) {
   //     if (transferable === undefined) {
   //       throw new Error(`Key "${key}" was not previously defined. You should provide dehydrate and hydrate fns`)
   //     }
-  //     return SuperStore.define(key, init, dehydrate, hydrate)
+  //     return EversionStore.define(key, init, dehydrate, hydrate)
   //   }
   //   if (transferable === undefined) {
-  //     SuperStore.config[key].init = init
+  //     EversionStore.config[key].init = init
   //   } else {
-  //     SuperStore.config[key].init = init
-  //     SuperStore.config[key].dehydrate = dehydrate
-  //     SuperStore.config[key].hydrate = hydrate
+  //     EversionStore.config[key].init = init
+  //     EversionStore.config[key].dehydrate = dehydrate
+  //     EversionStore.config[key].hydrate = hydrate
   //   }
   //   return {
-  //     get: SuperStore.get.bind(this, key),
-  //     set: SuperStore.set.bind(this, key as never),
-  //     config: SuperStore.config[key],
+  //     get: EversionStore.get.bind(this, key),
+  //     set: EversionStore.set.bind(this, key as never),
+  //     config: EversionStore.config[key],
   //   }
   // }
 
   static get<TValue = unknown>(key: string): TValue {
-    const state = SuperStore.getState()
-    const config = SuperStore.getFullConfig()
-    const configItem = config[key] as SuperStoreConfigItem | undefined
+    const state = EversionStore.getState()
+    const config = EversionStore.getFullConfig()
+    const configItem = config[key] as EversionStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -188,7 +189,7 @@ export class SuperStore {
     if (existingValue) {
       return existingValue as TValue
     }
-    const dehydratedValue = SuperStore.dehydrated[key]
+    const dehydratedValue = EversionStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem.hydrate) {
         throw new Error(`Key "${key}" is dehydrated but no hydrate function is defined`)
@@ -202,9 +203,9 @@ export class SuperStore {
     return initialValue as TValue
   }
 
-  static getConfig(key: string): SuperStoreConfigItem | undefined {
-    const config = SuperStore.getFullConfig()
-    const configItem = config[key] as SuperStoreConfigItem | undefined
+  static getConfig(key: string): EversionStoreConfigItem | undefined {
+    const config = EversionStore.getFullConfig()
+    const configItem = config[key] as EversionStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -212,14 +213,14 @@ export class SuperStore {
   }
 
   static getWeak<TValue = unknown>(key: string): TValue | undefined {
-    const state = SuperStore.getState()
+    const state = EversionStore.getState()
     const existingValue = state[key]
     if (existingValue) {
       return existingValue as TValue
     }
-    const config = SuperStore.getFullConfig()
-    const configItem = config[key] as SuperStoreConfigItem | undefined
-    const dehydratedValue = SuperStore.dehydrated[key]
+    const config = EversionStore.getFullConfig()
+    const configItem = config[key] as EversionStoreConfigItem | undefined
+    const dehydratedValue = EversionStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem) {
         throw new Error(`Key "${key}" is dehydrated but no config item is defined`)
@@ -240,22 +241,22 @@ export class SuperStore {
   }
 
   static set<TValue = unknown>(key: string, value: TValue): void {
-    SuperStore.get(key) // so if no config for this key, it will throw an error
-    const state = SuperStore.getState()
+    EversionStore.get(key) // so if no config for this key, it will throw an error
+    const state = EversionStore.getState()
     state[key] = value
   }
 
   static setWeak<TValue = unknown>(key: string, value: TValue): void {
     // this only sets value, if no config for this key, it will not throw an error, and value will be accessible by getWeak
-    const state = SuperStore.getState()
+    const state = EversionStore.getState()
     state[key] = value
   }
 
-  static getState = (): SuperState => {
+  static getState = (): EversionStoreState => {
     if (isClient()) {
-      return SuperStore.clientState
+      return EversionStore.clientState
     } else {
-      const serverStorage = SuperStore.getServerStorage()
+      const serverStorage = EversionStore.getServerStorage()
       if (!serverStorage) {
         throw new Error(
           'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers.',
@@ -264,7 +265,7 @@ export class SuperStore {
       const serverStore = serverStorage.getStore()
       if (!serverStore) {
         throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
+          'Server store not found. You should call this function on server only inside server context wrapped in EversionStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
         )
       }
       return serverStore
@@ -273,13 +274,13 @@ export class SuperStore {
 
   static dehydrate = () => {
     const dehydrated: Record<string, unknown> = {}
-    const config = SuperStore.getFullConfig()
+    const config = EversionStore.getFullConfig()
     for (const [configItemKey, configItem] of Object.entries(config)) {
       try {
         if (!configItem.dehydrate) {
           continue
         }
-        const stateValue = SuperStore.get(configItemKey)
+        const stateValue = EversionStore.get(configItemKey)
         const dehydratedValue = configItem.dehydrate(stateValue)
         if (dehydratedValue !== undefined) {
           dehydrated[configItemKey] = dehydratedValue
@@ -295,38 +296,38 @@ export class SuperStore {
   }
 
   static hydrate(dehydrated: Record<string, unknown>): void {
-    SuperStore.dehydrated = dehydrated
+    EversionStore.dehydrated = dehydrated
   }
 
   static hydrateFromString(dehydratedString: string): void {
     const dehydrated = superjson.parse(dehydratedString)
-    SuperStore.dehydrated = dehydrated as Record<string, unknown>
+    EversionStore.dehydrated = dehydrated as Record<string, unknown>
   }
 
   static hydrateFromWindow(): void {
-    if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-      SuperStore.hydrateFromString((window as any).__DEHYDRATED_SUPER_STORE__)
+    if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_EVERSION_STORE__ !== 'undefined') {
+      EversionStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_EVERSION_STORE__)
     }
   }
 
   static runWithServerStorageProvider<TResult>(
-    serverSuperState: Partial<SuperState>,
+    serverEversionStoreState: Partial<EversionStoreState>,
     callback: () => TResult,
   ): TResult {
-    const serverStorage = SuperStore.getServerStorage()
+    const serverStorage = EversionStore.getServerStorage()
     if (serverStorage) {
-      return serverStorage.run(serverSuperState, callback)
+      return serverStorage.run(serverEversionStoreState, callback)
     } else {
       return callback()
     }
   }
 }
 
-export type SuperServerStorage = AsyncLocalStorage<SuperState>
+export type EversionStoreServerStorage = AsyncLocalStorage<EversionStoreState>
 
-export type SuperState = { [key: string]: unknown }
+export type EversionStoreState = { [key: string]: unknown }
 
-export type SuperStoreConfigItem<TValue = any, TDehydratedValue = any> = {
+export type EversionStoreConfigItem<TValue = any, TDehydratedValue = any> = {
   init: () => TValue
   dehydrate: IfAnyThenElse<
     TDehydratedValue,
@@ -339,10 +340,10 @@ export type SuperStoreConfigItem<TValue = any, TDehydratedValue = any> = {
     TDehydratedValue extends undefined ? undefined : (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
   >
 }
-export type SuperStoreConfig = Record<string, SuperStoreConfigItem>
+export type EversionStoreConfig = Record<string, EversionStoreConfigItem>
 
-export type SuperDefinedItem<TValue = any, TDehydratedValue = any> = {
+export type EversionStoreDefinedItem<TValue = any, TDehydratedValue = any> = {
   get: () => TValue
   set: (value: TValue) => void
-  config: SuperStoreConfigItem<TValue, TDehydratedValue>
+  config: EversionStoreConfigItem<TValue, TDehydratedValue>
 }

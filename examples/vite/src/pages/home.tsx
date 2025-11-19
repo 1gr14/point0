@@ -9,7 +9,7 @@ import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent } from './home.helper.js'
 import Icon from '../assets/icon.svg?react'
 
-// const something = SuperStore.define('something', () => {
+// const something = EversionStore.define('something', () => {
 //   return {
 //     random: Math.random(),
 //     date: new Date(),

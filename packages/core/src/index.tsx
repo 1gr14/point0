@@ -24,11 +24,11 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
-import type { EversionRun, ExtractResult } from './eversion.js'
+import type { EversionRun, ExtractResult } from './eversion-run.js'
+import type { EversionStoreDefinedItem } from './eversion-store.js'
+import { EversionStore } from './eversion-store.js'
 import { Points } from './points.js'
 import { useLocation } from './router.js'
-import type { SuperDefinedItem } from './super-store.js'
-import { SuperStore } from './super-store.js'
 import type {
   AnyDataOrInfiniteData,
   AnyPoint,
@@ -2932,8 +2932,8 @@ export class Point0<
   }
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
-    const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
-      `__PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
+    const value = EversionStore.getWeak<FinalClientData<TData, TClientData>>(
+      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     if (!value) {
       throw new Error(
@@ -2944,8 +2944,8 @@ export class Point0<
   }
 
   getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
-    const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
-      `__PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
+    const value = EversionStore.getWeak<FinalClientData<TData, TClientData>>(
+      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     return value
   }
@@ -2990,7 +2990,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.setWeak(`__PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
+    EversionStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,
@@ -3992,9 +3992,9 @@ export class Point0<
 
   // super store
 
-  static define = SuperStore.define.bind(SuperStore)
+  static define = EversionStore.define.bind(EversionStore)
 
-  static defineQueryClient(init: () => QueryClient): SuperDefinedItem<QueryClient, DehydratedState> {
+  static defineQueryClient(init: () => QueryClient): EversionStoreDefinedItem<QueryClient, DehydratedState> {
     Point0._queryClient.config.init = init
     return Point0._queryClient
   }
@@ -4003,14 +4003,18 @@ export class Point0<
     return Point0._queryClient.get()
   }
 
-  static _ssrLocation = SuperStore.define<AnyLocation | undefined, true>('__SSR_LOCATION__', () => undefined, true)
-  static _currentLocation = SuperStore.define<AnyLocation, true>(
-    '__CURRENT_LOCATION__',
+  static _ssrLocation = EversionStore.define<AnyLocation | undefined, true>(
+    '__POINT0_SSR_LOCATION__',
+    () => undefined,
+    true,
+  )
+  static _currentLocation = EversionStore.define<AnyLocation, true>(
+    '__POINT0_CURRENT_LOCATION__',
     () => Route0.getLocation('/'),
     true,
   )
-  static _queryClient = SuperStore.define<QueryClient, DehydratedState>(
-    '__QUERY_CLIENT__',
+  static _queryClient = EversionStore.define<QueryClient, DehydratedState>(
+    '__POINT0_QUERY_CLIENT__',
     () => new QueryClient(),
     (queryClient) =>
       dehydrate(queryClient, {

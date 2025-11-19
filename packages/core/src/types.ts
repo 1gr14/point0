@@ -9,7 +9,7 @@ import type {
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, output as ZodOutput, input as ZodInput, ZodObject, ZodOptional } from 'zod'
-import type { EversionRun } from './eversion.js'
+import type { EversionRun } from './eversion-run.js'
 import type { Point0 } from './index.js'
 
 // basic

@@ -76,7 +76,7 @@ in engine remove undefined and set it to null
 __POINT0_ENV__ and other make simple, remove POINT0 prefix
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add _ to all clases
-SuperStore.setOrGet or superStore.upsert(() => value) or SuperStore.upsert('key', () => value)
+EversionStore.setOrGet or superStore.upsert(() => value) or EversionStore.upsert('key', () => value)
 eversion store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
 rename all location to loc, becouse ReferenceError: location is not defined
 try catch evrywhere in engine to show real error in real place

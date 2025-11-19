@@ -16,7 +16,7 @@ import { Svg } from '../lib/svg.js'
 // const IconText = ``
 // const IconUsual = ``
 
-// const something = SuperStore.define('something', () => {
+// const something = EversionStore.define('something', () => {
 //   return {
 //     random: Math.random(),
 //     date: new Date(),
@@ -110,7 +110,7 @@ export default generalLayout
             style={{ width: '24px', height: '24px', color: '#007bff' }}
           />
           {/* <img src={IconUsual} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
-          {/* <div dangerouslySetInnerHTML={{ __html: icon }} /> */}
+          {/* <div dangerouslySetInnerHTML={{ html: icon }} /> */}
           <Svg src={iconRaw} />
           {/* <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span> */}
         </div>

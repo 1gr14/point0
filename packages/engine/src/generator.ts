@@ -358,9 +358,9 @@ export class FilesGenerator {
     return results.every((r) => r)
   }
 
-  // private emitSuperStoreInitialization(): string[] {
+  // private emitEversionStoreInitialization(): string[] {
   //   const lines: string[] = []
-  //   lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
+  //   lines.push(`await import('point0/core/eversion-store.js').then(async ({ EversionStore }) => await EversionStore.init({}))`)
   //   return lines
   // }
 
@@ -448,7 +448,7 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
-    // lines.push(...this.emitSuperStoreInitialization())
+    // lines.push(...this.emitEversionStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points'`)
 
     if (!points.find((p) => p.root)) {
@@ -529,7 +529,7 @@ export class FilesGenerator {
       lines.push(target.banner)
     }
 
-    // lines.push(...this.emitSuperStoreInitialization())
+    // lines.push(...this.emitEversionStoreInitialization())
 
     if (points.length === 0) {
       lines.push(`export {}`)
@@ -557,7 +557,7 @@ export class FilesGenerator {
   //   const lines: string[] = []
   //   if (this.banner) lines.push(this.banner)
 
-  //   // lines.push(...this.emitSuperStoreInitialization())
+  //   // lines.push(...this.emitEversionStoreInitialization())
   //   lines.push(`import React from 'react'`)
   //   lines.push(`import { Route, Switch } from 'wouter'`)
   //   lines.push(``)

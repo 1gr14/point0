@@ -3,7 +3,7 @@ import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { isClient } from './client-server.js'
-import { SuperStore } from './super-store.js'
+import { EversionStore } from './eversion-store.js'
 import type {
   EndPoint,
   EndPointType,
@@ -65,7 +65,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.root = root
     Points.setGlobalPoints(this)
     if (isClient()) {
-      SuperStore.setWeak('__SCOPE__', this.root._scope)
+      EversionStore.setWeak('__POINT0_SCOPE__', this.root._scope)
     }
   }
 
@@ -254,9 +254,9 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     return points.map((point) => {
       return {
         type: point._pointType,
-        name: point._name || '__UNNAMED__',
+        name: point._name || '__POINT0_UNNAMED__',
         point,
-        layouts: point._layouts.map((l) => l._name || '__UNNAMED__'),
+        layouts: point._layouts.map((l) => l._name || '__POINT0_UNNAMED__'),
         route: point._route,
         root: point._isRoot(),
       }
@@ -723,7 +723,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     return createdPoints
   }
   static getGlobalPoints = (scope?: PointsScope): Points => {
-    scope ??= SuperStore.getWeak<PointsScope>('__SCOPE__')
+    scope ??= EversionStore.getWeak<PointsScope>('__POINT0_SCOPE__')
     if (!scope) {
       throw new Error('Points scope not found if EversionStore. You should provide scope.')
     }
