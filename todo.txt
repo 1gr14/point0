@@ -1,22 +1,28 @@
-serverViteDevServer
 clientViteDevServer
+serverViteDevServer
 clientBunDevServer
+? serverBunDevBuilder
+bunBuildConfig and bunPlugins should accept only possible modes and targets
+client and server options add pruneMode: 'client' | 'server-ssr' | 'server-nossr' | {[scope]: 'client' | 'server-ssr' | 'server-nossr'}
+parseViteMode → nodeEnv, target (do not normalize in), 
 engine.serve accepts scope, and serve only requested, so we have processes in parallel in dev mode
 ? engine options allow for bun dev server runs builder, and the when we get fresh points we get them form dits dir
 rename clients port to devPort, and hmrPort to devHmrPort
 injet pruner plugins to vite and bun dev servers
 engine.server.loadPlugins()
-
-
+check bun pruner, adn vite pruner creates correct sourcemaps
 remove server code from client, and client code from server
-
 isClient() || process.env.BUILD_TARGET === 'server-nossr' | 'server-ssr' | 'client', import.meta.env.SSR for vite compatibility
+It is only for vite, bun builder for server can have shared plugins with server. And in strip plugin we can provide different mode for different scopes. serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode. 
+Replace all noe methods with native bun methods, including watcher
+Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
+ensure packages workspace:* replaced with real version after npm package
 
-serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 
 ------
 
 onReq onRes normalize, make more straight forward
+.onReq(() => {}, () => {}) as shortcat for.onReq().onRes()
 super store → eversion store
 move vite things to somewehere so it not required to install
 abs assets fetcher on 404 for bun dev server
@@ -26,6 +32,7 @@ head on ssr should also just stored in super store, not needed to extract it add
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
+.page(head, () =>), .error(head, () =>), .loading(head, () =>), .layout(head, () =>)
 
 wrapper
 merge .input schemas
@@ -37,6 +44,11 @@ expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQ
 expo example, just define all queries and mutations as plugins and use them in site and expo
 expo router
 
+test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
+
+
+.ctxLoader()
+const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); myPoint.use(myPlugin)
 chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 → chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
 → chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 
@@ -63,6 +75,7 @@ props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
 what is 'use client'
+.onReq .onRes should become .middleware ? and work like express middleware ? 
 thorw error on Points.create() on lcient with different scope that was before
 no root
 extract required ctx type from root points
@@ -170,8 +183,8 @@ const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
 .isSuitable(() => boolean) to override default route suitable behaviour
 example vite-hono
 client input
-node
-node engine
+robotsTxt(take, skip)
+node bun polyfill
 ? at the point level: base.store(zustand).page(({store})); or const myStore = client.lets('store', 'myStore').store(() => createZustand()); myStore.use()
 ? statefull meta, or better ↓
 {...head} as only or second argument in loading and error fns, and as second arg in page fn
@@ -191,3 +204,5 @@ layout can provide its own 404 page, but it can do it already (not exactl, but c
 now it pretty enough
 
 ? interstallar
+? It's not typed currently; introduce "settings" that can be overridden at any point in a point. For example, authorized: true.
+? The set method for the eversion store should work like setState in React, modifying the previous value.
