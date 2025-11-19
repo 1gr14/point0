@@ -8,6 +8,7 @@ import { isClient } from './client-server.js'
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperState>))
+// (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<SuperState>))
 ;(globalThis as any).__SUPER_STORE_CONFIG__ = (globalThis as any).__SUPER_STORE_CONFIG__ || ({} as SuperStoreConfig)
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

@@ -22,6 +22,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "dev": "bun run build:watch",
     "build": "bun --filter './packages/**' build",
     "build:watch": "bun --filter './packages/**' build:watch",
     "test": "bun --filter '**' test",
