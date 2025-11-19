@@ -1,6 +1,6 @@
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { Eversion } from '../core/eversion.js'
 import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from '../engine-shared/config.js'
@@ -122,14 +122,20 @@ export class Engine<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  async dev(options?: { requiredCtx?: RequiredCtx; noGenerate?: boolean }) {
-    await this.generateWatch()
-    await this.serve(options?.requiredCtx)
+  async dev(options?: { requiredCtx?: RequiredCtx; noGenerate?: boolean; noServer?: boolean }) {
+    if (!options?.noGenerate) {
+      await this.generateWatch()
+    }
+    if (!options?.noServer) {
+      await this.serve(options?.requiredCtx)
+    } else {
+      await this.init() // so we just initialize clients dev servers
+    }
   }
 
-  async serve(requiredCtx?: RequiredCtx): Promise<void> {
+  async serve(options?: { requiredCtx?: RequiredCtx }): Promise<void> {
     const intializedEngine = await this.init()
-    await intializedEngine.server.serve({ requiredCtx })
+    await intializedEngine.server.serve({ requiredCtx: options?.requiredCtx })
     this.logger.info(`🚀 http://localhost:${this.server.port}`)
   }
 
@@ -158,7 +164,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     server: { self: string[] | null; publicdir: string[] | null }
   }> {
     if (!options?.noGenerate) {
-      await this.generate()
+      await this.generator.sync({ logOnNotWritten: false })
     }
 
     const intializedEngine = await this.init()
@@ -205,5 +211,47 @@ export class Engine<TInitialized extends boolean = boolean> {
       }
     }
     return undefined
+  }
+
+  static async findAndImportSelf(enginePath?: string, cwd: string = process.cwd()): Promise<Engine> {
+    let engineFile: string | undefined
+
+    if (enginePath) {
+      // Resolve the path (handles both absolute and relative paths)
+      engineFile = nodePath.resolve(cwd, enginePath)
+      if (!nodeFs.existsSync(engineFile)) {
+        throw new Error(`Engine file not found: ${engineFile}`)
+      }
+    } else {
+      // Auto-find engine file
+      engineFile = Engine.findSelfFile(cwd)
+      if (!engineFile) {
+        throw new Error(
+          'Could not find engine.ts or engine.js file. Searched in: ./, ./src/. Use --engine <path> to specify the engine file location',
+        )
+      }
+    }
+
+    try {
+      const engineUrl = pathToFileURL(engineFile).href
+      const module = await import(engineUrl)
+
+      // Try named export first, then default
+      const engine = module.engine ?? module.default
+
+      if (!engine) {
+        throw new Error('engine.ts must export "engine" or have a default export')
+      }
+
+      if (!(engine instanceof Engine)) {
+        throw new Error('Exported engine must be an instance of Engine')
+      }
+
+      return engine
+    } catch (error) {
+      throw new Error(`Error importing engine: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      })
+    }
   }
 }

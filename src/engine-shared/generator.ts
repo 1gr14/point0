@@ -125,8 +125,8 @@ export class FilesGenerator {
 
   async sync(options?: { logOnNotWritten?: boolean }) {
     await this.collectFiles()
-    const { errors, points, changed } = await this.process()
-    if (options?.logOnNotWritten && !changed) {
+    const { errors, points, written } = await this.process()
+    if (!options?.logOnNotWritten && !written) {
       return
     }
     const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']

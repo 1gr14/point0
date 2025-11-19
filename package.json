@@ -15,6 +15,9 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
+  "bin": {
+    "p0": "./dist/esm/bin/index.js"
+  },
   "types": "./dist/esm/index.d.ts",
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",
@@ -51,6 +54,7 @@
   "scripts": {
     "dev": "tsc-watch --preserveWatchOutput --project tsconfig.build.json",
     "dev:npm": "tsc-watch --preserveWatchOutput --project tsconfig.build.json --onSuccess 'bun run pack:dist'",
+    "p0": "bun run src/bin/index.ts",
     "build": "tsup",
     "build:test:esm": "tsup --outDir dist-test/esm --tsconfig tsconfig.build.test.json --format esm src",
     "build:test:esm:watch": "bun run build:test:esm --watch",
