@@ -19,6 +19,7 @@ program
   .option('-S, --no-server', 'Do not serve server, serve only clients dev servers')
   .option('-e, --engine <path>', dictionary.enginePath)
   .action(async (options) => {
+    process.env.NODE_ENV ??= 'development'
     const engine = await Engine.findAndImportSelf(options.engine)
     await engine.dev({ noGenerate: options.generate === false, noServer: options.server === false })
   })
@@ -29,9 +30,9 @@ program
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-e, --engine <path>', dictionary.enginePath)
   .action(async (options) => {
+    process.env.NODE_ENV ??= 'production'
     const engine = await Engine.findAndImportSelf(options.engine)
     await engine.build({ noGenerate: options.generate === false })
-    process.exit(0)
   })
 
 program
@@ -45,7 +46,6 @@ program
       await engine.generateWatch()
     } else {
       await engine.generate()
-      process.exit(0)
     }
   })
 

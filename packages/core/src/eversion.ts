@@ -1,5 +1,4 @@
 import { Route0, type AnyLocation, type ExactLocation } from '@devp0nt/route0'
-import * as z from 'zod'
 import { EversionRun } from './eversion-run.js'
 import type { Points } from './points.js'
 import type {
@@ -333,31 +332,51 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {}
         }
       })()
-      const parsed = z
-        .object({
-          // TODO: remove zod from here
-          pointType: z.enum([
-            'page',
-            'layout',
-            'component',
-            'response',
-            'query',
-            'infiniteQuery',
-            'mutation',
-            'provider',
-          ]),
-          outputType: z.enum(['data', 'response', 'dehydratedState']),
-          pointInput: z.record(z.string(), z.any()),
-          scope: z.string().min(1),
-          pointName: z.string().min(1),
-        })
-        .parse({
-          pointType: bodyRaw.pointType,
-          outputType: bodyRaw.outputType,
-          pointInput: bodyRaw.pointInput,
-          scope: bodyRaw.scope,
-          pointName: bodyRaw.pointName,
-        })
+      const parsed = (() => {
+        const validPointTypes = [
+          'page',
+          'layout',
+          'component',
+          'response',
+          'query',
+          'infiniteQuery',
+          'mutation',
+          'provider',
+        ] as const
+        const validOutputTypes = ['data', 'response', 'dehydratedState'] as const
+        if (!bodyRaw || typeof bodyRaw !== 'object') {
+          throw new Error('Invalid request body: must be an object')
+        }
+        const { pointType, outputType, pointInput, scope, pointName } = bodyRaw as Record<string, unknown>
+        if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+          throw new Error(
+            `Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${JSON.stringify(pointType).slice(0, 100)}`,
+          )
+        }
+        if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+          throw new Error(
+            `Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${JSON.stringify(outputType).slice(0, 100)}`,
+          )
+        }
+        if (!pointInput || typeof pointInput !== 'object' || Array.isArray(pointInput)) {
+          throw new Error(`Invalid pointInput: must be an object, got ${JSON.stringify(pointInput).slice(0, 100)}`)
+        }
+        if (typeof scope !== 'string' || scope.length === 0) {
+          throw new Error(`Invalid scope: must be a non-empty string, got ${JSON.stringify(scope).slice(0, 100)}`)
+        }
+        if (typeof pointName !== 'string' || pointName.length === 0) {
+          throw new Error(
+            `Invalid pointName: must be a non-empty string, got ${JSON.stringify(pointName).slice(0, 100)}`,
+          )
+        }
+        return {
+          pointType: pointType as (typeof validPointTypes)[number],
+          outputType: outputType as (typeof validOutputTypes)[number],
+          pointInput: pointInput as Record<string, unknown>,
+          scope: scope as string,
+          pointName: pointName as string,
+        }
+      })()
       if (scope && parsed.scope !== scope) {
         throw new Error(`Root id "${parsed.scope}" does not match "${scope}"`)
       }
