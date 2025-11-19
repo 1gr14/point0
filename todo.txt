@@ -1,12 +1,8 @@
-packages
-respect path aliases in generator and in imports of points or app
-
-serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 remove server code from client, and client code from server
+
 isClient() || process.env.BUILD_TARGET === 'server' | 'client', import.meta.env.SSR for vite compatibility
 
-? config. engine is enough
-? config can generate engine.ts by itself. Decide what to generate and what to boilerplate
+serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 
 ----
 
@@ -75,6 +71,7 @@ preserve client loaders also, and then on lets we have middleware-client but if 
 router export function getCurrentLocation()
 onResponse onRequest → onReq onRes req res
 Point0 → Point
+esm only
 after build validate if dist paths exists, like engine.validate()
 add engine client options serveByServer: boolean default true
 in engine remove undefined and set it to null
