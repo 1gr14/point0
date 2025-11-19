@@ -1,6 +1,16 @@
+serverViteDevServer
+clientViteDevServer
+clientBunDevServer
+engine.serve accepts scope, and serve only requested, so we have processes in parallel in dev mode
+? engine options allow for bun dev server runs builder, and the when we get fresh points we get them form dits dir
+rename clients port to devPort, and hmrPort to devHmrPort
+injet pruner plugins to vite and bun dev servers
+engine.server.loadPlugins()
+
+
 remove server code from client, and client code from server
 
-isClient() || process.env.BUILD_TARGET === 'server' | 'client', import.meta.env.SSR for vite compatibility
+isClient() || process.env.BUILD_TARGET === 'server-nossr' | 'server-ssr' | 'client', import.meta.env.SSR for vite compatibility
 
 serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode.
 

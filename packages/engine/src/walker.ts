@@ -49,9 +49,9 @@ export class Walker {
   // Lazy-loaded TypeScript module (null if not available)
   private tsModule: typeof import('typescript') | null | undefined = undefined
 
-  constructor({ cwd, routes }: { cwd: string; routes: Record<string, Routes> }) {
-    this.cwd = cwd
-    this.routes = routes
+  constructor(options: { cwd?: string; routes?: Record<string, Routes> } = {}) {
+    this.cwd = options.cwd ?? process.cwd()
+    this.routes = options.routes ?? {}
   }
 
   /**
@@ -261,6 +261,166 @@ export class Walker {
     const collectedPoints = results.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value || [])
     const promiseRejectedErrors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
     return { collectedPoints, errors: [...errors, ...promiseRejectedErrors] }
+  }
+
+  async prune({
+    content,
+    fileAbs,
+    methods: methodsProvided,
+    target,
+  }: {
+    content?: string
+    fileAbs: string
+    methods?: string[]
+    target?: 'client' | 'server-ssr' | 'server-nossr'
+  }): Promise<string> {
+    const methods = (() => {
+      if (methodsProvided) {
+        return methodsProvided
+      }
+      if (!target) {
+        throw new Error('target or methods is required')
+      }
+      if (target === 'client') {
+        return ['loader', 'ctx', 'query', 'infiniteQuery', 'mutation', 'response', 'onRequest', 'onResponse']
+      }
+      const result = ['clientLoader']
+      if (target === 'server-ssr') {
+        return result
+      }
+      if (target === 'server-nossr') {
+        result.push(
+          'page',
+          'component',
+          'layout',
+          'wrapper',
+          'error',
+          'loading',
+          'pageError',
+          'componentError',
+          'pageLoading',
+          'componentLoading',
+        )
+        return result
+      }
+      throw new Error(`Invalid target: ${target}`)
+    })()
+
+    // 1️⃣ Берём код
+    const code =
+      content ??
+      (await nodeFs.readFile(fileAbs!, 'utf8').catch((e) => {
+        console.warn(`🔴 stripPoint0Methods: cannot read file ${fileAbs}: ${(e as Error).message}`)
+        throw e
+      }))
+
+    // 2️⃣ Парсим или берём AST из кеша
+    let ast: babel.ParseResult<any>
+    try {
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        ast = babel.parse(code, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
+    } catch (e) {
+      console.warn(`🔴 stripPoint0Methods: parse failed for ${fileAbs}: ${(e as Error).message}`)
+      return code
+    }
+
+    if (!methods.length) return code
+
+    // 3️⃣ Собираем кандидатов: вызовы .loader/.ctx/... + их baseIdentifier
+    const candidates: Array<{
+      node: CallExpression
+      baseIdentifier: string
+    }> = []
+
+    traverse(ast, {
+      CallExpression: (p) => {
+        const node = p.node
+        if (node.callee.type !== 'MemberExpression') return
+        const prop = node.callee.property
+        if (prop.type !== 'Identifier') return
+        if (!methods.includes(prop.name)) return
+
+        // Определяем, к какому top-level идентификатору относится эта цепочка
+        const baseIdentifier = this.findTopLevelAssignedIdentifier(p as unknown as NodePath<Node>)
+        if (!baseIdentifier) {
+          // Это какая-то локальная цепочка внутри функции и т.п. — нас не интересует
+          return
+        }
+
+        candidates.push({ node, baseIdentifier })
+      },
+    })
+
+    if (candidates.length === 0) {
+      return code
+    }
+
+    // 4️⃣ Для каждого кандидата проверяем, есть ли scope через resolveScope
+    const nodesToStrip: CallExpression[] = []
+
+    // Можно слегка задедупить по (baseIdentifier), чтобы не вызывать resolveScope лишний раз
+    const scopeCache = new Map<string, string | undefined>()
+
+    for (const { node, baseIdentifier } of candidates) {
+      let scope = scopeCache.get(baseIdentifier)
+      if (scope === undefined && !scopeCache.has(baseIdentifier)) {
+        try {
+          const { scope: resolvedScope } = await this.resolveScope({
+            fileAbs,
+            baseIdentifier,
+          })
+          scope = resolvedScope
+        } catch (e) {
+          console.warn(
+            `🔴 stripPoint0Methods: resolveScope failed for ${baseIdentifier} in ${fileAbs}: ${(e as Error).message}`,
+          )
+          scope = undefined
+        }
+        scopeCache.set(baseIdentifier, scope)
+      }
+
+      // scope найден → это Point0-цепочка ⇒ этот вызов надо очищать
+      if (scope) {
+        nodesToStrip.push(node)
+      }
+    }
+
+    if (nodesToStrip.length === 0) {
+      return code
+    }
+
+    // 5️⃣ Мутируем AST: вычищаем аргументы
+    for (const node of nodesToStrip) {
+      if (node.arguments.length) {
+        node.arguments = []
+      }
+    }
+
+    // 6️⃣ Генерим код обратно
+    const generatorModule = await import('@babel/generator')
+    const generate = (generatorModule as any).default ?? generatorModule
+    const { code: out } = generate(ast, { retainLines: true })
+
+    // Обновим кеш содержимого, чтобы дальше твой Walker работал в консистентном состоянии
+    this.filesContentCache.set(fileAbs, out)
+
+    return out
   }
 
   private detectPointTypeAndNameFromInit({
