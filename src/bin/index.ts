@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { Command } from 'commander'
-import { Engine } from '../engine-bun/index.js'
+import { Engine } from '../engine-shared/index.js'
 
 const program = new Command()
 

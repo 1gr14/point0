@@ -22,7 +22,7 @@ import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-share
 import { toJsExtension, validateEntrypoints, withError } from '../engine-shared/utils.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
-import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from './utils.js'
+import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from '../engine-bun/utils.js'
 
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string

@@ -16,7 +16,7 @@ import {
 import type { ClientBun } from './client.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
-import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from './utils.js'
+import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from '../engine-bun/utils.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
