@@ -5,7 +5,7 @@ import { Engine } from './index.js'
 
 const program = new Command()
 
-program.name('p0').description('Point0 CLI').version('0.1.0')
+program.name('point0').description('Point0 CLI').version('0.1.0')
 
 const dictionary = {
   noGenerate: 'Skip files generation',

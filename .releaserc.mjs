@@ -20,13 +20,30 @@ export default {
       : [
           '@semantic-release/git',
           {
-            assets: ['package.json', 'CHANGELOG.md'],
+            assets: ['package.json', 'packages/*/package.json', 'CHANGELOG.md'],
             message: 'chore(release): ${nextRelease.version} --skip-ci',
           },
         ],
     '@semantic-release/release-notes-generator',
     '@semantic-release/changelog',
-    '@semantic-release/npm',
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/core',
+      },
+    ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/engine',
+      },
+    ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/wouter',
+      },
+    ],
     '@semantic-release/github',
   ].filter(Boolean),
 }

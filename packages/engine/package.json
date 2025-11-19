@@ -1,0 +1,81 @@
+{
+  "name": "@point0/engine",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "Sergei Dmitriev",
+    "url": "https://p0nt.dev"
+  },
+  "homepage": "https://github.com/devp0nt/point0#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devp0nt/point0.git",
+    "directory": "packages/engine"
+  },
+  "bugs": {
+    "url": "https://github.com/devp0nt/point0/issues"
+  },
+  "type": "module",
+  "bin": {
+    "point0": "./dist/esm/bin.js"
+  },
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "test": "bun test ./tests",
+    "test:watch": "bun test --watch ./tests",
+    "types": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "@parcel/watcher": "^2.5.1",
+    "commander": "^14.0.2",
+    "fast-glob": "^3.3.2",
+    "minimatch": "^10.0.1",
+    "qs": "^6.14.0"
+  },
+  "peerDependencies": {
+    "@point0/core": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@devp0nt/error0": "catalog:",
+    "@devp0nt/route0": "catalog:",
+    "@unhead/react": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
+    "@types/bun": "^1.2.22",
+    "@types/minimatch": "^6.0.0",
+    "@types/node": "^20.0.0",
+    "@types/qs": "^6.14.0",
+    "esbuild-fix-imports-plugin": "^1.0.22",
+    "lodash": "^4.17.21",
+    "@types/lodash": "^4.17.20",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

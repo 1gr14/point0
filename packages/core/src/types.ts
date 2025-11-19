@@ -8,7 +8,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
-import type { ZodDefault, infer as ZodInfer, input as ZodInput, ZodObject, ZodOptional } from 'zod'
+import type { ZodDefault, output as ZodOutput, input as ZodInput, ZodObject, ZodOptional } from 'zod'
 import type { EversionRun } from './eversion.js'
 import type { Point0 } from './index.js'
 
@@ -682,8 +682,8 @@ export type MountableComponentProps<
   TWithChildren extends boolean | null,
 > = (TInputSchema extends InputSchemaZod
   ? IsInputOptional<UndefinedRouteDefinition, TInputSchema> extends true
-    ? { input?: ZodInfer<TInputSchema> } & FinalProps<TProps>
-    : { input: ZodInfer<TInputSchema> } & FinalProps<TProps>
+    ? { input?: ZodOutput<TInputSchema> } & FinalProps<TProps>
+    : { input: ZodOutput<TInputSchema> } & FinalProps<TProps>
   : FinalProps<TProps>) &
   (TWithChildren extends true
     ? { children: React.ReactNode }
@@ -775,7 +775,7 @@ export type InputParsed<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = TInputSchema extends InputSchemaZod
-  ? ZodInfer<TInputSchema>
+  ? ZodOutput<TInputSchema>
   : TRouteDefinition extends RouteDefinition
     ? FlatOutput<TRouteDefinition>
     : Record<never, never>

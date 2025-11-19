@@ -1,4 +1,4 @@
-import type { LazyPointsCollectionRecord } from 'point0/core/points.js'
+import type { LazyPointsCollectionRecord } from '@point0/core/points'
 import { client as root } from './client.js'
 
 export const unnamed_fbre3cvdm6_lazy = {

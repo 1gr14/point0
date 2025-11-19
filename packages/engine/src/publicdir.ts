@@ -1,8 +1,8 @@
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { Eversion } from '../core/eversion.js'
-import type { RootPoint } from '../core/types.js'
-import { parseUrl, type ParsedUrl } from '../core/utils.js'
+import type { Eversion } from '@point0/core/eversion'
+import type { RootPoint } from '@point0/core/types'
+import { parseUrl, type ParsedUrl } from '@point0/core/utils'
 import { prependAndDeappendSlash, withError } from './utils.js'
 
 export class Publicdir<TInitialized extends boolean = boolean> {

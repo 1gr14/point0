@@ -3,11 +3,11 @@ import { Route0 } from '@devp0nt/route0'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
-import { Point0 } from '../core/index.js'
-import type { PagesTree } from '../core/points.js'
-import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '../core/router.js'
-import { _wrapUseNavigate, RouterContextProvider } from '../core/router.js'
-import { isClient } from '../core/client-server.js'
+import { Point0 } from '@point0/core'
+import type { PagesTree } from '@point0/core/points'
+import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
+import { _wrapUseNavigate, RouterContextProvider } from '@point0/core/router'
+import { isClient } from '@point0/core/client-server'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 

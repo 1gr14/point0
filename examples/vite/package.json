@@ -4,15 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "p0": "bun run ../../src/engine/bin.ts",
-    "dev": "bun run p0 dev",
-    "generate": "bun run p0 generate",
-    "build": "bun run p0 build",
+    "dev": "point0 dev",
+    "generate": "point0 generate",
+    "build": "point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/self/index.server.js",
     "clean": "rimraf dist",
     "types": "tsc --noEmit"
   },
   "dependencies": {
+    "@point0/core": "workspace:*",
+    "@point0/engine": "workspace:*",
+    "@point0/wouter": "workspace:*",
     "@devp0nt/route0": "^1.0.0-next.36",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,8 +1,8 @@
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import type { Eversion } from '../core/eversion.js'
-import type { PointsScope, RequiredCtx } from '../core/types.js'
+import type { Eversion } from '@point0/core/eversion'
+import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from './config.js'
 import type { FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
@@ -243,7 +243,20 @@ export class Engine<TInitialized extends boolean = boolean> {
         throw new Error('engine.ts must export "engine" or have a default export')
       }
 
-      if (!(engine instanceof Engine)) {
+      // Check if it's an Engine instance - use duck typing as fallback for module resolution edge cases
+      if (
+        !(engine instanceof Engine) &&
+        !(
+          typeof engine === 'object' &&
+          engine !== null &&
+          'init' in engine &&
+          'build' in engine &&
+          'dev' in engine &&
+          'serve' in engine &&
+          typeof engine.init === 'function' &&
+          typeof engine.build === 'function'
+        )
+      ) {
         throw new Error('Exported engine must be an instance of Engine')
       }
 

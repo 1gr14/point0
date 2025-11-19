@@ -15,150 +15,62 @@
     "url": "https://github.com/devp0nt/point0/issues"
   },
   "type": "module",
-  "bin": {
-    "p0": "./dist/esm/bin.js"
-  },
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
-  "exports": {
-    ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
-    },
-    "./index.server": {
-      "types": "./dist/esm/index.server.d.ts",
-      "require": "./dist/cjs/index.server.cjs",
-      "import": "./dist/esm/index.server.js"
-    },
-    "./index.client": {
-      "types": "./dist/esm/index.client.d.ts",
-      "require": "./dist/cjs/index.client.cjs",
-      "import": "./dist/esm/index.client.js"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "": [
-        "./dist/esm/index.d.ts"
-      ]
-    }
-  },
   "files": [
-    "dist/**/*",
-    "src/**/*",
+    "packages/**/dist/**/*",
+    "packages/**/src/**/*",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "dev": "tsc-watch --preserveWatchOutput --project tsconfig.build.json",
-    "dev:npm": "tsc-watch --preserveWatchOutput --project tsconfig.build.json --onSuccess 'bun run pack:dist'",
-    "p0": "bun run src/engine/bin.ts",
-    "build": "tsup",
-    "build:test:esm": "tsup --outDir dist-test/esm --tsconfig tsconfig.build.test.json --format esm src",
-    "build:test:esm:watch": "bun run build:test:esm --watch",
-    "build:test:cjs": "tsup --outDir dist-test/cjs --tsconfig tsconfig.build.test.json --format cjs src",
-    "build:test:cjs:watch": "bun run build:test:cjs --watch",
-    "build:test": "bun run build:test:esm && bun run build:test:cjs",
-    "build:test:watch": "bun run build:test:esm:watch & bun run build:test:cjs:watch",
-    "build:all": "bun run build && bun run build:test",
-    "test": "bun test ./src",
-    "test:us": "bun test ./src --update-snapshots",
-    "test:watch": "bun test --watch",
-    "test:coverage": "bun test ./src --coverage",
-    "test:dist:esm": "bun test ./dist-test/esm",
-    "test:dist:esm:watch": "bun run test:dist:esm --watch",
-    "test:dist:esm:build:watch": "bun build:test:esm:watch --no-clean & bun test:dist:esm:watch",
-    "test:dist:cjs": "bun test ./dist-test/cjs",
-    "test:dist:cjs:watch": "bun run test:dist:cjs --watch",
-    "test:dist:cjs:build:watch": "bun build:test:cjs:watch --no-clean & bun test:dist:cjs:watch",
-    "test:dist": "bun run test:dist:esm && bun run test:dist:cjs",
-    "test:dist:watch": "bun run test:dist:esm:watch & bun run test:dist:cjs:watch",
-    "test:dist:build:watch": "bun build:test:watch & bun test:dist:watch",
-    "test:all": "bun run test && bun run test:dist",
-    "test:all:watch": "bun run test:watch & bun run test:dist:watch",
-    "test:all:build": "bun run build:all && bun run test:all",
-    "test:all:build:watch": "bun run build:all:watch & bun run test:all:watch",
+    "build": "bun --filter './packages/**' build",
+    "build:watch": "bun --filter './packages/**' build:watch",
+    "test": "bun --filter '**' test",
+    "test:watch": "bun --filter '**' test:watch",
+    "types": "bun --filter '**' types",
     "lint": "bun run lint:fix .",
     "lint:base": "eslint --cache --cache-location node_modules/.cache/eslint/.eslintcache",
     "lint:fix": "bun run lint:base --fix",
     "format": "bun run format:fix .",
     "format:base": "prettier --cache --cache-location node_modules/.cache/prettier/.prettiercache --ignore-path .gitignore --ignore-path .prettierignore",
     "format:fix": "bun run format:base --write",
-    "types:build": "tsc --noEmit --project tsconfig.build.json",
-    "types:self": "tsc --noEmit",
-    "types": "bun types:self && bun run --filter '@point0/**' types",
     "pack:dry": "npm pack --dry-run",
     "pack:dist": "mkdir -p dist-npm && npm pack --pack-destination dist-npm --silent && cd dist-npm && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz",
     "pack:dist:hard": "rimraf dist-npm && bun run pack:dist",
     "prepare": "husky",
-    "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
-  },
-  "dependencies": {
-    "@babel/parser": "^7.28.5",
-    "@babel/traverse": "^7.28.5",
-    "@parcel/watcher": "^2.5.1",
-    "commander": "^14.0.2",
-    "fast-glob": "^3.3.2",
-    "minimatch": "^10.0.1",
-    "qs": "^6.14.0",
-    "react-ssr-prepass": "^1.6.0",
-    "safe-stable-stringify": "^2.5.0",
-    "superjson": "^2.2.5",
-    "use-context-selector": "^2.0.0"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@tanstack/react-query": "^5.0.0",
-    "@devp0nt/error0": "^1.0.0-next.38",
-    "@devp0nt/route0": "^1.0.0-next.36",
-    "@unhead/react": "^2.0.19",
-    "zod": "^4.0.0"
+    "clean": "rimraf packages/*/dist && rimraf dist-npm && rimraf node_modules/.cache"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@devp0nt/route0": "^1.0.0-next.36",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.6",
     "@semantic-release/npm": "^12.0.2",
-    "@tanstack/react-query": "^5.90.5",
-    "@types/babel__traverse": "^7.28.0",
-    "@types/bun": "^1.2.22",
-    "@types/lodash": "^4.17.20",
-    "@types/minimatch": "^6.0.0",
-    "@types/node": "^20.0.0",
-    "@types/qs": "^6.14.0",
-    "@types/react-dom": "^19.2.2",
     "concurrently": "^9.2.1",
-    "cross-env": "^10.0.0",
-    "elysia": "^1.4.12",
-    "esbuild-fix-imports-plugin": "^1.0.22",
     "eslint": "^9.36.0",
     "eslint-config-love": "^130.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-no-only-tests": "^3.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.1",
-    "lodash": "^4.17.21",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
-    "semantic-release": "^24.2.8",
-    "source-map-explorer": "^2.5.3",
-    "tsc-watch": "^7.1.1",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0",
-    "vite": "^7.2.2",
-    "wouter": "^3.7.1",
-    "zod": "^4.1.12"
+    "semantic-release": "^24.2.8"
   },
   "workspaces": {
     "packages": [
-      "examples/*"
-    ]
+      "packages/**",
+      "examples/**"
+    ],
+    "catalog": {
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0",
+      "@tanstack/react-query": "^5.0.0",
+      "@devp0nt/error0": "^1.0.0-next.38",
+      "@devp0nt/route0": "^1.0.0-next.36",
+      "@unhead/react": "^2.0.19",
+      "zod": "^4.0.0"
+    }
   },
   "engines": {
     "node": ">=18.0.0",

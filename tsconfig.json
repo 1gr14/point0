@@ -1,10 +1,6 @@
 {
-  "include": ["src/**/*"],
-  "exclude": ["dist/**/*", "node_modules/**/*"],
   "compilerOptions": {
-    "rootDir": "./src",
     "types": ["node", "bun-types"],
-    "outDir": "./dist/esm",
     "module": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
@@ -26,6 +22,19 @@
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "baseUrl": ".",
+    "paths": {
+      "@point0/core": ["packages/core/src/index.tsx"],
+      "@point0/core/mount": ["packages/core/src/mount.ts"],
+      "@point0/core/points": ["packages/core/src/points.ts"],
+      "@point0/core/router": ["packages/core/src/router.tsx"],
+      "@point0/core/super-store": ["packages/core/src/super-store.ts"],
+      "@point0/core/types": ["packages/core/src/types.ts"],
+      "@point0/core/unhead": ["packages/core/src/unhead.ts"],
+      "@point0/core/utils": ["packages/core/src/utils.ts"],
+      "@point0/core/client-server": ["packages/core/src/client-server.ts"],
+      "@point0/core/eversion": ["packages/core/src/eversion.ts"]
+    }
   }
 }

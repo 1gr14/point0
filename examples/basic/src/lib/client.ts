@@ -1,4 +1,4 @@
-import { Point0 } from 'point0/core/index.js'
+import { Point0 } from '@point0/core'
 import type { source } from './server.js'
 
 export const client = Point0.connect<typeof source>('client')

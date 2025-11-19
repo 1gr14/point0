@@ -1,6 +1,6 @@
 // import 'server-only'
 
-import { Point0 } from 'point0/core/index.js'
+import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
 
 export const source = Point0.source('server')

@@ -1,4 +1,4 @@
-import { Link } from 'point0/wouter/index.js'
+import { Link } from '@point0/wouter'
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'

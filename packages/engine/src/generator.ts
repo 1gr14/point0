@@ -6,7 +6,7 @@ import * as nodeFsSync from 'node:fs'
 import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
-import type { PointsModuleType } from '../core/points.js'
+import type { PointsModuleType } from '@point0/core/points'
 import { getDirByPaths } from './utils.js'
 import { END_POINT_TYPES, Walker, type CollectedPoint } from './walker.js'
 
@@ -446,7 +446,7 @@ export class FilesGenerator {
       lines.push(target.banner)
     }
     // lines.push(...this.emitSuperStoreInitialization())
-    lines.push(`import type { LazyPointsCollectionRecord } from 'point0/core/points.js'`)
+    lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points'`)
 
     if (!points.find((p) => p.root)) {
       throw new Error(`Root point not found for target ${target.scope}`)

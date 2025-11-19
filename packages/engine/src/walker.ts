@@ -15,7 +15,7 @@ import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { EndPointType, PointName } from '../core/types.js'
+import type { EndPointType, PointName } from '@point0/core/types'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T

@@ -49,6 +49,7 @@ export function RouterContextProvider({
   useAdapterLocation,
   ssrLocation,
 }: RouterContextProviderProps) {
+  console.log(999999999, 'RouterContextProvider')
   const [nextLocation, setNextLocation] = useState<AnyLocation | undefined>()
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()

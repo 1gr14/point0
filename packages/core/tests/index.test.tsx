@@ -2,9 +2,9 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Eversion } from './eversion.js'
-import { Point0 } from './index.js'
-import { Points } from './points.js'
+import { Eversion } from '../src/eversion.js'
+import { Point0 } from '../src/index.js'
+import { Points } from '../src/points.js'
 import type {
   AnyPoint,
   EmptyCtx,
@@ -17,7 +17,7 @@ import type {
   UndefinedResponseOutput,
   UndefinedRoute,
   UndefinedRouteDefinition,
-} from './types.js'
+} from '../src/types.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 

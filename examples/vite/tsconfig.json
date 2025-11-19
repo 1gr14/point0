@@ -14,10 +14,9 @@
     "skipLibCheck": true,
     "types": ["bun-types"],
     "paths": {
-      "point0": ["../../src/index.ts"],
-      "point0/*": ["../../src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "server/point0.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

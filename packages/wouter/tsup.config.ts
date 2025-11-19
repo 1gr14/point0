@@ -1,21 +1,19 @@
 import { defineConfig, type Options } from 'tsup'
-import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 
 const general = {
-  entry: ['src', '!src/**/*.test.*'],
+  entry: ['src/index.tsx'],
   clean: true,
   dts: true,
   sourcemap: true,
   splitting: false,
   minify: false,
   target: 'es2022',
-  external: ['bun:test'],
+  external: ['bun:test', '@point0/core', '@point0/core/*'],
   treeshake: false,
   bundle: false,
   outExtension: ({ format }) => ({ js: format === 'cjs' ? '.cjs' : '.js' }),
-  esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
-  tsconfig: './tsconfig.build.json',
+  tsconfig: './tsconfig.json',
 } satisfies Options
 
 export default defineConfig([

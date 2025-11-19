@@ -4,10 +4,10 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun } from '../core/eversion.js'
-import { SuperStore } from '../core/super-store.js'
-import type { AppComponent } from '../core/mount.js'
-import type { AnyPoint, InputRaw } from '../core/types.js'
+import type { EversionRun } from '@point0/core/eversion'
+import { SuperStore } from '@point0/core/super-store'
+import type { AppComponent } from '@point0/core/mount'
+import type { AnyPoint, InputRaw } from '@point0/core/types'
 import type { AnyLocation } from '@devp0nt/route0'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string

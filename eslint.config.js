@@ -20,7 +20,6 @@ export default defineConfig([
       '**/points.lazy.ts',
       '**/points.ready.ts',
       '**/wouter-routes.tsx',
-      'tsup.config.ts',
       'eslint.config.js',
       '.commitlintrc.js',
     ],

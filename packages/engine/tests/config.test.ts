@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'bun:test'
-import { parseEngineOptions } from './config.js'
+import { parseEngineOptions } from '../src/config.js'
 import { omit } from 'lodash'
-import { Point0 } from '../core/index.js'
+import { Point0 } from '@point0/core'
 
 describe('parseEngineOptions', () => {
   it('should parse engine options', () => {

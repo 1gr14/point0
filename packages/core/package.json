@@ -1,0 +1,114 @@
+{
+  "name": "@point0/core",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "Sergei Dmitriev",
+    "url": "https://p0nt.dev"
+  },
+  "homepage": "https://github.com/devp0nt/point0#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devp0nt/point0.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/devp0nt/point0/issues"
+  },
+  "type": "module",
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
+    },
+    "./mount": {
+      "types": "./dist/esm/mount.d.ts",
+      "require": "./dist/cjs/mount.cjs",
+      "import": "./dist/esm/mount.js"
+    },
+    "./points": {
+      "types": "./dist/esm/points.d.ts",
+      "require": "./dist/cjs/points.cjs",
+      "import": "./dist/esm/points.js"
+    },
+    "./router": {
+      "types": "./dist/esm/router.d.ts",
+      "require": "./dist/cjs/router.cjs",
+      "import": "./dist/esm/router.js"
+    },
+    "./super-store": {
+      "types": "./dist/esm/super-store.d.ts",
+      "require": "./dist/cjs/super-store.cjs",
+      "import": "./dist/esm/super-store.js"
+    },
+    "./types": {
+      "types": "./dist/esm/types.d.ts",
+      "require": "./dist/cjs/types.cjs",
+      "import": "./dist/esm/types.js"
+    },
+    "./unhead": {
+      "types": "./dist/esm/unhead.d.ts",
+      "require": "./dist/cjs/unhead.cjs",
+      "import": "./dist/esm/unhead.js"
+    },
+    "./utils": {
+      "types": "./dist/esm/utils.d.ts",
+      "require": "./dist/cjs/utils.cjs",
+      "import": "./dist/esm/utils.js"
+    },
+    "./client-server": {
+      "types": "./dist/esm/client-server.d.ts",
+      "require": "./dist/cjs/client-server.cjs",
+      "import": "./dist/esm/client-server.js"
+    },
+    "./eversion": {
+      "types": "./dist/esm/eversion.d.ts",
+      "require": "./dist/cjs/eversion.cjs",
+      "import": "./dist/esm/eversion.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "test": "bun test ./tests",
+    "test:watch": "bun test --watch ./tests",
+    "types": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "react-ssr-prepass": "^1.6.0",
+    "safe-stable-stringify": "^2.5.0",
+    "superjson": "^2.2.5",
+    "use-context-selector": "^2.0.0"
+  },
+  "peerDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@devp0nt/error0": "catalog:",
+    "@devp0nt/route0": "catalog:",
+    "@unhead/react": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.22",
+    "@types/node": "^20.0.0",
+    "esbuild-fix-imports-plugin": "^1.0.22",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
