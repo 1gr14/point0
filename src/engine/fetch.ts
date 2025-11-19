@@ -1,8 +1,8 @@
 import type { Eversion } from '../core/eversion.js'
 import type { RequiredCtx, PointsScope, WrapResponseFn } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import type { EngineLogger } from '../engine-shared/config.js'
-import { toJsonErrorResponse } from '../engine-shared/error.js'
+import type { EngineLogger } from './config.js'
+import { toJsonErrorResponse } from './error.js'
 import type { ClientBun } from './client.js'
 import type { ServerBun } from './server.js'
 

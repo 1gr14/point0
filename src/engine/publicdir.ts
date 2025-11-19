@@ -3,7 +3,7 @@ import * as nodePath from 'node:path'
 import type { Eversion } from '../core/eversion.js'
 import type { RootPoint } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import { prependAndDeappendSlash, withError } from '../engine-shared/utils.js'
+import { prependAndDeappendSlash, withError } from './utils.js'
 
 export class Publicdir<TInitialized extends boolean = boolean> {
   hostname: string | null

@@ -17,12 +17,18 @@ import type {
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   LoadedViteConfig,
-} from '../engine-shared/config.js'
-import { addEnvToDocumentHtml, renderAppAsReadableStream } from '../engine-shared/render.js'
-import { toJsExtension, validateEntrypoints, withError } from '../engine-shared/utils.js'
+} from './config.js'
 import { Publicdir } from './publicdir.js'
+import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { ServerBun } from './server.js'
-import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from '../engine-bun/utils.js'
+import {
+  extractBunBuildConfig,
+  toJsExtension,
+  validateEntrypoints,
+  withError,
+  type BunBuildConfigDefinition,
+  type BunPluginsDefinition,
+} from './utils.js'
 
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string

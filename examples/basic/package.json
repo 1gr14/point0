@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "p0": "bun run ../../src/bin/index.ts",
+    "p0": "bun run ../../src/engine/bin.ts",
     "dev": "bun run p0 dev",
     "generate": "bun run p0 generate",
     "build": "bun run p0 build",

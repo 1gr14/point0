@@ -5,18 +5,20 @@ import type { LazyPointsModule, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { PointsScope, RequiredCtx } from '../core/types.js'
 import { parseUrl, type ParsedUrl } from '../core/utils.js'
-import type { EngineLogger, EngineOptionsPublicdirParsed } from '../engine-shared/config.js'
+import type { ClientBun } from './client.js'
+import type { EngineLogger, EngineOptionsPublicdirParsed } from './config.js'
+import { engineFetch } from './fetch.js'
+import { Publicdir } from './publicdir.js'
 import {
+  extractBunBuildConfig,
   getDirByPaths,
   prependAndDeappendSlash,
   toJsExtension,
   validateEntrypoints,
   withError,
-} from '../engine-shared/utils.js'
-import type { ClientBun } from './client.js'
-import { engineFetch } from './fetch.js'
-import { Publicdir } from './publicdir.js'
-import { extractBunBuildConfig, type BunBuildConfigDefinition, type BunPluginsDefinition } from '../engine-bun/utils.js'
+  type BunBuildConfigDefinition,
+  type BunPluginsDefinition,
+} from './utils.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope

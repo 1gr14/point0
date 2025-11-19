@@ -1,12 +1,12 @@
+import type { Routes } from '@devp0nt/route0'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import type { AppComponent } from '../core/mount.js'
 import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '../core/points.js'
 import { Points } from '../core/points.js'
 import type { PointsScope } from '../core/types.js'
-import type { BunBuildConfigDefinition, BunPluginsDefinition } from '../engine-bun/utils.js'
+import type { BunBuildConfigDefinition, BunPluginsDefinition } from './utils.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
-import type { Routes } from '@devp0nt/route0'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
 

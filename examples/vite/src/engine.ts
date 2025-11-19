@@ -1,4 +1,4 @@
-import { Engine } from 'point0/engine-shared/index.js'
+import { Engine } from 'point0/engine/index.js'
 import { routes } from './lib/routes'
 
 export const engine = Engine.create(import.meta.url, {

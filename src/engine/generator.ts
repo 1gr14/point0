@@ -7,8 +7,8 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
 import type { PointsModuleType } from '../core/points.js'
-import { getDirByPaths } from '../engine-shared/utils.js'
-import { END_POINT_TYPES, Walker, type CollectedPoint } from '../engine-shared/walker.js'
+import { getDirByPaths } from './utils.js'
+import { END_POINT_TYPES, Walker, type CollectedPoint } from './walker.js'
 
 type ChangeCollectedPointsEvent = {
   deleted: CollectedPoint[]
