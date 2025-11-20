@@ -187,11 +187,11 @@ export class ServerBun<TInitialized extends boolean = boolean> {
             if (bunDevServerUpgradeWebSocketResult) {
               return bunDevServerUpgradeWebSocketResult.result
             }
-            const viteDevServerResponse = await client.fetchViteDevServerMiddleware(request, parsedUrl)
+            const viteDevServerResponse = await client.fetchClientViteDevServerMiddleware(request, parsedUrl)
             if (viteDevServerResponse) {
               return viteDevServerResponse
             }
-            const bunDevServerResponse = await client.fetchBunDevServerMiddleware(request, parsedUrl)
+            const bunDevServerResponse = await client.fetchClientBunDevServerMiddleware(request, parsedUrl)
             if (bunDevServerResponse) {
               return bunDevServerResponse
             }

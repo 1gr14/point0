@@ -45,7 +45,7 @@ test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, r
 
 
 .ctxLoader()
-const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); myPoint.use(myPlugin)
+const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
 chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 → chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
 → chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 

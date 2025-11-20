@@ -5,6 +5,7 @@ import type { AppComponent } from '@point0/core/mount'
 import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { AnyPoint, InputParsed } from '@point0/core/types'
+import { PointsScope } from '@point0/core/types'
 import type { ParsedUrl } from '@point0/core/utils'
 import { parseUrl } from '@point0/core/utils'
 import * as nodeFs from 'node:fs/promises'
@@ -33,6 +34,7 @@ import {
 
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
+  scope: PointsScope
   eversion: TInitialized extends true ? Eversion : Eversion | null
   providedPoints: Points | null
   pointsFile: string | null
@@ -58,11 +60,13 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
-  bunDevServer: Bun.Server<unknown> | null
-  viteDevServer: ViteDevServer | null
+  clientBunDevServer: Bun.Server<unknown> | null
+  serverViteDevServer: ViteDevServer | null
+  clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
 
   private constructor(input: {
+    scope: PointsScope
     initialized: TInitialized
     cwd: string
     providedPoints: Points | null
@@ -89,10 +93,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
     eversion: Eversion | null
-    viteDevServer: ViteDevServer | null
-    bunDevServer: Bun.Server<unknown> | null
+    clientBunDevServer: Bun.Server<unknown> | null
+    serverViteDevServer: ViteDevServer | null
+    clientViteDevServer: ViteDevServer | null
     server: ServerBun
   }) {
+    this.scope = input.scope
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
     this.providedPoints = input.providedPoints
@@ -118,13 +124,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
     this.publicdirOutdir = input.publicdirOutdir
-    this.viteDevServer = input.viteDevServer
-    this.bunDevServer = input.bunDevServer
+    this.clientViteDevServer = input.clientViteDevServer
+    this.clientBunDevServer = input.clientBunDevServer
+    this.serverViteDevServer = input.serverViteDevServer
     this.server = input.server
     this.initialized = input.initialized
   }
 
   static create(input: {
+    scope: PointsScope
     cwd: string
     points: Points | string
     ssr: boolean
@@ -148,13 +156,13 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
   }): ClientBun<false> {
-    const viteDevServer = null
-
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
     const points = null
 
-    const bunDevServer = null
+    const serverViteDevServer = null
+    const clientViteDevServer = null
+    const clientBunDevServer = null
 
     const publicdir = Publicdir.create({
       hostname: input.hostname,
@@ -175,8 +183,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appFile: typeof input.app === 'string' ? input.app : null,
       distIndexHtmlContent,
-      viteDevServer,
-      bunDevServer,
+      clientViteDevServer,
+      serverViteDevServer,
+      clientBunDevServer,
       initialized: false,
     })
 
@@ -190,26 +199,39 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     this.eversion = eversion
 
-    this.viteDevServer =
+    this.clientViteDevServer =
       this.viteConfig && process.env.NODE_ENV !== 'production'
         ? await ClientBun.createViteDevServer({
             viteConfig: this.viteConfig,
-            clientIndex: this.index,
+            scope: this.scope,
+            customer: 'client',
             hmrPort: this.hmrPort,
+            env: this.env,
+          })
+        : null
+
+    this.serverViteDevServer =
+      this.viteConfig && process.env.NODE_ENV !== 'production'
+        ? await ClientBun.createViteDevServer({
+            viteConfig: this.viteConfig,
+            scope: this.scope,
+            customer: 'serverSsr',
+            hmrPort: this.hmrPort,
+            env: process.env,
           })
         : null
 
     this.points = await ClientBun.createPoints({
       providedPoints: this.providedPoints,
       pointsFile: this.pointsFile,
-      viteDevServer: this.viteDevServer,
-      clientIndex: this.index,
+      serverViteDevServer: this.serverViteDevServer,
+      scope: this.scope,
     })
 
     await eversion.connect({ points: this.points })
 
-    this.bunDevServer =
-      this.indexHtml && !this.viteDevServer && process.env.NODE_ENV !== 'production'
+    this.clientBunDevServer =
+      this.indexHtml && !this.clientViteDevServer && process.env.NODE_ENV !== 'production'
         ? await ClientBun.createBunDevServer({ port: this.port, indexHtml: this.indexHtml })
         : null
     await this.publicdir.init({ root: this.points.root, eversion })
@@ -227,34 +249,35 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   static readonly createPoints = async ({
     providedPoints,
     pointsFile,
-    viteDevServer,
-    clientIndex,
+    serverViteDevServer,
+    scope,
   }: {
     providedPoints: Points | null
     pointsFile: string | null
-    viteDevServer: ViteDevServer | null
-    clientIndex: number
+    serverViteDevServer: ViteDevServer | null
+    scope: PointsScope
   }): Promise<Points> => {
     if (providedPoints) {
       return providedPoints
     }
     if (pointsFile) {
-      if (viteDevServer) {
+      if (serverViteDevServer) {
         return await Points.read(
           toJsExtension(pointsFile),
           async (absPath) =>
-            (await viteDevServer.ssrLoadModule(toJsExtension(absPath))) as LazyPointsModule | ReadyPointsModule,
+            (await serverViteDevServer.ssrLoadModule(toJsExtension(absPath))) as LazyPointsModule | ReadyPointsModule,
         )
       } else {
+        // TODO: add option serverBunDevBuilder: true, thn we will build client and read points from dist dir
         return Points.create(
           await withError(
             async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
-            `Failed to import points from ${pointsFile} on client at position "${clientIndex}"`,
+            `Failed to import points from ${pointsFile} on client "${scope}"`,
           ),
         )
       }
     }
-    throw new Error(`Points not provided for client at position "${clientIndex}"`)
+    throw new Error(`Points not provided for client "${scope}"`)
   }
 
   private static async createBunDevServer({
@@ -296,25 +319,24 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
   static async createViteDevServer({
     viteConfig,
-    clientIndex,
+    scope,
+    customer,
     hmrPort,
     env,
   }: {
     viteConfig: EngineOptionsViteConfig | null
-    clientIndex: number | null
+    scope: PointsScope
+    customer: 'client' | 'serverSsr' | 'serverNoSsr'
     hmrPort: number | null
     env?: EngineOptionsEnvParsed
   }): Promise<ViteDevServer> {
     if (!viteConfig) {
-      throw new Error(
-        `Vite config not found for ${clientIndex !== null ? `client at position "${clientIndex}"` : 'server'}`,
-      )
+      throw new Error(`Vite config not found for client "${scope}"`)
     }
     const createServer = await import('vite').then((module) => module.createServer)
     const loadedViteConfig: ExtractedViteConfig = await ClientBun.extractViteConfig({
       viteConfig,
       command: 'serve',
-      // TODO:ASAP create second viteDevServer for server build
       customer: 'client',
     })
     return await createServer({
@@ -342,6 +364,26 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         ...Object.fromEntries(
           Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
         ),
+        'process.env.CUSTOMER': JSON.stringify(customer),
+        'import.meta.env.CUSTOMER': JSON.stringify(customer),
+        ...(customer === 'serverSsr'
+          ? {
+              'process.env.SSR': JSON.stringify(true),
+              'import.meta.env.SSR': JSON.stringify(true),
+            }
+          : {}),
+        ...(customer === 'serverSsr' || customer === 'serverNoSsr'
+          ? {
+              'process.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
+              'import.meta.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
+            }
+          : {}),
+        ...(customer === 'client'
+          ? {
+              'process.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
+              'import.meta.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
+            }
+          : {}),
       },
     })
   }
@@ -351,7 +393,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     server: Bun.Server<unknown>,
     parsedUrl?: ParsedUrl,
   ): Promise<{ result: Response | undefined } | undefined> {
-    if (!this.bunDevServer) {
+    if (!this.clientBunDevServer) {
       return undefined
     }
     if (request.headers.get('upgrade') !== 'websocket') {
@@ -361,11 +403,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     if (!parsedUrl.urlObj.pathname.startsWith('/_bun/')) {
       return undefined
     }
-    const bunDevServerWsUrl = `ws://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`
+    const clientBunDevServerWsUrl = `ws://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`
 
     // Upgrade the connection and store upstream URL in data
     const upgraded = server.upgrade(request, {
-      data: { wsUrl: bunDevServerWsUrl },
+      data: { wsUrl: clientBunDevServerWsUrl },
     })
 
     if (!upgraded) {
@@ -376,9 +418,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return { result: undefined }
   }
 
-  async fetchBunDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
-    const bunDevServer = this.bunDevServer
-    if (!bunDevServer) {
+  async fetchClientBunDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
+    const clientBunDevServer = this.clientBunDevServer
+    if (!clientBunDevServer) {
       return undefined
     }
     parsedUrl ??= parseUrl(request.url)
@@ -394,9 +436,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return undefined
   }
 
-  async fetchViteDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
-    const viteDevServer = this.viteDevServer
-    if (!viteDevServer) {
+  async fetchClientViteDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
+    const clientViteDevServer = this.clientViteDevServer
+    if (!clientViteDevServer) {
       return undefined
     }
     return await new Promise<Response | undefined>((resolve, reject) => {
@@ -516,7 +558,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         }
       }
 
-      viteDevServer.middlewares(nodeReq, nodeRes, next)
+      clientViteDevServer.middlewares(nodeReq, nodeRes, next)
     })
   }
 
@@ -526,21 +568,21 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
 
     if (!this.indexHtml) {
-      throw new Error(`indexHtml not found for client "${this.points.root._scope}"`)
+      throw new Error(`indexHtml not found for client "${this.scope}"`)
     }
     if (process.env.NODE_ENV !== 'production') {
-      if (this.viteDevServer) {
-        return await this.viteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
-      } else if (this.bunDevServer) {
+      if (this.clientViteDevServer) {
+        return await this.clientViteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
+      } else if (this.clientBunDevServer) {
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
       } else {
         throw new Error(
-          `Vite dev server or bun dev server not connected for client "${this.points.root._scope}". Please provide vite config or port for client "${this.points.root._scope}".`,
+          `Vite dev server or bun dev server not connected for client "${this.scope}". Please provide vite config or port for client "${this.scope}".`,
         )
       }
     }
     if (!this.distIndexHtmlContent) {
-      throw new Error(`distIndexHtmlContent not preloaded for client "${this.points.root._scope}"`)
+      throw new Error(`distIndexHtmlContent not preloaded for client "${this.scope}"`)
     }
     return this.distIndexHtmlContent
   }
@@ -559,23 +601,24 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       return this.providedAppComponent
     }
     if (this.appFile) {
-      if (this.viteDevServer) {
-        const appComponent = (await this.viteDevServer
+      if (this.clientViteDevServer) {
+        const appComponent = (await this.clientViteDevServer
           .ssrLoadModule(toJsExtension(this.appFile))
           .then((module) => module.default || module)) as AppComponent | undefined
         if (!appComponent) {
-          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._scope}"`)
+          throw new Error(`App default export not found in ${this.appFile} for client "${this.scope}"`)
         }
         return appComponent
       } else {
+        // TODO: add option serverBunDevBuilder: true, thn we will build client and read app from dist dir
         const appComponent = await import(toJsExtension(this.appFile)).then((module) => module.default || module)
         if (!appComponent) {
-          throw new Error(`App default export not found in ${this.appFile} for client "${this.points.root._scope}"`)
+          throw new Error(`App default export not found in ${this.appFile} for client "${this.scope}"`)
         }
         return appComponent as AppComponent
       }
     }
-    throw new Error(`App not provided for client "${this.points.root._scope}"`)
+    throw new Error(`App not provided for client "${this.scope}"`)
   }
 
   getAppPathOrNullOrThrow(): string | null {
@@ -625,7 +668,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       return null
     }
     if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for client "${this.points.root._scope}"`)
+      throw new Error(`outdir not provided for client "${this.scope}"`)
     }
 
     const thisBunBuildConfig = await extractClientBunBuildConfig({
@@ -675,19 +718,19 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
-        `To build client "${this.points.root._scope}" for server, you should provide app path, not app component itself in "app" option`,
+        `To build client "${this.scope}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
     if (!buildPaths.pointsFile && this.providedPoints) {
       throw new Error(
-        `To build client "${this.points.root._scope}" for server, you should provide points path, not points itself in "points" option`,
+        `To build client "${this.scope}" for server, you should provide points path, not points itself in "points" option`,
       )
     }
     if (!buildPaths.appFile && !buildPaths.pointsFile) {
       return null
     }
     if (!buildPaths.serverOutdir) {
-      throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
+      throw new Error(`serverOutdir not provided for client "${this.scope}"`)
     }
 
     const NODE_ENV = process.env.NODE_ENV
@@ -742,7 +785,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
 
     if (!this.viteConfig) {
-      throw new Error(`viteConfig not provided for client "${this.points.root._scope}"`)
+      throw new Error(`viteConfig not provided for client "${this.scope}"`)
     }
     const { build: viteBuild } = await import('vite')
     const buildPaths = this.getBuildPaths()
@@ -750,7 +793,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       return null
     }
     if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for client "${this.points.root._scope}"`)
+      throw new Error(`outdir not provided for client "${this.scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.extractViteConfig({
@@ -760,7 +803,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     })
 
     if (!(await Bun.file(buildPaths.indexHtml).exists())) {
-      throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.points.root._scope}"`)
+      throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.scope}"`)
     }
 
     const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
@@ -829,25 +872,25 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
 
     if (!this.viteConfig) {
-      throw new Error(`viteConfig not provided for client "${this.points.root._scope}"`)
+      throw new Error(`viteConfig not provided for client "${this.scope}"`)
     }
     const { build: viteBuild } = await import('vite')
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
-        `To build client "${this.points.root._scope}" for server, you should provide app path, not app component itself in "app" option`,
+        `To build client "${this.scope}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
     if (!buildPaths.pointsFile && this.providedPoints) {
       throw new Error(
-        `To build client "${this.points.root._scope}" for server, you should provide points path, not points itself in "points" option`,
+        `To build client "${this.scope}" for server, you should provide points path, not points itself in "points" option`,
       )
     }
     if (!buildPaths.appFile && !buildPaths.pointsFile) {
       return null
     }
     if (!buildPaths.serverOutdir) {
-      throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
+      throw new Error(`serverOutdir not provided for client "${this.scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.extractViteConfig({
