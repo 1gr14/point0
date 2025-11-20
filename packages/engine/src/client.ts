@@ -17,18 +17,18 @@ import type {
   EngineOptionsEnvParsed,
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
-  LoadedViteConfig,
+  ExtractedViteConfig,
 } from './config.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { ServerBun } from './server.js'
 import {
-  extractBunBuildConfig,
+  extractClientBunBuildConfig,
   toJsExtension,
   validateEntrypoints,
   withError,
-  type BunBuildConfigDefinition,
-  type BunPluginsDefinition,
+  type ClientBunBuildConfigDefinition,
+  type ClientBunPluginsDefinition,
 } from './utils.js'
 
 export class ClientBun<TInitialized extends boolean = boolean> {
@@ -52,8 +52,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   env: EngineOptionsEnvParsed
   publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
   outdir: string | null
-  bunBuildConfig: BunBuildConfigDefinition
-  bunPlugins: BunPluginsDefinition
+  bunBuildConfig: ClientBunBuildConfigDefinition
+  bunPlugins: ClientBunPluginsDefinition
   serverOutdir: string | null
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
@@ -76,8 +76,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     indexHtml: string | null
     outdir: string | null
     serverOutdir: string | null
-    bunBuildConfig: BunBuildConfigDefinition
-    bunPlugins: BunPluginsDefinition
+    bunBuildConfig: ClientBunBuildConfigDefinition
+    bunPlugins: ClientBunPluginsDefinition
     publicdirOutdir: string | null
     distIndexHtmlContent: string | null
     domRootElementId: string
@@ -134,8 +134,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     publicdir: EngineOptionsPublicdirParsed
     outdir: string | null
     serverOutdir: string | null
-    bunBuildConfig: BunBuildConfigDefinition
-    bunPlugins: BunPluginsDefinition
+    bunBuildConfig: ClientBunBuildConfigDefinition
+    bunPlugins: ClientBunPluginsDefinition
     publicdirOutdir: string | null
     indexHtml: string | null
     domRootElementId: string
@@ -272,19 +272,25 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     })
   }
 
-  static async loadViteConfig({
+  static async extractViteConfig({
     viteConfig,
     command,
-    isSsrBuild,
+    customer,
   }: {
     viteConfig: EngineOptionsViteConfig
     command: 'serve' | 'build'
-    isSsrBuild: boolean
-  }): Promise<LoadedViteConfig> {
+    customer: 'client' | 'serverSsr' | 'serverNoSsr'
+  }): Promise<ExtractedViteConfig> {
     return typeof viteConfig === 'function'
-      ? await viteConfig({ command, mode: process.env.NODE_ENV || 'development', isSsrBuild })
+      ? await viteConfig({ command, mode: `${process.env.NODE_ENV || 'development'}-${customer}` })
       : typeof viteConfig === 'string'
-        ? await import(viteConfig)
+        ? await (async () => {
+            const importedViteConfig = await import(viteConfig).then((module) => module.default || module)
+            if (typeof importedViteConfig === 'function') {
+              return await importedViteConfig({ command, mode: `${process.env.NODE_ENV || 'development'}-${customer}` })
+            }
+            return importedViteConfig
+          })()
         : await viteConfig
   }
 
@@ -305,11 +311,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       )
     }
     const createServer = await import('vite').then((module) => module.createServer)
-    const loadedViteConfig: LoadedViteConfig = await ClientBun.loadViteConfig({
+    const loadedViteConfig: ExtractedViteConfig = await ClientBun.extractViteConfig({
       viteConfig,
       command: 'serve',
       // TODO:ASAP create second viteDevServer for server build
-      isSsrBuild: false,
+      customer: 'client',
     })
     return await createServer({
       ...loadedViteConfig,
@@ -609,7 +615,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   // TODO option to clear dist dir
-  async buildByBunForClient(bunBuildConfig: BunBuildConfigDefinition = {}): Promise<string[] | null> {
+  async buildByBunForClient(bunBuildConfig: ClientBunBuildConfigDefinition = {}): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
@@ -622,22 +628,20 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       throw new Error(`outdir not provided for client "${this.points.root._scope}"`)
     }
 
-    const thisBunBuildConfig = await extractBunBuildConfig({
-      mode: process.env.NODE_ENV || 'development',
-      command: 'build',
+    const thisBunBuildConfig = await extractClientBunBuildConfig({
+      nodeEnv: process.env.NODE_ENV,
       target: 'client',
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
-    const providedBunBuildConfig = await extractBunBuildConfig({
-      mode: process.env.NODE_ENV || 'development',
-      command: 'build',
+    const providedBunBuildConfig = await extractClientBunBuildConfig({
+      nodeEnv: process.env.NODE_ENV,
       target: 'client',
       bunBuildConfig,
       bunPlugins: [],
     })
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
+    const NODE_ENV = process.env.NODE_ENV
     const buildOutput = await Bun.build({
       target: 'browser',
       format: 'esm',
@@ -656,14 +660,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       define: {
         ...thisBunBuildConfig.define,
         ...providedBunBuildConfig.define,
-        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        ...(NODE_ENV ? { 'process.env.NODE_ENV': JSON.stringify(NODE_ENV) } : {}),
         'process.env.BUILD_TARGET': 'client',
       },
     })
     return buildOutput.outputs.map((output) => output.path)
   }
 
-  async buildByBunForServer(bunBuildConfig: BunBuildConfigDefinition = {}): Promise<string[] | null> {
+  async buildByBunForServer(bunBuildConfig: ClientBunBuildConfigDefinition = {}): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
@@ -686,19 +690,17 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
     }
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
+    const NODE_ENV = process.env.NODE_ENV
 
-    const thisBunBuildConfig = await extractBunBuildConfig({
-      mode: NODE_ENV,
-      command: 'build',
-      target: 'server',
+    const thisBunBuildConfig = await extractClientBunBuildConfig({
+      nodeEnv: NODE_ENV,
+      target: this.ssr ? 'serverSsr' : 'serverNoSsr',
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
-    const providedBunBuildConfig = await extractBunBuildConfig({
-      mode: NODE_ENV,
-      command: 'build',
-      target: 'server',
+    const providedBunBuildConfig = await extractClientBunBuildConfig({
+      nodeEnv: NODE_ENV,
+      target: this.ssr ? 'serverSsr' : 'serverNoSsr',
       bunBuildConfig,
       bunPlugins: [],
     })
@@ -751,10 +753,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       throw new Error(`outdir not provided for client "${this.points.root._scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
-    const loadedViteConfig = await ClientBun.loadViteConfig({
+    const loadedViteConfig = await ClientBun.extractViteConfig({
       viteConfig: this.viteConfig,
       command: 'build',
-      isSsrBuild: false,
+      customer: 'client',
     })
 
     if (!(await Bun.file(buildPaths.indexHtml).exists())) {
@@ -765,7 +767,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const normalizedExistsingRollupOptionsOutput =
       (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
     const rollupOptionsOutput: Extract<
-      NonNullable<NonNullable<LoadedViteConfig['build']>['rollupOptions']>['output'],
+      NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
       object
     > = {
       ...normalizedExistsingRollupOptionsOutput,
@@ -777,7 +779,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-    const config: LoadedViteConfig = {
+    const config: ExtractedViteConfig = {
       ...loadedViteConfig,
       root: viteRoot,
       build: {
@@ -848,10 +850,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       throw new Error(`serverOutdir not provided for client "${this.points.root._scope}"`)
     }
     const NODE_ENV = process.env.NODE_ENV || 'production'
-    const loadedViteConfig = await ClientBun.loadViteConfig({
+    const loadedViteConfig = await ClientBun.extractViteConfig({
       viteConfig: this.viteConfig,
       command: 'build',
-      isSsrBuild: true,
+      customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
     })
 
     const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
@@ -859,7 +861,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
 
     const rollupOptionsOutput: Extract<
-      NonNullable<NonNullable<LoadedViteConfig['build']>['rollupOptions']>['output'],
+      NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
       object
     > = {
       ...normalizedExistsingRollupOptionsOutput,
@@ -875,7 +877,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) ||
       this.cwd
 
-    const config: LoadedViteConfig = {
+    const config: ExtractedViteConfig = {
       ...loadedViteConfig,
       root: viteRoot,
       build: {
@@ -951,7 +953,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async buildSelf(
-    bunBuildConfig?: BunBuildConfigDefinition,
+    bunBuildConfig?: ClientBunBuildConfigDefinition,
   ): Promise<{ self: string[] | null; server: string[] | null }> {
     if (this.viteConfig) {
       const [self, server] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
@@ -966,7 +968,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async build(
-    bunBuildConfig?: BunBuildConfigDefinition,
+    bunBuildConfig?: ClientBunBuildConfigDefinition,
   ): Promise<{ self: string[] | null; server: string[] | null; publicdir: string[] | null }> {
     await this.clean()
     const publicdir = await this.publicdir.build() // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory

@@ -2,7 +2,7 @@ import type { Plugin } from 'vite'
 import { Walker } from './walker.js'
 import MagicString from 'magic-string'
 
-export function prunerVitePlugin({ target }: { target: 'client' | 'server-ssr' | 'server-nossr' }): Plugin {
+export function prunerVitePlugin({ customer }: { customer: 'client' | 'serverSsr' | 'serverNoSsr' }): Plugin {
   return {
     name: 'point0-pruner',
     enforce: 'pre',
@@ -15,7 +15,7 @@ export function prunerVitePlugin({ target }: { target: 'client' | 'server-ssr' |
       if (ssr) return null
 
       const walker = new Walker()
-      const transformed = await walker.prune({ content: code, fileAbs: filepath, target })
+      const transformed = await walker.prune({ content: code, fileAbs: filepath, customer })
       if (transformed === code) return null
 
       const ms = new MagicString(code)

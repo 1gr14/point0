@@ -2,7 +2,7 @@ import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
 import { Walker } from './walker.js'
 
-export function prunerBunPlugin({ target }: { target: 'client' | 'server-ssr' | 'server-nossr' }): BunPlugin {
+export function prunerBunPlugin({ customer }: { customer: 'client' | 'serverSsr' | 'serverNoSsr' }): BunPlugin {
   return {
     name: 'point0-pruner',
     setup(build) {
@@ -18,7 +18,7 @@ export function prunerBunPlugin({ target }: { target: 'client' | 'server-ssr' | 
           const transformed = await walker.prune({
             content: original,
             fileAbs: filepath,
-            target,
+            customer,
           })
 
           if (transformed === original) {

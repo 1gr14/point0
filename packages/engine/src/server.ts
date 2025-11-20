@@ -10,14 +10,14 @@ import type { EngineLogger, EngineOptionsPublicdirParsed } from './config.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 import {
-  extractBunBuildConfig,
+  extractServerBunBuildConfig,
   getDirByPaths,
   prependAndDeappendSlash,
   toJsExtension,
   validateEntrypoints,
   withError,
-  type BunBuildConfigDefinition,
-  type BunPluginsDefinition,
+  type ServerBunBuildConfigDefinition,
+  type ServerBunPluginsDefinition,
 } from './utils.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
@@ -31,14 +31,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   engineFile: string | null
   cwdBeforeBuild: string
   port: number
-  hmrPort: number | null
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
   logger: EngineLogger
   entry: Record<string, string> | null
   publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
   outdir: string | null
-  bunBuildConfig: BunBuildConfigDefinition
-  bunPlugins: BunPluginsDefinition
+  bunBuildConfig: ServerBunBuildConfigDefinition
+  bunPlugins: ServerBunPluginsDefinition
   publicdirOutdir: string | null
   fallbackScope: PointsScope
   initialized: TInitialized
@@ -55,15 +54,14 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     engineFile: string | null
     cwdBeforeBuild: string
     port: number
-    hmrPort: number | null
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
     entry: Record<string, string> | null
     publicdir: Publicdir | null
     outdir: string | null
-    bunBuildConfig: BunBuildConfigDefinition
-    bunPlugins: BunPluginsDefinition
+    bunBuildConfig: ServerBunBuildConfigDefinition
+    bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
     eversion: Eversion | null
   }) {
@@ -77,7 +75,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.engineFile = input.itWasBuilt ? (process.env.ENGINE_FILE_AFTER_BUILD ?? input.engineFile) : input.engineFile
     this.cwdBeforeBuild = process.env.ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
     this.port = input.port
-    this.hmrPort = input.hmrPort
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.logger = input.logger
     this.entry = input.entry
@@ -98,12 +95,11 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     cwdBeforeBuild: string
     itWasBuilt: boolean
     port: number
-    hmrPort: number | null
     entry: Record<string, string> | null
     publicdir: EngineOptionsPublicdirParsed
     outdir: string | null
-    bunBuildConfig: BunBuildConfigDefinition
-    bunPlugins: BunPluginsDefinition
+    bunBuildConfig: ServerBunBuildConfigDefinition
+    bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
     fallbackScope: PointsScope
     logger: EngineLogger
@@ -295,7 +291,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return { self, publicdir }
   }
 
-  async buildSelf(bunBuildConfig: BunBuildConfigDefinition = {}): Promise<string[] | null> {
+  async buildSelf(bunBuildConfig: ServerBunBuildConfigDefinition = {}): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.entrypointsExists) {
       return null
@@ -304,19 +300,15 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       throw new Error(`outdir not provided for server`)
     }
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
+    const NODE_ENV = process.env.NODE_ENV
 
-    const thisBunBuildConfig = await extractBunBuildConfig({
-      mode: NODE_ENV,
-      command: 'build',
-      target: 'server',
+    const thisBunBuildConfig = await extractServerBunBuildConfig({
+      nodeEnv: NODE_ENV,
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
-    const providedBunBuildConfig = await extractBunBuildConfig({
-      mode: NODE_ENV,
-      command: 'build',
-      target: 'server',
+    const providedBunBuildConfig = await extractServerBunBuildConfig({
+      nodeEnv: NODE_ENV,
       bunBuildConfig,
       bunPlugins: [],
     })
@@ -393,7 +385,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       define: {
         ...thisBunBuildConfig.define,
         ...providedBunBuildConfig.define,
-        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        ...(NODE_ENV ? { 'process.env.NODE_ENV': JSON.stringify(NODE_ENV) } : {}),
         ...injectedEnvs,
       },
     })
@@ -401,7 +393,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async build(
-    bunBuildConfig: BunBuildConfigDefinition = {},
+    bunBuildConfig: ServerBunBuildConfigDefinition = {},
   ): Promise<{ self: string[] | null; publicdir: string[] | null }> {
     await this.clean()
     const [self, publicdir] = await Promise.all([this.buildSelf(bunBuildConfig), this.publicdir.build()])

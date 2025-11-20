@@ -1,11 +1,16 @@
 import type { Routes } from '@devp0nt/route0'
-import { minimatch } from 'minimatch'
-import nodePath from 'node:path'
 import type { AppComponent } from '@point0/core/mount'
 import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { PointsScope } from '@point0/core/types'
-import type { BunBuildConfigDefinition, BunPluginsDefinition } from './utils.js'
+import { minimatch } from 'minimatch'
+import nodePath from 'node:path'
+import type {
+  ClientBunBuildConfigDefinition,
+  ClientBunPluginsDefinition,
+  ServerBunBuildConfigDefinition,
+  ServerBunPluginsDefinition,
+} from './utils.js'
 import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
@@ -28,8 +33,8 @@ export type EngineOptionsPublicdirParsed = Array<[string, string | Response | ((
 export type EngineOptionsEnv = string | Record<string, any> | Array<string | Record<string, any>>
 export type EngineOptionsEnvParsed = Record<string, any>
 
-export type LoadedViteConfig = import('vite').UserConfig
-export type EngineOptionsViteConfig = LoadedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
+export type ExtractedViteConfig = import('vite').UserConfig
+export type EngineOptionsViteConfig = ExtractedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
 
 export type EngineGeneralOptions = {
   fallbackScope?: PointsScope
@@ -50,12 +55,11 @@ export type EngineServerOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
   publicdir?: EngineOptionsPublicdir
   port?: number | string | null
-  hmrPort?: number | string | null
   outdir?: string | null
   entry?: string | Record<string, string> | null
   publicdirOutdir?: string | null
-  bunBuildConfig?: BunBuildConfigDefinition
-  bunPlugins?: BunPluginsDefinition
+  bunBuildConfig?: ServerBunBuildConfigDefinition
+  bunPlugins?: ServerBunPluginsDefinition
   routes?: Routes | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
@@ -74,8 +78,8 @@ export type EngineClientOptions = {
   port?: number | string | null
   hmrPort?: number | string | null
   viteConfig?: EngineOptionsViteConfig | null
-  bunBuildConfig?: BunBuildConfigDefinition
-  bunPlugins?: BunPluginsDefinition
+  bunBuildConfig?: ClientBunBuildConfigDefinition
+  bunPlugins?: ClientBunPluginsDefinition
   outdir?: string | null
   serverOutdir?: string | null
   publicdirOutdir?: string | null
@@ -119,8 +123,8 @@ export type EngineClientOptionsParsed = {
   index: number
   viteConfig: EngineOptionsViteConfig | null
   outdir: string | null
-  bunBuildConfig: BunBuildConfigDefinition
-  bunPlugins: BunPluginsDefinition
+  bunBuildConfig: ClientBunBuildConfigDefinition
+  bunPlugins: ClientBunPluginsDefinition
   serverOutdir: string | null
   publicdirOutdir: string | null
   routes: Routes | string | null
@@ -132,7 +136,6 @@ export type EngineServerOptionsParsed = {
   points: Points | string
   publicdir: EngineOptionsPublicdirParsed
   port: number
-  hmrPort: number
   entry: Record<string, string> | null
   outdir: string | null
   publicdirOutdir: string | null
@@ -140,8 +143,8 @@ export type EngineServerOptionsParsed = {
   cwdBeforeBuild: string
   itWasBuilt: boolean
   fallbackScope: PointsScope
-  bunBuildConfig: BunBuildConfigDefinition
-  bunPlugins: BunPluginsDefinition
+  bunBuildConfig: ServerBunBuildConfigDefinition
+  bunPlugins: ServerBunPluginsDefinition
   routes: Routes | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
@@ -372,7 +375,6 @@ export const parseEngineServerOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
-  const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
   const entriesRecordInput =
     typeof serverOptions.entry === 'string' ? { main: serverOptions.entry } : serverOptions.entry
   const outdir = toFinalPath({
@@ -405,7 +407,6 @@ export const parseEngineServerOptions = ({
           })
         : Points.create(serverOptions.points),
     port,
-    hmrPort,
     outdir,
     entry: entriesRecord,
     publicdir:

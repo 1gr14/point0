@@ -267,28 +267,28 @@ export class Walker {
     content,
     fileAbs,
     methods: methodsProvided,
-    target,
+    customer,
   }: {
     content?: string
     fileAbs: string
     methods?: string[]
-    target?: 'client' | 'server-ssr' | 'server-nossr'
+    customer?: 'client' | 'serverSsr' | 'serverNoSsr'
   }): Promise<string> {
     const methods = (() => {
       if (methodsProvided) {
         return methodsProvided
       }
-      if (!target) {
-        throw new Error('target or methods is required')
+      if (!customer) {
+        throw new Error('customer or methods is required')
       }
-      if (target === 'client') {
+      if (customer === 'client') {
         return ['loader', 'ctx', 'query', 'infiniteQuery', 'mutation', 'response', 'onRequest', 'onResponse']
       }
       const result = ['clientLoader']
-      if (target === 'server-ssr') {
+      if (customer === 'serverSsr') {
         return result
       }
-      if (target === 'server-nossr') {
+      if (customer === 'serverNoSsr') {
         result.push(
           'page',
           'component',
@@ -303,7 +303,7 @@ export class Walker {
         )
         return result
       }
-      throw new Error(`Invalid target: ${target}`)
+      throw new Error(`Invalid customer: ${customer}`)
     })()
 
     // 1️⃣ Берём код
