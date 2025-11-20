@@ -282,7 +282,7 @@ export class Walker {
         throw new Error('customer or methods is required')
       }
       if (customer === 'client') {
-        return ['loader', 'ctx', 'query', 'infiniteQuery', 'mutation', 'response', 'onRequest', 'onResponse']
+        return ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse']
       }
       const result = ['clientLoader']
       if (customer === 'serverSsr') {

@@ -215,8 +215,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         ? await ClientBun.createViteDevServer({
             viteConfig: this.viteConfig,
             scope: this.scope,
-            customer: 'serverSsr',
-            hmrPort: this.hmrPort,
+            customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
+            hmrPort: null,
             env: process.env,
           })
         : null
@@ -337,10 +337,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const loadedViteConfig: ExtractedViteConfig = await ClientBun.extractViteConfig({
       viteConfig,
       command: 'serve',
-      customer: 'client',
+      customer,
     })
     return await createServer({
       ...loadedViteConfig,
+      configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',
       server: {
@@ -386,9 +387,56 @@ export class ClientBun<TInitialized extends boolean = boolean> {
           : {}),
       },
     })
+    // return await createServer({
+    //   ...loadedViteConfig,
+    //   clearScreen: loadedViteConfig.clearScreen ?? false,
+    //   appType: 'custom',
+    //   server: {
+    //     ...loadedViteConfig.server,
+    //     middlewareMode: true,
+    //     hmr:
+    //       loadedViteConfig.server?.hmr === false
+    //         ? false
+    //         : hmrPort === null
+    //           ? false
+    //           : {
+    //               ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+    //               port: hmrPort,
+    //             },
+    //   },
+    //   define: {
+    //     ...loadedViteConfig.define,
+    //     ...Object.fromEntries(
+    //       Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+    //     ),
+    //     ...Object.fromEntries(
+    //       Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+    //     ),
+    //     'process.env.CUSTOMER': JSON.stringify(customer),
+    //     'import.meta.env.CUSTOMER': JSON.stringify(customer),
+    //     ...(customer === 'serverSsr'
+    //       ? {
+    //           'process.env.SSR': JSON.stringify(true),
+    //           'import.meta.env.SSR': JSON.stringify(true),
+    //         }
+    //       : {}),
+    //     ...(customer === 'serverSsr' || customer === 'serverNoSsr'
+    //       ? {
+    //           'process.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
+    //           'import.meta.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
+    //         }
+    //       : {}),
+    //     ...(customer === 'client'
+    //       ? {
+    //           'process.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
+    //           'import.meta.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
+    //         }
+    //       : {}),
+    //   },
+    // })
   }
 
-  async upgradeBunDevServerWebSocket(
+  async upgradeProxyBunDevServerWebSocket(
     request: Request,
     server: Bun.Server<unknown>,
     parsedUrl?: ParsedUrl,
@@ -572,7 +620,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
     if (process.env.NODE_ENV !== 'production') {
       if (this.clientViteDevServer) {
-        return await this.clientViteDevServer.transformIndexHtml(url, await Bun.file(this.indexHtml).text())
+        const originalIndexHtml = await this.clientViteDevServer.transformIndexHtml(
+          url,
+          await Bun.file(this.indexHtml).text(),
+        )
+        return originalIndexHtml
       } else if (this.clientBunDevServer) {
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
       } else {
@@ -589,7 +641,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
   async getOriginalIndexHtmlWithEnvs(url: string): Promise<string> {
     const html = await this.getOriginalIndexHtml(url)
-    return addEnvToDocumentHtml({ html, env: this.env })
+    const htmlWithEnvs = addEnvToDocumentHtml({ html, env: this.env })
+    return htmlWithEnvs
   }
 
   async getFreshAppComponent(): Promise<AppComponent> {
@@ -601,8 +654,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       return this.providedAppComponent
     }
     if (this.appFile) {
-      if (this.clientViteDevServer) {
-        const appComponent = (await this.clientViteDevServer
+      if (this.serverViteDevServer) {
+        const appComponent = (await this.serverViteDevServer
           .ssrLoadModule(toJsExtension(this.appFile))
           .then((module) => module.default || module)) as AppComponent | undefined
         if (!appComponent) {

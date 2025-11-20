@@ -179,7 +179,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
         if (process.env.NODE_ENV !== 'production') {
           for (const client of this.clients) {
-            const bunDevServerUpgradeWebSocketResult = await client.upgradeBunDevServerWebSocket(
+            const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket(
               request,
               server,
               parsedUrl,
@@ -187,13 +187,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
             if (bunDevServerUpgradeWebSocketResult) {
               return bunDevServerUpgradeWebSocketResult.result
             }
-            const viteDevServerResponse = await client.fetchClientViteDevServerMiddleware(request, parsedUrl)
-            if (viteDevServerResponse) {
-              return viteDevServerResponse
+            const clientViteDevServerResponse = await client.fetchClientViteDevServerMiddleware(request, parsedUrl)
+            if (clientViteDevServerResponse) {
+              return clientViteDevServerResponse
             }
-            const bunDevServerResponse = await client.fetchClientBunDevServerMiddleware(request, parsedUrl)
-            if (bunDevServerResponse) {
-              return bunDevServerResponse
+            const clientBunDevServerResponse = await client.fetchClientBunDevServerMiddleware(request, parsedUrl)
+            if (clientBunDevServerResponse) {
+              return clientBunDevServerResponse
             }
           }
         }

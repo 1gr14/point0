@@ -162,7 +162,7 @@ export class Point0<
   _queryOptions: ExtraUseQueryOptions
   _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
   _queryResultType: TQueryResultType
-  // TODO: remove or use wrapper
+  // TODO: use wrapper
   _wrapper: WrapperComponentType | undefined
   _hasSourceBase: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
   _extractFns: ExtractFnRecord[]
@@ -1169,7 +1169,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _errorComponent: errorComponent,
+      _errorComponent: errorComponent || (() => null), // in case if we prune error for serverNoSsr customer
     })
   }
 
@@ -1214,7 +1214,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _pageErrorComponent: pageErrorComponent,
+      _pageErrorComponent: pageErrorComponent || (() => null), // in case if we prune pageError for serverNoSsr customer
     })
   }
 
@@ -1259,7 +1259,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _componentErrorComponent: componentErrorComponent,
+      _componentErrorComponent: componentErrorComponent || (() => null), // in case if we prune componentError for serverNoSsr customer
     })
   }
 
@@ -1304,7 +1304,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _pageLoadingComponent: pageLoadingComponent,
+      _pageLoadingComponent: pageLoadingComponent || (() => null), // in case if we prune pageLoading for serverNoSsr customer
     })
   }
 
@@ -1349,7 +1349,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _componentLoadingComponent: componentLoadingComponent,
+      _componentLoadingComponent: componentLoadingComponent || (() => null), // in case if we prune componentLoading for serverNoSsr customer
     })
   }
 
@@ -1394,7 +1394,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _loadingComponent: loadingComponent,
+      _loadingComponent: loadingComponent || (() => null), // in case if we prune loading for serverNoSsr customer
     })
   }
 
@@ -1556,7 +1556,12 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    const ctxFn = typeof ctxOrFn === 'function' ? ctxOrFn : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
+    const ctxFn =
+      typeof ctxOrFn === 'undefined' // in case if we prune ctx for client customer
+        ? ({ ctx }: { ctx: TCtx }) => ({ ...ctx })
+        : typeof ctxOrFn === 'function'
+          ? ctxOrFn
+          : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -1701,7 +1706,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _onRequestFns: [...this._onRequestFns, onRequest],
+      _onRequestFns: [...this._onRequestFns, onRequest || (() => undefined)], // in case if we prune onRequest for client customer,
     })
   }
 
@@ -1738,7 +1743,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _onResponseFns: [...this._onResponseFns, onResponse],
+      _onResponseFns: [...this._onResponseFns, onResponse || (({ response }: { response: Response }) => response)], // in case if we prune onResponse for client customer,
     })
   }
 
@@ -1855,7 +1860,11 @@ export class Point0<
       _pointType: 'client-middleware',
       _clientExtractFns: [
         ...this._clientExtractFns,
-        { type: 'loader', fn: clientLoaderFn, unstableId: Point0._getNextUnstableId() },
+        {
+          type: 'loader',
+          fn: clientLoaderFn || (({ data }: { data: TNewClientData }) => ({ ...data })), // in case if we prune clientLoader for server customer
+          unstableId: Point0._getNextUnstableId(),
+        },
       ] as never,
     })
   }
@@ -2063,7 +2072,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'page',
-      _page: page as never,
+      _page: page || ((() => null) as never), // in case if we prune page for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2126,7 +2135,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'component',
-      _component: component as never,
+      _component: component || ((() => null) as never), // in case if we prune component for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2193,7 +2202,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'layout',
-      _layout: layout as never,
+      _layout: layout || ((({ children }: { children: React.ReactNode }) => children) as never), // in case if we prune layout for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2425,12 +2434,12 @@ export class Point0<
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       _queryResultType: 'infiniteQuery',
-      _infiniteQueryOptions: infiniteQueryOptions,
+      _infiniteQueryOptions: infiniteQueryOptions ?? {}, // in case if we prune infiniteQuery for serverNoSsr customer
     })
   }
 
   mutation<TNewData extends Data = Data>(
-    loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+    loaderFn?: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
   ): Point0<
     'mutation',
     UndefinedEndPointType,
@@ -2464,7 +2473,11 @@ export class Point0<
       _pointType: 'mutation',
       _extractFns: [
         ...this._extractFns,
-        { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
+        {
+          type: 'loader',
+          fn: loaderFn || (({ data }: { data: TData }) => ({ ...data })),
+          unstableId: Point0._getNextUnstableId(),
+        },
       ] as never,
       _letsEndPointType: undefined,
     })

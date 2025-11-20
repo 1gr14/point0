@@ -26,7 +26,7 @@ export const engine = Engine.create(import.meta.url, {
       publicdir: '../public',
       outdir: '../dist/client',
       publicdirOutdir: '../dist/client',
-      viteConfig: '../vite.config.js',
+      viteConfig: '../vite.config.ts',
     },
   ],
 })
