@@ -14,9 +14,9 @@ class FakeAsyncLocalStorage {
   }
 }
 
-const isAsyncLocalStorageUnacceptableBecouseOfViteVM = () => process.env.IS_VITE_VM || isClient()
+const isAsyncLocalStorageUnacceptableBecouseOfViteVM = () => process.env.IS_VITE_VM || isClient
 
-const AsyncLocalStorageForServerOrClient = isClient()
+const AsyncLocalStorageForServerOrClient = isClient
   ? FakeAsyncLocalStorage
   : isAsyncLocalStorageUnacceptableBecouseOfViteVM()
     ? FakeAsyncLocalStorage
@@ -27,7 +27,7 @@ export class EversionStore {
   private static dehydrated: Record<string, unknown> = {}
   static config: EversionStoreConfig = {}
 
-  private static readonly storage: EversionStoreServerStorage | FakeAsyncLocalStorage = isClient()
+  private static readonly storage: EversionStoreServerStorage | FakeAsyncLocalStorage = isClient
     ? new AsyncLocalStorageForServerOrClient()
     : new AsyncLocalStorageForServerOrClient()
 
@@ -251,7 +251,7 @@ export class EversionStore {
   }
 
   static getState = (): EversionStoreState => {
-    // if (isClient()) {
+    // if (isClient) {
     //   return EversionStore.clientState
     // } else {
     // if (!EversionStore.serverStorage) {

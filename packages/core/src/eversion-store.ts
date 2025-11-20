@@ -4,7 +4,7 @@ import type { IfAnyThenElse } from './types.js'
 import { isClient } from './client-server.js'
 ;(globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ =
   (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ ||
-  (isClient()
+  (isClient
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>))
@@ -24,7 +24,7 @@ export class EversionStore {
     return (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__
   }
   // private static readonly serverStorage: EversionStoreServerStorage | null = (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__
-  // private static readonly serverStorage: EversionStoreServerStorage | null = isClient()
+  // private static readonly serverStorage: EversionStoreServerStorage | null = isClient
   //   ? null
   //   : // eslint-disable-next-line @typescript-eslint/no-require-imports
   //     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>)
@@ -253,7 +253,7 @@ export class EversionStore {
   }
 
   static getState = (): EversionStoreState => {
-    if (isClient()) {
+    if (isClient) {
       return EversionStore.clientState
     } else {
       const serverStorage = EversionStore.getServerStorage()

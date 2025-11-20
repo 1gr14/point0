@@ -11,7 +11,9 @@ import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 import {
   extractServerBunBuildConfig,
+  extractServerBunPlugins,
   getDirByPaths,
+  loadBunPlugins,
   prependAndDeappendSlash,
   toJsExtension,
   validateEntrypoints,
@@ -19,6 +21,8 @@ import {
   type ServerBunBuildConfigDefinition,
   type ServerBunPluginsDefinition,
 } from './utils.js'
+import type { PruneCustomerFlat } from './walker.js'
+import type { BunPlugin } from 'bun'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
@@ -43,6 +47,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   initialized: TInitialized
   bunServer: Bun.Server<unknown> | undefined
   prune: boolean
+  pruneByScope: Record<string, PruneCustomerFlat>
 
   private constructor(input: {
     initialized: TInitialized
@@ -66,6 +71,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     publicdirOutdir: string | null
     eversion: Eversion | null
     prune: boolean
+    pruneByScope: Record<string, PruneCustomerFlat>
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : null
@@ -88,6 +94,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
     this.prune = input.prune
+    this.pruneByScope = input.pruneByScope
   }
 
   static create(input: {
@@ -108,6 +115,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     clients: ClientBun[]
     prune: boolean
+    pruneByScope: Record<string, PruneCustomerFlat>
   }): ServerBun<false> {
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
@@ -175,7 +183,36 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     throw new Error(`Points not provided for server`)
   }
 
-  async serve({ requiredCtx }: { requiredCtx: RequiredCtx }): Promise<void> {
+  async extractBunPlugins(): Promise<BunPlugin[]> {
+    const extractedPlugins = await extractServerBunPlugins({
+      nodeEnv: process.env.NODE_ENV,
+      command: 'serve',
+      bunPlugins: this.bunPlugins,
+    })
+    const pruneByScopeValues = Object.values(this.pruneByScope)
+    const prunePlugin =
+      pruneByScopeValues.length > 0 && !pruneByScopeValues.every((value) => value === 'none')
+        ? await import('./pruner-bun.js').then((module) => module.prunerBunPlugin({ customer: 'none' }))
+        : null
+    const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
+    return extractedBunPlugins
+  }
+
+  async loadBunPlugins(): Promise<void> {
+    const extractedBunPlugins = await this.extractBunPlugins()
+    await loadBunPlugins({ extractedBunPlugins })
+  }
+
+  async serve({
+    requiredCtx,
+    loadPlugins = process.env.NODE_ENV !== 'production',
+  }: {
+    requiredCtx: RequiredCtx
+    loadPlugins?: boolean
+  }): Promise<void> {
+    if (loadPlugins) {
+      await this.loadBunPlugins()
+    }
     this.bunServer = Bun.serve({
       port: this.port,
       fetch: async (request, server) => {
@@ -372,6 +409,11 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       splitting: true,
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
+      plugins: [
+        ...(thisBunBuildConfig.plugins ?? []),
+        ...(providedBunBuildConfig.plugins ?? []),
+        ...(await this.extractBunPlugins()),
+      ],
       banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
       entrypoints: validateEntrypoints([
         ...buildPaths.entryFiles,

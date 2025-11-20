@@ -272,24 +272,19 @@ export class Walker {
     content?: string
     fileAbs: string
     methods?: string[]
-    customer?: 'client' | 'serverSsr' | 'serverNoSsr'
+    customer?: PruneCustomer
   }): Promise<string> {
-    const methods = (() => {
-      if (methodsProvided) {
-        return methodsProvided
-      }
-      if (!customer) {
-        throw new Error('customer or methods is required')
-      }
-      if (customer === 'client') {
-        return ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse']
-      }
-      const result = ['clientLoader']
-      if (customer === 'serverSsr') {
-        return result
-      }
-      if (customer === 'serverNoSsr') {
-        result.push(
+    const customerToMethods = (customer: PruneCustomerFlat | 'unknown'): string[] => {
+      const methods = {
+        none: [],
+        unknown: [
+          'loader',
+          'ctx',
+          'mutation',
+          'response',
+          'onRequest',
+          'onResponse',
+          'clientLoader',
           'page',
           'component',
           'layout',
@@ -300,16 +295,55 @@ export class Walker {
           'componentError',
           'pageLoading',
           'componentLoading',
-        )
-        return result
+        ],
+        client: ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse'],
+        serverSsr: ['clientLoader'],
+        serverNoSsr: [
+          'clientLoader',
+          'page',
+          'component',
+          'layout',
+          'wrapper',
+          'error',
+          'loading',
+          'pageError',
+          'componentError',
+          'pageLoading',
+          'componentLoading',
+        ],
+      }[customer]
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!methods) {
+        throw new Error(`Invalid customer: ${customer}`)
       }
-      throw new Error(`Invalid customer: ${customer}`)
+      return methods
+    }
+
+    const { methods, methodsByScope } = (() => {
+      if (methodsProvided) {
+        return { methods: methodsProvided, methodsByScope: null }
+      }
+      if (typeof customer === 'object') {
+        return {
+          methods: customerToMethods('unknown'),
+          methodsByScope: Object.fromEntries(
+            Object.entries(customer).map(([scope, customer]) => [
+              scope,
+              customer === 'none' ? [] : customerToMethods(customer),
+            ]),
+          ),
+        }
+      }
+      if (!customer) {
+        throw new Error('customer or methods is required')
+      }
+      return { methods: customerToMethods(customer), methodsByScope: null }
     })()
 
     // 1️⃣ Берём код
     const code =
       content ??
-      (await nodeFs.readFile(fileAbs!, 'utf8').catch((e) => {
+      (await nodeFs.readFile(fileAbs, 'utf8').catch((e: unknown) => {
         console.warn(`🔴 stripPoint0Methods: cannot read file ${fileAbs}: ${(e as Error).message}`)
         throw e
       }))
@@ -346,6 +380,7 @@ export class Walker {
     const candidates: Array<{
       node: CallExpression
       baseIdentifier: string
+      method: string
     }> = []
 
     traverse(ast, {
@@ -363,7 +398,7 @@ export class Walker {
           return
         }
 
-        candidates.push({ node, baseIdentifier })
+        candidates.push({ node, baseIdentifier, method: prop.name })
       },
     })
 
@@ -377,7 +412,7 @@ export class Walker {
     // Можно слегка задедупить по (baseIdentifier), чтобы не вызывать resolveScope лишний раз
     const scopeCache = new Map<string, string | undefined>()
 
-    for (const { node, baseIdentifier } of candidates) {
+    for (const { node, baseIdentifier, method } of candidates) {
       let scope = scopeCache.get(baseIdentifier)
       if (scope === undefined && !scopeCache.has(baseIdentifier)) {
         try {
@@ -387,9 +422,9 @@ export class Walker {
           })
           scope = resolvedScope
         } catch (e) {
-          console.warn(
-            `🔴 stripPoint0Methods: resolveScope failed for ${baseIdentifier} in ${fileAbs}: ${(e as Error).message}`,
-          )
+          // console.warn(
+          //   `🔴 stripPoint0Methods: resolveScope failed for ${baseIdentifier} in ${fileAbs}: ${(e as Error).message}`,
+          // )
           scope = undefined
         }
         scopeCache.set(baseIdentifier, scope)
@@ -397,7 +432,13 @@ export class Walker {
 
       // scope найден → это Point0-цепочка ⇒ этот вызов надо очищать
       if (scope) {
-        nodesToStrip.push(node)
+        if (methodsByScope) {
+          if (scope in methodsByScope && methodsByScope[scope].includes(method)) {
+            nodesToStrip.push(node)
+          }
+        } else {
+          nodesToStrip.push(node)
+        }
       }
     }
 
@@ -1419,7 +1460,8 @@ export class Walker {
    * Searches up the directory tree to find the nearest tsconfig.json.
    * Returns null if TypeScript is not available or no tsconfig is found.
    */
-  private async getTsConfigForDirectory(dir: string): Promise<any | null> {
+
+  private async getTsConfigForDirectory(dir: string): Promise<{ options: any } | null> {
     // Check cache first
     if (this.tsConfigCache.has(dir)) {
       return this.tsConfigCache.get(dir) ?? null
@@ -1443,7 +1485,7 @@ export class Walker {
         // Use synchronous read for caching (ts.sys.readFile is synchronous)
         const configFileText = ts.sys.readFile(tsConfigPath)
         if (configFileText) {
-          const configFile = ts.readConfigFile(tsConfigPath, ts.sys.readFile)
+          const configFile = ts.readConfigFile(tsConfigPath, ts.sys.readFile.bind(ts.sys))
           if (configFile.error) {
             // Cache null to avoid re-reading
             this.tsConfigCache.set(dir, null)
@@ -1597,3 +1639,6 @@ export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fro
   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
 )
 export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
+
+export type PruneCustomerFlat = 'client' | 'serverSsr' | 'serverNoSsr' | 'none'
+export type PruneCustomer = PruneCustomerFlat | Record<string, PruneCustomerFlat>

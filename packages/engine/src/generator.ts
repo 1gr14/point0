@@ -225,7 +225,7 @@ export class FilesGenerator {
     this.sortPoints()
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
     for (const error of errors) {
-      console.error(`${error instanceof Error ? error.message : String(error)}`)
+      console.error(error instanceof Error ? error.message : String(error))
     }
     return {
       points: newPoints,

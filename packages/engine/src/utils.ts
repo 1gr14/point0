@@ -367,10 +367,10 @@ export const extractClientBunPlugins = async ({
   )
 }
 
-export const loadBunPlungins = async ({ extractedBunPlugins }: { extractedBunPlugins: BunPlugin[] }): Promise<void> => {
+export const loadBunPlugins = async ({ extractedBunPlugins }: { extractedBunPlugins: BunPlugin[] }): Promise<void> => {
   await Promise.all(
     extractedBunPlugins.map(async (p) => {
-      return await plugin(p)
+      await plugin(p);
     }),
   )
 }

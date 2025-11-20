@@ -4,8 +4,7 @@ import type { EversionRun, ExtractResult } from '@point0/core/eversion-run'
 import type { AppComponent } from '@point0/core/mount'
 import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
-import type { AnyPoint, InputParsed } from '@point0/core/types'
-import { PointsScope } from '@point0/core/types'
+import type { AnyPoint, InputParsed, PointsScope } from '@point0/core/types'
 import type { ParsedUrl } from '@point0/core/utils'
 import { parseUrl } from '@point0/core/utils'
 import * as nodeFs from 'node:fs/promises'
@@ -25,6 +24,8 @@ import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { ServerBun } from './server.js'
 import {
   extractClientBunBuildConfig,
+  extractClientBunPlugins,
+  loadBunPlugins,
   toJsExtension,
   validateEntrypoints,
   withError,
@@ -35,6 +36,7 @@ import {
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope
+  engineFile: string | null
   eversion: TInitialized extends true ? Eversion : Eversion | null
   providedPoints: Points | null
   pointsFile: string | null
@@ -60,7 +62,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
-  clientBunDevServer: Bun.Server<unknown> | true | null // true mean that we run client in separate process
+  clientBunDevServer: Bun.Subprocess | null
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
@@ -80,6 +82,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     hostname: string | null
     basepath: string
     indexHtml: string | null
+    engineFile: string | null
     outdir: string | null
     serverOutdir: string | null
     bunBuildConfig: ClientBunBuildConfigDefinition
@@ -95,7 +98,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
     eversion: Eversion | null
-    clientBunDevServer: Bun.Server<unknown> | null
+    clientBunDevServer: Bun.Subprocess | null
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | null
     server: ServerBun
@@ -135,6 +138,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.initialized = input.initialized
     this.prune = input.prune
     this.pruneServer = input.pruneServer
+    this.engineFile = input.engineFile
   }
 
   static create(input: {
@@ -158,6 +162,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
+    engineFile: string | null
     eversion: Eversion | null
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
@@ -242,7 +247,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     this.clientBunDevServer =
       this.indexHtml && !this.clientViteDevServer && process.env.NODE_ENV !== 'production'
-        ? await ClientBun.createClientBunDevServer({ port: this.port, indexHtml: this.indexHtml })
+        ? this.createClientBunDevServerInSeparateProcess()
         : null
     await this.publicdir.init({ root: this.points.root, eversion })
 
@@ -290,19 +295,38 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     throw new Error(`Points not provided for client "${scope}"`)
   }
 
-  private static async createClientBunDevServer({
-    port,
-    indexHtml,
-  }: {
-    port: number
-    indexHtml: string
-  }): Promise<Bun.Server<unknown>> {
+  async createClientBunDevServer(): Promise<Bun.Server<unknown>> {
+    if (!this.indexHtml) {
+      throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
+    }
+    const extractedPlugins = await extractClientBunPlugins({
+      nodeEnv: process.env.NODE_ENV,
+      target: 'client',
+      command: 'serve',
+      bunPlugins: this.bunPlugins,
+    })
+    const prunePlugin = this.prune
+      ? await import('./pruner-bun.js').then((module) => module.prunerBunPlugin({ customer: 'client' }))
+      : null
+    const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
+    await loadBunPlugins({ extractedBunPlugins })
     return Bun.serve({
-      port,
+      port: this.port,
       routes: {
-        '/index.html': await import(indexHtml).then((module) => module.default),
+        '/index.html': await import(this.indexHtml).then((module) => module.default),
       },
     })
+  }
+
+  createClientBunDevServerInSeparateProcess(): Bun.Subprocess {
+    if (!this.engineFile) {
+      throw new Error(`Engine file path is not provided for client "${this.scope}"`)
+    }
+    const scriptPath = require.resolve('./client-bun-dev-server.js')
+    const child = Bun.spawn(['bun', scriptPath, this.engineFile, this.scope], {
+      stdio: ['inherit', 'inherit', 'inherit'],
+    })
+    return child
   }
 
   static async extractViteConfig({
@@ -788,7 +812,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       target: 'bun',
       packages: 'external',
       sourcemap: 'linked',
-      minify: false,
+      minify: true,
       splitting: true,
       format: 'esm',
       ...thisBunBuildConfig,

@@ -112,6 +112,7 @@ export type EngineGeneralOptionsParsed = {
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
+  engineFile: string | null
   points: Points | string
   ssr: boolean
   app: string | AppComponent | null
@@ -154,6 +155,7 @@ export type EngineServerOptionsParsed = {
   pointsModuleType: PointsModuleType
   banner: string | null
   prune: boolean
+  pruneByScope: Record<string, 'client' | 'serverSsr' | 'serverNoSsr' | 'none'>
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -375,9 +377,11 @@ const toFinalPath = <T extends string | null | undefined>({
 
 export const parseEngineServerOptions = ({
   serverOptions,
+  clientsOptions,
   generalOptionsParsed,
 }: {
   serverOptions: EngineServerOptions
+  clientsOptions: EngineClientOptions[]
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
@@ -432,6 +436,12 @@ export const parseEngineServerOptions = ({
     pointsModuleType: serverOptions.pointsModuleType ?? 'ready',
     banner: serverOptions.banner ?? null,
     prune: serverOptions.prune ?? true,
+    pruneByScope: {
+      [serverOptions.scope]: serverOptions.prune === false ? 'none' : 'serverSsr',
+      ...Object.fromEntries(
+        clientsOptions.map((c) => [c.scope, c.pruneServer === false ? 'none' : c.ssr ? 'serverSsr' : 'serverNoSsr']),
+      ),
+    },
   }
 }
 const parseEngineClientOptions = ({
@@ -532,6 +542,7 @@ const parseEngineClientOptions = ({
     banner: clientOptions.banner ?? null,
     prune: clientOptions.prune ?? true,
     pruneServer: clientOptions.pruneServer ?? true,
+    engineFile: generalOptionsParsed.engineFile,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
@@ -543,6 +554,7 @@ export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed 
   })
   const serverOptionsParsed = parseEngineServerOptions({
     serverOptions,
+    clientsOptions,
     generalOptionsParsed,
   })
   const clientsOptionsParsed = clientsOptions.map((clientOptions, index) =>

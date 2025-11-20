@@ -52,7 +52,7 @@ export const Router = ({
   children: React.ReactNode
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
-    if (isClient()) {
+    if (isClient) {
       return {}
     }
     if (!ssrLocation) {

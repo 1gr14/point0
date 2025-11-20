@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { isClient } from './client-server.js'
 
 export const Unhead = ({ children }: { children: React.ReactNode }): React.ReactNode | Promise<React.ReactNode> => {
-  if (isClient()) {
+  if (isClient) {
     return createElement(UnheadProvider, { head: createHead(), children })
   } else {
     return (async () => {

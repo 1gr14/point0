@@ -1,20 +1,12 @@
-serve client-client in separate process in case if we have bun plugins for client-client and no viteconfig
-serverBunDevBuilder - in case if we have bun plugins for client-server and no viteconfig, we should specially set serverBunDevBuilder: true in options so users will understand situation
-load bun plugins on start server
-load bun plugins on start client-client
+client-server.ts apply to pruner, it will be easier to have Point0 | P0.isClient P0.isServer etc. insinde packe. Inside project check if it is imported from correct place
+import.meta.env.SSR for vite compatibility
+serverOnly(), clientOnly(), throw and show all import tree to user
+engine config. serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 
-engine.server.loadPlugins() in cli
-engine.serve accepts scope, and serve only requested, so we have processes in parallel in dev mode
-It is only for vite, bun builder for server can have shared plugins with server. And in strip plugin we can provide different mode for different scopes. serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode. 
-? engine options allow for bun dev server runs builder, and the when we get fresh points we get them form dits dir
-injet pruner plugins to vite and bun dev servers
-remove server code from client, and client code from server
-isClient() || process.env.BUILD_TARGET === 'server-nossr' | 'server-ssr' | 'client', import.meta.env.SSR for vite compatibility
-
+rename eversion source to server, connection to client, and make it flat
 Replace all node methods with native bun methods, including watcher
 Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
 ensure packages workspace:* replaced with real version after npm package
-
 
 ------
 
@@ -71,7 +63,6 @@ allow in engine and eversion source = null, server = null
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
 .route(string)
-what is 'use client'
 .onReq .onRes should become .middleware ? and work like express middleware ? 
 thorw error on Points.create() on lcient with different scope that was before
 no root
@@ -184,6 +175,7 @@ const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
 example vite-hono
 client input
 robotsTxt(take, skip)
+? serverBunDevBuilder - in case if we have bun plugins for client-server and no viteconfig, we should specially set serverBunDevBuilder: true in options so users will understand situation
 node bun polyfill
 ? at the point level: base.store(zustand).page(({store})); or const myStore = client.lets('store', 'myStore').store(() => createZustand()); myStore.use()
 ? statefull meta, or better ↓

@@ -1169,6 +1169,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _errorComponent: errorComponent || (() => null), // in case if we prune error for serverNoSsr customer
     })
   }
@@ -1214,6 +1215,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _pageErrorComponent: pageErrorComponent || (() => null), // in case if we prune pageError for serverNoSsr customer
     })
   }
@@ -1259,6 +1261,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _componentErrorComponent: componentErrorComponent || (() => null), // in case if we prune componentError for serverNoSsr customer
     })
   }
@@ -1304,6 +1307,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _pageLoadingComponent: pageLoadingComponent || (() => null), // in case if we prune pageLoading for serverNoSsr customer
     })
   }
@@ -1349,6 +1353,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _componentLoadingComponent: componentLoadingComponent || (() => null), // in case if we prune componentLoading for serverNoSsr customer
     })
   }
@@ -1394,6 +1399,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _loadingComponent: loadingComponent || (() => null), // in case if we prune loading for serverNoSsr customer
     })
   }
@@ -1706,6 +1712,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _onRequestFns: [...this._onRequestFns, onRequest || (() => undefined)], // in case if we prune onRequest for client customer,
     })
   }
@@ -1743,6 +1750,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _onResponseFns: [...this._onResponseFns, onResponse || (({ response }: { response: Response }) => response)], // in case if we prune onResponse for client customer,
     })
   }
@@ -1862,6 +1870,7 @@ export class Point0<
         ...this._clientExtractFns,
         {
           type: 'loader',
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           fn: clientLoaderFn || (({ data }: { data: TNewClientData }) => ({ ...data })), // in case if we prune clientLoader for server customer
           unstableId: Point0._getNextUnstableId(),
         },
@@ -2072,6 +2081,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'page',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _page: page || ((() => null) as never), // in case if we prune page for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
@@ -2135,6 +2145,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'component',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _component: component || ((() => null) as never), // in case if we prune component for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
@@ -2202,7 +2213,8 @@ export class Point0<
       TProps
     >({
       _pointType: 'layout',
-      _layout: layout || ((({ children }: { children: React.ReactNode }) => children) as never), // in case if we prune layout for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _layout: layout || ((async ({ children }: { children: React.ReactNode }) => await children) as never), // in case if we prune layout for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
@@ -2434,6 +2446,7 @@ export class Point0<
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       _queryResultType: 'infiniteQuery',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _infiniteQueryOptions: infiniteQueryOptions ?? {}, // in case if we prune infiniteQuery for serverNoSsr customer
     })
   }

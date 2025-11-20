@@ -64,7 +64,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.pagesTree = pagesTree
     this.root = root
     Points.setGlobalPoints(this)
-    if (isClient()) {
+    if (isClient) {
       EversionStore.setWeak('__POINT0_SCOPE__', this.root._scope)
     }
   }

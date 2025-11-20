@@ -373,8 +373,8 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           pointType: pointType as (typeof validPointTypes)[number],
           outputType: outputType as (typeof validOutputTypes)[number],
           pointInput: pointInput as Record<string, unknown>,
-          scope: scope as string,
-          pointName: pointName as string,
+          scope,
+          pointName,
         }
       })()
       if (scope && parsed.scope !== scope) {

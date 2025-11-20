@@ -1,44 +1,51 @@
 import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
+import type { PruneCustomer} from './walker.js';
 import { Walker } from './walker.js'
 
-export function prunerBunPlugin({ customer }: { customer: 'client' | 'serverSsr' | 'serverNoSsr' }): BunPlugin {
+export function prunerBunPlugin({ customer }: { customer: PruneCustomer }): BunPlugin {
   return {
     name: 'point0-pruner',
     setup(build) {
       build.onLoad(
-        { filter: /\.[cm]?[tj]sx?$/ }, // JS/TS files
+        { filter: /^(?!.*node_modules).*\.[cm]?[tj]sx?$/ }, // JS/TS files, exclude node_modules
         async (args) => {
+          let original: string | undefined
           const filepath = args.path
+          try {
+            original = await Bun.file(filepath).text()
+            const walker = new Walker()
+            const transformed = await walker.prune({
+              content: original,
+              fileAbs: filepath,
+              customer,
+            })
 
-          if (filepath.includes('node_modules')) return
+            if (transformed === original) {
+              return {
+                contents: original,
+                loader: guessLoader(filepath),
+              }
+            }
 
-          const original = await Bun.file(filepath).text()
-          const walker = new Walker()
-          const transformed = await walker.prune({
-            content: original,
-            fileAbs: filepath,
-            customer,
-          })
+            // const ms = new MagicString(original)
+            // ms.overwrite(0, original.length, transformed)
 
-          if (transformed === original) {
             return {
-              contents: original,
+              contents: transformed,
+              loader: guessLoader(filepath),
+              // sourcemap: ms.generateMap({
+              //   source: filepath,
+              //   includeContent: true,
+              //   hires: true,
+              // }),
+            }
+          } catch (e) {
+            console.error(e)
+            return {
+              contents: original ?? '',
               loader: guessLoader(filepath),
             }
-          }
-
-          // const ms = new MagicString(original)
-          // ms.overwrite(0, original.length, transformed)
-
-          return {
-            contents: transformed,
-            loader: guessLoader(filepath),
-            // sourcemap: ms.generateMap({
-            //   source: filepath,
-            //   includeContent: true,
-            //   hires: true,
-            // }),
           }
         },
       )
