@@ -42,6 +42,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   fallbackScope: PointsScope
   initialized: TInitialized
   bunServer: Bun.Server<unknown> | undefined
+  prune: boolean
 
   private constructor(input: {
     initialized: TInitialized
@@ -64,6 +65,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
     eversion: Eversion | null
+    prune: boolean
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : null
@@ -85,6 +87,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.publicdirOutdir = input.publicdirOutdir
     this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
+    this.prune = input.prune
   }
 
   static create(input: {
@@ -104,6 +107,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
+    prune: boolean
   }): ServerBun<false> {
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null

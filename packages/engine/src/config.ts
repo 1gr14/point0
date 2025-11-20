@@ -63,6 +63,7 @@ export type EngineServerOptions = {
   routes?: Routes | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
+  prune?: boolean
 }
 export type EngineClientOptions = {
   scope: PointsScope
@@ -86,6 +87,8 @@ export type EngineClientOptions = {
   routes?: Routes | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
+  prune?: boolean
+  pruneServer?: boolean
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -130,6 +133,8 @@ export type EngineClientOptionsParsed = {
   routes: Routes | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
+  prune: boolean
+  pruneServer: boolean
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -148,6 +153,7 @@ export type EngineServerOptionsParsed = {
   routes: Routes | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
+  prune: boolean
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -425,6 +431,7 @@ export const parseEngineServerOptions = ({
     routes: serverOptions.routes ?? null,
     pointsModuleType: serverOptions.pointsModuleType ?? 'ready',
     banner: serverOptions.banner ?? null,
+    prune: serverOptions.prune ?? true,
   }
 }
 const parseEngineClientOptions = ({
@@ -523,6 +530,8 @@ const parseEngineClientOptions = ({
     routes: clientOptions.routes ?? null,
     pointsModuleType: clientOptions.pointsModuleType ?? 'lazy',
     banner: clientOptions.banner ?? null,
+    prune: clientOptions.prune ?? true,
+    pruneServer: clientOptions.pruneServer ?? true,
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {

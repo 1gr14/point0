@@ -11,12 +11,14 @@ export function prunerVitePlugin({ customer }: { customer: 'client' | 'serverSsr
       if (!/\.[cm]?[tj]sx?$/.test(filepath)) return null
       if (filepath.includes('node_modules')) return null
 
-      const ssr = typeof options === 'object' && options && 'ssr' in options ? options.ssr : false
-      if (ssr) return null
+      // const ssr = typeof options === 'object' && options && 'ssr' in options ? options.ssr : false
+      // if (ssr) return null
 
       const walker = new Walker()
       const transformed = await walker.prune({ content: code, fileAbs: filepath, customer })
       if (transformed === code) return null
+
+      console.log(1111, !!transformed)
 
       const ms = new MagicString(code)
       ms.overwrite(0, code.length, transformed)

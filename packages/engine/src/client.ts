@@ -64,6 +64,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
+  prune: boolean
+  pruneServer: boolean
 
   private constructor(input: {
     scope: PointsScope
@@ -97,6 +99,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | null
     server: ServerBun
+    prune: boolean
+    pruneServer: boolean
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -129,6 +133,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.serverViteDevServer = input.serverViteDevServer
     this.server = input.server
     this.initialized = input.initialized
+    this.prune = input.prune
+    this.pruneServer = input.pruneServer
   }
 
   static create(input: {
@@ -155,6 +161,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     eversion: Eversion | null
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
+    prune: boolean
+    pruneServer: boolean
   }): ClientBun<false> {
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
@@ -207,6 +215,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
             customer: 'client',
             hmrPort: this.hmrPort,
             env: this.env,
+            prune: this.prune,
           })
         : null
 
@@ -218,6 +227,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
             customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
             hmrPort: null,
             env: process.env,
+            prune: this.pruneServer,
           })
         : null
 
@@ -323,12 +333,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     customer,
     hmrPort,
     env,
+    prune,
   }: {
     viteConfig: EngineOptionsViteConfig | null
     scope: PointsScope
     customer: 'client' | 'serverSsr' | 'serverNoSsr'
     hmrPort: number | null
     env?: EngineOptionsEnvParsed
+    prune: boolean
   }): Promise<ViteDevServer> {
     if (!viteConfig) {
       throw new Error(`Vite config not found for client "${scope}"`)
@@ -339,8 +351,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       command: 'serve',
       customer,
     })
+
+    const prunePlugin = prune
+      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer }))
+      : null
+
     return await createServer({
       ...loadedViteConfig,
+      plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
       configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',
@@ -365,75 +383,28 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         ...Object.fromEntries(
           Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
         ),
-        'process.env.CUSTOMER': JSON.stringify(customer),
-        'import.meta.env.CUSTOMER': JSON.stringify(customer),
-        ...(customer === 'serverSsr'
-          ? {
-              'process.env.SSR': JSON.stringify(true),
-              'import.meta.env.SSR': JSON.stringify(true),
-            }
-          : {}),
-        ...(customer === 'serverSsr' || customer === 'serverNoSsr'
-          ? {
-              'process.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
-              'import.meta.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
-            }
-          : {}),
-        ...(customer === 'client'
-          ? {
-              'process.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
-              'import.meta.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
-            }
-          : {}),
+        // 'process.env.CUSTOMER': JSON.stringify(customer),
+        // 'import.meta.env.CUSTOMER': JSON.stringify(customer),
+        // ...(customer === 'serverSsr'
+        //   ? {
+        //       'process.env.SSR': JSON.stringify(true),
+        //       'import.meta.env.SSR': JSON.stringify(true),
+        //     }
+        //   : {}),
+        // ...(customer === 'serverSsr' || customer === 'serverNoSsr'
+        //   ? {
+        //       'process.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
+        //       'import.meta.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
+        //     }
+        //   : {}),
+        // ...(customer === 'client'
+        //   ? {
+        //       'process.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
+        //       'import.meta.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
+        //     }
+        //   : {}),
       },
     })
-    // return await createServer({
-    //   ...loadedViteConfig,
-    //   clearScreen: loadedViteConfig.clearScreen ?? false,
-    //   appType: 'custom',
-    //   server: {
-    //     ...loadedViteConfig.server,
-    //     middlewareMode: true,
-    //     hmr:
-    //       loadedViteConfig.server?.hmr === false
-    //         ? false
-    //         : hmrPort === null
-    //           ? false
-    //           : {
-    //               ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-    //               port: hmrPort,
-    //             },
-    //   },
-    //   define: {
-    //     ...loadedViteConfig.define,
-    //     ...Object.fromEntries(
-    //       Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-    //     ),
-    //     ...Object.fromEntries(
-    //       Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-    //     ),
-    //     'process.env.CUSTOMER': JSON.stringify(customer),
-    //     'import.meta.env.CUSTOMER': JSON.stringify(customer),
-    //     ...(customer === 'serverSsr'
-    //       ? {
-    //           'process.env.SSR': JSON.stringify(true),
-    //           'import.meta.env.SSR': JSON.stringify(true),
-    //         }
-    //       : {}),
-    //     ...(customer === 'serverSsr' || customer === 'serverNoSsr'
-    //       ? {
-    //           'process.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
-    //           'import.meta.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
-    //         }
-    //       : {}),
-    //     ...(customer === 'client'
-    //       ? {
-    //           'process.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
-    //           'import.meta.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
-    //         }
-    //       : {}),
-    //   },
-    // })
   }
 
   async upgradeProxyBunDevServerWebSocket(
@@ -875,8 +846,13 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
+    const prunePlugin = this.prune
+      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer: 'client' }))
+      : null
+
     const config: ExtractedViteConfig = {
       ...loadedViteConfig,
+      plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
       root: viteRoot,
       build: {
         ...loadedViteConfig.build,
@@ -973,8 +949,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) ||
       this.cwd
 
+    const prunePlugin = this.pruneServer
+      ? await import('./pruner-vite.js').then((module) =>
+          module.prunerVitePlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr' }),
+        )
+      : null
+
     const config: ExtractedViteConfig = {
       ...loadedViteConfig,
+      plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
       root: viteRoot,
       build: {
         ...loadedViteConfig.build,

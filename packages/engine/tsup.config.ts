@@ -10,6 +10,8 @@ const general = {
     'src/fetch.ts',
     'src/generator.ts',
     'src/pruner.ts',
+    'src/pruner-vite.ts',
+    'src/pruner-bun.ts',
     'src/publicdir.ts',
     'src/render.ts',
     'src/server.ts',
