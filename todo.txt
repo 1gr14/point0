@@ -4,7 +4,6 @@ engine.serve accepts scope, and serve only requested, so we have processes in pa
 It is only for vite, bun builder for server can have shared plugins with server. And in strip plugin we can provide different mode for different scopes. serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode. 
 ? engine options allow for bun dev server runs builder, and the when we get fresh points we get them form dits dir
 injet pruner plugins to vite and bun dev servers
-check bun pruner, adn vite pruner creates correct sourcemaps
 remove server code from client, and client code from server
 isClient() || process.env.BUILD_TARGET === 'server-nossr' | 'server-ssr' | 'client', import.meta.env.SSR for vite compatibility
 
@@ -87,6 +86,8 @@ preserve client loaders also, and then on lets we have middleware-client but if 
 router export function getCurrentLocation()
 onResponse onRequest → onReq onRes req res
 ??? Point0 → Point
+check bun pruner, adn vite pruner creates correct sourcemaps
+check pruner remove unsused imports
 after build validate if dist paths exists, like engine.validate()
 add engine client options serveByServer: boolean default true
 in engine remove undefined and set it to null
@@ -156,7 +157,8 @@ prisma in example
 
 refactor example
 test for units
-test for server
+test for engine
+test for e2e
 
 site & docs https://docusaurus.io/
 override last commit message on each file
@@ -185,6 +187,7 @@ node bun polyfill
 .output(z.object({}))
 allow not to pass server root at all to server, so client only apps
 websocket
+remove unused vars if user promise not to use side effects 
 если поинт не касается 
 pageParamFromInput as fn or path
 allow .reponse() to return undefined, in this case it can be found multiple suitable points and they will looped, or mayebe .middleware() idk

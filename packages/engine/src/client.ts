@@ -709,6 +709,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     })
 
     const NODE_ENV = process.env.NODE_ENV
+
+    const prunePlugin = this.prune
+      ? await import('./pruner-bun.js').then((module) => module.prunerBunPlugin({ customer: 'client' }))
+      : null
+
     const buildOutput = await Bun.build({
       target: 'browser',
       format: 'esm',
@@ -718,6 +723,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       minify: NODE_ENV === 'production',
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
+      plugins: [...(thisBunBuildConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
       entrypoints: [
         buildPaths.indexHtml,
         ...(thisBunBuildConfig.entrypoints ?? []),
@@ -772,15 +778,22 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       bunPlugins: [],
     })
 
+    const prunePlugin = this.pruneServer
+      ? await import('./pruner-bun.js').then((module) =>
+          module.prunerBunPlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr' }),
+        )
+      : null
+
     const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',
       sourcemap: 'linked',
-      minify: true,
+      minify: false,
       splitting: true,
       format: 'esm',
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
+      plugins: [...(thisBunBuildConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
       naming: {
         ...(typeof thisBunBuildConfig.naming === 'object' ? thisBunBuildConfig.naming : {}),
         ...(typeof providedBunBuildConfig.naming === 'object' ? providedBunBuildConfig.naming : {}),
