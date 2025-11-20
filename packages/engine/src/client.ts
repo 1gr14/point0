@@ -60,7 +60,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
-  clientBunDevServer: Bun.Server<unknown> | null
+  clientBunDevServer: Bun.Server<unknown> | true | null // true mean that we run client in separate process
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
@@ -242,7 +242,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     this.clientBunDevServer =
       this.indexHtml && !this.clientViteDevServer && process.env.NODE_ENV !== 'production'
-        ? await ClientBun.createBunDevServer({ port: this.port, indexHtml: this.indexHtml })
+        ? await ClientBun.createClientBunDevServer({ port: this.port, indexHtml: this.indexHtml })
         : null
     await this.publicdir.init({ root: this.points.root, eversion })
 
@@ -290,7 +290,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     throw new Error(`Points not provided for client "${scope}"`)
   }
 
-  private static async createBunDevServer({
+  private static async createClientBunDevServer({
     port,
     indexHtml,
   }: {

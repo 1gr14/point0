@@ -1,4 +1,8 @@
-? serverBunDevBuilder
+serve client-client in separate process in case if we have bun plugins for client-client and no viteconfig
+serverBunDevBuilder - in case if we have bun plugins for client-server and no viteconfig, we should specially set serverBunDevBuilder: true in options so users will understand situation
+load bun plugins on start server
+load bun plugins on start client-client
+
 engine.server.loadPlugins() in cli
 engine.serve accepts scope, and serve only requested, so we have processes in parallel in dev mode
 It is only for vite, bun builder for server can have shared plugins with server. And in strip plugin we can provide different mode for different scopes. serve dev for client-client in different prcoess, so it can have it own plugins. And reforward requests from client to server, and from server to client in dev mode. 
