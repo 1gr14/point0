@@ -1,7 +1,4 @@
-export const isClient = (): boolean => {
-  // do not do this. We us process.env.IS_CLIENT only on build phase to remove unused server code
-  // if (process.env.IS_CLIENT) return true
-
+export const isClient = ((): boolean => {
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 
@@ -17,36 +14,50 @@ export const isClient = (): boolean => {
   if (typeof process !== 'undefined' && (process as any).type === 'renderer') return true
 
   return false // Node.js, Bun, Deno, or other server runtimes
-}
+})()
 
-export const itIsClient = isClient()
+export const isServer = ((): boolean => {
+  return !isClient
+})()
 
-export const isServer = (): boolean => {
-  return !isClient()
-}
-
-export const isIsServer = isServer()
-
-export const ifServer = <T>(callback: () => T): T | undefined => {
-  if (isServer()) {
+export const callServer = <T>(callback: () => T): T | undefined => {
+  if (isServer) {
     return callback()
   }
   return undefined
 }
 
-export const ifClient = <T>(callback: () => T): T | undefined => {
-  if (isClient()) {
+export const callClient = <T>(callback: () => T): T | undefined => {
+  if (isClient) {
     return callback()
   }
   return undefined
 }
 
-export const ifClientElseServer = <TClientResult, TServerResult>(
+export const callClientElseServer = <TClientResult, TServerResult>(
   clientCallback: () => TClientResult,
   serverCallback: () => TServerResult,
 ): TClientResult | TServerResult => {
-  if (isClient()) {
+  if (isClient) {
     return clientCallback()
   }
   return serverCallback()
+}
+
+export const varServer = <T>(value: T): T => {
+  return value
+}
+
+export const varClient = <T>(value: T): T => {
+  return value
+}
+
+export const varClientElseServer = <TClientResult, TServerResult>(
+  constClient: TClientResult,
+  constServer: TServerResult,
+): TClientResult | TServerResult => {
+  if (isClient) {
+    return constClient
+  }
+  return constServer
 }
