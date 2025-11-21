@@ -1,12 +1,4 @@
-normlize bun plugins path if relative
-kiti to read fresh points on bun client-server
 
-so client-client we serve in separate service via spawn with plugins loading, createing new dir and adding bunfig.toml with plugins strings
-so client-server we build and read fresh points using jiti on request
-watch glob optional for build watch
-
-point0PrunePoints (by scope) → trpace with Proxy which on get throw error
-point0PruneScope (by scope)
 point0PruneClientServer (by scope)
 
 client-server.ts apply to pruner, it will be easier to have Point0 | P0.isClient P0.isServer etc. insinde packe. Inside project check if it is imported from correct place
@@ -134,6 +126,7 @@ location to server loaders and ctx as any location, for renderable it will be re
 on navigate to same page do not prefetch, or at least not show preloading
 on navigate on unknown location do window location change
 force page to have route
+watch glob optional for build watch
 test if layout can have no route
 default route of page is its name
 prevent endless loop hmr after code changes
@@ -194,6 +187,8 @@ node bun polyfill
 .output(z.object({}))
 allow not to pass server root at all to server, so client only apps
 websocket
+point0PruneScope (by scope)
+point0PrunePoints (by scope) → trpace with Proxy which on get throw error
 remove unused vars if user promise not to use side effects 
 если поинт не касается 
 pageParamFromInput as fn or path
