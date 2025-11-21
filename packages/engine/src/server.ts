@@ -144,26 +144,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       return this as ServerBun<true>
     }
 
-    const points = await ServerBun.createPoints({
-      providedPoints: this.providedPoints,
-      pointsFile: this.pointsFile,
-    })
+    const points = await this.createPoints()
     this.eversion = await Eversion.create({ points })
     await this.publicdir.init({ root: points.root, eversion: this.eversion })
     this.initialized = true as never
     return this as ServerBun<true>
   }
 
-  static readonly createPoints = async ({
-    providedPoints,
-    pointsFile,
-  }: {
-    providedPoints: Points | null
-    pointsFile: string | null
-  }): Promise<Points> => {
-    if (providedPoints) {
-      return providedPoints
+  readonly createPoints = async (): Promise<Points> => {
+    if (this.providedPoints) {
+      return this.providedPoints
     }
+    const pointsFile = this.pointsFile
     if (pointsFile) {
       return Points.create(
         await withError(

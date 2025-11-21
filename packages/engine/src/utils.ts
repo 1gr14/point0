@@ -1,6 +1,6 @@
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
-import * as nodeFs from 'node:fs'
+import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
 
 // export const responseWithWrappers = ({
@@ -97,7 +97,7 @@ export const findFirstExistsFilePath = (path: string[] | string | undefined): st
   }
   const paths = Array.isArray(path) ? path : [path]
   for (const path of paths) {
-    if (nodeFs.existsSync(path)) {
+    if (nodeFsSync.existsSync(path)) {
       return path
     }
   }
@@ -317,14 +317,18 @@ export type ServerBunPluginsDefinitionFnOptions = {
   nodeEnv: string | undefined
   command: 'serve' | 'build'
 }
-export type ServerBunPluginsDefinitionFn = (options: ServerBunPluginsDefinitionFnOptions) => Array<BunPlugin | string>
+export type ServerBunPluginsDefinitionFn = (
+  options: ServerBunPluginsDefinitionFnOptions,
+) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type ServerBunPluginsDefinition = ServerBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type ClientBunPluginsDefinitionFnOptions = {
   nodeEnv: string | undefined
   command: 'serve' | 'build'
 }
-export type ClientBunPluginsDefinitionFn = (options: ClientBunPluginsDefinitionFnOptions) => Array<BunPlugin | string>
+export type ClientBunPluginsDefinitionFn = (
+  options: ClientBunPluginsDefinitionFnOptions,
+) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export const extractServerBunPlugins = async ({
@@ -336,7 +340,7 @@ export const extractServerBunPlugins = async ({
   command: 'serve' | 'build'
   bunPlugins: ServerBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
-  const bunPluginsArray = typeof bunPlugins === 'function' ? bunPlugins({ nodeEnv, command }) : bunPlugins
+  const bunPluginsArray = typeof bunPlugins === 'function' ? await bunPlugins({ nodeEnv, command }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p) => {
       if (typeof p === 'string') {
@@ -356,7 +360,7 @@ export const extractClientBunPlugins = async ({
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
-  const bunPluginsArray = typeof bunPlugins === 'function' ? bunPlugins({ nodeEnv, command }) : bunPlugins
+  const bunPluginsArray = typeof bunPlugins === 'function' ? await bunPlugins({ nodeEnv, command }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p) => {
       if (typeof p === 'string') {
@@ -367,10 +371,62 @@ export const extractClientBunPlugins = async ({
   )
 }
 
+export const extractClientBunDevPluginsStrings = async ({
+  cwd,
+  nodeEnv,
+  command,
+  bunPlugins,
+  errorOnNotString,
+}: {
+  cwd: string
+  nodeEnv: string | undefined
+  command: 'serve' | 'build'
+  bunPlugins: ClientBunPluginsDefinition
+  errorOnNotString: string
+}): Promise<string[]> => {
+  const bunPluginsArray = typeof bunPlugins === 'function' ? await bunPlugins({ nodeEnv, command }) : bunPlugins
+  return await Promise.all(
+    bunPluginsArray.map(async (p, index) => {
+      if (typeof p === 'string') {
+        if (!p.startsWith('.')) {
+          return p
+        }
+        return nodePath.resolve(cwd, p)
+      }
+      throw new Error(`${errorOnNotString}: plugin at index ${index} is not a string`)
+    }),
+  )
+}
+
 export const loadBunPlugins = async ({ extractedBunPlugins }: { extractedBunPlugins: BunPlugin[] }): Promise<void> => {
   await Promise.all(
     extractedBunPlugins.map(async (p) => {
       await plugin(p)
     }),
   )
+}
+
+export const resolveTempDirPath = (subdir: string[] = []): string => {
+  let dir = process.cwd()
+  let lastDir = ''
+
+  // Walk up until we find a node_modules folder
+  while (dir !== lastDir) {
+    const candidate = nodePath.join(dir, 'node_modules')
+    if (nodeFsSync.existsSync(candidate)) {
+      const tempDir = nodePath.join(candidate, '.cache', '@point0', ...subdir)
+      nodeFsSync.mkdirSync(tempDir, { recursive: true })
+      return tempDir
+    }
+
+    // Move one level up
+    lastDir = dir
+    dir = nodePath.dirname(dir)
+  }
+
+  // Fallback: if no node_modules found, use system tmp
+  // const fallback = nodePath.join(nodeFsSync.realpathSync(nodeOs.tmpdir()), '@point0', ...subdir)
+  // nodeFsSync.mkdirSync(fallback, { recursive: true })
+  // return fallback
+  throw new Error('No node_modules found. Please run "bun install" in the project root.')
 }

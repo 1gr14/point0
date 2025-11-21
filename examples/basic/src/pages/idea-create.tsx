@@ -23,7 +23,7 @@ export const createIdeaMutation = client
 export const generateIdeaMutation = client.lets('response', 'generateIdea').response(async ({ input, ctx }) => {
   const stream = new ReadableStream({
     async start(controller) {
-      const text = 'x'.repeat(100) // 100 symbols
+      const text = 'o'.repeat(100) // 100 symbols
       for (const char of text) {
         controller.enqueue(char)
         await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
@@ -48,7 +48,7 @@ const Page = () => {
   return (
     <div>
       <div>
-        <label>Title</label>
+        <label>Title1</label>
         <input
           type="text"
           value={title}
@@ -110,7 +110,7 @@ const Page = () => {
                   setGenerated(result)
                 }
 
-                console.info('Final result:', result)
+                console.info('xFinal result:', result)
               })
               .catch((err: unknown) => {
                 console.error('err', err)

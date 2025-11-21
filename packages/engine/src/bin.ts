@@ -13,6 +13,18 @@ const dictionary = {
   enginePath: 'Path to engine file (absolute or relative to cwd)',
 }
 
+// program
+//   .command('dev')
+//   .description('Start development server and clients')
+//   .option('-G, --no-generate', dictionary.noGenerate)
+//   .option('-S, --no-server', 'Do not serve server, serve only clients dev servers')
+//   .option('-e, --engine <path>', dictionary.enginePath)
+//   .action(async (options) => {
+//     process.env.NODE_ENV ??= 'development'
+//     const engine = await Engine.findAndImportSelf(options.engine)
+//     await engine.dev({ generate: options.generate !== false, server: options.server !== false })
+//   })
+
 program
   .command('dev')
   .description('Start development server and clients')
@@ -22,7 +34,16 @@ program
   .action(async (options) => {
     process.env.NODE_ENV ??= 'development'
     const engine = await Engine.findAndImportSelf(options.engine)
-    await engine.dev({ generate: options.generate !== false, server: options.server !== false })
+    // await engine.dev({ generate: options.generate !== false, server: options.server !== false })
+    const serverEntryHotRuns: Array<Promise<any>> =
+      options.server !== false && engine.server.entry
+        ? Object.values(engine.server.entry).map(
+            async (entry) => await Bun.$`POINT0_PREVENT_BUN_DEV_CLIENT_SERVE=true bun run --hot ${entry}`,
+          )
+        : []
+    const clientsDevSevers = engine.init()
+    const generatorProcess = options.generate !== false ? engine.generateWatch() : null
+    await Promise.all([...(generatorProcess ? [generatorProcess] : []), ...serverEntryHotRuns, clientsDevSevers])
   })
 
 program

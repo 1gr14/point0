@@ -122,17 +122,17 @@ export class Engine<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  async dev(options?: { requiredCtx?: RequiredCtx; generate?: boolean; server?: boolean }) {
-    const { requiredCtx = {}, generate = true, server = true } = options ?? {}
-    if (generate) {
-      await this.generateWatch()
-    }
-    if (server) {
-      await this.serve(requiredCtx)
-    } else {
-      await this.init() // so we just initialize clients dev servers
-    }
-  }
+  // async dev(options?: { requiredCtx?: RequiredCtx; generate?: boolean; server?: boolean }) {
+  //   const { requiredCtx = {}, generate = true, server = true } = options ?? {}
+  //   if (generate) {
+  //     await this.generateWatch()
+  //   }
+  //   if (server) {
+  //     await this.serve(requiredCtx)
+  //   } else {
+  //     await this.init() // so we just initialize clients dev servers
+  //   }
+  // }
 
   async serve(options?: { requiredCtx?: RequiredCtx }): Promise<void> {
     const intializedEngine = await this.init()

@@ -425,7 +425,7 @@ export class Walker {
         if (!methodsByScope) {
           nodesToStrip.push(node)
         } else {
-          if (methodsByScope[scope].includes(method)) {
+          if (scope in methodsByScope && methodsByScope[scope].includes(method)) {
             nodesToStrip.push(node)
           }
         }

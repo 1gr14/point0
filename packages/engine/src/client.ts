@@ -24,6 +24,8 @@ import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { ServerBun } from './server.js'
 import {
   extractClientBunBuildConfig,
+  extractClientBunDevPluginsStrings,
+  resolveTempDirPath,
   toJsExtension,
   validateEntrypoints,
   withError,
@@ -63,7 +65,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
-  clientBunDevServer: Bun.Server<unknown> | null
+  clientBunDevServer: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true | null // true in case if it was run in separate process
+  // clientBunDevServer: Bun.Server<unknown> | null
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   serverViteDevServer: ViteDevServer | null
@@ -104,7 +107,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
     eversion: Eversion | null
-    clientBunDevServer: Bun.Server<unknown> | null
+    clientBunDevServer: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true | null // true in case if it was run in separate process
     // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     serverViteDevServer: ViteDevServer | null
@@ -310,12 +313,52 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     throw new Error(`Points not provided for client "${this.scope}"`)
   }
 
-  async createClientBunDevServer(): Promise<Bun.Server<unknown>> {
-    // TODO: new dir and file
+  async createClientBunDevServer(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true> {
     if (!this.indexHtml) {
-      // if (!this.indexHtmlDistFile) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
+    if (!this.engineFile) {
+      throw new Error(`Engine file path is not provided for client "${this.scope}"`)
+    }
+    if (process.env.POINT0_PREVENT_BUN_DEV_CLIENT_SERVE) {
+      return true
+    }
+    const tempDir = resolveTempDirPath(['client-bun-dev-server', this.scope])
+    const pluginsStrings = await extractClientBunDevPluginsStrings({
+      cwd: this.cwd,
+      nodeEnv: process.env.NODE_ENV,
+      command: 'serve',
+      bunPlugins: this.bunPlugins,
+      errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
+    })
+    const scriptPath = nodePath.join(tempDir, 'serve.js')
+    const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
+    const bunfigTomlContent = `[serve.static]
+plugins = ["@point0/engine/pruner-bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
+`
+    const scriptContent = `
+import indexHtml from '${this.indexHtml}';
+Bun.serve({
+  port: ${this.port},
+  routes: {
+    '/index.html': indexHtml,
+  },
+});
+console.info('Bun dev server started on port ${this.port}');
+`
+    await Bun.write(bunfigTomlPath, bunfigTomlContent)
+    await Bun.write(scriptPath, scriptContent)
+    const childProcess = Bun.spawn(['bun', scriptPath], {
+      cwd: tempDir,
+      stdio: ['inherit', 'inherit', 'inherit'],
+      env: {
+        ...process.env,
+        POINT0_PRUNER_OPTIONS: JSON.stringify({ customer: 'client', scope: this.scope }),
+        NODE_ENV: process.env.NODE_ENV,
+      },
+    })
+    this.clientBunDevServer = childProcess
+    return childProcess
     // const extractedPlugins = await extractClientBunPlugins({
     //   nodeEnv: process.env.NODE_ENV,
     //   target: 'client',
@@ -333,13 +376,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     //   console.log('outdir', this.outdir)
     //   await this.publicdir.add([['/', this.outdir]])
     // }
-    return Bun.serve({
-      port: this.port,
-      routes: {
-        '/index.html': await import(this.indexHtml).then((module) => module.default),
-        // '/index.html': await import(this.indexHtmlDistFile).then((module) => module.default),
-      },
-    })
+    // return Bun.serve({
+    //   port: this.port,
+    //   routes: {
+    //     '/index.html': await import(this.indexHtml).then((module) => module.default),
+    //   },
+    // })
   }
 
   // async createClientBunDevBuilder(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
@@ -687,7 +729,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         }
         return appComponent
       } else {
-        // TODO: jiti
         const appComponent = await import(toJsExtension(this.appFile)).then((module) => module.default || module)
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appFile} for client "${this.scope}"`)
@@ -695,24 +736,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         return appComponent as AppComponent
       }
     }
-    // if (this.appFile && this.serverViteDevServer) {
-    //   const appComponent = (await this.serverViteDevServer
-    //     .ssrLoadModule(toJsExtension(this.appFile))
-    //     .then((module) => module.default || module)) as AppComponent | undefined
-    //   if (!appComponent) {
-    //     throw new Error(`App default export not found in ${this.appFile} for client "${this.scope}"`)
-    //   }
-    //   return appComponent
-    // }
-    // if (this.appDistFile && this.serverBunDevBuilder) {
-    //   console.log('appDistFile', this.appDistFile)
-    //   // TODO: add jiti to read fresh file
-    //   const appComponent = await import(toJsExtension(this.appDistFile)).then((module) => module.default || module)
-    //   if (!appComponent) {
-    //     throw new Error(`App default export not found in ${this.appDistFile} for client "${this.scope}"`)
-    //   }
-    //   return appComponent as AppComponent
-    // }
     throw new Error(`App not provided for client "${this.scope}"`)
   }
 

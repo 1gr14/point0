@@ -54,6 +54,18 @@
       "types": "./dist/pruner.d.ts",
       "import": "./dist/pruner.js"
     },
+    "./pruner-bun-static": {
+      "types": "./dist/pruner-bun-static.d.ts",
+      "import": "./dist/pruner-bun-static.js"
+    },
+    "./pruner-bun": {
+      "types": "./dist/pruner-bun.d.ts",
+      "import": "./dist/pruner-bun.js"
+    },
+    "./pruner-vite": {
+      "types": "./dist/pruner-vite.d.ts",
+      "import": "./dist/pruner-vite.js"
+    },
     "./publicdir": {
       "types": "./dist/publicdir.d.ts",
       "import": "./dist/publicdir.js"

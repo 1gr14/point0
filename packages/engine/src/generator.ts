@@ -1,13 +1,11 @@
 import type { Routes } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
+import type { PointsModuleType } from '@point0/core/points'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
-import * as nodeFsSync from 'node:fs'
 import * as nodeFs from 'node:fs/promises'
-import * as nodeOs from 'node:os'
 import * as nodePath from 'node:path'
-import type { PointsModuleType } from '@point0/core/points'
-import { getDirByPaths } from './utils.js'
+import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker, type CollectedPoint } from './walker.js'
 
 type ChangeCollectedPointsEvent = {
@@ -68,7 +66,7 @@ export class FilesGenerator {
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
-    this.tempDir = FilesGenerator.resolveTempDirPath()
+    this.tempDir = resolveTempDirPath(['generator'])
     this.targets = opts.targets.map(
       (t) =>
         ({
@@ -93,30 +91,6 @@ export class FilesGenerator {
       ...this.targets.flatMap((t) => [t.outputPointsAbs, t.outputRoutesAbs]),
     ].flatMap((p) => p || [])
     this.watchPatterns = [...this.globInclude]
-  }
-
-  static resolveTempDirPath(): string {
-    let dir = process.cwd()
-    let lastDir = ''
-
-    // Walk up until we find a node_modules folder
-    while (dir !== lastDir) {
-      const candidate = nodePath.join(dir, 'node_modules')
-      if (nodeFsSync.existsSync(candidate)) {
-        const tempDir = nodePath.join(candidate, '.cache', '@point0')
-        nodeFsSync.mkdirSync(tempDir, { recursive: true })
-        return tempDir
-      }
-
-      // Move one level up
-      lastDir = dir
-      dir = nodePath.dirname(dir)
-    }
-
-    // Fallback: if no node_modules found, use system tmp
-    const fallback = nodePath.join(nodeFsSync.realpathSync(nodeOs.tmpdir()), '@point0')
-    nodeFsSync.mkdirSync(fallback, { recursive: true })
-    return fallback
   }
 
   static create(opts: FilesGeneratorOptions) {

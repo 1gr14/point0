@@ -346,6 +346,10 @@ const toFinalPath = <T extends string | null | undefined>({
     return (path ?? null) as T extends null | undefined ? null : T
   }
 
+  if (!path.startsWith('.')) {
+    return path as T extends null | undefined ? null : T
+  }
+
   const pathBeforeBuildAbs = nodePath.resolve(cwdBeforeBuild, path)
 
   if (!itWasBuilt) {
