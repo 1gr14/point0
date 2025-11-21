@@ -63,6 +63,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   distIndexHtmlContent: string | null
   server: ServerBun
   clientBunDevServer: Bun.Server<unknown> | null
+  clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
+  serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
@@ -99,6 +101,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     publicdir: Publicdir
     eversion: Eversion | null
     clientBunDevServer: Bun.Server<unknown> | null
+    clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
+    serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | null
     server: ServerBun
@@ -131,6 +135,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
     this.publicdirOutdir = input.publicdirOutdir
+    this.clientBunDevBuilder = input.clientBunDevBuilder
+    this.serverBunDevBuilder = input.serverBunDevBuilder
     this.clientViteDevServer = input.clientViteDevServer
     this.clientBunDevServer = input.clientBunDevServer
     this.serverViteDevServer = input.serverViteDevServer
@@ -176,6 +182,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const serverViteDevServer = null
     const clientViteDevServer = null
     const clientBunDevServer = null
+    const clientBunDevBuilder = null
+    const serverBunDevBuilder = null
 
     const publicdir = Publicdir.create({
       hostname: input.hostname,
@@ -199,6 +207,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       clientViteDevServer,
       serverViteDevServer,
       clientBunDevServer,
+      clientBunDevBuilder,
+      serverBunDevBuilder,
       initialized: false,
     })
 
@@ -212,9 +222,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     this.eversion = eversion
 
-    this.clientViteDevServer =
+    const [clientViteDevServer, serverViteDevServer] = await Promise.all([
       this.viteConfig && process.env.NODE_ENV !== 'production'
-        ? await ClientBun.createViteDevServer({
+        ? ClientBun.createViteDevServer({
             viteConfig: this.viteConfig,
             scope: this.scope,
             customer: 'client',
@@ -222,11 +232,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
             env: this.env,
             prune: this.prune,
           })
-        : null
-
-    this.serverViteDevServer =
+        : null,
       this.viteConfig && process.env.NODE_ENV !== 'production'
-        ? await ClientBun.createViteDevServer({
+        ? ClientBun.createViteDevServer({
             viteConfig: this.viteConfig,
             scope: this.scope,
             customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
@@ -234,7 +242,21 @@ export class ClientBun<TInitialized extends boolean = boolean> {
             env: process.env,
             prune: this.pruneServer,
           })
-        : null
+        : null,
+    ])
+
+    this.clientViteDevServer = clientViteDevServer
+    this.serverViteDevServer = serverViteDevServer
+
+    const [clientBunDevBuilder, serverBunDevBuilder] = await Promise.all([
+      this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
+        ? this.createClientBunDevBuilder()
+        : null,
+      !this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createServerBunDevBuilder() : null,
+    ])
+
+    this.clientBunDevBuilder = clientBunDevBuilder
+    this.serverBunDevBuilder = serverBunDevBuilder
 
     this.points = await this.createPoints()
 
@@ -308,18 +330,29 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async createClientBunDevBuilder(): Promise<any> {
-    // TODO: watch build, return watcher
-    // const Engine = await import('./index.js').then((module) => module.Engine)
-    // const engine = await Engine.findAndImportSelf(this.engineFile, this.cwd)
-    // return await engine.build({
-    //   target: 'client',
-    //   command: 'serve',
-    //   bunPlugins: this.bunPlugins,
-    // })
+    const binPath = require.resolve('./bin.js')
+    const childProcess = Bun.spawn([binPath, 'build', '--target', 'client', '--scope', this.scope], {
+      cwd: this.cwd,
+      stdio: ['inherit', 'inherit', 'inherit'],
+      env: {
+        ...process.env,
+        NODE_ENV: 'development',
+      },
+    })
+    this.clientBunDevBuilder = childProcess
   }
 
   async createServerBunDevBuilder(): Promise<any> {
-    // TODO: watch build, return watcher
+    const binPath = require.resolve('./bin.js')
+    const childProcess = Bun.spawn([binPath, 'build', '--target', 'server', '--scope', this.scope], {
+      cwd: this.cwd,
+      stdio: ['inherit', 'inherit', 'inherit'],
+      env: {
+        ...process.env,
+        NODE_ENV: 'development',
+      },
+    })
+    this.serverBunDevBuilder = childProcess
   }
 
   static async extractViteConfig({
@@ -725,7 +758,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       target: 'browser',
       format: 'esm',
       splitting: true,
-      sourcemap: 'external',
+      sourcemap: NODE_ENV === 'production' ? 'external' : 'inline',
       publicPath: '/',
       minify: NODE_ENV === 'production',
       ...thisBunBuildConfig,
@@ -802,7 +835,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const buildOutput = await Bun.build({
       target: 'bun',
       packages: 'external',
-      sourcemap: 'linked',
+      sourcemap: NODE_ENV === 'production' ? 'linked' : 'inline',
       minify: true,
       splitting: true,
       format: 'esm',
