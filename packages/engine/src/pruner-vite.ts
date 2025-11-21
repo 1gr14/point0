@@ -1,9 +1,10 @@
+import type { PointsScope } from '@point0/core/types'
+import MagicString from 'magic-string'
 import type { Plugin } from 'vite'
 import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
-import MagicString from 'magic-string'
 
-export function prunerVitePlugin({ customer }: { customer: PruneCustomer }): Plugin {
+export function prunerVitePlugin({ customer, scope }: { customer: PruneCustomer; scope: PointsScope }): Plugin {
   return {
     name: 'point0-pruner',
     enforce: 'pre',

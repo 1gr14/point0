@@ -155,7 +155,7 @@ export class Engine<TInitialized extends boolean = boolean> {
 
   async build(options?: { noGenerate?: boolean }): Promise<{
     clients: Array<{
-      self: string[] | null
+      client: string[] | null
       server: string[] | null
       publicdir: string[] | null
       scope: PointsScope
@@ -173,7 +173,7 @@ export class Engine<TInitialized extends boolean = boolean> {
       intializedEngine.clients.map(async (client) => {
         const buildOutput = await client.build()
         return {
-          self: buildOutput.self,
+          client: buildOutput.client,
           server: buildOutput.server,
           publicdir: buildOutput.publicdir,
           scope: client.points.root._scope,

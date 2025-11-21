@@ -30,10 +30,6 @@
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"
     },
-    "./client-bun-dev-server": {
-      "types": "./dist/client-bun-dev-server.d.ts",
-      "import": "./dist/client-bun-dev-server.js"
-    },
     "./config": {
       "types": "./dist/config.d.ts",
       "import": "./dist/config.js"

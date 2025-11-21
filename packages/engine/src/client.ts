@@ -236,12 +236,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
           })
         : null
 
-    this.points = await ClientBun.createPoints({
-      providedPoints: this.providedPoints,
-      pointsFile: this.pointsFile,
-      serverViteDevServer: this.serverViteDevServer,
-      scope: this.scope,
-    })
+    this.points = await this.createPoints()
 
     await eversion.connect({ points: this.points })
 
@@ -261,20 +256,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  static readonly createPoints = async ({
-    providedPoints,
-    pointsFile,
-    serverViteDevServer,
-    scope,
-  }: {
-    providedPoints: Points | null
-    pointsFile: string | null
-    serverViteDevServer: ViteDevServer | null
-    scope: PointsScope
-  }): Promise<Points> => {
-    if (providedPoints) {
-      return providedPoints
+  readonly createPoints = async (): Promise<Points> => {
+    if (this.providedPoints) {
+      return this.providedPoints
     }
+    const serverViteDevServer = this.serverViteDevServer
+    const pointsFile = this.pointsFile
     if (pointsFile) {
       if (serverViteDevServer) {
         return await Points.read(
@@ -287,12 +274,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         return Points.create(
           await withError(
             async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
-            `Failed to import points from ${pointsFile} on client "${scope}"`,
+            `Failed to import points from ${pointsFile} on client "${this.scope}"`,
           ),
         )
       }
     }
-    throw new Error(`Points not provided for client "${scope}"`)
+    throw new Error(`Points not provided for client "${this.scope}"`)
   }
 
   async createClientBunDevServer(): Promise<Bun.Server<unknown>> {
@@ -306,7 +293,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       bunPlugins: this.bunPlugins,
     })
     const prunePlugin = this.prune
-      ? await import('./pruner-bun.js').then((module) => module.prunerBunPlugin({ customer: 'client' }))
+      ? await import('./pruner-bun.js').then((module) =>
+          module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
+        )
       : null
     const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
     await loadBunPlugins({ extractedBunPlugins })
@@ -366,7 +355,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     })
 
     const prunePlugin = prune
-      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer }))
+      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
       : null
 
     return await createServer({
@@ -396,26 +385,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         ...Object.fromEntries(
           Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
         ),
-        // 'process.env.CUSTOMER': JSON.stringify(customer),
-        // 'import.meta.env.CUSTOMER': JSON.stringify(customer),
-        // ...(customer === 'serverSsr'
-        //   ? {
-        //       'process.env.SSR': JSON.stringify(true),
-        //       'import.meta.env.SSR': JSON.stringify(true),
-        //     }
-        //   : {}),
-        // ...(customer === 'serverSsr' || customer === 'serverNoSsr'
-        //   ? {
-        //       'process.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
-        //       'import.meta.env.IS_SERVER_CUSTOMER': JSON.stringify(true),
-        //     }
-        //   : {}),
-        // ...(customer === 'client'
-        //   ? {
-        //       'process.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
-        //       'import.meta.env.IS_CLIENT_CUSTOMER': JSON.stringify(true),
-        //     }
-        //   : {}),
       },
     })
   }
@@ -732,7 +701,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const NODE_ENV = process.env.NODE_ENV
 
     const prunePlugin = this.prune
-      ? await import('./pruner-bun.js').then((module) => module.prunerBunPlugin({ customer: 'client' }))
+      ? await import('./pruner-bun.js').then((module) =>
+          module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
+        )
       : null
 
     const buildOutput = await Bun.build({
@@ -809,7 +780,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     const prunePlugin = this.pruneServer
       ? await import('./pruner-bun.js').then((module) =>
-          module.prunerBunPlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr' }),
+          module.prunerBunPlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr', scope: this.scope }),
         )
       : null
 
@@ -895,7 +866,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
     const prunePlugin = this.prune
-      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer: 'client' }))
+      ? await import('./pruner-vite.js').then((module) =>
+          module.prunerVitePlugin({ customer: 'client', scope: this.scope }),
+        )
       : null
 
     const config: ExtractedViteConfig = {
@@ -1005,7 +978,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     const prunePlugin = this.pruneServer
       ? await import('./pruner-vite.js').then((module) =>
-          module.prunerVitePlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr' }),
+          module.prunerVitePlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr', scope: this.scope }),
         )
       : null
 
