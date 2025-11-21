@@ -307,6 +307,21 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     })
   }
 
+  async createClientBunDevBuilder(): Promise<any> {
+    // TODO: watch build, return watcher
+    // const Engine = await import('./index.js').then((module) => module.Engine)
+    // const engine = await Engine.findAndImportSelf(this.engineFile, this.cwd)
+    // return await engine.build({
+    //   target: 'client',
+    //   command: 'serve',
+    //   bunPlugins: this.bunPlugins,
+    // })
+  }
+
+  async createServerBunDevBuilder(): Promise<any> {
+    // TODO: watch build, return watcher
+  }
+
   static async extractViteConfig({
     viteConfig,
     command,
@@ -1062,15 +1077,25 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return { client, publicdir, server }
   }
 
-  async buildSelfAndServer(options?: {
+  async buildClientAndServer(options?: {
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
+    target?: 'client' | 'server'
   }): Promise<{ client: string[] | null; server: string[] | null }> {
+    const { bunBuildConfig, clean, target } = options ?? {}
+    const shouldBuilClient = !target || target === 'client'
+    const shouldBuilServer = !target || target === 'server'
     if (this.viteConfig) {
-      const [client, server] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
+      const [client, server] = await Promise.all([
+        shouldBuilClient ? this.buildByViteForClient({ clean }) : null,
+        shouldBuilServer ? this.buildByViteForServer({ clean }) : null,
+      ])
       return { client, server }
     } else {
-      const [client, server] = await Promise.all([this.buildByBunForClient(options), this.buildByBunForServer(options)])
+      const [client, server] = await Promise.all([
+        shouldBuilClient ? this.buildByBunForClient({ bunBuildConfig, clean }) : null,
+        shouldBuilServer ? this.buildByBunForServer({ bunBuildConfig, clean }) : null,
+      ])
       return { client, server }
     }
   }
@@ -1078,14 +1103,16 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   async build(options?: {
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
+    target?: 'client' | 'server'
+    publicdir?: boolean
   }): Promise<{ client: string[] | null; server: string[] | null; publicdir: string[] | null }> {
-    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
+    const { bunBuildConfig = this.bunBuildConfig, clean = false, target, publicdir = true } = options ?? {}
     if (clean) {
       await this.clean()
     }
-    const publicdir = await this.publicdir.build() // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
-    const { client, server } = await this.buildSelfAndServer({ bunBuildConfig })
-    return { client, server, publicdir }
+    const publicdirBuildOutput = publicdir ? await this.publicdir.build() : null // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
+    const { client, server } = await this.buildClientAndServer({ bunBuildConfig, target })
+    return { client, server, publicdir: publicdirBuildOutput }
   }
 
   async renderAsReadableStream({

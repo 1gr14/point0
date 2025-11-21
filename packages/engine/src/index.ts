@@ -122,12 +122,13 @@ export class Engine<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  async dev(options?: { requiredCtx?: RequiredCtx; noGenerate?: boolean; noServer?: boolean }) {
-    if (!options?.noGenerate) {
+  async dev(options?: { requiredCtx?: RequiredCtx; generate?: boolean; server?: boolean }) {
+    const { requiredCtx = {}, generate = true, server = true } = options ?? {}
+    if (generate) {
       await this.generateWatch()
     }
-    if (!options?.noServer) {
-      await this.serve(options?.requiredCtx)
+    if (server) {
+      await this.serve(requiredCtx)
     } else {
       await this.init() // so we just initialize clients dev servers
     }
@@ -153,7 +154,12 @@ export class Engine<TInitialized extends boolean = boolean> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
   }
 
-  async build(options?: { noGenerate?: boolean }): Promise<{
+  async build(options?: {
+    generate?: boolean
+    target?: 'client' | 'server'
+    scope?: PointsScope
+    clean?: boolean
+  }): Promise<{
     clients: Array<{
       client: string[] | null
       server: string[] | null
@@ -163,7 +169,9 @@ export class Engine<TInitialized extends boolean = boolean> {
     }>
     server: { self: string[] | null; publicdir: string[] | null }
   }> {
-    if (!options?.noGenerate) {
+    const { generate = true, target, scope, clean } = options ?? {}
+
+    if (generate) {
       await this.generator.sync({ logOnNotWritten: false })
     }
 
@@ -171,7 +179,20 @@ export class Engine<TInitialized extends boolean = boolean> {
 
     const clients = await Promise.all(
       intializedEngine.clients.map(async (client) => {
-        const buildOutput = await client.build()
+        if (scope && client.scope !== scope) {
+          return {
+            client: null,
+            server: null,
+            publicdir: null,
+            scope: client.scope,
+            index: client.index,
+          }
+        }
+        const buildOutput = await client.build({
+          target,
+          publicdir: true,
+          clean,
+        })
         return {
           client: buildOutput.client,
           server: buildOutput.server,
@@ -181,7 +202,21 @@ export class Engine<TInitialized extends boolean = boolean> {
         }
       }),
     )
-    const server = await intializedEngine.server.build()
+    const server = await (async () => {
+      if (scope) {
+        if (scope === intializedEngine.server.scope) {
+          return await intializedEngine.server.build({
+            clean,
+          })
+        } else {
+          return { self: null, publicdir: null }
+        }
+      } else {
+        return await intializedEngine.server.build({
+          clean,
+        })
+      }
+    })()
     return { clients, server }
   }
 
@@ -213,7 +248,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     return undefined
   }
 
-  static async findAndImportSelf(enginePath?: string, cwd: string = process.cwd()): Promise<Engine> {
+  static async findAndImportSelf(enginePath?: string | null, cwd: string = process.cwd()): Promise<Engine> {
     let engineFile: string | undefined
 
     if (enginePath) {

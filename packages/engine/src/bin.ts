@@ -2,6 +2,7 @@
 
 import { Command } from 'commander'
 import { Engine } from './index.js'
+import type { PointsScope } from '@point0/core/types'
 
 const program = new Command()
 
@@ -21,7 +22,7 @@ program
   .action(async (options) => {
     process.env.NODE_ENV ??= 'development'
     const engine = await Engine.findAndImportSelf(options.engine)
-    await engine.dev({ noGenerate: options.generate === false, noServer: options.server === false })
+    await engine.dev({ generate: options.generate !== false, server: options.server !== false })
   })
 
 program
@@ -29,10 +30,18 @@ program
   .description('Build server and clients')
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-e, --engine <path>', dictionary.enginePath)
+  .option('-t, --target <target>', 'Target to build', 'client')
+  .option('-s, --scope <scope>', 'Scope to build')
+  .option('-c, --clean', 'Clean build')
   .action(async (options) => {
     process.env.NODE_ENV ??= 'production'
     const engine = await Engine.findAndImportSelf(options.engine)
-    await engine.build({ noGenerate: options.generate === false })
+    await engine.build({
+      generate: options.generate !== false,
+      target: options.target as 'client' | 'server',
+      scope: options.scope as PointsScope,
+      clean: options.clean,
+    })
   })
 
 program
