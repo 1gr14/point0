@@ -24,8 +24,6 @@ import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
 import type { ServerBun } from './server.js'
 import {
   extractClientBunBuildConfig,
-  extractClientBunPlugins,
-  loadBunPlugins,
   toJsExtension,
   validateEntrypoints,
   withError,
@@ -40,13 +38,16 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   eversion: TInitialized extends true ? Eversion : Eversion | null
   providedPoints: Points | null
   pointsFile: string | null
+  // pointsDistFile: string | null
   points: TInitialized extends true ? Points : Points | null
   ssr: boolean
   providedAppComponent: AppComponent | null
   appFile: string | null
+  // appDistFile: string | null
   hostname: string | null
   basepath: string
   indexHtml: string | null
+  // indexHtmlDistFile: string | null
   domRootElementId: string
   port: number
   hmrPort: number | null
@@ -63,8 +64,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   distIndexHtmlContent: string | null
   server: ServerBun
   clientBunDevServer: Bun.Server<unknown> | null
-  clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
-  serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
+  // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
+  // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
@@ -77,13 +78,16 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     cwd: string
     providedPoints: Points | null
     pointsFile: string | null
+    // pointsDistFile: string | null
     points: Points | null
     ssr: boolean
     providedAppComponent: AppComponent | null
     appFile: string | null
+    // appDistFile: string | null
     hostname: string | null
     basepath: string
     indexHtml: string | null
+    // indexHtmlDistFile: string | null
     engineFile: string | null
     outdir: string | null
     serverOutdir: string | null
@@ -101,8 +105,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     publicdir: Publicdir
     eversion: Eversion | null
     clientBunDevServer: Bun.Server<unknown> | null
-    clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
-    serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
+    // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
+    // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | null
     server: ServerBun
@@ -114,13 +118,16 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
     this.providedPoints = input.providedPoints
     this.pointsFile = input.pointsFile
+    // this.pointsDistFile = input.pointsDistFile
     this.points = input.points as TInitialized extends true ? Points : Points | null
     this.ssr = input.ssr
     this.providedAppComponent = input.providedAppComponent
     this.appFile = input.appFile
+    // this.appDistFile = input.appDistFile
     this.hostname = input.hostname
     this.basepath = input.basepath
     this.indexHtml = input.indexHtml
+    // this.indexHtmlDistFile = input.indexHtmlDistFile
     this.distIndexHtmlContent = input.distIndexHtmlContent
     this.domRootElementId = input.domRootElementId
     this.port = input.port
@@ -135,8 +142,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
     this.publicdirOutdir = input.publicdirOutdir
-    this.clientBunDevBuilder = input.clientBunDevBuilder
-    this.serverBunDevBuilder = input.serverBunDevBuilder
+    // this.clientBunDevBuilder = input.clientBunDevBuilder
+    // this.serverBunDevBuilder = input.serverBunDevBuilder
     this.clientViteDevServer = input.clientViteDevServer
     this.clientBunDevServer = input.clientBunDevServer
     this.serverViteDevServer = input.serverViteDevServer
@@ -151,8 +158,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     scope: PointsScope
     cwd: string
     points: Points | string
+    // pointsDistFile: string | null
     ssr: boolean
     app: AppComponent | string | null
+    // appDistFile: string | null
     hostname: string | null
     basepath: string
     publicdir: EngineOptionsPublicdirParsed
@@ -162,6 +171,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     bunPlugins: ClientBunPluginsDefinition
     publicdirOutdir: string | null
     indexHtml: string | null
+    // indexHtmlDistFile: string | null
     domRootElementId: string
     port: number
     hmrPort: number | null
@@ -182,8 +192,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const serverViteDevServer = null
     const clientViteDevServer = null
     const clientBunDevServer = null
-    const clientBunDevBuilder = null
-    const serverBunDevBuilder = null
+    // const clientBunDevBuilder = null
+    // const serverBunDevBuilder = null
 
     const publicdir = Publicdir.create({
       hostname: input.hostname,
@@ -208,8 +218,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       clientViteDevServer,
       serverViteDevServer,
       clientBunDevServer,
-      clientBunDevBuilder,
-      serverBunDevBuilder,
+      // clientBunDevBuilder,
+      // serverBunDevBuilder,
       initialized: false,
     })
 
@@ -245,19 +255,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
           })
         : null,
     ])
-
     this.clientViteDevServer = clientViteDevServer
     this.serverViteDevServer = serverViteDevServer
 
-    const [clientBunDevBuilder, serverBunDevBuilder] = await Promise.all([
-      this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
-        ? this.createClientBunDevBuilder()
-        : null,
-      !this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createServerBunDevBuilder() : null,
-    ])
-
-    this.clientBunDevBuilder = clientBunDevBuilder
-    this.serverBunDevBuilder = serverBunDevBuilder
+    // await Promise.all([
+    //   this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
+    //     ? this.createClientBunDevBuilder()
+    //     : null,
+    //   !this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createServerBunDevBuilder() : null,
+    // ])
 
     this.points = await this.createPoints()
 
@@ -293,7 +299,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
             (await serverViteDevServer.ssrLoadModule(toJsExtension(absPath))) as LazyPointsModule | ReadyPointsModule,
         )
       } else {
-        // TODO: add option serverBunDevBuilder: true, thn we will build client and read points from dist dir
         return Points.create(
           await withError(
             async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
@@ -306,55 +311,72 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async createClientBunDevServer(): Promise<Bun.Server<unknown>> {
+    // TODO: new dir and file
     if (!this.indexHtml) {
+      // if (!this.indexHtmlDistFile) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
-    const extractedPlugins = await extractClientBunPlugins({
-      nodeEnv: process.env.NODE_ENV,
-      target: 'client',
-      command: 'serve',
-      bunPlugins: this.bunPlugins,
-    })
-    const prunePlugin = this.prune
-      ? await import('./pruner-bun.js').then((module) =>
-          module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
-        )
-      : null
-    const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
-    await loadBunPlugins({ extractedBunPlugins })
+    // const extractedPlugins = await extractClientBunPlugins({
+    //   nodeEnv: process.env.NODE_ENV,
+    //   target: 'client',
+    //   command: 'serve',
+    //   bunPlugins: this.bunPlugins,
+    // })
+    // const prunePlugin = this.prune
+    //   ? await import('./pruner-bun.js').then((module) =>
+    //       module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
+    //     )
+    //   : null
+    // const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
+    // await loadBunPlugins({ extractedBunPlugins })
+    // if (this.outdir) {
+    //   console.log('outdir', this.outdir)
+    //   await this.publicdir.add([['/', this.outdir]])
+    // }
     return Bun.serve({
       port: this.port,
       routes: {
         '/index.html': await import(this.indexHtml).then((module) => module.default),
+        // '/index.html': await import(this.indexHtmlDistFile).then((module) => module.default),
       },
     })
   }
 
-  async createClientBunDevBuilder(): Promise<any> {
-    const binPath = require.resolve('./bin.js')
-    const childProcess = Bun.spawn([binPath, 'build', '--target', 'client', '--scope', this.scope], {
-      cwd: this.cwd,
-      stdio: ['inherit', 'inherit', 'inherit'],
-      env: {
-        ...process.env,
-        NODE_ENV: 'development',
-      },
-    })
-    this.clientBunDevBuilder = childProcess
-  }
+  // async createClientBunDevBuilder(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
+  //   await this.build({ target: 'client', clean: true, publicdir: false })
+  //   const binPath = require.resolve('./bin.js')
+  //   const childProcess = Bun.spawn(
+  //     [binPath, 'build', '--target', 'client', '--scope', this.scope, '--no-clean', '--no-publicdir'],
+  //     {
+  //       cwd: this.cwd,
+  //       stdio: ['inherit', 'inherit', 'inherit'],
+  //       env: {
+  //         ...process.env,
+  //         NODE_ENV: 'development',
+  //       },
+  //     },
+  //   )
+  //   this.clientBunDevBuilder = childProcess
+  //   return childProcess
+  // }
 
-  async createServerBunDevBuilder(): Promise<any> {
-    const binPath = require.resolve('./bin.js')
-    const childProcess = Bun.spawn([binPath, 'build', '--target', 'server', '--scope', this.scope], {
-      cwd: this.cwd,
-      stdio: ['inherit', 'inherit', 'inherit'],
-      env: {
-        ...process.env,
-        NODE_ENV: 'development',
-      },
-    })
-    this.serverBunDevBuilder = childProcess
-  }
+  // async createServerBunDevBuilder(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
+  //   await this.build({ target: 'server', clean: true, publicdir: false })
+  //   const binPath = require.resolve('./bin.js')
+  //   const childProcess = Bun.spawn(
+  //     [binPath, 'build', '--target', 'server', '--scope', this.scope, '--no-clean', '--no-publicdir'],
+  //     {
+  //       cwd: this.cwd,
+  //       stdio: ['inherit', 'inherit', 'inherit'],
+  //       env: {
+  //         ...process.env,
+  //         NODE_ENV: 'development',
+  //       },
+  //     },
+  //   )
+  //   this.serverBunDevBuilder = childProcess
+  //   return childProcess
+  // }
 
   static async extractViteConfig({
     viteConfig,
@@ -665,7 +687,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         }
         return appComponent
       } else {
-        // TODO: add option serverBunDevBuilder: true, thn we will build client and read app from dist dir
+        // TODO: jiti
         const appComponent = await import(toJsExtension(this.appFile)).then((module) => module.default || module)
         if (!appComponent) {
           throw new Error(`App default export not found in ${this.appFile} for client "${this.scope}"`)
@@ -673,6 +695,24 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         return appComponent as AppComponent
       }
     }
+    // if (this.appFile && this.serverViteDevServer) {
+    //   const appComponent = (await this.serverViteDevServer
+    //     .ssrLoadModule(toJsExtension(this.appFile))
+    //     .then((module) => module.default || module)) as AppComponent | undefined
+    //   if (!appComponent) {
+    //     throw new Error(`App default export not found in ${this.appFile} for client "${this.scope}"`)
+    //   }
+    //   return appComponent
+    // }
+    // if (this.appDistFile && this.serverBunDevBuilder) {
+    //   console.log('appDistFile', this.appDistFile)
+    //   // TODO: add jiti to read fresh file
+    //   const appComponent = await import(toJsExtension(this.appDistFile)).then((module) => module.default || module)
+    //   if (!appComponent) {
+    //     throw new Error(`App default export not found in ${this.appDistFile} for client "${this.scope}"`)
+    //   }
+    //   return appComponent as AppComponent
+    // }
     throw new Error(`App not provided for client "${this.scope}"`)
   }
 

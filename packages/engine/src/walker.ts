@@ -13,7 +13,7 @@ import type {
 } from '@babel/types'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { EndPointType, PointName } from '@point0/core/types'
+import type { EndPointType, PointName, PointsScope } from '@point0/core/types'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 
@@ -274,7 +274,11 @@ export class Walker {
     methods?: string[]
     customer?: PruneCustomer
   }): Promise<string> {
-    const customerToMethods = (customer: PruneCustomer): string[] => {
+    if (!methodsProvided && !customer) {
+      throw new Error('methods or customer is required in point0-pruner plugin')
+    }
+
+    const customerToMethods = (customer: PruneCustomerFlat): string[] => {
       const methods = {
         none: [],
         client: ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse'],
@@ -301,12 +305,36 @@ export class Walker {
       return methods
     }
 
-    const methods = customer ? customerToMethods(customer) : methodsProvided
-    if (!methods) {
-      throw new Error('Methods or customer is required in point0-pruner plugin')
+    const customerByScopeToMethods = (customer: PruneCustomerByScope): Record<PointsScope, string[]> => {
+      return Object.fromEntries(
+        Object.entries(customer).map(([scope, customer]) => [scope, customerToMethods(customer)]),
+      )
     }
 
-    // 1️⃣ Берём код
+    const methodsByScope = customer && typeof customer === 'object' ? customerByScopeToMethods(customer) : null
+    const methods =
+      typeof customer === 'string'
+        ? customerToMethods(customer)
+        : methodsProvided || [
+            'loader',
+            'ctx',
+            'mutation',
+            'response',
+            'onRequest',
+            'onResponse',
+            'clientLoader',
+            'page',
+            'component',
+            'layout',
+            'wrapper',
+            'error',
+            'loading',
+            'pageError',
+            'componentError',
+            'pageLoading',
+            'componentLoading',
+          ]
+
     const code =
       content ??
       (await nodeFs.readFile(fileAbs, 'utf8').catch((e: unknown) => {
@@ -314,7 +342,6 @@ export class Walker {
         throw e
       }))
 
-    // 2️⃣ Парсим или берём AST из кеша
     let ast: babel.ParseResult<any>
     try {
       const cachedAst = this.astCache.get(fileAbs)
@@ -340,9 +367,6 @@ export class Walker {
       return code
     }
 
-    if (!methods.length) return code
-
-    // 3️⃣ Собираем кандидатов: вызовы .loader/.ctx/... + их baseIdentifier
     const candidates: Array<{
       node: CallExpression
       baseIdentifier: string
@@ -357,7 +381,7 @@ export class Walker {
         if (prop.type !== 'Identifier') return
         if (!methods.includes(prop.name)) return
 
-        // Определяем, к какому top-level идентификатору относится эта цепочка
+        // Determine which top-level identifier this chain belongs to
         const baseIdentifier = this.findTopLevelAssignedIdentifier(p as unknown as NodePath<Node>)
         if (!baseIdentifier) {
           // Это какая-то локальная цепочка внутри функции и т.п. — нас не интересует
@@ -372,13 +396,13 @@ export class Walker {
       return code
     }
 
-    // 4️⃣ Для каждого кандидата проверяем, есть ли scope через resolveScope
+    // For each candidate, we check if there is a scope through resolveScope
     const nodesToStrip: CallExpression[] = []
 
-    // Можно слегка задедупить по (baseIdentifier), чтобы не вызывать resolveScope лишний раз
+    // We can slightly deduplicate by (baseIdentifier) to not call resolveScope unnecessarily
     const scopeCache = new Map<string, string | undefined>()
 
-    for (const { node, baseIdentifier } of candidates) {
+    for (const { node, baseIdentifier, method } of candidates) {
       let scope = scopeCache.get(baseIdentifier)
       if (scope === undefined && !scopeCache.has(baseIdentifier)) {
         try {
@@ -396,9 +420,15 @@ export class Walker {
         scopeCache.set(baseIdentifier, scope)
       }
 
-      // scope найден → это Point0-цепочка ⇒ этот вызов надо очищать
+      // scope found → this is a Point0 chain ⇒ this call needs to be cleaned
       if (scope) {
-        nodesToStrip.push(node)
+        if (!methodsByScope) {
+          nodesToStrip.push(node)
+        } else {
+          if (methodsByScope[scope].includes(method)) {
+            nodesToStrip.push(node)
+          }
+        }
       }
     }
 
@@ -406,19 +436,19 @@ export class Walker {
       return code
     }
 
-    // 5️⃣ Мутируем AST: вычищаем аргументы
+    // Mutate AST: clean arguments
     for (const node of nodesToStrip) {
       if (node.arguments.length) {
         node.arguments = []
       }
     }
 
-    // 6️⃣ Генерим код обратно
+    // Generate code back
     const generatorModule = await import('@babel/generator')
     const generate = (generatorModule as any).default ?? generatorModule
     const { code: out } = generate(ast, { retainLines: true })
 
-    // Обновим кеш содержимого, чтобы дальше твой Walker работал в консистентном состоянии
+    // Update the content cache so that your Walker works in a consistent state
     this.filesContentCache.set(fileAbs, out)
 
     return out
@@ -1600,4 +1630,6 @@ export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fro
 )
 export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
 
-export type PruneCustomer = 'client' | 'serverSsr' | 'serverNoSsr' | 'none'
+export type PruneCustomerFlat = 'client' | 'serverSsr' | 'serverNoSsr' | 'none'
+export type PruneCustomerByScope = Record<PointsScope, PruneCustomerFlat>
+export type PruneCustomer = PruneCustomerFlat | PruneCustomerByScope

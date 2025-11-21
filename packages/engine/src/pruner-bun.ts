@@ -4,7 +4,13 @@ import type { PointsScope } from '@point0/core/types'
 import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
 
-export function prunerBunPlugin({ customer, scope }: { customer: PruneCustomer; scope: PointsScope }): BunPlugin {
+export function prunerBunPlugin({
+  customer,
+  scope,
+}: {
+  customer: PruneCustomer
+  scope: PointsScope | null
+}): BunPlugin {
   return {
     name: 'point0-pruner',
     setup(build) {

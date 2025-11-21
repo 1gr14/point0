@@ -28,11 +28,12 @@ program
 program
   .command('build')
   .description('Build server and clients')
-  .option('-G, --no-generate', dictionary.noGenerate)
   .option('-e, --engine <path>', dictionary.enginePath)
-  .option('-t, --target <target>', 'Target to build', 'client')
+  .option('-t, --target <target>', 'Target to build')
   .option('-s, --scope <scope>', 'Scope to build')
-  .option('-c, --clean', 'Clean build')
+  .option('-G, --no-generate', dictionary.noGenerate)
+  .option('-C, --no-clean', 'Do not clean build')
+  .option('-P, --no-publicdir', 'Do not build publicdir')
   .action(async (options) => {
     process.env.NODE_ENV ??= 'production'
     const engine = await Engine.findAndImportSelf(options.engine)
@@ -40,7 +41,8 @@ program
       generate: options.generate !== false,
       target: options.target as 'client' | 'server',
       scope: options.scope as PointsScope,
-      clean: options.clean,
+      clean: options.clean !== false,
+      publicdir: options.publicdir !== false,
     })
   })
 

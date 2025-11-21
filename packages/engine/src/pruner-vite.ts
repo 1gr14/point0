@@ -4,7 +4,7 @@ import type { Plugin } from 'vite'
 import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
 
-export function prunerVitePlugin({ customer, scope }: { customer: PruneCustomer; scope: PointsScope }): Plugin {
+export function prunerVitePlugin({ customer, scope }: { customer: PruneCustomer; scope: PointsScope | null }): Plugin {
   return {
     name: 'point0-pruner',
     enforce: 'pre',

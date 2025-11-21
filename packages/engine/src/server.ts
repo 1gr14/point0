@@ -1,10 +1,11 @@
-import * as nodeFs from 'node:fs/promises'
-import * as nodePath from 'node:path'
 import { Eversion } from '@point0/core/eversion'
 import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { parseUrl, type ParsedUrl } from '@point0/core/utils'
+import type { BunPlugin } from 'bun'
+import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import type { ClientBun } from './client.js'
 import type { EngineLogger, EngineOptionsPublicdirParsed } from './config.js'
 import { engineFetch } from './fetch.js'
@@ -21,7 +22,6 @@ import {
   type ServerBunBuildConfigDefinition,
   type ServerBunPluginsDefinition,
 } from './utils.js'
-import type { BunPlugin } from 'bun'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
@@ -181,7 +181,15 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
-    const extractedBunPlugins = [...extractedPlugins]
+    const prunePlugin = await import('./pruner-bun.js').then((module) =>
+      module.prunerBunPlugin({
+        customer: {
+          ...Object.fromEntries(this.clients.map((client) => [client.scope, client.ssr ? 'serverSsr' : 'serverNoSsr'])),
+        },
+        scope: null,
+      }),
+    )
+    const extractedBunPlugins = [...extractedPlugins, prunePlugin]
     return extractedBunPlugins
   }
 
@@ -435,14 +443,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
   async build(options?: {
     bunBuildConfig?: ServerBunBuildConfigDefinition
+    publicdir?: boolean
     clean?: boolean
   }): Promise<{ self: string[] | null; publicdir: string[] | null }> {
-    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
+    const { bunBuildConfig = this.bunBuildConfig, clean = false, publicdir = true } = options ?? {}
     if (clean) {
       await this.clean()
     }
-    const [self, publicdir] = await Promise.all([this.buildSelf({ bunBuildConfig }), this.publicdir.build()])
-    return { self, publicdir }
+    const [self, publicdirBuildOutput] = await Promise.all([
+      this.buildSelf({ bunBuildConfig }),
+      publicdir ? this.publicdir.build() : null,
+    ])
+    return { self, publicdir: publicdirBuildOutput }
   }
 
   async fetch({

@@ -1,3 +1,14 @@
+normlize bun plugins path if relative
+kiti to read fresh points on bun client-server
+
+so client-client we serve in separate service via spawn with plugins loading, createing new dir and adding bunfig.toml with plugins strings
+so client-server we build and read fresh points using jiti on request
+watch glob optional for build watch
+
+point0PrunePoints (by scope) → trpace with Proxy which on get throw error
+point0PruneScope (by scope)
+point0PruneClientServer (by scope)
+
 client-server.ts apply to pruner, it will be easier to have Point0 | P0.isClient P0.isServer etc. insinde packe. Inside project check if it is imported from correct place
 import.meta.env.SSR for vite compatibility
 serverOnly(), clientOnly(), throw and show all import tree to user

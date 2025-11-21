@@ -159,6 +159,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     target?: 'client' | 'server'
     scope?: PointsScope
     clean?: boolean
+    publicdir?: boolean
   }): Promise<{
     clients: Array<{
       client: string[] | null
@@ -169,7 +170,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     }>
     server: { self: string[] | null; publicdir: string[] | null }
   }> {
-    const { generate = true, target, scope, clean } = options ?? {}
+    const { generate = true, target, scope, clean, publicdir } = options ?? {}
 
     if (generate) {
       await this.generator.sync({ logOnNotWritten: false })
@@ -190,7 +191,7 @@ export class Engine<TInitialized extends boolean = boolean> {
         }
         const buildOutput = await client.build({
           target,
-          publicdir: true,
+          publicdir,
           clean,
         })
         return {
@@ -207,6 +208,7 @@ export class Engine<TInitialized extends boolean = boolean> {
         if (scope === this.server.scope) {
           return await this.server.build({
             clean,
+            publicdir,
           })
         } else {
           return { self: null, publicdir: null }

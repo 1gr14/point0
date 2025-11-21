@@ -301,7 +301,10 @@ export const extractClientBunBuildConfig = async ({
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
   const extractedBunConfig = typeof bunBuildConfig === 'function' ? bunBuildConfig({ nodeEnv, target }) : bunBuildConfig
-  const extractedBunPlugins = await extractClientBunPlugins({ nodeEnv, target, command: 'build', bunPlugins })
+  const extractedBunPlugins =
+    target === 'client'
+      ? await extractClientBunPlugins({ nodeEnv, command: 'build', bunPlugins })
+      : await extractServerBunPlugins({ nodeEnv, command: 'build', bunPlugins })
   return {
     ...extractedBunConfig,
     plugins: [...extractedBunPlugins, ...(extractedBunConfig.plugins ?? [])],
@@ -320,7 +323,6 @@ export type ServerBunPluginsDefinition = ServerBunPluginsDefinitionFn | Array<Bu
 export type ClientBunPluginsDefinitionFnOptions = {
   nodeEnv: string | undefined
   command: 'serve' | 'build'
-  target: 'serverNoSsr' | 'serverSsr' | 'client'
 }
 export type ClientBunPluginsDefinitionFn = (options: ClientBunPluginsDefinitionFnOptions) => Array<BunPlugin | string>
 export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
@@ -347,16 +349,14 @@ export const extractServerBunPlugins = async ({
 
 export const extractClientBunPlugins = async ({
   nodeEnv,
-  target,
   command,
   bunPlugins,
 }: {
   nodeEnv: string | undefined
-  target: 'serverNoSsr' | 'serverSsr' | 'client'
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
-  const bunPluginsArray = typeof bunPlugins === 'function' ? bunPlugins({ nodeEnv, target, command }) : bunPlugins
+  const bunPluginsArray = typeof bunPlugins === 'function' ? bunPlugins({ nodeEnv, command }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p) => {
       if (typeof p === 'string') {
@@ -370,7 +370,7 @@ export const extractClientBunPlugins = async ({
 export const loadBunPlugins = async ({ extractedBunPlugins }: { extractedBunPlugins: BunPlugin[] }): Promise<void> => {
   await Promise.all(
     extractedBunPlugins.map(async (p) => {
-      await plugin(p);
+      await plugin(p)
     }),
   )
 }

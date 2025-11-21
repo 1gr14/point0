@@ -83,6 +83,12 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     )
   }
 
+  async add(definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>): Promise<void> {
+    this.definition.push(...definition)
+    await this.loadFiles()
+    console.log('files', this.files)
+  }
+
   async fetch({ parsedUrl, request }: { parsedUrl?: ParsedUrl; request: Request }): Promise<Response | undefined> {
     if (!this.isInitialized()) {
       throw new Error('Publicdir is not initialized')

@@ -113,12 +113,15 @@ export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string | null
   points: Points | string
+  // pointsDistFile: string | null
   ssr: boolean
   app: string | AppComponent | null
+  // appDistFile: string | null
   hostname: string | null
   basepath: string
   publicdir: EngineOptionsPublicdirParsed
   indexHtml: string | null
+  // indexHtmlDistFile: string | null
   env: EngineOptionsEnvParsed
   domRootElementId: string
   port: number
@@ -372,6 +375,51 @@ const toFinalPath = <T extends string | null | undefined>({
   return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
 }
 
+// const toFinalDistPath = <T extends string | null | undefined>({
+//   autoFixBuiltPaths,
+//   cwdAfterBuild,
+//   cwdBeforeBuild,
+//   cwdIfWasBuilt,
+//   path,
+//   relPathAfterBuild,
+//   omitDirAfterBuild,
+// }: {
+//   autoFixBuiltPaths: boolean
+//   cwdAfterBuild: string
+//   cwdBeforeBuild: string
+//   cwdIfWasBuilt: string | null | undefined
+//   path: T
+//   relPathAfterBuild?: string | null
+//   omitDirAfterBuild?: boolean
+// }): T extends null | undefined ? null : T => {
+//   if (!path) {
+//     return (path ?? null) as T extends null | undefined ? null : T
+//   }
+
+//   if (!autoFixBuiltPaths) {
+//     return toAbsPath(cwdAfterBuild, path) as T extends null | undefined ? null : T
+//   }
+
+//   if (relPathAfterBuild === null) {
+//     return null as T extends null | undefined ? null : T
+//   }
+
+//   const cwdAfterBuildFinal = cwdIfWasBuilt ? nodePath.resolve(cwdBeforeBuild, cwdIfWasBuilt) : cwdBeforeBuild
+
+//   if (relPathAfterBuild) {
+//     const fixedPath = nodePath.resolve(cwdAfterBuildFinal, toJsExtension(relPathAfterBuild))
+//     return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+//   }
+
+//   if (omitDirAfterBuild && !nodePath.isAbsolute(path)) {
+//     const fixedPath = toJsExtension(nodePath.basename(path))
+//     return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+//   }
+
+//   const fixedPath = toJsExtension(path)
+//   return nodePath.resolve(cwdAfterBuildFinal, fixedPath) as T extends null | undefined ? null : T
+// }
+
 export const parseEngineServerOptions = ({
   serverOptions,
   clientsOptions,
@@ -483,6 +531,16 @@ const parseEngineClientOptions = ({
             omitDirAfterBuild: true,
           })
         : Points.create(clientOptions.points),
+    // pointsDistFile:
+    //   typeof clientOptions.points === 'string'
+    //     ? toFinalDistPath({
+    //         ...generalOptionsParsed,
+    //         cwdIfWasBuilt: serverOutdir,
+    //         relPathAfterBuild: clientOptions.viteConfig ? './points.js' : undefined,
+    //         path: clientOptions.points,
+    //         omitDirAfterBuild: true,
+    //       })
+    //     : null,
     ssr: clientOptions.ssr ?? false,
     app:
       typeof clientOptions.app === 'string'
@@ -494,6 +552,16 @@ const parseEngineClientOptions = ({
             omitDirAfterBuild: true,
           })
         : (clientOptions.app ?? null),
+    // appDistFile:
+    //   typeof clientOptions.app === 'string'
+    //     ? toFinalDistPath({
+    //         ...generalOptionsParsed,
+    //         cwdIfWasBuilt: serverOutdir,
+    //         relPathAfterBuild: clientOptions.viteConfig ? './app.js' : undefined,
+    //         path: clientOptions.app,
+    //         omitDirAfterBuild: true,
+    //       })
+    //     : null,
     hostname: clientOptions.hostname ?? null,
     basepath: prependAndAppendSlash(clientOptions.basepath) || '/',
     domRootElementId: clientOptions.domRootElementId || 'root',
@@ -517,6 +585,12 @@ const parseEngineClientOptions = ({
       relPathAfterBuild: './index.html',
       path: clientOptions.indexHtml,
     }),
+    // indexHtmlDistFile: toFinalDistPath({
+    //   ...generalOptionsParsed,
+    //   cwdIfWasBuilt: outdir,
+    //   relPathAfterBuild: './index.html',
+    //   path: clientOptions.indexHtml,
+    // }),
     publicdir:
       !generalOptionsParsed.autoFixBuiltPaths || !generalOptionsParsed.itWasBuilt
         ? parsePublicdir(clientOptions.publicdir ?? [], generalOptionsParsed.cwd)
