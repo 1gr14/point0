@@ -63,7 +63,6 @@ export type EngineServerOptions = {
   routes?: Routes | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
-  prune?: boolean
 }
 export type EngineClientOptions = {
   scope: PointsScope
@@ -154,8 +153,6 @@ export type EngineServerOptionsParsed = {
   routes: Routes | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
-  prune: boolean
-  pruneByScope: Record<string, 'client' | 'serverSsr' | 'serverNoSsr' | 'none'>
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -435,13 +432,6 @@ export const parseEngineServerOptions = ({
     routes: serverOptions.routes ?? null,
     pointsModuleType: serverOptions.pointsModuleType ?? 'ready',
     banner: serverOptions.banner ?? null,
-    prune: serverOptions.prune ?? true,
-    pruneByScope: {
-      [serverOptions.scope]: serverOptions.prune === false ? 'none' : 'serverSsr',
-      ...Object.fromEntries(
-        clientsOptions.map((c) => [c.scope, c.pruneServer === false ? 'none' : c.ssr ? 'serverSsr' : 'serverNoSsr']),
-      ),
-    },
   }
 }
 const parseEngineClientOptions = ({

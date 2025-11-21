@@ -13,9 +13,9 @@ import type {
 } from '@babel/types'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import type { EndPointType, PointName } from '@point0/core/types'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { EndPointType, PointName } from '@point0/core/types'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -263,7 +263,7 @@ export class Walker {
     return { collectedPoints, errors: [...errors, ...promiseRejectedErrors] }
   }
 
-  async prune({
+  async prunePoint0Methods({
     content,
     fileAbs,
     methods: methodsProvided,
@@ -274,28 +274,9 @@ export class Walker {
     methods?: string[]
     customer?: PruneCustomer
   }): Promise<string> {
-    const customerToMethods = (customer: PruneCustomerFlat | 'unknown'): string[] => {
+    const customerToMethods = (customer: PruneCustomer): string[] => {
       const methods = {
         none: [],
-        unknown: [
-          'loader',
-          'ctx',
-          'mutation',
-          'response',
-          'onRequest',
-          'onResponse',
-          'clientLoader',
-          'page',
-          'component',
-          'layout',
-          'wrapper',
-          'error',
-          'loading',
-          'pageError',
-          'componentError',
-          'pageLoading',
-          'componentLoading',
-        ],
         client: ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse'],
         serverSsr: ['clientLoader'],
         serverNoSsr: [
@@ -312,6 +293,7 @@ export class Walker {
           'componentLoading',
         ],
       }[customer]
+
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!methods) {
         throw new Error(`Invalid customer: ${customer}`)
@@ -319,26 +301,10 @@ export class Walker {
       return methods
     }
 
-    const { methods, methodsByScope } = (() => {
-      if (methodsProvided) {
-        return { methods: methodsProvided, methodsByScope: null }
-      }
-      if (typeof customer === 'object') {
-        return {
-          methods: customerToMethods('unknown'),
-          methodsByScope: Object.fromEntries(
-            Object.entries(customer).map(([scope, customer]) => [
-              scope,
-              customer === 'none' ? [] : customerToMethods(customer),
-            ]),
-          ),
-        }
-      }
-      if (!customer) {
-        throw new Error('customer or methods is required')
-      }
-      return { methods: customerToMethods(customer), methodsByScope: null }
-    })()
+    const methods = customer ? customerToMethods(customer) : methodsProvided
+    if (!methods) {
+      throw new Error('Methods or customer is required in point0-pruner plugin')
+    }
 
     // 1️⃣ Берём код
     const code =
@@ -412,7 +378,7 @@ export class Walker {
     // Можно слегка задедупить по (baseIdentifier), чтобы не вызывать resolveScope лишний раз
     const scopeCache = new Map<string, string | undefined>()
 
-    for (const { node, baseIdentifier, method } of candidates) {
+    for (const { node, baseIdentifier } of candidates) {
       let scope = scopeCache.get(baseIdentifier)
       if (scope === undefined && !scopeCache.has(baseIdentifier)) {
         try {
@@ -432,13 +398,7 @@ export class Walker {
 
       // scope найден → это Point0-цепочка ⇒ этот вызов надо очищать
       if (scope) {
-        if (methodsByScope) {
-          if (scope in methodsByScope && methodsByScope[scope].includes(method)) {
-            nodesToStrip.push(node)
-          }
-        } else {
-          nodesToStrip.push(node)
-        }
+        nodesToStrip.push(node)
       }
     }
 
@@ -1640,5 +1600,4 @@ export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fro
 )
 export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
 
-export type PruneCustomerFlat = 'client' | 'serverSsr' | 'serverNoSsr' | 'none'
-export type PruneCustomer = PruneCustomerFlat | Record<string, PruneCustomerFlat>
+export type PruneCustomer = 'client' | 'serverSsr' | 'serverNoSsr' | 'none'

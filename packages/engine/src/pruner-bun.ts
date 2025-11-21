@@ -1,6 +1,6 @@
 import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
-import type { PruneCustomer} from './walker.js';
+import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
 
 export function prunerBunPlugin({ customer }: { customer: PruneCustomer }): BunPlugin {
@@ -15,7 +15,7 @@ export function prunerBunPlugin({ customer }: { customer: PruneCustomer }): BunP
           try {
             original = await Bun.file(filepath).text()
             const walker = new Walker()
-            const transformed = await walker.prune({
+            const transformed = await walker.prunePoint0Methods({
               content: original,
               fileAbs: filepath,
               customer,

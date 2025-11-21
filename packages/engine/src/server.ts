@@ -21,7 +21,6 @@ import {
   type ServerBunBuildConfigDefinition,
   type ServerBunPluginsDefinition,
 } from './utils.js'
-import type { PruneCustomerFlat } from './walker.js'
 import type { BunPlugin } from 'bun'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
@@ -46,8 +45,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   fallbackScope: PointsScope
   initialized: TInitialized
   bunServer: Bun.Server<unknown> | undefined
-  prune: boolean
-  pruneByScope: Record<string, PruneCustomerFlat>
 
   private constructor(input: {
     initialized: TInitialized
@@ -70,8 +67,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
     eversion: Eversion | null
-    prune: boolean
-    pruneByScope: Record<string, PruneCustomerFlat>
   }) {
     this.cwd = input.cwd
     this.eversion = input.eversion as TInitialized extends true ? Eversion : null
@@ -93,8 +88,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.publicdirOutdir = input.publicdirOutdir
     this.fallbackScope = input.fallbackScope
     this.initialized = input.initialized
-    this.prune = input.prune
-    this.pruneByScope = input.pruneByScope
   }
 
   static create(input: {
@@ -114,8 +107,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     fallbackScope: PointsScope
     logger: EngineLogger
     clients: ClientBun[]
-    prune: boolean
-    pruneByScope: Record<string, PruneCustomerFlat>
   }): ServerBun<false> {
     const providedPoints = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
@@ -189,12 +180,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
-    const pruneByScopeValues = Object.values(this.pruneByScope)
-    const prunePlugin =
-      pruneByScopeValues.length > 0 && !pruneByScopeValues.every((value) => value === 'none')
-        ? await import('./pruner-bun.js').then((module) => module.prunerBunPlugin({ customer: 'none' }))
-        : null
-    const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
+    const extractedBunPlugins = [...extractedPlugins]
     return extractedBunPlugins
   }
 
