@@ -191,6 +191,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       root: null,
       eversion: input.eversion,
       outdir: input.publicdirOutdir,
+      scope: input.scope,
     })
 
     const distIndexHtmlContent = null
@@ -715,9 +716,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
-    }
+    // if (!this.isInitialized()) {
+    //   throw new Error('Client is not initialized')
+    // }
 
     const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
 
@@ -784,9 +785,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
-    }
+    // if (!this.isInitialized()) {
+    //   throw new Error('Client is not initialized')
+    // }
+
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
@@ -865,9 +867,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async buildByViteForClient(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
-    }
+    // if (!this.isInitialized()) {
+    //   throw new Error('Client is not initialized')
+    // }
 
     if (!this.viteConfig) {
       throw new Error(`viteConfig not provided for client "${this.scope}"`)
@@ -965,9 +967,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async buildByViteForServer(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (!this.isInitialized()) {
-      throw new Error('Client is not initialized')
-    }
+    // if (!this.isInitialized()) {
+    //   throw new Error('Client is not initialized')
+    // }
 
     if (!this.viteConfig) {
       throw new Error(`viteConfig not provided for client "${this.scope}"`)

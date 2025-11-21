@@ -120,6 +120,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       root: null,
       eversion,
       outdir: input.publicdirOutdir,
+      scope: input.scope,
     })
 
     const server = new ServerBun<false>({

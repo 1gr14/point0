@@ -175,10 +175,10 @@ export class Engine<TInitialized extends boolean = boolean> {
       await this.generator.sync({ logOnNotWritten: false })
     }
 
-    const intializedEngine = await this.init()
+    // const intializedEngine = await this.init()
 
     const clients = await Promise.all(
-      intializedEngine.clients.map(async (client) => {
+      this.clients.map(async (client) => {
         if (scope && client.scope !== scope) {
           return {
             client: null,
@@ -197,22 +197,22 @@ export class Engine<TInitialized extends boolean = boolean> {
           client: buildOutput.client,
           server: buildOutput.server,
           publicdir: buildOutput.publicdir,
-          scope: client.points.root._scope,
+          scope: client.scope,
           index: client.index,
         }
       }),
     )
     const server = await (async () => {
       if (scope) {
-        if (scope === intializedEngine.server.scope) {
-          return await intializedEngine.server.build({
+        if (scope === this.server.scope) {
+          return await this.server.build({
             clean,
           })
         } else {
           return { self: null, publicdir: null }
         }
       } else {
-        return await intializedEngine.server.build({
+        return await this.server.build({
           clean,
         })
       }
