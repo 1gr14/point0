@@ -318,13 +318,21 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return { self, publicdir }
   }
 
-  async buildSelf(bunBuildConfig: ServerBunBuildConfigDefinition = {}): Promise<string[] | null> {
+  async buildSelf(options?: {
+    bunBuildConfig?: ServerBunBuildConfigDefinition
+    clean?: boolean
+  }): Promise<string[] | null> {
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.entrypointsExists) {
       return null
     }
     if (!buildPaths.outdir) {
       throw new Error(`outdir not provided for server`)
+    }
+
+    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
+    if (clean) {
+      await this.cleanSelf()
     }
 
     const NODE_ENV = process.env.NODE_ENV
@@ -424,11 +432,15 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return buildOutput.outputs.map((output) => output.path)
   }
 
-  async build(
-    bunBuildConfig: ServerBunBuildConfigDefinition = {},
-  ): Promise<{ self: string[] | null; publicdir: string[] | null }> {
-    await this.clean()
-    const [self, publicdir] = await Promise.all([this.buildSelf(bunBuildConfig), this.publicdir.build()])
+  async build(options?: {
+    bunBuildConfig?: ServerBunBuildConfigDefinition
+    clean?: boolean
+  }): Promise<{ self: string[] | null; publicdir: string[] | null }> {
+    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
+    if (clean) {
+      await this.clean()
+    }
+    const [self, publicdir] = await Promise.all([this.buildSelf({ bunBuildConfig }), this.publicdir.build()])
     return { self, publicdir }
   }
 

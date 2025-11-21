@@ -5,7 +5,6 @@ const general = {
     'src/index.ts',
     'src/bin.ts',
     'src/client.ts',
-    'src/client-bun-dev-server.ts',
     'src/config.ts',
     'src/error.ts',
     'src/fetch.ts',

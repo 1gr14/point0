@@ -62,7 +62,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
-  clientBunDevServer: Bun.Subprocess | null
+  clientBunDevServer: Bun.Server<unknown> | null
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | null
   initialized: TInitialized
@@ -98,7 +98,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
     eversion: Eversion | null
-    clientBunDevServer: Bun.Subprocess | null
+    clientBunDevServer: Bun.Server<unknown> | null
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | null
     server: ServerBun
@@ -247,7 +247,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     this.clientBunDevServer =
       this.indexHtml && !this.clientViteDevServer && process.env.NODE_ENV !== 'production'
-        ? this.createClientBunDevServerInSeparateProcess()
+        ? await this.createClientBunDevServer()
         : null
     await this.publicdir.init({ root: this.points.root, eversion })
 
@@ -316,17 +316,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
         '/index.html': await import(this.indexHtml).then((module) => module.default),
       },
     })
-  }
-
-  createClientBunDevServerInSeparateProcess(): Bun.Subprocess {
-    if (!this.engineFile) {
-      throw new Error(`Engine file path is not provided for client "${this.scope}"`)
-    }
-    const scriptPath = require.resolve('./client-bun-dev-server.js')
-    const child = Bun.spawn(['bun', scriptPath, this.engineFile, this.scope], {
-      stdio: ['inherit', 'inherit', 'inherit'],
-    })
-    return child
   }
 
   static async extractViteConfig({
@@ -705,11 +694,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
   }
 
-  // TODO option to clear dist dir
-  async buildByBunForClient(bunBuildConfig: ClientBunBuildConfigDefinition = {}): Promise<string[] | null> {
+  async buildByBunForClient(options?: {
+    bunBuildConfig?: ClientBunBuildConfigDefinition
+    clean?: boolean
+  }): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
+
+    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
 
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.indexHtml) {
@@ -717,6 +710,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
     if (!buildPaths.outdir) {
       throw new Error(`outdir not provided for client "${this.scope}"`)
+    }
+
+    if (clean) {
+      await this.cleanClient()
     }
 
     const thisBunBuildConfig = await extractClientBunBuildConfig({
@@ -764,11 +761,13 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return buildOutput.outputs.map((output) => output.path)
   }
 
-  async buildByBunForServer(bunBuildConfig: ClientBunBuildConfigDefinition = {}): Promise<string[] | null> {
+  async buildByBunForServer(options?: {
+    bunBuildConfig?: ClientBunBuildConfigDefinition
+    clean?: boolean
+  }): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
-
     const buildPaths = this.getBuildPaths()
     if (!buildPaths.appFile && this.providedAppComponent) {
       throw new Error(
@@ -785,6 +784,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     }
     if (!buildPaths.serverOutdir) {
       throw new Error(`serverOutdir not provided for client "${this.scope}"`)
+    }
+
+    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
+
+    if (clean) {
+      await this.cleanServer()
     }
 
     const NODE_ENV = process.env.NODE_ENV
@@ -840,7 +845,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return buildOutput.outputs.map((output) => output.path)
   }
 
-  async buildByViteForClient(): Promise<string[] | null> {
+  async buildByViteForClient(options?: { clean?: boolean }): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
@@ -856,6 +861,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     if (!buildPaths.outdir) {
       throw new Error(`outdir not provided for client "${this.scope}"`)
     }
+
+    const { clean = false } = options ?? {}
+    if (clean) {
+      await this.cleanClient()
+    }
+
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.extractViteConfig({
       viteConfig: this.viteConfig,
@@ -932,7 +943,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return outputFiles
   }
 
-  async buildByViteForServer(): Promise<string[] | null> {
+  async buildByViteForServer(options?: { clean?: boolean }): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
@@ -958,6 +969,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     if (!buildPaths.serverOutdir) {
       throw new Error(`serverOutdir not provided for client "${this.scope}"`)
     }
+
+    const { clean = false } = options ?? {}
+    if (clean) {
+      await this.cleanServer()
+    }
+
     const NODE_ENV = process.env.NODE_ENV || 'production'
     const loadedViteConfig = await ClientBun.extractViteConfig({
       viteConfig: this.viteConfig,
@@ -1041,7 +1058,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return outputFiles
   }
 
-  async cleanSelf(): Promise<boolean> {
+  async cleanClient(): Promise<boolean> {
     const outdir = this.outdir
     if (!outdir) {
       return false
@@ -1063,33 +1080,39 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return true
   }
 
-  async clean(): Promise<{ self: boolean; publicdir: boolean; server: boolean }> {
-    const [self, publicdir, server] = await Promise.all([this.cleanSelf(), this.publicdir.clean(), this.cleanServer()])
-    return { self, publicdir, server }
+  async clean(): Promise<{ client: boolean; publicdir: boolean; server: boolean }> {
+    const [client, publicdir, server] = await Promise.all([
+      this.cleanClient(),
+      this.publicdir.clean(),
+      this.cleanServer(),
+    ])
+    return { client, publicdir, server }
   }
 
-  async buildSelf(
-    bunBuildConfig?: ClientBunBuildConfigDefinition,
-  ): Promise<{ self: string[] | null; server: string[] | null }> {
+  async buildSelfAndServer(options?: {
+    bunBuildConfig?: ClientBunBuildConfigDefinition
+    clean?: boolean
+  }): Promise<{ client: string[] | null; server: string[] | null }> {
     if (this.viteConfig) {
-      const [self, server] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
-      return { self, server }
+      const [client, server] = await Promise.all([this.buildByViteForClient(), this.buildByViteForServer()])
+      return { client, server }
     } else {
-      const [self, server] = await Promise.all([
-        this.buildByBunForClient(bunBuildConfig),
-        this.buildByBunForServer(bunBuildConfig),
-      ])
-      return { self, server }
+      const [client, server] = await Promise.all([this.buildByBunForClient(options), this.buildByBunForServer(options)])
+      return { client, server }
     }
   }
 
-  async build(
-    bunBuildConfig?: ClientBunBuildConfigDefinition,
-  ): Promise<{ self: string[] | null; server: string[] | null; publicdir: string[] | null }> {
-    await this.clean()
+  async build(options?: {
+    bunBuildConfig?: ClientBunBuildConfigDefinition
+    clean?: boolean
+  }): Promise<{ client: string[] | null; server: string[] | null; publicdir: string[] | null }> {
+    const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
+    if (clean) {
+      await this.clean()
+    }
     const publicdir = await this.publicdir.build() // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
-    const { self, server } = await this.buildSelf(bunBuildConfig)
-    return { self, server, publicdir }
+    const { client, server } = await this.buildSelfAndServer({ bunBuildConfig })
+    return { client, server, publicdir }
   }
 
   async renderAsReadableStream({

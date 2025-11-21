@@ -142,7 +142,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     return true
   }
 
-  async build(): Promise<string[] | null> {
+  async build(options?: { clean?: boolean }): Promise<string[] | null> {
     if (!this.isInitialized()) {
       throw new Error('Publicdir is not initialized')
     }
@@ -150,6 +150,11 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     const outdir = this.outdir
     if (!outdir) {
       return null
+    }
+
+    const { clean = false } = options ?? {}
+    if (clean) {
+      await this.clean()
     }
 
     await nodeFs.mkdir(outdir, { recursive: true })
