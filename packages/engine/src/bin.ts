@@ -13,18 +13,6 @@ const dictionary = {
   enginePath: 'Path to engine file (absolute or relative to cwd)',
 }
 
-// program
-//   .command('dev')
-//   .description('Start development server and clients')
-//   .option('-G, --no-generate', dictionary.noGenerate)
-//   .option('-S, --no-server', 'Do not serve server, serve only clients dev servers')
-//   .option('-e, --engine <path>', dictionary.enginePath)
-//   .action(async (options) => {
-//     process.env.NODE_ENV ??= 'development'
-//     const engine = await Engine.findAndImportSelf(options.engine)
-//     await engine.dev({ generate: options.generate !== false, server: options.server !== false })
-//   })
-
 program
   .command('dev')
   .description('Start development server and clients')
