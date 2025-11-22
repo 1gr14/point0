@@ -32,22 +32,22 @@ program
     const generatorProcess = options.generate !== false ? engine.generateWatch() : null
     const withServer = options.server !== false && !!engine.server.entry
     if (withServer) {
-      const entriesPaths = Object.values(engine.server.entry || [])
-      if (entriesPaths.length === 1) {
-        const serverEntryHotRunWithClientDevServers = Bun.$`${['bun', 'run', hot ? '--hot' : '', ...extraArgs, entriesPaths[0]]}`
-        await Promise.all([generatorProcess, serverEntryHotRunWithClientDevServers])
-      } else {
-        // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
-        const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(
-          async (entry) =>
-            await Bun.$`${['POINT0_PREVENT_CLIENT_DEV_SERVER=true', 'bun', 'run', hot ? '--hot' : '', ...extraArgs, entry]}`,
-        )
-        // and here we rung one instance of client dev servers per each client
-        const clientsDevSevers = engine.serveClientDevServers()
-        await Promise.all([generatorProcess, ...serverEntryHotRuns, clientsDevSevers])
-      }
+      // cancel. we still want separate client dev servers, to prevent hmr conflicts
+      // const entriesPaths = Object.values(engine.server.entry || [])
+      // if (entriesPaths.length === 1) {
+      //   const serverEntryHotRunWithClientDevServers = Bun.$`${['bun', 'run', hot ? '--hot' : '', ...extraArgs, entriesPaths[0]]}`
+      //   await Promise.all([generatorProcess, serverEntryHotRunWithClientDevServers])
+      // } else {
+      // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
+      const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(async (entry) => {
+        return await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run ${hot ? '--hot' : ''} ${extraArgs.join(' ')} ${entry}`
+      })
+      // and here we rung one instance of client dev servers per each client
+      const clientsDevSevers = engine.serveClientDevServers()
+      await Promise.all([generatorProcess, ...serverEntryHotRuns, clientsDevSevers])
+      // }
     } else {
-      await engine.init()
+      await Promise.all([generatorProcess, engine.init()])
     }
   })
 
