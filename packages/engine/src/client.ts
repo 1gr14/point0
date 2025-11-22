@@ -533,11 +533,15 @@ console.info('Bun dev server started on port ${this.port}');
     return clientViteDevServer
   }
 
-  async upgradeProxyBunDevServerWebSocket(
-    request: Request,
-    server: Bun.Server<unknown>,
-    parsedUrl?: ParsedUrl,
-  ): Promise<{ result: Response | undefined } | undefined> {
+  async upgradeProxyBunDevServerWebSocket({
+    request,
+    server,
+    parsedUrl,
+  }: {
+    request: Request
+    server: Bun.Server<unknown>
+    parsedUrl?: ParsedUrl
+  }): Promise<{ result: Response | undefined } | undefined> {
     if (!this.clientBunDevServer) {
       return undefined
     }
@@ -563,7 +567,13 @@ console.info('Bun dev server started on port ${this.port}');
     return { result: undefined }
   }
 
-  async fetchClientBunDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
+  async fetchClientBunDevServerMiddleware({
+    request,
+    parsedUrl,
+  }: {
+    request: Request
+    parsedUrl?: ParsedUrl
+  }): Promise<Response | undefined> {
     const clientBunDevServer = this.clientBunDevServer
     if (!clientBunDevServer) {
       return undefined
@@ -581,15 +591,21 @@ console.info('Bun dev server started on port ${this.port}');
     return undefined
   }
 
-  async fetchClientViteDevServerMiddleware(request: Request, parsedUrl?: ParsedUrl): Promise<Response | undefined> {
+  async fetchClientViteDevServerMiddleware({
+    request,
+    parsedUrl,
+  }: {
+    request: Request
+    parsedUrl?: ParsedUrl
+  }): Promise<Response | undefined> {
     const clientViteDevServer = this.clientViteDevServer
     if (!clientViteDevServer) {
       return undefined
     }
     if (clientViteDevServer === true) {
-      throw new Error(
-        `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
-      )
+      // throw new Error(
+      //   `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
+      // )
     }
     return await new Promise<Response | undefined>((resolve, reject) => {
       parsedUrl ??= parseUrl(request.url)
