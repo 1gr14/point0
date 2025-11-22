@@ -521,7 +521,7 @@ const parseEngineClientOptions = ({
   const publicdirOutdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path: clientOptions.publicdirOutdir ?? outdir,
+    path: clientOptions.publicdirOutdir ?? (outdir && clientOptions.publicdir ? nodePath.join(outdir, 'public') : null),
   })
   return {
     scope: clientOptions.scope,

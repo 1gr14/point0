@@ -2,8 +2,8 @@ import { Engine } from '@point0/engine'
 import { routes } from './lib/routes'
 
 export const engine = Engine.create(import.meta.url, {
-  clientsServerOutdir: '../dist/server',
-  clientsSelfOutdir: '../dist',
+  // clientsServerOutdir: '../dist/server',
+  // clientsSelfOutdir: '../dist',
   pointsGlob: ['**/*.{ts,tsx}'],
   server: {
     scope: 'server',
@@ -25,23 +25,9 @@ export const engine = Engine.create(import.meta.url, {
       env: ['SOURCE_BASE_URL'],
       publicdir: '../public',
       outdir: '../dist/client',
+      serverOutdir: '../dist/server/client',
       publicdirOutdir: '../dist/client',
       viteConfig: '../vite.config.ts',
     },
   ],
 })
-
-if (process.env.TASK === 'build') {
-  await engine.build()
-  process.exit(0)
-}
-
-if (process.env.TASK === 'generate') {
-  await engine.generate()
-  process.exit(0)
-}
-
-if (process.env.TASK === 'generate-watch') {
-  await engine.generateWatch()
-  process.exit(0)
-}

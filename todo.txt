@@ -1,14 +1,9 @@
 Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
 do not autoserve dist, make it manual
 ensure packages workspace:* replaced with real version after npm package
+not hostname, not pathname, but just baseurl
 
 ------
-
-onReq onRes normalize, make more straight forward
-.onReq(() => {}, () => {}) as shortcat for.onReq().onRes()
-.onReq is usual middleware with req, res, next
-move vite things to somewehere so it not required to install
-not hostname, not pathname, but just baseurl
 
 head on ssr should also just stored in super store, not needed to extract it additionally
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
@@ -22,15 +17,18 @@ remove zod from dependencies, and move to peer dependencies, and allow zod mini 
 auth
 
 elysia example
+onReq onRes normalize, make more straight forward| .onReq(() => {}, () => {}) as shortcat for.onReq().onRes()| .onReq is usual middleware with req, res, next
+
+const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
 expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 expo example, just define all queries and mutations as plugins and use them in site and expo
 expo router
+
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
 
 .ctxLoader()
 
-const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
 const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
 chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 → chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
@@ -56,6 +54,7 @@ preventSsr
 allow in engine and eversion source = null, server = null
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
+serverOnly, clientOnly, serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 use arrays in points files
 .route(string)
 .onReq .onRes should become .middleware ? and work like express middleware ? 
@@ -78,7 +77,6 @@ router export function getCurrentLocation()
 ? isScope
 onResponse onRequest → onReq onRes req res
 serverOnly(), clientOnly(), throw and show all import tree to user
-engine config. serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 ? Point0 → P0, maybe as alias
 check bun pruner, adn vite pruner creates correct sourcemaps
 check pruner remove unsused imports
