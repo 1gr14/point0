@@ -1,6 +1,4 @@
-not hostname, not pathname, but just baseurl
-
-------
+source-root, connection-root, attachment-root
 
 head on ssr should also just stored in super store, not needed to extract it additionally
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
@@ -14,6 +12,7 @@ remove zod from dependencies, and move to peer dependencies, and allow zod mini 
 auth
 
 elysia example
+do not do onReq at all, do not try to create new express or elysia
 onReq onRes normalize, make more straight forward| .onReq(() => {}, () => {}) as shortcat for.onReq().onRes()| .onReq is usual middleware with req, res, next
 
 const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
