@@ -192,7 +192,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       return undefined
     }
     const match = this.points.routes._.getLocation(pageLocation)
-    if (match.parent || match.exact) {
+    if (match.exact) {
       return this
     }
     return undefined
