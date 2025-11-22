@@ -37,7 +37,6 @@ program
     const generatorProcess = options.generate !== false ? engine.generateWatch() : null
     // await engine.dev({ generate: options.generate !== false, server: options.server !== false })
     const withServer = options.server !== false && !!engine.server.entry
-    console.log(123123, Object.values(engine.server.entry || []))
     if (withServer) {
       const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(
         async (entry) => await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run --hot ${entry}`,
