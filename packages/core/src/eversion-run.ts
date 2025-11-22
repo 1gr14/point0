@@ -5,8 +5,8 @@ import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import { isClient } from './client-server.js'
 import type { Eversion } from './eversion.js'
+import { ClientServerHelpers } from './client-server.js'
 import { Point0 } from './index.js'
 import type { AppComponent } from './mount.js'
 import { EversionStore } from './eversion-store.js'
@@ -95,7 +95,9 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   getQueryClient(): QueryClient {
-    return isClient ? EversionStore.get('__POINT0_QUERY_CLIENT__') : this.serverGlobalState.__POINT0_QUERY_CLIENT__
+    return ClientServerHelpers.isClient
+      ? EversionStore.get('__POINT0_QUERY_CLIENT__')
+      : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
 
   getScope(): PointsScope {
@@ -103,7 +105,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
-    if (isClient) {
+    if (ClientServerHelpers.isClient) {
       EversionStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
     }
@@ -111,7 +113,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
-    if (isClient) {
+    if (ClientServerHelpers.isClient) {
       EversionStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
       return
     }

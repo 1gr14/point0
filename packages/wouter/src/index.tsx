@@ -7,7 +7,7 @@ import { Point0 } from '@point0/core'
 import type { PagesTree } from '@point0/core/points'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
 import { _wrapUseNavigate, RouterContextProvider } from '@point0/core/router'
-import { isClient } from '@point0/core/client-server'
+import { ClientServerHelpers } from '@point0/core/client-server'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 
@@ -52,7 +52,7 @@ export const Router = ({
   children: React.ReactNode
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
-    if (isClient) {
+    if (ClientServerHelpers.isClient) {
       return {}
     }
     if (!ssrLocation) {

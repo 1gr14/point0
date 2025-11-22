@@ -1,8 +1,8 @@
+import { client } from '@/lib/client.js'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
-import { client } from '@/lib/client.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')

@@ -1,10 +1,10 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 import type { IfAnyThenElse } from './types.js'
-import { isClient } from './client-server.js'
+import { ClientServerHelpers } from './client-server.js'
 ;(globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ =
   (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ ||
-  (isClient
+  (ClientServerHelpers.isClient
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>))
@@ -12,7 +12,6 @@ import { isClient } from './client-server.js'
 ;(globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ =
   (globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ || ({} as EversionStoreConfig)
 
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class EversionStore {
   private static dehydrated: Record<string, unknown> = {}
 
@@ -253,7 +252,7 @@ export class EversionStore {
   }
 
   static getState = (): EversionStoreState => {
-    if (isClient) {
+    if (ClientServerHelpers.isClient) {
       return EversionStore.clientState
     } else {
       const serverStorage = EversionStore.getServerStorage()

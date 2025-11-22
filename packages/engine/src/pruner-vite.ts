@@ -27,7 +27,8 @@ export function prunerVitePlugin({
       if (!filter.test(filepath)) return null
 
       const walker = new Walker()
-      const transformed = await walker.prunePoint0Methods({ content: code, fileAbs: filepath, customer })
+      let transformed = await walker.prunePoint0Methods({ content: code, fileAbs: filepath, customer })
+      transformed = await walker.prunePoint0ClientServer({ content: transformed, fileAbs: filepath, customer })
       if (transformed === code) return null
 
       const ms = new MagicString(code)

@@ -24,6 +24,7 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
+import { ClientServerHelpers } from './client-server.js'
 import type { EversionRun, ExtractResult } from './eversion-run.js'
 import type { EversionStoreDefinedItem } from './eversion-store.js'
 import { EversionStore } from './eversion-store.js'
@@ -111,7 +112,6 @@ import type {
   WrapperComponentType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
-import * as clientServerHelpers from './client-server.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -4075,14 +4075,13 @@ export class Point0<
 
   // client-server helpers
 
-  static isClient = clientServerHelpers.isClient
-  static isServer = clientServerHelpers.isServer
-  static callServer = clientServerHelpers.callServer.bind(clientServerHelpers.callServer)
-  static callClient = clientServerHelpers.callClient.bind(clientServerHelpers.callClient)
-  static callClientElseServer = clientServerHelpers.callClientElseServer.bind(clientServerHelpers.callClientElseServer)
-  static constServer = clientServerHelpers.constServer.bind(clientServerHelpers.constServer)
-  static constClient = clientServerHelpers.constClient.bind(clientServerHelpers.constClient)
-  static constClientElseServer = clientServerHelpers.constClientElseServer.bind(
-    clientServerHelpers.constClientElseServer,
-  )
+  static isClient = ClientServerHelpers.isClient
+  static isServer = ClientServerHelpers.isServer
+  static constServerUnsafe = ClientServerHelpers.constServerUnsafe.bind(ClientServerHelpers)
+  static constClientUnsafe = ClientServerHelpers.constClientUnsafe.bind(ClientServerHelpers)
+  static constServer = ClientServerHelpers.constServer.bind(ClientServerHelpers)
+  static constClient = ClientServerHelpers.constClient.bind(ClientServerHelpers)
+  static callServer = ClientServerHelpers.callServer.bind(ClientServerHelpers)
+  static callClient = ClientServerHelpers.callClient.bind(ClientServerHelpers)
+  static callClientElseServer = ClientServerHelpers.callClientElseServer.bind(ClientServerHelpers)
 }

@@ -457,15 +457,191 @@ export class Walker {
   async prunePoint0ClientServer({
     content,
     fileAbs,
-    methods: methodsProvided,
     customer,
   }: {
     content?: string
     fileAbs: string
-    methods?: string[]
-    customer?: PruneCustomer
+    customer: PruneCustomer
   }): Promise<string> {
-    return ''
+    // Determine environment
+    const env = customer === 'client' ? 'client' : 'server'
+
+    const code =
+      content ??
+      (await nodeFs.readFile(fileAbs, 'utf8').catch((e: unknown) => {
+        console.warn(`🔴 prunePoint0ClientServer: cannot read file ${fileAbs}: ${(e as Error).message}`)
+        throw e
+      }))
+
+    let ast: babel.ParseResult<any>
+    try {
+      ast = babel.parse(code, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+        ],
+      })
+      this.astCache.set(fileAbs, ast)
+    } catch (e) {
+      console.warn(`🔴 prunePoint0ClientServer: parse failed for ${fileAbs}: ${(e as Error).message}`)
+      return code
+    }
+
+    let changed = false
+
+    const makeThrow = (msg: string) => ({
+      type: 'ArrowFunctionExpression',
+      id: null,
+      generator: false,
+      async: false,
+      expression: false,
+      params: [],
+      body: {
+        type: 'BlockStatement',
+        body: [
+          {
+            type: 'ThrowStatement',
+            argument: {
+              type: 'NewExpression',
+              callee: { type: 'Identifier', name: 'Error' },
+              arguments: [{ type: 'StringLiteral', value: msg }],
+            },
+          },
+        ],
+      },
+    })
+
+    const makeUndefined = () => ({
+      type: 'Identifier',
+      name: 'undefined',
+    })
+
+    traverse(ast, {
+      MemberExpression: (p) => {
+        const node = p.node
+
+        // Only handle Point0.xxx
+        if (
+          node.object.type !== 'Identifier' ||
+          (node.object.name !== 'Point0' && node.object.name !== 'ClientServerHelpers')
+        )
+          return
+        if (node.property.type !== 'Identifier') return
+
+        const name = node.property.name
+
+        //
+        // BOOLEAN CONSTANTS
+        //
+        if (name === 'isClient') {
+          changed = true
+          p.replaceWith({
+            type: 'BooleanLiteral',
+            value: env === 'client',
+          })
+        }
+
+        if (name === 'isServer') {
+          changed = true
+          p.replaceWith({
+            type: 'BooleanLiteral',
+            value: env === 'server',
+          })
+        }
+      },
+
+      CallExpression: (p) => {
+        const node = p.node
+        const callee = node.callee
+
+        if (callee.type !== 'MemberExpression') return
+        if (
+          callee.object.type !== 'Identifier' ||
+          (callee.object.name !== 'Point0' && callee.object.name !== 'ClientServerHelpers')
+        )
+          return
+        if (callee.property.type !== 'Identifier') return
+
+        const name = callee.property.name
+        const args = node.arguments as any[]
+
+        switch (name) {
+          //
+          // CALL HELPERS
+          //
+          case 'callServer':
+            if (env === 'client' && args[0]) {
+              args[0] = makeThrow('Call server function from client')
+              changed = true
+            }
+            break
+
+          case 'callClient':
+            if (env === 'server' && args[0]) {
+              args[0] = makeThrow('Call client function from server')
+              changed = true
+            }
+            break
+
+          case 'callClientElseServer':
+            if (env === 'client' && args[1]) {
+              args[1] = makeThrow('Call server function from client')
+              changed = true
+            }
+            if (env === 'server' && args[0]) {
+              args[0] = makeThrow('Call client function from server')
+              changed = true
+            }
+            break
+
+          //
+          // CONST HELPERS
+          //
+          case 'constServer':
+          case 'constServerUnsafe':
+            if (env === 'client' && args[0]) {
+              args[0] = makeUndefined()
+              changed = true
+            }
+            break
+
+          case 'constClient':
+          case 'constClientUnsafe':
+            if (env === 'server' && args[0]) {
+              args[0] = makeUndefined()
+              changed = true
+            }
+            break
+
+          case 'constClientElseServer':
+            if (env === 'client' && args[1]) {
+              args[1] = makeUndefined()
+              changed = true
+            }
+            if (env === 'server' && args[0]) {
+              args[0] = makeUndefined()
+              changed = true
+            }
+            break
+        }
+      },
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!changed) return code
+
+    const generatorModule = await import('@babel/generator')
+    const generate = (generatorModule as any).default ?? generatorModule
+    const { code: out } = generate(ast, { retainLines: true })
+    this.filesContentCache.set(fileAbs, out)
+
+    return out
   }
 
   private detectPointTypeAndNameFromInit({

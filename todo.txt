@@ -1,18 +1,13 @@
-point0PruneClientServer
-client-server.ts apply to pruner, it will be easier to have Point0 | P0.isClient P0.isServer etc. insinde packe. Inside project check if it is imported from correct place
-import.meta.env.SSR for vite compatibility
-
-Replace all node methods with native bun methods, including watcher
 Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
+do not autoserve dist, make it manual
 ensure packages workspace:* replaced with real version after npm package
 
 ------
 
 onReq onRes normalize, make more straight forward
 .onReq(() => {}, () => {}) as shortcat for.onReq().onRes()
-super store → eversion store
+.onReq is usual middleware with req, res, next
 move vite things to somewehere so it not required to install
-abs assets fetcher on 404 for bun dev server
 not hostname, not pathname, but just baseurl
 
 head on ssr should also just stored in super store, not needed to extract it additionally
@@ -33,8 +28,9 @@ expo router
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
 
-
 .ctxLoader()
+
+const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
 const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
 chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
 → chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
@@ -60,6 +56,7 @@ preventSsr
 allow in engine and eversion source = null, server = null
 props to clientFns for component, and also to page, layout, clientCtx
 queryCache for clients queries
+use arrays in points files
 .route(string)
 .onReq .onRes should become .middleware ? and work like express middleware ? 
 thorw error on Points.create() on lcient with different scope that was before
@@ -67,6 +64,7 @@ no root
 extract required ctx type from root points
 Unieind and hero ui right inside examples
 simplify renderer
+Replace all node methods with native bun methods, including watcher
 Point0.global.init()
 mount → dom/mount
 do not remove root point on points create, why we ever need it?
@@ -77,10 +75,11 @@ request prefetchPageDehydratedState state but prefetchPagePayload becouse there 
 check zustand behaviour, meybe it is enough on ssr also provide current global store to client. Just n payload, and use it on top of mount.ts
 preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
 router export function getCurrentLocation()
+? isScope
 onResponse onRequest → onReq onRes req res
 serverOnly(), clientOnly(), throw and show all import tree to user
 engine config. serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
-??? Point0 → Point
+? Point0 → P0, maybe as alias
 check bun pruner, adn vite pruner creates correct sourcemaps
 check pruner remove unsused imports
 after build validate if dist paths exists, like engine.validate()

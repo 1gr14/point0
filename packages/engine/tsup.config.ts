@@ -18,6 +18,7 @@ const general = {
     'src/server.ts',
     'src/utils.ts',
     'src/walker.ts',
+    'src/client-server.ts',
   ],
   clean: true,
   dts: true,

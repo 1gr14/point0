@@ -28,8 +28,13 @@ export function prunerBunPlugin({
         try {
           original = await Bun.file(filepath).text()
           const walker = new Walker()
-          const transformed = await walker.prunePoint0Methods({
+          let transformed = await walker.prunePoint0Methods({
             content: original,
+            fileAbs: filepath,
+            customer,
+          })
+          transformed = await walker.prunePoint0ClientServer({
+            content: transformed,
             fileAbs: filepath,
             customer,
           })

@@ -2,7 +2,7 @@ import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { isClient } from './client-server.js'
+import { ClientServerHelpers } from './client-server.js'
 import { EversionStore } from './eversion-store.js'
 import type {
   EndPoint,
@@ -64,7 +64,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.pagesTree = pagesTree
     this.root = root
     Points.setGlobalPoints(this)
-    if (isClient) {
+    if (ClientServerHelpers.isClient) {
       EversionStore.setWeak('__POINT0_SCOPE__', this.root._scope)
     }
   }
