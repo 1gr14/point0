@@ -34,11 +34,9 @@
     "format": "bun run format:fix .",
     "format:base": "prettier --cache --cache-location node_modules/.cache/prettier/.prettiercache --ignore-path .gitignore --ignore-path .prettierignore",
     "format:fix": "bun run format:base --write",
-    "pack:dry": "npm pack --dry-run",
-    "pack:dist": "mkdir -p dist-npm && npm pack --pack-destination dist-npm --silent && cd dist-npm && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz",
-    "pack:dist:hard": "rimraf dist-npm && bun run pack:dist",
+    "pack:dist": "bun --filter './packages/**' pack:dist",
     "prepare": "husky",
-    "clean": "rimraf packages/*/dist && rimraf dist-npm && rimraf node_modules/.cache"
+    "clean": "rimraf packages/*/dist && rimraf packages-dist-npm && rimraf node_modules/.cache"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",

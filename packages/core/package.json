@@ -77,7 +77,10 @@
     "test:watch": "bun test --watch ./tests",
     "types": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "pack:dist": "rimraf ../../packages-dist-npm && bun ../../scripts/transform-package-for-publish.ts && mkdir -p ../../packages-dist-npm/core && npm pack --pack-destination ../../packages-dist-npm/core --silent && (cd ../../packages-dist-npm/core && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz) && bun ../../scripts/restore-package.ts",
+    "prepublishOnly": "bun ../../scripts/transform-package-for-publish.ts",
+    "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
     "react-ssr-prepass": "^1.6.0",

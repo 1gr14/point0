@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-test/
 dist-npm/
+packages-dist-npm/
 build/
 *.tsbuildinfo
 
