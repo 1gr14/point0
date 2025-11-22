@@ -30,7 +30,6 @@ program
     process.env.NODE_ENV ??= 'development'
     const engine = await Engine.findAndImportSelf(options.engine)
     const generatorProcess = options.generate !== false ? engine.generateWatch() : null
-    // await engine.dev({ generate: options.generate !== false, server: options.server !== false })
     const withServer = options.server !== false && !!engine.server.entry
     if (withServer) {
       const entriesPaths = Object.values(engine.server.entry || [])
