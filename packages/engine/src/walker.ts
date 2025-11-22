@@ -454,6 +454,20 @@ export class Walker {
     return out
   }
 
+  async prunePoint0ClientServer({
+    content,
+    fileAbs,
+    methods: methodsProvided,
+    customer,
+  }: {
+    content?: string
+    fileAbs: string
+    methods?: string[]
+    customer?: PruneCustomer
+  }): Promise<string> {
+    return ''
+  }
+
   private detectPointTypeAndNameFromInit({
     fileAbs,
     node,

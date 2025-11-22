@@ -111,6 +111,7 @@ import type {
   WrapperComponentType,
 } from './types.js'
 import { mergeHeaders, mergeResolvableHead } from './utils.js'
+import * as clientServerHelpers from './client-server.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -4071,4 +4072,17 @@ export class Point0<
   )
 
   static getPoints = Points.getGlobalPoints.bind(Points)
+
+  // client-server helpers
+
+  static isClient = clientServerHelpers.isClient
+  static isServer = clientServerHelpers.isServer
+  static callServer = clientServerHelpers.callServer.bind(clientServerHelpers.callServer)
+  static callClient = clientServerHelpers.callClient.bind(clientServerHelpers.callClient)
+  static callClientElseServer = clientServerHelpers.callClientElseServer.bind(clientServerHelpers.callClientElseServer)
+  static constServer = clientServerHelpers.constServer.bind(clientServerHelpers.constServer)
+  static constClient = clientServerHelpers.constClient.bind(clientServerHelpers.constClient)
+  static constClientElseServer = clientServerHelpers.constClientElseServer.bind(
+    clientServerHelpers.constClientElseServer,
+  )
 }

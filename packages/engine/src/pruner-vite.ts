@@ -11,7 +11,7 @@ export function prunerVitePlugin({
 }: {
   customer: PruneCustomer
   scope: PointsScope | null
-  includedNodeModulesPrefixes: string[]
+  includedNodeModulesPrefixes?: string[]
 }): Plugin {
   function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

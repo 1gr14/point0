@@ -11,7 +11,7 @@ export function prunerBunPlugin({
 }: {
   customer: PruneCustomer
   scope: PointsScope | null
-  includedNodeModulesPrefixes: string[]
+  includedNodeModulesPrefixes?: string[]
 }): BunPlugin {
   return {
     name: 'point0-pruner',
