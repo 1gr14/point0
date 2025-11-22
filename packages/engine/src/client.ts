@@ -6,7 +6,7 @@ import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { AnyPoint, InputParsed, PointsScope } from '@point0/core/types'
 import type { ParsedUrl } from '@point0/core/utils'
-import { parseUrl } from '@point0/core/utils'
+import { getHostnameOrNull, parseUrl } from '@point0/core/utils'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { Readable } from 'node:stream'
@@ -46,8 +46,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   providedAppComponent: AppComponent | null
   appFile: string | null
   // appDistFile: string | null
-  hostname: string | null
-  basepath: string
+  baseurl: string
   indexHtml: string | null
   // indexHtmlDistFile: string | null
   domRootElementId: string
@@ -87,8 +86,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     providedAppComponent: AppComponent | null
     appFile: string | null
     // appDistFile: string | null
-    hostname: string | null
-    basepath: string
+    baseurl: string
     indexHtml: string | null
     // indexHtmlDistFile: string | null
     engineFile: string | null
@@ -126,8 +124,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.providedAppComponent = input.providedAppComponent
     this.appFile = input.appFile
     // this.appDistFile = input.appDistFile
-    this.hostname = input.hostname
-    this.basepath = input.basepath
+    this.baseurl = input.baseurl
     this.indexHtml = input.indexHtml
     // this.indexHtmlDistFile = input.indexHtmlDistFile
     this.distIndexHtmlContent = input.distIndexHtmlContent
@@ -165,8 +162,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     ssr: boolean
     app: AppComponent | string | null
     // appDistFile: string | null
-    hostname: string | null
-    basepath: string
+    baseurl: string
     publicdir: EngineOptionsPublicdirParsed
     outdir: string | null
     serverOutdir: string | null
@@ -198,7 +194,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const clientBunViteDevServer = null
 
     const publicdir = Publicdir.create({
-      hostname: input.hostname,
+      hostname: getHostnameOrNull(input.baseurl),
       definition: input.publicdir,
       root: null,
       eversion: input.eversion,

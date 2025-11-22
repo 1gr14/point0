@@ -11,7 +11,7 @@ import type {
   ServerBunBuildConfigDefinition,
   ServerBunPluginsDefinition,
 } from './utils.js'
-import { prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
+import { appendSlash, prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
 
@@ -69,8 +69,7 @@ export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
   ssr?: boolean
   app?: string | AppComponent | null
-  hostname?: string | null
-  basepath?: string | null
+  baseurl?: string | null
   publicdir?: EngineOptionsPublicdir | null
   indexHtml?: string | null
   domRootElementId?: string
@@ -117,8 +116,7 @@ export type EngineClientOptionsParsed = {
   ssr: boolean
   app: string | AppComponent | null
   // appDistFile: string | null
-  hostname: string | null
-  basepath: string
+  baseurl: string
   publicdir: EngineOptionsPublicdirParsed
   indexHtml: string | null
   // indexHtmlDistFile: string | null
@@ -566,8 +564,7 @@ const parseEngineClientOptions = ({
     //         omitDirAfterBuild: true,
     //       })
     //     : null,
-    hostname: clientOptions.hostname ?? null,
-    basepath: prependAndAppendSlash(clientOptions.basepath) || '/',
+    baseurl: appendSlash(clientOptions.baseurl) ?? '/',
     domRootElementId: clientOptions.domRootElementId || 'root',
     port,
     hmrPort,

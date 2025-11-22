@@ -149,3 +149,10 @@ export type ParsedUrl = {
 
 //   return fromProcessEnv ?? fromImportMeta
 // }
+
+export const getHostnameOrNull = (baseurl: string) => {
+  if (/^https?:\/\//.test(baseurl)) {
+    return new URL(baseurl).hostname
+  }
+  return null
+}

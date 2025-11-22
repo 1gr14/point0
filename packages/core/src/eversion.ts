@@ -12,7 +12,7 @@ import type {
   RootPoint,
   RootSourcePoint,
 } from './types.js'
-import { parseUrl, type ParsedUrl } from './utils.js'
+import { getHostnameOrNull, parseUrl, type ParsedUrl } from './utils.js'
 
 // TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
@@ -21,35 +21,44 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   source: Eversion<TRequiredCtx> | undefined
   points: Points<true>
   connections: Array<Eversion<TRequiredCtx>>
+  baseurl: string
+  hostname: string | null
 
   private constructor({
     source,
     points,
     connections,
+    baseurl,
   }: {
     source?: Eversion<TRequiredCtx> | undefined
     points: Points<true>
+    baseurl?: string
     connections?: Array<Eversion<TRequiredCtx>>
   }) {
     this.points = points
     this.connections = connections ?? []
     this.source = source
+    this.baseurl = baseurl ?? '/'
+    this.hostname = getHostnameOrNull(this.baseurl)
   }
 
   static async create<TRootPoint extends RootPoint>({
     points,
+    baseurl,
   }: {
     points: Points
+    baseurl?: string
   }): Promise<Eversion<TRootPoint['Infer']['RequiredCtx']>> {
     return new Eversion<TRootPoint['Infer']['RequiredCtx']>({
       points: await points.load(),
     })
   }
 
-  async connect({ points }: { points: Points }): Promise<Eversion<TRequiredCtx>> {
+  async connect({ points, baseurl }: { points: Points; baseurl?: string }): Promise<Eversion<TRequiredCtx>> {
     const connection = new Eversion<TRequiredCtx>({
       points: await points.load(),
       source: this,
+      baseurl,
     })
     await connection.points.read()
     this.connections.push(connection)
@@ -121,7 +130,10 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         eversion: Eversion<TRequiredCtx>
       }
     | undefined {
-    if (scope && this.points.root._scope !== scope) {
+    if (scope && this.points.scope !== scope) {
+      return undefined
+    }
+    if (pageLocation && pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
       return undefined
     }
     const suitablePoint = this.points.getSuitablePoint({ pageLocation, pointType, pointName, input })
@@ -173,19 +185,26 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     scope?: PointsScope | undefined
     pageLocation: AnyLocation
   }): Eversion<TRequiredCtx> | undefined {
-    // TODO: fix it later, it now not used
-    if (scope && this.points.root._scope !== scope) {
+    if (scope && this.points.scope !== scope) {
       return undefined
     }
-    const route = this.points.root._route
-    if (!route) {
+    if (pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
       return undefined
     }
-    const match = route.getLocation(pageLocation)
+    const match = this.points.routes._.getLocation(pageLocation)
     if (match.parent || match.exact) {
       return this
     }
     return undefined
+    // const route = this.points.root._route
+    // if (!route) {
+    //   return undefined
+    // }
+    // const match = route.getLocation(pageLocation)
+    // if (match.parent || match.exact) {
+    //   return this
+    // }
+    // return undefined
   }
   _getSuitableEversionByPageLocationOrUndefined({
     scope,
@@ -216,7 +235,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return undefined
   }
   _getSuitableEversionByScope({ scope }: { scope: PointsScope | undefined }): Eversion<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this.points.root._scope === scope ? this : undefined
+    const suitableSelfEversion = this.points.scope === scope ? this : undefined
     if (suitableSelfEversion) {
       return suitableSelfEversion
     }
@@ -378,7 +397,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       })()
       if (scope && parsed.scope !== scope) {
-        throw new Error(`Root id "${parsed.scope}" does not match "${scope}"`)
+        throw new Error(`Parsed scope "${parsed.scope}" does not match provided scope "${scope}"`)
       }
       return parsed
     })()

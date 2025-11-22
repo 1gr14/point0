@@ -146,7 +146,14 @@ export const prependAndAppendSlash = <T extends string | undefined | null>(path:
   if (!path) {
     return undefined as T
   }
-  return (prependAndAppendSlash(path) + '/') as T
+  return (prependAndDeappendSlash(path) + '/') as T
+}
+
+export const appendSlash = <T extends string | undefined | null>(path: T): T => {
+  if (!path) {
+    return undefined as T
+  }
+  return (path + '/').replace(/\/\/+/g, '/') as T
 }
 
 // export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {

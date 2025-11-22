@@ -23,6 +23,7 @@ import type {
 export class Points<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
   absPath: string | null
   readFn: PointsReadFn | null
+  scope: PointsScope
   root: RootPoint
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
@@ -41,6 +42,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     root,
     collection,
     routes,
+    scope,
     ready,
     pagesTreeSource,
     pagesTree,
@@ -51,12 +53,14 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
     routes: Routes
     ready: boolean
+    scope: PointsScope
     pagesTreeSource: PagesTreeSource
     pagesTree: PagesTree
   }) {
     this.absPath = absPath
     this.readFn = readFn
     this.routes = routes
+    this.scope = scope
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
     this.collection = Points.sortCollection({ points: collection, routes })
@@ -83,6 +87,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
     return new Points<true, TReadyPointsModule['root']['Infer']['RequiredCtx']>({
       root,
+      scope: root._scope,
       collection: routedPoints,
       routes,
       ready: true,
@@ -106,6 +111,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
     return new Points<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']>({
       root: root_lazy.point,
+      scope: root_lazy.point._scope,
       collection: routedPoints,
       routes,
       ready: false,
@@ -191,6 +197,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
     return new Points<true>({
       root: this.root,
+      scope: this.root._scope,
       collection: readyPoints,
       routes,
       ready: true,

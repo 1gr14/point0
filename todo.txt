@@ -1,4 +1,3 @@
-Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
 not hostname, not pathname, but just baseurl
 
 ------

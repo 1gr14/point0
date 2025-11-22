@@ -110,7 +110,7 @@ const Page = () => {
                   setGenerated(result)
                 }
 
-                console.info('xFinal result:', result)
+                console.info('Final result:', result)
               })
               .catch((err: unknown) => {
                 console.error('err', err)
