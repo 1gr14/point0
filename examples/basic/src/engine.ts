@@ -1,6 +1,5 @@
 import { Engine } from '@point0/engine'
 import { routes } from './lib/routes'
-// import * as pointsClient from './lib/points.client.js'
 
 export const engine = Engine.create(import.meta.url, {
   clientsServerOutdir: '../dist/server',
@@ -19,11 +18,10 @@ export const engine = Engine.create(import.meta.url, {
       ssr: true,
       app: './app.js',
       points: './lib/points.client.ts',
-      // pointsModuleType: 'ready',
-      // points: process.env.NODE_ENV === 'production' ? './lib/points.client.ts' : await import('./lib/points.client.js'),
-      // points: await import('./lib/points.client.js'),
-      // points: pointsClient,
       routes,
+      bunBuildConfig: {
+        minify: false,
+      },
       indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],

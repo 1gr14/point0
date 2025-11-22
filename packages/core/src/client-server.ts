@@ -44,15 +44,15 @@ export const callClientElseServer = <TClientResult, TServerResult>(
   return serverCallback()
 }
 
-export const varServer = <T>(value: T): T => {
+export const constServer = <T>(value: T): T | undefined => {
   return value
 }
 
-export const varClient = <T>(value: T): T => {
+export const constClient = <T>(value: T): T | undefined => {
   return value
 }
 
-export const varClientElseServer = <TClientResult, TServerResult>(
+export const constClientElseServer = <TClientResult, TServerResult>(
   constClient: TClientResult,
   constServer: TServerResult,
 ): TClientResult | TServerResult => {

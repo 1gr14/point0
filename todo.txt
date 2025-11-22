@@ -1,4 +1,4 @@
-point0PruneClientServer (by scope)
+point0PruneClientServer
 client-server.ts apply to pruner, it will be easier to have Point0 | P0.isClient P0.isServer etc. insinde packe. Inside project check if it is imported from correct place
 import.meta.env.SSR for vite compatibility
 
