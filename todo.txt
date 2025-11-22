@@ -1,3 +1,4 @@
+seve clients move form init. On dev cli we should only serve bun servers separate, cite servers included in server dev script
 
 point0PruneClientServer (by scope)
 

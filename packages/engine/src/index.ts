@@ -1,12 +1,12 @@
+import type { Eversion } from '@point0/core/eversion'
+import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import type { Eversion } from '@point0/core/eversion'
-import type { PointsScope, RequiredCtx } from '@point0/core/types'
+import { ClientBun } from './client.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from './config.js'
 import type { FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
-import { ClientBun } from './client.js'
 import { ServerBun } from './server.js'
 
 export class Engine<TInitialized extends boolean = boolean> {
@@ -101,7 +101,7 @@ export class Engine<TInitialized extends boolean = boolean> {
   }
 
   // async init(): Promise<Engine<true>> {
-  async init(): Promise<Engine<true>> {
+  async init(options?: { preventClientDevServers?: boolean }): Promise<Engine<true>> {
     if (this.isInitialized()) {
       return this as Engine<true>
     }
@@ -109,13 +109,24 @@ export class Engine<TInitialized extends boolean = boolean> {
     const intializedServer = await this.server.init()
     await Promise.all(
       this.clients.map(async (client) => {
-        return await client.init({ eversion: intializedServer.eversion })
+        return await client.init({
+          eversion: intializedServer.eversion,
+          preventClientDevServers: options?.preventClientDevServers,
+        })
       }),
     )
     this.eversion = intializedServer.eversion
     this.initialized = true as never
 
     return this as Engine<true>
+  }
+
+  async serveClientDevServers(): Promise<void> {
+    await Promise.all(
+      this.clients.map(async (client) => {
+        await client.serveClientDevServer()
+      }),
+    )
   }
 
   isInitialized(): this is Engine<true> {
@@ -134,8 +145,8 @@ export class Engine<TInitialized extends boolean = boolean> {
   //   }
   // }
 
-  async serve(options?: { requiredCtx?: RequiredCtx }): Promise<void> {
-    const intializedEngine = await this.init()
+  async serve(options?: { requiredCtx?: RequiredCtx; preventClientDevServers?: boolean }): Promise<void> {
+    const intializedEngine = await this.init({ preventClientDevServers: options?.preventClientDevServers })
     await intializedEngine.server.serve({ requiredCtx: options?.requiredCtx })
     this.logger.info(`🚀 http://localhost:${this.server.port}`)
   }

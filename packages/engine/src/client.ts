@@ -70,7 +70,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   serverViteDevServer: ViteDevServer | null
-  clientViteDevServer: ViteDevServer | null
+  clientViteDevServer: ViteDevServer | true | null
   initialized: TInitialized
   prune: boolean
   pruneServer: boolean
@@ -111,7 +111,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     serverViteDevServer: ViteDevServer | null
-    clientViteDevServer: ViteDevServer | null
+    clientViteDevServer: ViteDevServer | true | null
     server: ServerBun
     prune: boolean
     pruneServer: boolean
@@ -229,37 +229,30 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return client
   }
 
-  async init({ eversion }: { eversion: Eversion }): Promise<ClientBun<true>> {
+  async init({
+    eversion,
+    preventClientDevServers = process.env.POINT0_PREVENT_CLIENT_DEV_SERVER === 'true',
+  }: {
+    eversion: Eversion
+    // if we run server entries separately, then we we will run in another processes client dev server once
+    preventClientDevServers?: boolean
+  }): Promise<ClientBun<true>> {
     if (this.isInitialized()) {
       return this as ClientBun<true>
     }
 
     this.eversion = eversion
 
-    const [clientViteDevServer, serverViteDevServer] = await Promise.all([
-      this.viteConfig && process.env.NODE_ENV !== 'production'
-        ? ClientBun.createViteDevServer({
-            viteConfig: this.viteConfig,
-            scope: this.scope,
-            customer: 'client',
-            hmrPort: this.hmrPort,
-            env: this.env,
-            prune: this.prune,
-          })
-        : null,
-      this.viteConfig && process.env.NODE_ENV !== 'production'
-        ? ClientBun.createViteDevServer({
-            viteConfig: this.viteConfig,
-            scope: this.scope,
-            customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
-            hmrPort: null,
-            env: process.env,
-            prune: this.pruneServer,
-          })
+    const [, , clientBunDevServer] = await Promise.all([
+      this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createServerViteDevServer() : null,
+      this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createClientViteDevServer() : null,
+      this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
+        ? preventClientDevServers
+          ? (true as const)
+          : this.createClientBunDevServer()
         : null,
     ])
-    this.clientViteDevServer = clientViteDevServer
-    this.serverViteDevServer = serverViteDevServer
+    this.clientBunDevServer = clientBunDevServer
 
     // await Promise.all([
     //   this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
@@ -271,11 +264,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.points = await this.createPoints()
 
     await eversion.connect({ points: this.points })
-
-    this.clientBunDevServer =
-      this.indexHtml && !this.clientViteDevServer && process.env.NODE_ENV !== 'production'
-        ? await this.createClientBunDevServer()
-        : null
     await this.publicdir.init({ root: this.points.root, eversion })
 
     this.distIndexHtmlContent =
@@ -288,6 +276,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
+  async serveClientDevServer(): Promise<void> {
+    await Promise.all([
+      // this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createClientViteDevServer() : null,
+      this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
+        ? this.createClientBunDevServer()
+        : null,
+    ])
+  }
+
   readonly createPoints = async (): Promise<Points> => {
     if (this.providedPoints) {
       return this.providedPoints
@@ -296,6 +293,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const pointsFile = this.pointsFile
     if (pointsFile) {
       if (serverViteDevServer) {
+        // if (serverViteDevServer === true) {
+        //   throw new Error(
+        //     `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
+        //   )
+        // }
         return await Points.read(
           toJsExtension(pointsFile),
           async (absPath) =>
@@ -313,15 +315,12 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     throw new Error(`Points not provided for client "${this.scope}"`)
   }
 
-  async createClientBunDevServer(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true> {
+  async createClientBunDevServer(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
     if (!this.indexHtml) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
-    }
-    if (process.env.POINT0_PREVENT_BUN_DEV_CLIENT_SERVE) {
-      return true
     }
     const tempDir = resolveTempDirPath(['client-bun-dev-server', this.scope])
     const pluginsStrings = await extractClientBunDevPluginsStrings({
@@ -502,6 +501,38 @@ console.info('Bun dev server started on port ${this.port}');
     })
   }
 
+  async createServerViteDevServer(): Promise<ViteDevServer> {
+    if (!this.viteConfig) {
+      throw new Error(`Vite config not found for server "${this.scope}"`)
+    }
+    const serverViteDevServer = await ClientBun.createViteDevServer({
+      viteConfig: this.viteConfig,
+      scope: this.scope,
+      customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
+      hmrPort: null,
+      env: process.env,
+      prune: this.pruneServer,
+    })
+    this.serverViteDevServer = serverViteDevServer
+    return serverViteDevServer
+  }
+
+  async createClientViteDevServer(): Promise<ViteDevServer> {
+    if (!this.viteConfig) {
+      throw new Error(`Vite config not found for client "${this.scope}"`)
+    }
+    const clientViteDevServer = await ClientBun.createViteDevServer({
+      viteConfig: this.viteConfig,
+      scope: this.scope,
+      customer: 'client',
+      hmrPort: this.hmrPort,
+      env: this.env,
+      prune: this.prune,
+    })
+    this.clientViteDevServer = clientViteDevServer
+    return clientViteDevServer
+  }
+
   async upgradeProxyBunDevServerWebSocket(
     request: Request,
     server: Bun.Server<unknown>,
@@ -554,6 +585,11 @@ console.info('Bun dev server started on port ${this.port}');
     const clientViteDevServer = this.clientViteDevServer
     if (!clientViteDevServer) {
       return undefined
+    }
+    if (clientViteDevServer === true) {
+      throw new Error(
+        `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
+      )
     }
     return await new Promise<Response | undefined>((resolve, reject) => {
       parsedUrl ??= parseUrl(request.url)
@@ -686,6 +722,11 @@ console.info('Bun dev server started on port ${this.port}');
     }
     if (process.env.NODE_ENV !== 'production') {
       if (this.clientViteDevServer) {
+        if (this.clientViteDevServer === true) {
+          throw new Error(
+            `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
+          )
+        }
         const originalIndexHtml = await this.clientViteDevServer.transformIndexHtml(
           url,
           await Bun.file(this.indexHtml).text(),
@@ -721,6 +762,11 @@ console.info('Bun dev server started on port ${this.port}');
     }
     if (this.appFile) {
       if (this.serverViteDevServer) {
+        // if (this.serverViteDevServer === true) {
+        //   throw new Error(
+        //     `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
+        //   )
+        // }
         const appComponent = (await this.serverViteDevServer
           .ssrLoadModule(toJsExtension(this.appFile))
           .then((module) => module.default || module)) as AppComponent | undefined
