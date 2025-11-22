@@ -1,13 +1,7 @@
-seve clients move form init. On dev cli we should only serve bun servers separate, cite servers included in server dev script
-
 point0PruneClientServer (by scope)
-
 client-server.ts apply to pruner, it will be easier to have Point0 | P0.isClient P0.isServer etc. insinde packe. Inside project check if it is imported from correct place
 import.meta.env.SSR for vite compatibility
-serverOnly(), clientOnly(), throw and show all import tree to user
-engine config. serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 
-rename eversion source to server, connection to client, and make it flat
 Replace all node methods with native bun methods, including watcher
 Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
 ensure packages workspace:* replaced with real version after npm package
@@ -84,6 +78,8 @@ check zustand behaviour, meybe it is enough on ssr also provide current global s
 preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
 router export function getCurrentLocation()
 onResponse onRequest → onReq onRes req res
+serverOnly(), clientOnly(), throw and show all import tree to user
+engine config. serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 ??? Point0 → Point
 check bun pruner, adn vite pruner creates correct sourcemaps
 check pruner remove unsused imports
@@ -161,7 +157,6 @@ test for engine
 test for e2e
 
 site & docs https://docusaurus.io/
-override last commit message on each file
 choose license
 prepare start0 selling
 prepare subscription, only yearly model

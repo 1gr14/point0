@@ -69,7 +69,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   serverViteDevServer: ViteDevServer | null
   clientViteDevServer: ViteDevServer | true | null
-  clientBunNativeDevServer: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true | null // true in case if it was run in separate process
+  clientBunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
   clientBunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
   initialized: TInitialized
   prune: boolean
@@ -107,7 +107,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
     eversion: Eversion | null
-    clientBunNativeDevServer: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true | null // true in case if it was run in separate process
+    clientBunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     clientBunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | true | null
@@ -309,7 +309,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     throw new Error(`Points not provided for client "${this.scope}"`)
   }
 
-  async createClientBunNativeDevServer(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
+  async createClientBunNativeDevServer(): Promise<Bun.Subprocess> {
     if (!this.indexHtml) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
     }
@@ -337,19 +337,61 @@ Bun.serve({
     '/index.html': indexHtml,
   },
 });
-console.info('${this.scope} dev server started');
 `
     await Bun.write(bunfigTomlPath, bunfigTomlContent)
     await Bun.write(scriptPath, scriptContent)
     const childProcess = Bun.spawn(['bun', scriptPath], {
       cwd: tempDir,
-      stdio: ['inherit', 'inherit', 'inherit'],
+      stdout: 'inherit',
+      stderr: 'inherit',
+      stdin: 'inherit',
       env: {
         ...process.env,
+        // FORCE_COLOR: '1',
         POINT0_PRUNER_OPTIONS: JSON.stringify({ customer: 'client', scope: this.scope }),
         NODE_ENV: process.env.NODE_ENV,
       },
     })
+    this.logger.info(`${this.scope} dev server started`)
+    // ... I was trying to prevent console clearing on bun fullstack server hmr ...
+    // const buffer = ''
+    // function filterClearSequences(chunk: string) {
+    //   buffer += chunk
+
+    //   // ONLY remove real clear-screen sequences
+    //   buffer = buffer
+    //     .replace(/\x1bc/g, '') // RIS
+    //     .replace(/\x1b\[2J/g, '') // clear screen
+    //     .replace(/\x1b\[3J/g, '') // clear scrollback
+    //     .replace(/\x1b\[H\x1b\[2J/g, '') // home + clear
+    //     .replace(/\x1b\[1;1H\x1b\[2J/g, '') // alternate form
+
+    //   const out = buffer
+    //   buffer = ''
+    //   return out
+    // }
+    // void childProcess.stdout.pipeTo(
+    //   new WritableStream({
+    //     write(chunk) {
+    //       const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+    //       process.stdout.write(text)
+    //       // const cleaned = filterClearSequences(text)
+    //       // process.stdout.write(chunk)
+    //       // process.stdout.write(cleaned)
+    //     },
+    //   }),
+    // )
+    // void childProcess.stderr.pipeTo(
+    //   new WritableStream({
+    //     write(chunk) {
+    //       const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+    //       process.stdout.write(text)
+    //       // const cleaned = filterClearSequences(text)
+    //       // process.stdout.write(chunk)
+    //       // process.stdout.write(cleaned)
+    //     },
+    //   }),
+    // )
     this.clientBunNativeDevServer = childProcess
     return childProcess
   }
@@ -474,6 +516,10 @@ console.info('${this.scope} dev server started');
     const srcIndexHtmlContent = await Bun.file(this.indexHtml).text()
     const clientBunViteDevServer = Bun.serve({
       port: this.port,
+      development: {
+        console: false,
+        hmr: false,
+      },
       fetch: async (request) => {
         const parsedUrl = parseUrl(request.url)
         if (parsedUrl.urlObj.pathname === '/index.html') {

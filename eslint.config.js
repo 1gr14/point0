@@ -41,6 +41,7 @@ export default defineConfig([
       '@typescript-eslint/non-nullable-type-assertion-style': 'off',
       'eslint-comments/no-unlimited-disable': 'off',
       'max-depth': 'off',
+      'no-control-regex': 'off',
       '@typescript-eslint/max-params': 'off',
       '@typescript-eslint/prefer-return-this-type': 'off',
       '@typescript-eslint/no-duplicate-type-constituents': 'off',
