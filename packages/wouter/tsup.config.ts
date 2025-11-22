@@ -2,7 +2,7 @@ import { defineConfig, type Options } from 'tsup'
 
 const general = {
   entry: ['src/index.tsx'],
-  clean: true,
+  clean: false,
   dts: true,
   sourcemap: true,
   splitting: false,

@@ -20,7 +20,7 @@ const general = {
     'src/walker.ts',
     'src/client-server.ts',
   ],
-  clean: true,
+  clean: false,
   dts: true,
   sourcemap: true,
   splitting: false,

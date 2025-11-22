@@ -1,5 +1,4 @@
 Store each individual point additionally in a global store, from which it will be taken in the points module for HMR pages
-do not autoserve dist, make it manual
 ensure packages workspace:* replaced with real version after npm package
 not hostname, not pathname, but just baseurl
 
