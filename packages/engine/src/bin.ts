@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 
+import type { PointsScope } from '@point0/core/types'
 import { Command } from 'commander'
 import { Engine } from './index.js'
-import type { PointsScope } from '@point0/core/types'
 
 const program = new Command()
 
-program.name('point0').description('Point0 CLI').version('0.1.0')
+program.name('point0').description('Point0 CLI').version('0.1.0').enablePositionalOptions()
 
 const dictionary = {
   noGenerate: 'Skip files generation',
@@ -16,21 +16,37 @@ const dictionary = {
 program
   .command('dev')
   .description('Start development server and clients')
+  .passThroughOptions() // forward anything after --
+  .allowExcessArguments() // allow args after --
+  // do NOT call allowUnknownOption()
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-S, --no-server', 'Do not serve server, serve only clients dev servers')
+  .option('-H, --no-hot', 'Prevent --hot flag for bun run command')
   .option('-e, --engine <path>', dictionary.enginePath)
   .action(async (options) => {
+    const hot = options.hot !== false
+    const dashDashIndex = process.argv.indexOf('--')
+    const extraArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
     process.env.NODE_ENV ??= 'development'
     const engine = await Engine.findAndImportSelf(options.engine)
     const generatorProcess = options.generate !== false ? engine.generateWatch() : null
     // await engine.dev({ generate: options.generate !== false, server: options.server !== false })
     const withServer = options.server !== false && !!engine.server.entry
     if (withServer) {
-      const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(
-        async (entry) => await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run --hot ${entry}`,
-      )
-      const clientsDevSevers = engine.serveClientDevServers()
-      await Promise.all([generatorProcess, ...serverEntryHotRuns, clientsDevSevers])
+      const entriesPaths = Object.values(engine.server.entry || [])
+      if (entriesPaths.length === 1) {
+        const serverEntryHotRunWithClientDevServers = Bun.$`${['bun', 'run', hot ? '--hot' : '', ...extraArgs, entriesPaths[0]]}`
+        await Promise.all([generatorProcess, serverEntryHotRunWithClientDevServers])
+      } else {
+        // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
+        const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(
+          async (entry) =>
+            await Bun.$`${['POINT0_PREVENT_CLIENT_DEV_SERVER=true', 'bun', 'run', hot ? '--hot' : '', ...extraArgs, entry]}`,
+        )
+        // and here we rung one instance of client dev servers per each client
+        const clientsDevSevers = engine.serveClientDevServers()
+        await Promise.all([generatorProcess, ...serverEntryHotRuns, clientsDevSevers])
+      }
     } else {
       await engine.init()
     }
