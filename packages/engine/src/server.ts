@@ -282,6 +282,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         },
       },
     })
+    this.logger.info(`🚀 http://localhost:${this.port}`)
   }
 
   getBuildPaths(): {

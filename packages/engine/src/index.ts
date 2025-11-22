@@ -148,7 +148,6 @@ export class Engine<TInitialized extends boolean = boolean> {
   async serve(options?: { requiredCtx?: RequiredCtx; preventClientDevServers?: boolean }): Promise<void> {
     const intializedEngine = await this.init({ preventClientDevServers: options?.preventClientDevServers })
     await intializedEngine.server.serve({ requiredCtx: options?.requiredCtx })
-    this.logger.info(`🚀 http://localhost:${this.server.port}`)
   }
 
   async fetch(request: Request, requiredCtx?: RequiredCtx): Promise<Response> {

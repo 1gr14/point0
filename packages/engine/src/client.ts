@@ -65,7 +65,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   publicdirOutdir: string | null
   distIndexHtmlContent: string | null
   server: ServerBun
-  // clientBunDevServer: Bun.Server<unknown> | null
   // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
   serverViteDevServer: ViteDevServer | null
@@ -110,8 +109,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     eversion: Eversion | null
     clientBunNativeDevServer: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | true | null // true in case if it was run in separate process
     clientBunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
-    // clientBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
-    // serverBunDevBuilder: Bun.Subprocess<'inherit', 'inherit', 'inherit'> | null
     serverViteDevServer: ViteDevServer | null
     clientViteDevServer: ViteDevServer | true | null
     server: ServerBun
@@ -199,8 +196,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const clientViteDevServer = null
     const clientBunNativeDevServer = null
     const clientBunViteDevServer = null
-    // const clientBunDevBuilder = null
-    // const serverBunDevBuilder = null
 
     const publicdir = Publicdir.create({
       hostname: input.hostname,
@@ -265,13 +260,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.clientViteDevServer = clientViteDevServer
     this.clientBunNativeDevServer = clientBunNativeDevServer
 
-    // await Promise.all([
-    //   this.indexHtml && !this.viteConfig && process.env.NODE_ENV !== 'production'
-    //     ? this.createClientBunDevBuilder()
-    //     : null,
-    //   !this.viteConfig && process.env.NODE_ENV !== 'production' ? this.createServerBunDevBuilder() : null,
-    // ])
-
     this.points = await this.createPoints()
 
     await eversion.connect({ points: this.points })
@@ -304,11 +292,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const pointsFile = this.pointsFile
     if (pointsFile) {
       if (serverViteDevServer) {
-        // if (serverViteDevServer === true) {
-        //   throw new Error(
-        //     `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
-        //   )
-        // }
         return await Points.read(
           toJsExtension(pointsFile),
           async (absPath) =>
@@ -354,7 +337,7 @@ Bun.serve({
     '/index.html': indexHtml,
   },
 });
-console.info('Bun dev server started on port ${this.port}');
+console.info('${this.scope} dev server started');
 `
     await Bun.write(bunfigTomlPath, bunfigTomlContent)
     await Bun.write(scriptPath, scriptContent)
@@ -369,66 +352,7 @@ console.info('Bun dev server started on port ${this.port}');
     })
     this.clientBunNativeDevServer = childProcess
     return childProcess
-    // const extractedPlugins = await extractClientBunPlugins({
-    //   nodeEnv: process.env.NODE_ENV,
-    //   target: 'client',
-    //   command: 'serve',
-    //   bunPlugins: this.bunPlugins,
-    // })
-    // const prunePlugin = this.prune
-    //   ? await import('./pruner-bun.js').then((module) =>
-    //       module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
-    //     )
-    //   : null
-    // const extractedBunPlugins = [...extractedPlugins, ...(prunePlugin ? [prunePlugin] : [])]
-    // await loadBunPlugins({ extractedBunPlugins })
-    // if (this.outdir) {
-    //   console.log('outdir', this.outdir)
-    //   await this.publicdir.add([['/', this.outdir]])
-    // }
-    // return Bun.serve({
-    //   port: this.port,
-    //   routes: {
-    //     '/index.html': await import(this.indexHtml).then((module) => module.default),
-    //   },
-    // })
   }
-
-  // async createClientBunDevBuilder(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
-  //   await this.build({ target: 'client', clean: true, publicdir: false })
-  //   const binPath = require.resolve('./bin.js')
-  //   const childProcess = Bun.spawn(
-  //     [binPath, 'build', '--target', 'client', '--scope', this.scope, '--no-clean', '--no-publicdir'],
-  //     {
-  //       cwd: this.cwd,
-  //       stdio: ['inherit', 'inherit', 'inherit'],
-  //       env: {
-  //         ...process.env,
-  //         NODE_ENV: 'development',
-  //       },
-  //     },
-  //   )
-  //   this.clientBunDevBuilder = childProcess
-  //   return childProcess
-  // }
-
-  // async createServerBunDevBuilder(): Promise<Bun.Subprocess<'inherit', 'inherit', 'inherit'>> {
-  //   await this.build({ target: 'server', clean: true, publicdir: false })
-  //   const binPath = require.resolve('./bin.js')
-  //   const childProcess = Bun.spawn(
-  //     [binPath, 'build', '--target', 'server', '--scope', this.scope, '--no-clean', '--no-publicdir'],
-  //     {
-  //       cwd: this.cwd,
-  //       stdio: ['inherit', 'inherit', 'inherit'],
-  //       env: {
-  //         ...process.env,
-  //         NODE_ENV: 'development',
-  //       },
-  //     },
-  //   )
-  //   this.serverBunDevBuilder = childProcess
-  //   return childProcess
-  // }
 
   static async extractViteConfig({
     viteConfig,
@@ -572,6 +496,7 @@ console.info('Bun dev server started on port ${this.port}');
         })
       },
     })
+    this.logger.info(`${this.scope} dev server started`)
     return { clientBunViteDevServer, clientViteDevServer }
   }
 
@@ -646,9 +571,6 @@ console.info('Bun dev server started on port ${this.port}');
     }
     parsedUrl ??= parseUrl(request.url)
     if (clientViteDevServer === true) {
-      // throw new Error(
-      //   `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
-      // )
       const middlewareResponse = await fetch(
         `http://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`,
         {
@@ -792,16 +714,6 @@ console.info('Bun dev server started on port ${this.port}');
     }
     if (process.env.NODE_ENV !== 'production') {
       if (this.clientViteDevServer) {
-        // if (this.clientViteDevServer === true) {
-        //   throw new Error(
-        //     `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
-        //   )
-        // }
-        // const originalIndexHtml = await this.clientViteDevServer.transformIndexHtml(
-        //   url,
-        //   await Bun.file(this.indexHtml).text(),
-        // )
-        // return originalIndexHtml
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
       } else if (this.clientBunNativeDevServer) {
         return await fetch(`http://localhost:${this.port}/index.html`).then(async (response) => await response.text())
@@ -833,11 +745,6 @@ console.info('Bun dev server started on port ${this.port}');
     }
     if (this.appFile) {
       if (this.serverViteDevServer) {
-        // if (this.serverViteDevServer === true) {
-        //   throw new Error(
-        //     `Vite dev server is not started for client "${this.scope}" in this process. It was started in another process.`,
-        //   )
-        // }
         const appComponent = (await this.serverViteDevServer
           .ssrLoadModule(toJsExtension(this.appFile))
           .then((module) => module.default || module)) as AppComponent | undefined
