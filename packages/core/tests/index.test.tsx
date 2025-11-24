@@ -10,7 +10,6 @@ import type {
   EmptyCtx,
   UndefinedCtx,
   UndefinedData,
-  UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
   UndefinedProps,
   UndefinedQueryResultType,
@@ -33,13 +32,12 @@ describe('Point0', () => {
   })
 
   it('creates an empty instance', () => {
-    const server = Point0.source('server')
+    const server = Point0.create('server')
     expect(server).toBeInstanceOf(Point0)
     expectTypeOf(server).toEqualTypeOf<
       Point0<
         'middleware',
         'base',
-        UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         EmptyCtx,
         UndefinedData,
@@ -56,7 +54,7 @@ describe('Point0', () => {
   })
 
   it('extends with ctx fn', () => {
-    const server = Point0.source('server')
+    const server = Point0.create('server')
     const server1 = server.ctx(() => ({
       a: 1,
       b: 2,
@@ -67,7 +65,6 @@ describe('Point0', () => {
       Point0<
         'middleware',
         'base',
-        UndefinedInferredRootSourcePoint,
         UndefinedCtx,
         { a: number; b: number },
         UndefinedData,
@@ -95,7 +92,6 @@ describe('Point0', () => {
         'middleware',
         'base',
         undefined,
-        undefined,
         { a: number; b: number; c: number },
         undefined,
         undefined,
@@ -115,7 +111,7 @@ describe('Point0', () => {
   })
 
   it('extends with ctx with {}', async () => {
-    const server = Point0.source('server')
+    const server = Point0.create('server')
     const server1 = server
       .ctx(() => ({
         a: 1,
@@ -127,7 +123,6 @@ describe('Point0', () => {
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
         'base',
-        undefined,
         undefined,
         undefined,
         { a: number; b: number },
@@ -157,7 +152,6 @@ describe('Point0', () => {
         'base',
         undefined,
         undefined,
-        undefined,
         { a: number; c: number },
         undefined,
         undefined,
@@ -175,7 +169,7 @@ describe('Point0', () => {
     // not modified original server
     expect(server._extractFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
-    const clientPointBase02 = Point0.connect<typeof server2>('client').base()
+    const clientPointBase02 = Point0.create<typeof server2>('client').base()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent)
     const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     const eversion2Connection = await eversion2.connect({
@@ -203,7 +197,7 @@ describe('Point0', () => {
   })
 
   it('extends with loader fn', () => {
-    const server = Point0.source('server')
+    const server = Point0.create('server')
     const server1 = server
       .loader(() => ({
         a: 1,
@@ -214,7 +208,6 @@ describe('Point0', () => {
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
         'base',
-        undefined,
         undefined,
         undefined,
         EmptyCtx,
@@ -244,7 +237,6 @@ describe('Point0', () => {
         'base',
         undefined,
         undefined,
-        undefined,
         EmptyCtx,
         { a: number; b: number; c: number },
         undefined,
@@ -264,7 +256,7 @@ describe('Point0', () => {
   })
 
   it('extract without required ctx', async () => {
-    const server = Point0.source('server')
+    const server = Point0.create('server')
     const url = '/z/x/c'
     const server1 = server
       .ctx(() => ({
@@ -273,7 +265,7 @@ describe('Point0', () => {
       }))
       .base()
     const pageComponent = () => <div>Hello</div>
-    const clientPointBase01 = Point0.connect<typeof server1>('client').base()
+    const clientPointBase01 = Point0.create<typeof server1>('client').base()
     const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     expectTypeOf<(typeof clientPoint01)['Infer']['QueryResultType']>().toEqualTypeOf<undefined>()
 
@@ -326,7 +318,7 @@ describe('Point0', () => {
         c: 4,
       }))
       .base()
-    const clientPointBase02 = Point0.connect<typeof server2>('client').base()
+    const clientPointBase02 = Point0.create<typeof server2>('client').base()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     const eversion2Connection = await eversion2.connect({
@@ -355,7 +347,7 @@ describe('Point0', () => {
         c: 5,
       }))
       .base()
-    const clientPointBase03 = Point0.connect<typeof server3>('client').base()
+    const clientPointBase03 = Point0.create<typeof server3>('client').base()
     const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     const eversion3Connection = await eversion3.connect({
@@ -384,7 +376,7 @@ describe('Point0', () => {
   })
 
   it('extract ctx with required ctx input', async () => {
-    const server = Point0.source('server').requireCtx<{ r: string }>().base()
+    const server = Point0.create('server').requireCtx<{ r: string }>().base()
     const url = '/z/x/c'
     const server1 = server
       .lets('base', 'server1')
@@ -395,7 +387,7 @@ describe('Point0', () => {
       }))
       .base()
     const pageComponent = () => <div>Hello</div>
-    const clientPointBase01 = Point0.connect<typeof server1>('client').base()
+    const clientPointBase01 = Point0.create<typeof server1>('client').base()
     const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     const eversion1 = await Eversion.create({ points: Points.ready({ root: server1 }) })
     const eversion1Connection = await eversion1.connect({
@@ -431,7 +423,7 @@ describe('Point0', () => {
         c: 4,
       }))
       .base()
-    const clientPointBase02 = Point0.connect<typeof server2>('client').base()
+    const clientPointBase02 = Point0.create<typeof server2>('client').base()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     const eversion2Connection = await eversion2.connect({
@@ -462,7 +454,7 @@ describe('Point0', () => {
         c: 5,
       }))
       .base()
-    const clientPointBase03 = Point0.connect<typeof server3>('client').base()
+    const clientPointBase03 = Point0.create<typeof server3>('client').base()
     const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     const eversion3Connection = await eversion3.connect({
@@ -511,14 +503,13 @@ describe('Point0', () => {
 
   it('creates an empty instance', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.source('server')
-    const clientPoint0 = Point0.connect<typeof server>('client')
+    const server = Point0.create('server').base()
+    const clientPoint0 = Point0.create<typeof server>('client')
     expect(clientPoint0).toBeInstanceOf(Point0)
     expectTypeOf(clientPoint0).toEqualTypeOf<
       Point0<
         'middleware',
         'base',
-        typeof server,
         UndefinedCtx,
         EmptyCtx,
         undefined,
@@ -536,7 +527,7 @@ describe('Point0', () => {
 
   it('creates ready page', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.source('server')
+    const server = Point0.create('server')
       .ctx(() => ({
         a: 1,
         b: 2,
@@ -546,7 +537,8 @@ describe('Point0', () => {
       .loader(({ data, ctx }) => ({
         preloadedServer: 10,
       }))
-    const clientPoint0 = Point0.connect<typeof server>('client')
+      .base()
+    const clientPoint0 = Point0.create<typeof server>('client')
       // ctx is client only in ctx fns
       .ctx(({ ctx }) => ({
         ...ctx,

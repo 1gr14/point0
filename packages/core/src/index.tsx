@@ -60,7 +60,6 @@ import type {
   HeadFn,
   IfAnyThenElse,
   Infer,
-  InferredRootSourcePoint,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -93,7 +92,6 @@ import type {
   UndefinedCtx,
   UndefinedData,
   UndefinedEndPointType,
-  UndefinedInferredRootSourcePoint,
   UndefinedInputSchema,
   UndefinedLayoutComponent,
   UndefinedPageComponent,
@@ -116,7 +114,6 @@ import { mergeHeaders, mergeResolvableHead } from './utils.js'
 export class Point0<
   TPointType extends PointType,
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TData extends Data | UndefinedData,
@@ -142,8 +139,8 @@ export class Point0<
 
   point: typeof this // this, needed for generator to collect points
 
-  _base: BasePoint<any, any, TRequiredCtx> | undefined
-  _sourceBaseUrl: string | undefined
+  _base: BasePoint | undefined
+  _serverUrl: string | undefined
   _pointType: TPointType
   _letsEndPointType: TLetsEndPointType
   _inputSchema: TInputSchema
@@ -165,7 +162,6 @@ export class Point0<
   _queryResultType: TQueryResultType
   // TODO: use wrapper
   _wrapper: WrapperComponentType | undefined
-  _hasSourceBase: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
   _extractFns: ExtractFnRecord[]
   _clientExtractFns: ClientExtractFnRecord[]
   _providerValueSetter: ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>> | undefined
@@ -246,8 +242,8 @@ export class Point0<
   private constructor(props: {
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
-    _base?: BasePoint<any, any, TRequiredCtx> | undefined
-    _sourceBaseUrl?: string | undefined
+    _base?: BasePoint<any, TRequiredCtx> | undefined
+    _serverUrl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -266,7 +262,6 @@ export class Point0<
     _queryOptions?: ExtraUseQueryOptions | undefined
     _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
     _queryResultType?: TQueryResultType
-    _hasSourceBase?: TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint ? false : true
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any>
@@ -346,7 +341,7 @@ export class Point0<
     this._scope = props._scope
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
-    this._sourceBaseUrl = props._sourceBaseUrl ?? undefined
+    this._serverUrl = props._serverUrl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -365,9 +360,6 @@ export class Point0<
     this._queryOptions = props._queryOptions ?? {}
     this._infiniteQueryOptions = props._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (props._queryResultType ?? undefined) as TQueryResultType
-    this._hasSourceBase = props._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
-      ? false
-      : true
     this._extractFns = props._extractFns ?? []
     this._clientExtractFns = props._clientExtractFns ?? []
     this._providerValueSetter = props._providerValueSetter ?? undefined
@@ -428,7 +420,6 @@ export class Point0<
   _continue<
     TPointType extends PointType,
     TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-    TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint,
     TRequiredCtx extends RequiredCtx,
     TCtx extends Ctx,
     TData extends Data | UndefinedData,
@@ -442,8 +433,8 @@ export class Point0<
   >(overrides: {
     _pointType: TPointType
     _letsEndPointType?: TLetsEndPointType
-    _base?: BasePoint<any, any, TRequiredCtx> | undefined
-    _sourceBaseUrl?: string | undefined
+    _base?: BasePoint<any, TRequiredCtx> | undefined
+    _serverUrl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -543,7 +534,6 @@ export class Point0<
   }): Point0<
     TPointType,
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -558,7 +548,6 @@ export class Point0<
     return new Point0<
       TPointType,
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -574,10 +563,10 @@ export class Point0<
       _scope: this._scope,
 
       // overridable
-      _base: (overrides._base ?? this._base) as BasePoint<any, any, TRequiredCtx> | undefined,
+      _base: overrides._base ?? this._base,
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
-      _sourceBaseUrl: overrides._sourceBaseUrl ?? this._sourceBaseUrl,
+      _serverUrl: overrides._serverUrl ?? this._serverUrl,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -602,9 +591,6 @@ export class Point0<
         ...this._infiniteQueryOptions,
       }) as ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
-      _hasSourceBase: this._hasSourceBase as TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint
-        ? false
-        : true,
       _extractFns: overrides._extractFns ?? this._extractFns,
       _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
       _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
@@ -656,16 +642,15 @@ export class Point0<
 
   // base
 
-  static source(
+  static create<TBasePoint extends BasePoint | undefined = undefined>(
     scope: string,
   ): Point0<
     'middleware',
     'base',
-    UndefinedInferredRootSourcePoint,
-    UndefinedCtx,
-    EmptyCtx,
-    UndefinedData,
-    UndefinedData,
+    TBasePoint extends BasePoint ? TBasePoint['Infer']['RequiredCtx'] : UndefinedCtx,
+    TBasePoint extends BasePoint ? TBasePoint['Infer']['Ctx'] : EmptyCtx,
+    TBasePoint extends BasePoint ? TBasePoint['Infer']['Data'] : UndefinedData,
+    TBasePoint extends BasePoint ? TBasePoint['Infer']['ClientData'] : UndefinedData,
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
@@ -675,50 +660,9 @@ export class Point0<
   > {
     return new Point0({
       _pointType: 'middleware',
-      _hasSourceBase: false,
       _scope: scope,
       _letsEndPointType: 'base',
-      _onResponseFns: [({ response }) => response],
-      _onRequestFns: [() => undefined],
-    })
-  }
-
-  static connect<TConnectedRootSourcePoint extends InferredRootSourcePoint>(
-    scope: string,
-  ): Point0<
-    'middleware',
-    'base',
-    TConnectedRootSourcePoint,
-    TConnectedRootSourcePoint['Infer']['RequiredCtx'],
-    TConnectedRootSourcePoint['Infer']['Ctx'],
-    TConnectedRootSourcePoint['Infer']['Data'],
-    TConnectedRootSourcePoint['Infer']['ClientData'],
-    UndefinedRoute,
-    UndefinedRoute,
-    UndefinedInputSchema,
-    UndefinedResponseOutput,
-    UndefinedQueryResultType,
-    UndefinedProps
-  > {
-    return new Point0<
-      'middleware',
-      'base',
-      TConnectedRootSourcePoint,
-      TConnectedRootSourcePoint['Infer']['RequiredCtx'],
-      TConnectedRootSourcePoint['Infer']['Ctx'],
-      TConnectedRootSourcePoint['Infer']['Data'],
-      TConnectedRootSourcePoint['Infer']['ClientData'],
-      UndefinedRoute,
-      UndefinedRoute,
-      UndefinedInputSchema,
-      UndefinedResponseOutput,
-      UndefinedQueryResultType,
-      UndefinedProps
-    >({
-      _pointType: 'middleware',
-      _letsEndPointType: 'base',
-      _hasSourceBase: true as never,
-      _scope: scope,
+      _serverUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
       _onResponseFns: [({ response }) => response],
       _onRequestFns: [() => undefined],
     })
@@ -729,7 +673,6 @@ export class Point0<
   base(): Point0<
     'base',
     TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -744,7 +687,6 @@ export class Point0<
     return this._continue<
       'base',
       TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -757,7 +699,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'base',
-      _base: this as never as BasePoint<any, any, TRequiredCtx>,
+      _base: this as never as BasePoint<any, TRequiredCtx>,
       _name: this._name ?? this._scope,
       // _letsEndPointType: undefined,
       _letsEndPointType: (this._letsEndPointType === 'base'
@@ -772,7 +714,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TNewLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -787,7 +728,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TNewLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -811,7 +751,7 @@ export class Point0<
       _providerValueSetter: undefined,
       _useValue: undefined,
       _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
-      _sourceBaseUrl: this._base?._sourceBaseUrl,
+      _serverUrl: this._base?._serverUrl,
       _staticHeads: this._base?._staticHeads,
       _defaultQueryOptions: this._base?._defaultQueryOptions,
       _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
@@ -833,12 +773,11 @@ export class Point0<
     })
   }
 
-  sourceBaseUrl(
-    sourceBaseUrl: string,
+  serverUrl(
+    serverUrl: string,
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -853,7 +792,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -866,7 +804,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _sourceBaseUrl: sourceBaseUrl,
+      _serverUrl: serverUrl,
     })
   }
 
@@ -875,7 +813,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -890,7 +827,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -912,7 +848,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -927,7 +862,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -949,7 +883,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -964,7 +897,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -986,7 +918,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1001,7 +932,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1023,7 +953,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1038,7 +967,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1060,7 +988,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1075,7 +1002,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1097,7 +1023,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1112,7 +1037,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1142,7 +1066,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1157,7 +1080,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1188,7 +1110,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1203,7 +1124,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1234,7 +1154,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1249,7 +1168,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1280,7 +1198,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1295,7 +1212,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1326,7 +1242,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1341,7 +1256,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1372,7 +1286,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1387,7 +1300,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1408,7 +1320,6 @@ export class Point0<
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
     TData,
@@ -1423,7 +1334,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
       TData,
@@ -1506,7 +1416,7 @@ export class Point0<
   //     _queryOptions,
   //     _responseFn,
   //     _route,
-  //     _sourceBaseUrl,
+  //     _serverUrl,
   //     _useLocation,
   //     _wrapper,
   //   })
@@ -1517,7 +1427,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
     TData,
@@ -1534,7 +1443,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
     TData,
@@ -1551,7 +1459,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TNewCtx,
     TData,
@@ -1572,7 +1479,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TNewCtx,
       TData,
@@ -1594,7 +1500,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1611,7 +1516,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1628,7 +1532,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1645,7 +1548,6 @@ export class Point0<
   route(): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1685,7 +1587,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1700,7 +1601,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1723,7 +1623,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1738,7 +1637,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1759,7 +1657,6 @@ export class Point0<
   loader(): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1776,7 +1673,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TNewData,
@@ -1793,7 +1689,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TNewData,
@@ -1808,7 +1703,6 @@ export class Point0<
     return this._continue<
       'middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TNewData,
@@ -1839,7 +1733,6 @@ export class Point0<
   ): Point0<
     'client-middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1854,7 +1747,6 @@ export class Point0<
     return this._continue<
       'client-middleware',
       TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -1884,7 +1776,6 @@ export class Point0<
   ): Point0<
     'client-middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1901,7 +1792,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1935,7 +1825,6 @@ export class Point0<
   ): Point0<
     'client-middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1952,7 +1841,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -1985,7 +1873,6 @@ export class Point0<
   props<TNewProps extends Props>(): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2007,7 +1894,6 @@ export class Point0<
   ): Point0<
     'middleware',
     TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2049,7 +1935,6 @@ export class Point0<
       Point0<
         'page',
         UndefinedEndPointType,
-        TConnectedRootSourcePoint,
         TRequiredCtx,
         TCtx,
         TData,
@@ -2069,7 +1954,6 @@ export class Point0<
     const point = this._continue<
       'page',
       UndefinedEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -2116,7 +2000,6 @@ export class Point0<
       Point0<
         'component',
         UndefinedEndPointType,
-        TConnectedRootSourcePoint,
         TRequiredCtx,
         TCtx,
         TData,
@@ -2133,7 +2016,6 @@ export class Point0<
     const point = this._continue<
       'component',
       UndefinedEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -2181,7 +2063,6 @@ export class Point0<
       Point0<
         'layout',
         UndefinedEndPointType,
-        TConnectedRootSourcePoint,
         TRequiredCtx,
         TCtx,
         TData,
@@ -2201,7 +2082,6 @@ export class Point0<
     const point = this._continue<
       'layout',
       UndefinedEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -2242,7 +2122,6 @@ export class Point0<
   ): Point0<
     'provider',
     UndefinedEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2257,7 +2136,6 @@ export class Point0<
   provider(): Point0<
     'provider',
     UndefinedEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2324,7 +2202,6 @@ export class Point0<
   ): Point0<
     'response',
     UndefinedEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2339,7 +2216,6 @@ export class Point0<
     return this._continue<
       'response',
       UndefinedEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -2367,7 +2243,6 @@ export class Point0<
   ): Point0<
     'query',
     TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2382,7 +2257,6 @@ export class Point0<
     return this._continue<
       'query',
       TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -2415,7 +2289,6 @@ export class Point0<
   ): Point0<
     'infiniteQuery',
     TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TData,
@@ -2430,7 +2303,6 @@ export class Point0<
     return this._continue<
       'infiniteQuery',
       TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -2457,7 +2329,6 @@ export class Point0<
   ): Point0<
     'mutation',
     UndefinedEndPointType,
-    TConnectedRootSourcePoint,
     TRequiredCtx,
     TCtx,
     TNewData,
@@ -2472,7 +2343,6 @@ export class Point0<
     return this._continue<
       'mutation',
       UndefinedEndPointType,
-      TConnectedRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TNewData,
@@ -3084,7 +2954,10 @@ export class Point0<
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions(), ...options }
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
-    const url = new URL('/_point0', this._sourceBaseUrl)
+    if (!this._serverUrl) {
+      throw new Error('Server URL is not set')
+    }
+    const url = new URL('/_point0', this._serverUrl)
     const method = 'post'
 
     headers.set('Content-Type', 'application/json')

@@ -3,7 +3,7 @@
 import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
 
-export const source = Point0.source('server')
+export const source = Point0.create('server')
   .requireCtx<{
     request: Bun.BunRequest
   }>()

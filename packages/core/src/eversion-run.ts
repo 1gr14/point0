@@ -505,7 +505,7 @@ export type ExtractResult<
   status: number
 }
 export type InferExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, any, any, infer TCtx, infer TData, any, any, any, any, infer TResponseOutput>
+  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any, any, any, infer TResponseOutput>
     ? ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
     : ExtractResult<EmptyCtx, EmptyData, UndefinedResponseOutput>
 

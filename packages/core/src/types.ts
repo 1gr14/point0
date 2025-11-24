@@ -128,9 +128,6 @@ export type UndefinedEndPointType = undefined
 export type AnyPoint<
   TPointType extends PointType = PointType,
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = UndefinedEndPointType,
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
-    | InferredRootSourcePoint
-    | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -144,7 +141,6 @@ export type AnyPoint<
 > = Point0<
   TPointType,
   TLetsEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -158,8 +154,7 @@ export type AnyPoint<
 >
 
 export type BasePoint<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-  TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
+  TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -173,7 +168,6 @@ export type BasePoint<
 > = AnyPoint<
   'base',
   TLetsEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -187,7 +181,6 @@ export type BasePoint<
 >
 
 export type RootSourcePoint<
-  TConnectedRootSourcePoint extends UndefinedInferredRootSourcePoint = UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -201,7 +194,6 @@ export type RootSourcePoint<
 > = AnyPoint<
   'base',
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -215,7 +207,6 @@ export type RootSourcePoint<
 >
 
 export type RootConnectedPoint<
-  TConnectedRootSourcePoint extends InferredRootSourcePoint = InferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = any,
@@ -229,7 +220,6 @@ export type RootConnectedPoint<
 > = AnyPoint<
   'base',
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -255,7 +245,6 @@ export type RootPoint<
   TProps extends Props | UndefinedProps = any,
 > =
   | RootSourcePoint<
-      UndefinedInferredRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -268,7 +257,6 @@ export type RootPoint<
       TProps
     >
   | RootConnectedPoint<
-      InferredRootSourcePoint,
       TRequiredCtx,
       TCtx,
       TData,
@@ -282,9 +270,6 @@ export type RootPoint<
     >
 
 export type PagePoint<
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
-    | InferredRootSourcePoint
-    | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -298,7 +283,6 @@ export type PagePoint<
 > = AnyPoint<
   'page',
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -312,9 +296,6 @@ export type PagePoint<
 >
 
 export type LayoutPoint<
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
-    | InferredRootSourcePoint
-    | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -328,7 +309,6 @@ export type LayoutPoint<
 > = AnyPoint<
   'layout',
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -342,9 +322,6 @@ export type LayoutPoint<
 >
 
 export type ResponsePoint<
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
-    | InferredRootSourcePoint
-    | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -358,7 +335,6 @@ export type ResponsePoint<
 > = AnyPoint<
   'response',
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -372,9 +348,6 @@ export type ResponsePoint<
 >
 
 export type ProviderPoint<
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
-    | InferredRootSourcePoint
-    | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -388,7 +361,6 @@ export type ProviderPoint<
 > = AnyPoint<
   'provider',
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -403,9 +375,6 @@ export type ProviderPoint<
 
 export type EndPoint<
   TPointType extends EndPointType = EndPointType,
-  TConnectedRootSourcePoint extends InferredRootSourcePoint | UndefinedInferredRootSourcePoint =
-    | InferredRootSourcePoint
-    | UndefinedInferredRootSourcePoint,
   TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -419,7 +388,6 @@ export type EndPoint<
 > = AnyPoint<
   TPointType,
   UndefinedEndPointType,
-  TConnectedRootSourcePoint,
   TRequiredCtx,
   TCtx,
   TData,
@@ -432,33 +400,31 @@ export type EndPoint<
   TProps
 >
 
-export type InferredRootSourcePoint<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TCtx extends Ctx = any,
-  TData extends Data | UndefinedData = any,
-  TClientData extends Data | UndefinedData = any,
-> = {
-  Infer: Infer<TRequiredCtx, TCtx, TData, TClientData>
-  _extractFns: ExtractFnRecord[]
-}
-export type UndefinedInferredRootSourcePoint = undefined
+// TODO remove it
+// export type InferredRootSourcePoint<
+//   TRequiredCtx extends RequiredCtx = RequiredCtx,
+//   TCtx extends Ctx = any,
+//   TData extends Data | UndefinedData = any,
+//   TClientData extends Data | UndefinedData = any,
+// > = {
+//   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData>
+//   _extractFns: ExtractFnRecord[]
+// }
+// export type UndefinedInferredRootSourcePoint = undefined
+// export type InferCtx<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
+//   TPoint extends AnyPoint<any, any, any, infer TCtx, any, any, any, any>
+//     ? TCtx
+//     : TPoint extends InferredRootSourcePoint
+//       ? TPoint['Infer']['Ctx']
+//       : EmptyCtx
+// export type InferData<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
+//   TPoint extends AnyPoint<any, any, any, any, infer TData, any, any, any>
+//     ? TData
+//     : TPoint extends InferredRootSourcePoint
+//       ? TPoint['Infer']['Data']
+//       : EmptyData
 
 // point helpers
-
-export type InferCtx<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
-  TPoint extends AnyPoint<any, any, any, infer TCtx, any, any, any, any>
-    ? TCtx
-    : TPoint extends InferredRootSourcePoint
-      ? TPoint['Infer']['Ctx']
-      : EmptyCtx
-export type InferData<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
-  TPoint extends AnyPoint<any, any, any, any, infer TData, any, any, any>
-    ? TData
-    : TPoint extends InferredRootSourcePoint
-      ? TPoint['Infer']['Data']
-      : EmptyData
-export type InferSourceBase<TPoint extends AnyPoint | undefined> =
-  TPoint extends AnyPoint<infer TSourceBasePoint> ? TSourceBasePoint : undefined
 
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? Omit<TCtx, keyof TAppend> & TAppend

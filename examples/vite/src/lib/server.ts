@@ -3,10 +3,10 @@
 import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
 
-export const source = Point0.source('server')
-  .requireCtx<{
-    request: Bun.BunRequest
-  }>()
+export const source = Point0.create('server')
+  // .requireCtx<{
+  //   request: Bun.BunRequest
+  // }>()
   .onRequest(async ({ request }) => {
     const url = new URL(request.url)
     if (url.pathname === '/.well-known/appspecific/com.chrome.devtools.json') {

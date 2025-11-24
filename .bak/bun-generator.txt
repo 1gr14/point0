@@ -764,7 +764,7 @@
 //    * Detects chains like:
 //    *
 //    *   Point0.connect<typeof source>('client')
-//    *     .sourceBaseUrl(...)
+//    *     .serverUrl(...)
 //    *     .head(...)
 //    *     .base()
 //    *
@@ -790,7 +790,7 @@
 //     }
 
 //     // walk LEFT through the chain to find the root call:
-//     // ... .head(...) .sourceBaseUrl(...) Point0.connect('client')
+//     // ... .head(...) .serverUrl(...) Point0.connect('client')
 //     let current: any = node.callee.object
 //     let rootCall: any = null
 

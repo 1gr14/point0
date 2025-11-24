@@ -694,16 +694,16 @@ export class Walker {
   /**
    * Detects chains like:
    *
-   *   Point0.connect<typeof source>('client')
-   *     .sourceBaseUrl(...)
+   *   Point0.create<typeof source>('client')
+   *     .serverUrl(...)
    *     .head(...)
    *     .base()
    *
    * or
    *
-   *   Point0.source('admin').base()
+   *   Point0.create('admin').base()
    *
-   * If we see `.base()` at the end and the root is Point0.(connect|create|source)(<name>),
+   * If we see `.base()` at the end and the root is Point0.create(<name>),
    * then it's a "base" point and its name is the first string arg of the root call.
    */
   private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: CallExpression }): {
@@ -723,7 +723,7 @@ export class Walker {
     }
 
     // walk LEFT through the chain to find the root call:
-    // ... .head(...) .sourceBaseUrl(...) Point0.connect('client')
+    // ... .head(...) .serverUrl(...) Point0.create('client')
     let current: Expression | null | undefined = node.callee.object
     let rootCall: CallExpression | null = null
 
@@ -749,12 +749,12 @@ export class Walker {
     const obj = rootCall.callee.object
     const prop = rootCall.callee.property
 
-    // must be Point0.connect / Point0.create / Point0.source
+    // must be Point0.create
     if (obj.type !== 'Identifier' || obj.name !== 'Point0')
       return { pointType: null, pointName: null, root: false, errors: [] }
     if (prop.type !== 'Identifier') return { pointType: null, pointName: null, root: false, errors: [] }
     const method = prop.name
-    if (!['connect', 'source'].includes(method)) return { pointType: null, pointName: null, root: false, errors: [] }
+    if (!['create'].includes(method)) return { pointType: null, pointName: null, root: false, errors: [] }
 
     // name should be the first string arg
     const firstArg = rootCall.arguments.at(0)
@@ -1530,7 +1530,7 @@ export class Walker {
     }
 
     //
-    // 2) walk through the chain to find Point0.connect or Point0.source
+    // 2) walk through the chain to find Point0.create
     //
     const scope = this.extractScopeFromChain({ fileAbs, node: initNode })
     if (scope) {
@@ -1577,7 +1577,7 @@ export class Walker {
   }
 
   /**
-   * Extracts scope from a chain by walking left to find Point0.connect('scope') or Point0.source('scope')
+   * Extracts scope from a chain by walking left to find Point0.create('scope')
    */
   private extractScopeFromChain({
     fileAbs,
@@ -1591,7 +1591,7 @@ export class Walker {
     }
 
     // Walk LEFT through the chain to find the root call:
-    // ... .head(...) .sourceBaseUrl(...) Point0.connect('client')
+    // ... .head(...) .serverUrl(...) Point0.create('client')
     let current: Expression | null | undefined = node
     let rootCall: CallExpression | null = null
 
@@ -1616,11 +1616,11 @@ export class Walker {
     const obj = rootCall.callee.object
     const prop = rootCall.callee.property
 
-    // must be Point0.connect / Point0.source
+    // must be Point0.create
     if (obj.type !== 'Identifier' || obj.name !== 'Point0') return undefined
     if (prop.type !== 'Identifier') return undefined
     const method = prop.name
-    if (!['connect', 'source'].includes(method)) return undefined
+    if (!['create'].includes(method)) return undefined
 
     // scope should be the first string arg
     const firstArg = rootCall.arguments.at(0)
