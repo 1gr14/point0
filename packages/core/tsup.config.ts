@@ -1,6 +1,7 @@
 import { defineConfig, type Options } from 'tsup'
 import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 
+// TODO: set best options
 const general = {
   entry: [
     'src/index.tsx',
@@ -19,10 +20,10 @@ const general = {
   dts: true,
   sourcemap: true,
   splitting: false,
-  minify: false,
+  minify: true,
   target: 'es2022',
   external: ['bun:test'],
-  treeshake: false,
+  treeshake: true,
   bundle: false,
   esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
