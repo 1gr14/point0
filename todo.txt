@@ -2,8 +2,6 @@ not base but root, so it will be fixed in gereator how we find root point
 
 Point0.create<T>('self-name', ['site', 'expo'])
 
-Point0 → P0, cli p0
-
 elysia example
 
 --------------------------
@@ -43,7 +41,6 @@ expo router
 ??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
-
 mount.ts → mount-dom.ts or @point0/dom
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
@@ -63,13 +60,14 @@ const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' |
 
 status: .loader(() => [201, {}]).loader(() => [404, {}])
 
-pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
-
 move all types to [name].types.ts, and export everything from types.ts
 point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
 
-prettify visible methods per TLetsEndpointType, and hidae all private methods under _
+prettify visible methods per TLetsEndpointType, and hide all private methods under _
+
 ? get base/root specific things right from base, do not continue it after .base()
+
+Point0 → P0, cli p0
 
 START0
 start0 without mono0
@@ -101,6 +99,7 @@ watch glob optional for build watch, and builwatch itself
 check if superjson works correctly with query and mutation and eversion store
 ? use arrays in points files
 ? extract required ctx type from root points
+pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
 
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
