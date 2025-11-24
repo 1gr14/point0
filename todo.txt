@@ -50,7 +50,7 @@ expo router
 ??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
-mount.ts → mount-dom.ts
+mount.ts → mount-dom.ts or @point0/dom
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
 
