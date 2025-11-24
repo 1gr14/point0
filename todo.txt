@@ -1,149 +1,122 @@
-source-root, connection-root, attachment-root
+Point0.create()
+engine {attachments: ['shared']}
+engine server without points
+flat eversion
+not base but root
+remove TConnectedSource
+extract required ctx type from root points
+do not remove root point on points create, why we ever need it? Just check that it is unfetchable via engine
 
+Point0 → P0, cli p0
+refactor todos
+
+elysia example
+do not do onReq at all, do not try to create new express or elysia
+
+--------------------------
+------ before start0 -----
+--------------------------
+
+HEAD
 head on ssr should also just stored in super store, not needed to extract it additionally
 head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
 .page(head, () =>), .error(head, () =>), .loading(head, () =>), .layout(head, () =>)
 
+fix fn prop type for public things, make input first arg, location is optional setting in second arg object
+add useInfiniteQuery
+
+ROUTER
+try layout can have no route
+page by default has route as its name kebabcased
+layout scroll position
+on navigate to same page do not prefetch, or at least not show preloading
+rename all location to loc, becouse ReferenceError: location is not defined
+refactor prefetch mode names
+.prefetchMode(), page prefetch should be auto, if has App then full, if has no app, then partial
+.onPrefetch(() => Promise.all(cmponent.prefetchQuery(), component2.prefetchQuery()))
+
 wrapper
+
 merge .input schemas
-remove zod from dependencies, and move to peer dependencies, and allow zod mini for inputs definitions
-auth
 
-elysia example
-do not do onReq at all, do not try to create new express or elysia
-onReq onRes normalize, make more straight forward| .onReq(() => {}, () => {}) as shortcat for.onReq().onRes()| .onReq is usual middleware with req, res, next
+auth example
 
-const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
-expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
-expo example, just define all queries and mutations as plugins and use them in site and expo
+EXPO
+expo example
 expo router
+??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
+??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
+??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
+mount.ts → mount-dom.ts
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
 
 .ctxLoader()
 
+.onError, .onClientError and combine them and clear them to base on lets
+
+PLUGIN
 const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
-chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
-→ chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
-→ chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 
-? so we need in extract also add base extracctFns
-lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
-? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
+??? chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
+??? → chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
+??? → chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 
+??? ? so we need in extract also add base extracctFns
+??? lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
+??? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
 
-like always do general fns
-config to forward settings to client and server. jsut {server, clients, generators}
-env POINT0_SERVER_PUBLIC_DIR, POINT0_... to override config props
-? maybe move config to Point0.extend and Point0.create and extract it from there
-cli for simplify commands, like build with bun: point0 build
+status: .loader(() => [201, {}]).loader(() => [404, {}])
 
+pruner: point0PruneScope, P0.ifScope({site: x, expo: y})
+
+move all types to [name].types.ts, and export everything from types.ts
+point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
+
+prettify visible methods per TLetsEndpointType, and hidae all private methods under _
+
+START0
 start0 without mono0
+refactor Error0
+refactor Meta0
+refactor Ctx0
+refactor Env0
+unwind and tailwind
 
-----
+--------------------------
+------ while start0 ------
+--------------------------
 
-status: .loader(() => [201, <div />]).loader(() => [404, <div />])
-? split index.ts code
-.disable()
-preventSsr
-allow in engine and eversion source = null, server = null
-props to clientFns for component, and also to page, layout, clientCtx
-queryCache for clients queries
-serverOnly, clientOnly, serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
-use arrays in points files
-.route(string)
-.onReq .onRes should become .middleware ? and work like express middleware ? 
-thorw error on Points.create() on lcient with different scope that was before
-no root
-extract required ctx type from root points
-Unieind and hero ui right inside examples
-simplify renderer
+? use arrays in points files
+throw error on Points.create() on cleint with different scope that was before
+? simplify renderer
 Replace all node methods with native bun methods, including watcher
-Point0.global.init()
-mount → dom/mount
-do not remove root point on points create, why we ever need it?
-.source .connect → .server .client
-on fetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
-.prefetchOnInit(boolean).prefetchMode(MODE)
-request prefetchPageDehydratedState state but prefetchPagePayload becouse there can be zustand or what else
-check zustand behaviour, meybe it is enough on ssr also provide current global store to client. Just n payload, and use it on top of mount.ts
-preserve client loaders also, and then on lets we have middleware-client but if we call .dropClientLoader() then it becomes middleware
-router export function getCurrentLocation()
-? isScope
-onResponse onRequest → onReq onRes req res
-serverOnly(), clientOnly(), throw and show all import tree to user
-? Point0 → P0, maybe as alias
-check bun pruner, adn vite pruner creates correct sourcemaps
-check pruner remove unsused imports
+on fetch and prefetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
+try fix hmr again
+analyze why client bundle so big in examples
+check bun pruner, and vite pruner creates correct sourcemaps
+? router export function getCurrentLocation()
 after build validate if dist paths exists, like engine.validate()
-add engine client options serveByServer: boolean default true
-in engine remove undefined and set it to null
-__POINT0_ENV__ and other make simple, remove POINT0 prefix
-fix fn prop type for public things, make input first arg, location is optional setting in second arg object
-add _ to all clases
-EversionStore.setOrGet or superStore.upsert(() => value) or EversionStore.upsert('key', () => value)
-eversion store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
-rename all location to loc, becouse ReferenceError: location is not defined
-try catch evrywhere in engine to show real error in real place
-input of page component omit params and query params
-basepath replace with cwd
-allow pass env object or "PREFIX_*" to env for clients
-default client query options, default client page query options, default client component query options
-not errorComponent, but just error
-mutation client, server, combined
-engine shuld be work fine without target server at all
-slover problem with hmr isnide page(() => )
-response available by route and can have method, other do not have method
-.isLoading(({queryType, query}) => )
-on server when returning ssr loactio replace it with toBasOlcation of requestest origin
-.wrapper() → it is like useLayout, so anything with children, But may be then it will be just wrapped in place?
-prefetchPageQueryOption as separate settings
-server clients do not need root, it will be retrieved from points in eversion create call
-FilesGenerator.({routes: Routes()}) then no needed to runtime generation
-not TRoute, but TRouteDefinition, and then it can be string, and then no problems at all
-page prefetch should be auto, if has App then full, if has no app, then partial
-eacho point should have prop .prefetch(boolean) and .ssr(boolean)
-layout provides Layout component, That can be just used and it will work, also page provides Page component that will just work, so .route() is needed only for ssr and Router Routes generator
-static headsh should be also merged one to another, becouse of blinking
-points collection allow to route: undefined, hasLoader undefined we can know on server after loading points
-? inputs chema not needed, just input enough. No! Becouse we can have route whch defines part of input, but we can have no input schema. Or Yes! And when we define route we also define input schema, and new input schema should have same keys or more kike route
-Router accept points and Routes get pagesTree from Context
-remove server code from client
-query client nice () => provider safe for ssr
-layout scroll position
-location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
-on navigate to same page do not prefetch, or at least not show preloading
-on navigate on unknown location do window location change
-force page to have route
-watch glob optional for build watch
-test if layout can have no route
-default route of page is its name
-prevent endless loop hmr after code changes
-allow router policy prefetch-partial to use by default inside prefetchSuitablePagePoint
-find unused code
-.loadingMeta() for client async client loaders
-? asterisk layout as .layout(true, () => <div/>)
-immutable ctx and data on extractFns calls
-refactor error0
-normzliae all errors texts everyhere and use error0
-store each point location to normalize errors messages for example in No route or id provided for this point
-remove wrapper
-before start generate parse existing output file and use it like initial state until success generates new
-html template parsing by provided vars
-hide methods after .route() called, etc (maybe add pageCanNotBeSetWithoutRote, maybe add deprecation flags), on call any cloient fn or head(() =>) endpoint type is client-middleware and als _pointType
-route0 respect origin on match and try two clients with one server
-.extendRoute()
-remove previous route and id after calling new fns for loaders or ctx, when we use ready point as base
-analyze if there same id points or route points
-client.create('page').route().loader() → it provides nice helpers
-superjson
-prefetch on Link hover
+add _ to all clases, and hide all previate methods
+input of page component omit it, by params and search params, make it strict
+check if mutation can be client only
+? location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
+? on navigate on unknown location do window location change
+watch glob optional for build watch, and builwatch itself
+check if superjson works correctly with query and mutation and eversion store
+
 make components and pages named in react dev tools
-prisma in example
+try catch evertywhere in engine to show real error in real place
+normzliae all errors texts everyhere
+store each point location to normalize errors messages for example in No route or id provided for this point
+analyze if there same id points or route points, and throw error
 
-------
+--------------------------
+------ after start0 ------
+--------------------------
 
+find unused code
 refactor example
 test for units
 test for engine
@@ -155,42 +128,35 @@ prepare start0 selling
 prepare subscription, only yearly model
 npm @point0
 
-------
-------
-------
+----------------
+------ v2 ------
+----------------
 
-const qr = base.lets(z.object({}), () => Response | Data).useQuery({})
+? route0 respect origin on match and try two clients with one server
+? html template parsing by provided vars via ejs
+? immutable ctx and data on extractFns calls
+? asterisk layout as .layout(true, () => <div/>)
+? add engine client options serveByServer: boolean default true
+prefetch type not only prefetchPageDehydratedState, but also prefetchPageEversionStore becouse there can be zustand or what else
 
-? .restinput<T>({params:...,query:...,body:...,headers:...}) or (.params<T>().query().body().headers() or .query(zodScema) or .query(anyOtherSchema), .output({}).status()
-? openapi plugin
-? persistent zustand store
-.isSuitable(() => boolean) to override default route suitable behaviour
-example vite-hono
-client input
+prefetch on Link hover
+serverOnly, clientOnly, serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
+.disable()
+.preventSsr()
+.openapi({method, body, search, headers, output})
+zustand
 robotsTxt(take, skip)
-? serverBunDevBuilder - in case if we have bun plugins for client-server and no viteconfig, we should specially set serverBunDevBuilder: true in options so users will understand situation
 node bun polyfill
-? at the point level: base.store(zustand).page(({store})); or const myStore = client.lets('store', 'myStore').store(() => createZustand()); myStore.use()
-? statefull meta, or better ↓
-{...head} as only or second argument in loading and error fns, and as second arg in page fn
-.output(z.object({}))
-allow not to pass server root at all to server, so client only apps
-websocket
-point0PruneScope (by scope)
-point0PrunePoints (by scope) → trpace with Proxy which on get throw error
-remove unused vars if user promise not to use side effects 
-если поинт не касается 
+? .output(z.object({}))
+websocket, messanger
 pageParamFromInput as fn or path
-allow .reponse() to return undefined, in this case it can be found multiple suitable points and they will looped, or mayebe .middleware() idk
-.onError and combine them and clear them to base on lets
+? allow .reponse() to return undefined, in this case it can be found multiple suitable points and they will looped, or mayebe .middleware() idk
 batch query
-persistent zustand helper, and also .store()
-layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page)
-
-? foxyLoader, clientLoader and clientOnlyLoader, clientLoader extracts on server but not sending as data to client, but on clientAddsTo queryClient special cache, clientOnlyLoader mean it will be shown loader after render
-? clientOnlyCtx and clientCtx query key
-now it pretty enough
-
+? layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page) (but we not have * on layouts, so how?)
+optional params in routes
 ? interstallar
-? It's not typed currently; introduce "settings" that can be overridden at any point in a point. For example, authorized: true.
-? The set method for the eversion store should work like setState in React, modifying the previous value.
+? split index.ts code
+
+EVERSION STORE
+rethink EversionStore, when we understand if it is needed at all
+eversion store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
