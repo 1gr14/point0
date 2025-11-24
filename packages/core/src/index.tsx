@@ -140,7 +140,7 @@ export class Point0<
   point: typeof this // this, needed for generator to collect points
 
   _base: BasePoint | undefined
-  _serverUrl: string | undefined
+  _serverurl: string | undefined
   _pointType: TPointType
   _letsEndPointType: TLetsEndPointType
   _inputSchema: TInputSchema
@@ -243,7 +243,7 @@ export class Point0<
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint<any, TRequiredCtx> | undefined
-    _serverUrl?: string | undefined
+    _serverurl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -341,7 +341,7 @@ export class Point0<
     this._scope = props._scope
     this._base = props._base ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
-    this._serverUrl = props._serverUrl ?? undefined
+    this._serverurl = props._serverurl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -434,7 +434,7 @@ export class Point0<
     _pointType: TPointType
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint<any, TRequiredCtx> | undefined
-    _serverUrl?: string | undefined
+    _serverurl?: string | undefined
     _inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -566,7 +566,7 @@ export class Point0<
       _base: overrides._base ?? this._base,
       _pointType: overrides._pointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
-      _serverUrl: overrides._serverUrl ?? this._serverUrl,
+      _serverurl: overrides._serverurl ?? this._serverurl,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
@@ -662,7 +662,7 @@ export class Point0<
       _pointType: 'middleware',
       _scope: scope,
       _letsEndPointType: 'base',
-      _serverUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+      _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
       _onResponseFns: [({ response }) => response],
       _onRequestFns: [() => undefined],
     })
@@ -751,7 +751,7 @@ export class Point0<
       _providerValueSetter: undefined,
       _useValue: undefined,
       _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
-      _serverUrl: this._base?._serverUrl,
+      _serverurl: this._base?._serverurl,
       _staticHeads: this._base?._staticHeads,
       _defaultQueryOptions: this._base?._defaultQueryOptions,
       _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
@@ -773,8 +773,8 @@ export class Point0<
     })
   }
 
-  serverUrl(
-    serverUrl: string,
+  serverurl(
+    serverurl: string,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -804,7 +804,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      _serverUrl: serverUrl,
+      _serverurl: serverurl,
     })
   }
 
@@ -1416,7 +1416,7 @@ export class Point0<
   //     _queryOptions,
   //     _responseFn,
   //     _route,
-  //     _serverUrl,
+  //     _serverurl,
   //     _useLocation,
   //     _wrapper,
   //   })
@@ -2954,10 +2954,10 @@ export class Point0<
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions(), ...options }
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
-    if (!this._serverUrl) {
+    if (!this._serverurl) {
       throw new Error('Server URL is not set')
     }
-    const url = new URL('/_point0', this._serverUrl)
+    const url = new URL('/_point0', this._serverurl)
     const method = 'post'
 
     headers.set('Content-Type', 'application/json')

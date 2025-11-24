@@ -695,7 +695,7 @@ export class Walker {
    * Detects chains like:
    *
    *   Point0.create<typeof source>('client')
-   *     .serverUrl(...)
+   *     .serverurl(...)
    *     .head(...)
    *     .base()
    *
@@ -723,7 +723,7 @@ export class Walker {
     }
 
     // walk LEFT through the chain to find the root call:
-    // ... .head(...) .serverUrl(...) Point0.create('client')
+    // ... .head(...) .serverurl(...) Point0.create('client')
     let current: Expression | null | undefined = node.callee.object
     let rootCall: CallExpression | null = null
 
@@ -1591,7 +1591,7 @@ export class Walker {
     }
 
     // Walk LEFT through the chain to find the root call:
-    // ... .head(...) .serverUrl(...) Point0.create('client')
+    // ... .head(...) .serverurl(...) Point0.create('client')
     let current: Expression | null | undefined = node
     let rootCall: CallExpression | null = null
 

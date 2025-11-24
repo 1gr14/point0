@@ -3,7 +3,7 @@ import type { source } from './server.js'
 
 export const client = Point0.create<typeof source>('client')
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  .serverUrl(process.env.SOURCE_BASE_URL!)
+  .serverurl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,
     refetchOnMount: false,
