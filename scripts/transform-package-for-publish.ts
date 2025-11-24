@@ -34,14 +34,14 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
 // So workspace package versions will already be updated when we read them
 if (packageJson.peerDependencies) {
   const transformed = { ...packageJson.peerDependencies }
-  console.log('Transforming peerDependencies:')
+  console.info('Transforming peerDependencies:')
 
   for (const [dep, version] of Object.entries(transformed)) {
     // Transform catalog: references
     if (version === 'catalog:') {
       if (catalog[dep]) {
         transformed[dep] = catalog[dep]
-        console.log(`  ${dep}: catalog: -> ${catalog[dep]}`)
+        console.info(`  ${dep}: catalog: -> ${catalog[dep]}`)
       } else {
         console.warn(`Warning: No catalog entry found for ${dep}`)
       }
@@ -59,7 +59,7 @@ if (packageJson.peerDependencies) {
 
         // Note: When running via semantic-release, this will read the already-bumped version
         // because @semantic-release/npm bumps the version BEFORE running prepublishOnly
-        console.log(`  ${dep}: workspace:* -> ^${workspaceVersion}`)
+        console.info(`  ${dep}: workspace:* -> ^${workspaceVersion}`)
       } catch {
         // Package not found, try to get version from catalog or use current package version
         workspaceVersion = catalog[dep] || packageJson.version
@@ -84,4 +84,4 @@ const backupPath = join(packageDir, 'package.json.backup')
 writeFileSync(backupPath, readFileSync(packageJsonPath, 'utf-8'))
 writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n')
 
-console.log('✓ Transformed package.json for publishing (backup saved to package.json.backup)')
+console.info('✓ Transformed package.json for publishing (backup saved to package.json.backup)')

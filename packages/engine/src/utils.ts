@@ -128,41 +128,6 @@ export const throwOnNonUniqueArrayElements = (array: Array<string | undefined>, 
   }
 }
 
-export const dedupeSlashes = (path: string) => {
-  return path.replace(/\/\/+/g, '/')
-}
-
-export const prependAndDeappendSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  let result = '/' + path.replace(/^\//, '')
-  result = result.replace(/\/\/+/g, '/')
-  result = result.replace(/\/$/, '')
-  return result as T
-}
-
-export const prependAndAppendSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  return (prependAndDeappendSlash(path) + '/') as T
-}
-
-export const appendSlash = <T extends string | undefined | null>(path: T): T => {
-  if (!path) {
-    return undefined as T
-  }
-  return (path + '/').replace(/\/\/+/g, '/') as T
-}
-
-// export const isPathnameUnderBasepath = (pathname: string, basepath: string | undefined) => {
-//   if (!basepath) {
-//     return false
-//   }
-//   return pathname.startsWith(basepath) || pathname.replace(/\/$/, '') === basepath.replace(/\/$/, '')
-// }
-
 export const getDirByPaths = ({
   paths,
   pathsHasGlob = null,

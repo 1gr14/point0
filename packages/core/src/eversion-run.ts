@@ -5,11 +5,11 @@ import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
-import type { Eversion } from './eversion.js'
 import { ClientServerHelpers } from './client-server.js'
+import { EversionStore } from './eversion-store.js'
 import { Point0 } from './index.js'
 import type { AppComponent } from './mount.js'
-import { EversionStore } from './eversion-store.js'
+import type { Points } from './points.js'
 import type {
   AnyPoint,
   Ctx,
@@ -29,7 +29,7 @@ import type {
 } from './types.js'
 
 export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  eversion: Eversion<TRequiredCtx>
+  points: Points<true, TRequiredCtx>
   extractFnsWithOutput: ExtractFnWithOutput[]
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
@@ -41,13 +41,13 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   private constructor({
-    eversion,
+    points,
     pageLocation,
     requiredCtx,
     extractFnsWithOutput,
     serverGlobalState,
   }: {
-    eversion: Eversion<TRequiredCtx>
+    points: Points<true, TRequiredCtx>
     extractFnsWithOutput: ExtractFnWithOutput[]
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
@@ -58,7 +58,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_CURRENT_LOCATION__: AnyLocation
     }
   }) {
-    this.eversion = eversion
+    this.points = points
     this.extractFnsWithOutput = extractFnsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
@@ -66,12 +66,12 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
-    eversion,
+    points,
     pageLocation,
     currentLocation,
     requiredCtx,
   }: {
-    eversion: Eversion<TRequiredCtx>
+    points: Points<true, TRequiredCtx>
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
@@ -79,12 +79,12 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const serverGlobalState = {}
     return await EversionStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new EversionRun<TRequiredCtx>({
-        eversion,
+        points,
         pageLocation,
         requiredCtx,
         extractFnsWithOutput: [],
         serverGlobalState: {
-          __POINT0_SCOPE__: eversion.points.root._scope,
+          __POINT0_SCOPE__: points.scope,
           __POINT0_QUERY_CLIENT__: EversionStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,
           __POINT0_CURRENT_LOCATION__: currentLocation,
@@ -165,14 +165,8 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       let currentCtx: Ctx = this.requiredCtx ?? {}
       let currentData: Data = {}
-      const extractFns = [
-        ...this.eversion._getParents().flatMap((source) => source._extractFns),
-        ...(point?._extractFns ?? []),
-      ]
-      const curretHead = [
-        ...this.eversion._getParents().flatMap((source) => source._staticHeads),
-        ...(point?._staticHeads ?? []),
-      ]
+      const extractFns = [...(point?._extractFns ?? [])]
+      const curretHead = [...(point?._staticHeads ?? [])]
       // TODO: get status from real point data
 
       try {
@@ -306,7 +300,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(
         React.createElement(App, {
-          points: this.eversion.points,
+          points: this.points,
         }),
       )
       await stream.allReady
@@ -338,14 +332,12 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
 
       for (const suitableMarker of suitableMarkers) {
-        const suitable = this.eversion.getSuitable({
+        const suitable = this.points.getSuitablePoint({
           pointType: suitableMarker.pointType,
           pointName: suitableMarker.pointName,
           input: suitableMarker.input,
-          scope: this.eversion.points.root._scope,
-          fallbackScope: this.eversion.points.root._scope,
         })
-        if (suitable.point) {
+        if (suitable) {
           await this.extract({ point: suitable.point, input: suitableMarker.input })
         }
       }

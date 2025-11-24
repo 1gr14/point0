@@ -1,9 +1,9 @@
 import type { Eversion } from '@point0/core/eversion'
-import type { RequiredCtx, PointsScope, WrapResponseFn } from '@point0/core/types'
+import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { parseUrl, type ParsedUrl } from '@point0/core/utils'
+import type { ClientBun } from './client.js'
 import type { EngineLogger } from './config.js'
 import { toJsonErrorResponse } from './error.js'
-import type { ClientBun } from './client.js'
 import type { ServerBun } from './server.js'
 
 export const engineFetch = async ({
@@ -32,7 +32,6 @@ export const engineFetch = async ({
     await eversion.readPoints()
   }
   parsedUrl ??= parseUrl(request.url)
-  let wrapResponse: WrapResponseFn = eversion.points.root._wrapResponse.bind(eversion.points.root)
   const meta: Record<string, any> = {
     url: request.url,
     scope,
@@ -43,15 +42,8 @@ export const engineFetch = async ({
     for (const publicdir of publicdirs) {
       const staticResponse = await publicdir.fetch({ parsedUrl, request })
       if (staticResponse) {
-        return staticResponse // already wrapped
+        return staticResponse
       }
-    }
-
-    const responseFromSourceRootWrapRequest = await eversion.points.root._wrapRequest({
-      request,
-    })
-    if (responseFromSourceRootWrapRequest) {
-      return responseFromSourceRootWrapRequest
     }
 
     // TODO: lets provide here wrapResponse and wrapRequest and call it
@@ -63,31 +55,7 @@ export const engineFetch = async ({
       scope,
       requiredCtx,
     })
-    meta.scope = suitable.eversion.points.root._scope
-
-    wrapResponse = async ({ request, response }) => {
-      const responseFromSourceRootWrapResponse = await eversion.points.root._wrapResponse({
-        request,
-        response,
-      })
-      if (!suitable.point) {
-        return responseFromSourceRootWrapResponse
-      }
-      const responseFromPointWrapResponse = await suitable.point._wrapResponse({
-        request,
-        response: responseFromSourceRootWrapResponse,
-      })
-      return responseFromPointWrapResponse
-    }
-
-    if (suitable.point && suitable.point !== eversion.points.root) {
-      const responseFromPointWrapRequest = await suitable.point._wrapRequest({
-        request,
-      })
-      if (responseFromPointWrapRequest) {
-        return await wrapResponse({ request, response: responseFromPointWrapRequest })
-      }
-    }
+    meta.scope = suitable.points.scope
 
     if (!suitable.point && process.env.NODE_ENV !== 'production') {
       const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ parsedUrl, request })
@@ -103,7 +71,7 @@ export const engineFetch = async ({
     meta.pointName = task?.pointName
     meta.pointType = task?.pointType
 
-    const relatedClient = clients.find((client) => client.points.root === suitable.eversion.points.root)
+    const relatedClient = clients.find((client) => client.points.scope === suitable.points.scope)
 
     if (relatedClient) {
       if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
@@ -126,35 +94,26 @@ export const engineFetch = async ({
             pageLocation: suitable.pageLocation,
             input,
           })
-          return await wrapResponse({
-            request,
-            response: new Response(readableStream, {
-              headers: { 'Content-Type': 'text/html' },
-              status: extractResult.status,
-            }),
+          return new Response(readableStream, {
+            headers: { 'Content-Type': 'text/html' },
+            status: extractResult.status,
           })
         } catch (error) {
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
             const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
-            return await wrapResponse({
-              request,
-              response: new Response(indexHtml, {
-                headers: { 'Content-Type': 'text/html' },
-                status: 500,
-              }),
+            return new Response(indexHtml, {
+              headers: { 'Content-Type': 'text/html' },
+              status: 500,
             })
           }
           throw error
         }
       } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
         const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
-        return await wrapResponse({
-          request,
-          response: new Response(indexHtml, {
-            headers: { 'Content-Type': 'text/html' },
-            status: 200,
-          }),
+        return new Response(indexHtml, {
+          headers: { 'Content-Type': 'text/html' },
+          status: 200,
         })
       } else if (outputType === 'dehydratedState' && pointType === 'page') {
         if (!suitable.pageLocation) {
@@ -168,12 +127,9 @@ export const engineFetch = async ({
           input,
         })
         const dehydratedState = await eversionRun.getQueryClientDehydratedState()
-        return await wrapResponse({
-          request,
-          response: new Response(JSON.stringify({ dehydratedState }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          }),
+        return new Response(JSON.stringify({ dehydratedState }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
         })
       }
     } else if (outputType === 'html' && pointType === 'page') {
@@ -189,33 +145,21 @@ export const engineFetch = async ({
     }
 
     if (extractResult.error) {
-      return await wrapResponse({
-        request,
-        response: toJsonErrorResponse(extractResult.error, extractResult.status),
-      })
+      return toJsonErrorResponse(extractResult.error, extractResult.status)
     }
 
     if (extractResult.response) {
-      return await wrapResponse({
-        request,
-        response: extractResult.response,
-      })
+      return extractResult.response
     }
 
     // else we try to get endpoint json
-    return await wrapResponse({
-      request,
-      response: new Response(JSON.stringify(extractResult.data), {
-        headers: { 'Content-Type': 'application/json' },
-        status: extractResult.status,
-      }),
+    return new Response(JSON.stringify(extractResult.data), {
+      headers: { 'Content-Type': 'application/json' },
+      status: extractResult.status,
     })
   } catch (error) {
     logger.error(error, meta)
-    return await wrapResponse({
-      request,
-      response: toJsonErrorResponse(error, 500),
-    })
+    return toJsonErrorResponse(error, 500)
   }
 }
 

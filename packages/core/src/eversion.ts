@@ -1,287 +1,35 @@
 import { Route0, type AnyLocation, type ExactLocation } from '@devp0nt/route0'
 import { EversionRun } from './eversion-run.js'
 import type { Points } from './points.js'
-import type {
-  EndPoint,
-  EndPointType,
-  InputParsed,
-  PointName,
-  PointsScope,
-  RequiredCtx,
-  RootConnectedPoint,
-  RootPoint,
-  RootSourcePoint,
-} from './types.js'
-import { getHostnameOrNull, parseUrl, type ParsedUrl } from './utils.js'
+import type { EndPoint, EndPointType, InputParsed, PointName, PointsScope, RequiredCtx } from './types.js'
+import { parseUrl, type ParsedUrl } from './utils.js'
 
 // TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
 // TODO: add generic and type EversionSource, and EversionConnection so we can understand which ine used now
 export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  source: Eversion<TRequiredCtx> | undefined
-  points: Points<true>
-  connections: Array<Eversion<TRequiredCtx>>
-  baseurl: string
-  hostname: string | null
+  scopedPoints: Array<Points<true>>
 
-  private constructor({
-    source,
-    points,
-    connections,
-    baseurl,
-  }: {
-    source?: Eversion<TRequiredCtx> | undefined
-    points: Points<true>
-    baseurl?: string
-    connections?: Array<Eversion<TRequiredCtx>>
-  }) {
-    this.points = points
-    this.connections = connections ?? []
-    this.source = source
-    this.baseurl = baseurl ?? '/'
-    this.hostname = getHostnameOrNull(this.baseurl)
+  private constructor(scopedPoints: Array<Points<true, TRequiredCtx>>) {
+    this.scopedPoints = scopedPoints
   }
 
-  static async create<TRootPoint extends RootPoint>({
-    points,
-    baseurl,
-  }: {
-    points: Points
-    baseurl?: string
-  }): Promise<Eversion<TRootPoint['Infer']['RequiredCtx']>> {
-    return new Eversion<TRootPoint['Infer']['RequiredCtx']>({
-      points: await points.load(),
-    })
+  static create<TRequiredCtx extends RequiredCtx>(
+    ...points: Array<Points<true, TRequiredCtx>>
+  ): Eversion<TRequiredCtx> {
+    return new Eversion<TRequiredCtx>(points)
   }
 
-  async connect({ points, baseurl }: { points: Points; baseurl?: string }): Promise<Eversion<TRequiredCtx>> {
-    const connection = new Eversion<TRequiredCtx>({
-      points: await points.load(),
-      source: this,
-      baseurl,
-    })
-    await connection.points.read()
-    this.connections.push(connection)
-    return connection
-  }
-
-  async forEachEversion(
-    callback: (eversion: Eversion<TRequiredCtx>) => Promise<void>,
-    skipSource = false,
-  ): Promise<void> {
-    if (this.source && !skipSource) {
-      await this.source.forEachEversion(callback, false)
-    }
-    await callback(this)
-    for (const connection of this.connections) {
-      await connection.forEachEversion(callback, true)
-    }
+  async add(...points: Array<Points<boolean, TRequiredCtx>>): Promise<typeof this> {
+    this.scopedPoints.push(...(await Promise.all(points.map(async (p) => await p.load()))))
+    return this
   }
 
   async readPoints(): Promise<void> {
-    await this.forEachEversion(async (eversion) => {
-      await eversion.points.read()
-    })
-  }
-
-  async createRun({
-    pageLocation,
-    currentLocation,
-    requiredCtx,
-  }: {
-    pageLocation: AnyLocation | undefined
-    currentLocation: AnyLocation
-    requiredCtx: TRequiredCtx
-  }): Promise<EversionRun<TRequiredCtx>> {
-    return await EversionRun.create({
-      eversion: this,
-      pageLocation,
-      currentLocation,
-      requiredCtx,
-    })
-  }
-
-  _getParents(): [RootSourcePoint, ...RootConnectedPoint[]] | [] {
-    const sources: Array<RootSourcePoint | RootConnectedPoint> = []
-    let current: Eversion<TRequiredCtx> | undefined = this.source
-    while (current) {
-      sources.push(current.points.root)
-      current = current.source
-    }
-    return sources.reverse() as [RootSourcePoint, ...RootConnectedPoint[]] | []
-  }
-
-  _getSuitableSelfPoint({
-    scope,
-    pageLocation,
-    pointType,
-    pointName,
-    input,
-  }: {
-    scope?: PointsScope
-    pageLocation?: AnyLocation | undefined
-    pointType?: EndPointType | undefined
-    pointName?: PointName | undefined
-    input?: InputParsed | undefined
-  }):
-    | {
-        point: EndPoint
-        pageLocation: ExactLocation | undefined
-        eversion: Eversion<TRequiredCtx>
-      }
-    | undefined {
-    if (scope && this.points.scope !== scope) {
-      return undefined
-    }
-    if (pageLocation && pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
-      return undefined
-    }
-    const suitablePoint = this.points.getSuitablePoint({ pageLocation, pointType, pointName, input })
-    if (suitablePoint) {
-      return {
-        point: suitablePoint.point,
-        pageLocation: suitablePoint.pageLocation,
-        eversion: this,
-      }
-    }
-    return undefined
-  }
-  _getSuitablePoint({
-    scope,
-    pageLocation,
-    pointType,
-    pointName,
-    input,
-  }: {
-    scope?: PointsScope
-    pageLocation?: AnyLocation | undefined
-    pointType?: EndPointType | undefined
-    pointName?: PointName | undefined
-    input?: InputParsed | undefined
-  }): GetSuitablePointResult<TRequiredCtx> | undefined {
-    const suitableSelfPoint = this._getSuitableSelfPoint({ pageLocation, scope, pointType, pointName, input })
-    if (suitableSelfPoint) {
-      return suitableSelfPoint
-    }
-    const suitableConnectionPoint = (() => {
-      for (const connection of this.connections) {
-        const result = connection._getSuitablePoint({ pageLocation, scope, pointType, pointName, input })
-        if (result) {
-          return result
-        }
-      }
-      return undefined
-    })()
-    if (suitableConnectionPoint) {
-      return suitableConnectionPoint
-    }
-    return undefined
-  }
-
-  _getSuitableSelfEversionByPageLocation({
-    scope,
-    pageLocation,
-  }: {
-    scope?: PointsScope | undefined
-    pageLocation: AnyLocation
-  }): Eversion<TRequiredCtx> | undefined {
-    if (scope && this.points.scope !== scope) {
-      return undefined
-    }
-    if (pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
-      return undefined
-    }
-    const match = this.points.routes._.getLocation(pageLocation)
-    if (match.exact) {
-      return this
-    }
-    return undefined
-    // const route = this.points.root._route
-    // if (!route) {
-    //   return undefined
-    // }
-    // const match = route.getLocation(pageLocation)
-    // if (match.parent || match.exact) {
-    //   return this
-    // }
-    // return undefined
-  }
-  _getSuitableEversionByPageLocationOrUndefined({
-    scope,
-    pageLocation,
-  }: {
-    scope?: PointsScope | undefined
-    pageLocation: AnyLocation
-  }): Eversion<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this._getSuitableSelfEversionByPageLocation({ pageLocation, scope })
-    if (suitableSelfEversion) {
-      return suitableSelfEversion
-    }
-    const suitableConnectionEversion = (() => {
-      for (const connection of this.connections) {
-        const result = connection._getSuitableEversionByPageLocationOrUndefined({
-          pageLocation,
-          scope,
-        })
-        if (result) {
-          return result
-        }
-      }
-      return undefined
-    })()
-    if (suitableConnectionEversion) {
-      return suitableConnectionEversion
-    }
-    return undefined
-  }
-  _getSuitableEversionByScope({ scope }: { scope: PointsScope | undefined }): Eversion<TRequiredCtx> | undefined {
-    const suitableSelfEversion = this.points.scope === scope ? this : undefined
-    if (suitableSelfEversion) {
-      return suitableSelfEversion
-    }
-    const suitableConnectionEversion = (() => {
-      for (const connection of this.connections) {
-        const result = connection._getSuitableEversionByScope({ scope })
-        if (result) {
-          return result
-        }
-      }
-      return undefined
-    })()
-    if (suitableConnectionEversion) {
-      return suitableConnectionEversion
-    }
-    return undefined
-  }
-  _getSuitableEversionByPageLocation({
-    scope,
-    fallbackScope,
-    pageLocation,
-  }: {
-    scope?: PointsScope | undefined
-    fallbackScope: PointsScope | undefined
-    pageLocation?: AnyLocation | undefined
-  }): Eversion<TRequiredCtx> {
-    if (!pageLocation) {
-      throw new Error('Page location is required')
-    }
-    const suitableEversionByLoaction = this._getSuitableEversionByPageLocationOrUndefined({
-      pageLocation,
-      scope,
-    })
-    if (suitableEversionByLoaction) {
-      return suitableEversionByLoaction
-    }
-    const suitableEversionByScope = this._getSuitableEversionByScope({ scope })
-    if (suitableEversionByScope) {
-      return suitableEversionByScope
-    }
-    const suitableEversionByFallbackScope = this._getSuitableEversionByScope({ scope: fallbackScope })
-    if (suitableEversionByFallbackScope) {
-      return suitableEversionByFallbackScope
-    }
-    throw new Error(
-      `No suitable eversion found at location "${pageLocation.pathname}" and scope "${scope}" and fallback scope "${fallbackScope}"`,
+    await Promise.all(
+      this.scopedPoints.map(async (scopedPoints) => {
+        await scopedPoints.read()
+      }),
     )
   }
 
@@ -299,25 +47,62 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
     input?: InputParsed | undefined
-  }): GetSuitableResult<TRequiredCtx> {
-    const suitablePoint = this._getSuitablePoint({ pageLocation, scope, pointType, pointName, input })
-    if (suitablePoint) {
-      return suitablePoint
+  }): GetSuitableResult {
+    // find exact match
+    for (const points of this.scopedPoints) {
+      const suitablePoint = points.getSuitablePoint({ pageLocation, pointType, pointName, input })
+      if (suitablePoint) {
+        return {
+          point: suitablePoint.point,
+          pageLocation: suitablePoint.pageLocation,
+          points,
+        }
+      }
     }
-    // TODO: allow find just by fallbackScope
+
+    // find root by scope
+    if (scope) {
+      for (const points of this.scopedPoints) {
+        if (points.scope === scope) {
+          return {
+            point: undefined,
+            pageLocation: undefined,
+            points,
+          }
+        }
+      }
+      throw new Error(`No points found with scope "${scope}"`)
+    }
+
+    // find root by page location
     if (pageLocation) {
-      const suitableEversion = this._getSuitableEversionByPageLocation({
-        pageLocation,
-        scope,
-        fallbackScope,
-      })
-      return { point: undefined, pageLocation, eversion: suitableEversion }
+      for (const points of this.scopedPoints) {
+        if (points.isPageLocationSuitable({ pageLocation })) {
+          return {
+            point: undefined,
+            pageLocation,
+            points,
+          }
+        }
+      }
     }
-    const suitableEversion = this._getSuitableEversionByScope({ scope })
-    if (!suitableEversion) {
-      throw new Error(`No suitable eversion found at scope "${scope}"`)
+
+    // find by fallback scope
+    if (fallbackScope) {
+      for (const points of this.scopedPoints) {
+        if (points.scope === fallbackScope) {
+          return {
+            point: undefined,
+            pageLocation: undefined,
+            points,
+          }
+        }
+      }
     }
-    return { point: undefined, pageLocation, eversion: suitableEversion }
+
+    throw new Error(
+      `No suitable eversion found at scope "${scope}" and fallback scope "${fallbackScope}" and page location "${pageLocation?.href || pageLocation?.pathname || 'undefined'}"`,
+    )
   }
 
   async prepareEversionRunByRequest({
@@ -403,7 +188,6 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })()
     const location = Route0.getLocation(parsedUrl.urlStr)
     const suitable = this.getSuitable({
-      // TODO:ASAP add allowedScopes, so in engine fetch we will filter them by basepath and hostname. And better have .hostname() and .basepath() in root point
       pointType: task?.pointType ?? 'page',
       scope: task?.scope || scope,
       pointName: task?.pointName,
@@ -411,7 +195,8 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input: task?.pointInput,
       fallbackScope,
     })
-    const eversionRun = await suitable.eversion.createRun({
+    const eversionRun = await EversionRun.create({
+      points: suitable.points,
       pageLocation: suitable.pageLocation,
       currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
       requiredCtx,
@@ -466,12 +251,13 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   point: EndPoint
   pageLocation: ExactLocation | undefined
-  eversion: Eversion<TRequiredCtx>
+  points: Points<true, TRequiredCtx>
 }
+
 export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   point: EndPoint | undefined
   pageLocation: AnyLocation | undefined
-  eversion: Eversion<TRequiredCtx>
+  points: Points<true, TRequiredCtx>
 }
 
 export type FetchTask = {

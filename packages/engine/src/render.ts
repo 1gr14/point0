@@ -192,7 +192,7 @@ export async function getReadableStreamWithWrapper({
     // Kick off the render first; any randoms used during render happen now
     const reactStream = await renderer(
       createElement(App, {
-        points: eversionRun.eversion.points,
+        points: eversionRun.points,
       }),
       {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),

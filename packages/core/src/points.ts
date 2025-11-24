@@ -17,6 +17,7 @@ import type {
   RootPoint,
   UndefinedRoute,
 } from './types.js'
+import { appendSlash, getBasepathOrNull, getHostnameOrNull } from './utils.js'
 
 // TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
@@ -24,6 +25,9 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
   absPath: string | null
   readFn: PointsReadFn | null
   scope: PointsScope
+  baseurl: string | null | undefined
+  basepath: string | null
+  hostname: string | null
   root: RootPoint
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
@@ -42,7 +46,6 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     root,
     collection,
     routes,
-    scope,
     ready,
     pagesTreeSource,
     pagesTree,
@@ -60,16 +63,19 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.absPath = absPath
     this.readFn = readFn
     this.routes = routes
-    this.scope = scope
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
     this.collection = Points.sortCollection({ points: collection, routes })
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.root = root
+    this.scope = this.root._scope
+    this.baseurl = this.root._baseurl
+    this.basepath = getBasepathOrNull(this.baseurl)
+    this.hostname = getHostnameOrNull(this.baseurl)
     Points.setGlobalPoints(this)
     if (ClientServerHelpers.isClient) {
-      EversionStore.setWeak('__POINT0_SCOPE__', this.root._scope)
+      EversionStore.setWeak('__POINT0_SCOPE__', this.scope)
     }
   }
 
@@ -184,9 +190,9 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     }
   }
 
-  async load(force?: boolean): Promise<Points<true>> {
+  async load(force?: boolean): Promise<Points<true, TRequiredCtx>> {
     if (this.ready && !force) {
-      return this as Points<true>
+      return this as Points<true, TRequiredCtx>
     }
     const { readyPoints, errors } = await Points.toReadyPointsCollection(this.collection as LazyRoutedPointsCollection)
     for (const error of errors) {
@@ -195,7 +201,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     const routes = Points.toRoutes({ points: readyPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: readyPoints })
     const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
-    return new Points<true>({
+    return new Points<true, TRequiredCtx>({
       root: this.root,
       scope: this.root._scope,
       collection: readyPoints,
@@ -640,16 +646,37 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     return result.page
   }
 
+  isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
+    if (this.baseurl === null) {
+      return false
+    }
+    if (this.hostname && pageLocation.hostname && pageLocation.hostname !== this.hostname) {
+      return false
+    }
+    if (this.basepath) {
+      if (pageLocation.pathname === this.basepath) {
+        return true
+      }
+      if (pageLocation.pathname.startsWith(appendSlash(this.basepath))) {
+        return true
+      }
+      return false
+    }
+    return true
+  }
+
   getSuitablePoint({
     pageLocation,
     input,
     pointType,
     pointName,
+    scope,
   }: {
     pageLocation?: AnyLocation | undefined
     input?: InputRaw
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
+    scope?: PointsScope | undefined
   }):
     | {
         point: TReady extends true ? EndPoint : () => Promise<EndPoint>
@@ -660,6 +687,15 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
         layouts: string[] | undefined
       }
     | undefined {
+    if (scope && this.scope !== scope) {
+      return undefined
+    }
+    if (pageLocation && this.baseurl === null) {
+      return undefined
+    }
+    if (pageLocation && pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
+      return undefined
+    }
     for (const { route, point, type, name, Component, layouts } of this.collection as ReadyRoutedPointsCollection) {
       if (pointType && type !== pointType) {
         continue
@@ -726,7 +762,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     if (!(globalThis as any).__POINT0_POINTS__) {
       ;(globalThis as any).__POINT0_POINTS__ = {}
     }
-    ;(globalThis as any).__POINT0_POINTS__[createdPoints.root._scope] = createdPoints
+    ;(globalThis as any).__POINT0_POINTS__[createdPoints.scope] = createdPoints
     return createdPoints
   }
   static getGlobalPoints = (scope?: PointsScope): Points => {

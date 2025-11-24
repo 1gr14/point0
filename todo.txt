@@ -1,17 +1,18 @@
-engine server without points
-flat eversion
 not base but root
 
-engine {attachments: ['shared']}
+use arrays in points files
 
 extract required ctx type from root points
+
 do not remove root point on points create, why we ever need it? Just check that it is unfetchable via engine
 
+check that only fetchable points are fetchable
+
+Point0.create<T>('self-name', ['site', 'expo'])
+
 Point0 → P0, cli p0
-refactor todos
 
 elysia example
-do not do onReq at all, do not try to create new express or elysia
 
 --------------------------
 ------ before start0 -----
@@ -50,6 +51,7 @@ expo router
 ??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
+
 mount.ts → mount-dom.ts or @point0/dom
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
@@ -69,12 +71,13 @@ const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' |
 
 status: .loader(() => [201, {}]).loader(() => [404, {}])
 
-pruner: point0PruneScope, P0.ifScope({site: x, expo: y})
+pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
 
 move all types to [name].types.ts, and export everything from types.ts
 point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
 
 prettify visible methods per TLetsEndpointType, and hidae all private methods under _
+? get base/root specific things right from base, do not continue it after .base()
 
 START0
 start0 without mono0
@@ -88,7 +91,6 @@ unwind and tailwind
 ------ while start0 ------
 --------------------------
 
-? use arrays in points files
 throw error on Points.create() on cleint with different scope that was before
 ? simplify renderer
 Replace all node methods with native bun methods, including watcher

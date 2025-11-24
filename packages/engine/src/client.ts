@@ -37,7 +37,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
-  eversion: TInitialized extends true ? Eversion : Eversion | null
+  eversion: Eversion
   providedPoints: Points | null
   pointsFile: string | null
   // pointsDistFile: string | null
@@ -104,7 +104,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
-    eversion: Eversion | null
+    eversion: Eversion
     clientBunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     clientBunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     serverViteDevServer: ViteDevServer | null
@@ -115,7 +115,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
-    this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
+    this.eversion = input.eversion
     this.providedPoints = input.providedPoints
     this.pointsFile = input.pointsFile
     // this.pointsDistFile = input.pointsDistFile
@@ -178,7 +178,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     engineFile: string | null
-    eversion: Eversion | null
+    eversion: Eversion
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
     prune: boolean
@@ -196,8 +196,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const publicdir = Publicdir.create({
       hostname: getHostnameOrNull(input.baseurl),
       definition: input.publicdir,
-      root: null,
-      eversion: input.eversion,
       outdir: input.publicdirOutdir,
       scope: input.scope,
     })
@@ -226,18 +224,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async init({
-    eversion,
     preventClientDevServers = process.env.POINT0_PREVENT_CLIENT_DEV_SERVER === 'true',
   }: {
-    eversion: Eversion
     // if we run server entries separately, then we we will run in another processes client dev server once
     preventClientDevServers?: boolean
   }): Promise<ClientBun<true>> {
     if (this.isInitialized()) {
       return this as ClientBun<true>
     }
-
-    this.eversion = eversion
 
     const [{ clientBunViteDevServer, clientViteDevServer }, clientBunNativeDevServer] = await Promise.all([
       this.viteConfig && process.env.NODE_ENV !== 'production'
@@ -258,8 +252,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     this.points = await this.createPoints()
 
-    await eversion.connect({ points: this.points })
-    await this.publicdir.init({ root: this.points.root, eversion })
+    await this.publicdir.init()
 
     this.distIndexHtmlContent =
       process.env.NODE_ENV === 'production' && this.indexHtml ? await Bun.file(this.indexHtml).text() : null

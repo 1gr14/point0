@@ -3,6 +3,7 @@ import type { AppComponent } from '@point0/core/mount'
 import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { PointsScope } from '@point0/core/types'
+import { appendSlash, prependAndDeappendSlash } from '@point0/core/utils'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import type {
@@ -11,7 +12,7 @@ import type {
   ServerBunBuildConfigDefinition,
   ServerBunPluginsDefinition,
 } from './utils.js'
-import { appendSlash, prependAndAppendSlash, prependAndDeappendSlash, toAbsPath, toJsExtension } from './utils.js'
+import { toAbsPath, toJsExtension } from './utils.js'
 
 // TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
 
@@ -52,7 +53,7 @@ export type EngineGeneralOptions = {
 }
 export type EngineServerOptions = {
   scope: PointsScope
-  points: string | ReadyPointsModule | LazyPointsModule
+  points?: string | ReadyPointsModule | LazyPointsModule | null
   publicdir?: EngineOptionsPublicdir
   port?: number | string | null
   outdir?: string | null
@@ -139,7 +140,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
-  points: Points | string
+  points: Points | string | null
   publicdir: EngineOptionsPublicdirParsed
   port: number
   entry: Record<string, string> | null
@@ -462,7 +463,9 @@ export const parseEngineServerOptions = ({
             path: serverOptions.points,
             omitDirAfterBuild: true,
           })
-        : Points.create(serverOptions.points),
+        : !serverOptions.points
+          ? null
+          : Points.create(serverOptions.points),
     port,
     outdir,
     entry: entriesRecord,

@@ -12,7 +12,7 @@ try {
   const backup = readFileSync(backupPath, 'utf-8')
   writeFileSync(packageJsonPath, backup)
   unlinkSync(backupPath)
-  console.log('✓ Restored original package.json')
+  console.info('✓ Restored original package.json')
 } catch (error) {
   console.warn('No backup found, skipping restore')
 }

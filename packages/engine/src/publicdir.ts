@@ -1,37 +1,30 @@
-import type { Eversion } from '@point0/core/eversion'
-import type { RootPoint, PointsScope } from '@point0/core/types'
-import { parseUrl, type ParsedUrl } from '@point0/core/utils'
+import type { PointsScope } from '@point0/core/types'
+import { parseUrl, prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { prependAndDeappendSlash, withError } from './utils.js'
+import { withError } from './utils.js'
 
 export class Publicdir<TInitialized extends boolean = boolean> {
   hostname: string | null
   definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: Map<string, string | Response | (() => Response | Promise<Response>)>
-  eversion: TInitialized extends true ? Eversion : Eversion | null
   outdir: string | null
   initialized: TInitialized
 
-  root: TInitialized extends true ? RootPoint : RootPoint | null
   scope: PointsScope
 
   private constructor(input: {
     initialized: TInitialized
     hostname: string | null
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
-    root: RootPoint | null
     scope: PointsScope
-    eversion: Eversion | null
     outdir: string | null
   }) {
     this.hostname = input.hostname
     this.definition = input.definition
     this.files = new Map<string, string | Response | (() => Response | Promise<Response>)>()
-    this.root = input.root as TInitialized extends true ? RootPoint : null
     this.scope = input.scope
-    this.eversion = input.eversion as TInitialized extends true ? Eversion : null
     this.outdir = input.outdir
     this.initialized = input.initialized
   }
@@ -39,9 +32,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   static create(input: {
     hostname: string | null
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
-    root: RootPoint | null
     scope: PointsScope
-    eversion: Eversion | null
     outdir: string | null
   }): Publicdir<false> {
     return new Publicdir<false>({
@@ -50,9 +41,10 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     })
   }
 
-  async init({ root, eversion }: { root: RootPoint; eversion: Eversion }): Promise<Publicdir<true>> {
-    this.root = root
-    this.eversion = eversion
+  async init(): Promise<Publicdir<true>> {
+    if (this.isInitialized()) {
+      return this as Publicdir<true>
+    }
     await this.loadFiles()
     this.initialized = true as never
     return this as Publicdir<true>
@@ -102,42 +94,14 @@ export class Publicdir<TInitialized extends boolean = boolean> {
       return undefined
     }
 
-    // TODO:ASAP use await this.sourceEversion.getWrapRequest(this.eversion.points.root)
-    const responseFromSourceRootWrapRequest = await this.eversion.points.root._wrapRequest({
-      request,
-    })
-    if (responseFromSourceRootWrapRequest) {
-      return responseFromSourceRootWrapRequest
-    }
-    if (this.root !== this.eversion.points.root) {
-      const responseFromRootWrapRequest = await this.root._wrapRequest({
-        request,
-      })
-      if (responseFromRootWrapRequest) {
-        return responseFromRootWrapRequest
-      }
-    }
-
     const response =
       typeof fileAbsPathOrResponseOrFn === 'string'
         ? new Response(Bun.file(fileAbsPathOrResponseOrFn))
         : typeof fileAbsPathOrResponseOrFn === 'function'
           ? await fileAbsPathOrResponseOrFn()
           : fileAbsPathOrResponseOrFn
-    if (this.eversion.points.root !== this.root) {
-      return await this.eversion.points.root._wrapResponse({
-        request,
-        response: await this.root._wrapResponse({
-          request,
-          response,
-        }),
-      })
-    } else {
-      return await this.root._wrapResponse({
-        request,
-        response,
-      })
-    }
+
+    return response
   }
 
   async clean(): Promise<boolean> {
@@ -152,9 +116,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   }
 
   async build(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (!this.isInitialized()) {
-      await this.loadFiles()
-    }
+    await this.init()
 
     const outdir = this.outdir
     if (!outdir) {

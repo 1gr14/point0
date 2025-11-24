@@ -881,27 +881,6 @@ export type ClientLoaderFn<
   props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TInputSchema, TClientData>,
 ) => Promise<TClientDataOutput> | TClientDataOutput
 
-export type OnRequestFnProps = {
-  request: Request
-}
-export type OnRequestFn = (props: OnRequestFnProps) => undefined | Response | Promise<undefined | Response>
-
-export type OnResponseFnProps = {
-  request: Request
-  response: Response
-}
-export type OnResponseFn = (props: OnResponseFnProps) => Response | Promise<Response>
-
-export type WrapResponseFnProps = {
-  request: Request
-  response: Response
-}
-export type WrapResponseFn = (props: WrapResponseFnProps) => Promise<Response>
-export type WrapRequestFnProps = {
-  request: Request
-}
-export type WrapRequestFn = (props: WrapRequestFnProps) => Promise<Response | undefined>
-
 export type ProviderValueSetterFnProps<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,

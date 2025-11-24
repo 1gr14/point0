@@ -1,9 +1,14 @@
 import { Point0 } from '@point0/core'
-import type { source } from './server.js'
+import { prisma } from './prisma.js'
 
-export const client = Point0.create<typeof source>('client')
+export const client = Point0.create('client')
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   .serverurl(process.env.SOURCE_BASE_URL!)
+  .ctx({
+    prisma,
+    env: process.env,
+    Bun,
+  })
   .queryOptions({
     retry: false,
     refetchOnMount: false,

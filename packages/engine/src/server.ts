@@ -1,8 +1,8 @@
-import { Eversion } from '@point0/core/eversion'
+import type { Eversion } from '@point0/core/eversion'
 import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
-import { parseUrl, type ParsedUrl } from '@point0/core/utils'
+import { parseUrl, prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -15,7 +15,6 @@ import {
   extractServerBunPlugins,
   getDirByPaths,
   loadBunPlugins,
-  prependAndDeappendSlash,
   toJsExtension,
   validateEntrypoints,
   withError,
@@ -26,10 +25,10 @@ import {
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
   cwd: string
-  eversion: TInitialized extends true ? Eversion : Eversion | null
+  eversion: Eversion
   providedPoints: Points | null
   pointsFile: string | null
-  points: TInitialized extends true ? Points : Points | null
+  points: TInitialized extends true ? Points | null : Points | null
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
@@ -66,10 +65,10 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     bunBuildConfig: ServerBunBuildConfigDefinition
     bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
-    eversion: Eversion | null
+    eversion: Eversion
   }) {
     this.cwd = input.cwd
-    this.eversion = input.eversion as TInitialized extends true ? Eversion : null
+    this.eversion = input.eversion
     this.scope = input.scope
     this.providedPoints = input.providedPoints
     this.pointsFile = input.pointsFile
@@ -93,7 +92,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   static create(input: {
     cwd: string
     scope: PointsScope
-    points: Points | string
+    points: Points | string | null
+    eversion: Eversion
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -112,13 +112,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const pointsFile = typeof input.points === 'string' ? input.points : null
     const points = null
 
-    const eversion = null
-
     const publicdir = Publicdir.create({
       hostname: null,
       definition: input.publicdir,
-      root: null,
-      eversion,
       outdir: input.publicdirOutdir,
       scope: input.scope,
     })
@@ -126,7 +122,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const server = new ServerBun<false>({
       ...input,
       publicdir,
-      eversion,
       points,
       pointsFile,
       providedPoints,
@@ -144,14 +139,16 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       return this as ServerBun<true>
     }
 
-    const points = await this.createPoints()
-    this.eversion = await Eversion.create({ points })
-    await this.publicdir.init({ root: points.root, eversion: this.eversion })
+    this.points = await this.createPoints()
+    await this.publicdir.init()
     this.initialized = true as never
     return this as ServerBun<true>
   }
 
-  readonly createPoints = async (): Promise<Points> => {
+  readonly createPoints = async (): Promise<Points | null> => {
+    if (this.points) {
+      return this.points
+    }
     if (this.providedPoints) {
       return this.providedPoints
     }
@@ -164,7 +161,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         ),
       )
     }
-    throw new Error(`Points not provided for server`)
+    return null
   }
 
   async extractBunPlugins(): Promise<BunPlugin[]> {

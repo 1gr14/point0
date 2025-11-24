@@ -1,4 +1,4 @@
-import type { Eversion } from '@point0/core/eversion'
+import { Eversion } from '@point0/core/eversion'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
@@ -14,21 +14,21 @@ export class Engine<TInitialized extends boolean = boolean> {
   server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
   logger: EngineLogger
   generator: FilesGenerator
-  eversion: TInitialized extends true ? Eversion : Eversion | null
+  eversion: Eversion
   initialized: TInitialized
 
   private constructor(input: {
     clients: ClientBun[]
     server: ServerBun
     logger: EngineLogger
-    eversion: Eversion | null
+    eversion: Eversion
     initialized: TInitialized
     generator: FilesGenerator
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
     this.logger = input.logger
-    this.eversion = input.eversion as TInitialized extends true ? Eversion : Eversion | null
+    this.eversion = input.eversion
     this.initialized = input.initialized
     this.generator = input.generator
   }
@@ -42,16 +42,17 @@ export class Engine<TInitialized extends boolean = boolean> {
       options.engineFile ??= fileURLToPath(fileUrl)
     }
     const parsedOptions = parseEngineOptions(options)
+    const eversion = Eversion.create()
+
     const server = ServerBun.create({
       ...parsedOptions.server,
+      eversion,
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
       logger: parsedOptions.general.logger,
       clients: [],
     })
-
-    const eversion = server.eversion
 
     const clients = parsedOptions.clients.map((clientOptions) => {
       const client = ClientBun.create({
@@ -107,15 +108,17 @@ export class Engine<TInitialized extends boolean = boolean> {
     }
 
     const intializedServer = await this.server.init()
-    await Promise.all(
+    const intializedClients = await Promise.all(
       this.clients.map(async (client) => {
         return await client.init({
-          eversion: intializedServer.eversion,
           preventClientDevServers: options?.preventClientDevServers,
         })
       }),
     )
-    this.eversion = intializedServer.eversion
+    await this.eversion.add(
+      ...(intializedServer.points ? [intializedServer.points] : []),
+      ...intializedClients.map((client) => client.points),
+    )
     this.initialized = true as never
 
     return this as Engine<true>
