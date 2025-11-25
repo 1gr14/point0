@@ -1,5 +1,3 @@
-not base but root, so it will be fixed in gereator how we find root point
-
 Point0.create<T>('self-name', ['site', 'expo'])
 
 elysia example
