@@ -116,4 +116,3 @@ export const root_lazy = {
   name: 'client',
   point: root.point,
 }
-

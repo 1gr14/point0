@@ -3,6 +3,7 @@ import { EversionRun } from './eversion-run.js'
 import type { Points } from './points.js'
 import type { EndPoint, EndPointType, InputParsed, PointName, PointsScope, RequiredCtx } from './types.js'
 import { parseUrl, type ParsedUrl } from './utils.js'
+import { Error0 } from '@devp0nt/error0'
 
 // TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
@@ -50,7 +51,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }): GetSuitableResult {
     // find exact match
     for (const points of this.scopedPoints) {
-      const suitablePoint = points.getSuitablePoint({ pageLocation, pointType, pointName, input })
+      const suitablePoint = points.getSuitablePoint({ pageLocation, pointType, pointName, input, scope })
       if (suitablePoint) {
         return {
           point: suitablePoint.point,
@@ -71,7 +72,7 @@ export class Eversion<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
       }
-      throw new Error(`No points found with scope "${scope}"`)
+      throw new Error0(`No points found with scope "${scope}"`, { httpStatus: 404 })
     }
 
     // find root by page location

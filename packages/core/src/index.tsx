@@ -632,6 +632,7 @@ export class Point0<
       _extractFns: [...this._extractFns, ...point._extractFns],
       _clientExtractFns: [...this._clientExtractFns, ...point._clientExtractFns],
       _scope: this._scope,
+      _root: this._root,
       _attachedTo: [],
     }) as TPoint
     return result
@@ -2995,9 +2996,10 @@ export class Point0<
 
     headers.set('Content-Type', 'application/json')
     const outputType = args[2] ?? (this._pointType === 'response' ? 'response' : 'data')
+    const scope = this._attachedTo.length === 0 ? this._scope : Point0.getPoints().scope
     const body = stringify({
       outputType,
-      scope: this._scope,
+      scope,
       pointInput: input,
       pointType: this._pointType,
       pointName: this._name,

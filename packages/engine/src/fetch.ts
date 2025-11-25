@@ -159,7 +159,7 @@ export const engineFetch = async ({
     })
   } catch (error) {
     logger.error(error, meta)
-    return toJsonErrorResponse(error, 500)
+    return toJsonErrorResponse(error)
   }
 }
 
