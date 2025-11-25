@@ -4,17 +4,16 @@ import { engine } from './engine.js'
 
 await engine.init()
 
-const app = new Elysia()
+new Elysia()
   .get('/check', () => 'Hello Elysia')
   .state('x', 1)
   .use(hmr(engine)) // hmr for clients that serves via native bun servers, if you use vite this plugin does not needed
-
   // just mount if requiredCtx has nothing except request
   // .mount('*', engine.fetch.bind(engine))
-
+  // if you have requiredCtx, do simething like:
   .all('*', async ({ request, store }) => {
     return await engine.fetch(request, store) // second arg is just requiredCtx which will be passed to points
   })
-  .listen(3000)
+  .listen(engine.server.port) // you can pick any port, so does not needed to use .server.port, but it is more readable
 
-console.info(`🚀 http://localhost:${app.server?.port}`)
+console.info(`🚀 http://localhost:${engine.server.port}`)
