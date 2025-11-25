@@ -1,4 +1,6 @@
 Point0.create<T>('self-name', ['site', 'expo'])
+in gereator attach them right in points to root of scope
+when fetch attached points we should use not this.scope, but scope from gloval store
 
 elysia example
 
@@ -99,6 +101,7 @@ check if superjson works correctly with query and mutation and eversion store
 ? use arrays in points files
 ? extract required ctx type from root points
 pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
+pruner: point0PruneScopePoints, totally remove points not related to the scope
 
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
@@ -126,6 +129,7 @@ npm @point0
 ------ v2 ------
 ----------------
 
+? .attachable(), like shared, but will not automatically attach to root, but can be attached manually
 ? route0 respect origin on match and try two clients with one server
 ? html template parsing by provided vars via ejs
 ? immutable ctx and data on extractFns calls

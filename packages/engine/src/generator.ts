@@ -191,6 +191,7 @@ export class FilesGenerator {
     )
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
+    console.log(collectedPoints)
     const prevPoints = [...this.points]
     const newPoints =
       errors.length === 0 ? collectedPoints : FilesGenerator.mergePointsSafely(this.points, collectedPoints)

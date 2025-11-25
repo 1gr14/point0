@@ -137,6 +137,7 @@ export class Point0<
   point: typeof this // this, needed for generator to collect points
 
   _base: BasePoint | undefined
+  _root: RootPoint | undefined
   _serverurl: string | undefined
   _baseurl: string | null | undefined
   _pointType: TPointType
@@ -146,6 +147,7 @@ export class Point0<
     ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
     : undefined
   _scope: PointsScope
+  _attachedTo: PointsScope[]
   _staticHeads: StaticHeadsCollection
   _defaultQueryOptions: ExtraUseQueryOptions | undefined
   _defaultInfiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined
@@ -239,6 +241,7 @@ export class Point0<
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint<any, TRequiredCtx> | undefined
+    _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
     _inputSchema?: TInputSchema
@@ -246,6 +249,7 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
     _scope: PointsScope
+    _attachedTo: PointsScope[]
     _wrapper?: WrapperComponentType | undefined
     _staticHeads?: StaticHeadsCollection
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
@@ -334,7 +338,9 @@ export class Point0<
   }) {
     this.point = this
     this._scope = props._scope
+    this._attachedTo = props._attachedTo
     this._base = props._base ?? undefined
+    this._root = props._root ?? undefined
     this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
     this._serverurl = props._serverurl ?? undefined
     this._baseurl = props._baseurl ?? undefined
@@ -427,8 +433,10 @@ export class Point0<
   >(overrides: {
     _pointType?: TPointType
     _scope?: PointsScope
+    _attachedTo?: PointsScope[]
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint<any, TRequiredCtx> | undefined
+    _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
     _inputSchema?: TInputSchema
@@ -554,7 +562,9 @@ export class Point0<
       TProps
     >({
       _scope: overrides._scope ?? this._scope,
+      _attachedTo: overrides._attachedTo ?? this._attachedTo,
       _base: overrides._base ?? this._base,
+      _root: overrides._root ?? this._root,
       _pointType: (overrides._pointType ?? this._pointType) as TPointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _serverurl: overrides._serverurl ?? this._serverurl,
@@ -622,6 +632,7 @@ export class Point0<
       _extractFns: [...this._extractFns, ...point._extractFns],
       _clientExtractFns: [...this._clientExtractFns, ...point._clientExtractFns],
       _scope: this._scope,
+      _attachedTo: [],
     }) as TPoint
     return result
   }
@@ -646,28 +657,47 @@ export class Point0<
 
   // base
 
-  static create<TRootPoint extends RootPoint | undefined = undefined>(
+  static create(
     scope: string,
   ): Point0<
     'middleware',
     'root',
-    TRootPoint extends RootPoint ? TRootPoint['Infer']['RequiredCtx'] : UndefinedCtx,
-    TRootPoint extends RootPoint ? TRootPoint['Infer']['Ctx'] : EmptyCtx,
-    TRootPoint extends RootPoint ? TRootPoint['Infer']['Data'] : UndefinedData,
-    TRootPoint extends RootPoint ? TRootPoint['Infer']['ClientData'] : UndefinedData,
+    UndefinedCtx,
+    EmptyCtx,
+    UndefinedData,
+    UndefinedData,
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedResponseOutput,
     UndefinedQueryResultType,
     UndefinedProps
-  > {
+  >
+  static create<TRootPoint extends RootPoint>(
+    scope: string,
+    attachedTo: PointsScope[],
+  ): Point0<
+    'middleware',
+    'root',
+    TRootPoint['Infer']['RequiredCtx'],
+    TRootPoint['Infer']['Ctx'],
+    TRootPoint['Infer']['Data'],
+    TRootPoint['Infer']['ClientData'],
+    UndefinedRoute,
+    UndefinedRoute,
+    UndefinedInputSchema,
+    UndefinedResponseOutput,
+    UndefinedQueryResultType,
+    UndefinedProps
+  >
+  static create(scope: string, attachedTo?: PointsScope[]) {
     return new Point0({
       _pointType: 'middleware',
       _scope: scope,
+      _attachedTo: attachedTo ?? [],
       _letsEndPointType: 'root',
       _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
-    })
+    }) as never
   }
 
   // middlewares
@@ -702,6 +732,7 @@ export class Point0<
     >({
       _pointType: 'root',
       _base: this as never as BasePoint<any, TRequiredCtx>,
+      _root: this as never as RootPoint,
       _name: this._scope,
       _letsEndPointType: undefined,
     })

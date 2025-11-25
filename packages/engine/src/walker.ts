@@ -157,7 +157,11 @@ export class Walker {
                   } = this.detectPointTypeAndNameFromInit({ fileAbs, node: d.init })
                   errors.push(...detectPointTypeAndNameFromInitErrors)
                   if (pointType && pointName) {
-                    const { scope, errors: scopeErrors } = await this.resolveScope({
+                    const {
+                      scope,
+                      attachedTo,
+                      errors: scopeErrors,
+                    } = await this.resolveScope({
                       fileAbs,
                       baseIdentifier: id.name,
                     })
@@ -192,6 +196,7 @@ export class Walker {
                       route,
                       layouts,
                       scope,
+                      attachedTo,
                     }
                   }
                 }
@@ -212,7 +217,11 @@ export class Walker {
             } = this.detectPointTypeAndNameFromInit({ fileAbs, node: decl })
             errors.push(...detectPointTypeAndNameFromInitErrors)
             if (pointType && pointName) {
-              const { scope, errors: scopeErrors } = await this.resolveScope({ fileAbs, baseIdentifier: 'default' })
+              const {
+                scope,
+                attachedTo,
+                errors: scopeErrors,
+              } = await this.resolveScope({ fileAbs, baseIdentifier: 'default' })
               errors.push(...scopeErrors)
               if (!scope) {
                 return null
@@ -245,6 +254,7 @@ export class Walker {
                 route,
                 layouts,
                 scope,
+                attachedTo,
               }
             }
             return null
@@ -1416,7 +1426,7 @@ export class Walker {
       baseIdentifier: string
     },
     _seen = new Set<string>(),
-  ): Promise<{ scope: string | undefined; errors: unknown[] }> {
+  ): Promise<{ scope: string | undefined; attachedTo: PointsScope[]; errors: unknown[] }> {
     const errors: unknown[] = []
 
     // cycle guard
@@ -1424,6 +1434,7 @@ export class Walker {
     if (_seen.has(seenKey)) {
       return {
         scope: undefined,
+        attachedTo: [],
         errors: [new Error(`circular scope resolution for ${seenKey}`)],
       }
     }
@@ -1454,7 +1465,7 @@ export class Walker {
       }
     } catch (e) {
       console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)}: parse failed: ${(e as Error).message}`)
-      return { scope: undefined, errors: [...errors, e] }
+      return { scope: undefined, attachedTo: [], errors: [...errors, e] }
     }
 
     //
@@ -1492,6 +1503,7 @@ export class Walker {
       if (!parentIdentifier || parentIdentifier === 'Point0') {
         return {
           scope: undefined,
+          attachedTo: [],
           errors: [...errors, new Error(`scope not found for ${baseIdentifier} in ${fileAbs}`)],
         }
       }
@@ -1504,6 +1516,7 @@ export class Walker {
       if (!parentAbs) {
         return {
           scope: undefined,
+          attachedTo: [],
           errors: [...errors, new Error(`parent ${parentIdentifier} path not found: ${parentImportPath}`)],
         }
       }
@@ -1521,9 +1534,9 @@ export class Walker {
     //
     // 2) walk through the chain to find Point0.create
     //
-    const scope = this.extractScopeFromChain({ fileAbs, node: initNode })
-    if (scope) {
-      return { scope, errors }
+    const scopeFormChain = this.extractScopeFromChain({ fileAbs, node: initNode })
+    if (scopeFormChain) {
+      return { scope: scopeFormChain.scope, attachedTo: scopeFormChain.attachedTo, errors }
     }
 
     //
@@ -1539,6 +1552,7 @@ export class Walker {
     if (!parentIdentifier || parentIdentifier === 'Point0') {
       return {
         scope: undefined,
+        attachedTo: [],
         errors: [...errors, new Error(`scope not found for ${baseIdentifier} in ${fileAbs}`)],
       }
     }
@@ -1551,6 +1565,7 @@ export class Walker {
     if (!parentAbs) {
       return {
         scope: undefined,
+        attachedTo: [],
         errors: [...errors, new Error(`parent ${parentIdentifier} path not found: ${parentImportPath}`)],
       }
     }
@@ -1574,7 +1589,7 @@ export class Walker {
   }: {
     fileAbs: string
     node: Expression | Declaration | null | undefined
-  }): string | undefined {
+  }): { scope: PointsScope; attachedTo: PointsScope[] } | undefined {
     if (node?.type !== 'CallExpression') {
       return undefined
     }
@@ -1611,10 +1626,19 @@ export class Walker {
     const method = prop.name
     if (!['create'].includes(method)) return undefined
 
-    // scope should be the first string arg
+    // scope should be the first string arg i case of Point0.create<typeof source>('client')
+    // and it can have as second arg array of scopes like Point0.create<typeof source>('client', ['site', 'expo'])
     const firstArg = rootCall.arguments.at(0)
+    const secondArg = rootCall.arguments.at(1)
     if (firstArg?.type === 'StringLiteral') {
-      return firstArg.value
+      const scope = firstArg.value
+      if (secondArg?.type === 'ArrayExpression') {
+        const scopes = secondArg.elements
+          .map((e) => (e?.type === 'StringLiteral' ? e.value : undefined))
+          .filter((e) => e !== undefined)
+        return { scope, attachedTo: scopes }
+      }
+      return { scope, attachedTo: [] }
     }
 
     // fallback – try to extract from template literal or other string types
@@ -1783,7 +1807,8 @@ export class Walker {
 }
 
 export type CollectedPoint = {
-  scope: string
+  scope: PointsScope
+  attachedTo: PointsScope[]
   type: EndPointType
   name: PointName
   exportName: string
