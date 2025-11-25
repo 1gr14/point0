@@ -4,6 +4,8 @@ Point0.create<T>('self-name', ['site', 'expo'])
 
 elysia example
 
+try fix hmr again
+
 --------------------------
 ------ before start0 -----
 --------------------------
@@ -85,7 +87,6 @@ throw error on Points.create() on cleint with different scope that was before
 ? simplify renderer
 Replace all node methods with native bun methods, including watcher
 on fetch and prefetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
-try fix hmr again
 analyze why client bundle so big in examples
 check bun pruner, and vite pruner creates correct sourcemaps
 ? router export function getCurrentLocation()

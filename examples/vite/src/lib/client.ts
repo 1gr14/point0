@@ -22,6 +22,6 @@ export const client = Point0.create('client')
     titleTemplate: '%s | IdeaNick',
     htmlAttrs: { lang: 'en' },
   })
-  .base()
+  .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

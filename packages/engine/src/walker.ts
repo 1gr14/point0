@@ -153,7 +153,6 @@ export class Walker {
                   const {
                     pointType,
                     pointName,
-                    root,
                     errors: detectPointTypeAndNameFromInitErrors,
                   } = this.detectPointTypeAndNameFromInit({ fileAbs, node: d.init })
                   errors.push(...detectPointTypeAndNameFromInitErrors)
@@ -186,7 +185,6 @@ export class Walker {
                     errors.push(...layoutsErrors)
 
                     return {
-                      root,
                       type: pointType,
                       name: pointName,
                       exportName: id.name,
@@ -210,7 +208,6 @@ export class Walker {
             const {
               pointType,
               pointName,
-              root,
               errors: detectPointTypeAndNameFromInitErrors,
             } = this.detectPointTypeAndNameFromInit({ fileAbs, node: decl })
             errors.push(...detectPointTypeAndNameFromInitErrors)
@@ -242,7 +239,6 @@ export class Walker {
 
               return {
                 exportName: 'default',
-                root,
                 type: pointType,
                 name: pointName,
                 fileAbs,
@@ -653,42 +649,40 @@ export class Walker {
   }): {
     pointType: EndPointType | null
     pointName: string | null
-    root: boolean
     errors: unknown[]
   } {
     // normal point0-style chain with .lets('page','name') and ending in .page()/.layout()/...
     const errors: unknown[] = []
     if (node?.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
-      return { pointType: null, pointName: null, root: false, errors }
+      return { pointType: null, pointName: null, errors }
     }
 
     // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
     const lastProp = node.callee.property
     const lastMethod = lastProp.type === 'Identifier' ? lastProp.name : null
     const pointType = Walker.pointMethodToPointType(lastMethod)
-    if (!pointType) return { pointType: null, pointName: null, root: false, errors }
+    if (!pointType) return { pointType: null, pointName: null, errors }
 
     // Find .lets('type','name') anywhere earlier in the chain
     const lets = this.findLetsArgsInChain(node)
     if (!lets) {
-      const point0RootBaseResult = this.detectPoint0RootBaseFromChain({ fileAbs, node })
-      errors.push(...point0RootBaseResult.errors)
-      if (point0RootBaseResult.pointType && point0RootBaseResult.pointName) {
+      const point0RootResult = this.detectPoint0RootFromChain({ fileAbs, node })
+      errors.push(...point0RootResult.errors)
+      if (point0RootResult.pointType && point0RootResult.pointName) {
         return {
-          pointType: point0RootBaseResult.pointType,
-          pointName: point0RootBaseResult.pointName,
-          root: point0RootBaseResult.root,
+          pointType: point0RootResult.pointType,
+          pointName: point0RootResult.pointName,
           errors,
         }
       }
 
-      return { pointType: null, pointName: null, root: false, errors }
+      return { pointType: null, pointName: null, errors }
     }
 
     const { typeArg, nameArg } = lets
-    if (typeArg !== pointType) return { pointType: null, pointName: null, root: false, errors }
+    if (typeArg !== pointType) return { pointType: null, pointName: null, errors }
 
-    return { pointType, pointName: nameArg, root: false, errors }
+    return { pointType, pointName: nameArg, errors }
   }
 
   /**
@@ -706,20 +700,19 @@ export class Walker {
    * If we see `.base()` at the end and the root is Point0.create(<name>),
    * then it's a "base" point and its name is the first string arg of the root call.
    */
-  private detectPoint0RootBaseFromChain({ fileAbs, node }: { fileAbs: string; node: CallExpression }): {
+  private detectPoint0RootFromChain({ fileAbs, node }: { fileAbs: string; node: CallExpression }): {
     pointType: EndPointType | null
     pointName: string | null
-    root: boolean
     errors: unknown[]
   } {
     // must end with .base()
-    // if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, root: false, errors: [] }
+    // if (node?.type !== 'CallExpression') return { pointType: null, pointName: null, errors: [] }
     if (node.callee.type !== 'MemberExpression') {
-      return { pointType: null, pointName: null, root: false, errors: [] }
+      return { pointType: null, pointName: null, errors: [] }
     }
     const lastProp = node.callee.property
-    if (lastProp.type !== 'Identifier' || lastProp.name !== 'base') {
-      return { pointType: null, pointName: null, root: false, errors: [] }
+    if (lastProp.type !== 'Identifier' || lastProp.name !== 'root') {
+      return { pointType: null, pointName: null, errors: [] }
     }
 
     // walk LEFT through the chain to find the root call:
@@ -742,38 +735,34 @@ export class Walker {
       }
     }
 
-    if (!rootCall) return { pointType: null, pointName: null, root: false, errors: [] }
-    if (rootCall.callee.type !== 'MemberExpression')
-      return { pointType: null, pointName: null, root: false, errors: [] }
+    if (!rootCall) return { pointType: null, pointName: null, errors: [] }
+    if (rootCall.callee.type !== 'MemberExpression') return { pointType: null, pointName: null, errors: [] }
 
     const obj = rootCall.callee.object
     const prop = rootCall.callee.property
 
     // must be Point0.create
-    if (obj.type !== 'Identifier' || obj.name !== 'Point0')
-      return { pointType: null, pointName: null, root: false, errors: [] }
-    if (prop.type !== 'Identifier') return { pointType: null, pointName: null, root: false, errors: [] }
+    if (obj.type !== 'Identifier' || obj.name !== 'Point0') return { pointType: null, pointName: null, errors: [] }
+    if (prop.type !== 'Identifier') return { pointType: null, pointName: null, errors: [] }
     const method = prop.name
-    if (!['create'].includes(method)) return { pointType: null, pointName: null, root: false, errors: [] }
+    if (!['create'].includes(method)) return { pointType: null, pointName: null, errors: [] }
 
     // name should be the first string arg
     const firstArg = rootCall.arguments.at(0)
     if (firstArg?.type === 'StringLiteral') {
       return {
-        pointType: 'base',
+        pointType: 'root',
         pointName: firstArg.value,
-        root: true,
         errors: [],
       }
     }
 
     // fallback – it's still a root base, just no explicit name
-    console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} root base name not found`)
+    console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} root name not found`)
     return {
       pointType: null,
       pointName: null,
-      root: true,
-      errors: [new Error('root base name not found')],
+      errors: [new Error('root name not found')],
     }
   }
 
@@ -1795,7 +1784,6 @@ export class Walker {
 
 export type CollectedPoint = {
   scope: string
-  root: boolean
   type: EndPointType
   name: PointName
   exportName: string
@@ -1814,6 +1802,7 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   response: 'response',
   provider: 'provider',
   base: 'base',
+  root: 'root',
 }
 export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fromEntries(
   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),

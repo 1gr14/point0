@@ -83,6 +83,7 @@ import type {
   RequiredCtx,
   ResponseFn,
   ResponseOutput,
+  RootPoint,
   RouteDefinition,
   StaticHeadsCollection,
   TitleFn,
@@ -613,7 +614,7 @@ export class Point0<
   }
 
   // called on on root points
-  _attach<TPoint extends AnyPoint>(point: TPoint): TPoint {
+  attach<TPoint extends AnyPoint>(point: TPoint): TPoint {
     const result = this._continue({
       // eslint-disable-next-line @typescript-eslint/no-misused-spread
       ...point,
@@ -627,6 +628,7 @@ export class Point0<
 
   static _isEndPointType(pointType: PointType): boolean {
     return (
+      pointType === 'root' ||
       pointType === 'base' ||
       pointType === 'page' ||
       pointType === 'layout' ||
@@ -644,15 +646,15 @@ export class Point0<
 
   // base
 
-  static create<TBasePoint extends BasePoint | undefined = undefined>(
+  static create<TRootPoint extends RootPoint | undefined = undefined>(
     scope: string,
   ): Point0<
     'middleware',
-    'base',
-    TBasePoint extends BasePoint ? TBasePoint['Infer']['RequiredCtx'] : UndefinedCtx,
-    TBasePoint extends BasePoint ? TBasePoint['Infer']['Ctx'] : EmptyCtx,
-    TBasePoint extends BasePoint ? TBasePoint['Infer']['Data'] : UndefinedData,
-    TBasePoint extends BasePoint ? TBasePoint['Infer']['ClientData'] : UndefinedData,
+    'root',
+    TRootPoint extends RootPoint ? TRootPoint['Infer']['RequiredCtx'] : UndefinedCtx,
+    TRootPoint extends RootPoint ? TRootPoint['Infer']['Ctx'] : EmptyCtx,
+    TRootPoint extends RootPoint ? TRootPoint['Infer']['Data'] : UndefinedData,
+    TRootPoint extends RootPoint ? TRootPoint['Infer']['ClientData'] : UndefinedData,
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
@@ -663,12 +665,47 @@ export class Point0<
     return new Point0({
       _pointType: 'middleware',
       _scope: scope,
-      _letsEndPointType: 'base',
+      _letsEndPointType: 'root',
       _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
     })
   }
 
   // middlewares
+
+  root(): Point0<
+    'root',
+    undefined,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'root',
+      undefined,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'root',
+      _base: this as never as BasePoint<any, TRequiredCtx>,
+      _name: this._scope,
+      _letsEndPointType: undefined,
+    })
+  }
 
   base(): Point0<
     'base',
@@ -702,6 +739,7 @@ export class Point0<
       _base: this as never as BasePoint<any, TRequiredCtx>,
       _name: this._name ?? this._scope,
       // _letsEndPointType: undefined,
+      // it is mea, that we can mark as base any other point type like layout, so we can restore loading, error, drom it not from higher base
       _letsEndPointType: (this._letsEndPointType === 'base'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,

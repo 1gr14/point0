@@ -83,7 +83,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     readyPoints: TReadyPointsModule,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): Points<true, TReadyPointsModule['root']['Infer']['RequiredCtx']> => {
+  ): Points<true, TReadyPointsModule['root']['point']['Infer']['RequiredCtx']> => {
     const { root, ...rest } = readyPoints
     const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
     const rawPoints = Points.rawToReadyPointsCollection(readyPointsWithoutRoot)
@@ -91,9 +91,9 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     const routes = Points.toRoutes({ points: routedPoints })
     const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
     const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<true, TReadyPointsModule['root']['Infer']['RequiredCtx']>({
-      root,
-      scope: root._scope,
+    return new Points<true, TReadyPointsModule['root']['point']['Infer']['RequiredCtx']>({
+      root: root.point,
+      scope: root.point._scope,
       collection: routedPoints,
       routes,
       ready: true,
@@ -143,9 +143,9 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
   ): Points<
     boolean,
     TPoints extends Points
-      ? TPoints['root']['Infer']['RequiredCtx']
+      ? TPoints['root']['point']['Infer']['RequiredCtx']
       : TPoints extends ReadyPointsModule
-        ? TPoints['root']['Infer']['RequiredCtx']
+        ? TPoints['root']['point']['Infer']['RequiredCtx']
         : TPoints extends LazyPointsModule
           ? TPoints['root_lazy']['point']['Infer']['RequiredCtx']
           : RequiredCtx
@@ -234,7 +234,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
   }
 
   _getRootPoint(): RootPoint | undefined {
-    return this.collection.find((record) => record.root)?.point as RootPoint | undefined
+    return this.collection.find((record) => record.type === 'root')?.point as RootPoint | undefined
   }
 
   private static isLazyPointsModule(points: any): points is LazyPointsModule {
@@ -339,7 +339,6 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
         route: record.route ? Route0.from(record.route) : undefined,
         point: record.point,
         layouts: record.layouts ?? [],
-        root: record.root,
         Component:
           record.type === 'layout'
             ? typeof point === 'function'
@@ -426,7 +425,6 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
         }
         const recordLayouts = record.layouts
         return {
-          root: record.root,
           ready: true,
           point,
           route,
@@ -780,7 +778,6 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
 }
 
 export type LazyPointsCollectionRecord = {
-  root?: boolean
   type: EndPointType
   name: PointName
   route?: string | undefined
@@ -789,7 +786,6 @@ export type LazyPointsCollectionRecord = {
 }
 export type LazyPointsCollection = LazyPointsCollectionRecord[]
 export type ReadyPointsCollectionRecord = {
-  root?: boolean
   type: EndPointType
   name: PointName
   route?: string | undefined
@@ -799,7 +795,6 @@ export type ReadyPointsCollectionRecord = {
 }
 export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
 export type LazyRoutedPointsCollectionRecord = {
-  root: boolean
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
@@ -809,7 +804,6 @@ export type LazyRoutedPointsCollectionRecord = {
 }
 export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
 export type ReadyRoutedPointsCollectionRecord = {
-  root: boolean
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
@@ -821,9 +815,9 @@ export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
 
 export type LazyPointsModule = {
-  root_lazy: { point: RootPoint; type: 'base'; root: true; name: string }
+  root_lazy: { point: RootPoint; type: 'root'; name: string }
 } & Record<string, LazyPointsCollectionRecord>
-export type ReadyPointsModule = { root: RootPoint } & Record<string, { point: EndPoint }>
+export type ReadyPointsModule = { root: { point: RootPoint } } & Record<string, { point: EndPoint }>
 
 export type PointsModuleType = 'ready' | 'lazy'
 

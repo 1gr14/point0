@@ -36,7 +36,7 @@ describe('Point0', () => {
     expectTypeOf(server).toEqualTypeOf<
       Point0<
         'middleware',
-        'base',
+        'root',
         UndefinedCtx,
         EmptyCtx,
         UndefinedData,
@@ -63,7 +63,7 @@ describe('Point0', () => {
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
         'middleware',
-        'base',
+        'root',
         UndefinedCtx,
         { a: number; b: number },
         UndefinedData,
@@ -89,7 +89,7 @@ describe('Point0', () => {
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
         'middleware',
-        'base',
+        'root',
         undefined,
         { a: number; b: number; c: number },
         undefined,
@@ -116,12 +116,12 @@ describe('Point0', () => {
         a: 1,
         b: 2,
       }))
-      .base()
+      .root()
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
-        'base',
+        'root',
         undefined,
         undefined,
         { a: number; b: number },
@@ -143,12 +143,12 @@ describe('Point0', () => {
         a: 3,
         c: 4,
       })
-      .base()
+      .root()
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
-        'base',
+        'root',
         undefined,
         undefined,
         { a: number; c: number },
@@ -168,23 +168,23 @@ describe('Point0', () => {
     // not modified original server
     expect(server._extractFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
-    const clientPointBase02 = Point0.create<typeof server2>('client').base()
+    const clientPointBase02 = Point0.create<typeof server2>('client').root()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent)
     // const eversion2 = Eversion.create()
     const run = await EversionRun.create({
-      points: Points.ready({ root: server2._attach(clientPointBase02), page: server2._attach(clientPoint02.point) }),
+      points: Points.ready({ root: server2.attach(clientPointBase02), page: server2.attach(clientPoint02.point) }),
       pageLocation: Route0.getLocation('/'),
       currentLocation: Route0.getLocation('/'),
       requiredCtx: undefined,
     })
-    // const run = await Eversion.create(Points.ready({ root: server2._attach(clientPointBase02) })).{
+    // const run = await Eversion.create(Points.ready({ root: server2.attach(clientPointBase02) })).{
     //   pageLocation: Route0.getLocation('/'),
     //   currentLocation: Route0.getLocation('/'),
     //   requiredCtx: undefined,
     // })
     // const x: AnyPoint = clientPoint02.point
     // x._route.get()
-    expect(await run.extract({ point: server2._attach(clientPoint02.point), input: {} })).toEqual({
+    expect(await run.extract({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -205,11 +205,11 @@ describe('Point0', () => {
         a: 1,
         b: 2,
       }))
-      .base()
+      .root()
     expect(server1).toBeInstanceOf(Point0)
     expectTypeOf(server1).toEqualTypeOf<
       Point0<
-        'base',
+        'root',
         undefined,
         undefined,
         EmptyCtx,
@@ -232,11 +232,11 @@ describe('Point0', () => {
         a: 3,
         c: 4,
       }))
-      .base()
+      .root()
     expect(server2).toBeInstanceOf(Point0)
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
-        'base',
+        'root',
         undefined,
         undefined,
         EmptyCtx,
@@ -265,9 +265,9 @@ describe('Point0', () => {
         a: 1,
         b: 2,
       }))
-      .base()
+      .root()
     const pageComponent = () => <div>Hello</div>
-    const clientPointBase01 = Point0.create<typeof server1>('client').base()
+    const clientPointBase01 = Point0.create<typeof server1>('client').root()
     const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     expectTypeOf<(typeof clientPoint01)['Infer']['QueryResultType']>().toEqualTypeOf<undefined>()
 
@@ -302,12 +302,12 @@ describe('Point0', () => {
     //   requiredCtx: undefined,
     // })
     const run = await EversionRun.create({
-      points: Points.ready({ root: server1._attach(clientPointBase01), page: server1._attach(clientPoint01.point) }),
+      points: Points.ready({ root: server1.attach(clientPointBase01), page: server1.attach(clientPoint01.point) }),
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: undefined,
     })
-    expect(await run.extract({ point: server1._attach(clientPoint01.point), input: {} })).toEqual({
+    expect(await run.extract({ point: server1.attach(clientPoint01.point), input: {} })).toEqual({
       ctx: {
         a: 1,
         b: 2,
@@ -318,15 +318,16 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server2 = server1
-      .lets('base', 'server2')
-      .ctx(({ ctx }) => ({
-        ...ctx,
-        a: 3,
-        c: 4,
-      }))
-      .base()
-    const clientPointBase02 = Point0.create<typeof server2>('client').base()
+    const server2 = server1.attach(
+      Point0.create<typeof server1>('server2')
+        .ctx(({ ctx }) => ({
+          ...ctx,
+          a: 3,
+          c: 4,
+        }))
+        .root(),
+    )
+    const clientPointBase02 = Point0.create<typeof server2>('client').root()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     // const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     // const eversion2Connection = await eversion2.connect({
@@ -338,12 +339,12 @@ describe('Point0', () => {
     //   requiredCtx: undefined,
     // })
     const run2 = await EversionRun.create({
-      points: Points.ready({ root: server2._attach(clientPointBase02), page: server2._attach(clientPoint02.point) }),
+      points: Points.ready({ root: server2.attach(clientPointBase02), page: server2.attach(clientPoint02.point) }),
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: undefined,
     })
-    expect(await run2.extract({ point: server2._attach(clientPoint02.point), input: {} })).toEqual({
+    expect(await run2.extract({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -355,13 +356,14 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server3 = server1
-      .lets('base', 'server3')
-      .ctx(({ ctx }) => ({
-        c: 5,
-      }))
-      .base()
-    const clientPointBase03 = Point0.create<typeof server3>('client').base()
+    const server3 = server1.attach(
+      Point0.create<typeof server1>('server3')
+        .ctx(({ ctx }) => ({
+          c: 5,
+        }))
+        .root(),
+    )
+    const clientPointBase03 = Point0.create<typeof server3>('client').root()
     const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     // const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     // const eversion3Connection = await eversion3.connect({
@@ -373,14 +375,14 @@ describe('Point0', () => {
     //   requiredCtx: undefined,
     // })
     const run3 = await EversionRun.create({
-      points: Points.ready({ root: server3._attach(clientPointBase03), page: server3._attach(clientPoint03.point) }),
+      points: Points.ready({ root: server3.attach(clientPointBase03), page: server3.attach(clientPoint03.point) }),
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: undefined,
     })
     expect(
       await run3.extract({
-        point: server3._attach(clientPoint03.point),
+        point: server3.attach(clientPoint03.point),
         input: {},
       }),
     ).toEqual({
@@ -396,18 +398,19 @@ describe('Point0', () => {
   })
 
   it('extract ctx with required ctx input', async () => {
-    const server = Point0.create('server').requireCtx<{ r: string }>().base()
+    const server = Point0.create('server').requireCtx<{ r: string }>().root()
     const url = '/z/x/c'
-    const server1 = server
-      .lets('base', 'server1')
-      .ctx(({ ctx }) => ({
-        ...ctx,
-        a: 1,
-        b: 2,
-      }))
-      .base()
+    const server1 = server.attach(
+      Point0.create<typeof server>('server1')
+        .ctx(({ ctx }) => ({
+          ...ctx,
+          a: 1,
+          b: 2,
+        }))
+        .root(),
+    )
     const pageComponent = () => <div>Hello</div>
-    const clientPointBase01 = Point0.create<typeof server1>('client').base()
+    const clientPointBase01 = Point0.create<typeof server1>('client').root()
     const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     // const eversion1 = await Eversion.create({ points: Points.ready({ root: server1 }) })
     // const eversion1Connection = await eversion1.connect({
@@ -419,14 +422,14 @@ describe('Point0', () => {
     //   requiredCtx: { r: 'str' },
     // })
     const run1 = await EversionRun.create({
-      points: Points.ready({ root: server1._attach(clientPointBase01), page: server1._attach(clientPoint01.point) }),
+      points: Points.ready({ root: server1.attach(clientPointBase01), page: server1.attach(clientPoint01.point) }),
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
     expect(
       await run1.extract({
-        point: server1._attach(clientPoint01.point),
+        point: server1.attach(clientPoint01.point),
         input: {},
       }),
     ).toEqual({
@@ -441,15 +444,16 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server2 = server1
-      .lets('base', 'server2')
-      .ctx(({ ctx }) => ({
-        ...ctx,
-        a: 3,
-        c: 4,
-      }))
-      .base()
-    const clientPointBase02 = Point0.create<typeof server2>('client').base()
+    const server2 = server1.attach(
+      Point0.create<typeof server1>('server2')
+        .ctx(({ ctx }) => ({
+          ...ctx,
+          a: 3,
+          c: 4,
+        }))
+        .root(),
+    )
+    const clientPointBase02 = Point0.create<typeof server2>('client').root()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     // const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     // const eversion2Connection = await eversion2.connect({
@@ -461,12 +465,12 @@ describe('Point0', () => {
     //   requiredCtx: { r: 'str' },
     // })
     const run2 = await EversionRun.create({
-      points: Points.ready({ root: server2._attach(clientPointBase02), page: server2._attach(clientPoint02.point) }),
+      points: Points.ready({ root: server2.attach(clientPointBase02), page: server2.attach(clientPoint02.point) }),
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
-    expect(await run2.extract({ point: server2._attach(clientPoint02.point), input: {} })).toEqual({
+    expect(await run2.extract({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
       ctx: {
         r: 'str',
         a: 3,
@@ -479,14 +483,15 @@ describe('Point0', () => {
       status: 200,
       response: undefined,
     })
-    const server3 = server1
-      .lets('base', 'server3')
-      .ctx(({ ctx }) => ({
-        r: ctx.r,
-        c: 5,
-      }))
-      .base()
-    const clientPointBase03 = Point0.create<typeof server3>('client').base()
+    const server3 = server1.attach(
+      Point0.create<typeof server1>('server3')
+        .ctx(({ ctx }) => ({
+          r: ctx.r,
+          c: 5,
+        }))
+        .root(),
+    )
+    const clientPointBase03 = Point0.create<typeof server3>('client').root()
     const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
     // const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     // const eversion3Connection = await eversion3.connect({
@@ -498,12 +503,12 @@ describe('Point0', () => {
     //   requiredCtx: { r: 'str' },
     // })
     const run3 = await EversionRun.create({
-      points: Points.ready({ root: server3._attach(clientPointBase03), page: server3._attach(clientPoint03.point) }),
+      points: Points.ready({ root: server3.attach(clientPointBase03), page: server3.attach(clientPoint03.point) }),
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
-    expect(await run3.extract({ point: server3._attach(clientPoint03.point), input: {} })).toEqual({
+    expect(await run3.extract({ point: server3.attach(clientPoint03.point), input: {} })).toEqual({
       ctx: {
         r: 'str',
         c: 5,
@@ -541,13 +546,13 @@ describe('Point0', () => {
 
   it('creates an empty instance', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const server = Point0.create('server').base()
+    const server = Point0.create('server').root()
     const clientPoint0 = Point0.create<typeof server>('client')
     expect(clientPoint0).toBeInstanceOf(Point0)
     expectTypeOf(clientPoint0).toEqualTypeOf<
       Point0<
         'middleware',
-        'base',
+        'root',
         UndefinedCtx,
         EmptyCtx,
         undefined,
@@ -575,7 +580,7 @@ describe('Point0', () => {
       .loader(({ data, ctx }) => ({
         preloadedServer: 10,
       }))
-      .base()
+      .root()
     const clientPoint0 = Point0.create<typeof server>('client')
       // ctx is client only in ctx fns
       .ctx(({ ctx }) => ({

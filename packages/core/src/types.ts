@@ -109,6 +109,7 @@ export type Infer<
 // points types
 
 export type PointType =
+  | 'root'
   | 'base'
   | 'middleware'
   | 'page'
@@ -180,94 +181,31 @@ export type BasePoint<
   TProps
 >
 
-export type RootSourcePoint<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TCtx extends Ctx = any,
-  TData extends Data | UndefinedData = any,
-  TClientData extends Data | UndefinedData = any,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-> = AnyPoint<
-  'base',
-  UndefinedEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
->
-
-export type RootConnectedPoint<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = any,
-  TClientData extends Data | UndefinedData = any,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-> = AnyPoint<
-  'base',
-  UndefinedEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
->
-
 export type RootPoint<
-  TRequiredCtx extends RequiredCtx = any,
+  TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends UndefinedResponseOutput = UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-> =
-  | RootSourcePoint<
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >
-  | RootConnectedPoint<
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >
+> = AnyPoint<
+  'root',
+  UndefinedEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
 
 export type PagePoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,

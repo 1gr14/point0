@@ -369,20 +369,21 @@ export class FilesGenerator {
       const importPath = FilesGenerator.toRelativeJsImportPath(outputAbs, point.fileAbs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const hash = FilesGenerator.hash(point)
-      const renamedExportName = point.root
-        ? 'root'
-        : point.exportName === 'default'
-          ? `unnamed_${hash}`
-          : `${point.exportName}_${hash}`
+      const renamedExportName =
+        point.type === 'root'
+          ? 'root'
+          : point.exportName === 'default'
+            ? `unnamed_${hash}`
+            : `${point.exportName}_${hash}`
       const originalExportName = point.exportName === 'default' ? 'default' : point.exportName
-      const newItem = { originalExportName, renamedExportName, root: point.root }
+      const newItem = { originalExportName, renamedExportName, root: point.type === 'root' }
       if (importPathAndExportNames) {
         importPathAndExportNames.exports.push(newItem)
-        if (point.root) {
+        if (point.type === 'root') {
           importPathAndExportNames.hasRoot = true
         }
       } else {
-        importPathsAndExportNames.push({ importPath, exports: [newItem], hasRoot: point.root })
+        importPathsAndExportNames.push({ importPath, exports: [newItem], hasRoot: point.type === 'root' })
       }
       return {
         ...point,
@@ -425,7 +426,7 @@ export class FilesGenerator {
     // lines.push(...this.emitEversionStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points'`)
 
-    if (!points.find((p) => p.root)) {
+    if (!points.find((p) => p.type === 'root')) {
       throw new Error(`Root point not found for target ${target.scope}`)
     }
 
@@ -449,10 +450,7 @@ export class FilesGenerator {
         //   continue
         // }
         lines.push(`export const ${point.renamedExportName}_lazy = {`)
-        if (point.root) {
-          lines.push(`  root: true as const,`)
-        }
-        lines.push(`  type: '${point.type}'${point.root ? ' as const' : ''},`)
+        lines.push(`  type: '${point.type}'${point.type === 'root' ? ' as const' : ''},`)
         lines.push(`  name: '${point.name}',`)
         if (point.route) {
           lines.push(`  route: '${point.route.definition}',`)
@@ -466,7 +464,7 @@ export class FilesGenerator {
         }
         // const exportNameSuffix = point.type === 'component' ? '.point' : ''
         const exportNameSuffix = '.point'
-        if (point.root) {
+        if (point.type === 'root') {
           lines.push(`  point: root.point,`)
 
           lines.push(`}`)
@@ -494,7 +492,7 @@ export class FilesGenerator {
 
     const points = this.points.filter((p) => p.scope === target.scope)
 
-    if (!points.find((p) => p.root)) {
+    if (!points.find((p) => p.type === 'root')) {
       throw new Error(`Root point not found for target ${target.scope}`)
     }
 
