@@ -75,6 +75,12 @@ export const BestIdeaComponent_d4fc40o18s_lazy = {
   point: async () => (await import('../pages/home.js')).BestIdeaComponent.point,
 } as LazyPointsCollectionRecord
 
+export const ExternalHelperComponent2_n833jxaakp_lazy = {
+  type: 'component',
+  name: 'externalHelper2',
+  point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent2.point,
+} as LazyPointsCollectionRecord
+
 export const createIdeaMutation_8yx92ovk3m_lazy = {
   type: 'mutation',
   name: 'createIdea',

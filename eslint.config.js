@@ -12,6 +12,7 @@ export default defineConfig([
       '**/dist/**',
       '**/dist-test/**',
       '**/dist-npm/**',
+      '**/packages-dist-npm/**',
       '**/.cache/**',
       '**/.husky/**',
       '**/.git/**',

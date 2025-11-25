@@ -6,7 +6,7 @@ import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
-import { ExternalHelperComponent } from './home.helper.js'
+import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
 // import icon from '../assets/icon.svg'
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
@@ -90,6 +90,7 @@ export default generalLayout
         <HelperComponent />
         <hr />
         <ExternalHelperComponent />
+        <ExternalHelperComponent2 />
         <hr />
         <p>Something random: {someRandom.get()}</p>
         <p>Something date: {someDate.get().getTime()}</p>

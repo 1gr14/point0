@@ -1982,6 +1982,7 @@ export class Point0<
       >,
       'lets' | 'point'
     > {
+    // ): MountableComponent<TInputSchema, TProps, false> {
     if (!this._route) {
       throw new Error('add .route() to chain to use .page() function')
     }
@@ -2016,6 +2017,8 @@ export class Point0<
     const pageWithPoint = point._Page
     Object.assign(pageWithPoint, { point })
     return pageWithPoint as never
+    // Point0.setGlobalPoint(point)
+    // return point._Page
   }
 
   component<
@@ -2047,6 +2050,7 @@ export class Point0<
       >,
       'lets' | 'point'
     > {
+    // ): MountableComponent<TInputSchema, TProps, false> {
     const point = this._continue<
       'component',
       UndefinedEndPointType,
@@ -2078,6 +2082,8 @@ export class Point0<
     const componentWithPoint = point._Component
     Object.assign(componentWithPoint, { point })
     return componentWithPoint as never
+    // Point0.setGlobalPoint(point)
+    // return point._Component
   }
 
   layout<
@@ -3907,45 +3913,45 @@ export class Point0<
 
   // global
 
-  private static setGlobalPoint(point: AnyPoint): void {
-    if (!(globalThis as any).__POINT0_INSTANCES__) {
-      ;(globalThis as any).__POINT0_INSTANCES__ = {}
-    }
-    const scopes = point._attachedTo.length > 0 ? point._attachedTo : [point._scope]
-    for (const scope of scopes) {
-      if (!(globalThis as any).__POINT0_INSTANCES__[scope]) {
-        ;(globalThis as any).__POINT0_INSTANCES__[scope] = {}
-      }
-      if (!(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType]) {
-        ;(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType] = {}
-      }
-      if (!point._name) {
-        throw new Error('Point name is not set')
-      }
-      ;(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType][point._name] = point
-    }
-  }
+  // private static setGlobalPoint(point: AnyPoint): void {
+  //   if (!(globalThis as any).__POINT0_INSTANCES__) {
+  //     ;(globalThis as any).__POINT0_INSTANCES__ = {}
+  //   }
+  //   const scopes = point._attachedTo.length > 0 ? point._attachedTo : [point._scope]
+  //   for (const scope of scopes) {
+  //     if (!(globalThis as any).__POINT0_INSTANCES__[scope]) {
+  //       ;(globalThis as any).__POINT0_INSTANCES__[scope] = {}
+  //     }
+  //     if (!(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType]) {
+  //       ;(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType] = {}
+  //     }
+  //     if (!point._name) {
+  //       throw new Error('Point name is not set')
+  //     }
+  //     ;(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType][point._name] = point
+  //   }
+  // }
 
-  static getGlobalPoint(scope: PointsScope, pointType: PointType, name: PointName): AnyPoint
-  static getGlobalPoint(pointType: PointType, name: PointName): AnyPoint
-  static getGlobalPoint(...args: [PointsScope, PointType, PointName] | [PointType, PointName]): AnyPoint {
-    const {
-      scope: providedScope,
-      pointType,
-      name,
-    } = args.length === 3
-      ? { scope: args[0], pointType: args[1], name: args[2] }
-      : { pointType: args[0], name: args[1] }
-    const scope = providedScope ?? EversionStore.getWeak<PointsScope>('__POINT0_SCOPE__')
-    if (!scope) {
-      throw new Error('Points scope not found if EversionStore. You should provide scope.')
-    }
-    const point = (globalThis as any).__POINT0_INSTANCES__[scope]?.[pointType]?.[name]
-    if (!point) {
-      throw new Error(`Point with type "${pointType}" and name "${name}" not found in scope "${scope}"`)
-    }
-    return point
-  }
+  // static getGlobalPoint(scope: PointsScope, pointType: PointType, name: PointName): AnyPoint
+  // static getGlobalPoint(pointType: PointType, name: PointName): AnyPoint
+  // static getGlobalPoint(...args: [PointsScope, PointType, PointName] | [PointType, PointName]): AnyPoint {
+  //   const {
+  //     scope: providedScope,
+  //     pointType,
+  //     name,
+  //   } = args.length === 3
+  //     ? { scope: args[0], pointType: args[1], name: args[2] }
+  //     : { pointType: args[0], name: args[1] }
+  //   const scope = providedScope ?? EversionStore.getWeak<PointsScope>('__POINT0_SCOPE__')
+  //   if (!scope) {
+  //     throw new Error('Points scope not found if EversionStore. You should provide scope.')
+  //   }
+  //   const point = (globalThis as any).__POINT0_INSTANCES__[scope]?.[pointType]?.[name]
+  //   if (!point) {
+  //     throw new Error(`Point with type "${pointType}" and name "${name}" not found in scope "${scope}"`)
+  //   }
+  //   return point
+  // }
 
   // super store
 

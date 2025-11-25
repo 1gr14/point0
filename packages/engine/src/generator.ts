@@ -427,6 +427,7 @@ export class FilesGenerator {
     }
     // lines.push(...this.emitEversionStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points'`)
+    // lines.push(`import { Point0 } from '@point0/core'`)
 
     if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
       throw new Error(`Root point not found for target ${target.scope}`)
@@ -467,6 +468,30 @@ export class FilesGenerator {
 
           lines.push(`}`)
         } else {
+          // idk how made hmr work nice inside page and component
+          // if (point.type === 'page' || point.type === 'component') {
+          //   if (point.scope === target.scope) {
+          //     lines.push(
+          //       `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => Point0.getGlobalPoint('${point.scope}', '${point.type}', '${point.name}'))),`,
+          //     )
+          //   } else {
+          //     // it is attached
+          //     lines.push(
+          //       `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => Point0.getGlobalPoint('${point.scope}', '${point.type}', '${point.name}')))),`,
+          //     )
+          //   }
+          // } else {
+          //   if (point.scope === target.scope) {
+          //     lines.push(
+          //       `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => m.${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix})),`,
+          //     )
+          //   } else {
+          //     // it is attached
+          //     lines.push(
+          //       `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => m.${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix}))),`,
+          //     )
+          //   }
+          // }
           if (point.scope === target.scope) {
             lines.push(
               `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
