@@ -7,6 +7,7 @@ import { toJsonErrorResponse } from './error.js'
 import type { ServerBun } from './server.js'
 
 export const engineFetch = async ({
+  bunServer,
   server,
   clients,
   eversion,
@@ -17,6 +18,7 @@ export const engineFetch = async ({
   requiredCtx,
   logger,
 }: {
+  bunServer?: Bun.Server<unknown>
   server: ServerBun<true>
   clients: Array<ClientBun<true>>
   eversion: Eversion
@@ -28,6 +30,28 @@ export const engineFetch = async ({
   logger: EngineLogger
 }): Promise<Response> => {
   if (process.env.NODE_ENV !== 'production') {
+    for (const client of clients) {
+      // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
+      if (bunServer) {
+        const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
+          request,
+          bunServer,
+          parsedUrl,
+        })
+        if (bunDevServerUpgradeWebSocketResult) {
+          return bunDevServerUpgradeWebSocketResult.result as never // it is just for hmr on dev
+        }
+      }
+      const clientViteDevServerResponse = await client.fetchClientViteDevServerMiddleware({ request, parsedUrl })
+      if (clientViteDevServerResponse) {
+        return clientViteDevServerResponse
+      }
+      const clientBunDevServerResponse = await client.fetchClientBunDevServerMiddleware({ request, parsedUrl })
+      if (clientBunDevServerResponse) {
+        return clientBunDevServerResponse
+      }
+    }
+
     // in case if some points was loaded via vite, we should refetch them
     await eversion.readPoints()
   }

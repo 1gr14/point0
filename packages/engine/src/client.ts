@@ -537,11 +537,11 @@ Bun.serve({
 
   async upgradeProxyBunDevServerWebSocket({
     request,
-    server,
+    bunServer,
     parsedUrl,
   }: {
     request: Request
-    server: Bun.Server<unknown>
+    bunServer: Bun.Server<unknown>
     parsedUrl?: ParsedUrl
   }): Promise<{ result: Response | undefined } | undefined> {
     if (!this.clientBunNativeDevServer) {
@@ -557,7 +557,7 @@ Bun.serve({
     const clientBunNativeDevServerWsUrl = `ws://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`
 
     // Upgrade the connection and store upstream URL in data
-    const upgraded = server.upgrade(request, {
+    const upgraded = bunServer.upgrade(request, {
       data: { wsUrl: clientBunNativeDevServerWsUrl },
     })
 

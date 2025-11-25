@@ -1,5 +1,3 @@
-when fetch attached points we should use not this.scope, but scope from gloval store
-
 elysia example
 
 try fix hmr again

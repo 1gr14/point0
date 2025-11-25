@@ -2,7 +2,7 @@ import type { Eversion } from '@point0/core/eversion'
 import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
 import { Points } from '@point0/core/points'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
-import { parseUrl, prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
+import { prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -199,31 +199,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     }
     this.bunServer = Bun.serve({
       port: this.port,
-      fetch: async (request, server) => {
-        const parsedUrl = parseUrl(request.url)
-
-        if (process.env.NODE_ENV !== 'production') {
-          for (const client of this.clients) {
-            const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
-              request,
-              server,
-              parsedUrl,
-            })
-            if (bunDevServerUpgradeWebSocketResult) {
-              return bunDevServerUpgradeWebSocketResult.result
-            }
-            const clientViteDevServerResponse = await client.fetchClientViteDevServerMiddleware({ request, parsedUrl })
-            if (clientViteDevServerResponse) {
-              return clientViteDevServerResponse
-            }
-            const clientBunDevServerResponse = await client.fetchClientBunDevServerMiddleware({ request, parsedUrl })
-            if (clientBunDevServerResponse) {
-              return clientBunDevServerResponse
-            }
-          }
-        }
-
-        return await this.fetch({ parsedUrl, request, requiredCtx })
+      fetch: async (request, bunServer) => {
+        return await this.fetch({ request, requiredCtx, bunServer })
       },
       websocket: {
         open(ws) {
@@ -279,7 +256,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         },
       },
     })
-    this.logger.info(`🚀 http://localhost:${this.port}`)
   }
 
   getBuildPaths(): {
@@ -448,11 +424,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async fetch({
+    bunServer,
     parsedUrl,
     request,
     requiredCtx,
     scope,
   }: {
+    bunServer?: Bun.Server<unknown>
     parsedUrl?: ParsedUrl
     request: Request
     requiredCtx: RequiredCtx
@@ -463,6 +441,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     }
 
     return await engineFetch({
+      bunServer,
       server: this,
       clients: this.clients,
       eversion: this.eversion,

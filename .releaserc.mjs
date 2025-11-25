@@ -44,6 +44,12 @@ export default {
         pkgRoot: 'packages/wouter',
       },
     ],
+    [
+      '@semantic-release/npm',
+      {
+        pkgRoot: 'packages/elysia',
+      },
+    ],
     '@semantic-release/github',
   ].filter(Boolean),
 }
