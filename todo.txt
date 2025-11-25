@@ -1,5 +1,3 @@
-Point0.create<T>('self-name', ['site', 'expo'])
-in gereator attach them right in points to root of scope
 when fetch attached points we should use not this.scope, but scope from gloval store
 
 elysia example
@@ -102,6 +100,7 @@ check if superjson works correctly with query and mutation and eversion store
 ? extract required ctx type from root points
 pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
 pruner: point0PruneScopePoints, totally remove points not related to the scope
+check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
 
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place

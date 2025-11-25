@@ -24,7 +24,7 @@ export const empty = client
         <br />
         Ideas Count X3: {data.ideasCountX3}
         <br />
-        Shared Query: {qr.data?.shared}
+        Shared Query: {qr.data?.shared1}|{qr.data?.shared2}
       </div>
     )
   })
@@ -38,7 +38,7 @@ export const sharedEmptyPage = client
       <div>
         Shared Empty
         <br />
-        Shared Data: {data.shared}
+        Shared Data: {data.shared1}|{data.shared2}
       </div>
     )
   })

@@ -81,6 +81,12 @@ export const createIdeaMutation_8yx92ovk3m_lazy = {
   point: async () => (await import('../pages/idea-create.js')).createIdeaMutation.point,
 } as LazyPointsCollectionRecord
 
+export const sharedQuery_2ccf8pbspaq_lazy = {
+  type: 'query',
+  name: 'sharedQuery',
+  point: async () => root.point.attach((await import('./shared.js')).sharedQuery.point),
+} as LazyPointsCollectionRecord
+
 export const generateIdeaMutation_1ssnr64ebrb_lazy = {
   type: 'response',
   name: 'generateIdea',

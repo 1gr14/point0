@@ -191,7 +191,6 @@ export class FilesGenerator {
     )
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
-    console.log(collectedPoints)
     const prevPoints = [...this.points]
     const newPoints =
       errors.length === 0 ? collectedPoints : FilesGenerator.mergePointsSafely(this.points, collectedPoints)
@@ -341,12 +340,10 @@ export class FilesGenerator {
 
   private emitNamedImports({
     points,
-    what,
     outputAbs,
     target,
   }: {
     points: CollectedPoint[]
-    what: 'import' | 'export'
     outputAbs: string
     target: FilesGeneratorTarget
   }): {
@@ -355,7 +352,9 @@ export class FilesGenerator {
     // rootSingleReexportLine: string // for lazy points file
     rootSingleImportLine: string | null // for lazy points file
   } {
-    points = points.filter((p) => p.scope === target.scope)
+    points = points.filter(
+      (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
+    )
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
     let rootSingleImportLine: string | null = null
@@ -398,7 +397,7 @@ export class FilesGenerator {
         continue
       }
       const namedPart = `{ ${importPathAndExportNames.exports.map((e) => `${e.originalExportName} as ${e.renamedExportName}`).join(', ')} }`
-      importLines.push(`${what} ${namedPart} from '${importPathAndExportNames.importPath}'`)
+      importLines.push(`import ${namedPart} from '${importPathAndExportNames.importPath}'`)
       if (importPathAndExportNames.hasRoot) {
         const rootImportPathAndExportName = importPathAndExportNames.exports.find((e) => e.root)
         if (!rootImportPathAndExportName) {
@@ -419,7 +418,9 @@ export class FilesGenerator {
     if (target.pointsModuleType !== 'lazy') {
       throw new Error('pointsModuleType is not lazy')
     }
-    const points = this.points.filter((p) => p.scope === target.scope)
+    const points = this.points.filter(
+      (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
+    )
     const lines: string[] = []
     if (target.banner) {
       lines.push(target.banner)
@@ -427,13 +428,12 @@ export class FilesGenerator {
     // lines.push(...this.emitEversionStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points'`)
 
-    if (!points.find((p) => p.type === 'root')) {
+    if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
       throw new Error(`Root point not found for target ${target.scope}`)
     }
 
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
-      what: 'import',
       outputAbs: target.outputPointsAbs,
       target,
     })
@@ -447,9 +447,6 @@ export class FilesGenerator {
       lines.push(`export {}`)
     } else {
       for (const point of importedPoints) {
-        // if (point.root) {
-        //   continue
-        // }
         lines.push(`export const ${point.renamedExportName}_lazy = {`)
         lines.push(`  type: '${point.type}'${point.type === 'root' ? ' as const' : ''},`)
         lines.push(`  name: '${point.name}',`)
@@ -470,9 +467,16 @@ export class FilesGenerator {
 
           lines.push(`}`)
         } else {
-          lines.push(
-            `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
-          )
+          if (point.scope === target.scope) {
+            lines.push(
+              `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+            )
+          } else {
+            // it is attached
+            lines.push(
+              `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix}),`,
+            )
+          }
           lines.push(`} as LazyPointsCollectionRecord`)
         }
         lines.push(``)
@@ -491,9 +495,11 @@ export class FilesGenerator {
       throw new Error('pointsModuleType is not ready')
     }
 
-    const points = this.points.filter((p) => p.scope === target.scope)
+    const points = this.points.filter(
+      (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
+    )
 
-    if (!points.find((p) => p.type === 'root')) {
+    if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
       throw new Error(`Root point not found for target ${target.scope}`)
     }
 
@@ -501,22 +507,41 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
+    lines.push(`import type { EndPoint } from '@point0/core/types'`)
 
     // lines.push(...this.emitEversionStoreInitialization())
+
+    const { importLines, importedPoints } = this.emitNamedImports({
+      points,
+      outputAbs: target.outputPointsAbs,
+      target,
+    })
+    lines.push(...importLines)
 
     if (points.length === 0) {
       lines.push(`export {}`)
     } else {
-      const { importLines } = this.emitNamedImports({
-        points,
-        what: 'export',
-        outputAbs: target.outputPointsAbs,
-        target,
-      })
-      lines.push(...importLines)
+      lines.push(``)
+      for (const point of importedPoints) {
+        const exportNameSuffix = '.point'
+        if (point.type === 'root') {
+          lines.push(`export const ${point.renamedExportName}_ready = ${point.renamedExportName}${exportNameSuffix}`)
+        } else {
+          if (point.scope === target.scope) {
+            lines.push(
+              `export const ${point.renamedExportName}_ready = ${point.renamedExportName}${exportNameSuffix} as EndPoint`,
+            )
+          } else {
+            // it is attached
+            lines.push(
+              `export const ${point.renamedExportName}_ready = root.point.attach(${point.renamedExportName}${exportNameSuffix}) as EndPoint`,
+            )
+          }
+        }
+        lines.push(``)
+      }
     }
 
-    lines.push(``)
     return lines.join('\n')
   }
 
