@@ -38,6 +38,7 @@ export default defineConfig([
         },
       ],
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
+      curly: ['error', 'all'],
 
       // disable
       '@typescript-eslint/no-extraneous-class': 'off',

@@ -1,5 +1,3 @@
-try fix hmr again
-
 --------------------------
 ------ before start0 -----
 --------------------------
@@ -10,9 +8,6 @@ head as argument of .page() it can be string | head | (loaderResult) => string |
 .head(head) .head(string) as always shorthand
 .head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
 .page(head, () =>), .error(head, () =>), .loading(head, () =>), .layout(head, () =>)
-
-fix fn prop type for public things, make input first arg, location is optional setting in second arg object
-add useInfiniteQuery
 
 ROUTER
 try layout can have no route
@@ -28,8 +23,6 @@ wrapper
 
 merge .input schemas
 
-auth example
-
 EXPO
 expo example
 expo router
@@ -37,13 +30,11 @@ expo router
 ??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
-mount.ts → mount-dom.ts or @point0/dom
+mount.ts → @point0/react-dom
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
 
 .ctxLoader()
-
-.onError, .onClientError and combine them and clear them to base on lets
 
 PLUGIN
 const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
@@ -54,11 +45,18 @@ const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' |
 ??? lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
 ??? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
 
+someThing.attachment()..., and then somethingElse.attach()
+
+auth example
+
 status: .loader(() => [201, {}]).loader(() => [404, {}])
 
 move all types to [name].types.ts, and export everything from types.ts
 point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
 
+.onError, .onClientError and combine them and clear them to base on lets
+fix fn prop type for public things, make input first arg, location is optional setting in second arg object
+add useInfiniteQuery
 prettify visible methods per TLetsEndpointType, and hide all private methods under _
 
 ? get base/root specific things right from base, do not continue it after .base()
@@ -71,6 +69,7 @@ refactor Error0
 refactor Meta0
 refactor Ctx0
 refactor Env0
+refactor Logger0
 unwind and tailwind
 
 --------------------------
@@ -132,6 +131,7 @@ npm @point0
 ? add engine client options serveByServer: boolean default true
 prefetch type not only prefetchPageDehydratedState, but also prefetchPageEversionStore becouse there can be zustand or what else
 
+try fix hmr again
 prefetch on Link hover
 serverOnly, clientOnly, serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 .disable()
