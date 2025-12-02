@@ -4,6 +4,22 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { withError } from './utils.js'
 
+async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
+  try {
+    const entries = await nodeFs.readdir(dirPath, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = nodePath.join(dirPath, entry.name)
+      if (entry.isDirectory()) {
+        yield* getAllFiles(fullPath)
+      } else if (entry.isFile()) {
+        yield fullPath
+      }
+    }
+  } catch (error) {
+    // Ignore errors (e.g., permission denied, not a directory)
+  }
+}
+
 export class Publicdir<TInitialized extends boolean = boolean> {
   hostname: string | null
   definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
@@ -55,14 +71,13 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   }
 
   async loadFiles(): Promise<void> {
-    const glob = new Bun.Glob('**/*')
     await Promise.all(
       this.definition.map(async ([dirRoutePathOrFilePath, dirAbsPathOrResponseOrFn]) => {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
           const dirRoutePath = dirRoutePathOrFilePath
           const dirAbsPath = dirAbsPathOrResponseOrFn
-          for await (const relPath of glob.scan({ cwd: dirAbsPath, onlyFiles: true })) {
-            const fileAbsPath = nodePath.resolve(dirAbsPath, relPath)
+          for await (const fileAbsPath of getAllFiles(dirAbsPath)) {
+            const relPath = nodePath.relative(dirAbsPath, fileAbsPath)
             const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
             this.files.set(fileRoutePath, fileAbsPath)
           }
@@ -129,7 +144,6 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     }
 
     await nodeFs.mkdir(outdir, { recursive: true })
-    const glob = new Bun.Glob('**/*')
     const fileOperations: Array<Promise<string>> = []
 
     await Promise.all(
@@ -137,8 +151,8 @@ export class Publicdir<TInitialized extends boolean = boolean> {
         if (typeof dirAbsPathOrResponseOrFn === 'string') {
           const dirRoutePath = dirRoutePathOrFilePath
           const dirAbsPath = dirAbsPathOrResponseOrFn
-          for await (const relPath of glob.scan({ cwd: dirAbsPath, onlyFiles: true })) {
-            const fileAbsPath = nodePath.resolve(dirAbsPath, relPath)
+          for await (const fileAbsPath of getAllFiles(dirAbsPath)) {
+            const relPath = nodePath.relative(dirAbsPath, fileAbsPath)
             const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
             const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
             fileOperations.push(
