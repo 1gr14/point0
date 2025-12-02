@@ -47,6 +47,7 @@ import type {
   EmptyCtx,
   EndPointType,
   ErrorComponentType,
+  ErrorHeadFn,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
   ExtractFnRecord,
@@ -69,6 +70,7 @@ import type {
   LayoutPoint,
   LoaderFn,
   LoadingComponentType,
+  LoadingHeadFn,
   MiddlewareHeadFn,
   MountableComponent,
   PageComponent,
@@ -1238,7 +1240,66 @@ export class Point0<
     TResponseOutput,
     TQueryResultType,
     TProps
-  > {
+  >
+  pageError(
+    head: ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+    pageErrorComponent: ErrorComponentType<
+      'page',
+      TQueryResultType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TProps
+    >,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  pageError(
+    ...args:
+      | [
+          ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+          ErrorComponentType<
+            'page',
+            TQueryResultType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >,
+        ]
+      | [
+          ErrorComponentType<
+            'page',
+            TQueryResultType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >,
+        ]
+  ) {
+    const [head, pageErrorComponent] = args.length === 2 ? args : [undefined, args[0]]
+    const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+    const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
+      ? undefined
+      : (props) => (!props.error ? {} : headFn(props as never))
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -1254,8 +1315,8 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _pageErrorComponent: pageErrorComponent || (() => null), // in case if we prune pageError for serverNoSsr customer
+      _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
+      _pageErrorComponent: pageErrorComponent,
     })
   }
 
@@ -1328,7 +1389,66 @@ export class Point0<
     TResponseOutput,
     TQueryResultType,
     TProps
-  > {
+  >
+  pageLoading(
+    head: LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+    pageLoadingComponent: LoadingComponentType<
+      'page',
+      TQueryResultType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TProps
+    >,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  pageLoading(
+    ...args:
+      | [
+          LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+          LoadingComponentType<
+            'page',
+            TQueryResultType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >,
+        ]
+      | [
+          LoadingComponentType<
+            'page',
+            TQueryResultType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >,
+        ]
+  ) {
+    const [head, pageLoadingComponent] = args.length === 2 ? args : [undefined, args[0]]
+    const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+    const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
+      ? undefined
+      : (props) => (!props.loading ? {} : headFn(props as never))
     return this._continue<
       'middleware',
       TLetsEndPointType,
@@ -1344,8 +1464,8 @@ export class Point0<
       TProps
     >({
       _pointType: 'middleware',
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _pageLoadingComponent: pageLoadingComponent || (() => null), // in case if we prune pageLoading for serverNoSsr customer
+      _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
+      _pageLoadingComponent: pageLoadingComponent,
     })
   }
 

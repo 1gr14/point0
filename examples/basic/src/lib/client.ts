@@ -17,11 +17,12 @@ export const client = Point0.create('client')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
-  .head({
-    title: 'Loading...',
+  .head(({ loading, error }) => ({
+    ...(loading ? { title: 'Loading...' } : {}),
+    ...(error ? { title: error.message } : {}),
     titleTemplate: '%s | IdeaNick',
     htmlAttrs: { lang: 'en' },
-  })
+  }))
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

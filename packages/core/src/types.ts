@@ -880,7 +880,6 @@ export type SuccessHeadFn<
 ) => ResolvableHead | string
 
 export type ErrorHeadFn<
-  TType extends DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
@@ -890,7 +889,7 @@ export type ErrorHeadFn<
 > = (
   props: Omit<
     ErrorComponentProps<
-      TType,
+      any,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -904,7 +903,6 @@ export type ErrorHeadFn<
 ) => ResolvableHead | string
 
 export type LoadingHeadFn<
-  TType extends DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
@@ -914,7 +912,7 @@ export type LoadingHeadFn<
 > = (
   props: Omit<
     LoadingComponentProps<
-      TType,
+      any,
       TQueryResultType,
       TData,
       TResponseOutput,
