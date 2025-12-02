@@ -25,59 +25,61 @@ export const ideasPage = generalLayout
     initialPageParam: 0,
     pageParamFromInput: 'page',
   })
-  .title(({ data }) => {
-    return `${data.ideasCount} ideas`
-  })
-  .page(({ data, query }) => {
-    const [count, setCount] = useState(() => 0)
-    return (
-      <div>
-        <h1>Ideas</h1>
-        <p>Environment: {data.env}</p>
-        <p
-          onClick={() => {
-            setCount(count + 1)
-          }}
-        >
-          Here are all the amazing ideas shared by our community: {data.ideasCount + count}
-          <br />
-          Amazing: {data.amazing}
-        </p>
+  .page(
+    ({ data }) => {
+      return `${data.pages[0].ideasCount} ideas`
+    },
+    ({ data, query }) => {
+      const [count, setCount] = useState(() => 0)
+      return (
         <div>
-          {query.data.pages
-            .flatMap((p) => p.ideas)
-            .map((idea) => (
-              <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
-                <h3>
-                  <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link>
-                </h3>
-                <p>
-                  {idea.description}
-                  <br />
-                  Amazing: {idea.amazing}
-                </p>
-                <p>
-                  <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
-                </p>
-              </div>
-            ))}
-        </div>
-        {query.isFetchingNextPage && <div>Loading more...</div>}
-        {query.hasNextPage && (
-          <button
-            disabled={query.isFetchingNextPage}
+          <h1>Ideas</h1>
+          <p>Environment: {data.pages[0].env}</p>
+          <p
             onClick={() => {
-              query.fetchNextPage().catch(console.error)
+              setCount(count + 1)
             }}
           >
-            Load more
-          </button>
-        )}
-        <nav>
-          <Link to="/">← Back to Home</Link>
-        </nav>
-      </div>
-    )
-  })
+            Here are all the amazing ideas shared by our community: {data.pages[0].ideasCount + count}
+            <br />
+            Amazing: {data.pages[0].amazing}
+          </p>
+          <div>
+            {query.data.pages
+              .flatMap((p) => p.ideas)
+              .map((idea) => (
+                <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
+                  <h3>
+                    <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link>
+                  </h3>
+                  <p>
+                    {idea.description}
+                    <br />
+                    Amazing: {idea.amazing}
+                  </p>
+                  <p>
+                    <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
+                  </p>
+                </div>
+              ))}
+          </div>
+          {query.isFetchingNextPage && <div>Loading more...</div>}
+          {query.hasNextPage && (
+            <button
+              disabled={query.isFetchingNextPage}
+              onClick={() => {
+                query.fetchNextPage().catch(console.error)
+              }}
+            >
+              Load more
+            </button>
+          )}
+          <nav>
+            <Link to="/">← Back to Home</Link>
+          </nav>
+        </div>
+      )
+    },
+  )
 
 export default ideasPage

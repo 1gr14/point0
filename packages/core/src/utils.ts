@@ -1,5 +1,4 @@
 import type { DehydratedState } from '@tanstack/react-query'
-import type { ResolvableHead } from 'unhead/types'
 
 export function mergeHeaders(
   base?: HeadersInit,
@@ -16,53 +15,57 @@ export function mergeHeaders(
   return merged
 }
 
-export function mergeResolvableHead(base?: ResolvableHead, extra?: ResolvableHead): ResolvableHead {
-  if (!base) return extra || {}
-  if (!extra) return base
+// export function mergeResolvableHead(...heads: ResolvableHead[]): ResolvableHead {
+//   return heads.reduce((acc, head) => _mergeResolvableHead(acc, head), {})
+// }
 
-  const merged: ResolvableHead = { ...base }
+// function _mergeResolvableHead(base?: ResolvableHead, extra?: ResolvableHead): ResolvableHead {
+//   if (!base) return extra || {}
+//   if (!extra) return base
 
-  for (const [key, value] of Object.entries(extra) as Array<
-    [keyof ResolvableHead, ResolvableHead[keyof ResolvableHead]]
-  >) {
-    if (value == null) continue
+//   const merged: ResolvableHead = { ...base }
 
-    switch (key) {
-      case 'htmlAttrs':
-      case 'bodyAttrs': {
-        const baseAttrs = (isPlainObject(base[key]) ? base[key] : {}) as Record<string, any>
-        const extraAttrs = (isPlainObject(value) ? value : {}) as Record<string, any>
-        merged[key] = { ...baseAttrs, ...extraAttrs } as any
-        break
-      }
+//   for (const [key, value] of Object.entries(extra) as Array<
+//     [keyof ResolvableHead, ResolvableHead[keyof ResolvableHead]]
+//   >) {
+//     if (value == null) continue
 
-      case 'meta':
-      case 'link':
-      case 'style':
-      case 'script':
-      case 'noscript': {
-        const baseArr = Array.isArray(base[key]) ? base[key] : []
-        const extraArr = Array.isArray(value) ? value : []
-        merged[key] = [...baseArr, ...extraArr] as any
-        break
-      }
+//     switch (key) {
+//       case 'htmlAttrs':
+//       case 'bodyAttrs': {
+//         const baseAttrs = (isPlainObject(base[key]) ? base[key] : {}) as Record<string, any>
+//         const extraAttrs = (isPlainObject(value) ? value : {}) as Record<string, any>
+//         merged[key] = { ...baseAttrs, ...extraAttrs } as any
+//         break
+//       }
 
-      case 'templateParams': {
-        const baseParams = isPlainObject(base.templateParams) ? base.templateParams : {}
-        const extraParams = (isPlainObject(value) ? value : {}) as Record<string, any>
-        merged.templateParams = { ...baseParams, ...extraParams }
-        break
-      }
+//       case 'meta':
+//       case 'link':
+//       case 'style':
+//       case 'script':
+//       case 'noscript': {
+//         const baseArr = Array.isArray(base[key]) ? base[key] : []
+//         const extraArr = Array.isArray(value) ? value : []
+//         merged[key] = [...baseArr, ...extraArr] as any
+//         break
+//       }
 
-      default:
-        // For title, base, titleTemplate, etc.
-        ;(merged as any)[key] = value
-        break
-    }
-  }
+//       case 'templateParams': {
+//         const baseParams = isPlainObject(base.templateParams) ? base.templateParams : {}
+//         const extraParams = (isPlainObject(value) ? value : {}) as Record<string, any>
+//         merged.templateParams = { ...baseParams, ...extraParams }
+//         break
+//       }
 
-  return merged
-}
+//       default:
+//         // For title, base, titleTemplate, etc.
+//         ;(merged as any)[key] = value
+//         break
+//     }
+//   }
+
+//   return merged
+// }
 
 export function isPlainObject(obj: unknown): obj is Record<string, any> {
   return !!obj && typeof obj === 'object' && !Array.isArray(obj)

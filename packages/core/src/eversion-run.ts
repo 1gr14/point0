@@ -166,7 +166,6 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentCtx: Ctx = this.requiredCtx ?? {}
       let currentData: Data = {}
       const extractFns = [...(point?._extractFns ?? [])]
-      const curretHead = [...(point?._staticHeads ?? [])]
       // TODO: get status from real point data
 
       try {
@@ -218,15 +217,6 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
-        const pageLocation = this.pageLocation
-        if (pageLocation && point?._pointType === 'page') {
-          curretHead.push(
-            ...point
-              ._getClientHeadFnsUntilFirstClientLoader()
-              .map((headFn) => headFn.fn({ data: currentData, location: pageLocation, input: parsedInput })),
-          )
-        }
-
         const response = await (async () => {
           if (point?._pointType === 'response') {
             if (!point._responseFn) {
@@ -245,7 +235,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            head: curretHead,
+            head: this.getCurrentPageHead({ point, input, data: currentData, error: null }),
             response,
             error: undefined,
             status: 200,
@@ -256,21 +246,33 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            head: curretHead,
+            head: this.getCurrentPageHead({ point: this.points.root, input, data: currentData, error }),
             error,
             status: 404,
             response: undefined,
           }
         }
       } catch (error) {
-        await this.appendQueryClientCache({ data: currentData, point, error, input })
-        return {
-          ctx: currentCtx,
-          data: currentData,
-          head: curretHead,
-          error,
-          status: 500,
-          response: undefined,
+        try {
+          await this.appendQueryClientCache({ data: currentData, point, error, input })
+          return {
+            ctx: currentCtx,
+            data: currentData,
+            head: this.getCurrentPageHead({ point: point ?? this.points.root, input, data: currentData, error }),
+            error,
+            status: 500,
+            response: undefined,
+          }
+        } catch (error2) {
+          // in case if we have error in head resolver
+          return {
+            ctx: currentCtx,
+            data: currentData,
+            head: [],
+            error,
+            status: 500,
+            response: undefined,
+          }
         }
       }
     })
@@ -420,6 +422,30 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
     })
+  }
+
+  getCurrentPageHead({
+    point,
+    input,
+    data,
+    error,
+  }: {
+    point: AnyPoint
+    input: InputRaw
+    data: Data
+    error: unknown
+  }): ResolvableHead[] {
+    if (!this.pageLocation) {
+      return []
+    }
+    const useLoaderResult = {
+      data: !point._hasClientLoader() ? data : undefined,
+      error: error ? Error0.from(error) : null,
+      input,
+      location: this.pageLocation,
+      loading: point._hasClientLoader() && !error,
+    }
+    return point._extractHead(useLoaderResult)
   }
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {

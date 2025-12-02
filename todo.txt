@@ -3,11 +3,8 @@
 --------------------------
 
 HEAD
-head on ssr should also just stored in super store, not needed to extract it additionally
-head as argument of .page() it can be string | head | (loaderResult) => string | (loaderResult) => head
-.head(head) .head(string) as always shorthand
-.head({loading, error, success}) => {title: 'x', ...( error && {title}, ...(loading))}
-.page(head, () =>), .error(head, () =>), .loading(head, () =>), .layout(head, () =>)
+.pageError(head, () =>), .pageLoading(head, () =>),
+respect pruner, and replace last of two fns with () => null
 
 ROUTER
 try layout can have no route
@@ -57,7 +54,9 @@ point0.ts, engine.ts, and export everything form engine/index.ts and core/index.
 .onError, .onClientError and combine them and clear them to base on lets
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add useInfiniteQuery
+
 prettify visible methods per TLetsEndpointType, and hide all private methods under _
+on .head in base we use any for data props etc. On .head inside page or component we use correct types but point type becomes «prerender» and now we can do only wrapper or page or component or something ending.
 
 ? get base/root specific things right from base, do not continue it after .base()
 

@@ -268,7 +268,6 @@ export async function renderAppAsReadableStream({
   pageLocation: AnyLocation
   input: InputRaw
   env?: Record<string, string | number | boolean | undefined>
-  // TODO: remove head from here, lets extract it from Super Store
   head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
