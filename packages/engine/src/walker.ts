@@ -403,7 +403,7 @@ export class Walker {
     }
 
     // For each candidate, we check if there is a scope through resolveScope
-    const nodesToStrip: CallExpression[] = []
+    const itemsToStrip: Array<{ node: CallExpression; method: string }> = []
 
     // We can slightly deduplicate by (baseIdentifier) to not call resolveScope unnecessarily
     const scopeCache = new Map<string, string | undefined>()
@@ -429,23 +429,41 @@ export class Walker {
       // scope found → this is a Point0 chain ⇒ this call needs to be cleaned
       if (scope) {
         if (!methodsByScope) {
-          nodesToStrip.push(node)
+          itemsToStrip.push({ node, method })
         } else {
           if (scope in methodsByScope && methodsByScope[scope].includes(method)) {
-            nodesToStrip.push(node)
+            itemsToStrip.push({ node, method })
           }
         }
       }
     }
 
-    if (nodesToStrip.length === 0) {
+    if (itemsToStrip.length === 0) {
       return code
     }
 
+    const makeArrowFnReturnNull = () => ({
+      type: 'ArrowFunctionExpression' as const,
+      id: null,
+      generator: false,
+      async: false,
+      expression: true,
+      params: [],
+      body: { type: 'NullLiteral' as const },
+    })
+
     // Mutate AST: clean arguments
-    for (const node of nodesToStrip) {
+    for (const { node, method } of itemsToStrip) {
       if (node.arguments.length) {
-        node.arguments = []
+        if (['page', 'pageError', 'pageLoading'].includes(method)) {
+          if (node.arguments.length === 2) {
+            node.arguments[1] = makeArrowFnReturnNull()
+          } else {
+            node.arguments[0] = makeArrowFnReturnNull()
+          }
+        } else {
+          node.arguments = []
+        }
       }
     }
 
