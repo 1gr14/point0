@@ -2,10 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-HEAD
-.pageError(head, () =>), .pageLoading(head, () =>),
-respect pruner, and replace last of two fns with () => null
-
 ROUTER
 try layout can have no route
 page by default has route as its name kebabcased
