@@ -114,7 +114,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
         ? new Response(Bun.file(fileAbsPathOrResponseOrFn))
         : typeof fileAbsPathOrResponseOrFn === 'function'
           ? await fileAbsPathOrResponseOrFn()
-          : fileAbsPathOrResponseOrFn
+          : fileAbsPathOrResponseOrFn.clone()
 
     return response
   }

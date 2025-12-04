@@ -8,8 +8,8 @@ import type { ParsedUrl } from '@point0/core/utils'
 import { getHostnameOrNull, parseUrl } from '@point0/core/utils'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { Readable } from 'node:stream'
 import { renderToReadableStream } from 'react-dom/server'
+import { toReqRes, toFetchResponse } from 'fetch-to-node'
 import type { ViteDevServer } from 'vite'
 import type {
   EngineLogger,
@@ -435,8 +435,6 @@ Bun.serve({
       ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
       : null
 
-    console.log(1111, hmrPort)
-
     return await createServer({
       ...loadedViteConfig,
       plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
@@ -620,124 +618,48 @@ Bun.serve({
       }
       return middlewareResponse
     }
-    return await new Promise<Response | undefined>((resolve, reject) => {
-      const url = parsedUrl.urlObj
-      const nodeReq = new Readable({
-        read() {
-          this.push(null)
-        },
-      }) as any
+    const { req, res } = toReqRes(request)
+    let nextCalled = false
+    let nextError: any = undefined
+    let nextResolve: (() => void) | undefined = undefined
 
-      nodeReq.method = request.method
-      nodeReq.url = url.pathname + url.search
-      nodeReq.originalUrl = nodeReq.url
-
-      const headers: Record<string, string> = {}
-      request.headers.forEach((value: string, key: string) => {
-        headers[key.toLowerCase()] = value
-      })
-      nodeReq.headers = headers
-
-      nodeReq.protocol = url.protocol.replace(':', '')
-      nodeReq.hostname = url.hostname
-      nodeReq.secure = nodeReq.protocol === 'https'
-
-      nodeReq.socket = {
-        encrypted: nodeReq.secure,
-        remoteAddress: '127.0.0.1',
-      }
-
-      const middlewareHeaders = new Headers()
-      let statusCode = 200
-      let statusMessage = 'OK'
-      let ended = false
-      const chunks: Uint8Array[] = []
-
-      const nodeRes: any = {
-        statusCode,
-        statusMessage,
-
-        setHeader(name: string, value: any) {
-          const v = Array.isArray(value) ? value.join(', ') : String(value)
-          middlewareHeaders.set(name, v)
-        },
-
-        appendHeader(name: string, value: any) {
-          const v = Array.isArray(value) ? value.join(', ') : String(value)
-          const existing = middlewareHeaders.get(name)
-          middlewareHeaders.set(name, existing ? `${existing}, ${v}` : v)
-        },
-
-        getHeader(name: string) {
-          return middlewareHeaders.get(name) ?? undefined
-        },
-
-        removeHeader(name: string) {
-          middlewareHeaders.delete(name)
-        },
-
-        writeHead(code: number, statusMessageOrHeaders?: any, maybeHeaders?: any) {
-          statusCode = code
-          nodeRes.statusCode = code
-
-          let headers = undefined
-          if (typeof statusMessageOrHeaders === 'string') {
-            statusMessage = statusMessageOrHeaders
-            nodeRes.statusMessage = statusMessageOrHeaders
-            headers = maybeHeaders
-          } else {
-            headers = statusMessageOrHeaders
-          }
-
-          if (headers) {
-            for (const [k, v] of Object.entries(headers)) {
-              if (v != null) {
-                nodeRes.setHeader(k, v)
-              }
-            }
-          }
-        },
-
-        write(chunk: any) {
-          if (!chunk) return
-          if (typeof chunk === 'string') {
-            chunks.push(new TextEncoder().encode(chunk))
-          } else if (chunk instanceof Uint8Array) {
-            chunks.push(chunk)
-          } else {
-            chunks.push(Buffer.from(chunk))
-          }
-        },
-
-        end(chunk?: any) {
-          if (ended) return
-          ended = true
-          if (chunk) nodeRes.write(chunk)
-
-          const body = chunks.length === 0 ? null : new Blob(chunks as any)
-
-          const response = new Response(body, {
-            status: statusCode,
-            headers: middlewareHeaders,
-          })
-
-          resolve(response)
-        },
-      }
-
-      const next = (err?: any) => {
-        if (err) {
-          reject(err)
+    const nextPromise = new Promise<undefined>((resolve, reject) => {
+      nextResolve = () => {
+        if (nextError) {
+          reject(nextError)
         } else {
-          // Vite didn't handle this request
-          if (!ended) {
-            resolve(undefined)
-          }
+          resolve(undefined)
         }
       }
-
-      clientViteDevServer.middlewares(nodeReq, nodeRes, next)
     })
+
+    const next = (err?: any) => {
+      if (err) {
+        nextError = err
+      }
+      // Vite didn't handle this request
+      if (!nextCalled) {
+        nextCalled = true
+        // If res hasn't been finished, resolve immediately
+        if (!res.writableEnded && nextResolve) {
+          nextResolve()
+        }
+      }
+    }
+
+    clientViteDevServer.middlewares(req, res, next)
+
+    // Race between next being called (middleware didn't handle) and res finishing (middleware handled)
+    return await Promise.race([
+      nextPromise,
+      toFetchResponse(res).then((response) => {
+        // If next was called but res was also finished, check if it's a valid response
+        if (nextCalled && response.status === 200 && response.body === null) {
+          return undefined
+        }
+        return response
+      }),
+    ])
   }
 
   async getOriginalIndexHtml(url: string): Promise<string> {
