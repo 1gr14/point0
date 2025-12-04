@@ -4,8 +4,8 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
-import type { EversionRun } from '@point0/core/eversion-run'
-import { EversionStore } from '@point0/core/eversion-store'
+import type { Extractor } from '@point0/core/extractor'
+import { ExtractorStore } from '@point0/core/extractor-store'
 import type { AppComponent } from '@point0/core/mount'
 import type { AnyPoint, InputRaw } from '@point0/core/types'
 import type { AnyLocation } from '@devp0nt/route0'
@@ -116,7 +116,7 @@ export function addEnvToDocumentHtml({
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,
   content,
-  eversionRun,
+  extractor,
   head,
   env,
   domRootElementId,
@@ -124,7 +124,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
 }: {
   originalIndexHtml: string
   content?: TContent
-  eversionRun: EversionRun
+  extractor: Extractor
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   domRootElementId?: string
@@ -149,7 +149,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   }
   html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
-    content: '<!-- __POINT0_DEHYDRATED_EVERSION_STORE__ -->',
+    content: '<!-- __POINT0_DEHYDRATED_EXTRACTOR_STORE__ -->',
     html,
   })
 
@@ -176,23 +176,23 @@ export async function getReadableStreamWithWrapper({
   suffix,
   renderer = renderToReadableStream,
   clientBundlePath,
-  eversionRun,
+  extractor,
 }: {
   App: AppComponent
   suffix?: string
   prefix?: string
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
-  eversionRun: EversionRun
+  extractor: Extractor
 }) {
   const encoder = new TextEncoder()
 
   // one scope for both render and pack ensures consistency
-  return await eversionRun.withServerGlobalState(async () => {
+  return await extractor.withServerGlobalState(async () => {
     // Kick off the render first; any randoms used during render happen now
     const reactStream = await renderer(
       createElement(App, {
-        points: eversionRun.points,
+        points: extractor.points,
       }),
       {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
@@ -200,12 +200,12 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const dehydrated = EversionStore.dehydrate()
+    const dehydrated = ExtractorStore.dehydrate()
     const escapedJS = escapeForInlineJSON(superjson.stringify(dehydrated))
     const compiledPrefix = (prefix ?? '').replace(
-      '<!-- __POINT0_DEHYDRATED_EVERSION_STORE__ -->',
-      `<script id="__POINT0_DEHYDRATED_EVERSION_STORE_SCRIPT__">
-         window.__POINT0_DEHYDRATED_EVERSION_STORE__ = ${JSON.stringify(escapedJS)};
+      '<!-- __POINT0_DEHYDRATED_EXTRACTOR_STORE__ -->',
+      `<script id="__POINT0_DEHYDRATED_EXTRACTOR_STORE_SCRIPT__">
+         window.__POINT0_DEHYDRATED_EXTRACTOR_STORE__ = ${JSON.stringify(escapedJS)};
        </script>`,
     )
 
@@ -233,7 +233,7 @@ export async function renderReadableStream({
   renderer = renderToReadableStream,
   originalIndexHtml,
   domRootElementId,
-  eversionRun,
+  extractor,
 }: {
   App: AppComponent
   head: ResolvableHead[]
@@ -242,28 +242,28 @@ export async function renderReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
-  eversionRun: EversionRun
+  extractor: Extractor
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
-    eversionRun,
+    extractor,
     head,
     env,
     domRootElementId,
   })
-  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, eversionRun })
+  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, extractor })
 }
 
 export async function renderAppAsReadableStream({
   App,
-  eversionRun,
+  extractor,
   pagePoint,
   pageLocation,
   input,
   ...props
 }: {
   App: AppComponent
-  eversionRun: EversionRun
+  extractor: Extractor
   pagePoint: AnyPoint | undefined
   pageLocation: AnyLocation
   input: InputRaw
@@ -274,7 +274,7 @@ export async function renderAppAsReadableStream({
   originalIndexHtml: string
   domRootElementId?: string
 }): Promise<ReadableStream> {
-  await eversionRun.prefetchAppPagePointDeep({
+  await extractor.prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
     pagePoint,
@@ -284,6 +284,6 @@ export async function renderAppAsReadableStream({
   return await renderReadableStream({
     ...props,
     App,
-    eversionRun,
+    extractor,
   })
 }

@@ -1,6 +1,5 @@
-import type { Eversion } from '@point0/core/eversion'
-import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
-import { Points } from '@point0/core/points'
+import type { LazyPointsModule, PointsManagersGroup, ReadyPointsModule } from '@point0/core/points-manager'
+import { PointsManager } from '@point0/core/points-manager'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
 import type { BunPlugin } from 'bun'
@@ -25,10 +24,10 @@ import {
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
   cwd: string
-  eversion: Eversion
-  providedPoints: Points | null
+  pmg: PointsManagersGroup
+  providedPointsManager: PointsManager | null
   pointsFile: string | null
-  points: TInitialized extends true ? Points | null : Points | null
+  pointsManager: TInitialized extends true ? PointsManager | null : PointsManager | null
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
@@ -49,9 +48,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     initialized: TInitialized
     cwd: string
     scope: PointsScope
-    providedPoints: Points | null
+    providedPointsManager: PointsManager | null
     pointsFile: string | null
-    points: Points | null
+    pointsManager: PointsManager | null
     itWasBuilt: boolean
     engineFile: string | null
     cwdBeforeBuild: string
@@ -65,14 +64,14 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     bunBuildConfig: ServerBunBuildConfigDefinition
     bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
-    eversion: Eversion
+    pmg: PointsManagersGroup
   }) {
     this.cwd = input.cwd
-    this.eversion = input.eversion
+    this.pmg = input.pmg
     this.scope = input.scope
-    this.providedPoints = input.providedPoints
+    this.providedPointsManager = input.providedPointsManager
     this.pointsFile = input.pointsFile
-    this.points = input.points as TInitialized extends true ? Points : null
+    this.pointsManager = input.pointsManager as TInitialized extends true ? PointsManager : null
     this.itWasBuilt = process.env.ENGINE_WAS_BUILT ? process.env.ENGINE_WAS_BUILT === 'true' : input.itWasBuilt
     this.engineFile = input.itWasBuilt ? (process.env.ENGINE_FILE_AFTER_BUILD ?? input.engineFile) : input.engineFile
     this.cwdBeforeBuild = process.env.ENGINE_CWD_BEFORE_BUILD ?? input.cwdBeforeBuild
@@ -92,8 +91,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   static create(input: {
     cwd: string
     scope: PointsScope
-    points: Points | string | null
-    eversion: Eversion
+    points: PointsManager | string | null
+    pmg: PointsManagersGroup
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -108,9 +107,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     clients: ClientBun[]
   }): ServerBun<false> {
-    const providedPoints = typeof input.points === 'string' ? null : input.points
+    const providedPointsManager = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
-    const points = null
+    const pointsManager = null
 
     const publicdir = Publicdir.create({
       hostname: null,
@@ -122,9 +121,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const server = new ServerBun<false>({
       ...input,
       publicdir,
-      points,
+      pointsManager,
       pointsFile,
-      providedPoints,
+      providedPointsManager,
       initialized: false,
     })
     return server
@@ -139,22 +138,22 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       return this as ServerBun<true>
     }
 
-    this.points = await this.createPoints()
+    this.pointsManager = await this.createPointsManager()
     await this.publicdir.init()
     this.initialized = true as never
     return this as ServerBun<true>
   }
 
-  readonly createPoints = async (): Promise<Points | null> => {
-    if (this.points) {
-      return this.points
+  readonly createPointsManager = async (): Promise<PointsManager | null> => {
+    if (this.pointsManager) {
+      return this.pointsManager
     }
-    if (this.providedPoints) {
-      return this.providedPoints
+    if (this.providedPointsManager) {
+      return this.providedPointsManager
     }
     const pointsFile = this.pointsFile
     if (pointsFile) {
-      return Points.create(
+      return PointsManager.create(
         await withError(
           async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
           `Failed to import points from ${pointsFile} on server`,
@@ -444,7 +443,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       bunServer,
       server: this,
       clients: this.clients,
-      eversion: this.eversion,
+      pmg: this.pmg,
       request,
       parsedUrl,
       fallbackScope: scope ?? this.fallbackScope,

@@ -16,7 +16,7 @@ import { Svg } from '../lib/svg.js'
 // const IconText = ``
 // const IconUsual = ``
 
-// const something = EversionStore.define('something', () => {
+// const something = ExtractorStore.define('something', () => {
 //   return {
 //     random: Math.random(),
 //     date: new Date(),

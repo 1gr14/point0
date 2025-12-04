@@ -181,13 +181,13 @@
 //   }
 
 //   async renderAsReadableStream({
-//     eversionRun,
+//     extractor,
 //     extractResult,
 //     pagePoint,
 //     pageLocation,
 //     input,
 //   }: {
-//     eversionRun: EversionRun
+//     extractor: EversionRun
 //     extractResult: ExtractResult
 //     pagePoint: AnyPoint | undefined
 //     pageLocation: AnyLocation
@@ -198,7 +198,7 @@
 //     }
 //     return await renderAppAsReadableStream({
 //       App: this.App,
-//       eversionRun,
+//       extractor,
 //       head: extractResult.head,
 //       pagePoint,
 //       pageLocation,
@@ -210,12 +210,12 @@
 //   }
 
 //   async prefetchAppPagePointDeep({
-//     eversionRun,
+//     extractor,
 //     pagePoint,
 //     pageLocation,
 //     input,
 //   }: {
-//     eversionRun: EversionRun
+//     extractor: EversionRun
 //     pagePoint: AnyPoint | undefined
 //     pageLocation: AnyLocation
 //     input: InputParsed
@@ -223,7 +223,7 @@
 //     if (!this.App) {
 //       throw new Error(`App not provided for client "${this.points.root._scope}"`)
 //     }
-//     await eversionRun.prefetchAppPagePointDeep({
+//     await extractor.prefetchAppPagePointDeep({
 //       App: this.App,
 //       renderToReadableStream,
 //       pageLocation,

@@ -3,7 +3,8 @@ import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Point0 } from './index.js'
+import { ExtractorStore } from './extractor-store.js'
+import { PointsManager } from './points-manager.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -53,7 +54,8 @@ export function RouterContextProvider({
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
-    Point0._currentLocation.set(currentLocation)
+    // Point0._currentLocation.set(currentLocation)
+    ExtractorStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
   }, [currentLocation])
 
   const value = useMemo(
@@ -88,10 +90,10 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
   return useMemo(() => {
     if (!route) {
-      return Point0.getPoints().routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
+      return PointsManager.getGlobalPoints().routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
     }
     return Route0.from(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
-  }, [route, location, routerCtx.currentLocation, Point0.getPoints().routesHash])
+  }, [route, location, routerCtx.currentLocation, PointsManager.getGlobalPoints().routesHash])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -158,7 +160,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
-      const location = Point0.getPoints().routes._.getLocation(href)
+      const location = PointsManager.getGlobalPoints().routes._.getLocation(href)
       routerContext.setNextLocation(location)
 
       // simple mode
@@ -180,7 +182,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       routerContext.setStatus('fetching')
 
       try {
-        await Point0.getPoints().prefetchSuitablePagePoint({
+        await PointsManager.getGlobalPoints().prefetchSuitablePagePoint({
           location,
           queryClient,
           mode: 'any',

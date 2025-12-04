@@ -1,27 +1,31 @@
+import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
-import type { QueryClient } from '@tanstack/react-query'
+import type { QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { ClientServerHelpers } from './client-server.js'
-import { EversionStore } from './eversion-store.js'
+import { ExtractorStore } from './extractor-store.js'
+import { Extractor } from './extractor.js'
 import type {
   EndPoint,
   EndPointType,
+  InputParsed,
   InputRaw,
   LayoutPoint,
   PagePoint,
   PointName,
   PointsScope,
   PointType,
+  QueryKey,
   RequiredCtx,
   RootPoint,
   UndefinedRoute,
 } from './types.js'
-import { appendSlash, getBasepathOrNull, getHostnameOrNull } from './utils.js'
+import { appendSlash, getBasepathOrNull, getHostnameOrNull, parseUrl, type ParsedUrl } from './utils.js'
 
 // TODO: when find suitable allow porvide "scope", then it will find only inside that
 // so remove force
-export class Points<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
+export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
   absPath: string | null
   readFn: PointsReadFn | null
   scope: PointsScope
@@ -65,7 +69,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.routes = routes
     this.ready = ready as TReady
     this.routesHash = routes._.pathsOrdering.join(',')
-    this.collection = Points.sortCollection({ points: collection, routes })
+    this.collection = PointsManager.sortCollection({ points: collection, routes })
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.root = root
@@ -73,9 +77,9 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     this.baseurl = this.root._baseurl
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
-    Points.setGlobalPoints(this)
+    PointsManager.setGlobalPoints(this)
     if (ClientServerHelpers.isClient) {
-      EversionStore.setWeak('__POINT0_SCOPE__', this.scope)
+      ExtractorStore.setWeak('__POINT0_SCOPE__', this.scope)
     }
   }
 
@@ -84,15 +88,15 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     readyPoints: TReadyPointsModule,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): Points<true, TReadyPointsModule['root_ready']['point']['Infer']['RequiredCtx']> => {
+  ): PointsManager<true, TReadyPointsModule['root_ready']['point']['Infer']['RequiredCtx']> => {
     const { root_ready, ...rest } = readyPoints
     const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
-    const rawPoints = Points.rawToReadyPointsCollection(readyPointsWithoutRoot)
-    const routedPoints = Points.toRoutedPointsCollection(rawPoints)
-    const routes = Points.toRoutes({ points: routedPoints })
-    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
-    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<true, TReadyPointsModule['root_ready']['point']['Infer']['RequiredCtx']>({
+    const rawPoints = PointsManager.rawToReadyPointsCollection(readyPointsWithoutRoot)
+    const routedPoints = PointsManager.toRoutedPointsCollection(rawPoints)
+    const routes = PointsManager.toRoutes({ points: routedPoints })
+    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: routedPoints })
+    const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
+    return new PointsManager<true, TReadyPointsModule['root_ready']['point']['Infer']['RequiredCtx']>({
       root: root_ready.point,
       scope: root_ready.point._scope,
       collection: routedPoints,
@@ -110,14 +114,14 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     lazyPoints: TLazyPointsModule,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): Points<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']> => {
+  ): PointsManager<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']> => {
     const { root_lazy, ...rest } = lazyPoints
     const lazyPointsWithoutRoot = Object.values(rest) as LazyRoutedPointsCollection
-    const routedPoints = Points.toRoutedPointsCollection(lazyPointsWithoutRoot)
-    const routes = Points.toRoutes({ points: routedPoints })
-    const pagesTreeSource = Points.toPagesTreeSource({ points: routedPoints })
-    const pagesTree = Points.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new Points<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']>({
+    const routedPoints = PointsManager.toRoutedPointsCollection(lazyPointsWithoutRoot)
+    const routes = PointsManager.toRoutes({ points: routedPoints })
+    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: routedPoints })
+    const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
+    return new PointsManager<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']>({
       root: root_lazy.point,
       scope: root_lazy.point._scope,
       collection: routedPoints,
@@ -133,18 +137,18 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
   static readonly read = async <TReady extends boolean>(
     absPath: string,
     readFn: PointsReadFn,
-  ): Promise<Points<TReady>> => {
+  ): Promise<PointsManager<TReady>> => {
     const pointsModule = await readFn(absPath)
-    return Points.create(pointsModule, absPath, readFn) as Points<TReady>
+    return PointsManager.create(pointsModule, absPath, readFn) as PointsManager<TReady>
   }
 
-  static readonly create = <TPoints extends ReadyPointsModule | LazyPointsModule | Points>(
+  static readonly create = <TPoints extends ReadyPointsModule | LazyPointsModule | PointsManager>(
     points: TPoints,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): Points<
+  ): PointsManager<
     boolean,
-    TPoints extends Points
+    TPoints extends PointsManager
       ? TPoints['root']['point']['Infer']['RequiredCtx']
       : TPoints extends ReadyPointsModule
         ? TPoints['root']['point']['Infer']['RequiredCtx']
@@ -152,21 +156,21 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
           ? TPoints['root_lazy']['point']['Infer']['RequiredCtx']
           : RequiredCtx
   > => {
-    if (points instanceof Points) {
+    if (points instanceof PointsManager) {
       points.readFn = readFn ?? points.readFn
       points.absPath = absPath ?? points.absPath
       return points as never
     }
-    if (Points.isReadyPointsModule(points)) {
-      return Points.ready(points, absPath, readFn)
+    if (PointsManager.isReadyPointsModule(points)) {
+      return PointsManager.ready(points, absPath, readFn)
     }
-    if (Points.isLazyPointsModule(points)) {
-      return Points.lazy(points, absPath, readFn)
+    if (PointsManager.isLazyPointsModule(points)) {
+      return PointsManager.lazy(points, absPath, readFn)
     }
     throw new Error('Invalid points input')
   }
 
-  async replace(points: Points): Promise<void> {
+  async replace(points: PointsManager): Promise<void> {
     this.absPath = points.absPath
     this.readFn = points.readFn
     this.root = points.root
@@ -180,30 +184,32 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     if (this.ready && !points.ready) {
       await this.replace(await this.load(true))
     } else {
-      Points.setGlobalPoints(this)
+      PointsManager.setGlobalPoints(this)
     }
   }
 
   async read(): Promise<void> {
     if (this.readFn && this.absPath) {
       const freshPointsModule = await this.readFn(this.absPath)
-      const freshPoints = Points.create(freshPointsModule, this.absPath, this.readFn)
+      const freshPoints = PointsManager.create(freshPointsModule, this.absPath, this.readFn)
       await this.replace(freshPoints)
     }
   }
 
-  async load(force?: boolean): Promise<Points<true, TRequiredCtx>> {
+  async load(force?: boolean): Promise<PointsManager<true, TRequiredCtx>> {
     if (this.ready && !force) {
-      return this as Points<true, TRequiredCtx>
+      return this as PointsManager<true, TRequiredCtx>
     }
-    const { readyPoints, errors } = await Points.toReadyPointsCollection(this.collection as LazyRoutedPointsCollection)
+    const { readyPoints, errors } = await PointsManager.toReadyPointsCollection(
+      this.collection as LazyRoutedPointsCollection,
+    )
     for (const error of errors) {
       console.error(error)
     }
-    const routes = Points.toRoutes({ points: readyPoints })
-    const pagesTreeSource = Points.toPagesTreeSource({ points: readyPoints })
-    const pagesTree = Points.toPagesTree({ points: readyPoints, pagesTreeSource })
-    return new Points<true, TRequiredCtx>({
+    const routes = PointsManager.toRoutes({ points: readyPoints })
+    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: readyPoints })
+    const pagesTree = PointsManager.toPagesTree({ points: readyPoints, pagesTreeSource })
+    return new PointsManager<true, TRequiredCtx>({
       root: this.root,
       scope: this.root._scope,
       collection: readyPoints,
@@ -296,11 +302,11 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
       | LazyRoutedPointsCollection
       | ReadyRoutedPointsCollection,
   ): LazyPointsCollection | ReadyPointsCollection | LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
-    if (Points.isLazyPointsModule(points)) {
-      return Points.moduleToLazyPointsCollection(points)
+    if (PointsManager.isLazyPointsModule(points)) {
+      return PointsManager.moduleToLazyPointsCollection(points)
     }
-    if (Points.isReadyPointsModule(points)) {
-      return Points.moduleToReadyPointsCollection(points)
+    if (PointsManager.isReadyPointsModule(points)) {
+      return PointsManager.moduleToReadyPointsCollection(points)
     }
     return points
   }
@@ -332,7 +338,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
     if (this.isRoutedPointsCollection(points)) {
       return points
     }
-    const pointsCollection = Points.toPointsCollection(points)
+    const pointsCollection = PointsManager.toPointsCollection(points)
     return pointsCollection.map((record) => {
       const point = record.point
       return {
@@ -545,7 +551,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
         })),
         nested: !pagesTreeSourceRecord.nested
           ? undefined
-          : Points.toPagesTree({
+          : PointsManager.toPagesTree({
               pagesTreeSource: pagesTreeSourceRecord.nested,
               points,
             }),
@@ -602,7 +608,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
 
     // Prefetch the (possibly lazy) page component
     if (suitable.Component) {
-      await Points.prefetchLazyComponent(suitable.Component)
+      await PointsManager.prefetchLazyComponent(suitable.Component)
     }
 
     const layouts = await Promise.all(
@@ -610,7 +616,7 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
         .filter((p) => p.type === 'layout' && suitable.layouts?.includes(p.name))
         .map(async (layout) => {
           if (layout.Component) {
-            await Points.prefetchLazyComponent(layout.Component)
+            await PointsManager.prefetchLazyComponent(layout.Component)
           }
           return typeof layout.point === 'function' ? await layout.point() : layout.point
         }),
@@ -757,18 +763,18 @@ export class Points<TReady extends boolean = boolean, TRequiredCtx extends Requi
 
   // global
 
-  private static readonly setGlobalPoints = (points: ReadyPointsModule | LazyPointsModule | Points) => {
-    const createdPoints = Points.create(points)
+  private static readonly setGlobalPoints = (points: ReadyPointsModule | LazyPointsModule | PointsManager) => {
+    const createdPoints = PointsManager.create(points)
     if (!(globalThis as any).__POINT0_POINTS__) {
       ;(globalThis as any).__POINT0_POINTS__ = {}
     }
     ;(globalThis as any).__POINT0_POINTS__[createdPoints.scope] = createdPoints
     return createdPoints
   }
-  static getGlobalPoints = (scope?: PointsScope): Points => {
-    scope ??= EversionStore.getWeak<PointsScope>('__POINT0_SCOPE__')
+  static getGlobalPoints = (scope?: PointsScope): PointsManager => {
+    scope ??= ExtractorStore.getWeak<PointsScope>('__POINT0_SCOPE__')
     if (!scope) {
-      throw new Error('Points scope not found if EversionStore. You should provide scope.')
+      throw new Error('Points scope not found if ExtractorStore. You should provide scope.')
     }
     const points =
       scope in (globalThis as any).__POINT0_POINTS__ ? (globalThis as any).__POINT0_POINTS__[scope] : undefined
@@ -823,8 +829,8 @@ export type ReadyPointsModule = { root_ready: { point: RootPoint } } & Record<st
 
 export type PointsModuleType = 'ready' | 'lazy'
 
-export type LazyPoints = Points<false>
-export type ReadyPoints = Points<true>
+export type LazyPoints = PointsManager<false>
+export type ReadyPoints = PointsManager<true>
 
 export type PagesTreeSourceRecord = {
   layout: string | undefined
@@ -851,3 +857,267 @@ export type PagesTreeRecord = {
 export type PagesTree = PagesTreeRecord[]
 
 export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
+
+// TODO: when find suitable allow porvide "scope", then it will find only inside that
+// so remove force
+// TODO: add generic and type Source, and Connection so we can understand which ine used now
+export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+  pointsManagers: Array<PointsManager<true>>
+
+  private constructor(pointsManagers: Array<PointsManager<true, TRequiredCtx>>) {
+    this.pointsManagers = pointsManagers
+  }
+
+  static create<TRequiredCtx extends RequiredCtx>(
+    ...points: Array<PointsManager<true, TRequiredCtx>>
+  ): PointsManagersGroup<TRequiredCtx> {
+    return new PointsManagersGroup<TRequiredCtx>(points)
+  }
+
+  async add(...points: Array<PointsManager<boolean, TRequiredCtx>>): Promise<typeof this> {
+    this.pointsManagers.push(...(await Promise.all(points.map(async (p) => await p.load()))))
+    return this
+  }
+
+  async readPoints(): Promise<void> {
+    await Promise.all(
+      this.pointsManagers.map(async (pointsManager) => {
+        await pointsManager.read()
+      }),
+    )
+  }
+
+  getSuitable({
+    scope,
+    fallbackScope,
+    pageLocation,
+    pointType,
+    pointName,
+    input,
+  }: {
+    scope?: PointsScope
+    fallbackScope: PointsScope
+    pageLocation?: AnyLocation | undefined
+    pointType?: EndPointType | undefined
+    pointName?: PointName | undefined
+    input?: InputParsed | undefined
+  }): GetSuitableResult {
+    // find exact match
+    for (const points of this.pointsManagers) {
+      const suitablePoint = points.getSuitablePoint({ pageLocation, pointType, pointName, input, scope })
+      if (suitablePoint) {
+        return {
+          point: suitablePoint.point,
+          pageLocation: suitablePoint.pageLocation,
+          pointsManager: points,
+        }
+      }
+    }
+
+    // find root by scope
+    if (scope) {
+      for (const points of this.pointsManagers) {
+        if (points.scope === scope) {
+          return {
+            point: undefined,
+            pageLocation: undefined,
+            pointsManager: points,
+          }
+        }
+      }
+      throw new Error0(`No points found with scope "${scope}"`, { httpStatus: 404 })
+    }
+
+    // find root by page location
+    if (pageLocation) {
+      for (const points of this.pointsManagers) {
+        if (points.isPageLocationSuitable({ pageLocation })) {
+          return {
+            point: undefined,
+            pageLocation,
+            pointsManager: points,
+          }
+        }
+      }
+    }
+
+    // find by fallback scope
+    if (fallbackScope) {
+      for (const points of this.pointsManagers) {
+        if (points.scope === fallbackScope) {
+          return {
+            point: undefined,
+            pageLocation: undefined,
+            pointsManager: points,
+          }
+        }
+      }
+    }
+
+    throw new Error(
+      `No suitable points manager found at scope "${scope}" and fallback scope "${fallbackScope}" and page location "${pageLocation?.href || pageLocation?.pathname || 'undefined'}"`,
+    )
+  }
+
+  async prepareExtractorByRequest({
+    request,
+    parsedUrl,
+    fallbackScope,
+    scope,
+    requiredCtx,
+  }: {
+    request: Request
+    parsedUrl?: ParsedUrl
+    fallbackScope: PointsScope
+    scope?: PointsScope
+    requiredCtx: TRequiredCtx
+  }): Promise<{
+    task: FetchTask | undefined
+    // TODO: it is not parsed input it is raw input
+    input: InputParsed
+    suitable: GetSuitableResult
+    extractor: Extractor
+  }> {
+    parsedUrl ??= parseUrl(request.url)
+    const task = await (async () => {
+      if (parsedUrl.urlObj.pathname !== '/_point0') {
+        return undefined
+      }
+      const bodyRaw = await (async () => {
+        try {
+          return await request.json()
+        } catch (error) {
+          return {}
+        }
+      })()
+      const parsed = (() => {
+        const validPointTypes = [
+          'page',
+          'layout',
+          'component',
+          'response',
+          'query',
+          'infiniteQuery',
+          'mutation',
+          'provider',
+        ] as const
+        const validOutputTypes = ['data', 'response', 'dehydratedState'] as const
+        if (!bodyRaw || typeof bodyRaw !== 'object') {
+          throw new Error('Invalid request body: must be an object')
+        }
+        const { pointType, outputType, pointInput, scope, pointName } = bodyRaw as Record<string, unknown>
+        if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+          throw new Error(
+            `Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${JSON.stringify(pointType).slice(0, 100)}`,
+          )
+        }
+        if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+          throw new Error(
+            `Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${JSON.stringify(outputType).slice(0, 100)}`,
+          )
+        }
+        if (!pointInput || typeof pointInput !== 'object' || Array.isArray(pointInput)) {
+          throw new Error(`Invalid pointInput: must be an object, got ${JSON.stringify(pointInput).slice(0, 100)}`)
+        }
+        if (typeof scope !== 'string' || scope.length === 0) {
+          throw new Error(`Invalid scope: must be a non-empty string, got ${JSON.stringify(scope).slice(0, 100)}`)
+        }
+        if (typeof pointName !== 'string' || pointName.length === 0) {
+          throw new Error(
+            `Invalid pointName: must be a non-empty string, got ${JSON.stringify(pointName).slice(0, 100)}`,
+          )
+        }
+        return {
+          pointType: pointType as (typeof validPointTypes)[number],
+          outputType: outputType as (typeof validOutputTypes)[number],
+          pointInput: pointInput as Record<string, unknown>,
+          scope,
+          pointName,
+        }
+      })()
+      if (scope && parsed.scope !== scope) {
+        throw new Error(`Parsed scope "${parsed.scope}" does not match provided scope "${scope}"`)
+      }
+      return parsed
+    })()
+    const location = Route0.getLocation(parsedUrl.urlStr)
+    const suitable = this.getSuitable({
+      pointType: task?.pointType ?? 'page',
+      scope: task?.scope || scope,
+      pointName: task?.pointName,
+      pageLocation: !task ? location : undefined,
+      input: task?.pointInput,
+      fallbackScope,
+    })
+    const extractor = await Extractor.create({
+      points: suitable.pointsManager,
+      pageLocation: suitable.pageLocation,
+      currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
+      requiredCtx,
+    })
+    const input = task?.pointInput ?? { ...location.searchParams, ...suitable.pageLocation?.params }
+    return {
+      task,
+      input,
+      suitable,
+      extractor,
+    }
+  }
+
+  // async preparePageEversionRunByUrl({
+  //   url,
+  //   fallbackScope,
+  //   scope,
+  //   requiredCtx,
+  // }: {
+  //   url: string
+  //   fallbackScope: Scope
+  //   scope?: Scope
+  //   requiredCtx: TRequiredCtx
+  // }): Promise<{
+  //   suitable: GetSuitableResult
+  //   extractor: EversionRun
+  //   input: InputParsed
+  //   location: AnyLocation
+  // }> {
+  //   const location = Route0.getLocation(url)
+  //   const suitable = this.getSuitable({
+  //     pointType: 'page',
+  //     scope,
+  //     pageLocation: location,
+  //     fallbackScope,
+  //   })
+  //   const extractor = await suitable.???.createRun({
+  //     pageLocation: suitable.pageLocation,
+  //     currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
+  //     requiredCtx,
+  //   })
+  //   const input = { ...location.searchParams, ...suitable.pageLocation?.params }
+  //   return {
+  //     suitable,
+  //     extractor,
+  //     input,
+  //     location: suitable.pageLocation || location,
+  //   }
+  // }
+}
+
+export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  point: EndPoint
+  pageLocation: ExactLocation | undefined
+  pointsManager: PointsManager<true, TRequiredCtx>
+}
+
+export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  point: EndPoint | undefined
+  pageLocation: AnyLocation | undefined
+  pointsManager: PointsManager<true, TRequiredCtx>
+}
+
+export type FetchTask = {
+  pointType: EndPointType
+  outputType: 'data' | 'response' | 'dehydratedState'
+  pointInput: InputParsed
+  scope: PointsScope
+  pointName: PointName
+}

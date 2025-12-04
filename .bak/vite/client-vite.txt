@@ -233,7 +233,7 @@
 //   }
 
 //   async loadAppComponent(): Promise<AppComponent> {
-//     // return await eversionRun.withServerGlobalState(async () => {
+//     // return await extractor.withServerGlobalState(async () => {
 //     //   const { default: App } = await this.viteServer.ssrLoadModule(this.appFile)
 //     //   if (!App) {
 //     //     throw new Error(`App not found: ${this.appFile}`)
@@ -248,29 +248,29 @@
 //     return App
 
 //     // const {} = await this.viteServer.ssrLoadModule('/index.server.js')
-//     // return await getAppElement({ eversionRun })
+//     // return await getAppElement({ extractor })
 //     // const { default: App } = await this.viteEnvironment.importModule(this.appFile)
 //   }
 
 //   async renderAsReadableStream({
-//     eversionRun,
+//     extractor,
 //     extractResult,
 //     pagePoint,
 //     pageLocation,
 //     input,
 //   }: {
-//     eversionRun: EversionRun
+//     extractor: EversionRun
 //     extractResult: ExtractResult
 //     pagePoint: AnyPoint | undefined
 //     pageLocation: AnyLocation
 //     input: InputParsed
 //   }): Promise<ReadableStream> {
-//     eversionRun.setSsrLocation(pageLocation)
-//     eversionRun.setCurrentLocation(pageLocation)
+//     extractor.setSsrLocation(pageLocation)
+//     extractor.setCurrentLocation(pageLocation)
 //     const App = await this.loadAppComponent()
 //     return await renderAppAsReadableStream({
 //       App,
-//       eversionRun,
+//       extractor,
 //       head: extractResult.head,
 //       pagePoint,
 //       input,
@@ -281,20 +281,20 @@
 //   }
 
 //   async prefetchAppPagePointDeep({
-//     eversionRun,
+//     extractor,
 //     pagePoint,
 //     pageLocation,
 //     input,
 //   }: {
-//     eversionRun: EversionRun
+//     extractor: EversionRun
 //     pagePoint: AnyPoint | undefined
 //     pageLocation: AnyLocation
 //     input: InputParsed
 //   }): Promise<void> {
-//     eversionRun.setCurrentLocation(pageLocation)
-//     eversionRun.setSsrLocation(pageLocation)
+//     extractor.setCurrentLocation(pageLocation)
+//     extractor.setSsrLocation(pageLocation)
 //     const App = await this.loadAppComponent()
-//     await eversionRun.prefetchAppPagePointDeep({
+//     await extractor.prefetchAppPagePointDeep({
 //       App,
 //       renderToReadableStream,
 //       pagePoint,

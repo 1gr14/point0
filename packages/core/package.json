@@ -35,17 +35,17 @@
       "types": "./dist/router.d.ts",
       "import": "./dist/router.js"
     },
-    "./eversion": {
-      "types": "./dist/eversion.d.ts",
-      "import": "./dist/eversion.js"
+    "./points-manager": {
+      "types": "./dist/points-manager.d.ts",
+      "import": "./dist/points-manager.js"
     },
-    "./eversion-store": {
-      "types": "./dist/eversion-store.d.ts",
-      "import": "./dist/eversion-store.js"
+    "./extractor-store": {
+      "types": "./dist/extractor-store.d.ts",
+      "import": "./dist/extractor-store.js"
     },
-    "./eversion-run": {
-      "types": "./dist/eversion-run.d.ts",
-      "import": "./dist/eversion-run.js"
+    "./extractor": {
+      "types": "./dist/extractor.d.ts",
+      "import": "./dist/extractor.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",

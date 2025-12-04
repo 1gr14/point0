@@ -1,4 +1,4 @@
-import type { Eversion } from '@point0/core/eversion'
+import type { PointsManagersGroup } from '@point0/core/points-manager'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { parseUrl, type ParsedUrl } from '@point0/core/utils'
 import type { ClientBun } from './client.js'
@@ -10,7 +10,7 @@ export const engineFetch = async ({
   bunServer,
   server,
   clients,
-  eversion,
+  pmg,
   request,
   parsedUrl,
   scope,
@@ -21,7 +21,7 @@ export const engineFetch = async ({
   bunServer?: Bun.Server<unknown>
   server: ServerBun<true>
   clients: Array<ClientBun<true>>
-  eversion: Eversion
+  pmg: PointsManagersGroup
   request: Request
   parsedUrl?: ParsedUrl
   scope?: PointsScope
@@ -53,7 +53,7 @@ export const engineFetch = async ({
     }
 
     // in case if some points was loaded via vite, we should refetch them
-    await eversion.readPoints()
+    await pmg.readPoints()
   }
   parsedUrl ??= parseUrl(request.url)
   const meta: Record<string, any> = {
@@ -72,14 +72,14 @@ export const engineFetch = async ({
 
     // TODO: lets provide here wrapResponse and wrapRequest and call it
     // TODO: also there on error fo input not throw it but return as error
-    const { task, input, suitable, eversionRun } = await eversion.prepareEversionRunByRequest({
+    const { task, input, suitable, extractor } = await pmg.prepareExtractorByRequest({
       request,
       parsedUrl,
       fallbackScope,
       scope,
       requiredCtx,
     })
-    meta.scope = suitable.points.scope
+    meta.scope = suitable.pointsManager.scope
 
     if (!suitable.point && process.env.NODE_ENV !== 'production') {
       const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ parsedUrl, request })
@@ -95,7 +95,7 @@ export const engineFetch = async ({
     meta.pointName = task?.pointName
     meta.pointType = task?.pointType
 
-    const relatedClient = clients.find((client) => client.points.scope === suitable.points.scope)
+    const relatedClient = clients.find((client) => client.pointsManager.scope === suitable.pointsManager.scope)
 
     if (relatedClient) {
       if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
@@ -104,7 +104,7 @@ export const engineFetch = async ({
             // I think it will never throw, but who knows
             throw new Error('Page Critical Error: Not Found')
           }
-          const extractResult = await eversionRun.extract({
+          const extractResult = await extractor.extract({
             point: suitable.point,
             input,
           })
@@ -112,7 +112,7 @@ export const engineFetch = async ({
             logger.error(extractResult.error, meta)
           }
           const readableStream = await relatedClient.renderAsReadableStream({
-            eversionRun,
+            extractor,
             extractResult,
             pagePoint: suitable.point,
             pageLocation: suitable.pageLocation,
@@ -145,12 +145,12 @@ export const engineFetch = async ({
           throw new Error('Page Critical Error: Not Found')
         }
         await relatedClient.prefetchAppPagePointDeep({
-          eversionRun,
+          extractor,
           pagePoint: suitable.point,
           pageLocation: suitable.pageLocation,
           input,
         })
-        const dehydratedState = await eversionRun.getQueryClientDehydratedState()
+        const dehydratedState = await extractor.getQueryClientDehydratedState()
         return new Response(JSON.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
@@ -160,7 +160,7 @@ export const engineFetch = async ({
       throw new Error(`Client not found for point "${suitable.point?._name ?? 'unknown'}" while requested page html`)
     }
 
-    const extractResult = await eversionRun.extract({
+    const extractResult = await extractor.extract({
       point: suitable.point,
       input,
     })

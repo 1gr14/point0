@@ -329,7 +329,7 @@
 //         input: task?.pointInput,
 //         fallbackScope: this.fallbackScope,
 //       })
-//       const eversionRun = await suitable.eversion.createRun({
+//       const extractor = await suitable.eversion.createRun({
 //         pageLocation: suitable.pageLocation,
 //         currentLocation: suitable.pageLocation ?? Route0.toRelLocation(Route0.getLocation(request.url)),
 //         requiredCtx,
@@ -343,7 +343,7 @@
 //         const routeParams = suitable.pageLocation?.params
 //         return { ...searchParams, ...routeParams }
 //       })()
-//       const extractResult = await eversionRun.extract({
+//       const extractResult = await extractor.extract({
 //         point: suitable.point,
 //         input,
 //       })
@@ -381,11 +381,11 @@
 //               // I think it will never throw, but who knows
 //               throw new Error('Page Not Found')
 //             }
-//             eversionRun.setSsrLocation(suitable.pageLocation)
-//             eversionRun.setCurrentLocation(suitable.pageLocation)
+//             extractor.setSsrLocation(suitable.pageLocation)
+//             extractor.setCurrentLocation(suitable.pageLocation)
 //             const readableStream = await renderAppAsReadableStream({
 //               App,
-//               eversionRun,
+//               extractor,
 //               head: extractResult.head,
 //               pagePoint: suitable.point,
 //               input,
@@ -421,15 +421,15 @@
 //             // I think it will never throw, but who knows
 //             throw new Error('Page for dehydrated state not found')
 //           }
-//           eversionRun.setCurrentLocation(suitable.pageLocation)
-//           eversionRun.setSsrLocation(suitable.pageLocation)
-//           await eversionRun.prefetchAppPagePointDeep({
+//           extractor.setCurrentLocation(suitable.pageLocation)
+//           extractor.setSsrLocation(suitable.pageLocation)
+//           await extractor.prefetchAppPagePointDeep({
 //             App,
 //             renderToReadableStream,
 //             pagePoint: suitable.point,
 //             input,
 //           })
-//           const dehydratedState = await eversionRun.getQueryClientDehydratedState()
+//           const dehydratedState = await extractor.getQueryClientDehydratedState()
 //           return new Response(JSON.stringify({ dehydratedState }), {
 //             headers: { 'Content-Type': 'application/json' },
 //             status: 200,

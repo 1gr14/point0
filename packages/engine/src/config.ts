@@ -1,7 +1,7 @@
 import type { Routes } from '@devp0nt/route0'
 import type { AppComponent } from '@point0/core/mount'
-import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '@point0/core/points'
-import { Points } from '@point0/core/points'
+import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '@point0/core/points-manager'
+import { PointsManager } from '@point0/core/points-manager'
 import type { PointsScope } from '@point0/core/types'
 import { appendSlash, prependAndDeappendSlash } from '@point0/core/utils'
 import { minimatch } from 'minimatch'
@@ -112,7 +112,7 @@ export type EngineGeneralOptionsParsed = {
 export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string | null
-  points: Points | string
+  points: PointsManager | string
   // pointsDistFile: string | null
   ssr: boolean
   app: string | AppComponent | null
@@ -140,7 +140,7 @@ export type EngineClientOptionsParsed = {
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
-  points: Points | string | null
+  points: PointsManager | string | null
   publicdir: EngineOptionsPublicdirParsed
   port: number
   entry: Record<string, string> | null
@@ -465,7 +465,7 @@ export const parseEngineServerOptions = ({
           })
         : !serverOptions.points
           ? null
-          : Points.create(serverOptions.points),
+          : PointsManager.create(serverOptions.points),
     port,
     outdir,
     entry: entriesRecord,
@@ -535,7 +535,7 @@ const parseEngineClientOptions = ({
             path: clientOptions.points,
             omitDirAfterBuild: true,
           })
-        : Points.create(clientOptions.points),
+        : PointsManager.create(clientOptions.points),
     // pointsDistFile:
     //   typeof clientOptions.points === 'string'
     //     ? toFinalDistPath({

@@ -1,9 +1,8 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { Eversion } from '@point0/core/eversion'
-import type { EversionRun, ExtractResult } from '@point0/core/eversion-run'
+import type { PointsManagersGroup, LazyPointsModule, ReadyPointsModule } from '@point0/core/points-manager'
+import type { Extractor, ExtractResult } from '@point0/core/extractor'
 import type { AppComponent } from '@point0/core/mount'
-import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points'
-import { Points } from '@point0/core/points'
+import { PointsManager } from '@point0/core/points-manager'
 import type { AnyPoint, InputParsed, PointsScope } from '@point0/core/types'
 import type { ParsedUrl } from '@point0/core/utils'
 import { getHostnameOrNull, parseUrl } from '@point0/core/utils'
@@ -37,11 +36,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
-  eversion: Eversion
-  providedPoints: Points | null
+  pmg: PointsManagersGroup
+  providedPointsManager: PointsManager | null
   pointsFile: string | null
   // pointsDistFile: string | null
-  points: TInitialized extends true ? Points : Points | null
+  pointsManager: TInitialized extends true ? PointsManager : PointsManager | null
   ssr: boolean
   providedAppComponent: AppComponent | null
   appFile: string | null
@@ -78,10 +77,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     scope: PointsScope
     initialized: TInitialized
     cwd: string
-    providedPoints: Points | null
+    providedPointsManager: PointsManager | null
     pointsFile: string | null
     // pointsDistFile: string | null
-    points: Points | null
+    pointsManager: PointsManager | null
     ssr: boolean
     providedAppComponent: AppComponent | null
     appFile: string | null
@@ -104,7 +103,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
-    eversion: Eversion
+    pmg: PointsManagersGroup
     clientBunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     clientBunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     serverViteDevServer: ViteDevServer | null
@@ -115,11 +114,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
-    this.eversion = input.eversion
-    this.providedPoints = input.providedPoints
+    this.pmg = input.pmg
+    this.providedPointsManager = input.pointsManager
     this.pointsFile = input.pointsFile
     // this.pointsDistFile = input.pointsDistFile
-    this.points = input.points as TInitialized extends true ? Points : Points | null
+    this.pointsManager = input.pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
     this.ssr = input.ssr
     this.providedAppComponent = input.providedAppComponent
     this.appFile = input.appFile
@@ -157,7 +156,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   static create(input: {
     scope: PointsScope
     cwd: string
-    points: Points | string
+    points: PointsManager | string
     // pointsDistFile: string | null
     ssr: boolean
     app: AppComponent | string | null
@@ -178,15 +177,15 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     engineFile: string | null
-    eversion: Eversion
+    pmg: PointsManagersGroup
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
     prune: boolean
     pruneServer: boolean
   }): ClientBun<false> {
-    const providedPoints = typeof input.points === 'string' ? null : input.points
+    const providedPointsManager = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
-    const points = null
+    const pointsManager = null
 
     const serverViteDevServer = null
     const clientViteDevServer = null
@@ -204,9 +203,9 @@ export class ClientBun<TInitialized extends boolean = boolean> {
 
     const client = new ClientBun<false>({
       ...input,
-      points,
+      pointsManager,
       pointsFile,
-      providedPoints,
+      providedPointsManager,
       publicdir,
       providedAppComponent: !input.app || typeof input.app === 'string' ? null : input.app,
       appFile: typeof input.app === 'string' ? input.app : null,
@@ -250,7 +249,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.clientViteDevServer = clientViteDevServer
     this.clientBunNativeDevServer = clientBunNativeDevServer
 
-    this.points = await this.createPoints()
+    this.pointsManager = await this.createPointsManager()
 
     await this.publicdir.init()
 
@@ -273,21 +272,21 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     ])
   }
 
-  readonly createPoints = async (): Promise<Points> => {
-    if (this.providedPoints) {
-      return this.providedPoints
+  readonly createPointsManager = async (): Promise<PointsManager> => {
+    if (this.providedPointsManager) {
+      return this.providedPointsManager
     }
     const serverViteDevServer = this.serverViteDevServer
     const pointsFile = this.pointsFile
     if (pointsFile) {
       if (serverViteDevServer) {
-        return await Points.read(
+        return await PointsManager.read(
           toJsExtension(pointsFile),
           async (absPath) =>
             (await serverViteDevServer.ssrLoadModule(toJsExtension(absPath))) as LazyPointsModule | ReadyPointsModule,
         )
       } else {
-        return Points.create(
+        return PointsManager.create(
           await withError(
             async () => (await import(toJsExtension(pointsFile))) as LazyPointsModule | ReadyPointsModule,
             `Failed to import points from ${pointsFile} on client "${this.scope}"`,
@@ -435,6 +434,8 @@ Bun.serve({
     const prunePlugin = prune
       ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
       : null
+
+    console.log(1111, hmrPort)
 
     return await createServer({
       ...loadedViteConfig,
@@ -806,7 +807,7 @@ Bun.serve({
   }
 
   getPointsPathOrNullOrThrow(): string | null {
-    if (this.providedPoints && !this.pointsFile) {
+    if (this.providedPointsManager && !this.pointsFile) {
       throw new Error(`If you want build client, you should provide points path, not points itself in "points" option`)
     }
     return this.pointsFile
@@ -917,7 +918,7 @@ Bun.serve({
         `To build client "${this.scope}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
-    if (!buildPaths.pointsFile && this.providedPoints) {
+    if (!buildPaths.pointsFile && this.providedPointsManager) {
       throw new Error(
         `To build client "${this.scope}" for server, you should provide points path, not points itself in "points" option`,
       )
@@ -1103,7 +1104,7 @@ Bun.serve({
         `To build client "${this.scope}" for server, you should provide app path, not app component itself in "app" option`,
       )
     }
-    if (!buildPaths.pointsFile && this.providedPoints) {
+    if (!buildPaths.pointsFile && this.providedPointsManager) {
       throw new Error(
         `To build client "${this.scope}" for server, you should provide points path, not points itself in "points" option`,
       )
@@ -1273,13 +1274,13 @@ Bun.serve({
   }
 
   async renderAsReadableStream({
-    eversionRun,
+    extractor,
     extractResult,
     pagePoint,
     pageLocation,
     input,
   }: {
-    eversionRun: EversionRun
+    extractor: Extractor
     extractResult: ExtractResult
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
@@ -1287,7 +1288,7 @@ Bun.serve({
   }): Promise<ReadableStream> {
     return await renderAppAsReadableStream({
       App: await this.getFreshAppComponent(),
-      eversionRun,
+      extractor,
       head: extractResult.head,
       pagePoint,
       pageLocation,
@@ -1299,17 +1300,17 @@ Bun.serve({
   }
 
   async prefetchAppPagePointDeep({
-    eversionRun,
+    extractor,
     pagePoint,
     pageLocation,
     input,
   }: {
-    eversionRun: EversionRun
+    extractor: Extractor
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<void> {
-    await eversionRun.prefetchAppPagePointDeep({
+    await extractor.prefetchAppPagePointDeep({
       App: await this.getFreshAppComponent(),
       renderToReadableStream,
       pageLocation,

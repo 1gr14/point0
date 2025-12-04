@@ -1,15 +1,14 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
-import type { DehydratedState, QueryClient } from '@tanstack/react-query'
+import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 import { ClientServerHelpers } from './client-server.js'
-import { EversionStore } from './eversion-store.js'
-import { Point0 } from './index.js'
+import { ExtractorStore } from './extractor-store.js'
 import type { AppComponent } from './mount.js'
-import type { Points } from './points.js'
+import type { PointsManager } from './points-manager.js'
 import type {
   AnyPoint,
   Ctx,
@@ -23,13 +22,14 @@ import type {
   InputRaw,
   PointName,
   PointsScope,
+  QueryKey,
   RequiredCtx,
   ResponseOutput,
   UndefinedResponseOutput,
 } from './types.js'
 
-export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  points: Points<true, TRequiredCtx>
+export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+  points: PointsManager<true, TRequiredCtx>
   extractFnsWithOutput: ExtractFnWithOutput[]
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
@@ -47,7 +47,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     extractFnsWithOutput,
     serverGlobalState,
   }: {
-    points: Points<true, TRequiredCtx>
+    points: PointsManager<true, TRequiredCtx>
     extractFnsWithOutput: ExtractFnWithOutput[]
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
@@ -71,21 +71,21 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation,
     requiredCtx,
   }: {
-    points: Points<true, TRequiredCtx>
+    points: PointsManager<true, TRequiredCtx>
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
-  }): Promise<EversionRun<TRequiredCtx>> {
+  }): Promise<Extractor<TRequiredCtx>> {
     const serverGlobalState = {}
-    return await EversionStore.runWithServerStorageProvider(serverGlobalState, async () => {
-      return new EversionRun<TRequiredCtx>({
+    return await ExtractorStore.runWithServerStorageProvider(serverGlobalState, async () => {
+      return new Extractor<TRequiredCtx>({
         points,
         pageLocation,
         requiredCtx,
         extractFnsWithOutput: [],
         serverGlobalState: {
           __POINT0_SCOPE__: points.scope,
-          __POINT0_QUERY_CLIENT__: EversionStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
+          __POINT0_QUERY_CLIENT__: ExtractorStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,
           __POINT0_CURRENT_LOCATION__: currentLocation,
           ...serverGlobalState,
@@ -96,7 +96,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   getQueryClient(): QueryClient {
     return ClientServerHelpers.isClient
-      ? EversionStore.get('__POINT0_QUERY_CLIENT__')
+      ? ExtractorStore.get('__POINT0_QUERY_CLIENT__')
       : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
 
@@ -106,7 +106,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   setSsrLocation(ssrLocation: AnyLocation): void {
     if (ClientServerHelpers.isClient) {
-      EversionStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
+      ExtractorStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
     }
     this.serverGlobalState.__POINT0_SSR_LOCATION__ = ssrLocation
@@ -114,14 +114,14 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   setCurrentLocation(currentLocation: AnyLocation): void {
     if (ClientServerHelpers.isClient) {
-      EversionStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
+      ExtractorStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
       return
     }
     this.serverGlobalState.__POINT0_CURRENT_LOCATION__ = currentLocation
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
-    return await EversionStore.runWithServerStorageProvider(this.serverGlobalState, callback)
+    return await ExtractorStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
   async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
@@ -182,7 +182,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: parsedInput,
-                  eversionRun: this as never,
+                  extractor: this as never,
                 })
                 this.extractFnsWithOutput.push({
                   output: currentCtx,
@@ -202,7 +202,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: parsedInput,
-                  eversionRun: this as never,
+                  extractor: this as never,
                 })
                 this.extractFnsWithOutput.push({
                   output: currentData,
@@ -278,6 +278,40 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
+  static parseQueryKey(queryKey: OriginalQueryKey | QueryKey):
+    | {
+        isServer: boolean
+        isClient: boolean
+        pointType: EndPointType
+        pointName: PointName
+        outputType: string
+        isInfiniteQuery: boolean
+        input: InputRaw
+      }
+    | undefined {
+    const [check, serverOrClient, pointType, pointName, outputType, finiteOrInfinite, input] = queryKey
+    if (
+      check !== 'point0' ||
+      typeof serverOrClient !== 'string' ||
+      typeof pointType !== 'string' ||
+      typeof pointName !== 'string' ||
+      typeof outputType !== 'string' ||
+      typeof finiteOrInfinite !== 'string' ||
+      typeof input !== 'string'
+    ) {
+      return undefined
+    }
+    return {
+      isServer: serverOrClient === 'server' || serverOrClient === 'combined',
+      isClient: serverOrClient === 'client' || serverOrClient === 'combined',
+      pointType: pointType as EndPointType,
+      pointName,
+      outputType,
+      isInfiniteQuery: finiteOrInfinite === 'infinite',
+      input: JSON.parse(input) as InputRaw,
+    }
+  }
+
   async prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
@@ -312,7 +346,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (seenQueryHashes.has(hash)) {
           return []
         }
-        const parsedQueryKey = Point0.parseQueryKey(query.queryKey)
+        const parsedQueryKey = Extractor.parseQueryKey(query.queryKey)
         if (!parsedQueryKey) {
           return []
         }
@@ -484,7 +518,7 @@ export class EversionRun<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = EversionStore.getConfig('__POINT0_QUERY_CLIENT__')?.init()
+      const tempQueryClient = ExtractorStore.getConfig('__POINT0_QUERY_CLIENT__')?.init()
       if (!tempQueryClient) {
         throw new Error('Query client not found')
       }

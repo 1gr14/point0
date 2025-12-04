@@ -2,9 +2,9 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { EversionRun } from '../src/eversion-run.js'
+import { Extractor } from '../src/extractor.js'
 import { Point0 } from '../src/index.js'
-import { Points } from '../src/points.js'
+import { PointsManager } from '../src/points-manager.js'
 import type {
   EmptyCtx,
   UndefinedCtx,
@@ -175,8 +175,8 @@ describe('Point0', () => {
     const clientPointBase02 = Point0.create<typeof server2>('client', ['server2']).root()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent)
     // const eversion2 = Eversion.create()
-    const run = await EversionRun.create({
-      points: Points.ready({
+    const run = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
       }),
@@ -308,8 +308,8 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: undefined,
     // })
-    const run = await EversionRun.create({
-      points: Points.ready({
+    const run = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server1.attach(clientPointBase01),
         page: server1.attach(clientPoint01.point),
       }),
@@ -348,8 +348,8 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: undefined,
     // })
-    const run2 = await EversionRun.create({
-      points: Points.ready({
+    const run2 = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
       }),
@@ -387,8 +387,8 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: undefined,
     // })
-    const run3 = await EversionRun.create({
-      points: Points.ready({
+    const run3 = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server3.attach(clientPointBase03),
         page: server3.attach(clientPoint03.point),
       }),
@@ -437,8 +437,8 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: { r: 'str' },
     // })
-    const run1 = await EversionRun.create({
-      points: Points.ready({
+    const run1 = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server1.attach(clientPointBase01),
         page: server1.attach(clientPoint01.point),
       }),
@@ -483,8 +483,8 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: { r: 'str' },
     // })
-    const run2 = await EversionRun.create({
-      points: Points.ready({
+    const run2 = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
       }),
@@ -524,8 +524,8 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: { r: 'str' },
     // })
-    const run3 = await EversionRun.create({
-      points: Points.ready({
+    const run3 = await Extractor.create({
+      points: PointsManager.ready({
         root_ready: server3.attach(clientPointBase03),
         page: server3.attach(clientPoint03.point),
       }),

@@ -1,6 +1,6 @@
 import type { Routes } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
-import type { PointsModuleType } from '@point0/core/points'
+import type { PointsModuleType } from '@point0/core/points-manager'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -332,9 +332,9 @@ export class FilesGenerator {
     return results.every((r) => r)
   }
 
-  // private emitEversionStoreInitialization(): string[] {
+  // private emitExtractorStoreInitialization(): string[] {
   //   const lines: string[] = []
-  //   lines.push(`await import('point0/core/eversion-store.js').then(async ({ EversionStore }) => await EversionStore.init({}))`)
+  //   lines.push(`await import('point0/core/extractor-store.js').then(async ({ ExtractorStore }) => await ExtractorStore.init({}))`)
   //   return lines
   // }
 
@@ -425,8 +425,8 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
-    // lines.push(...this.emitEversionStoreInitialization())
-    lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points'`)
+    // lines.push(...this.emitExtractorStoreInitialization())
+    lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points-manager'`)
     // lines.push(`import { Point0 } from '@point0/core'`)
 
     if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
@@ -534,7 +534,7 @@ export class FilesGenerator {
     }
     lines.push(`import type { EndPoint } from '@point0/core/types'`)
 
-    // lines.push(...this.emitEversionStoreInitialization())
+    // lines.push(...this.emitExtractorStoreInitialization())
 
     const { importLines, importedPoints } = this.emitNamedImports({
       points,
@@ -580,7 +580,7 @@ export class FilesGenerator {
   //   const lines: string[] = []
   //   if (this.banner) lines.push(this.banner)
 
-  //   // lines.push(...this.emitEversionStoreInitialization())
+  //   // lines.push(...this.emitExtractorStoreInitialization())
   //   lines.push(`import React from 'react'`)
   //   lines.push(`import { Route, Switch } from 'wouter'`)
   //   lines.push(``)

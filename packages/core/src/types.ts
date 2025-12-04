@@ -9,7 +9,7 @@ import type {
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput } from 'zod'
-import type { EversionRun } from './eversion-run.js'
+import type { Extractor } from './extractor.js'
 import type { Point0 } from './index.js'
 
 // basic
@@ -757,7 +757,7 @@ export type CtxFnProps<
   ctx: TCtxInput
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  eversionRun: EversionRun
+  extractor: Extractor
 }
 export type CtxFn<
   TCtxInput extends Ctx = Ctx,
@@ -778,7 +778,7 @@ export type LoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  eversionRun: EversionRun
+  extractor: Extractor
 }
 export type LoaderFn<
   TCtx extends Ctx = Ctx,

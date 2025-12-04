@@ -1,9 +1,9 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { LazyPointsModule, ReadyPointsModule } from './points.js'
-import { Points } from './points.js'
-import { EversionStore } from './eversion-store.js'
+import type { LazyPointsModule, ReadyPointsModule } from './points-manager.js'
+import { PointsManager } from './points-manager.js'
+import { ExtractorStore } from './extractor-store.js'
 
 let reactRoot: Root | null = null
 
@@ -25,11 +25,11 @@ export function mount(
     }
   }
 
-  if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_EVERSION_STORE__ !== 'undefined') {
-    EversionStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_EVERSION_STORE__)
+  if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_EXTRACTOR_STORE__ !== 'undefined') {
+    ExtractorStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_EXTRACTOR_STORE__)
   }
   const appElement = createElement(App, {
-    points: Points.create(points),
+    points: PointsManager.create(points),
   })
 
   // First invocation: create the root once.
@@ -50,7 +50,7 @@ export function mount(
   }
 }
 
-export type AppProps = { points: Points }
+export type AppProps = { points: PointsManager }
 export type AppComponent = (props: AppProps) => React.ReactElement
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

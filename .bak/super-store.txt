@@ -4,24 +4,24 @@ import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 
-export class EversionStore<TState extends EversionStoreState> {
+export class ExtractorStore<TState extends ExtractorStoreState> {
   private static dehydrated: Record<string, unknown> = {}
-  private static instance: EversionStore<EversionStoreState> | null = null
-  static config: EversionStoreConfig<EversionStoreState> = {}
+  private static instance: ExtractorStore<ExtractorStoreState> | null = null
+  static config: ExtractorStoreConfig<ExtractorStoreState> = {}
 
-  private static clientState: EversionStoreState | null = null
-  private static serverStorage: EversionStoreServerStorage | null = null
+  private static clientState: ExtractorStoreState | null = null
+  private static serverStorage: ExtractorStoreServerStorage | null = null
 
-  static async init<TConfigInput extends EversionStoreConfigInput<EversionStoreState>>(
+  static async init<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>>(
     config?: TConfigInput,
-  ): Promise<EversionStore<EversionStoreStateByConfigInput<TConfigInput>>> {
+  ): Promise<ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>> {
     config ??= {} as TConfigInput
     if (this.instance) {
       this.extendConfig(this.configInputToConfig(config))
-      return this.instance as EversionStore<EversionStoreStateByConfigInput<TConfigInput>>
+      return this.instance as ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>
     }
 
-    const instance = new EversionStore<EversionStoreStateByConfigInput<TConfigInput>>()
+    const instance = new ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>()
     this.instance = instance
 
     if (process.env.IS_CLIENT) {
@@ -29,32 +29,32 @@ export class EversionStore<TState extends EversionStoreState> {
     } else {
       await this.initServer(config)
     }
-    return this.instance as EversionStore<EversionStoreStateByConfigInput<TConfigInput>>
+    return this.instance as ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>
   }
 
-  private static initClient(config?: EversionStoreConfigInput<EversionStoreState>, dehydrated?: Record<string, unknown>): void {
-    this.instance = new EversionStore<EversionStoreState>()
+  private static initClient(config?: ExtractorStoreConfigInput<ExtractorStoreState>, dehydrated?: Record<string, unknown>): void {
+    this.instance = new ExtractorStore<ExtractorStoreState>()
     this.serverStorage = null
     this.clientState ??= {}
     this.extendConfig(this.configInputToConfig(config ?? {}))
-    this.normalizeEversionStoreConfig()
+    this.normalizeExtractorStoreConfig()
     if (dehydrated) {
       this.dehydrated = dehydrated
     } else {
-      if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_EVERSION_STORE__ !== 'undefined') {
-        this.dehydrated = superjson.parse((window as any).__DEHYDRATED_EVERSION_STORE__)
+      if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_EXTRACTOR_STORE__ !== 'undefined') {
+        this.dehydrated = superjson.parse((window as any).__DEHYDRATED_EXTRACTOR_STORE__)
       }
     }
   }
 
-  private static async initServer(config?: EversionStoreConfigInput<EversionStoreState>): Promise<void> {
-    const instance = new EversionStore<EversionStoreState>()
+  private static async initServer(config?: ExtractorStoreConfigInput<ExtractorStoreState>): Promise<void> {
+    const instance = new ExtractorStore<ExtractorStoreState>()
     this.instance = instance
     this.extendConfig(this.configInputToConfig(config ?? {}))
     const { AsyncLocalStorage } = await import('node:async_hooks')
-    this.serverStorage = new AsyncLocalStorage<EversionStoreState>()
+    this.serverStorage = new AsyncLocalStorage<ExtractorStoreState>()
     this.clientState = null
-    this.normalizeEversionStoreConfig()
+    this.normalizeExtractorStoreConfig()
   }
 
   private static initIfClientAndNotInitialized(): void {
@@ -66,17 +66,17 @@ export class EversionStore<TState extends EversionStoreState> {
   // here we can define one prop and get back this proxied value
   define<TValue, TDehydratedValue = TValue>(
     key: string,
-    config: EversionStoreConfigInputItem<TValue, TDehydratedValue>,
+    config: ExtractorStoreConfigInputItem<TValue, TDehydratedValue>,
   ): { get: () => TValue; set: (value: TValue) => void } {
-    return EversionStore.define(key, config)
+    return ExtractorStore.define(key, config)
   }
 
   static define<TValue, TDehydratedValue = TValue>(
     key: string,
-    config: EversionStoreConfigInputItem<TValue, TDehydratedValue>,
+    config: ExtractorStoreConfigInputItem<TValue, TDehydratedValue>,
   ): { get: () => TValue; set: (value: TValue) => void } {
     // Merge a single-key config using the same transformer as init()
-    const normalized = this.configInputToConfig({ [key]: config } as EversionStoreConfigInput<EversionStoreState>)
+    const normalized = this.configInputToConfig({ [key]: config } as ExtractorStoreConfigInput<ExtractorStoreState>)
     this.extendConfig(normalized)
 
     // Return a live proxy to that property
@@ -87,9 +87,9 @@ export class EversionStore<TState extends EversionStoreState> {
   }
 
   private static readonly configInputToConfig = (
-    configInput: EversionStoreConfigInput<EversionStoreState>,
-  ): EversionStoreConfig<EversionStoreState> => {
-    const config: EversionStoreConfig<EversionStoreState> = {}
+    configInput: ExtractorStoreConfigInput<ExtractorStoreState>,
+  ): ExtractorStoreConfig<ExtractorStoreState> => {
+    const config: ExtractorStoreConfig<ExtractorStoreState> = {}
     for (const [key, value] of Object.entries(configInput)) {
       const configItem = value
       if (typeof configItem === 'function') {
@@ -105,7 +105,7 @@ export class EversionStore<TState extends EversionStoreState> {
     return config
   }
 
-  private static extendConfig(config: EversionStoreConfig<EversionStoreState>): void {
+  private static extendConfig(config: ExtractorStoreConfig<ExtractorStoreState>): void {
     for (const [key, value] of Object.entries(config)) {
       this.config[key] = value
     }
@@ -115,23 +115,23 @@ export class EversionStore<TState extends EversionStoreState> {
   }
 
   getState = (): TState => {
-    return EversionStore.getState() as TState
+    return ExtractorStore.getState() as TState
   }
-  static getState = (): EversionStoreState => {
+  static getState = (): ExtractorStoreState => {
     this.initIfClientAndNotInitialized()
     if (process.env.IS_CLIENT) {
       if (!this.clientState) {
-        throw new Error('Client state not found. Please, call await EversionStore.init() first')
+        throw new Error('Client state not found. Please, call await ExtractorStore.init() first')
       }
       return this.clientState
     } else {
       if (!this.serverStorage || !this.instance) {
-        throw new Error('Server storage and instance are not initialized. Please, call await EversionStore.init() first')
+        throw new Error('Server storage and instance are not initialized. Please, call await ExtractorStore.init() first')
       }
       const serverStore = this.serverStorage.getStore()
       if (!serverStore) {
         throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in EversionStore.runWithServerStoreProvider',
+          'Server store not found. You should call this function on server only inside server context wrapped in ExtractorStore.runWithServerStoreProvider',
         )
       }
       return serverStore
@@ -162,12 +162,12 @@ export class EversionStore<TState extends EversionStoreState> {
     return dehydrated
   }
 
-  get<TKey extends EversionStoreKey<TState>>(key: TKey): TState[TKey] {
-    return EversionStore.get(key)
+  get<TKey extends ExtractorStoreKey<TState>>(key: TKey): TState[TKey] {
+    return ExtractorStore.get(key)
   }
   static get<TValue = unknown>(key: string): TValue {
     const state = this.getState()
-    const configItem = this.config[key] as EversionStoreConfigItem<EversionStoreState, unknown> | undefined
+    const configItem = this.config[key] as ExtractorStoreConfigItem<ExtractorStoreState, unknown> | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -200,30 +200,30 @@ export class EversionStore<TState extends EversionStoreState> {
     }
   }
 
-  set<TKey extends EversionStoreKey<TState>>(key: TKey, value: TState[TKey]): EversionStore<TState>
-  set<TPartialState extends Partial<TState>>(state: TPartialState): EversionStore<TState>
-  set(arg1: any, arg2?: any): EversionStore<TState> {
-    return EversionStore.set(arg1, arg2) as EversionStore<TState>
+  set<TKey extends ExtractorStoreKey<TState>>(key: TKey, value: TState[TKey]): ExtractorStore<TState>
+  set<TPartialState extends Partial<TState>>(state: TPartialState): ExtractorStore<TState>
+  set(arg1: any, arg2?: any): ExtractorStore<TState> {
+    return ExtractorStore.set(arg1, arg2) as ExtractorStore<TState>
   }
-  static set(key: string, value: unknown): EversionStore<EversionStoreState>
-  static set(state: EversionStoreState): EversionStore<EversionStoreState>
-  static set(...args: any[]): EversionStore<EversionStoreState> {
+  static set(key: string, value: unknown): ExtractorStore<ExtractorStoreState>
+  static set(state: ExtractorStoreState): ExtractorStore<ExtractorStoreState>
+  static set(...args: any[]): ExtractorStore<ExtractorStoreState> {
     const state = this.getState()
-    const partialState = ((): Partial<EversionStoreState> => {
+    const partialState = ((): Partial<ExtractorStoreState> => {
       if (typeof args[0] === 'string') {
-        return { [args[0]]: args[1] } as Partial<EversionStoreState>
+        return { [args[0]]: args[1] } as Partial<ExtractorStoreState>
       } else {
-        return args[0] as Partial<EversionStoreState>
+        return args[0] as Partial<ExtractorStoreState>
       }
     })()
     for (const [key, value] of Object.entries(partialState)) {
-      const configItem = this.config[key] as EversionStoreConfigItem<EversionStoreState, unknown> | undefined
+      const configItem = this.config[key] as ExtractorStoreConfigItem<ExtractorStoreState, unknown> | undefined
       if (!configItem) {
         throw new Error(`Key "${key}" not found in config`)
       }
       state[key] = value
     }
-    return this.instance as EversionStore<EversionStoreState>
+    return this.instance as ExtractorStore<ExtractorStoreState>
   }
 
   static setWeak<TValue = unknown>(key: string, value: TValue): void {
@@ -238,17 +238,17 @@ export class EversionStore<TState extends EversionStoreState> {
     })
   }
 
-  runWithServerStateProvider<TState extends EversionStoreState = EversionStoreState, TResult = unknown>(
-    serverEversionStoreState: Partial<TState>,
+  runWithServerStateProvider<TState extends ExtractorStoreState = ExtractorStoreState, TResult = unknown>(
+    serverExtractorStoreState: Partial<TState>,
     callback: () => TResult,
   ): TResult {
-    return EversionStore.runWithServerStateProvider(serverEversionStoreState, callback)
+    return ExtractorStore.runWithServerStateProvider(serverExtractorStoreState, callback)
   }
 
-  static runWithServerStateProvider<TResult>(serverEversionStoreState: Partial<EversionStoreState>, callback: () => TResult): TResult {
+  static runWithServerStateProvider<TResult>(serverExtractorStoreState: Partial<ExtractorStoreState>, callback: () => TResult): TResult {
     this.initIfClientAndNotInitialized()
     if (this.serverStorage) {
-      return this.serverStorage.run(serverEversionStoreState, callback)
+      return this.serverStorage.run(serverExtractorStoreState, callback)
     } else {
       return callback()
     }
@@ -305,7 +305,7 @@ export class EversionStore<TState extends EversionStoreState> {
     }
   }
 
-  private static normalizeEversionStoreConfig(): void {
+  private static normalizeExtractorStoreConfig(): void {
     this.normalizeQueryClientConfig()
     this.normalizeSsrLocationConfig()
     this.normalizeCurrentLocationConfig()
@@ -314,47 +314,47 @@ export class EversionStore<TState extends EversionStoreState> {
 
 const isPromiseKey = (prop: PropertyKey) => prop === 'then' || prop === 'catch' || prop === 'finally'
 
-export type EversionStoreServerStorage = AsyncLocalStorage<EversionStoreState>
+export type ExtractorStoreServerStorage = AsyncLocalStorage<ExtractorStoreState>
 
-export type EversionStoreState = { [key: string]: unknown }
-export type EversionStoreKey<TStore extends EversionStoreState> = Extract<keyof TStore, string>
+export type ExtractorStoreState = { [key: string]: unknown }
+export type ExtractorStoreKey<TStore extends ExtractorStoreState> = Extract<keyof TStore, string>
 
-export type EversionStoreConfigItemInitFn<TValue = unknown> = () => TValue
-export type EversionStoreConfigItem<TValue, TDehydratedValue> = {
+export type ExtractorStoreConfigItemInitFn<TValue = unknown> = () => TValue
+export type ExtractorStoreConfigItem<TValue, TDehydratedValue> = {
   init: () => TValue
   dehydrate: ((value: TValue) => TDehydratedValue) | undefined // | TDehydratedValue // in case it is not dehydrateable here will be null
   hydrate: ((dehydratedValue: TDehydratedValue, init: () => TValue) => TValue) | undefined // | TDehydratedValue // and here
 }
-export type EversionStoreConfig<TStore extends EversionStoreState> = Record<EversionStoreKey<TStore>, EversionStoreConfigItem<any, any>>
-export type EversionStoreStateByConfig<TConfig extends EversionStoreConfig<EversionStoreState>> = {
+export type ExtractorStoreConfig<TStore extends ExtractorStoreState> = Record<ExtractorStoreKey<TStore>, ExtractorStoreConfigItem<any, any>>
+export type ExtractorStoreStateByConfig<TConfig extends ExtractorStoreConfig<ExtractorStoreState>> = {
   [key in keyof TConfig]: ReturnType<TConfig[key]['init']>
 }
 
-export type EversionStoreConfigInputItem<TValue, TDehydratedValue> =
-  | EversionStoreConfigItem<TValue, TDehydratedValue>
-  | EversionStoreConfigItemInitFn<TValue>
-export type EversionStoreConfigInput<TStore extends EversionStoreState> = Record<
-  EversionStoreKey<TStore>,
-  EversionStoreConfigInputItem<any, any>
+export type ExtractorStoreConfigInputItem<TValue, TDehydratedValue> =
+  | ExtractorStoreConfigItem<TValue, TDehydratedValue>
+  | ExtractorStoreConfigItemInitFn<TValue>
+export type ExtractorStoreConfigInput<TStore extends ExtractorStoreState> = Record<
+  ExtractorStoreKey<TStore>,
+  ExtractorStoreConfigInputItem<any, any>
 >
 
-export type EversionStoreConfigByInput<TConfigInput extends EversionStoreConfigInput<EversionStoreState>> = {
-  [key in keyof TConfigInput]: TConfigInput[key] extends EversionStoreConfigItemInitFn<infer TValue>
-    ? EversionStoreConfigItem<TValue, TValue>
-    : TConfigInput[key] extends EversionStoreConfigItem<infer TValue, infer TDehydratedValue>
-      ? EversionStoreConfigItem<TValue, TDehydratedValue>
+export type ExtractorStoreConfigByInput<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>> = {
+  [key in keyof TConfigInput]: TConfigInput[key] extends ExtractorStoreConfigItemInitFn<infer TValue>
+    ? ExtractorStoreConfigItem<TValue, TValue>
+    : TConfigInput[key] extends ExtractorStoreConfigItem<infer TValue, infer TDehydratedValue>
+      ? ExtractorStoreConfigItem<TValue, TDehydratedValue>
       : never
 }
-export type EversionStoreStateByConfigInput<TConfigInput extends EversionStoreConfigInput<EversionStoreState>> = {
-  [key in keyof TConfigInput]: ReturnType<EversionStoreConfigByInput<TConfigInput>[key]['init']>
+export type ExtractorStoreStateByConfigInput<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>> = {
+  [key in keyof TConfigInput]: ReturnType<ExtractorStoreConfigByInput<TConfigInput>[key]['init']>
 }
-export type EversionStoreByConfigInput<TConfigInput extends EversionStoreConfigInput<EversionStoreState>> = EversionStore<
-  EversionStoreStateByConfigInput<TConfigInput>
+export type ExtractorStoreByConfigInput<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>> = ExtractorStore<
+  ExtractorStoreStateByConfigInput<TConfigInput>
 >
 
-export type EversionStoreProxy<TState> = TState & {
+export type ExtractorStoreProxy<TState> = TState & {
   define: <TValue, TDehydratedValue = TValue>(
     key: string,
-    config: EversionStoreConfigInputItem<TValue, TDehydratedValue>,
+    config: ExtractorStoreConfigInputItem<TValue, TDehydratedValue>,
   ) => TValue
 }

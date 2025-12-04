@@ -1,4 +1,4 @@
-import { Eversion } from '@point0/core/eversion'
+import { PointsManagersGroup } from '@point0/core/points-manager'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
@@ -14,21 +14,21 @@ export class Engine<TInitialized extends boolean = boolean> {
   server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
   logger: EngineLogger
   generator: FilesGenerator
-  eversion: Eversion
+  pmg: PointsManagersGroup
   initialized: TInitialized
 
   private constructor(input: {
     clients: ClientBun[]
     server: ServerBun
     logger: EngineLogger
-    eversion: Eversion
+    pmg: PointsManagersGroup
     initialized: TInitialized
     generator: FilesGenerator
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
     this.logger = input.logger
-    this.eversion = input.eversion
+    this.pmg = input.pmg
     this.initialized = input.initialized
     this.generator = input.generator
   }
@@ -42,11 +42,11 @@ export class Engine<TInitialized extends boolean = boolean> {
       options.engineFile ??= fileURLToPath(fileUrl)
     }
     const parsedOptions = parseEngineOptions(options)
-    const eversion = Eversion.create()
+    const pmg = PointsManagersGroup.create()
 
     const server = ServerBun.create({
       ...parsedOptions.server,
-      eversion,
+      pmg,
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
@@ -59,7 +59,7 @@ export class Engine<TInitialized extends boolean = boolean> {
         ...clientOptions,
         cwd: parsedOptions.general.cwd,
         logger: parsedOptions.general.logger,
-        eversion,
+        pmg,
         server,
       })
       return client
@@ -95,7 +95,7 @@ export class Engine<TInitialized extends boolean = boolean> {
       clients,
       server,
       logger: parsedOptions.general.logger,
-      eversion,
+      pmg,
       initialized: false,
       generator,
     })
@@ -115,9 +115,9 @@ export class Engine<TInitialized extends boolean = boolean> {
         })
       }),
     )
-    await this.eversion.add(
-      ...(intializedServer.points ? [intializedServer.points] : []),
-      ...intializedClients.map((client) => client.points),
+    await this.pmg.add(
+      ...(intializedServer.pointsManager ? [intializedServer.pointsManager] : []),
+      ...intializedClients.map((client) => client.pointsManager),
     )
     this.initialized = true as never
 

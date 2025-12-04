@@ -2,47 +2,47 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 import type { IfAnyThenElse } from './types.js'
 import { ClientServerHelpers } from './client-server.js'
-;(globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ =
-  (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__ ||
+;(globalThis as any).__POINT0_EXTRACTOR_STORE_SERVER_STORAGE__ =
+  (globalThis as any).__POINT0_EXTRACTOR_STORE_SERVER_STORAGE__ ||
   (ClientServerHelpers.isClient
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>))
-// (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<EversionStoreState>))
-;(globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ =
-  (globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ || ({} as EversionStoreConfig)
+      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<ExtractorStoreState>))
+// (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<ExtractorStoreState>))
+;(globalThis as any).__POINT0_EXTRACTOR_STORE_CONFIG__ =
+  (globalThis as any).__POINT0_EXTRACTOR_STORE_CONFIG__ || ({} as ExtractorStoreConfig)
 
-export class EversionStore {
+export class ExtractorStore {
   private static dehydrated: Record<string, unknown> = {}
 
-  private static readonly clientState: EversionStoreState = {}
-  static getFullConfig(): EversionStoreConfig {
-    return (globalThis as any).__POINT0_EVERSION_STORE_CONFIG__ as EversionStoreConfig
+  private static readonly clientState: ExtractorStoreState = {}
+  static getFullConfig(): ExtractorStoreConfig {
+    return (globalThis as any).__POINT0_EXTRACTOR_STORE_CONFIG__ as ExtractorStoreConfig
   }
-  static getServerStorage(): EversionStoreServerStorage | null {
-    return (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__
+  static getServerStorage(): ExtractorStoreServerStorage | null {
+    return (globalThis as any).__POINT0_EXTRACTOR_STORE_SERVER_STORAGE__
   }
-  // private static readonly serverStorage: EversionStoreServerStorage | null = (globalThis as any).__POINT0_EVERSION_STORE_SERVER_STORAGE__
-  // private static readonly serverStorage: EversionStoreServerStorage | null = isClient
+  // private static readonly serverStorage: ExtractorStoreServerStorage | null = (globalThis as any).__POINT0_EXTRACTOR_STORE_SERVER_STORAGE__
+  // private static readonly serverStorage: ExtractorStoreServerStorage | null = isClient
   //   ? null
   //   : // eslint-disable-next-line @typescript-eslint/no-require-imports
-  //     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<EversionStoreState>)
+  //     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<ExtractorStoreState>)
 
   static define<TValue, TTranfarable extends boolean = true>(
     key: string,
     init: () => TValue,
     transferable?: TTranfarable,
-  ): EversionStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  ): ExtractorStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   static define<TValue, TDehydratedValue>(
     key: string,
     init: () => TValue,
     dehydrate: (value: TValue) => TDehydratedValue,
     hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  ): EversionStoreDefinedItem<TValue, TDehydratedValue>
+  ): ExtractorStoreDefinedItem<TValue, TDehydratedValue>
   static define<TValue, TDehydratedValue>(
     key: string,
-    config: EversionStoreConfigItem<TValue, TDehydratedValue>,
-  ): EversionStoreDefinedItem<TValue, TDehydratedValue>
+    config: ExtractorStoreConfigItem<TValue, TDehydratedValue>,
+  ): ExtractorStoreDefinedItem<TValue, TDehydratedValue>
   static define(...args: any[]): any {
     const { key, init, dehydrate, hydrate } = (() => {
       if (typeof args[1] === 'object') {
@@ -69,11 +69,11 @@ export class EversionStore {
         hydrate: transferable ? (dehydratedValue: any) => dehydratedValue : undefined,
       }
     })()
-    const config = EversionStore.getFullConfig()
+    const config = ExtractorStore.getFullConfig()
     config[key] = { init, dehydrate, hydrate }
     return {
-      get: EversionStore.get.bind(EversionStore, key),
-      set: EversionStore.set.bind(EversionStore, key as never),
+      get: ExtractorStore.get.bind(ExtractorStore, key),
+      set: ExtractorStore.set.bind(ExtractorStore, key as never),
       config: config[key],
     }
   }
@@ -82,13 +82,13 @@ export class EversionStore {
   //   key: string,
   //   init: () => TValue,
   //   transferable: TTranfarable,
-  // ): EversionStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  // ): ExtractorStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   // static define<TValue, TDehydratedValue>(
   //   key: string,
   //   init: () => TValue,
   //   dehydrate: (value: TValue) => TDehydratedValue,
   //   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  // ): EversionStoreDefinedItem<TValue, TDehydratedValue>
+  // ): ExtractorStoreDefinedItem<TValue, TDehydratedValue>
   // static define(...args: any[]): any {
   //   const { key, init, dehydrate, hydrate } = (() => {
   //     if (args.length === 3) {
@@ -106,29 +106,29 @@ export class EversionStore {
   //       hydrate: args[3],
   //     }
   //   })()
-  //   if (key in EversionStore.config) {
+  //   if (key in ExtractorStore.config) {
   //     throw new Error(`Key "${key}" already defined`)
   //   }
-  //   EversionStore.config[key] = { init, dehydrate, hydrate }
+  //   ExtractorStore.config[key] = { init, dehydrate, hydrate }
   //   return {
-  //     get: EversionStore.get.bind(this, key),
-  //     set: EversionStore.set.bind(this, key as never),
-  //     config: EversionStore.config[key],
+  //     get: ExtractorStore.get.bind(this, key),
+  //     set: ExtractorStore.set.bind(this, key as never),
+  //     config: ExtractorStore.config[key],
   //   }
   // }
 
-  // static redefine<TValue>(key: string, init: () => TValue): EversionStoreDefinedItem<TValue, any>
+  // static redefine<TValue>(key: string, init: () => TValue): ExtractorStoreDefinedItem<TValue, any>
   // static redefine<TValue, TTranfarable extends boolean>(
   //   key: string,
   //   init: () => TValue,
   //   transferable: TTranfarable,
-  // ): EversionStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
+  // ): ExtractorStoreDefinedItem<TValue, TTranfarable extends false ? undefined : TValue>
   // static redefine<TValue, TDehydratedValue>(
   //   key: string,
   //   init: () => TValue,
   //   dehydrate: (value: TValue) => TDehydratedValue,
   //   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue,
-  // ): EversionStoreDefinedItem<TValue, TDehydratedValue>
+  // ): ExtractorStoreDefinedItem<TValue, TDehydratedValue>
   // static redefine(...args: any[]): any {
   //   const { key, init, dehydrate, hydrate, transferable } = (() => {
   //     if (args.length === 2) {
@@ -157,30 +157,30 @@ export class EversionStore {
   //       transferable: false,
   //     }
   //   })()
-  //   if (!(key in EversionStore.config)) {
+  //   if (!(key in ExtractorStore.config)) {
   //     if (transferable === undefined) {
   //       throw new Error(`Key "${key}" was not previously defined. You should provide dehydrate and hydrate fns`)
   //     }
-  //     return EversionStore.define(key, init, dehydrate, hydrate)
+  //     return ExtractorStore.define(key, init, dehydrate, hydrate)
   //   }
   //   if (transferable === undefined) {
-  //     EversionStore.config[key].init = init
+  //     ExtractorStore.config[key].init = init
   //   } else {
-  //     EversionStore.config[key].init = init
-  //     EversionStore.config[key].dehydrate = dehydrate
-  //     EversionStore.config[key].hydrate = hydrate
+  //     ExtractorStore.config[key].init = init
+  //     ExtractorStore.config[key].dehydrate = dehydrate
+  //     ExtractorStore.config[key].hydrate = hydrate
   //   }
   //   return {
-  //     get: EversionStore.get.bind(this, key),
-  //     set: EversionStore.set.bind(this, key as never),
-  //     config: EversionStore.config[key],
+  //     get: ExtractorStore.get.bind(this, key),
+  //     set: ExtractorStore.set.bind(this, key as never),
+  //     config: ExtractorStore.config[key],
   //   }
   // }
 
   static get<TValue = unknown>(key: string): TValue {
-    const state = EversionStore.getState()
-    const config = EversionStore.getFullConfig()
-    const configItem = config[key] as EversionStoreConfigItem | undefined
+    const state = ExtractorStore.getState()
+    const config = ExtractorStore.getFullConfig()
+    const configItem = config[key] as ExtractorStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -188,7 +188,7 @@ export class EversionStore {
     if (existingValue) {
       return existingValue as TValue
     }
-    const dehydratedValue = EversionStore.dehydrated[key]
+    const dehydratedValue = ExtractorStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem.hydrate) {
         throw new Error(`Key "${key}" is dehydrated but no hydrate function is defined`)
@@ -202,9 +202,9 @@ export class EversionStore {
     return initialValue as TValue
   }
 
-  static getConfig(key: string): EversionStoreConfigItem | undefined {
-    const config = EversionStore.getFullConfig()
-    const configItem = config[key] as EversionStoreConfigItem | undefined
+  static getConfig(key: string): ExtractorStoreConfigItem | undefined {
+    const config = ExtractorStore.getFullConfig()
+    const configItem = config[key] as ExtractorStoreConfigItem | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -212,14 +212,14 @@ export class EversionStore {
   }
 
   static getWeak<TValue = unknown>(key: string): TValue | undefined {
-    const state = EversionStore.getState()
+    const state = ExtractorStore.getState()
     const existingValue = state[key]
     if (existingValue) {
       return existingValue as TValue
     }
-    const config = EversionStore.getFullConfig()
-    const configItem = config[key] as EversionStoreConfigItem | undefined
-    const dehydratedValue = EversionStore.dehydrated[key]
+    const config = ExtractorStore.getFullConfig()
+    const configItem = config[key] as ExtractorStoreConfigItem | undefined
+    const dehydratedValue = ExtractorStore.dehydrated[key]
     if (dehydratedValue) {
       if (!configItem) {
         throw new Error(`Key "${key}" is dehydrated but no config item is defined`)
@@ -240,22 +240,22 @@ export class EversionStore {
   }
 
   static set<TValue = unknown>(key: string, value: TValue): void {
-    EversionStore.get(key) // so if no config for this key, it will throw an error
-    const state = EversionStore.getState()
+    ExtractorStore.get(key) // so if no config for this key, it will throw an error
+    const state = ExtractorStore.getState()
     state[key] = value
   }
 
   static setWeak<TValue = unknown>(key: string, value: TValue): void {
     // this only sets value, if no config for this key, it will not throw an error, and value will be accessible by getWeak
-    const state = EversionStore.getState()
+    const state = ExtractorStore.getState()
     state[key] = value
   }
 
-  static getState = (): EversionStoreState => {
+  static getState = (): ExtractorStoreState => {
     if (ClientServerHelpers.isClient) {
-      return EversionStore.clientState
+      return ExtractorStore.clientState
     } else {
-      const serverStorage = EversionStore.getServerStorage()
+      const serverStorage = ExtractorStore.getServerStorage()
       if (!serverStorage) {
         throw new Error(
           'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers.',
@@ -264,7 +264,7 @@ export class EversionStore {
       const serverStore = serverStorage.getStore()
       if (!serverStore) {
         throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in EversionStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
+          'Server store not found. You should call this function on server only inside server context wrapped in ExtractorStore.runWithServerStorageProvider. So call it in hooks, components, functions, not in top of files without wrappers',
         )
       }
       return serverStore
@@ -273,13 +273,13 @@ export class EversionStore {
 
   static dehydrate = () => {
     const dehydrated: Record<string, unknown> = {}
-    const config = EversionStore.getFullConfig()
+    const config = ExtractorStore.getFullConfig()
     for (const [configItemKey, configItem] of Object.entries(config)) {
       try {
         if (!configItem.dehydrate) {
           continue
         }
-        const stateValue = EversionStore.get(configItemKey)
+        const stateValue = ExtractorStore.get(configItemKey)
         const dehydratedValue = configItem.dehydrate(stateValue)
         if (dehydratedValue !== undefined) {
           dehydrated[configItemKey] = dehydratedValue
@@ -295,38 +295,41 @@ export class EversionStore {
   }
 
   static hydrate(dehydrated: Record<string, unknown>): void {
-    EversionStore.dehydrated = dehydrated
+    ExtractorStore.dehydrated = dehydrated
   }
 
   static hydrateFromString(dehydratedString: string): void {
     const dehydrated = superjson.parse(dehydratedString)
-    EversionStore.dehydrated = dehydrated as Record<string, unknown>
+    ExtractorStore.dehydrated = dehydrated as Record<string, unknown>
   }
 
   static hydrateFromWindow(): void {
-    if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_EVERSION_STORE__ !== 'undefined') {
-      EversionStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_EVERSION_STORE__)
+    if (
+      typeof window !== 'undefined' &&
+      typeof (window as any)?.__POINT0_DEHYDRATED_EXTRACTOR_STORE__ !== 'undefined'
+    ) {
+      ExtractorStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_EXTRACTOR_STORE__)
     }
   }
 
   static runWithServerStorageProvider<TResult>(
-    serverEversionStoreState: Partial<EversionStoreState>,
+    serverExtractorStoreState: Partial<ExtractorStoreState>,
     callback: () => TResult,
   ): TResult {
-    const serverStorage = EversionStore.getServerStorage()
+    const serverStorage = ExtractorStore.getServerStorage()
     if (serverStorage) {
-      return serverStorage.run(serverEversionStoreState, callback)
+      return serverStorage.run(serverExtractorStoreState, callback)
     } else {
       return callback()
     }
   }
 }
 
-export type EversionStoreServerStorage = AsyncLocalStorage<EversionStoreState>
+export type ExtractorStoreServerStorage = AsyncLocalStorage<ExtractorStoreState>
 
-export type EversionStoreState = { [key: string]: unknown }
+export type ExtractorStoreState = { [key: string]: unknown }
 
-export type EversionStoreConfigItem<TValue = any, TDehydratedValue = any> = {
+export type ExtractorStoreConfigItem<TValue = any, TDehydratedValue = any> = {
   init: () => TValue
   dehydrate: IfAnyThenElse<
     TDehydratedValue,
@@ -339,10 +342,10 @@ export type EversionStoreConfigItem<TValue = any, TDehydratedValue = any> = {
     TDehydratedValue extends undefined ? undefined : (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
   >
 }
-export type EversionStoreConfig = Record<string, EversionStoreConfigItem>
+export type ExtractorStoreConfig = Record<string, ExtractorStoreConfigItem>
 
-export type EversionStoreDefinedItem<TValue = any, TDehydratedValue = any> = {
+export type ExtractorStoreDefinedItem<TValue = any, TDehydratedValue = any> = {
   get: () => TValue
   set: (value: TValue) => void
-  config: EversionStoreConfigItem<TValue, TDehydratedValue>
+  config: ExtractorStoreConfigItem<TValue, TDehydratedValue>
 }

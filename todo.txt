@@ -14,7 +14,7 @@ refactor prefetch mode names
 
 wrapper
 
-merge .input schemas
+merge .input schemas, or may be not schemas, but input results, but better schemas
 
 EXPO
 expo example
@@ -74,7 +74,7 @@ unwind and tailwind
 throw error on Points.create() on cleint with different scope that was before
 ? simplify renderer
 Replace all node methods with native bun methods, including watcher
-on fetch and prefetch if eversionRun exists in EversionStore, then do not do fetch, but do eversionRun.extract
+on fetch and prefetch if extractor exists in ExtractorStore, then do not do fetch, but do extractor.extract
 analyze why client bundle so big in examples
 check bun pruner, and vite pruner creates correct sourcemaps
 ? router export function getCurrentLocation()
@@ -124,7 +124,7 @@ npm @point0
 ? immutable ctx and data on extractFns calls
 ? asterisk layout as .layout(true, () => <div/>)
 ? add engine client options serveByServer: boolean default true
-prefetch type not only prefetchPageDehydratedState, but also prefetchPageEversionStore becouse there can be zustand or what else
+prefetch type not only prefetchPageDehydratedState, but also prefetchPageExtractorStore becouse there can be zustand or what else
 
 try fix hmr again
 prefetch on Link hover
@@ -146,5 +146,7 @@ optional params in routes
 ? split index.ts code
 
 EVERSION STORE
-rethink EversionStore, when we understand if it is needed at all
+rethink ExtractorStore, when we understand if it is needed at all
 eversion store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
+
+Static site generation as well. In the Static method, using async, we just need to get an array of known input parameters, and add a command that will generate the HTML files after the build.

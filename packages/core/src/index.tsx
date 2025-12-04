@@ -26,10 +26,10 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { ClientServerHelpers } from './client-server.js'
-import type { EversionRun, ExtractResult } from './eversion-run.js'
-import type { EversionStoreDefinedItem } from './eversion-store.js'
-import { EversionStore } from './eversion-store.js'
-import { Points } from './points.js'
+import type { Extractor, ExtractResult } from './extractor.js'
+import type { ExtractorStoreDefinedItem } from './extractor-store.js'
+import { ExtractorStore } from './extractor-store.js'
+import { PointsManager } from './points-manager.js'
 import { useLocation } from './router.js'
 import type {
   AnyDataOrInfiniteData,
@@ -3039,7 +3039,7 @@ export class Point0<
   }
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
-    const value = EversionStore.getWeak<FinalClientData<TData, TClientData>>(
+    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
       `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     if (!value) {
@@ -3051,7 +3051,7 @@ export class Point0<
   }
 
   getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
-    const value = EversionStore.getWeak<FinalClientData<TData, TClientData>>(
+    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
       `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     return value
@@ -3097,7 +3097,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    EversionStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
+    ExtractorStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
     return React.createElement(this._ProviderReactContext.Provider, {
       value,
       children,
@@ -3200,48 +3200,14 @@ export class Point0<
 
   async extract(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [eversionRun: EversionRun<TRequiredCtx>, input?: InputRaw<TRouteDefinition, TInputSchema>]
-      : [eversionRun: EversionRun<TRequiredCtx>, input: InputRaw<TRouteDefinition, TInputSchema>]
+      ? [extractor: Extractor<TRequiredCtx>, input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : [extractor: Extractor<TRequiredCtx>, input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
-    const [eversionRun, input = {}] = args
-    return (await eversionRun.extract({
+    const [extractor, input = {}] = args
+    return (await extractor.extract({
       point: this as never,
       input,
     })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  }
-
-  static parseQueryKey(queryKey: OriginalQueryKey | QueryKey):
-    | {
-        isServer: boolean
-        isClient: boolean
-        pointType: EndPointType
-        pointName: PointName
-        outputType: string
-        isInfiniteQuery: boolean
-        input: InputRaw
-      }
-    | undefined {
-    const [check, serverOrClient, pointType, pointName, outputType, finiteOrInfinite, input] = queryKey
-    if (
-      check !== 'point0' ||
-      typeof serverOrClient !== 'string' ||
-      typeof pointType !== 'string' ||
-      typeof pointName !== 'string' ||
-      typeof outputType !== 'string' ||
-      typeof finiteOrInfinite !== 'string' ||
-      typeof input !== 'string'
-    ) {
-      return undefined
-    }
-    return {
-      isServer: serverOrClient === 'server' || serverOrClient === 'combined',
-      isClient: serverOrClient === 'client' || serverOrClient === 'combined',
-      pointType: pointType as EndPointType,
-      pointName,
-      outputType,
-      isInfiniteQuery: finiteOrInfinite === 'infinite',
-      input: JSON.parse(input) as InputRaw,
-    }
   }
 
   _getServerQueryKey({
@@ -4110,9 +4076,9 @@ export class Point0<
   //   } = args.length === 3
   //     ? { scope: args[0], pointType: args[1], name: args[2] }
   //     : { pointType: args[0], name: args[1] }
-  //   const scope = providedScope ?? EversionStore.getWeak<PointsScope>('__POINT0_SCOPE__')
+  //   const scope = providedScope ?? ExtractorStore.getWeak<PointsScope>('__POINT0_SCOPE__')
   //   if (!scope) {
-  //     throw new Error('Points scope not found if EversionStore. You should provide scope.')
+  //     throw new Error('Points scope not found if ExtractorStore. You should provide scope.')
   //   }
   //   const point = (globalThis as any).__POINT0_INSTANCES__[scope]?.[pointType]?.[name]
   //   if (!point) {
@@ -4123,9 +4089,9 @@ export class Point0<
 
   // super store
 
-  static define = EversionStore.define.bind(EversionStore)
+  static define = ExtractorStore.define.bind(ExtractorStore)
 
-  static defineQueryClient(init: () => QueryClient): EversionStoreDefinedItem<QueryClient, DehydratedState> {
+  static defineQueryClient(init: () => QueryClient): ExtractorStoreDefinedItem<QueryClient, DehydratedState> {
     Point0._queryClient.config.init = init
     return Point0._queryClient
   }
@@ -4134,17 +4100,17 @@ export class Point0<
     return Point0._queryClient.get()
   }
 
-  static _ssrLocation = EversionStore.define<AnyLocation | undefined, true>(
+  static _ssrLocation = ExtractorStore.define<AnyLocation | undefined, true>(
     '__POINT0_SSR_LOCATION__',
     () => undefined,
     true,
   )
-  static _currentLocation = EversionStore.define<AnyLocation, true>(
+  static _currentLocation = ExtractorStore.define<AnyLocation, true>(
     '__POINT0_CURRENT_LOCATION__',
     () => Route0.getLocation('/'),
     true,
   )
-  static _queryClient = EversionStore.define<QueryClient, DehydratedState>(
+  static _queryClient = ExtractorStore.define<QueryClient, DehydratedState>(
     '__POINT0_QUERY_CLIENT__',
     () => new QueryClient(),
     (queryClient) =>
@@ -4175,7 +4141,7 @@ export class Point0<
     },
   )
 
-  static getPoints = Points.getGlobalPoints.bind(Points)
+  static getPoints = PointsManager.getGlobalPoints.bind(PointsManager)
 
   // client-server helpers
 
