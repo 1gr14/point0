@@ -2,7 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-wrapper
 merge .input schemas, or may be not schemas, but input results, but better schemas
 .ctxLoader()
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx. Or maybe just myPoint.extract()

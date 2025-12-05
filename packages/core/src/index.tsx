@@ -24,6 +24,7 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
+import type { util as ZodUtil, ZodObject } from 'zod'
 import { ClientServerHelpers } from './client-server.js'
 import type { ExtractorStoreDefinedItem } from './extractor-store.js'
 import { ExtractorStore } from './extractor-store.js'
@@ -869,7 +870,7 @@ export class Point0<
     TInputSchema,
     UndefinedResponseOutput,
     TQueryResultType,
-    TProps
+    UndefinedProps
   > {
     const prevRoute = this._route
     const newRoute = (() => {
@@ -894,7 +895,7 @@ export class Point0<
       TInputSchema,
       UndefinedResponseOutput,
       TQueryResultType,
-      TProps
+      UndefinedProps
     >({
       _pointType: 'middleware',
       _letsEndPointType: letsEndPointType,
@@ -2113,7 +2114,9 @@ export class Point0<
     TClientData,
     TRouteDefinition,
     TPrevRouteDefinition,
-    TNewInputSchema,
+    TInputSchema extends InputSchemaZod
+      ? ZodObject<ZodUtil.Extend<TInputSchema['shape'], TNewInputSchema['shape']>>
+      : TNewInputSchema,
     TResponseOutput,
     TQueryResultType,
     TProps
@@ -2121,7 +2124,7 @@ export class Point0<
   input(inputSchema: InputSchemaZod) {
     return this._continue({
       _pointType: 'middleware',
-      _inputSchema: inputSchema,
+      _inputSchema: this._inputSchema ? this._inputSchema.extend(inputSchema.shape) : inputSchema,
     }) as never
   }
 

@@ -11,6 +11,7 @@ import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
+import type { ZodObject } from 'zod'
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``
@@ -32,9 +33,10 @@ const someVar = Point0.define('someVar', () => 0, true)
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
   .input(z.object({ x: z.coerce.number() }))
+  .input(z.object({ y: z.coerce.number() }))
   .loader(async ({ ctx, input }) => ({
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-    y: input.x * 2,
+    mult: input.x * input.y,
   }))
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
@@ -46,7 +48,7 @@ export const BestIdeaComponent = client
   .component(({ data, props }) => {
     return (
       <div>
-        <h1>Best Idea {data.y}</h1>
+        <h1>Best Idea {data.mult}</h1>
         <p>{props.cta}</p>
         <p>{data.bestIdea.title}</p>
         <p>
@@ -124,7 +126,7 @@ export default generalLayout
           <Svg src={iconRaw} width={24} height={24} />
           {/* <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span> */}
         </div>
-        <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />
+        <BestIdeaComponent cta="It is awesome!" input={{ x: 10, y: 20 }} />
         <nav>
           <Link to="/ideas">Browse Ideas</Link>
         </nav>
