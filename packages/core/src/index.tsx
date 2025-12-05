@@ -2265,9 +2265,6 @@ export class Point0<
       >,
       'lets' | 'point'
     > {
-    if (!this._route) {
-      throw new Error('add .route() to chain to use .layout() function')
-    }
     const point = this._continue<
       'layout',
       UndefinedEndPointType,
