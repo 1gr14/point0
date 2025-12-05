@@ -1,5 +1,5 @@
-import { Link } from '@point0/wouter'
 import { Point0 } from '@point0/core'
+import { Link } from '@point0/wouter'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
@@ -11,7 +11,6 @@ import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
-import type { ZodObject } from 'zod'
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``
@@ -38,6 +37,14 @@ export const BestIdeaComponent = client
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
     mult: input.x * input.y,
   }))
+  .ctxLoader(async ({ ctx, input, data }) => ({
+    ctx: { ...ctx, clC: 'clcOk' },
+    data: { ...data, clD: 'cldOk' },
+  }))
+  .loader(async ({ ctx, input, data }) => ({
+    ...data,
+    clDD: ctx.clC,
+  }))
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
@@ -49,8 +56,10 @@ export const BestIdeaComponent = client
     return (
       <div>
         <h1>Best Idea {data.mult}</h1>
-        <p>{props.cta}</p>
-        <p>{data.bestIdea.title}</p>
+        <p>CTA: {props.cta}</p>
+        <p>TITLE: {data.bestIdea.title}</p>
+        <p>CLD: {data.clD}</p>
+        <p>CLDD: {data.clDD}</p>
         <p>
           <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
         </p>

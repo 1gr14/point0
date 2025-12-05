@@ -30,7 +30,7 @@ import type {
 
 export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   points: PointsManager<true, TRequiredCtx>
-  extractFnsWithOutput: ExtractFnWithOutput[]
+  extractFnsWithOutput: Array<ExtractFnWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverGlobalState: {
@@ -48,7 +48,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     serverGlobalState,
   }: {
     points: PointsManager<true, TRequiredCtx>
-    extractFnsWithOutput: ExtractFnWithOutput[]
+    extractFnsWithOutput: Array<ExtractFnWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverGlobalState: {
@@ -174,7 +174,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             case 'ctx': {
               const ex = this.extractFnsWithOutput.find(
                 (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'ctx',
-              )
+              ) as ExtractFnWithOutput<'ctx'> | undefined
               if (ex) {
                 currentCtx = { ...ex.output }
               } else {
@@ -194,7 +194,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             case 'loader': {
               const ex = this.extractFnsWithOutput.find(
                 (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'loader',
-              )
+              ) as ExtractFnWithOutput<'loader'> | undefined
               if (ex) {
                 currentData = { ...ex.output }
               } else {
@@ -206,6 +206,29 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 })
                 this.extractFnsWithOutput.push({
                   output: currentData,
+                  record: extractFn,
+                })
+              }
+              break
+            }
+            case 'ctxLoader': {
+              const ex = this.extractFnsWithOutput.find(
+                (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'ctxLoader',
+              ) as ExtractFnWithOutput<'ctxLoader'> | undefined
+              if (ex) {
+                currentData = { ...ex.output.data }
+                currentCtx = { ...ex.output.ctx }
+              } else {
+                const { ctx, data } = await extractFn.fn({
+                  ctx: { ...currentCtx },
+                  data: { ...currentData },
+                  input: parsedInput,
+                  extractor: this as never,
+                })
+                currentCtx = ctx
+                currentData = data
+                this.extractFnsWithOutput.push({
+                  output: { ctx: currentCtx, data: currentData },
                   record: extractFn,
                 })
               }
@@ -540,10 +563,22 @@ export type ExtractOptions = {
   point?: AnyPoint | undefined
   input: InputParsed
 }
-export type ExtractFnWithOutput = {
-  output: Ctx | Data
-  record: ExtractFnRecord
-}
+export type ExtractFnWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = TType extends 'ctx'
+  ? {
+      output: Ctx
+      record: ExtractFnRecord<'ctx'>
+    }
+  : TType extends 'loader'
+    ? {
+        output: Data
+        record: ExtractFnRecord<'loader'>
+      }
+    : TType extends 'ctxLoader'
+      ? {
+          output: { ctx: Ctx; data: Data }
+          record: ExtractFnRecord<'ctxLoader'>
+        }
+      : never
 export type ExtractResult<
   TCtx extends Ctx = Ctx,
   TData extends Data = Data,

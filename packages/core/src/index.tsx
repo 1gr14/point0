@@ -41,6 +41,7 @@ import type {
   ComponentComponent,
   Ctx,
   CtxFn,
+  CtxLoaderFn,
   CurrentRouteDefinition,
   Data,
   DestinationComponentType,
@@ -1780,79 +1781,6 @@ export class Point0<
   //   })
   // }
 
-  ctx<TNewCtx extends Ctx = Ctx>(
-    ctxFn: CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewCtx>,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TRequiredCtx,
-    TNewCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  ctx<TNewCtx extends Ctx = Ctx>(
-    ctx: TNewCtx,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TRequiredCtx,
-    TNewCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  ctx<TNewCtx extends Ctx = Ctx>(
-    ctxOrFn: TNewCtx,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TRequiredCtx,
-    TNewCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  > {
-    const ctxFn =
-      typeof ctxOrFn === 'undefined' // in case if we prune ctx for client customer
-        ? ({ ctx }: { ctx: TCtx }) => ({ ...ctx })
-        : typeof ctxOrFn === 'function'
-          ? ctxOrFn
-          : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
-    return this._continue<
-      'middleware',
-      TLetsEndPointType,
-      TRequiredCtx,
-      TNewCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >({
-      _pointType: 'middleware',
-      _extractFns: [...this._extractFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
-    })
-  }
-
   route<TNewRoute extends AnyRoute>(
     route: TNewRoute,
   ): Point0<
@@ -1940,6 +1868,79 @@ export class Point0<
     }) as never
   }
 
+  ctx<TNewCtx extends Ctx = Ctx>(
+    ctxFn: CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewCtx>,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TRequiredCtx,
+    TNewCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  ctx<TNewCtx extends Ctx = Ctx>(
+    ctx: TNewCtx,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TRequiredCtx,
+    TNewCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  ctx<TNewCtx extends Ctx = Ctx>(
+    ctxOrFn: TNewCtx,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TRequiredCtx,
+    TNewCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    const ctxFn =
+      typeof ctxOrFn === 'undefined' // in case if we prune ctx for client customer
+        ? ({ ctx }: { ctx: TCtx }) => ({ ...ctx })
+        : typeof ctxOrFn === 'function'
+          ? ctxOrFn
+          : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TRequiredCtx,
+      TNewCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _extractFns: [...this._extractFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
+    })
+  }
+
   loader(): Point0<
     'middleware',
     TLetsEndPointType,
@@ -2004,6 +2005,49 @@ export class Point0<
       _extractFns: [
         ...this._extractFns,
         { type: 'loader', fn: loaderFn ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
+      ] as never,
+    })
+  }
+
+  ctxLoader<TNewCtx extends Ctx = Ctx, TNewData extends Data = Data>(
+    ctxLoaderFn: CtxLoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewCtx, TNewData>,
+  ): Point0<
+    'middleware',
+    TLetsEndPointType,
+    TRequiredCtx,
+    TNewCtx,
+    TNewData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'middleware',
+      TLetsEndPointType,
+      TRequiredCtx,
+      TNewCtx,
+      TNewData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'middleware',
+      _extractFns: [
+        ...this._extractFns,
+        {
+          type: 'ctxLoader',
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune ctxLoader for client
+          fn: ctxLoaderFn ?? ((c: any) => ({ data: c.data, ctx: c.ctx })),
+          unstableId: Point0._getNextUnstableId(),
+        },
       ] as never,
     })
   }
@@ -2711,7 +2755,7 @@ export class Point0<
   }
 
   _hasLoader(): boolean {
-    return this._extractFns.some((fn) => fn.type === 'loader')
+    return this._extractFns.some((fn) => fn.type === 'loader' || fn.type === 'ctxLoader')
   }
 
   _hasClientLoader(): boolean {

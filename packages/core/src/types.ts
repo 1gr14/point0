@@ -803,8 +803,30 @@ export type LoaderFn<
   TDataOutput extends Data = Data,
 > = (props: LoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TDataOutput> | TDataOutput
 
+export type CtxLoaderFnProps<
+  TCtx extends Ctx = Ctx,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = {
+  ctx: TCtx
+  data: FinalData<TData>
+  input: InputParsed<TRouteDefinition, TInputSchema>
+  extractor: Extractor
+}
+export type CtxLoaderFn<
+  TCtx extends Ctx = Ctx,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TCtxOutput extends Ctx = Ctx,
+  TDataOutput extends Data = Data,
+> = (
+  props: CtxLoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>,
+) => Promise<{ ctx: TCtxOutput; data: TDataOutput }> | { ctx: TCtxOutput; data: TDataOutput }
+
 export type ExtractFnRecord<
-  TType extends 'ctx' | 'loader' = 'ctx' | 'loader',
+  TType extends 'ctx' | 'loader' | 'ctxLoader' = 'ctx' | 'loader' | 'ctxLoader',
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -814,7 +836,9 @@ export type ExtractFnRecord<
   ? { type: 'ctx'; fn: CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>; unstableId: number }
   : TType extends 'loader'
     ? { type: 'loader'; fn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>; unstableId: number }
-    : never
+    : TType extends 'ctxLoader'
+      ? { type: 'ctxLoader'; fn: CtxLoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>; unstableId: number }
+      : never
 
 export type ClientExtractFnRecord<
   TType extends 'loader' = 'loader',
