@@ -74,9 +74,9 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  // .onPrefetch(async () => {
-  //   await BestIdeaComponent.point.prefetchQuery({ input: { x: 10 } })
-  // })
+  .onPrefetch(async () => {
+    await BestIdeaComponent.point.prefetchQuery({ input: { x: 10, y: 20 } })
+  })
   // .loader()
   .page(() => {
     const [state, setState] = useState(someVar.get())

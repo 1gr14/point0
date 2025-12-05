@@ -7,10 +7,10 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 import { ClientServerHelpers } from './client-server.js'
 import { ExtractorStore } from './extractor-store.js'
-import type { AppComponent } from './mount.js'
 import type { PointsManager } from './points-manager.js'
 import type {
   AnyPoint,
+  AppComponent,
   Ctx,
   Data,
   EmptyCtx,

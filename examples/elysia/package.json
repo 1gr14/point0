@@ -16,6 +16,7 @@
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/wouter": "workspace:*",
+    "@point0/react-dom": "workspace:*",
     "@point0/elysia": "workspace:*",
     "elysia": "^1.4.16",
     "react": "^19.0.0",

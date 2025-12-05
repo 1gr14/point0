@@ -30,6 +30,7 @@
         "@devp0nt/route0": "^1.0.0-next.36",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
+        "@point0/react-dom": "workspace:*",
         "@point0/wouter": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -56,6 +57,7 @@
         "@point0/core": "workspace:*",
         "@point0/elysia": "workspace:*",
         "@point0/engine": "workspace:*",
+        "@point0/react-dom": "workspace:*",
         "@point0/wouter": "workspace:*",
         "elysia": "^1.4.16",
         "react": "^19.0.0",
@@ -82,6 +84,7 @@
         "@devp0nt/route0": "^1.0.0-next.36",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
+        "@point0/react-dom": "workspace:*",
         "@point0/wouter": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -193,6 +196,22 @@
         "react": "catalog:",
         "react-dom": "catalog:",
         "zod": "catalog:",
+      },
+    },
+    "packages/react-dom": {
+      "name": "@point0/react-dom",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.2.22",
+        "@types/node": "^20.0.0",
+        "esbuild-fix-imports-plugin": "^1.0.22",
+        "tsup": "^8.0.0",
+        "typescript": "^5.0.0",
+      },
+      "peerDependencies": {
+        "@point0/core": "workspace:*",
+        "react": "catalog:",
+        "react-dom": "catalog:",
       },
     },
     "packages/wouter": {
@@ -483,6 +502,8 @@
     "@point0/example-elysia": ["@point0/example-elysia@workspace:examples/elysia"],
 
     "@point0/example-vite": ["@point0/example-vite@workspace:examples/vite"],
+
+    "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
 
     "@point0/wouter": ["@point0/wouter@workspace:packages/wouter"],
 

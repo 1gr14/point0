@@ -1,9 +1,9 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { LazyPointsModule, ReadyPointsModule } from './points-manager.js'
-import { PointsManager } from './points-manager.js'
-import { ExtractorStore } from './extractor-store.js'
+import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points-manager'
+import { PointsManager } from '@point0/core/points-manager'
+import { ExtractorStore } from '@point0/core/extractor-store'
 
 let reactRoot: Root | null = null
 
@@ -50,8 +50,9 @@ export function mount(
   }
 }
 
-export type AppProps = { points: PointsManager }
-export type AppComponent = (props: AppProps) => React.ReactElement
+// we have absolutly same type in @point0/core/types, so if somebody need it, get it from there
+type AppProps = { points: PointsManager }
+type AppComponent = (props: AppProps) => React.ReactElement
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (import.meta.hot) {

@@ -11,6 +11,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput } from 'zod'
 import type { Extractor } from './extractor.js'
 import type { Point0 } from './index.js'
+import type { PointsManager } from './points-manager.js'
 
 // basic
 
@@ -1066,3 +1067,8 @@ export type QueryKey = readonly [
 export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+
+// mountable app
+
+export type AppProps = { points: PointsManager }
+export type AppComponent = (props: AppProps) => React.ReactElement
