@@ -801,7 +801,9 @@ export type LoaderFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TDataOutput extends Data = Data,
-> = (props: LoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TDataOutput> | TDataOutput
+> = (
+  props: LoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>,
+) => Promise<[number, TDataOutput]> | [number, TDataOutput] | Promise<TDataOutput> | TDataOutput
 
 export type CtxLoaderFnProps<
   TCtx extends Ctx = Ctx,
@@ -823,7 +825,9 @@ export type CtxLoaderFn<
   TDataOutput extends Data = Data,
 > = (
   props: CtxLoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>,
-) => Promise<{ ctx: TCtxOutput; data: TDataOutput }> | { ctx: TCtxOutput; data: TDataOutput }
+) =>
+  | Promise<{ ctx: TCtxOutput; data: TDataOutput; status?: number }>
+  | { ctx: TCtxOutput; data: TDataOutput; status?: number }
 
 export type ExtractFnRecord<
   TType extends 'ctx' | 'loader' | 'ctxLoader' = 'ctx' | 'loader' | 'ctxLoader',

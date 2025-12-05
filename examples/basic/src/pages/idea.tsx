@@ -21,7 +21,7 @@ export const ideaPage = ideaLayout
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: parseInt(input.id) },
     })
-    return { idea }
+    return [202, { idea }]
   })
   .page(
     ({ data: { idea } }) => ({

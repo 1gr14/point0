@@ -77,7 +77,7 @@ export default generalLayout
   // .onPrefetch(async () => {
   //   await BestIdeaComponent.point.prefetchQuery({ input: { x: 10 } })
   // })
-  .loader()
+  // .loader()
   .page(() => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)

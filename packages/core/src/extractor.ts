@@ -165,8 +165,8 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       let currentCtx: Ctx = this.requiredCtx ?? {}
       let currentData: Data = {}
+      let currentStatus = 200
       const extractFns = [...(point?._extractFns ?? [])]
-      // TODO: get status from real point data
 
       try {
         for (const extractFn of extractFns) {
@@ -196,16 +196,27 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'loader',
               ) as ExtractFnWithOutput<'loader'> | undefined
               if (ex) {
-                currentData = { ...ex.output }
+                if (Array.isArray(ex.output)) {
+                  currentStatus = ex.output[0]
+                  currentData = ex.output[1]
+                } else {
+                  currentData = ex.output
+                }
               } else {
-                currentData = await extractFn.fn({
+                const result = await extractFn.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: parsedInput,
                   extractor: this as never,
                 })
+                if (Array.isArray(result)) {
+                  currentStatus = result[0]
+                  currentData = result[1]
+                } else {
+                  currentData = result
+                }
                 this.extractFnsWithOutput.push({
-                  output: currentData,
+                  output: result,
                   record: extractFn,
                 })
               }
@@ -218,8 +229,9 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               if (ex) {
                 currentData = { ...ex.output.data }
                 currentCtx = { ...ex.output.ctx }
+                currentStatus = ex.output.status ?? currentStatus
               } else {
-                const { ctx, data } = await extractFn.fn({
+                const { ctx, data, status } = await extractFn.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: parsedInput,
@@ -227,6 +239,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 })
                 currentCtx = ctx
                 currentData = data
+                currentStatus = status ?? currentStatus
                 this.extractFnsWithOutput.push({
                   output: { ctx: currentCtx, data: currentData },
                   record: extractFn,
@@ -261,7 +274,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             head: this.getCurrentPageHead({ point, input, data: currentData, error: null }),
             response,
             error: undefined,
-            status: 200,
+            status: currentStatus,
           }
         } else {
           const error = new Error0(`Point Not Found`)
@@ -283,7 +296,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             data: currentData,
             head: this.getCurrentPageHead({ point: point ?? this.points.root, input, data: currentData, error }),
             error,
-            status: 500,
+            status: Error0.from(error).httpStatus ?? 500,
             response: undefined,
           }
         } catch (error2) {
@@ -293,7 +306,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             data: currentData,
             head: [],
             error,
-            status: 500,
+            status: Error0.from(error2).httpStatus ?? 500,
             response: undefined,
           }
         }
@@ -570,12 +583,12 @@ export type ExtractFnWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = 
     }
   : TType extends 'loader'
     ? {
-        output: Data
+        output: Data | [number, Data]
         record: ExtractFnRecord<'loader'>
       }
     : TType extends 'ctxLoader'
       ? {
-          output: { ctx: Ctx; data: Data }
+          output: { ctx: Ctx; data: Data; status?: number }
           record: ExtractFnRecord<'ctxLoader'>
         }
       : never

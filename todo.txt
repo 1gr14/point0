@@ -2,9 +2,10 @@
 ------ before start0 -----
 --------------------------
 
-test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx. Or maybe just myPoint.extract()
 status: .loader(() => [201, {}]).loader(() => [404, {}])
 mount.ts → @point0/react-dom
+
+test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx. Or maybe just myPoint.extract()
 .onServerError, .onClientError
 
 PLUGIN
