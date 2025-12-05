@@ -21,15 +21,17 @@ export type UseIsInitalSsrLocationFn = () => boolean
 export type UseRouterPolicyFn = () => RouterPolicy
 
 type RouterContextValue = {
-  ssrLocation: AnyLocation | undefined
+  ssrLocation: AnyLocation | null
+  prevLocation: AnyLocation | null
   currentLocation: AnyLocation
-  nextLocation: AnyLocation | undefined
+  nextLocation: AnyLocation | null
   policy: RouterPolicy
   status: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
-  setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | undefined>>
+  setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
+  setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setStatus: React.Dispatch<React.SetStateAction<RouterStatus>>
 }
 
@@ -40,7 +42,7 @@ export type RouterContextProviderProps = {
   policy?: RouterPolicy
   status?: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
-  ssrLocation?: AnyLocation | undefined
+  ssrLocation?: AnyLocation | null
 }
 
 export function RouterContextProvider({
@@ -50,7 +52,8 @@ export function RouterContextProvider({
   useAdapterLocation,
   ssrLocation,
 }: RouterContextProviderProps) {
-  const [nextLocation, setNextLocation] = useState<AnyLocation | undefined>()
+  const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
+  const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
@@ -60,16 +63,18 @@ export function RouterContextProvider({
 
   const value = useMemo(
     () => ({
-      ssrLocation,
+      ssrLocation: ssrLocation ?? null,
       currentLocation,
+      prevLocation,
       nextLocation,
       policy,
       status: routerStatus,
       setNextLocation,
+      setPrevLocation,
       setStatus,
       useAdapterLocation,
     }),
-    [ssrLocation, currentLocation, nextLocation, policy, routerStatus, useAdapterLocation],
+    [ssrLocation, currentLocation, prevLocation, nextLocation, policy, routerStatus, useAdapterLocation],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
@@ -88,12 +93,15 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
 ) {
   const routerCtx = React.useContext(RouterContext)
   if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
+  const locationByAdapter = routerCtx.useAdapterLocation()
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- try remove usage of routerCtx.currentLocation
+  location ??= locationByAdapter ?? routerCtx.currentLocation
   return useMemo(() => {
     if (!route) {
-      return PointsManager.getGlobalPoints().routes._.getLocation(location ?? routerCtx.currentLocation) as AnyLocation
+      return PointsManager.getGlobalPoints().routes._.getLocation(location) as AnyLocation
     }
-    return Route0.from(route).getLocation(location ?? routerCtx.currentLocation) as KnownLocation<TRoute>
-  }, [route, location, routerCtx.currentLocation, PointsManager.getGlobalPoints().routesHash])
+    return Route0.from(route).getLocation(location) as KnownLocation<TRoute>
+  }, [route, location, PointsManager.getGlobalPoints().routesHash])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -160,7 +168,9 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
+      const prevLocation = routerContext.currentLocation
       const location = PointsManager.getGlobalPoints().routes._.getLocation(href)
+      routerContext.setPrevLocation(prevLocation)
       routerContext.setNextLocation(location)
 
       // simple mode
@@ -169,11 +179,11 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
         try {
           await adapterNavigate(...(args as [string, ...any[]]))
-          routerContext.setNextLocation(undefined)
+          routerContext.setNextLocation(null)
           // ctx.setCurrentLocation(location)
           return { status: 'idle', location }
         } catch {
-          routerContext.setNextLocation(undefined)
+          routerContext.setNextLocation(null)
           return { status: 'idle', location }
         }
       }
@@ -190,14 +200,14 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
 
         routerContext.setStatus('transit-success')
         await adapterNavigate(...(args as [string, ...any[]]))
-        routerContext.setNextLocation(undefined)
+        routerContext.setNextLocation(null)
         // ctx.setCurrentLocation(location)
         routerContext.setStatus('success')
         return { status: 'success', location }
       } catch {
         routerContext.setStatus('transit-error')
         await adapterNavigate(...(args as [string, ...any[]]))
-        routerContext.setNextLocation(undefined)
+        routerContext.setNextLocation(null)
         routerContext.setStatus('error')
         return { status: 'error', location: routerContext.currentLocation }
       }

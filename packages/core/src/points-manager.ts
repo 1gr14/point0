@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
-import type { QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { ClientServerHelpers } from './client-server.js'
 import { ExtractorStore } from './extractor-store.js'
@@ -16,7 +16,6 @@ import type {
   PointName,
   PointsScope,
   PointType,
-  QueryKey,
   RequiredCtx,
   RootPoint,
   UndefinedRoute,

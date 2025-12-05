@@ -1,13 +1,12 @@
-import type { AnyLocation, AnyRoute } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
-import React, { Fragment, useCallback, useMemo } from 'react'
-import type { LinkProps } from 'wouter'
-import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
+import type { AnyLocation, AnyRoute, Routes } from '@devp0nt/route0'
 import { Point0 } from '@point0/core'
+import { ClientServerHelpers } from '@point0/core/client-server'
 import type { PagesTree } from '@point0/core/points-manager'
 import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
 import { _wrapUseNavigate, RouterContextProvider } from '@point0/core/router'
-import { ClientServerHelpers } from '@point0/core/client-server'
+import React, { Fragment, useCallback, useMemo } from 'react'
+import type { LinkProps } from 'wouter'
+import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
 
 // TODO: add to Link match result, so we can use current, active, aprent, exact, etc
 
@@ -42,11 +41,13 @@ export const Link = (props: LinkProps) => {
 
 export const Router = ({
   ssrLocation = Point0._ssrLocation.get(),
+  routes = Point0.getPoints().routes,
   policy,
   status,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
+  routes?: Routes
   policy?: RouterPolicy
   status?: RouterStatus
   children: React.ReactNode
@@ -63,7 +64,7 @@ export const Router = ({
 
   const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
-    return Route0.getLocation(wouterLocation)
+    return routes._.getLocation(wouterLocation)
   }, [])
 
   return (

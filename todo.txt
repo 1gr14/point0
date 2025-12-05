@@ -3,9 +3,6 @@
 --------------------------
 
 ROUTER
-all root routes segments should be prepend with '/'
-layout scroll position, restore
-on navigate to same page do not prefetch, or at least not show preloading
 rename all location to loc, becouse ReferenceError: location is not defined
 refactor prefetch mode names
 .prefetchMode(), page prefetch should be auto, if has App then full, if has no app, then partial

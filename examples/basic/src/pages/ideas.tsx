@@ -14,7 +14,7 @@ export const ideasPage = generalLayout
     const limit = 2
     const ideas = await ctx.prisma.idea.findMany({ take: limit, skip: page * limit })
     const nextCursor = ideasCount > (page + 1) * limit ? page + 1 : undefined
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // await new Promise((resolve) => setTimeout(resolve, 1000))
     return { ...data, ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
   })
   .clientLoader(async ({ data }) => {

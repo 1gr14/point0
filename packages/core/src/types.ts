@@ -705,6 +705,10 @@ export type FetchOptionsFn = () => FetchOptions
 export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
 export type FetchOptions = RequestInit
 
+export type ScrollPositionGetter = () => { x: number; y: number } | undefined
+export type ScrollPositionSetter = (position: { x: number; y: number }) => void
+export type ScrollPositionRestorePolicy = (prevLocation: AnyLocation | null) => boolean | null
+
 export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 
 export type InputSchemaZod = ZodObject<any>

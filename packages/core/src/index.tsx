@@ -29,7 +29,7 @@ import type { ExtractorStoreDefinedItem } from './extractor-store.js'
 import { ExtractorStore } from './extractor-store.js'
 import type { ExtractResult, Extractor } from './extractor.js'
 import { PointsManager } from './points-manager.js'
-import { useLocation } from './router.js'
+import { useLocation, useRouterContext } from './router.js'
 import type {
   AnyDataOrInfiniteData,
   AnyPoint,
@@ -87,6 +87,9 @@ import type {
   ResponseOutput,
   RootPoint,
   RouteDefinition,
+  ScrollPositionGetter,
+  ScrollPositionRestorePolicy,
+  ScrollPositionSetter,
   SuccessHeadFn,
   UndefinedComponentComponent,
   UndefinedCtx,
@@ -180,6 +183,9 @@ export class Point0<
   _name: PointName | UndefinedPointName
   _unstableId: number
   _fetchOptions: FetchOptionsFn | undefined
+  _scrollPositionGetter: ScrollPositionGetter
+  _scrollPositionSetter: ScrollPositionSetter
+  _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
   _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
 
   // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loadingComponent
@@ -287,6 +293,9 @@ export class Point0<
     _layouts?: LayoutPoint[]
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
+    _scrollPositionGetter?: ScrollPositionGetter
+    _scrollPositionSetter?: ScrollPositionSetter
+    _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -390,6 +399,39 @@ export class Point0<
     this._layouts = props._layouts ?? []
     this._name = props._name
     this._fetchOptions = props._fetchOptions ?? (() => ({}))
+    this._scrollPositionGetter =
+      props._scrollPositionGetter ??
+      (() => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+          return { x: 0, y: 0 }
+        }
+        const doc = document.documentElement
+        const body = document.body
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const x = window.pageXOffset !== undefined ? window.pageXOffset : doc.scrollLeft || body.scrollLeft || 0
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const y = window.pageYOffset !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
+        return { x, y }
+      })
+    this._scrollPositionSetter =
+      props._scrollPositionSetter ??
+      (({ x, y }) => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+          return
+        }
+        if (typeof window.scrollTo === 'function') {
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          window.scrollTo(x ?? 0, y ?? 0)
+          return
+        }
+        const doc = document.documentElement
+        const body = document.body
+        // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
+        doc.scrollLeft = body.scrollLeft = x ?? 0
+        // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
+        doc.scrollTop = body.scrollTop = y ?? 0
+      })
+    this._scrollPositionRestorePolicy = props._scrollPositionRestorePolicy ?? (() => null)
     this._errorComponent =
       props._errorComponent ??
       ((({ error }) => {
@@ -494,6 +536,9 @@ export class Point0<
     _layouts?: LayoutPoint[]
     _name?: PointName | UndefinedPointName
     _fetchOptions?: FetchOptionsFn
+    _scrollPositionGetter?: ScrollPositionGetter
+    _scrollPositionSetter?: ScrollPositionSetter
+    _scrollPositionRestorePolicy?: (prevLocation: AnyLocation | null) => boolean | null
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -625,6 +670,9 @@ export class Point0<
       _layouts: overrides._layouts ?? this._layouts,
       _name: overrides._name ?? this._name,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
+      _scrollPositionGetter: overrides._scrollPositionGetter ?? this._scrollPositionGetter,
+      _scrollPositionSetter: overrides._scrollPositionSetter ?? this._scrollPositionSetter,
+      _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
       _componentErrorComponent: (overrides._componentErrorComponent ?? this._componentErrorComponent) as never,
@@ -861,6 +909,9 @@ export class Point0<
       _queryResultType: undefined,
       _clientExtractFns: [],
       _fetchOptions: this._base?._fetchOptions,
+      _scrollPositionGetter: this._base?._scrollPositionGetter,
+      _scrollPositionSetter: this._base?._scrollPositionSetter,
+      _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
       _errorComponent: this._base?._errorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
       _componentErrorComponent: this._base?._componentErrorComponent as never,
@@ -2912,6 +2963,40 @@ export class Point0<
       return { input, restProps }
     }, [props, location])
 
+    const { prevLocation } = useRouterContext()
+    React.useEffect(() => {
+      const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy(prevLocation)
+      const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
+        (p) => p.name === this._name && stringify(p.input) === stringify(input),
+      )
+      if (scrollPositionRestorePolicy !== false) {
+        if (scrollPositionRestorePolicy === null) {
+          this._scrollPositionSetter({ x: 0, y: 0 })
+        }
+        if (scrollPositionRestorePolicy === true) {
+          if (!prevPageScrollPosition) {
+            this._scrollPositionSetter({ x: 0, y: 0 })
+          } else {
+            this._scrollPositionSetter({ x: prevPageScrollPosition.x, y: prevPageScrollPosition.y })
+          }
+        }
+      }
+      return () => {
+        const currentPageScrollPosition = this._scrollPositionGetter()
+        if (prevPageScrollPosition) {
+          prevPageScrollPosition.x = currentPageScrollPosition?.x ?? 0
+          prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
+        } else {
+          Point0._prevPageScrollPositions.push({
+            name: this._name ?? 'unknown',
+            input,
+            x: currentPageScrollPosition?.x ?? 0,
+            y: currentPageScrollPosition?.y ?? 0,
+          })
+        }
+      }
+    }, [this._name, stringify(input), prevLocation])
+
     const result = this._useLoader(input, this._defaultPageQueryOptions)
 
     this._useHead(result)
@@ -4162,4 +4247,111 @@ export class Point0<
   static callServer = ClientServerHelpers.callServer.bind(ClientServerHelpers)
   static callClient = ClientServerHelpers.callClient.bind(ClientServerHelpers)
   static callClientElseServer = ClientServerHelpers.callClientElseServer.bind(ClientServerHelpers)
+
+  // scroll restoration
+
+  scrollGetter(
+    getter: ScrollPositionGetter,
+  ): Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _scrollPositionGetter: getter,
+    })
+  }
+
+  scrollSetter(
+    setter: ScrollPositionSetter,
+  ): Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _scrollPositionSetter: setter,
+    })
+  }
+
+  scrollRestore(
+    // true - restore, false - do not restore, null - set {x: 0, y: 0}
+    policy: ScrollPositionRestorePolicy | boolean | null,
+  ): Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy,
+    })
+  }
+
+  static _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> = []
 }
