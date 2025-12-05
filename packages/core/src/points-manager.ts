@@ -632,11 +632,11 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   prefetchSuitablePagePoint = async ({
     location,
     queryClient, // kept for signature parity if you need it later
-    mode = 'any',
+    mode = 'serverAndClient',
   }: {
     location: AnyLocation
     queryClient?: QueryClient
-    mode?: 'server' | 'client' | 'any' | 'dehydratedState' | 'all'
+    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'all'
   }): Promise<PagePoint | undefined> => {
     const result = await this.loadSuitablePage({ location })
     if (!result) {
@@ -1000,7 +1000,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
           'mutation',
           'provider',
         ] as const
-        const validOutputTypes = ['data', 'response', 'dehydratedState'] as const
+        const validOutputTypes = ['data', 'response', 'queryClientDehydratedState'] as const
         if (!bodyRaw || typeof bodyRaw !== 'object') {
           throw new Error('Invalid request body: must be an object')
         }
@@ -1115,7 +1115,7 @@ export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = 
 
 export type FetchTask = {
   pointType: EndPointType
-  outputType: 'data' | 'response' | 'dehydratedState'
+  outputType: 'data' | 'response' | 'queryClientDehydratedState'
   pointInput: InputParsed
   scope: PointsScope
   pointName: PointName

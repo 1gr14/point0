@@ -3511,7 +3511,7 @@ export class Point0<
     queryOptions,
     fetchOptions,
     outputType,
-    mode = 'any',
+    mode = 'serverAndClient',
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
@@ -3519,11 +3519,11 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-    mode?: 'server' | 'client' | 'any'
+    mode?: 'server' | 'client' | 'serverAndClient'
   }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasLoader()
-    if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'any')) {
+    if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedQueryOptions({
         input: input as never,
         queryClient,
@@ -3532,14 +3532,14 @@ export class Point0<
         location,
       }) as never
     }
-    if (hasClientLoader && (mode === 'client' || mode === 'any')) {
+    if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientQueryOptions({
         input: input as never,
         queryOptions,
         location,
       }) as never
     }
-    if (hasServerLoader && (mode === 'server' || mode === 'any')) {
+    if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
       return this._getServerQueryOptions({
         input: input as never,
         queryOptions,
@@ -3743,7 +3743,7 @@ export class Point0<
     queryClient,
     fetchOptions,
     outputType,
-    mode = 'any',
+    mode = 'serverAndClient',
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema> | undefined
     location?: AnyLocation
@@ -3760,7 +3760,7 @@ export class Point0<
     queryClient?: QueryClient
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-    mode?: 'server' | 'client' | 'any'
+    mode?: 'server' | 'client' | 'serverAndClient'
   }): UseInfiniteQueryOptions<
     InputRaw<TRouteDefinition, TInputSchema>,
     FinalClientData<TData, TClientData>,
@@ -3770,7 +3770,7 @@ export class Point0<
   > {
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasLoader()
-    if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'any')) {
+    if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedInfiniteQueryOptions({
         input: input as never,
         queryOptions,
@@ -3779,14 +3779,14 @@ export class Point0<
         location,
       }) as never
     }
-    if (hasClientLoader && (mode === 'client' || mode === 'any')) {
+    if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientInfiniteQueryOptions({
         input: input as never,
         queryOptions: queryOptions as any,
         location,
       }) as never
     }
-    if (hasServerLoader && (mode === 'server' || mode === 'any')) {
+    if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
       return this._getServerInfiniteQueryOptions({
         input: input as never,
         queryOptions: queryOptions as any,
@@ -3954,7 +3954,7 @@ export class Point0<
     queryOptions: providedQueryOptions,
     fetchOptions,
     force,
-    mode = 'any',
+    mode = 'serverAndClient',
     outputType,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
@@ -3963,7 +3963,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'any'
+    mode?: 'server' | 'client' | 'serverAndClient'
     outputType?: FetchOutputType
   }): Promise<undefined | QueryKey> {
     if (!this._hasLoader() && !this._hasClientLoader()) {
@@ -4006,7 +4006,7 @@ export class Point0<
     queryOptions: providedQueryOptions,
     fetchOptions,
     force,
-    mode = 'any',
+    mode = 'serverAndClient',
     outputType,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
@@ -4015,7 +4015,7 @@ export class Point0<
     queryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'any'
+    mode?: 'server' | 'client' | 'serverAndClient'
     outputType?: FetchOutputType
   }): Promise<undefined | QueryKey> {
     if (!this._hasLoader() && !this._hasClientLoader()) {
@@ -4071,7 +4071,7 @@ export class Point0<
       input,
       queryOptions,
       fetchOptions,
-      outputType: 'dehydratedState',
+      outputType: 'queryClientDehydratedState',
     })
     const queryKey = _queryOptions.queryKey
     const cache = queryClient.getQueryCache()
@@ -4094,7 +4094,7 @@ export class Point0<
     queryOptions,
     fetchOptions,
     force,
-    mode = 'any',
+    mode = 'serverAndClient',
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location: AnyLocation
@@ -4105,11 +4105,11 @@ export class Point0<
       | undefined
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'any' | 'dehydratedState' | 'all'
+    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'all'
   }): Promise<void> {
-    if (mode === 'dehydratedState' || mode === 'all') {
+    if (mode === 'queryClientDehydratedState' || mode === 'all') {
       await this.prefetchPageDehydratedState({ queryClient, input, queryOptions, fetchOptions, force })
-      if (mode === 'dehydratedState') {
+      if (mode === 'queryClientDehydratedState') {
         return
       }
     }
@@ -4220,7 +4220,9 @@ export class Point0<
       const prefetchPageQuery = queryClient
         .getQueryCache()
         .getAll()
-        .find((q: any) => q.state?.data && typeof q.state.data === 'object' && 'dehydratedState' in q.state.data)
+        .find(
+          (q: any) => q.state?.data && typeof q.state.data === 'object' && 'queryClientDehydratedState' in q.state.data,
+        )
 
       if (!prefetchPageQuery) {
         return queryClient

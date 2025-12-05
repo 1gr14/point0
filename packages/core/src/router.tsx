@@ -195,7 +195,7 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
         await PointsManager.getGlobalPoints().prefetchSuitablePagePoint({
           location,
           queryClient,
-          mode: 'any',
+          mode: 'serverAndClient',
         })
 
         routerContext.setStatus('transit-success')

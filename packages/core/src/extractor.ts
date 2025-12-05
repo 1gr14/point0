@@ -511,7 +511,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         // queryClient: this.getQueryClient(),
         queryOptions: undefined,
         fetchOptions: undefined,
-        outputType: 'dehydratedState',
+        outputType: 'queryClientDehydratedState',
       })
 
       // you said you already have this:
@@ -563,7 +563,7 @@ export type InferExtractResult<TPoint extends AnyPoint> =
 
 export type FetchTask = {
   pointType: EndPointType
-  outputType: 'data' | 'response' | 'dehydratedState'
+  outputType: 'data' | 'response' | 'queryClientDehydratedState'
   pointInput: InputParsed
   scope: PointsScope
   pointName: PointName

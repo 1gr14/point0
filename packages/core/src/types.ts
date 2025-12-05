@@ -1008,7 +1008,7 @@ export type FetchOutput<
   TData extends Data | UndefinedData = Data | UndefinedData,
 > = TResponseOutput extends ResponseOutput ? TResponseOutput : FinalData<TData>
 
-export type FetchOutputType = 'data' | 'response' | 'dehydratedState'
+export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 

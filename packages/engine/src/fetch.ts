@@ -139,7 +139,7 @@ export const engineFetch = async ({
           headers: { 'Content-Type': 'text/html' },
           status: 200,
         })
-      } else if (outputType === 'dehydratedState' && pointType === 'page') {
+      } else if (outputType === 'queryClientDehydratedState' && pointType === 'page') {
         if (!suitable.pageLocation) {
           // I think it will never throw, but who knows
           throw new Error('Page Critical Error: Not Found')
