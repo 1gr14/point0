@@ -13,6 +13,7 @@ import type {
   InputRaw,
   LayoutPoint,
   PagePoint,
+  PagePrefetchPolicy,
   PointName,
   PointsScope,
   PointType,
@@ -631,12 +632,12 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
 
   prefetchSuitablePagePoint = async ({
     location,
-    queryClient, // kept for signature parity if you need it later
-    mode = 'serverAndClient',
+    queryClient,
+    policy,
   }: {
     location: AnyLocation
     queryClient?: QueryClient
-    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'everything'
+    policy?: PagePrefetchPolicy
   }): Promise<PagePoint | undefined> => {
     const result = await this.loadSuitablePage({ location })
     if (!result) {
@@ -646,7 +647,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       queryClient,
       input: result.page._getUnsafeInputRawByLocation(location),
       location,
-      mode,
+      policy,
     })
     return result.page
   }

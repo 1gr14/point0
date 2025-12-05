@@ -2,27 +2,13 @@
 ------ before start0 -----
 --------------------------
 
-ROUTER
-remove router policy, prefetchMode is enough
-.prefetchMode(), page prefetch should be auto, if has App then full, if has no app, then partial
-.onPrefetch(() => Promise.all(cmponent.prefetchQuery(), component2.prefetchQuery()))
-
 wrapper
-
 merge .input schemas, or may be not schemas, but input results, but better schemas
-
-EXPO
-expo example
-expo router
-??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
-??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
-??? expo example, just define all queries and mutations as plugins and use them in site and expo
-
-mount.ts → @point0/react-dom
-
-test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx
-
 .ctxLoader()
+test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx. Or maybe just myPoint.extract()
+status: .loader(() => [201, {}]).loader(() => [404, {}])
+mount.ts → @point0/react-dom
+.onServerError, .onClientError
 
 PLUGIN
 const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
@@ -33,24 +19,21 @@ const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' |
 ??? lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
 ??? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
 
-? someThing.attachment()..., and then somethingElse.attach()
-
-auth example
-
-status: .loader(() => [201, {}]).loader(() => [404, {}])
+EXPO
+expo example
+expo router
+??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
+??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
+??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
 move all types to [name].types.ts, and export everything from types.ts
 point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
-
-.onError, .onClientError and combine them and clear them to base on lets
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add useInfiniteQuery
-
 prettify visible methods per TLetsEndpointType, and hide all private methods under _
-on .head in base we use any for data props etc. On .head inside page or component we use correct types but point type becomes «prerender» and now we can do only wrapper or page or component or something ending.
 
+? someThing.attachment()..., and then somethingElse.attach()
 ? get base/root specific things right from base, do not continue it after .base()
-
 ? Point0 → P0, cli p0
 
 START0
@@ -87,9 +70,9 @@ pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at 
 pruner: point0PruneScopePoints, totally remove points not related to the scope
 check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
 
+normzliae all errors texts everyhere
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
-normzliae all errors texts everyhere
 store each point location to normalize errors messages for example in No route or id provided for this point
 analyze if there same id points or route points, and throw error
 
@@ -98,7 +81,8 @@ analyze if there same id points or route points, and throw error
 --------------------------
 
 find unused code
-refactor example
+example refactor
+example auth
 test for units
 test for engine
 test for e2e

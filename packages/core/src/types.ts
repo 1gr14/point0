@@ -707,7 +707,18 @@ export type FetchOptions = RequestInit
 
 export type ScrollPositionGetter = () => { x: number; y: number } | undefined
 export type ScrollPositionSetter = (position: { x: number; y: number }) => void
-export type ScrollPositionRestorePolicy = (prevLocation: AnyLocation | null) => boolean | null
+export type ScrollPositionRestorePolicy = ({ prevLocation }: { prevLocation: AnyLocation | null }) => boolean | null
+
+export type QueryMode = 'server' | 'client' | 'serverAndClient'
+export type PagePrefetchPolicy =
+  | 'server'
+  | 'client'
+  | 'serverAndClient'
+  | 'queryClientDehydratedState'
+  | 'everything'
+  | 'onPrefetchOnly'
+  | 'none'
+export type OnPrefetchFn = () => Promise<void> | void
 
 export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 

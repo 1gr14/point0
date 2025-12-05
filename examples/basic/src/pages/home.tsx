@@ -57,6 +57,9 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
+  // .onPrefetch(async () => {
+  //   await BestIdeaComponent.point.prefetchQuery({ input: { x: 10 } })
+  // })
   .loader()
   .page(() => {
     const [state, setState] = useState(someVar.get())
@@ -112,7 +115,7 @@ export default generalLayout
           />
           {/* <img src={IconUsual} alt="Icon" style={{ width: '24px', height: '24px', color: '#007bff' }} /> */}
           {/* <div dangerouslySetInnerHTML={{ html: icon }} /> */}
-          <Svg src={iconRaw} />
+          <Svg src={iconRaw} width={24} height={24} />
           {/* <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span> */}
         </div>
         <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />

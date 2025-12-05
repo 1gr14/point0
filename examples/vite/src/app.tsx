@@ -8,7 +8,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient.get()}>
       <Unhead>
-        <Router policy="prefetch">
+        <Router>
           <clientCtx2.Provider>
             <clientCtx1.Provider>
               <RouterRoutes />

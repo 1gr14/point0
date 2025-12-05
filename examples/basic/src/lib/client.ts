@@ -17,6 +17,7 @@ export const client = Point0.create('client')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
+  // .prefetchPolicy('everything')
   .head(({ loading, error }) => ({
     ...(loading ? { title: 'Loading...' } : {}),
     ...(error ? { title: error.message } : {}),

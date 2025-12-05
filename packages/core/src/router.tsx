@@ -10,7 +10,6 @@ import { PointsManager } from './points-manager.js'
 export type UseAdapterLocationFn = () => AnyLocation
 
 export type RouterStatus = 'idle' | 'prefetching' | 'transitioning'
-export type RouterPolicy = 'simple' | 'prefetch'
 
 export type UseRouterContextFn = () => RouterContextValue
 export type UseNavigateFn = (href: string) => never | Promise<never>
@@ -26,14 +25,12 @@ export type UseOnNavigateDetailedFn = (props: {
   error: Error | null
 }) => void
 export type UseIsInitalSsrLocationFn = () => boolean
-export type UseRouterPolicyFn = () => RouterPolicy
 
 type RouterContextValue = {
   ssrLocation: AnyLocation | null
   prevLocation: AnyLocation | null
   currentLocation: AnyLocation
   nextLocation: AnyLocation | null
-  policy: RouterPolicy
   status: RouterStatus
   error: Error | null
   useAdapterLocation: UseAdapterLocationFn
@@ -49,7 +46,6 @@ export const RouterContext = React.createContext<RouterContextValue | null>(null
 
 export type RouterContextProviderProps = {
   children: React.ReactNode
-  policy?: RouterPolicy
   status?: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | null
@@ -57,7 +53,6 @@ export type RouterContextProviderProps = {
 
 export function RouterContextProvider({
   children,
-  policy = 'simple',
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
@@ -78,7 +73,6 @@ export function RouterContextProvider({
       currentLocation,
       prevLocation,
       nextLocation,
-      policy,
       status: routerStatus,
       error,
       setNextLocation,
@@ -87,7 +81,7 @@ export function RouterContextProvider({
       setError,
       useAdapterLocation,
     }),
-    [ssrLocation, currentLocation, prevLocation, nextLocation, policy, routerStatus, error, useAdapterLocation],
+    [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
@@ -123,12 +117,6 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
 //   const location = useLocation()
 //   return !!ctx.ssrLocation && ctx.ssrLocation.href === location.href
 // }
-
-export const useRouterPolicy: UseRouterPolicyFn = () => {
-  const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useRouterPolicy must be used within RouterContextProvider')
-  return ctx.policy
-}
 
 export const useIsRouterPrefetching = (): boolean => {
   const ctx = React.useContext(RouterContext)
@@ -246,24 +234,24 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       routerContext.setError(null)
       routerContext.setNextLocation(location)
 
-      // simple mode
-      if (routerContext.policy === 'simple') {
-        routerContext.setStatus('transitioning')
+      // // simple mode
+      // if (routerContext.policy === 'simple') {
+      //   routerContext.setStatus('transitioning')
 
-        try {
-          await adapterNavigate(...(args as [string, ...any[]]))
-          routerContext.setStatus('idle')
-          routerContext.setNextLocation(null)
-          // ctx.setCurrentLocation(location)
-          return { location, error: null }
-        } catch (error) {
-          const error0 = Error0.from(error)
-          routerContext.setError(error0)
-          routerContext.setStatus('idle')
-          routerContext.setNextLocation(null)
-          return { location, error: error0 }
-        }
-      }
+      //   try {
+      //     await adapterNavigate(...(args as [string, ...any[]]))
+      //     routerContext.setStatus('idle')
+      //     routerContext.setNextLocation(null)
+      //     // ctx.setCurrentLocation(location)
+      //     return { location, error: null }
+      //   } catch (error) {
+      //     const error0 = Error0.from(error)
+      //     routerContext.setError(error0)
+      //     routerContext.setStatus('idle')
+      //     routerContext.setNextLocation(null)
+      //     return { location, error: error0 }
+      //   }
+      // }
 
       // prefetch mode
       routerContext.setStatus('prefetching')
@@ -271,7 +259,6 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
         await PointsManager.getGlobalPoints().prefetchSuitablePagePoint({
           location,
           queryClient,
-          mode: 'serverAndClient',
         })
         routerContext.setStatus('transitioning')
         await adapterNavigate(...(args as [string, ...any[]]))

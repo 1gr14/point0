@@ -2,7 +2,7 @@ import type { AnyLocation, AnyRoute, Routes } from '@devp0nt/route0'
 import { Point0 } from '@point0/core'
 import { ClientServerHelpers } from '@point0/core/client-server'
 import type { PagesTree } from '@point0/core/points-manager'
-import type { RouterPolicy, RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
+import type { RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
 import { _wrapUseNavigate, RouterContextProvider } from '@point0/core/router'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
@@ -42,13 +42,11 @@ export const Link = (props: LinkProps) => {
 export const Router = ({
   ssrLocation = Point0._ssrLocation.get(),
   routes = Point0.getPoints().routes,
-  policy,
   status,
   children,
 }: {
   ssrLocation?: AnyLocation | undefined
   routes?: Routes
-  policy?: RouterPolicy
   status?: RouterStatus
   children: React.ReactNode
 }): React.ReactElement => {
@@ -69,12 +67,7 @@ export const Router = ({
 
   return (
     <WouterRouter {...wouterRouterProps}>
-      <RouterContextProvider
-        useAdapterLocation={useAdapterLocation}
-        ssrLocation={ssrLocation}
-        policy={policy}
-        status={status}
-      >
+      <RouterContextProvider useAdapterLocation={useAdapterLocation} ssrLocation={ssrLocation} status={status}>
         {children}
       </RouterContextProvider>
     </WouterRouter>

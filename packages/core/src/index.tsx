@@ -72,7 +72,9 @@ import type {
   LoadingHeadFn,
   MiddlewareHeadFn,
   MountableComponent,
+  OnPrefetchFn,
   PageComponent,
+  PagePrefetchPolicy,
   PartialUseInfiniteQueryOptions,
   PointName,
   PointType,
@@ -81,6 +83,7 @@ import type {
   Props,
   ProviderValueSetterFn,
   QueryKey,
+  QueryMode,
   QueryResultType,
   RequiredCtx,
   ResponseFn,
@@ -186,6 +189,8 @@ export class Point0<
   _scrollPositionGetter: ScrollPositionGetter
   _scrollPositionSetter: ScrollPositionSetter
   _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
+  _prefetchPolicy: PagePrefetchPolicy
+  _onPrefetchFns: OnPrefetchFn[]
   _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
 
   // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loadingComponent
@@ -296,6 +301,8 @@ export class Point0<
     _scrollPositionGetter?: ScrollPositionGetter
     _scrollPositionSetter?: ScrollPositionSetter
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
+    _prefetchPolicy?: PagePrefetchPolicy
+    _onPrefetchFns?: OnPrefetchFn[]
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -432,6 +439,8 @@ export class Point0<
         doc.scrollTop = body.scrollTop = y ?? 0
       })
     this._scrollPositionRestorePolicy = props._scrollPositionRestorePolicy ?? (() => null)
+    this._prefetchPolicy = props._prefetchPolicy ?? 'serverAndClient'
+    this._onPrefetchFns = props._onPrefetchFns ?? []
     this._errorComponent =
       props._errorComponent ??
       ((({ error }) => {
@@ -538,7 +547,9 @@ export class Point0<
     _fetchOptions?: FetchOptionsFn
     _scrollPositionGetter?: ScrollPositionGetter
     _scrollPositionSetter?: ScrollPositionSetter
-    _scrollPositionRestorePolicy?: (prevLocation: AnyLocation | null) => boolean | null
+    _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
+    _prefetchPolicy?: PagePrefetchPolicy
+    _onPrefetchFns?: OnPrefetchFn[]
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -673,6 +684,8 @@ export class Point0<
       _scrollPositionGetter: overrides._scrollPositionGetter ?? this._scrollPositionGetter,
       _scrollPositionSetter: overrides._scrollPositionSetter ?? this._scrollPositionSetter,
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
+      _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
+      _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
       _componentErrorComponent: (overrides._componentErrorComponent ?? this._componentErrorComponent) as never,
@@ -912,6 +925,8 @@ export class Point0<
       _scrollPositionGetter: this._base?._scrollPositionGetter,
       _scrollPositionSetter: this._base?._scrollPositionSetter,
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
+      _prefetchPolicy: this._base?._prefetchPolicy,
+      _onPrefetchFns: this._base?._onPrefetchFns,
       _errorComponent: this._base?._errorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
       _componentErrorComponent: this._base?._componentErrorComponent as never,
@@ -2968,7 +2983,7 @@ export class Point0<
       if (status !== 'idle') {
         return
       }
-      const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy(prevLocation)
+      const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
         (p) => p.name === this._name && stringify(p.input) === stringify(input),
       )
@@ -3522,7 +3537,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-    mode?: 'server' | 'client' | 'serverAndClient'
+    mode?: QueryMode
   }): UseQueryOptions<FinalClientData<TData, TClientData>, Error0, FinalClientData<TData, TClientData>, QueryKey> {
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasLoader()
@@ -3763,7 +3778,7 @@ export class Point0<
     queryClient?: QueryClient
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-    mode?: 'server' | 'client' | 'serverAndClient'
+    mode?: QueryMode
   }): UseInfiniteQueryOptions<
     InputRaw<TRouteDefinition, TInputSchema>,
     FinalClientData<TData, TClientData>,
@@ -3966,7 +3981,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'serverAndClient'
+    mode?: QueryMode
     outputType?: FetchOutputType
   }): Promise<undefined | QueryKey> {
     if (!this._hasLoader() && !this._hasClientLoader()) {
@@ -4018,7 +4033,7 @@ export class Point0<
     queryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'serverAndClient'
+    mode?: QueryMode
     outputType?: FetchOutputType
   }): Promise<undefined | QueryKey> {
     if (!this._hasLoader() && !this._hasClientLoader()) {
@@ -4097,10 +4112,10 @@ export class Point0<
     queryOptions,
     fetchOptions,
     force,
-    mode = 'serverAndClient',
+    policy = this._prefetchPolicy,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    location: AnyLocation
+    location?: AnyLocation
     queryClient?: QueryClient
     queryOptions?:
       | Partial<ExtraUseQueryOptions>
@@ -4108,23 +4123,45 @@ export class Point0<
       | undefined
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'everything'
+    policy?: PagePrefetchPolicy
   }): Promise<void> {
-    if (mode === 'queryClientDehydratedState' || mode === 'everything') {
+    if (policy === 'none') {
+      return
+    }
+
+    if (!this._route) {
+      throw new Error('Route is not set')
+    }
+    location ??= this._route.getLocation(this._route.flat(input))
+
+    if (policy === 'queryClientDehydratedState' || policy === 'everything') {
       await this.prefetchPageDehydratedState({ queryClient, input, queryOptions, fetchOptions, force })
-      if (mode === 'queryClientDehydratedState') {
+      if (policy === 'queryClientDehydratedState') {
         return
       }
     }
 
     // TODO: alse fetch all attached components
 
-    await Promise.all(
-      [this, ...this._layouts].flatMap(async (p) => {
-        if (mode === 'everything' && !p._hasClientLoader()) {
+    const pageWithLayouts = [this, ...this._layouts]
+
+    const uniqPrefetchFns = [...new Set<OnPrefetchFn>(pageWithLayouts.flatMap((p) => p._onPrefetchFns))]
+    const onPrefetchFnsCalling = Promise.all(
+      uniqPrefetchFns.map(async (fn) => {
+        // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
+        return await fn()
+      }),
+    )
+
+    const queriesPrefetching = Promise.all(
+      pageWithLayouts.flatMap(async (p) => {
+        if (policy === 'onPrefetchOnly') {
           return []
         }
-        if (mode === 'client' && !p._hasClientLoader()) {
+        if (policy === 'everything' && !p._hasClientLoader()) {
+          return []
+        }
+        if (policy === 'client' && !p._hasClientLoader()) {
           return []
         }
         const method = p._queryResultType === 'infiniteQuery' ? 'prefetchInfiniteQuery' : 'prefetchQuery'
@@ -4135,10 +4172,12 @@ export class Point0<
           queryOptions: queryOptions as any,
           fetchOptions,
           force,
-          mode: mode === 'everything' ? 'client' : mode,
+          mode: policy === 'everything' ? 'client' : policy,
         })
       }),
     )
+
+    await Promise.all([queriesPrefetching, onPrefetchFnsCalling])
   }
 
   // global
@@ -4330,4 +4369,74 @@ export class Point0<
   }
 
   static _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> = []
+
+  // prefetch mode
+
+  prefetchPolicy(
+    policy: PagePrefetchPolicy,
+  ): Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _prefetchPolicy: policy,
+    })
+  }
+
+  onPrefetch(
+    fn: OnPrefetchFn,
+  ): Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _onPrefetchFns: [...this._onPrefetchFns, fn],
+    })
+  }
 }
