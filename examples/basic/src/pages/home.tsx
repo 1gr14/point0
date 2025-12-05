@@ -36,6 +36,12 @@ export const BestIdeaComponent = client
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
     y: input.x * 2,
   }))
+  .wrapper(({ children }) => {
+    return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
+  })
+  .wrapper(({ children }) => {
+    return <div style={{ padding: '10px', border: '1px solid #f00' }}>{children}</div>
+  })
   .props<{ cta: string }>()
   .component(({ data, props }) => {
     return (
