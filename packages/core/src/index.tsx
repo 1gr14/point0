@@ -2963,8 +2963,11 @@ export class Point0<
       return { input, restProps }
     }, [props, location])
 
-    const { prevLocation } = useRouterContext()
+    const { prevLocation, status } = useRouterContext()
     React.useEffect(() => {
+      if (status !== 'idle') {
+        return
+      }
       const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy(prevLocation)
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
         (p) => p.name === this._name && stringify(p.input) === stringify(input),
@@ -2995,7 +2998,7 @@ export class Point0<
           })
         }
       }
-    }, [this._name, stringify(input), prevLocation])
+    }, [this._name, stringify(input), prevLocation, status])
 
     const result = this._useLoader(input, this._defaultPageQueryOptions)
 

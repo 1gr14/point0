@@ -1,3 +1,4 @@
+import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
@@ -8,15 +9,22 @@ import { PointsManager } from './points-manager.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
-export type RouterStatus = 'idle' | 'transit' | 'fetching' | 'transit-success' | 'transit-error' | 'success' | 'error'
+export type RouterStatus = 'idle' | 'prefetching' | 'transitioning'
 export type RouterPolicy = 'simple' | 'prefetch'
 
 export type UseRouterContextFn = () => RouterContextValue
 export type UseNavigateFn = (href: string) => never | Promise<never>
-export type UseOnNavigateFn = (
-  prevLocation: AnyLocation,
-  nextLocation: AnyLocation,
-) => ((status: RouterStatus) => void) | undefined
+export type UseOnNavigateFn = (props: {
+  prevLocation: AnyLocation
+  nextLocation: AnyLocation
+  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+}) => void | (() => any)
+export type UseOnNavigateDetailedFn = (props: {
+  prevLocation: AnyLocation
+  nextLocation: AnyLocation
+  status: RouterStatus
+  error: Error | null
+}) => void
 export type UseIsInitalSsrLocationFn = () => boolean
 export type UseRouterPolicyFn = () => RouterPolicy
 
@@ -27,12 +35,14 @@ type RouterContextValue = {
   nextLocation: AnyLocation | null
   policy: RouterPolicy
   status: RouterStatus
+  error: Error | null
   useAdapterLocation: UseAdapterLocationFn
 
   // setters
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setNextLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
   setStatus: React.Dispatch<React.SetStateAction<RouterStatus>>
+  setError: React.Dispatch<React.SetStateAction<Error | null>>
 }
 
 export const RouterContext = React.createContext<RouterContextValue | null>(null)
@@ -55,6 +65,7 @@ export function RouterContextProvider({
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
   const [routerStatus, setStatus] = useState<RouterStatus>(status)
+  const [error, setError] = useState<Error | null>(null)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
     // Point0._currentLocation.set(currentLocation)
@@ -69,12 +80,14 @@ export function RouterContextProvider({
       nextLocation,
       policy,
       status: routerStatus,
+      error,
       setNextLocation,
       setPrevLocation,
       setStatus,
+      setError,
       useAdapterLocation,
     }),
-    [ssrLocation, currentLocation, prevLocation, nextLocation, policy, routerStatus, useAdapterLocation],
+    [ssrLocation, currentLocation, prevLocation, nextLocation, policy, routerStatus, error, useAdapterLocation],
   )
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
@@ -117,10 +130,10 @@ export const useRouterPolicy: UseRouterPolicyFn = () => {
   return ctx.policy
 }
 
-export const useIsRouterFetching = (): boolean => {
+export const useIsRouterPrefetching = (): boolean => {
   const ctx = React.useContext(RouterContext)
-  if (!ctx) throw new Error('useIsRouterFetching must be used within RouterContextProvider')
-  return ctx.status === 'fetching'
+  if (!ctx) throw new Error('useIsRouterPrefetching must be used within RouterContextProvider')
+  return ctx.status === 'prefetching'
 }
 
 export const useRouterContext: UseRouterContextFn = () => {
@@ -129,37 +142,99 @@ export const useRouterContext: UseRouterContextFn = () => {
   return ctx
 }
 
+// TODO:ASAP useOnNavigate with usual cleanup
+// TODO:ASAP useOnNavigateDetailed
+
 export const useOnNavigate = (fn: UseOnNavigateFn) => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')
 
   const prevLocationRef = useRef(ctx.currentLocation)
-  const cleanupRef = useRef<((status: RouterStatus) => void) | null>(null)
+  const nextLocationRef = useRef(ctx.nextLocation)
+  const cleanupFnRef = useRef<(() => any) | null>(null)
+  const [isNavigating, setIsNavigating] = useState(false)
 
-  // On navigation start
   useEffect(() => {
-    if (!ctx.nextLocation) return
-    const prev = prevLocationRef.current
-    const next = ctx.nextLocation
-    if (prev.href === next.href) return
+    if (!ctx.nextLocation) {
+      return
+    }
 
-    const cleanup = fn(prev, next)
-    cleanupRef.current = typeof cleanup === 'function' ? cleanup : null
-    prevLocationRef.current = next
+    const prevLocation = prevLocationRef.current
+    const nextLocation = ctx.nextLocation
+    if (
+      prevLocation.href && nextLocation.href
+        ? prevLocation.href === nextLocation.href
+        : prevLocation.hrefRel === nextLocation.hrefRel
+    ) {
+      return
+    }
+
+    const cleanup = fn({ prevLocation, nextLocation })
+    cleanupFnRef.current = typeof cleanup === 'function' ? cleanup : null
+    nextLocationRef.current = nextLocation
+    setIsNavigating(true)
   }, [ctx.nextLocation])
 
-  // On navigation completion (status change)
   useEffect(() => {
-    if (ctx.status === 'success' || ctx.status === 'error' || ctx.status === 'idle') {
-      cleanupRef.current?.(ctx.status)
-      cleanupRef.current = null
+    if (!isNavigating || !nextLocationRef.current) {
+      return
     }
-  }, [ctx.status])
+    if (ctx.status === 'idle') {
+      cleanupFnRef.current?.()
+      setIsNavigating(false)
+      cleanupFnRef.current = null
+      prevLocationRef.current = nextLocationRef.current
+    }
+  }, [ctx.status, isNavigating])
+}
+
+export const useOnNavigateDetailed = (fn: UseOnNavigateDetailedFn) => {
+  const ctx = React.useContext(RouterContext)
+  if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')
+
+  const prevLocationRef = useRef(ctx.currentLocation)
+  const nextLocationRef = useRef(ctx.nextLocation)
+  const [isNavigating, setIsNavigating] = useState(false)
+
+  useEffect(() => {
+    if (!ctx.nextLocation) {
+      return
+    }
+
+    const prevLocation = prevLocationRef.current
+    const nextLocation = ctx.nextLocation
+    if (
+      prevLocation.href && nextLocation.href
+        ? prevLocation.href === nextLocation.href
+        : prevLocation.hrefRel === nextLocation.hrefRel
+    ) {
+      return
+    }
+
+    nextLocationRef.current = nextLocation
+    setIsNavigating(true)
+  }, [ctx.nextLocation])
+
+  useEffect(() => {
+    if (!isNavigating || !nextLocationRef.current) {
+      return
+    }
+    fn({
+      prevLocation: prevLocationRef.current,
+      nextLocation: nextLocationRef.current,
+      status: ctx.status,
+      error: ctx.error,
+    })
+    if (ctx.status === 'idle') {
+      prevLocationRef.current = nextLocationRef.current
+      setIsNavigating(false)
+    }
+  }, [ctx.status, ctx.error, isNavigating])
 }
 
 export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) => any>(
   useAdapterNavigate: T,
-): () => (...args: Parameters<ReturnType<T>>) => Promise<{ status: RouterStatus; location: AnyLocation }> {
+): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
   return () => {
     const routerContext = React.useContext(RouterContext)
     if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
@@ -171,45 +246,49 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       const prevLocation = routerContext.currentLocation
       const location = PointsManager.getGlobalPoints().routes._.getLocation(href)
       routerContext.setPrevLocation(prevLocation)
+      routerContext.setError(null)
       routerContext.setNextLocation(location)
 
       // simple mode
       if (routerContext.policy === 'simple') {
-        routerContext.setStatus('idle')
+        routerContext.setStatus('transitioning')
 
         try {
           await adapterNavigate(...(args as [string, ...any[]]))
+          routerContext.setStatus('idle')
           routerContext.setNextLocation(null)
           // ctx.setCurrentLocation(location)
-          return { status: 'idle', location }
-        } catch {
+          return { location, error: null }
+        } catch (error) {
+          const error0 = Error0.from(error)
+          routerContext.setError(error0)
+          routerContext.setStatus('idle')
           routerContext.setNextLocation(null)
-          return { status: 'idle', location }
+          return { location, error: error0 }
         }
       }
 
       // prefetch mode
-      routerContext.setStatus('fetching')
-
+      routerContext.setStatus('prefetching')
       try {
         await PointsManager.getGlobalPoints().prefetchSuitablePagePoint({
           location,
           queryClient,
           mode: 'serverAndClient',
         })
-
-        routerContext.setStatus('transit-success')
+        routerContext.setStatus('transitioning')
         await adapterNavigate(...(args as [string, ...any[]]))
+        routerContext.setStatus('idle')
         routerContext.setNextLocation(null)
-        // ctx.setCurrentLocation(location)
-        routerContext.setStatus('success')
-        return { status: 'success', location }
-      } catch {
-        routerContext.setStatus('transit-error')
+        return { location, error: null }
+      } catch (error) {
+        const error0 = Error0.from(error)
+        routerContext.setError(error0)
+        routerContext.setStatus('transitioning')
         await adapterNavigate(...(args as [string, ...any[]]))
+        routerContext.setStatus('idle')
         routerContext.setNextLocation(null)
-        routerContext.setStatus('error')
-        return { status: 'error', location: routerContext.currentLocation }
+        return { location, error: error0 }
       }
     }
   }

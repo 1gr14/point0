@@ -3,6 +3,7 @@
 --------------------------
 
 ROUTER
+remove router policy, prefetchMode is enough
 .prefetchMode(), page prefetch should be auto, if has App then full, if has no app, then partial
 .onPrefetch(() => Promise.all(cmponent.prefetchQuery(), component2.prefetchQuery()))
 
@@ -32,7 +33,7 @@ const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' |
 ??? lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
 ??? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
 
-someThing.attachment()..., and then somethingElse.attach()
+? someThing.attachment()..., and then somethingElse.attach()
 
 auth example
 
