@@ -14,6 +14,7 @@ import type {
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core/types'
+import { dedupeSlashes } from '@point0/core/utils'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 
@@ -1254,9 +1255,9 @@ export class Walker {
     if (!parentIdentifier) {
       const finalRoute =
         routeSegment !== undefined
-          ? Route0.from(routeSegment)
+          ? Route0.from(dedupeSlashes(`/${routeSegment}`))
           : fallbackRouteSegment !== undefined
-            ? Route0.from(`/${fallbackRouteSegment}`)
+            ? Route0.from(dedupeSlashes(`/${fallbackRouteSegment}`))
             : undefined
       if (!finalRoute) {
         console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} parent identifier not found for ${baseIdentifier}`)
@@ -1270,9 +1271,9 @@ export class Walker {
     if (parentIdentifier === 'Point0') {
       const finalRoute =
         routeSegment !== undefined
-          ? Route0.from(routeSegment)
+          ? Route0.from(dedupeSlashes(`/${routeSegment}`))
           : fallbackRouteSegment !== undefined
-            ? Route0.from(`/${fallbackRouteSegment}`)
+            ? Route0.from(dedupeSlashes(`/${fallbackRouteSegment}`))
             : undefined
       cacheMap.set(cacheKey, finalRoute)
       return { route: finalRoute, errors }
@@ -1324,9 +1325,9 @@ export class Walker {
             ? parentRoute.clone()
             : parentRoute.extend(routeSegment)
         : routeSegment !== undefined
-          ? Route0.from(routeSegment)
+          ? Route0.from(dedupeSlashes(`/${routeSegment}`))
           : fallbackRouteSegment !== undefined
-            ? Route0.from(`/${fallbackRouteSegment}`)
+            ? Route0.from(dedupeSlashes(`/${fallbackRouteSegment}`))
             : undefined
     cacheMap.set(cacheKey, finalRoute)
     return { route: finalRoute, errors }

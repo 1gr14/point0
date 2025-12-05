@@ -3,6 +3,7 @@
 --------------------------
 
 ROUTER
+all root routes segments should be prepend with '/'
 layout scroll position, restore
 on navigate to same page do not prefetch, or at least not show preloading
 rename all location to loc, becouse ReferenceError: location is not defined
@@ -54,7 +55,7 @@ on .head in base we use any for data props etc. On .head inside page or componen
 
 ? get base/root specific things right from base, do not continue it after .base()
 
-Point0 → P0, cli p0
+? Point0 → P0, cli p0
 
 START0
 start0 without mono0
@@ -123,6 +124,8 @@ npm @point0
 ? asterisk layout as .layout(true, () => <div/>)
 ? add engine client options serveByServer: boolean default true
 prefetch type not only prefetchPageDehydratedState, but also prefetchPageExtractorStore becouse there can be zustand or what else
+
+convex example
 
 try fix hmr again
 prefetch on Link hover

@@ -1,5 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRoute, CallabelRoute, Extended, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallabelRoute, DedupeSlashes, Extended, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -107,7 +107,7 @@ import type {
   UseQueryOptions,
   WrapperComponentType,
 } from './types.js'
-import { mergeHeaders } from './utils.js'
+import { dedupeSlashes, mergeHeaders } from './utils.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -802,7 +802,7 @@ export class Point0<
     TNewLetsEndPointType extends 'page' | 'layout'
       ? TRouteDefinition extends RouteDefinition
         ? Extended<TRouteDefinition, TPointName>['definition']
-        : Route0<`/${TPointName}`>['definition']
+        : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
       : UndefinedRouteDefinition,
     TRouteDefinition,
     TInputSchema,
@@ -813,7 +813,7 @@ export class Point0<
     const prevRoute = this._route
     const newRoute = (() => {
       if (letsEndPointType === 'page' || letsEndPointType === 'layout') {
-        return prevRoute ? prevRoute.extend(pointName) : Route0.from(`/${pointName}`)
+        return prevRoute ? prevRoute.extend(pointName) : Route0.from(dedupeSlashes(`/${pointName}`))
       }
       return undefined
     })()
@@ -827,7 +827,7 @@ export class Point0<
       TNewLetsEndPointType extends 'page' | 'layout'
         ? TRouteDefinition extends RouteDefinition
           ? Extended<TRouteDefinition, TPointName>['definition']
-          : Route0<`/${TPointName}`>['definition']
+          : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
         : UndefinedRouteDefinition,
       TRouteDefinition,
       TInputSchema,
@@ -1794,7 +1794,7 @@ export class Point0<
     TClientData,
     TPrevRouteDefinition extends RouteDefinition
       ? Extended<TPrevRouteDefinition, TNewRouteDefinition>['definition']
-      : Route0<TNewRouteDefinition>['definition'],
+      : Route0<DedupeSlashes<`/${TNewRouteDefinition}`>>['definition'],
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
@@ -1828,7 +1828,7 @@ export class Point0<
         if (route.startsWith('/')) {
           return Route0.from(route)
         }
-        return prevRoute ? prevRoute.extend(route) : Route0.from(route)
+        return prevRoute ? prevRoute.extend(route) : Route0.from(dedupeSlashes(`/${route}`))
       }
       return route
     })()
