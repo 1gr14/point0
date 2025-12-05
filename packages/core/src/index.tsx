@@ -4105,9 +4105,9 @@ export class Point0<
       | undefined
     fetchOptions?: FetchOptions
     force?: boolean
-    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'all'
+    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'everything'
   }): Promise<void> {
-    if (mode === 'queryClientDehydratedState' || mode === 'all') {
+    if (mode === 'queryClientDehydratedState' || mode === 'everything') {
       await this.prefetchPageDehydratedState({ queryClient, input, queryOptions, fetchOptions, force })
       if (mode === 'queryClientDehydratedState') {
         return
@@ -4118,7 +4118,7 @@ export class Point0<
 
     await Promise.all(
       [this, ...this._layouts].flatMap(async (p) => {
-        if (mode === 'all' && !p._hasClientLoader()) {
+        if (mode === 'everything' && !p._hasClientLoader()) {
           return []
         }
         if (mode === 'client' && !p._hasClientLoader()) {
@@ -4132,7 +4132,7 @@ export class Point0<
           queryOptions: queryOptions as any,
           fetchOptions,
           force,
-          mode: mode === 'all' ? 'client' : mode,
+          mode: mode === 'everything' ? 'client' : mode,
         })
       }),
     )

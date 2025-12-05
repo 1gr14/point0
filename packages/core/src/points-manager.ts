@@ -636,7 +636,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }: {
     location: AnyLocation
     queryClient?: QueryClient
-    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'all'
+    mode?: 'server' | 'client' | 'serverAndClient' | 'queryClientDehydratedState' | 'everything'
   }): Promise<PagePoint | undefined> => {
     const result = await this.loadSuitablePage({ location })
     if (!result) {
