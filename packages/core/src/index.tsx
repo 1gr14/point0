@@ -4249,47 +4249,15 @@ export class Point0<
   static constClientUnsafe = ClientServerHelpers.constClientUnsafe.bind(ClientServerHelpers)
   static constServer = ClientServerHelpers.constServer.bind(ClientServerHelpers)
   static constClient = ClientServerHelpers.constClient.bind(ClientServerHelpers)
+  static constClientElseServer = ClientServerHelpers.constClientElseServer.bind(ClientServerHelpers)
   static callServer = ClientServerHelpers.callServer.bind(ClientServerHelpers)
   static callClient = ClientServerHelpers.callClient.bind(ClientServerHelpers)
   static callClientElseServer = ClientServerHelpers.callClientElseServer.bind(ClientServerHelpers)
 
   // scroll restoration
 
-  scrollGetter(
+  scrollPosition(
     getter: ScrollPositionGetter,
-  ): Point0<
-    TPointType,
-    TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue<
-      TPointType,
-      TLetsEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >({
-      _scrollPositionGetter: getter,
-    })
-  }
-
-  scrollSetter(
     setter: ScrollPositionSetter,
   ): Point0<
     TPointType,
@@ -4319,7 +4287,10 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _scrollPositionSetter: setter,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
+      _scrollPositionGetter: getter ?? this._scrollPositionGetter,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _scrollPositionSetter: setter ?? this._scrollPositionSetter,
     })
   }
 

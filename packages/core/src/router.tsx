@@ -142,9 +142,6 @@ export const useRouterContext: UseRouterContextFn = () => {
   return ctx
 }
 
-// TODO:ASAP useOnNavigate with usual cleanup
-// TODO:ASAP useOnNavigateDetailed
-
 export const useOnNavigate = (fn: UseOnNavigateFn) => {
   const ctx = React.useContext(RouterContext)
   if (!ctx) throw new Error('useOnNavigate must be used within RouterContextProvider')

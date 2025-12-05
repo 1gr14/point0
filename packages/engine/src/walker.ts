@@ -303,8 +303,9 @@ export class Walker {
       const methods = {
         none: [],
         client: ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse'],
-        serverSsr: ['clientLoader'],
+        serverSsr: ['scrollPosition', 'clientLoader'],
         serverNoSsr: [
+          'scrollPosition',
           'clientLoader',
           'page',
           'component',
@@ -337,6 +338,7 @@ export class Walker {
       typeof customer === 'string'
         ? customerToMethods(customer)
         : methodsProvided || [
+            'scrollPosition',
             'loader',
             'ctx',
             'mutation',
