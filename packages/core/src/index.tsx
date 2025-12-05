@@ -439,7 +439,7 @@ export class Point0<
         doc.scrollTop = body.scrollTop = y ?? 0
       })
     this._scrollPositionRestorePolicy = props._scrollPositionRestorePolicy ?? (() => null)
-    this._prefetchPolicy = props._prefetchPolicy ?? 'serverAndClient'
+    this._prefetchPolicy = props._prefetchPolicy ?? 'serverClientQuery'
     this._onPrefetchFns = props._onPrefetchFns ?? []
     this._errorComponent =
       props._errorComponent ??
@@ -4068,7 +4068,7 @@ export class Point0<
     return queryOptions.queryKey
   }
 
-  async prefetchPageDehydratedState({
+  async prefetchPageQueryClientDehydratedState({
     input,
     queryClient,
     queryOptions,
@@ -4135,7 +4135,7 @@ export class Point0<
     location ??= this._route.getLocation(this._route.flat(input))
 
     if (policy === 'queryClientDehydratedState' || policy === 'everything') {
-      await this.prefetchPageDehydratedState({ queryClient, input, queryOptions, fetchOptions, force })
+      await this.prefetchPageQueryClientDehydratedState({ queryClient, input, queryOptions, fetchOptions, force })
       if (policy === 'queryClientDehydratedState') {
         return
       }
@@ -4161,7 +4161,7 @@ export class Point0<
         if (policy === 'everything' && !p._hasClientLoader()) {
           return []
         }
-        if (policy === 'client' && !p._hasClientLoader()) {
+        if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
         const method = p._queryResultType === 'infiniteQuery' ? 'prefetchInfiniteQuery' : 'prefetchQuery'
@@ -4172,7 +4172,15 @@ export class Point0<
           queryOptions: queryOptions as any,
           fetchOptions,
           force,
-          mode: policy === 'everything' ? 'client' : policy,
+          mode:
+            policy === 'everything'
+              ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+                'client'
+              : {
+                  serverQuery: 'server' as const,
+                  clientQuery: 'client' as const,
+                  serverClientQuery: 'serverAndClient' as const,
+                }[policy],
         })
       }),
     )

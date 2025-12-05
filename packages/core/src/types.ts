@@ -711,9 +711,9 @@ export type ScrollPositionRestorePolicy = ({ prevLocation }: { prevLocation: Any
 
 export type QueryMode = 'server' | 'client' | 'serverAndClient'
 export type PagePrefetchPolicy =
-  | 'server'
-  | 'client'
-  | 'serverAndClient'
+  | 'serverQuery'
+  | 'clientQuery'
+  | 'serverClientQuery'
   | 'queryClientDehydratedState'
   | 'everything'
   | 'onPrefetchOnly'
