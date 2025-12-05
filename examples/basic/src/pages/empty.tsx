@@ -1,6 +1,5 @@
 import { sharedQuery } from '@/lib/shared'
 import { client } from '../lib/client'
-import { routes } from '../lib/routes'
 
 export const empty = client
   .lets('page', 'empty')
@@ -35,7 +34,7 @@ export const empty = client
 export const sharedEmptyPage = client
   .attach(sharedQuery)
   .lets('page', 'sharedEmpty')
-  .route(routes.sharedEmpty)
+  // .route(routes.sharedEmpty)
   .page(({ data }) => {
     return (
       <div>

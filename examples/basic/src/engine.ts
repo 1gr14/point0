@@ -17,7 +17,7 @@ export const engine = Engine.create(import.meta.url, {
       ssr: true,
       app: './app.js',
       points: './lib/points.ts',
-      routes,
+      routes: './lib/routes.generated.ts',
       indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],

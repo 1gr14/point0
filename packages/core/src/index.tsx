@@ -5,7 +5,6 @@ import type {
   DehydratedState,
   InfiniteData,
   MutationOptions,
-  QueryKey as OriginalQueryKey,
   UseInfiniteQueryResult,
   UseMutationResult,
   UseQueryResult,
@@ -26,9 +25,9 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { ClientServerHelpers } from './client-server.js'
-import type { Extractor, ExtractResult } from './extractor.js'
 import type { ExtractorStoreDefinedItem } from './extractor-store.js'
 import { ExtractorStore } from './extractor-store.js'
+import type { ExtractResult, Extractor } from './extractor.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation } from './router.js'
 import type {
@@ -790,23 +789,34 @@ export class Point0<
     })
   }
 
-  lets<TNewLetsEndPointType extends EndPointType>(
+  lets<TNewLetsEndPointType extends EndPointType, TPointName extends PointName>(
     letsEndPointType: TNewLetsEndPointType,
-    pointName: PointName,
+    pointName: TPointName,
   ): Point0<
     'middleware',
     TNewLetsEndPointType,
     TRequiredCtx,
     TCtx,
     TData,
-    UndefinedData, // drop client data
-    UndefinedRouteDefinition, // drop current route
-    TRouteDefinition, // and use it as prev route
+    UndefinedData,
+    TNewLetsEndPointType extends 'page' | 'layout'
+      ? TRouteDefinition extends RouteDefinition
+        ? Extended<TRouteDefinition, TPointName>['definition']
+        : Route0<`/${TPointName}`>['definition']
+      : UndefinedRouteDefinition,
+    TRouteDefinition,
     TInputSchema,
-    UndefinedResponseOutput, // drop response output
+    UndefinedResponseOutput,
     TQueryResultType,
     TProps
   > {
+    const prevRoute = this._route
+    const newRoute = (() => {
+      if (letsEndPointType === 'page' || letsEndPointType === 'layout') {
+        return prevRoute ? prevRoute.extend(pointName) : Route0.from(`/${pointName}`)
+      }
+      return undefined
+    })()
     return this._continue<
       'middleware',
       TNewLetsEndPointType,
@@ -814,7 +824,11 @@ export class Point0<
       TCtx,
       TData,
       UndefinedData,
-      UndefinedRouteDefinition,
+      TNewLetsEndPointType extends 'page' | 'layout'
+        ? TRouteDefinition extends RouteDefinition
+          ? Extended<TRouteDefinition, TPointName>['definition']
+          : Route0<`/${TPointName}`>['definition']
+        : UndefinedRouteDefinition,
       TRouteDefinition,
       TInputSchema,
       UndefinedResponseOutput,
@@ -824,7 +838,7 @@ export class Point0<
       _pointType: 'middleware',
       _letsEndPointType: letsEndPointType,
       _name: pointName,
-      _route: undefined,
+      _route: newRoute as never,
       _prevRoute: this._route as never,
       _page: undefined,
       _component: undefined,
@@ -2127,9 +2141,6 @@ export class Point0<
       >,
       'lets' | 'point'
     > {
-    if (!this._route) {
-      throw new Error('add .route() to chain to use .page() function')
-    }
     const [head, page] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const successHeadFn: MiddlewareHeadFn | undefined = !headFn

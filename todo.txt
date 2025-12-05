@@ -3,7 +3,6 @@
 --------------------------
 
 ROUTER
-page by default has route as its name kebabcased
 layout scroll position, restore
 on navigate to same page do not prefetch, or at least not show preloading
 rename all location to loc, becouse ReferenceError: location is not defined

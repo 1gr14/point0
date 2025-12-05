@@ -172,7 +172,14 @@ export class Walker {
 
                     const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
                     const { route, errors: routeErrors } = shouldHaveRoute
-                      ? await this.resolveFullRoute({ fileAbs, baseIdentifier: id.name, scope })
+                      ? await this.resolveFullRoute({
+                          fileAbs,
+                          baseIdentifier: id.name,
+                          scope,
+                          pointType,
+                          pointName,
+                          fallbackToPointName: true,
+                        })
                       : { route: undefined, errors: [] }
                     errors.push(...routeErrors)
 
@@ -230,7 +237,14 @@ export class Walker {
               const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
 
               const { route, errors: routeErrors } = shouldHaveRoute
-                ? await this.resolveFullRoute({ fileAbs, baseIdentifier: 'default', scope })
+                ? await this.resolveFullRoute({
+                    fileAbs,
+                    baseIdentifier: 'default',
+                    scope,
+                    pointType,
+                    pointName,
+                    fallbackToPointName: true,
+                  })
                 : { route: undefined, errors: [] }
               errors.push(...routeErrors)
 
@@ -824,12 +838,18 @@ export class Walker {
     ast,
     baseIdentifier,
     scope,
+    pointType,
+    pointName,
+    fallbackToPointName,
   }: {
     fileAbs: string
     ast: babel.ParseResult<any>
     baseIdentifier: string
     scope: string
-  }): { routeSegment?: string; routeFull?: AnyRoute; errors: unknown[] } {
+    pointType: EndPointType
+    pointName: string
+    fallbackToPointName: boolean
+  }): { routeSegment?: string; routeFull?: AnyRoute; fallbackRouteSegment?: string; errors: unknown[] } {
     let routeSegment: string | undefined
     let routeFull: AnyRoute | undefined
     const errors: unknown[] = []
@@ -874,12 +894,18 @@ export class Walker {
         },
       })
 
-      return { routeSegment, routeFull, errors }
+      return {
+        routeSegment,
+        routeFull,
+        fallbackRouteSegment:
+          (pointType === 'page' || pointType === 'layout') && fallbackToPointName ? pointName : undefined,
+        errors,
+      }
     } catch (e) {
       console.warn(
         `🔴 ${nodePath.relative(this.cwd, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
-      return { routeSegment: undefined, routeFull: undefined, errors: [...errors, e] }
+      return { routeSegment: undefined, routeFull: undefined, fallbackRouteSegment: undefined, errors: [...errors, e] }
     }
   }
 
@@ -1133,10 +1159,16 @@ export class Walker {
       fileAbs,
       baseIdentifier,
       scope,
+      pointType,
+      pointName,
+      fallbackToPointName,
     }: {
       fileAbs: string
       baseIdentifier: string
       scope: string
+      pointType: EndPointType
+      pointName: string
+      fallbackToPointName: boolean
     },
     _seen = new Set<string>(),
   ): Promise<{ route: AnyRoute | undefined; errors: unknown[] }> {
@@ -1192,7 +1224,15 @@ export class Walker {
     //
     // 1) find route on THIS identifier
     //
-    const { routeSegment, routeFull } = this.findRouteOnIdentifier({ fileAbs, ast, baseIdentifier, scope })
+    const { routeSegment, fallbackRouteSegment, routeFull } = this.findRouteOnIdentifier({
+      fileAbs,
+      ast,
+      baseIdentifier,
+      scope,
+      pointType,
+      pointName,
+      fallbackToPointName,
+    })
 
     // if it was a full route (like .route(routes.ideaNews)) – we're done
     if (routeFull) {
@@ -1212,7 +1252,12 @@ export class Walker {
 
     // no parent – we can only return what we have here
     if (!parentIdentifier) {
-      const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
+      const finalRoute =
+        routeSegment !== undefined
+          ? Route0.from(routeSegment)
+          : fallbackRouteSegment !== undefined
+            ? Route0.from(`/${fallbackRouteSegment}`)
+            : undefined
       if (!finalRoute) {
         console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} parent identifier not found for ${baseIdentifier}`)
         cacheMap.set(cacheKey, undefined)
@@ -1223,7 +1268,12 @@ export class Walker {
       }
     }
     if (parentIdentifier === 'Point0') {
-      const finalRoute = routeSegment !== undefined ? Route0.from(routeSegment) : undefined
+      const finalRoute =
+        routeSegment !== undefined
+          ? Route0.from(routeSegment)
+          : fallbackRouteSegment !== undefined
+            ? Route0.from(`/${fallbackRouteSegment}`)
+            : undefined
       cacheMap.set(cacheKey, finalRoute)
       return { route: finalRoute, errors }
     }
@@ -1255,6 +1305,9 @@ export class Walker {
         fileAbs: parentAbs,
         baseIdentifier: parentIdentifier,
         scope,
+        pointType,
+        pointName,
+        fallbackToPointName: false,
       },
       _seen,
     )
@@ -1272,7 +1325,9 @@ export class Walker {
             : parentRoute.extend(routeSegment)
         : routeSegment !== undefined
           ? Route0.from(routeSegment)
-          : undefined
+          : fallbackRouteSegment !== undefined
+            ? Route0.from(`/${fallbackRouteSegment}`)
+            : undefined
     cacheMap.set(cacheKey, finalRoute)
     return { route: finalRoute, errors }
   }
