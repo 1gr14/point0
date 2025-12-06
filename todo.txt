@@ -2,7 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add useInfiniteQuery
 add _ to all clases, and hide all previate methods
 

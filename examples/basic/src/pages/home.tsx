@@ -31,8 +31,8 @@ const someVar = Point0.define('someVar', () => 0, true)
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
-  .input(z.object({ x: z.coerce.number() }))
-  .input(z.object({ y: z.coerce.number() }))
+  .input(z.object({ x: z.number() }))
+  .input(z.object({ y: z.number() }))
   .loader(async ({ ctx, input }) => ({
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
     mult: input.x * input.y,
@@ -75,7 +75,7 @@ export default generalLayout
     titleTemplate: null,
   })
   .onPrefetch(async () => {
-    await BestIdeaComponent.point.prefetchQuery({ input: { x: 10, y: 20 } })
+    await BestIdeaComponent.point.prefetchQuery({ x: 10, y: 20 })
   })
   // .loader()
   .page(() => {
