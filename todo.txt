@@ -9,6 +9,7 @@ point0.ts, engine.ts, and export everything form engine/index.ts and core/index.
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object
 add useInfiniteQuery
 prettify visible methods per TLetsEndpointType, and hide all private methods under _
+assign full point to component
 
 EXPO
 expo example

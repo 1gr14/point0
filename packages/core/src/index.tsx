@@ -132,20 +132,27 @@ export class Point0<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > {
-  Infer: Infer<TRequiredCtx, TCtx, TData, TClientData, TInputSchema, TQueryResultType> & {
-    InputParsed: InputParsed<TRouteDefinition, TInputSchema>
-    InputRaw: InputRaw<TRouteDefinition, TInputSchema>
-  } = {} as never
+  Infer: Infer<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > = {} as never
 
-  // TODO: may it help somebody?
-  // static readyPoints: ReadyPoint[] = []
-  // static pagePoints: PagePoint[] = []
   static _prevUnstableId = 0
   static _getNextUnstableId(): number {
     return Point0._prevUnstableId++
   }
 
-  point: typeof this // this, needed for generator to collect points
+  point: typeof this // this, needed for generator to collect points, TODO maybe remove it?
 
   _base: BasePoint | undefined
   _root: RootPoint | undefined
@@ -196,8 +203,6 @@ export class Point0<
   _prefetchPolicy: PagePrefetchPolicy
   _onPrefetchFns: OnPrefetchFn[]
   _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
-
-  // TODO: meybe add prefix default? and in places of edpoint use just errorComponent and loadingComponent
   _errorComponent?: ErrorComponentType<
     DestinationComponentType,
     TQueryResultType,
@@ -482,8 +487,6 @@ export class Point0<
         TProps
       >)
     this._componentLoadingComponent = props._componentLoadingComponent
-
-    // calculated
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
   }
 
@@ -651,10 +654,9 @@ export class Point0<
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
       _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
-      _responseFn: (overrides._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
+      _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
-        : undefined, // remove end artefact on continue
-      // _useLocation: overrides._useLocation ?? this._useLocation,
+        : undefined,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _headFns: overrides._headFns ?? this._headFns,
       _defaultQueryOptions: overrides._defaultQueryOptions ?? { ...this._defaultQueryOptions },
@@ -699,7 +701,7 @@ export class Point0<
     })
   }
 
-  // called on on root points
+  // call on on root points
   attach<TPoint extends AnyPoint>(point: TPoint): TPoint {
     const result = this._continue({
       // eslint-disable-next-line @typescript-eslint/no-misused-spread
@@ -714,7 +716,8 @@ export class Point0<
     return result
   }
 
-  static _isEndPointType(pointType: PointType): boolean {
+  // TODO:ASAP
+  static isEndPointType(pointType: PointType): boolean {
     return (
       pointType === 'root' ||
       pointType === 'base' ||
@@ -728,11 +731,9 @@ export class Point0<
       pointType === 'provider'
     )
   }
-  _isEndpoint(): boolean {
-    return Point0._isEndPointType(this._pointType)
+  isEndPoint(): boolean {
+    return Point0.isEndPointType(this._pointType)
   }
-
-  // base
 
   static create(
     scope: string,
@@ -777,8 +778,6 @@ export class Point0<
     }) as never
   }
 
-  // middlewares
-
   root(): Point0<
     'root',
     undefined,
@@ -815,11 +814,13 @@ export class Point0<
     })
   }
 
-  base(): Point0<
-    'base',
-    TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
+  // general settings
+
+  requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
+    'middleware',
+    TLetsEndPointType,
+    AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
+    PrependCtx<TCtx, TExtraRequiredCtx>,
     TData,
     TClientData,
     TRouteDefinition,
@@ -830,10 +831,10 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'base',
-      TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
-      TRequiredCtx,
-      TCtx,
+      'middleware',
+      TLetsEndPointType,
+      AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
+      PrependCtx<TCtx, TExtraRequiredCtx>,
       TData,
       TClientData,
       TRouteDefinition,
@@ -843,101 +844,7 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'base',
-      _base: this as never as BasePoint<any, TRequiredCtx>,
-      _name: this._name ?? this._scope,
-      // _letsEndPointType: undefined,
-      // it is mea, that we can mark as base any other point type like layout, so we can restore loading, error, drom it not from higher base
-      _letsEndPointType: (this._letsEndPointType === 'base'
-        ? undefined
-        : this._letsEndPointType) as TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
-    })
-  }
-
-  lets<TNewLetsEndPointType extends EndPointType, TPointName extends PointName>(
-    letsEndPointType: TNewLetsEndPointType,
-    pointName: TPointName,
-  ): Point0<
-    'middleware',
-    TNewLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    UndefinedData,
-    TNewLetsEndPointType extends 'page' | 'layout'
-      ? TRouteDefinition extends RouteDefinition
-        ? Extended<TRouteDefinition, TPointName>['definition']
-        : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
-      : UndefinedRouteDefinition,
-    TRouteDefinition,
-    TInputSchema,
-    UndefinedResponseOutput,
-    TQueryResultType,
-    UndefinedProps
-  > {
-    const prevRoute = this._route
-    const newRoute = (() => {
-      if (letsEndPointType === 'page' || letsEndPointType === 'layout') {
-        return prevRoute ? prevRoute.extend(pointName) : Route0.from(dedupeSlashes(`/${pointName}`))
-      }
-      return undefined
-    })()
-    return this._continue<
-      'middleware',
-      TNewLetsEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      UndefinedData,
-      TNewLetsEndPointType extends 'page' | 'layout'
-        ? TRouteDefinition extends RouteDefinition
-          ? Extended<TRouteDefinition, TPointName>['definition']
-          : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
-        : UndefinedRouteDefinition,
-      TRouteDefinition,
-      TInputSchema,
-      UndefinedResponseOutput,
-      TQueryResultType,
-      UndefinedProps
-    >({
       _pointType: 'middleware',
-      _letsEndPointType: letsEndPointType,
-      _name: pointName,
-      _route: newRoute as never,
-      _prevRoute: this._route as never,
-      _page: undefined,
-      _component: undefined,
-      _layout: undefined,
-      _ProviderReactContext: undefined,
-      _providerValueSetter: undefined,
-      _useValue: undefined,
-      _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
-      _serverurl: this._base?._serverurl,
-      _baseurl: this._base?._baseurl,
-      _headFns: this._base?._headFns,
-      _defaultQueryOptions: this._base?._defaultQueryOptions,
-      _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
-      _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
-      _defaultComponentQueryOptions: this._base?._defaultComponentQueryOptions,
-      _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
-      _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
-      _queryOptions: {},
-      _infiniteQueryOptions: {} as never,
-      _queryResultType: undefined,
-      _clientExtractFns: [],
-      _fetchOptions: this._base?._fetchOptions,
-      _scrollPositionGetter: this._base?._scrollPositionGetter,
-      _scrollPositionSetter: this._base?._scrollPositionSetter,
-      _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
-      _prefetchPolicy: this._base?._prefetchPolicy,
-      _onPrefetchFns: this._base?._onPrefetchFns,
-      _wrappers: this._base?._wrappers ?? [],
-      _errorComponent: this._base?._errorComponent as never,
-      _pageErrorComponent: this._base?._pageErrorComponent as never,
-      _componentErrorComponent: this._base?._componentErrorComponent as never,
-      _loadingComponent: this._base?._loadingComponent as never,
-      _pageLoadingComponent: this._base?._pageLoadingComponent as never,
-      _componentLoadingComponent: this._base?._componentLoadingComponent as never,
     })
   }
 
@@ -1255,6 +1162,8 @@ export class Point0<
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
     })
   }
+
+  // extra components
 
   error(
     errorComponent: ErrorComponentType<
@@ -1678,110 +1587,7 @@ export class Point0<
     })
   }
 
-  requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
-    'middleware',
-    TLetsEndPointType,
-    AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
-    PrependCtx<TCtx, TExtraRequiredCtx>,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue<
-      'middleware',
-      TLetsEndPointType,
-      AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
-      PrependCtx<TCtx, TExtraRequiredCtx>,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponseOutput,
-      TQueryResultType,
-      TProps
-    >({
-      _pointType: 'middleware',
-    })
-  }
-
-  // use<TChain extends Chain<TCtx, TData>(
-  //   chain: TChain,
-  // ): Point0<
-  //   'middleware',
-  //   TConnectedRootSourcePoint,
-  //   TRequiredCtx,
-  //   TChain['Infer']['Ctx'],
-  //   TChain['Infer']['Data'],
-  //   TRoute,
-  //   TChain['Infer']['InputSchema'],
-  //   TResponseOutput
-  // > {
-  //   const mergedExtractFns = [...this._extractFns, ...chain._extractFns].reduce<ExtractFnRecord[]>((acc, record) => {
-  //     if (acc.find((f) => f.unstableId === record.unstableId)) {
-  //       return acc
-  //     }
-  //     return [...acc, record]
-  //   }, [])
-  //   const mergedHeads = [...this._heads, ...chain._heads].reduce<HeadsCollection>((acc, head) => {
-  //     if (typeof head === 'function') {
-  //       // functions in head, mean that it use data, so we omit them, else it is static object that can be merged
-  //       return acc
-  //     }
-  //     if (acc.find((h) => h === head)) {
-  //       return acc
-  //     }
-  //     return [...acc, head]
-  //   }, [])
-  //   const layouts = (
-  //     chain._layout
-  //       ? [...this._layouts, ...chain._layouts, chain._layout]
-  //       : [...this._layouts, ...chain._layouts]
-  //   ).reduce<Array<LayoutComponent<TData, TRoute>>>((acc, layout) => {
-  //     if (acc.find((l) => l === layout)) {
-  //       return acc
-  //     }
-  //     return [...acc, layout]
-  //   }, [])
-  //   return this._clone<
-  //     'middleware',
-  //     TConnectedRootSourcePoint,
-  //     TRequiredCtx,
-  //     TChain['Infer']['Ctx'],
-  //     TChain['Infer']['Data'],
-  //     TRoute,
-  //     TChain['Infer']['InputSchema'],
-  //     TResponseOutput
-  //   >({
-  //     _pointType: 'middleware',
-  //     _extractFns: mergedExtractFns,
-  //     _heads: mergedHeads,
-  //     _appLoadingComponent,
-  //     _componentErrorComponent,
-  //     _componentLoadingComponent,
-  //     _errorComponent,
-  //     _fetchOptions,
-  //     _name,
-  //     _inputSchema,
-  //     _layout,
-  //     _loadingComponent,
-  //     _page,
-  //     _pageErrorComponent,
-  //     _pageLoadingComponent,
-  //     _pageQueryOptions,
-  //     _queryOptions,
-  //     _responseFn,
-  //     _route,
-  //     _serverurl,
-  //     _useLocation,
-  //     _wrapper,
-  //   })
-  // }
+  // middlewares
 
   route<TNewRoute extends AnyRoute>(
     route: TNewRoute,
@@ -2149,6 +1955,132 @@ export class Point0<
 
   _isRoot(): boolean {
     return this._name === this._scope
+  }
+
+  lets<TNewLetsEndPointType extends EndPointType, TPointName extends PointName>(
+    letsEndPointType: TNewLetsEndPointType,
+    pointName: TPointName,
+  ): Point0<
+    'middleware',
+    TNewLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    UndefinedData,
+    TNewLetsEndPointType extends 'page' | 'layout'
+      ? TRouteDefinition extends RouteDefinition
+        ? Extended<TRouteDefinition, TPointName>['definition']
+        : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
+      : UndefinedRouteDefinition,
+    TRouteDefinition,
+    TInputSchema,
+    UndefinedResponseOutput,
+    TQueryResultType,
+    UndefinedProps
+  > {
+    const prevRoute = this._route
+    const newRoute = (() => {
+      if (letsEndPointType === 'page' || letsEndPointType === 'layout') {
+        return prevRoute ? prevRoute.extend(pointName) : Route0.from(dedupeSlashes(`/${pointName}`))
+      }
+      return undefined
+    })()
+    return this._continue<
+      'middleware',
+      TNewLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      UndefinedData,
+      TNewLetsEndPointType extends 'page' | 'layout'
+        ? TRouteDefinition extends RouteDefinition
+          ? Extended<TRouteDefinition, TPointName>['definition']
+          : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
+        : UndefinedRouteDefinition,
+      TRouteDefinition,
+      TInputSchema,
+      UndefinedResponseOutput,
+      TQueryResultType,
+      UndefinedProps
+    >({
+      _pointType: 'middleware',
+      _letsEndPointType: letsEndPointType,
+      _name: pointName,
+      _route: newRoute as never,
+      _prevRoute: this._route as never,
+      _page: undefined,
+      _component: undefined,
+      _layout: undefined,
+      _ProviderReactContext: undefined,
+      _providerValueSetter: undefined,
+      _useValue: undefined,
+      _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
+      _serverurl: this._base?._serverurl,
+      _baseurl: this._base?._baseurl,
+      _headFns: this._base?._headFns,
+      _defaultQueryOptions: this._base?._defaultQueryOptions,
+      _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
+      _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
+      _defaultComponentQueryOptions: this._base?._defaultComponentQueryOptions,
+      _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
+      _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
+      _queryOptions: {},
+      _infiniteQueryOptions: {} as never,
+      _queryResultType: undefined,
+      _clientExtractFns: [],
+      _fetchOptions: this._base?._fetchOptions,
+      _scrollPositionGetter: this._base?._scrollPositionGetter,
+      _scrollPositionSetter: this._base?._scrollPositionSetter,
+      _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
+      _prefetchPolicy: this._base?._prefetchPolicy,
+      _onPrefetchFns: this._base?._onPrefetchFns,
+      _wrappers: this._base?._wrappers ?? [],
+      _errorComponent: this._base?._errorComponent as never,
+      _pageErrorComponent: this._base?._pageErrorComponent as never,
+      _componentErrorComponent: this._base?._componentErrorComponent as never,
+      _loadingComponent: this._base?._loadingComponent as never,
+      _pageLoadingComponent: this._base?._pageLoadingComponent as never,
+      _componentLoadingComponent: this._base?._componentLoadingComponent as never,
+    })
+  }
+
+  base(): Point0<
+    'base',
+    TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      'base',
+      TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >({
+      _pointType: 'base',
+      _base: this as never as BasePoint<any, TRequiredCtx>,
+      _name: this._name ?? this._scope,
+      // _letsEndPointType: undefined,
+      // it is mea, that we can mark as base any other point type like layout, so we can restore loading, error, drom it not from higher base
+      _letsEndPointType: (this._letsEndPointType === 'base'
+        ? undefined
+        : this._letsEndPointType) as TLetsEndPointType extends 'base' ? undefined : TLetsEndPointType,
+    })
   }
 
   page<
@@ -2685,7 +2617,7 @@ export class Point0<
     })
   }
 
-  // getters
+  // internal utils
 
   _getErrorComponent<TType extends DestinationComponentType>({
     type,
@@ -2725,6 +2657,15 @@ export class Point0<
       page: this._pageLoadingComponent,
       component: this._componentLoadingComponent,
     }[type] ?? this._loadingComponent) as never
+  }
+
+  _withWrappers = (component: React.ReactNode): Exclude<React.ReactNode, Promise<any>> => {
+    if (this._wrappers.length === 0) {
+      return component as Exclude<React.ReactNode, Promise<any>>
+    }
+    return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
+      return React.createElement(Wrapper, { key: index, children: acc })
+    }, component) as Exclude<React.ReactNode, Promise<any>>
   }
 
   _hasLoader(): boolean {
@@ -2897,6 +2838,8 @@ export class Point0<
     return { ...selfLocation.searchParams, ...selfLocation.params } as InputRaw<TRouteDefinition, TInputSchema>
   }
 
+  // fetching and queries
+
   useQuery = (
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
@@ -2986,390 +2929,6 @@ export class Point0<
     }, [query, query?.data, query?.error, query?.isLoading])
     return result as never
   }
-
-  _withWrappers = (component: React.ReactNode): Exclude<React.ReactNode, Promise<any>> => {
-    if (this._wrappers.length === 0) {
-      return component as Exclude<React.ReactNode, Promise<any>>
-    }
-    return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
-      return React.createElement(Wrapper, { key: index, children: acc })
-    }, component) as Exclude<React.ReactNode, Promise<any>>
-  }
-
-  _Page: MountableComponent<TInputSchema, TProps, false> = (props) => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-
-    const emptyUseLoaderResultForHead: Omit<
-      UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, 'success'>,
-      'query'
-    > = {
-      data: {} as never,
-      error: null,
-      input: {} as never,
-      location,
-      loading: false,
-    }
-
-    if (!this._page) {
-      this._useHead(emptyUseLoaderResultForHead)
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          type: 'page',
-          data: undefined as FinalClientData<TData, TClientData> | undefined,
-          error: new Error0('No page component'),
-          loading: false,
-          location,
-          query: undefined as never,
-          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
-        } as never),
-      )
-    }
-
-    if (!this._hasClientLoader() && !this._hasLoader()) {
-      this._useHead(emptyUseLoaderResultForHead)
-      return this._withWrappers(
-        React.createElement(this._page, {
-          ...(props as any),
-          location,
-        }),
-      )
-    }
-
-    const { input, restProps } = React.useMemo<{
-      input: InputRaw<TRouteDefinition, TInputSchema>
-      restProps: FinalProps<TProps>
-    }>(() => {
-      const { input: providedInput, ...restProps } = props as any
-      const input = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
-      return { input, restProps }
-    }, [props, location])
-
-    const { prevLocation, status } = useRouterContext()
-    React.useEffect(() => {
-      if (status !== 'idle') {
-        return
-      }
-      const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
-      const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) => p.name === this._name && stringify(p.input) === stringify(input),
-      )
-      if (scrollPositionRestorePolicy !== false) {
-        if (scrollPositionRestorePolicy === null) {
-          this._scrollPositionSetter({ x: 0, y: 0 })
-        }
-        if (scrollPositionRestorePolicy === true) {
-          if (!prevPageScrollPosition) {
-            this._scrollPositionSetter({ x: 0, y: 0 })
-          } else {
-            this._scrollPositionSetter({ x: prevPageScrollPosition.x, y: prevPageScrollPosition.y })
-          }
-        }
-      }
-      return () => {
-        const currentPageScrollPosition = this._scrollPositionGetter()
-        if (prevPageScrollPosition) {
-          prevPageScrollPosition.x = currentPageScrollPosition?.x ?? 0
-          prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
-        } else {
-          Point0._prevPageScrollPositions.push({
-            name: this._name ?? 'unknown',
-            input,
-            x: currentPageScrollPosition?.x ?? 0,
-            y: currentPageScrollPosition?.y ?? 0,
-          })
-        }
-      }
-    }, [this._name, stringify(input), prevLocation, status])
-
-    const result = this._useLoader(input, this._defaultPageQueryOptions)
-
-    this._useHead(result)
-
-    if (result.error) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (result.loading) {
-      return this._withWrappers(
-        React.createElement(loadingComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (!result.data) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-          error: new Error0('No data'),
-        }),
-      )
-    }
-    return this._withWrappers(
-      React.createElement(this._page, {
-        ...(result as any),
-        props: restProps,
-      }),
-    )
-  }
-
-  _Component: MountableComponent<TInputSchema, TProps, false> = (props) => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-
-    if (!this._component) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          type: 'page',
-          data: undefined as FinalClientData<TData, TClientData> | undefined,
-          error: new Error0('No component component'),
-          loading: false,
-          location,
-          query: undefined as never,
-          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
-        } as never),
-      )
-    }
-
-    const { input, restProps } = React.useMemo<{
-      input: InputRaw<TRouteDefinition, TInputSchema>
-      restProps: FinalProps<TProps>
-    }>(() => {
-      const { input: providedInput, ...restProps } = props as any
-      const input = { ...providedInput }
-      return { input, restProps }
-    }, [props])
-    const result = this._useLoader(input, this._defaultComponentQueryOptions)
-    if (result.error) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (result.loading) {
-      return this._withWrappers(
-        React.createElement(loadingComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (!result.data) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-          error: new Error0('No data'),
-        }),
-      )
-    }
-    return this._withWrappers(
-      React.createElement(this._component, {
-        ...(result as any),
-        props: restProps as unknown as FinalProps<TProps>,
-      }),
-    )
-  }
-
-  _Layout: MountableComponent<TInputSchema, TProps, true> = (props) => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-
-    if (!this._layout) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          type: 'page',
-          data: undefined as never,
-          error: new Error0('No layout component'),
-          loading: false,
-          location,
-          query: undefined as never,
-          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
-          props: {} as FinalProps<TProps>,
-        }),
-      )
-    }
-
-    const { input, children, restProps } = React.useMemo<{
-      input: InputRaw<TRouteDefinition, TInputSchema>
-      children: React.ReactNode
-      restProps: FinalProps<TProps>
-    }>(() => {
-      const { input: providedInput = {}, children, ...restProps } = props as any
-      const input = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
-      return { input, children, restProps }
-    }, [props, location])
-    const result = this._useLoader(input, this._defaultLayoutQueryOptions)
-    if (result.error) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (result.loading) {
-      return this._withWrappers(
-        React.createElement(loadingComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (!result.data) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-          error: new Error0('No data'),
-        }),
-      )
-    }
-    return this._withWrappers(
-      React.createElement(this._layout, {
-        ...result,
-        children,
-        props: restProps,
-      } as never),
-    )
-  }
-
-  getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
-    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
-      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
-    )
-    if (!value) {
-      throw new Error(
-        `Provider value not found on point: provider.${this._name}. You should call getValue only after Provider component is mounted and loaded.`,
-      )
-    }
-    return value
-  }
-
-  getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
-    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
-      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
-    )
-    return value
-  }
-
-  Provider: MountableComponent<TInputSchema, UndefinedProps, true> = (props) => {
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
-
-    if (!this._ProviderReactContext) {
-      throw new Error('ProviderReactContext not found on point: ' + this._name)
-    }
-    if (!this._providerValueSetter) {
-      throw new Error('providerValueSetter not found on point: ' + this._name)
-    }
-
-    const { input, children } = React.useMemo<{
-      input: InputRaw<TRouteDefinition, TInputSchema>
-      children: React.ReactNode
-    }>(() => {
-      const { input: providedInput = {}, children } = props as any
-      const input = { ...providedInput }
-      return { input, children }
-    }, [props])
-    const result = this._useLoader(input as never, this._defaultProviderQueryOptions)
-    if (result.error) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (result.loading) {
-      return this._withWrappers(
-        React.createElement(loadingComponent, {
-          ...(result as any),
-          type: 'page',
-        }),
-      )
-    }
-    if (!result.data) {
-      return this._withWrappers(
-        React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-          error: new Error0('No data'),
-        }),
-      )
-    }
-    const value = this._providerValueSetter(result)
-    ExtractorStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
-    return this._withWrappers(
-      React.createElement(this._ProviderReactContext.Provider, {
-        value,
-        children,
-      }),
-    )
-  }
-
-  useValue<K extends keyof FinalClientData<TData, TClientData>>(key: K): FinalClientData<TData, TClientData>[K]
-  useValue<K extends keyof FinalClientData<TData, TClientData>>(keys: K[]): Pick<FinalClientData<TData, TClientData>, K>
-  useValue(): FinalClientData<TData, TClientData>
-  useValue(keys?: keyof FinalClientData<TData, TClientData> | Array<keyof FinalClientData<TData, TClientData>>) {
-    if (!this._useValue) {
-      throw new Error('useValue not found on point: ' + this._name)
-    }
-    return (this as any)._useValue(this, keys)
-  }
-
-  // bun crashes just when see this code, even if it is not executed, so we need hack with _useValue
-  // lets check time to time if crashes no more exists, then uncomment
-
-  // useValue<K extends keyof FinalClientData<TData, TClientData>>(key: K): FinalClientData<TData, TClientData>[K]
-  // useValue<K extends keyof FinalClientData<TData, TClientData>>(keys: K[]): Pick<FinalClientData<TData, TClientData>, K>
-  // useValue(): FinalClientData<TData, TClientData>
-  // useValue(keys?: keyof FinalClientData<TData, TClientData> | Array<keyof FinalClientData<TData, TClientData>>) {
-  //   if (!this._ProviderReactContext) {
-  //     throw new Error('ProviderReactContext not found on point: ' + this._name)
-  //   }
-
-  //   if (keys == null) {
-  //     // no keys — return full context
-  //     return useContextSelector(this._ProviderReactContext, (ctx) => {
-  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  //       if (!ctx) throw new Error('useValue must be used within a Provider.')
-  //       return ctx
-  //     })
-  //   }
-
-  //   if (Array.isArray(keys)) {
-  //     // multiple keys — build a memoized object
-  //     return useContextSelector(this._ProviderReactContext, (ctx) => {
-  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  //       if (!ctx) throw new Error('useValue must be used within a Provider.')
-  //       const picked = {} as any
-  //       for (const key of keys) {
-  //         picked[key] = ctx[key]
-  //       }
-  //       return picked
-  //     })
-  //   }
-
-  //   // single key
-  //   return useContextSelector(this._ProviderReactContext, (ctx) => {
-  //     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  //     if (!ctx) throw new Error('useValue must be used within a Provider.')
-  //     return ctx[keys]
-  //   })
-  //   return null
-  // }
 
   async fetch(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
@@ -4297,49 +3856,386 @@ export class Point0<
     await Promise.all([queriesPrefetching, onPrefetchFnsCalling])
   }
 
-  // global
+  // mountable components
 
-  // private static setGlobalPoint(point: AnyPoint): void {
-  //   if (!(globalThis as any).__POINT0_INSTANCES__) {
-  //     ;(globalThis as any).__POINT0_INSTANCES__ = {}
+  _Page: MountableComponent<TInputSchema, TProps, false> = (props) => {
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    const emptyUseLoaderResultForHead: Omit<
+      UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, 'success'>,
+      'query'
+    > = {
+      data: {} as never,
+      error: null,
+      input: {} as never,
+      location,
+      loading: false,
+    }
+
+    if (!this._page) {
+      this._useHead(emptyUseLoaderResultForHead)
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          type: 'page',
+          data: undefined as FinalClientData<TData, TClientData> | undefined,
+          error: new Error0('No page component'),
+          loading: false,
+          location,
+          query: undefined as never,
+          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
+        } as never),
+      )
+    }
+
+    if (!this._hasClientLoader() && !this._hasLoader()) {
+      this._useHead(emptyUseLoaderResultForHead)
+      return this._withWrappers(
+        React.createElement(this._page, {
+          ...(props as any),
+          location,
+        }),
+      )
+    }
+
+    const { input, restProps } = React.useMemo<{
+      input: InputRaw<TRouteDefinition, TInputSchema>
+      restProps: FinalProps<TProps>
+    }>(() => {
+      const { input: providedInput, ...restProps } = props as any
+      const input = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
+      return { input, restProps }
+    }, [props, location])
+
+    const { prevLocation, status } = useRouterContext()
+    React.useEffect(() => {
+      if (status !== 'idle') {
+        return
+      }
+      const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
+      const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
+        (p) => p.name === this._name && stringify(p.input) === stringify(input),
+      )
+      if (scrollPositionRestorePolicy !== false) {
+        if (scrollPositionRestorePolicy === null) {
+          this._scrollPositionSetter({ x: 0, y: 0 })
+        }
+        if (scrollPositionRestorePolicy === true) {
+          if (!prevPageScrollPosition) {
+            this._scrollPositionSetter({ x: 0, y: 0 })
+          } else {
+            this._scrollPositionSetter({ x: prevPageScrollPosition.x, y: prevPageScrollPosition.y })
+          }
+        }
+      }
+      return () => {
+        const currentPageScrollPosition = this._scrollPositionGetter()
+        if (prevPageScrollPosition) {
+          prevPageScrollPosition.x = currentPageScrollPosition?.x ?? 0
+          prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
+        } else {
+          Point0._prevPageScrollPositions.push({
+            name: this._name ?? 'unknown',
+            input,
+            x: currentPageScrollPosition?.x ?? 0,
+            y: currentPageScrollPosition?.y ?? 0,
+          })
+        }
+      }
+    }, [this._name, stringify(input), prevLocation, status])
+
+    const result = this._useLoader(input, this._defaultPageQueryOptions)
+
+    this._useHead(result)
+
+    if (result.error) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (result.loading) {
+      return this._withWrappers(
+        React.createElement(loadingComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (!result.data) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+          error: new Error0('No data'),
+        }),
+      )
+    }
+    return this._withWrappers(
+      React.createElement(this._page, {
+        ...(result as any),
+        props: restProps,
+      }),
+    )
+  }
+
+  _Component: MountableComponent<TInputSchema, TProps, false> = (props) => {
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    if (!this._component) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          type: 'page',
+          data: undefined as FinalClientData<TData, TClientData> | undefined,
+          error: new Error0('No component component'),
+          loading: false,
+          location,
+          query: undefined as never,
+          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
+        } as never),
+      )
+    }
+
+    const { input, restProps } = React.useMemo<{
+      input: InputRaw<TRouteDefinition, TInputSchema>
+      restProps: FinalProps<TProps>
+    }>(() => {
+      const { input: providedInput, ...restProps } = props as any
+      const input = { ...providedInput }
+      return { input, restProps }
+    }, [props])
+    const result = this._useLoader(input, this._defaultComponentQueryOptions)
+    if (result.error) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (result.loading) {
+      return this._withWrappers(
+        React.createElement(loadingComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (!result.data) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+          error: new Error0('No data'),
+        }),
+      )
+    }
+    return this._withWrappers(
+      React.createElement(this._component, {
+        ...(result as any),
+        props: restProps as unknown as FinalProps<TProps>,
+      }),
+    )
+  }
+
+  _Layout: MountableComponent<TInputSchema, TProps, true> = (props) => {
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    if (!this._layout) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          type: 'page',
+          data: undefined as never,
+          error: new Error0('No layout component'),
+          loading: false,
+          location,
+          query: undefined as never,
+          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
+          props: {} as FinalProps<TProps>,
+        }),
+      )
+    }
+
+    const { input, children, restProps } = React.useMemo<{
+      input: InputRaw<TRouteDefinition, TInputSchema>
+      children: React.ReactNode
+      restProps: FinalProps<TProps>
+    }>(() => {
+      const { input: providedInput = {}, children, ...restProps } = props as any
+      const input = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
+      return { input, children, restProps }
+    }, [props, location])
+    const result = this._useLoader(input, this._defaultLayoutQueryOptions)
+    if (result.error) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (result.loading) {
+      return this._withWrappers(
+        React.createElement(loadingComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (!result.data) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+          error: new Error0('No data'),
+        }),
+      )
+    }
+    return this._withWrappers(
+      React.createElement(this._layout, {
+        ...result,
+        children,
+        props: restProps,
+      } as never),
+    )
+  }
+
+  // provider
+
+  getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
+    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
+      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
+    )
+    if (!value) {
+      throw new Error(
+        `Provider value not found on point: provider.${this._name}. You should call getValue only after Provider component is mounted and loaded.`,
+      )
+    }
+    return value
+  }
+
+  getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
+    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
+      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
+    )
+    return value
+  }
+
+  Provider: MountableComponent<TInputSchema, UndefinedProps, true> = (props) => {
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    if (!this._ProviderReactContext) {
+      throw new Error('ProviderReactContext not found on point: ' + this._name)
+    }
+    if (!this._providerValueSetter) {
+      throw new Error('providerValueSetter not found on point: ' + this._name)
+    }
+
+    const { input, children } = React.useMemo<{
+      input: InputRaw<TRouteDefinition, TInputSchema>
+      children: React.ReactNode
+    }>(() => {
+      const { input: providedInput = {}, children } = props as any
+      const input = { ...providedInput }
+      return { input, children }
+    }, [props])
+    const result = this._useLoader(input as never, this._defaultProviderQueryOptions)
+    if (result.error) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (result.loading) {
+      return this._withWrappers(
+        React.createElement(loadingComponent, {
+          ...(result as any),
+          type: 'page',
+        }),
+      )
+    }
+    if (!result.data) {
+      return this._withWrappers(
+        React.createElement(errorComponent, {
+          ...(result as any),
+          type: 'page',
+          error: new Error0('No data'),
+        }),
+      )
+    }
+    const value = this._providerValueSetter(result)
+    ExtractorStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
+    return this._withWrappers(
+      React.createElement(this._ProviderReactContext.Provider, {
+        value,
+        children,
+      }),
+    )
+  }
+
+  useValue<K extends keyof FinalClientData<TData, TClientData>>(key: K): FinalClientData<TData, TClientData>[K]
+  useValue<K extends keyof FinalClientData<TData, TClientData>>(keys: K[]): Pick<FinalClientData<TData, TClientData>, K>
+  useValue(): FinalClientData<TData, TClientData>
+  useValue(keys?: keyof FinalClientData<TData, TClientData> | Array<keyof FinalClientData<TData, TClientData>>) {
+    if (!this._useValue) {
+      throw new Error('useValue not found on point: ' + this._name)
+    }
+    return (this as any)._useValue(this, keys)
+  }
+
+  // bun crashes just when see this code, even if it is not executed, so we need hack with _useValue
+  // lets check time to time if crashes no more exists, then uncomment
+
+  // useValue<K extends keyof FinalClientData<TData, TClientData>>(key: K): FinalClientData<TData, TClientData>[K]
+  // useValue<K extends keyof FinalClientData<TData, TClientData>>(keys: K[]): Pick<FinalClientData<TData, TClientData>, K>
+  // useValue(): FinalClientData<TData, TClientData>
+  // useValue(keys?: keyof FinalClientData<TData, TClientData> | Array<keyof FinalClientData<TData, TClientData>>) {
+  //   if (!this._ProviderReactContext) {
+  //     throw new Error('ProviderReactContext not found on point: ' + this._name)
   //   }
-  //   const scopes = point._attachedTo.length > 0 ? point._attachedTo : [point._scope]
-  //   for (const scope of scopes) {
-  //     if (!(globalThis as any).__POINT0_INSTANCES__[scope]) {
-  //       ;(globalThis as any).__POINT0_INSTANCES__[scope] = {}
-  //     }
-  //     if (!(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType]) {
-  //       ;(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType] = {}
-  //     }
-  //     if (!point._name) {
-  //       throw new Error('Point name is not set')
-  //     }
-  //     ;(globalThis as any).__POINT0_INSTANCES__[scope][point._pointType][point._name] = point
+
+  //   if (keys == null) {
+  //     // no keys — return full context
+  //     return useContextSelector(this._ProviderReactContext, (ctx) => {
+  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //       if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //       return ctx
+  //     })
   //   }
+
+  //   if (Array.isArray(keys)) {
+  //     // multiple keys — build a memoized object
+  //     return useContextSelector(this._ProviderReactContext, (ctx) => {
+  //       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //       if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //       const picked = {} as any
+  //       for (const key of keys) {
+  //         picked[key] = ctx[key]
+  //       }
+  //       return picked
+  //     })
+  //   }
+
+  //   // single key
+  //   return useContextSelector(this._ProviderReactContext, (ctx) => {
+  //     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //     if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //     return ctx[keys]
+  //   })
+  //   return null
   // }
 
-  // static getGlobalPoint(scope: PointsScope, pointType: PointType, name: PointName): AnyPoint
-  // static getGlobalPoint(pointType: PointType, name: PointName): AnyPoint
-  // static getGlobalPoint(...args: [PointsScope, PointType, PointName] | [PointType, PointName]): AnyPoint {
-  //   const {
-  //     scope: providedScope,
-  //     pointType,
-  //     name,
-  //   } = args.length === 3
-  //     ? { scope: args[0], pointType: args[1], name: args[2] }
-  //     : { pointType: args[0], name: args[1] }
-  //   const scope = providedScope ?? ExtractorStore.getWeak<PointsScope>('__POINT0_SCOPE__')
-  //   if (!scope) {
-  //     throw new Error('Points scope not found if ExtractorStore. You should provide scope.')
-  //   }
-  //   const point = (globalThis as any).__POINT0_INSTANCES__[scope]?.[pointType]?.[name]
-  //   if (!point) {
-  //     throw new Error(`Point with type "${pointType}" and name "${name}" not found in scope "${scope}"`)
-  //   }
-  //   return point
-  // }
-
-  // super store
+  // extractor store
 
   static define = ExtractorStore.define.bind(ExtractorStore)
 

@@ -92,19 +92,33 @@ export type PartialUseInfiniteQueryOptions<
 > = Partial<ExtraUseInfiniteQueryOptions<InputRaw, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
 // used to avoid circular depedencies
 export type Infer<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TPointType extends PointType,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
 > = {
+  PointType: TPointType
+  LetsEndPointType: TLetsEndPointType
   RequiredCtx: TRequiredCtx
   Ctx: TCtx
   Data: TData
   ClientData: TClientData
+  RouteDefinition: TRouteDefinition
+  PrevRouteDefinition: TPrevRouteDefinition
   InputSchema: TInputSchema
+  ResponseOutput: TResponseOutput
   QueryResultType: TQueryResultType
+  Props: TProps
+  InputParsed: InputParsed<TRouteDefinition, TInputSchema>
+  InputRaw: InputRaw<TRouteDefinition, TInputSchema>
 }
 
 // points types
