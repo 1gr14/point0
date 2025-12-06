@@ -132,7 +132,8 @@ export class Point0<
   TProps extends Props | UndefinedProps,
 > {
   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData, TInputSchema, TQueryResultType> & {
-    Input: InputParsed<TRouteDefinition, TInputSchema>
+    InputParsed: InputParsed<TRouteDefinition, TInputSchema>
+    InputRaw: InputRaw<TRouteDefinition, TInputSchema>
   } = {} as never
 
   // TODO: may it help somebody?
@@ -3440,17 +3441,35 @@ export class Point0<
     })
   }
 
-  async extract(
-    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? [extractor: Extractor<TRequiredCtx>, input?: InputRaw<TRouteDefinition, TInputSchema>]
-      : [extractor: Extractor<TRequiredCtx>, input: InputRaw<TRouteDefinition, TInputSchema>]
-  ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
-    const [extractor, input = {}] = args
-    return (await extractor.extract({
-      point: this as never,
-      input,
-    })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  }
+  // async extract(
+  //   ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+  //     ? [extractor: Extractor<TRequiredCtx>, input?: InputRaw<TRouteDefinition, TInputSchema>]
+  //     : [extractor: Extractor<TRequiredCtx>, input: InputRaw<TRouteDefinition, TInputSchema>]
+  // ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
+  //   const [extractor, input = {}] = args
+  //   return (await extractor.extract({
+  //     point: this as never,
+  //     input,
+  //   })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+  // }
+  // async extract(
+  //   ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+  //     ? [input?: InputRaw<TRouteDefinition, TInputSchema>,]
+  //     : [input: InputRaw<TRouteDefinition, TInputSchema>]
+  // ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
+  //   const [input = {}] = args
+  //   const extractor = await Extractor.create({
+  //     points: this,
+  //     currentLocation: location,
+  //     requiredCtx: this.requiredCtx,
+  //     pageLocation: location,
+  //   })
+  //   return (await extractor.extract({
+  //     point: this as never,
+  //     input,
+  //     withLayouts: true,
+  //   })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+  // }
 
   _getServerQueryKey({
     input,

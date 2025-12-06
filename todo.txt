@@ -4,6 +4,9 @@
 
 
 test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx. Or maybe just myPoint.extract()
+
+convex as @point0/convex, .convex(await import('@point0/convex')), and then we just use convex queries, not react queries
+
 .onServerError, .onClientError
 
 PLUGIN
@@ -95,9 +98,10 @@ npm @point0
 ------ v2 ------
 ----------------
 
-example convex (preloadQuery in loader and store data there, then usePreloadedQuery)
-extendsion, that extends Point0, and Engine, so we can add .lets('convexQuery') for example
-example convex (I can generate convex dir fully, and just add .lets('convexQuery'), .convexQuery() and here I have just my input as args, and handler fully generated via previous loaders and ctxs)
+(convex is just real-time helper, nothing special. And it is big combiner, which is bad)
+? extendsion, that extends Point0, and Engine, so we can add .lets('convexQuery') for example
+? example convex (preloadQuery in loader and store data there, then usePreloadedQuery)
+? example convex (I can generate convex dir fully, and just add .lets('convexQuery'), .convexQuery() and here I have just my input as args, and handler fully generated via previous loaders and ctxs)
 
 ? .attachable(), like shared, but will not automatically attach to root, but can be attached manually
 ? route0 respect origin on match and try two clients with one server

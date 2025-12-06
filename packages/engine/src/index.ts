@@ -1,5 +1,5 @@
 import { PointsManagersGroup } from '@point0/core/points-manager'
-import type { PointsScope, RequiredCtx } from '@point0/core/types'
+import type { EndPoint, PointsScope, RequiredCtx } from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -8,6 +8,7 @@ import { parseEngineOptions, type EngineLogger, type EngineOptions } from './con
 import type { FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import { ServerBun } from './server.js'
+import type { ExtractResult } from '@point0/core/extractor'
 
 export class Engine<TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
@@ -161,6 +162,31 @@ export class Engine<TInitialized extends boolean = boolean> {
       request,
       requiredCtx,
     })
+  }
+
+  async extract<TPoint extends EndPoint>({
+    point,
+    input,
+    requiredCtx,
+    withLayouts,
+  }: {
+    point: TPoint
+    input: TPoint['Infer']['InputRaw']
+    requiredCtx: TPoint['Infer']['RequiredCtx']
+    withLayouts?: boolean
+  }): Promise<ExtractResult> {
+    if (!this.isInitialized()) {
+      throw new Error('Engine is not initialized. Please call await engine.init() first.')
+    }
+    if (!point._root) {
+      throw new Error('Point root not found')
+    }
+    const { extractor, suitable } = await this.pmg.prepareExtractorByPointAndInput({
+      input,
+      point,
+      requiredCtx,
+    })
+    return await extractor.extract({ point: suitable.point, input, withLayouts })
   }
 
   async clean(): Promise<void> {

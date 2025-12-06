@@ -973,8 +973,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
     requiredCtx: TRequiredCtx
   }): Promise<{
     task: FetchTask | undefined
-    // TODO: it is not parsed input it is raw input
-    input: InputParsed
+    input: InputRaw
     suitable: GetSuitableResult
     extractor: Extractor
   }> {
@@ -1058,6 +1057,77 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
     const input = task?.pointInput ?? { ...location.searchParams, ...suitable.pageLocation?.params }
     return {
       task,
+      input,
+      suitable,
+      extractor,
+    }
+  }
+
+  async prepareExtractorByPointAndInput<TPoint extends EndPoint>({
+    point,
+    input,
+    requiredCtx,
+  }: {
+    point: TPoint
+    input: TPoint['Infer']['InputRaw']
+    requiredCtx: TRequiredCtx
+  }): Promise<{
+    input: TPoint['Infer']['InputRaw']
+    suitable: GetSuitableResult
+    extractor: Extractor
+  }> {
+    const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
+    const suitable = this.getSuitable({
+      pointType: point._pointType,
+      scope: point._scope,
+      pointName: point._name,
+      input,
+      fallbackScope: point._scope,
+    })
+    const extractor = await Extractor.create({
+      points: suitable.pointsManager,
+      pageLocation: suitable.pageLocation,
+      currentLocation: location,
+      requiredCtx,
+    })
+    return {
+      input,
+      suitable,
+      extractor,
+    }
+  }
+
+  async prepareExtractorByPointScopeTypeNameInput<TPoint extends EndPoint>({
+    scope,
+    pointType,
+    pointName,
+    input,
+    requiredCtx,
+  }: {
+    scope: PointsScope
+    pointType: EndPointType
+    pointName: PointName
+    input: TPoint['Infer']['InputRaw']
+    requiredCtx: TRequiredCtx
+  }): Promise<{
+    input: TPoint['Infer']['InputRaw']
+    suitable: GetSuitableResult
+    extractor: Extractor
+  }> {
+    const suitable = this.getSuitable({
+      pointType,
+      scope,
+      pointName,
+      input,
+      fallbackScope: scope,
+    })
+    const extractor = await Extractor.create({
+      points: suitable.pointsManager,
+      pageLocation: suitable.pageLocation,
+      currentLocation: suitable.pageLocation || Route0.getLocation('/'),
+      requiredCtx,
+    })
+    return {
       input,
       suitable,
       extractor,

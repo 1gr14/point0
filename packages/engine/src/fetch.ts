@@ -107,6 +107,7 @@ export const engineFetch = async ({
           const extractResult = await extractor.extract({
             point: suitable.point,
             input,
+            withLayouts: true,
           })
           if (extractResult.error) {
             logger.error(extractResult.error, meta)

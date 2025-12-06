@@ -1,5 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation } from '@devp0nt/route0'
+import { Route0, type AnyLocation } from '@devp0nt/route0'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -7,7 +7,7 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 import { ClientServerHelpers } from './client-server.js'
 import { ExtractorStore } from './extractor-store.js'
-import type { PointsManager } from './points-manager.js'
+import { PointsManager } from './points-manager.js'
 import type {
   AnyPoint,
   AppComponent,
@@ -15,6 +15,7 @@ import type {
   Data,
   EmptyCtx,
   EmptyData,
+  EndPoint,
   EndPointType,
   ExtractFnRecord,
   FinalData,
@@ -124,11 +125,36 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await ExtractorStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
-  async extract({ point, input }: ExtractOptions): Promise<ExtractResult> {
+  static async extract<TPoint extends EndPoint>({
+    extractor,
+    point,
+    input,
+    requiredCtx,
+    withLayouts,
+  }: {
+    point: TPoint
+    input: TPoint['Infer']['InputRaw']
+    requiredCtx: TPoint['Infer']['RequiredCtx']
+    extractor?: Extractor<TPoint['Infer']['RequiredCtx']> | undefined
+    withLayouts?: boolean
+  }): Promise<ExtractResult> {
+    if (!point._root) {
+      throw new Error('Point root not found')
+    }
+    const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
+    const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout._name}`, layout]))
+    extractor ??= await Extractor.create({
+      points: PointsManager.ready({ root_ready: point._root, point, ...layoutsObject }),
+      currentLocation: location,
+      requiredCtx,
+      pageLocation: point._pointType === 'page' ? location : undefined,
+    })
+    return await extractor.extract({ point, input, withLayouts })
+  }
+
+  async extract({ point, input, withLayouts }: ExtractOptions): Promise<ExtractResult> {
     return await this.withServerGlobalState(async () => {
-      // TODO: maybe remove it, we will prefetch everything in createPrefetchedAppElement
-      // But it is faster, becouse we should not always rerender our app for every layout
-      if (point?._pointType === 'page') {
+      if (point?._pointType === 'page' && withLayouts) {
         for (const layout of point._layouts) {
           if (!layout._hasLoader()) {
             continue
@@ -574,7 +600,8 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
 export type ExtractOptions = {
   point?: AnyPoint | undefined
-  input: InputParsed
+  input: InputRaw
+  withLayouts?: boolean
 }
 export type ExtractFnWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = TType extends 'ctx'
   ? {
