@@ -3442,17 +3442,6 @@ export class Point0<
     })
   }
 
-  // async extract(
-  //   ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-  //     ? [extractor: Extractor<TRequiredCtx>, input?: InputRaw<TRouteDefinition, TInputSchema>]
-  //     : [extractor: Extractor<TRequiredCtx>, input: InputRaw<TRouteDefinition, TInputSchema>]
-  // ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
-  //   const [extractor, input = {}] = args
-  //   return (await extractor.extract({
-  //     point: this as never,
-  //     input,
-  //   })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  // }
   async extract({
     input,
     requiredCtx,

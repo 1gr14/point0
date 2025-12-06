@@ -2,10 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-convex as @point0/convex, .convex(await import('@point0/convex')), and then we just use convex queries, not react queries
-
-.onServerError, .onClientError
-
 PLUGIN
 const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
 ??? chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
@@ -67,8 +63,8 @@ check if superjson works correctly with query and mutation and eversion store
 pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
 pruner: point0PruneScopePoints, totally remove points not related to the scope
 check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
-
 normzliae all errors texts everyhere
+.onServerError, .onClientError
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
@@ -80,6 +76,7 @@ analyze if there same id points or route points, and throw error
 
 find unused code
 example refactor
+
 example auth
 test for units
 test for engine
@@ -95,13 +92,17 @@ npm @point0
 ------ v2 ------
 ----------------
 
-(convex is just real-time helper, nothing special. And it is big combiner, which is bad)
+! we just need own Messanger based on usual websocketsm it is enough
+(convex is just real-time helper (.lets('subscribe')), nothing special. And it is big combiner, which is bad)
+? example convex (preloadQuery in loader and store data there, then usePreloadedQuery)
+? just convexQuery and convexMutation
+? convex as @point0/convex, .convex(await import('@point0/convex')), and then we just use convex queries, not react queries
 ? extendsion, that extends Point0, and Engine, so we can add .lets('convexQuery') for example
 ? example convex (preloadQuery in loader and store data there, then usePreloadedQuery)
 ? example convex (I can generate convex dir fully, and just add .lets('convexQuery'), .convexQuery() and here I have just my input as args, and handler fully generated via previous loaders and ctxs)
 
 ? .attachable(), like shared, but will not automatically attach to root, but can be attached manually
-? route0 respect origin on match and try two clients with one server
+? route0 respect origin on match and try two clients with o99ne server
 ? html template parsing by provided vars via ejs
 ? immutable ctx and data on extractFns calls
 ? asterisk layout as .layout(true, () => <div/>)
