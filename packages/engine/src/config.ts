@@ -13,8 +13,6 @@ import type {
 } from './utils.js'
 import { toAbsPath, toJsExtension } from './utils.js'
 
-// TODO: bunConfigBuildForServer, bunConfigBuildForClient, viteConfigBuildForServer, viteConfigBuildForClient, viteConfigDevServer
-
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
   error: (error: unknown, meta?: Record<string, any>) => any

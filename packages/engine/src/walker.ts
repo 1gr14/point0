@@ -407,7 +407,7 @@ export class Walker {
         // Determine which top-level identifier this chain belongs to
         const baseIdentifier = this.findTopLevelAssignedIdentifier(p as unknown as NodePath<Node>)
         if (!baseIdentifier) {
-          // Это какая-то локальная цепочка внутри функции и т.п. — нас не интересует
+          // local chain inside a function or something like that - we don't care about it
           return
         }
 

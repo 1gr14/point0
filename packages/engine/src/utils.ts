@@ -3,50 +3,6 @@ import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
 
-// export const responseWithWrappers = ({
-//   response,
-//   onResponse,
-//   generalOnResponse,
-// }: {
-//   response: Response
-//   onResponse: ((response: Response) => Response) | undefined
-//   generalOnResponse: ((response: Response) => Response) | undefined
-// }): Response => {
-//   if (generalOnResponse) {
-//     response = generalOnResponse(response)
-//   }
-//   if (onResponse) {
-//     response = onResponse(response)
-//   }
-//   return response
-// }
-
-// export const mergeWrapResponseFns = (wrapResponseFns: WrapResponseFn[]): WrapResponseFn => {
-//   return async ({ request, response }) => {
-//     for (const wrapResponseFn of wrapResponseFns) {
-//       response = await wrapResponseFn({ request, response })
-//     }
-//     return response
-//   }
-// }
-
-// export const mergeWrapRequestFns = (wrapRequestFns: WrapRequestFn[]): WrapRequestFn => {
-//   // const seen = new Set<WrapRequestFn>()
-//   return async ({ request }) => {
-//     for (const wrapRequestFn of wrapRequestFns) {
-//       // if (seen.has(wrapRequestFn)) {
-//       //   continue
-//       // }
-//       // seen.add(wrapRequestFn)
-//       const response = await wrapRequestFn({ request })
-//       if (response) {
-//         return response
-//       }
-//     }
-//     return undefined
-//   }
-// }
-
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
     return undefined

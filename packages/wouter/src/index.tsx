@@ -8,11 +8,8 @@ import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
 
-// TODO: add to Link match result, so we can use current, active, aprent, exact, etc
-
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
-  // TODO: allow pass router policy in useNavigate and in Link
   return navigate
 }
 export const useNavigate = _wrapUseNavigate(_useNavigate)

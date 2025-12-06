@@ -35,6 +35,7 @@ throw error on Points.create() on cleint with different scope that was before
 Replace all node methods with native bun methods, including watcher
 on fetch and prefetch if extractor exists in ExtractorStore, then do not do fetch, but do extractor.extract
 analyze why client bundle so big in examples
+wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
 check bun pruner, and vite pruner creates correct sourcemaps
 ? router export function getCurrentLocation()
 after build validate if dist paths exists, like engine.validate()
