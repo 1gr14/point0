@@ -49,7 +49,7 @@ export const BestIdeaComponent = client
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
   .wrapper(({ children }) => {
-    return <div style={{ padding: '10px', border: '1px solid #f00' }}>{children}</div>
+    return <div style={{ padding: '10px', border: '1px solid #f0f' }}>{children}</div>
   })
   .props<{ cta: string }>()
   .component(({ data, props }) => {

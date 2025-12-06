@@ -23,6 +23,7 @@ expo router
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
 reset _pointType in continue only in that places where it needed, else just preserve current value
+add _ to all clases, and hide all previate methods
 why do we need empty .loader() ?
 move all types to [name].types.ts, and export everything from types.ts
 point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
@@ -55,7 +56,6 @@ analyze why client bundle so big in examples
 check bun pruner, and vite pruner creates correct sourcemaps
 ? router export function getCurrentLocation()
 after build validate if dist paths exists, like engine.validate()
-add _ to all clases, and hide all previate methods
 input of page component omit it, by params and search params, make it strict
 check if mutation can be client only
 ? location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
@@ -94,6 +94,10 @@ npm @point0
 ----------------
 ------ v2 ------
 ----------------
+
+example convex (preloadQuery in loader and store data there, then usePreloadedQuery)
+extendsion, that extends Point0, and Engine, so we can add .lets('convexQuery') for example
+example convex (I can generate convex dir fully, and just add .lets('convexQuery'), .convexQuery() and here I have just my input as args, and handler fully generated via previous loaders and ctxs)
 
 ? .attachable(), like shared, but will not automatically attach to root, but can be attached manually
 ? route0 respect origin on match and try two clients with one server

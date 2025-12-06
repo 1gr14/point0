@@ -3018,7 +3018,7 @@ export class Point0<
     if (this._wrappers.length === 0) {
       return component as Exclude<React.ReactNode, Promise<any>>
     }
-    return this._wrappers.reduce((acc, Wrapper, index) => {
+    return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
       return React.createElement(Wrapper, { key: index, children: acc })
     }, component) as Exclude<React.ReactNode, Promise<any>>
   }
