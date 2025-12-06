@@ -4,7 +4,6 @@
 
 reset _pointType in continue only in that places where it needed, else just preserve current value
 add _ to all clases, and hide all previate methods
-why do we need empty .loader() ?
 move all types to [name].types.ts, and export everything from types.ts
 point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
 fix fn prop type for public things, make input first arg, location is optional setting in second arg object

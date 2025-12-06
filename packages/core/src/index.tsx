@@ -1943,38 +1943,8 @@ export class Point0<
     })
   }
 
-  loader(): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
   loader<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
-  ): Point0<
-    'middleware',
-    TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TNewData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  loader<TNewData extends Data = Data>(
-    loaderFn?: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
   ): Point0<
     'middleware',
     TLetsEndPointType,
@@ -2006,6 +1976,7 @@ export class Point0<
       _pointType: 'middleware',
       _extractFns: [
         ...this._extractFns,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune loader for client
         { type: 'loader', fn: loaderFn ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
       ] as never,
     })
