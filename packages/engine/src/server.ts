@@ -1,4 +1,4 @@
-import type { LazyPointsModule, PointsManagersGroup, ReadyPointsModule } from '@point0/core/points-manager'
+import type { LazyPointsModule, AllPointsManagers, ReadyPointsModule } from '@point0/core/points-manager'
 import { PointsManager } from '@point0/core/points-manager'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
@@ -24,7 +24,7 @@ import {
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
   cwd: string
-  pmg: PointsManagersGroup
+  allPointsManagers: AllPointsManagers
   providedPointsManager: PointsManager | null
   pointsFile: string | null
   pointsManager: TInitialized extends true ? PointsManager | null : PointsManager | null
@@ -64,10 +64,10 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     bunBuildConfig: ServerBunBuildConfigDefinition
     bunPlugins: ServerBunPluginsDefinition
     publicdirOutdir: string | null
-    pmg: PointsManagersGroup
+    allPointsManagers: AllPointsManagers
   }) {
     this.cwd = input.cwd
-    this.pmg = input.pmg
+    this.allPointsManagers = input.allPointsManagers
     this.scope = input.scope
     this.providedPointsManager = input.providedPointsManager
     this.pointsFile = input.pointsFile
@@ -92,7 +92,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     cwd: string
     scope: PointsScope
     points: PointsManager | string | null
-    pmg: PointsManagersGroup
+    allPointsManagers: AllPointsManagers
     engineFile: string | null
     cwdBeforeBuild: string
     itWasBuilt: boolean
@@ -443,7 +443,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       bunServer,
       server: this,
       clients: this.clients,
-      pmg: this.pmg,
+      allPointsManagers: this.allPointsManagers,
       request,
       parsedUrl,
       fallbackScope: scope ?? this.fallbackScope,

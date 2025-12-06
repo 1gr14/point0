@@ -7,6 +7,7 @@ describe('idea page', () => {
   it.concurrent('should work with point.extract', async () => {
     const result = await ideaPage.point.extract({
       input: { id: '1' },
+      requiredCtx: { request: new Request('/') },
     })
     expect(result.status).toBe(202)
   })
@@ -14,6 +15,7 @@ describe('idea page', () => {
     const result = await Extractor.extract({
       point: ideaPage.point,
       input: { id: '1' },
+      requiredCtx: { request: new Request('/') },
     })
     expect(result.status).toBe(202)
   })
@@ -22,6 +24,7 @@ describe('idea page', () => {
     const result = await engine.extract({
       point: ideaPage.point,
       input: { id: '1' },
+      requiredCtx: { request: new Request('/') },
     })
     expect(result.status).toBe(202)
   })

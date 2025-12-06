@@ -1,7 +1,8 @@
 import { Engine } from '@point0/engine'
+import type { client } from './lib/client'
 import { routes } from './lib/routes'
 
-export const engine = Engine.create(import.meta.url, {
+export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
   // clientsServerOutdir: '../dist/server',
   // clientsSelfOutdir: '../dist',
   pointsGlob: ['**/*.{ts,tsx}'],

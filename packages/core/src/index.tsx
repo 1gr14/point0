@@ -76,6 +76,7 @@ import type {
   LoadingHeadFn,
   MiddlewareHeadFn,
   MountableComponent,
+  MountableComponentProps,
   OnPrefetchFn,
   PageComponent,
   PagePrefetchPolicy,
@@ -149,34 +150,34 @@ export class Point0<
     TProps
   > = {} as never
 
-  static _prevUnstableId = 0
-  static _getNextUnstableId(): number {
+  point: typeof this // this, needed for generator to collect points
+
+  private static _prevUnstableId = 0
+  private static _getNextUnstableId(): number {
     return Point0._prevUnstableId++
   }
 
-  point: typeof this // this, needed for generator to collect points
-
-  _base: BasePoint | undefined
-  _root: RootPoint | undefined
-  _serverurl: string | undefined
-  _baseurl: string | null | undefined
-  _pointType: TPointType
-  _letsEndPointType: TLetsEndPointType
-  _inputSchema: TInputSchema
-  _responseFn: TResponseOutput extends ResponseOutput
+  private readonly _base: BasePoint | undefined
+  readonly _root: RootPoint | undefined
+  private readonly _serverurl: string | undefined
+  readonly _baseurl: string | null | undefined
+  readonly _pointType: TPointType
+  private readonly _letsEndPointType: TLetsEndPointType
+  inputSchema: TInputSchema
+  readonly _responseFn: TResponseOutput extends ResponseOutput
     ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
     : undefined
-  _scope: PointsScope
-  _attachedTo: PointsScope[]
-  _headFns: MiddlewareHeadFn[]
-  _defaultQueryOptions: ExtraUseQueryOptions | undefined
-  _defaultInfiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined
-  _defaultPageQueryOptions: ExtraUseQueryOptions | undefined
-  _defaultLayoutQueryOptions: ExtraUseQueryOptions | undefined
-  _defaultComponentQueryOptions: ExtraUseQueryOptions | undefined
-  _defaultProviderQueryOptions: ExtraUseQueryOptions | undefined
-  _queryOptions: ExtraUseQueryOptions
-  _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+  readonly _scope: PointsScope
+  private readonly _attachedTo: PointsScope[]
+  private readonly _headFns: MiddlewareHeadFn[]
+  private readonly _defaultQueryOptions: ExtraUseQueryOptions | undefined
+  private readonly _defaultInfiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined
+  private readonly _defaultPageQueryOptions: ExtraUseQueryOptions | undefined
+  private readonly _defaultLayoutQueryOptions: ExtraUseQueryOptions | undefined
+  private readonly _defaultComponentQueryOptions: ExtraUseQueryOptions | undefined
+  private readonly _defaultProviderQueryOptions: ExtraUseQueryOptions | undefined
+  private readonly _queryOptions: ExtraUseQueryOptions
+  readonly _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
     InputRaw<TRouteDefinition, TInputSchema>,
     FinalClientData<TData, TClientData>,
     Error0,
@@ -184,34 +185,38 @@ export class Point0<
     QueryKey,
     unknown
   >
-  _queryResultType: TQueryResultType
-  _wrappers: WrapperComponentType[]
-  _extractFns: ExtractFnRecord[]
-  _clientExtractFns: ClientExtractFnRecord[]
-  _providerValueSetter: ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>> | undefined
-  _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
-  _route: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
-  _prevRoute: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
-  _page:
+  readonly _queryResultType: TQueryResultType
+  private readonly _wrappers: WrapperComponentType[]
+  readonly _extractFns: ExtractFnRecord[]
+  private readonly _clientExtractFns: ClientExtractFnRecord[]
+  private readonly _providerValueSetter:
+    | ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>>
+    | undefined
+  private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
+  readonly _route: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
+  private readonly _prevRoute: TPrevRouteDefinition extends RouteDefinition
+    ? CallabelRoute<TPrevRouteDefinition>
+    : UndefinedRoute
+  private readonly _page:
     | PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
     | UndefinedPageComponent
-  _component:
+  private readonly _component:
     | ComponentComponent<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TProps>
     | UndefinedComponentComponent
-  _layout:
+  private readonly _layout:
     | LayoutComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
     | UndefinedLayoutComponent
-  _layouts: LayoutPoint[]
-  _name: PointName | UndefinedPointName
-  _unstableId: number
-  _fetchOptions: FetchOptionsFn | undefined
-  _scrollPositionGetter: ScrollPositionGetter
-  _scrollPositionSetter: ScrollPositionSetter
-  _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
-  _prefetchPolicy: PagePrefetchPolicy
-  _onPrefetchFns: OnPrefetchFn[]
-  _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
-  _errorComponent?: ErrorComponentType<
+  readonly _layouts: LayoutPoint[]
+  readonly _name: PointName | UndefinedPointName
+  private readonly _unstableId: number
+  private readonly _fetchOptions: FetchOptionsFn | undefined
+  private readonly _scrollPositionGetter: ScrollPositionGetter
+  private readonly _scrollPositionSetter: ScrollPositionSetter
+  private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
+  private readonly _prefetchPolicy: PagePrefetchPolicy
+  private readonly _onPrefetchFns: OnPrefetchFn[]
+  private readonly _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
+  private readonly _errorComponent?: ErrorComponentType<
     DestinationComponentType,
     TQueryResultType,
     TData,
@@ -221,7 +226,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  _pageErrorComponent?: ErrorComponentType<
+  private readonly _pageErrorComponent?: ErrorComponentType<
     'page',
     TQueryResultType,
     TData,
@@ -231,7 +236,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  _componentErrorComponent?: ErrorComponentType<
+  private readonly _componentErrorComponent?: ErrorComponentType<
     'component',
     TQueryResultType,
     TData,
@@ -241,7 +246,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  _loadingComponent?: LoadingComponentType<
+  private readonly _loadingComponent?: LoadingComponentType<
     DestinationComponentType,
     TQueryResultType,
     TData,
@@ -251,7 +256,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  _pageLoadingComponent?: LoadingComponentType<
+  private readonly _pageLoadingComponent?: LoadingComponentType<
     'page',
     TQueryResultType,
     TData,
@@ -261,7 +266,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  _componentLoadingComponent?: LoadingComponentType<
+  private readonly _componentLoadingComponent?: LoadingComponentType<
     'component',
     TQueryResultType,
     TData,
@@ -279,7 +284,7 @@ export class Point0<
     _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
-    _inputSchema?: TInputSchema
+    inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -396,7 +401,7 @@ export class Point0<
     this._attachedTo = props._attachedTo
     this._base = props._base ?? undefined
     this._root = props._root ?? undefined
-    this._inputSchema = (props._inputSchema ?? undefined) as TInputSchema
+    this.inputSchema = (props.inputSchema ?? undefined) as TInputSchema
     this._serverurl = props._serverurl ?? undefined
     this._baseurl = props._baseurl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
@@ -507,7 +512,7 @@ export class Point0<
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
   }
 
-  _continue<
+  private _continue<
     TPointType extends PointType,
     TLetsEndPointType extends EndPointType | UndefinedEndPointType,
     TRequiredCtx extends RequiredCtx,
@@ -529,7 +534,7 @@ export class Point0<
     _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
-    _inputSchema?: TInputSchema
+    inputSchema?: TInputSchema
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -679,7 +684,7 @@ export class Point0<
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
-      _inputSchema: (overrides._inputSchema ?? this._inputSchema) as TInputSchema,
+      inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
       _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
         : undefined,
@@ -749,25 +754,6 @@ export class Point0<
     return result
   }
 
-  // TODO:ASAP
-  static isEndPointType(pointType: PointType): boolean {
-    return (
-      pointType === 'root' ||
-      pointType === 'base' ||
-      pointType === 'page' ||
-      pointType === 'layout' ||
-      pointType === 'response' ||
-      pointType === 'query' ||
-      pointType === 'infiniteQuery' ||
-      pointType === 'mutation' ||
-      pointType === 'component' ||
-      pointType === 'provider'
-    )
-  }
-  isEndPoint(): boolean {
-    return Point0.isEndPointType(this._pointType)
-  }
-
   static create(
     scope: string,
   ): Point0<
@@ -790,6 +776,7 @@ export class Point0<
   ): Point0<
     'middleware',
     'root',
+    // TODO: check .d.ts files, is this approach heavy or not?
     TRootPoint['Infer']['RequiredCtx'],
     TRootPoint['Infer']['Ctx'],
     TRootPoint['Infer']['Data'],
@@ -1956,7 +1943,7 @@ export class Point0<
   >
   input(inputSchema: InputSchemaZod) {
     return this._continue({
-      _inputSchema: this._inputSchema ? this._inputSchema.extend(inputSchema.shape) : inputSchema,
+      inputSchema: this.inputSchema ? this.inputSchema.extend(inputSchema.shape) : inputSchema,
     }) as never
   }
 
@@ -2232,8 +2219,8 @@ export class Point0<
           : 'query'
         : TQueryResultType,
     })
-    const pageWithPoint = point._Page
-    Object.assign(pageWithPoint, { point })
+    const pageWithPoint = point._Page.bind(point)
+    Object.assign(pageWithPoint, { point, lets: point.lets.bind(point) })
     return pageWithPoint as never
     // Point0.setGlobalPoint(point)
     // return point._Page
@@ -2298,7 +2285,7 @@ export class Point0<
         : TQueryResultType,
     })
     const componentWithPoint = point._Component
-    Object.assign(componentWithPoint, { point })
+    Object.assign(componentWithPoint, { point, lets: point.lets.bind(point) })
     return componentWithPoint as never
     // Point0.setGlobalPoint(point)
     // return point._Component
@@ -2624,11 +2611,29 @@ export class Point0<
 
   // internal utils
 
+  private static _isEndPointType(pointType: PointType): boolean {
+    return (
+      pointType === 'root' ||
+      pointType === 'base' ||
+      pointType === 'page' ||
+      pointType === 'layout' ||
+      pointType === 'response' ||
+      pointType === 'query' ||
+      pointType === 'infiniteQuery' ||
+      pointType === 'mutation' ||
+      pointType === 'component' ||
+      pointType === 'provider'
+    )
+  }
+  private _isEndPoint(): boolean {
+    return Point0._isEndPointType(this._pointType)
+  }
+
   _isRoot(): boolean {
     return this._name === this._scope && this._pointType === 'root'
   }
 
-  _getErrorComponent<TType extends DestinationComponentType>({
+  private _getErrorComponent<TType extends DestinationComponentType>({
     type,
   }: {
     type: TType
@@ -2648,7 +2653,7 @@ export class Point0<
     }[type] ?? this._errorComponent) as never
   }
 
-  _getLoadingComponent<TType extends DestinationComponentType>({
+  private _getLoadingComponent<TType extends DestinationComponentType>({
     type,
   }: {
     type: TType
@@ -2668,7 +2673,7 @@ export class Point0<
     }[type] ?? this._loadingComponent) as never
   }
 
-  _withWrappers = (component: React.ReactNode): Exclude<React.ReactNode, Promise<any>> => {
+  private _withWrappers(component: React.ReactNode): Exclude<React.ReactNode, Promise<any>> {
     if (this._wrappers.length === 0) {
       return component as Exclude<React.ReactNode, Promise<any>>
     }
@@ -2686,7 +2691,7 @@ export class Point0<
     return this._clientExtractFns.length > 0 && this._clientExtractFns.some((fn) => fn.type === 'loader')
   }
 
-  _hasClientAsyncLoader(): boolean {
+  private _hasClientAsyncLoader(): boolean {
     return (
       this._clientExtractFns.length > 0 &&
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -2694,14 +2699,14 @@ export class Point0<
     )
   }
 
-  _getRouteForce = (): CallabelRoute<NonNullable<TRouteDefinition>> => {
+  private _getRouteForce(): CallabelRoute<NonNullable<TRouteDefinition>> {
     if (!this._route) {
       throw new Error(`No client route provided for this point. Name: ${this._name}.`)
     }
     return this._route as CallabelRoute<NonNullable<TRouteDefinition>>
   }
 
-  _extractClientAsync = async ({
+  private async _extractClientAsync({
     data,
     location,
     input,
@@ -2709,11 +2714,11 @@ export class Point0<
     data: Data
     location?: AnyLocation
     input: InputRaw<TRouteDefinition, TInputSchema>
-  }): Promise<{ clientData: Data }> => {
+  }): Promise<{ clientData: Data }> {
     let currentClientData: Data = data
     const { parsedInput, inputError } = (() => {
-      if (this._inputSchema) {
-        const parseResult = this._inputSchema.safeParse(input)
+      if (this.inputSchema) {
+        const parseResult = this.inputSchema.safeParse(input)
         if (parseResult.success) {
           return { parsedInput: parseResult.data, inputError: undefined }
         }
@@ -2745,7 +2750,7 @@ export class Point0<
     return { clientData: currentClientData }
   }
 
-  _extractClientSync = ({
+  private _extractClientSync({
     data,
     location,
     input,
@@ -2753,11 +2758,11 @@ export class Point0<
     data: AnyDataOrInfiniteData
     location?: AnyLocation
     input: InputRaw<TRouteDefinition, TInputSchema>
-  }): { clientData: AnyDataOrInfiniteData } => {
+  }): { clientData: AnyDataOrInfiniteData } {
     let currentClientData: AnyDataOrInfiniteData = data
     const { parsedInput, inputError } = (() => {
-      if (this._inputSchema) {
-        const parseResult = this._inputSchema.safeParse(input)
+      if (this.inputSchema) {
+        const parseResult = this.inputSchema.safeParse(input)
         if (parseResult.success) {
           return { parsedInput: parseResult.data, inputError: undefined }
         }
@@ -2789,12 +2794,12 @@ export class Point0<
     return { clientData: currentClientData }
   }
 
-  _extractHead = (
+  _extractHead(
     useLoaderResult: Omit<
       UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any>,
       'query'
     >,
-  ): ResolvableHead[] => {
+  ): ResolvableHead[] {
     const head: ResolvableHead[] = []
     for (const headFn of this._headFns) {
       const headFnResult = headFn(useLoaderResult)
@@ -2804,18 +2809,18 @@ export class Point0<
     return head
   }
 
-  _useHead = (
+  private _useHead(
     useLoaderResult: Omit<
       UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any>,
       'query'
     >,
-  ): void => {
+  ): void {
     for (const headItem of this._extractHead(useLoaderResult)) {
       useHead(headItem)
     }
   }
 
-  _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
+  private _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
     const route = this._route
     if (!route) {
       return Point0._currentLocation.get()
@@ -2825,7 +2830,7 @@ export class Point0<
     >
   }
 
-  _getSelfLocationByAnotherLocationOrInput(
+  private _getSelfLocationByAnotherLocationOrInput(
     location?: AnyLocation | undefined,
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): AnyLocation {
@@ -2849,7 +2854,7 @@ export class Point0<
 
   // fetching and queries
 
-  useQuery = (
+  useQuery(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
@@ -2861,7 +2866,7 @@ export class Point0<
           queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
-  ): UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, any> => {
+  ): UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, any> {
     const [input = {}, queryOptions, fetchOptions] = args
     const location = useLocation()
     const serverQueryEnabled = this._hasLoader()
@@ -2904,7 +2909,7 @@ export class Point0<
     return query as never
   }
 
-  useInfiniteQuery = (
+  useInfiniteQuery(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
@@ -2934,7 +2939,7 @@ export class Point0<
             | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
-  ): UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, any> => {
+  ): UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, any> {
     const [input = {}, infiniteQueryOptions, fetchOptions] = args
     const location = useLocation()
     const serverQueryEnabled = this._hasLoader()
@@ -2977,7 +2982,7 @@ export class Point0<
     return query as never
   }
 
-  _useLoader = (
+  private _useLoader(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
@@ -3009,7 +3014,7 @@ export class Point0<
             | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
-  ): UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any> => {
+  ): UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any> {
     const query =
       this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery(...(args as never)) : this.useQuery(...args)
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
@@ -3128,7 +3133,7 @@ export class Point0<
     ]
   }
 
-  _getCombinedQueryKey({
+  private _getCombinedQueryKey({
     input = {} as never,
     outputType = this._pointType === 'response' ? 'response' : 'data',
     isInfiniteQuery,
@@ -3211,7 +3216,7 @@ export class Point0<
     return result
   }
 
-  _getClientQueryOptions({
+  private _getClientQueryOptions({
     input,
     queryOptions,
     location,
@@ -3241,7 +3246,7 @@ export class Point0<
     } as never
   }
 
-  _getCombinedQueryOptions({
+  private _getCombinedQueryOptions({
     input,
     location,
     queryClient,
@@ -3341,7 +3346,7 @@ export class Point0<
     throw new Error('No loader found')
   }
 
-  _getServerInfiniteQueryOptions({
+  private _getServerInfiniteQueryOptions({
     input,
     infiniteQueryOptions,
     fetchOptions,
@@ -3387,7 +3392,7 @@ export class Point0<
     return result as never
   }
 
-  _getClientInfiniteQueryOptions({
+  private _getClientInfiniteQueryOptions({
     input,
     infiniteQueryOptions,
     data,
@@ -3442,7 +3447,7 @@ export class Point0<
     } as never
   }
 
-  _getCombinedInfiniteQueryOptions({
+  private _getCombinedInfiniteQueryOptions({
     input,
     infiniteQueryOptions,
     fetchOptions,
@@ -3607,7 +3612,7 @@ export class Point0<
     throw new Error('No loader found')
   }
 
-  _useServerQuery = ({
+  private _useServerQuery({
     input,
     queryOptions,
     fetchOptions,
@@ -3617,11 +3622,11 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-  }): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> => {
+  }): UseQueryResult<FetchOutput<TResponseOutput, TData>, Error0> {
     return useQuery(this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType }))
   }
 
-  _useClientQuery = ({
+  private _useClientQuery({
     input,
     queryOptions,
     location,
@@ -3629,7 +3634,7 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
-  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
+  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> {
     return useQuery(
       this._getClientQueryOptions({
         input,
@@ -3639,7 +3644,7 @@ export class Point0<
     )
   }
 
-  _useCombinedQuery = ({
+  private _useCombinedQuery({
     input,
     queryOptions,
     location,
@@ -3649,7 +3654,7 @@ export class Point0<
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
-  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> => {
+  }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> {
     const queryClient = useQueryClient()
     return useQuery(
       this._getCombinedQueryOptions({
@@ -3662,7 +3667,7 @@ export class Point0<
     )
   }
 
-  _useServerInfiniteQuery = ({
+  private _useServerInfiniteQuery({
     input,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
@@ -3681,7 +3686,7 @@ export class Point0<
       | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-  }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> => {
+  }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> {
     const infiniteQueryOptions = this._getServerInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -3691,7 +3696,7 @@ export class Point0<
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
 
-  _useClientInfiniteQuery = ({
+  private _useClientInfiniteQuery({
     input,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     location,
@@ -3708,7 +3713,7 @@ export class Point0<
           unknown
         >
       | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
+  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> {
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -3717,7 +3722,7 @@ export class Point0<
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
 
-  _useCombinedInfiniteQuery = ({
+  private _useCombinedInfiniteQuery({
     input,
     infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
@@ -3736,7 +3741,7 @@ export class Point0<
         >
       | undefined
     fetchOptions?: FetchOptions | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
+  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> {
     const queryClient = useQueryClient()
     const infiniteQueryOptions = this._getCombinedInfiniteQueryOptions({
       input,
@@ -3920,7 +3925,7 @@ export class Point0<
     return queryOptions.queryKey
   }
 
-  async _prefetchPageQueryClientDehydratedState({
+  private async _prefetchPageQueryClientDehydratedState({
     input,
     queryClient,
     queryOptions,
@@ -3963,9 +3968,8 @@ export class Point0<
           input?: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?:
             | undefined
-            | (TQueryResultType extends 'query'
-                ? Partial<ExtraUseQueryOptions>
-                : Partial<
+            | (TQueryResultType extends 'infiniteQuery'
+                ? Partial<
                     ExtraUseInfiniteQueryOptions<
                       InputRaw<TRouteDefinition, TInputSchema>,
                       FinalClientData<TData, TClientData>,
@@ -3974,7 +3978,8 @@ export class Point0<
                       QueryKey,
                       unknown
                     >
-                  >),
+                  >
+                : Partial<ExtraUseQueryOptions>),
           settings?: {
             location?: AnyLocation
             queryClient?: QueryClient
@@ -3987,9 +3992,8 @@ export class Point0<
           input: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?:
             | undefined
-            | (TQueryResultType extends 'query'
-                ? Partial<ExtraUseQueryOptions>
-                : Partial<
+            | (TQueryResultType extends 'infiniteQuery'
+                ? Partial<
                     ExtraUseInfiniteQueryOptions<
                       InputRaw<TRouteDefinition, TInputSchema>,
                       FinalClientData<TData, TClientData>,
@@ -3998,7 +4002,8 @@ export class Point0<
                       QueryKey,
                       unknown
                     >
-                  >),
+                  >
+                : Partial<ExtraUseQueryOptions>),
           settings?: {
             location?: AnyLocation
             queryClient?: QueryClient
@@ -4053,24 +4058,41 @@ export class Point0<
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
-        const method = p._queryResultType === 'infiniteQuery' ? 'prefetchInfiniteQuery' : 'prefetchQuery'
-        return await p[method]({
-          queryClient,
-          input: p === this ? input : p._getUnsafeInputRawByLocation(location),
-          location,
-          queryOptions: queryOptions as any,
-          fetchOptions,
-          force,
-          mode:
-            policy === 'everything'
-              ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
-                'client'
-              : {
-                  serverQuery: 'server' as const,
-                  clientQuery: 'client' as const,
-                  serverClientQuery: 'serverAndClient' as const,
-                }[policy],
-        })
+        // const method = p._queryResultType === 'infiniteQuery' ? 'prefetchInfiniteQuery' : 'prefetchQuery'
+        const inputHere = p === this ? input : p._getUnsafeInputRawByLocation(location)
+        const mode =
+          policy === 'everything'
+            ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+              'client'
+            : {
+                serverQuery: 'server' as const,
+                clientQuery: 'client' as const,
+                serverClientQuery: 'serverAndClient' as const,
+              }[policy]
+        // return await p[method](inputHere as never, queryOptions as never, {
+        //   queryClient,
+        //   location,
+        //   fetchOptions,
+        //   force,
+        //   mode,
+        // })
+        if (p._queryResultType === 'infiniteQuery') {
+          return await p.prefetchInfiniteQuery(inputHere as never, queryOptions as never, {
+            queryClient,
+            location,
+            fetchOptions,
+            force,
+            mode,
+          })
+        } else {
+          return await p.prefetchQuery(inputHere as never, queryOptions, {
+            queryClient,
+            location,
+            fetchOptions,
+            force,
+            mode,
+          })
+        }
       }),
     )
 
@@ -4079,7 +4101,7 @@ export class Point0<
 
   // mountable components
 
-  _Page: MountableComponent<TInputSchema, TProps, false> = (props) => {
+  _Page = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -4203,7 +4225,7 @@ export class Point0<
     )
   }
 
-  _Component: MountableComponent<TInputSchema, TProps, false> = (props) => {
+  _Component = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -4264,7 +4286,7 @@ export class Point0<
     )
   }
 
-  _Layout: MountableComponent<TInputSchema, TProps, true> = (props) => {
+  _Layout = (props: MountableComponentProps<TInputSchema, TProps, true>): React.ReactNode => {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -4349,7 +4371,7 @@ export class Point0<
     return value
   }
 
-  Provider: MountableComponent<TInputSchema, UndefinedProps, true> = (props) => {
+  Provider = (props: MountableComponentProps<TInputSchema, UndefinedProps, true>): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
@@ -4469,17 +4491,17 @@ export class Point0<
     return Point0._queryClient.get()
   }
 
-  static _ssrLocation = ExtractorStore.define<AnyLocation | undefined, true>(
+  static readonly _ssrLocation = ExtractorStore.define<AnyLocation | undefined, true>(
     '__POINT0_SSR_LOCATION__',
     () => undefined,
     true,
   )
-  static _currentLocation = ExtractorStore.define<AnyLocation, true>(
+  private static readonly _currentLocation = ExtractorStore.define<AnyLocation, true>(
     '__POINT0_CURRENT_LOCATION__',
     () => Route0.getLocation('/'),
     true,
   )
-  static _queryClient = ExtractorStore.define<QueryClient, DehydratedState>(
+  private static readonly _queryClient = ExtractorStore.define<QueryClient, DehydratedState>(
     '__POINT0_QUERY_CLIENT__',
     () => new QueryClient(),
     (queryClient) =>
@@ -4602,7 +4624,8 @@ export class Point0<
     })
   }
 
-  static _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> = []
+  private static readonly _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> =
+    []
 
   // prefetch mode
 

@@ -169,8 +169,8 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
 
       const { parsedInput, inputError } = (() => {
-        if (point?._inputSchema) {
-          const parseResult = point._inputSchema.safeParse(input)
+        if (point?.inputSchema) {
+          const parseResult = point.inputSchema.safeParse(input)
           if (parseResult.success) {
             return { parsedInput: parseResult.data, inputError: undefined }
           }

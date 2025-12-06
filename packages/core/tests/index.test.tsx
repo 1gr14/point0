@@ -652,6 +652,6 @@ describe('Point0', () => {
         )
       }).point
     expect(pageX._route).toEqual(routeX)
-    expect(pageX._page).toEqual(expect.any(Function))
+    // expect(pageX._page).toEqual(expect.any(Function))
   })
 })

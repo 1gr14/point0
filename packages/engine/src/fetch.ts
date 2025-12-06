@@ -1,4 +1,4 @@
-import type { PointsManagersGroup } from '@point0/core/points-manager'
+import type { AllPointsManagers } from '@point0/core/points-manager'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { parseUrl, type ParsedUrl } from '@point0/core/utils'
 import type { ClientBun } from './client.js'
@@ -10,7 +10,7 @@ export const engineFetch = async ({
   bunServer,
   server,
   clients,
-  pmg,
+  allPointsManagers,
   request,
   parsedUrl,
   scope,
@@ -21,7 +21,7 @@ export const engineFetch = async ({
   bunServer?: Bun.Server<unknown>
   server: ServerBun<true>
   clients: Array<ClientBun<true>>
-  pmg: PointsManagersGroup
+  allPointsManagers: AllPointsManagers
   request: Request
   parsedUrl?: ParsedUrl
   scope?: PointsScope
@@ -53,7 +53,7 @@ export const engineFetch = async ({
     }
 
     // in case if some points was loaded via vite, we should refetch them
-    await pmg.readPoints()
+    await allPointsManagers.readPoints()
   }
   parsedUrl ??= parseUrl(request.url)
   const meta: Record<string, any> = {
@@ -72,7 +72,7 @@ export const engineFetch = async ({
 
     // TODO: lets provide here wrapResponse and wrapRequest and call it
     // TODO: also there on error fo input not throw it but return as error
-    const { task, input, suitable, extractor } = await pmg.prepareExtractorByRequest({
+    const { task, input, suitable, extractor } = await allPointsManagers.prepareExtractorByRequest({
       request,
       parsedUrl,
       fallbackScope,

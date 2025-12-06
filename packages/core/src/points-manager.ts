@@ -352,25 +352,25 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           record.type === 'layout'
             ? typeof point === 'function'
               ? React.lazy(async () => ({
-                  default: (await point())._Layout,
+                  default: await point().then((p) => p._Layout),
                 }))
               : point._Layout
             : record.type === 'page'
               ? typeof point === 'function'
                 ? React.lazy(async () => ({
-                    default: (await point())._Page,
+                    default: await point().then((p) => p._Page),
                   }))
                 : point._Page
               : record.type === 'component'
                 ? typeof point === 'function'
                   ? React.lazy(async () => ({
-                      default: (await point())._Component,
+                      default: await point().then((p) => p._Component),
                     }))
                   : point._Component
                 : record.type === 'provider'
                   ? typeof point === 'function'
                     ? React.lazy(async () => ({
-                        default: (await point()).Provider,
+                        default: await point().then((p) => p.Provider),
                       }))
                     : point.Provider
                   : undefined,
@@ -644,9 +644,8 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (!result) {
       return undefined
     }
-    await result.page.prefetchPage({
+    await result.page.prefetchPage(result.page._getUnsafeInputRawByLocation(location), undefined, {
       queryClient,
-      input: result.page._getUnsafeInputRawByLocation(location),
       location,
       policy,
     })
@@ -786,7 +785,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 }
 
-export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pointsManagers: Array<PointsManager<true>>
 
   private constructor(pointsManagers: Array<PointsManager<true, TRequiredCtx>>) {
@@ -795,8 +794,8 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
 
   static create<TRequiredCtx extends RequiredCtx>(
     ...points: Array<PointsManager<true, TRequiredCtx>>
-  ): PointsManagersGroup<TRequiredCtx> {
-    return new PointsManagersGroup<TRequiredCtx>(points)
+  ): AllPointsManagers<TRequiredCtx> {
+    return new AllPointsManagers<TRequiredCtx>(points)
   }
 
   async add(...points: Array<PointsManager<boolean, TRequiredCtx>>): Promise<typeof this> {

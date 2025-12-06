@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { Extractor, ExtractResult } from '@point0/core/extractor'
-import type { LazyPointsModule, PointsManagersGroup, ReadyPointsModule } from '@point0/core/points-manager'
+import type { LazyPointsModule, AllPointsManagers, ReadyPointsModule } from '@point0/core/points-manager'
 import { PointsManager } from '@point0/core/points-manager'
 import type { AnyPoint, AppComponent, InputParsed, PointsScope } from '@point0/core/types'
 import type { ParsedUrl } from '@point0/core/utils'
@@ -34,7 +34,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope
   engineFile: string | null
-  pmg: PointsManagersGroup
+  allPointsManagers: AllPointsManagers
   providedPointsManager: PointsManager | null
   pointsFile: string | null
   // pointsDistFile: string | null
@@ -101,7 +101,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     publicdir: Publicdir
-    pmg: PointsManagersGroup
+    allPointsManagers: AllPointsManagers
     clientBunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
     clientBunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     serverViteDevServer: ViteDevServer | null
@@ -112,7 +112,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
-    this.pmg = input.pmg
+    this.allPointsManagers = input.allPointsManagers
     this.providedPointsManager = input.pointsManager
     this.pointsFile = input.pointsFile
     // this.pointsDistFile = input.pointsDistFile
@@ -175,7 +175,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     engineFile: string | null
-    pmg: PointsManagersGroup
+    allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
     prune: boolean

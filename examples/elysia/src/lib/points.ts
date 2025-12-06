@@ -58,7 +58,7 @@ export const ideasNewsPage_408hi1t0rg_lazy = {
 export const generalLayout_27c91mv210p_lazy = {
   type: 'layout',
   name: 'generalLayout',
-  route: '/',
+  route: '/generalLayout',
   point: async () => (await import('../layouts/general.js')).generalLayout.point,
 } as LazyPointsCollectionRecord
 

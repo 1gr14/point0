@@ -2,6 +2,7 @@ import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
 
 export const client = Point0.create('client')
+  .requireCtx<{ request: Request }>()
   .ctx({
     prisma,
     env: process.env,

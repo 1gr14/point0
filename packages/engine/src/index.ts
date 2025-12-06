@@ -1,6 +1,14 @@
 import type { ExtractResult } from '@point0/core/extractor'
-import { PointsManagersGroup } from '@point0/core/points-manager'
-import type { EndPoint, PointsScope, RequiredCtx, WithMaybeOptionalReqiredCtx } from '@point0/core/types'
+import { AllPointsManagers } from '@point0/core/points-manager'
+import type {
+  EndPoint,
+  OmitRequiredCtxRequestProp,
+  PointsScope,
+  RequiredCtx,
+  UndefinedCtx,
+  UndefinedCtxIfRequiredCtxContainsOnlyRequestProp,
+  WithMaybeOptionalReqiredCtx,
+} from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -10,44 +18,49 @@ import type { FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import { ServerBun } from './server.js'
 
-export class Engine<TInitialized extends boolean = boolean> {
+export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
   server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
   logger: EngineLogger
   generator: FilesGenerator
-  pmg: PointsManagersGroup
+  allPointsManagers: AllPointsManagers
   initialized: TInitialized
 
   private constructor(input: {
     clients: ClientBun[]
     server: ServerBun
     logger: EngineLogger
-    pmg: PointsManagersGroup
+    allPointsManagers: AllPointsManagers
     initialized: TInitialized
     generator: FilesGenerator
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
     this.logger = input.logger
-    this.pmg = input.pmg
+    this.allPointsManagers = input.allPointsManagers
     this.initialized = input.initialized
     this.generator = input.generator
   }
 
-  static create(fileUrl: string, options: EngineOptions): Engine<false>
-  static create(options: EngineOptions): Engine<false>
-  static create(...args: [string, EngineOptions] | [EngineOptions]): Engine<false> {
+  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+    fileUrl: string,
+    options: EngineOptions,
+  ): Engine<TRequiredCtx, false>
+  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
+  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+    ...args: [string, EngineOptions] | [EngineOptions]
+  ): Engine<TRequiredCtx, false> {
     const options = args.length === 2 ? args[1] : args[0]
     const fileUrl = args.length === 2 ? args[0] : undefined
     if (fileUrl) {
       options.engineFile ??= fileURLToPath(fileUrl)
     }
     const parsedOptions = parseEngineOptions(options)
-    const pmg = PointsManagersGroup.create()
+    const allPointsManagers = AllPointsManagers.create()
 
     const server = ServerBun.create({
       ...parsedOptions.server,
-      pmg,
+      allPointsManagers,
       cwd: parsedOptions.general.cwd,
       cwdBeforeBuild: parsedOptions.general.cwdBeforeBuild,
       engineFile: parsedOptions.general.engineFile,
@@ -60,7 +73,7 @@ export class Engine<TInitialized extends boolean = boolean> {
         ...clientOptions,
         cwd: parsedOptions.general.cwd,
         logger: parsedOptions.general.logger,
-        pmg,
+        allPointsManagers,
         server,
       })
       return client
@@ -96,16 +109,16 @@ export class Engine<TInitialized extends boolean = boolean> {
       clients,
       server,
       logger: parsedOptions.general.logger,
-      pmg,
+      allPointsManagers,
       initialized: false,
       generator,
     })
   }
 
   // async init(): Promise<Engine<true>> {
-  async init(options?: { preventClientDevServers?: boolean }): Promise<Engine<true>> {
+  async init(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, true>> {
     if (this.isInitialized()) {
-      return this as Engine<true>
+      return this as Engine<TRequiredCtx, true>
     }
 
     const intializedServer = await this.server.init()
@@ -116,13 +129,13 @@ export class Engine<TInitialized extends boolean = boolean> {
         })
       }),
     )
-    await this.pmg.add(
+    await this.allPointsManagers.add(
       ...(intializedServer.pointsManager ? [intializedServer.pointsManager] : []),
       ...intializedClients.map((client) => client.pointsManager),
     )
     this.initialized = true as never
 
-    return this as Engine<true>
+    return this as Engine<TRequiredCtx, true>
   }
 
   async serveClientDevServers(): Promise<void> {
@@ -133,31 +146,30 @@ export class Engine<TInitialized extends boolean = boolean> {
     )
   }
 
-  isInitialized(): this is Engine<true> {
+  isInitialized(): this is Engine<TRequiredCtx, true> {
     return !!this.initialized
   }
 
-  // async dev(options?: { requiredCtx?: RequiredCtx; generate?: boolean; server?: boolean }) {
-  //   const { requiredCtx = {}, generate = true, server = true } = options ?? {}
-  //   if (generate) {
-  //     await this.generateWatch()
-  //   }
-  //   if (server) {
-  //     await this.serve(requiredCtx)
-  //   } else {
-  //     await this.init() // so we just initialize clients dev servers
-  //   }
-  // }
-
-  async serve(options?: { requiredCtx?: RequiredCtx; preventClientDevServers?: boolean }): Promise<void> {
-    const intializedEngine = await this.init({ preventClientDevServers: options?.preventClientDevServers })
-    await intializedEngine.server.serve({ requiredCtx: options?.requiredCtx })
+  async serve(
+    ...args: UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx> extends UndefinedCtx
+      ? [options?: { requiredCtx?: OmitRequiredCtxRequestProp<TRequiredCtx>; preventClientDevServers?: boolean }]
+      : [options: { requiredCtx: OmitRequiredCtxRequestProp<TRequiredCtx>; preventClientDevServers?: boolean }]
+  ): Promise<void> {
+    const { requiredCtx, preventClientDevServers } = args[0] ?? {}
+    const intializedEngine = await this.init({ preventClientDevServers })
+    await intializedEngine.server.serve({ requiredCtx })
   }
 
-  async fetch(request: Request, { requiredCtx }: { requiredCtx?: RequiredCtx }): Promise<Response> {
+  async fetch(
+    ...args: TRequiredCtx extends UndefinedCtx
+      ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
+      : [request: Request, options: { requiredCtx: TRequiredCtx }]
+  ): Promise<Response> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }
+    const request = args[0]
+    const { requiredCtx } = args[1] ?? {}
     return await this.server.fetch({
       request,
       requiredCtx,
@@ -180,7 +192,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     if (!point._root) {
       throw new Error('Point root not found')
     }
-    const { extractor, suitable } = await this.pmg.prepareExtractorByPointAndInput({
+    const { extractor, suitable } = await this.allPointsManagers.prepareExtractorByPointAndInput({
       input,
       point,
       ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>),

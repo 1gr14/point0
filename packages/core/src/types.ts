@@ -197,6 +197,7 @@ export type RootPoint<
 export type PagePoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
+  // TODO: Asap try figure out with any
   TData extends Data | UndefinedData = any,
   TClientData extends Data | UndefinedData = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
@@ -322,6 +323,18 @@ export type InputRaw<
 
 export type WithMaybeOptionalReqiredCtx<TRequiredCtx extends RequiredCtx = RequiredCtx> =
   TRequiredCtx extends UndefinedCtx ? { requiredCtx?: TRequiredCtx } : { requiredCtx: TRequiredCtx }
+export type OmitRequiredCtxRequestProp<TRequiredCtx extends RequiredCtx = RequiredCtx> =
+  TRequiredCtx extends UndefinedCtx
+    ? UndefinedCtx
+    : TRequiredCtx extends { request: Request }
+      ? Omit<TRequiredCtx, 'request'>
+      : TRequiredCtx
+export type UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx extends RequiredCtx = RequiredCtx> =
+  TRequiredCtx extends UndefinedCtx
+    ? UndefinedCtx
+    : IsEmptyObject<OmitRequiredCtxRequestProp<TRequiredCtx>> extends true
+      ? UndefinedCtx
+      : TRequiredCtx
 
 export type HasRequiredKeysInZod<T extends ZodObject<any>> = keyof {
   [K in keyof T['shape'] as T['shape'][K] extends ZodOptional<any> | ZodDefault<any> ? never : K]: true
@@ -356,6 +369,7 @@ export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | Unde
       : false
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
+export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : false
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 export type ShowError<Message extends string> = { error: Message } & never

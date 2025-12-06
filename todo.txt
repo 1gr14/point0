@@ -2,12 +2,9 @@
 ------ before start0 -----
 --------------------------
 
-add useInfiniteQuery
 add _ to all clases, and hide all previate methods
-
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
-point0.ts, engine.ts, and export everything form engine/index.ts and core/index.ts, just mount and some other can export from it own files
-
+point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
 prettify visible methods per TLetsEndpointType and TPointType
 assign full point to component
 
@@ -74,7 +71,8 @@ test for units
 test for engine
 test for e2e
 
-site & docs https://docusaurus.io/
+static site generator
+site & docs ( https://docusaurus.io/ or better custom all in my site solution )
 choose license
 prepare start0 selling
 prepare subscription, only yearly model
@@ -93,6 +91,7 @@ npm @point0
 ? example convex (preloadQuery in loader and store data there, then usePreloadedQuery)
 ? example convex (I can generate convex dir fully, and just add .lets('convexQuery'), .convexQuery() and here I have just my input as args, and handler fully generated via previous loaders and ctxs)
 
+? server build "dist/server/combined". So after build clients server part, when we build server we replace in engine string paths with import paths
 ? .attachable(), like shared, but will not automatically attach to root, but can be attached manually
 ? route0 respect origin on match and try two clients with o99ne server
 ? html template parsing by provided vars via ejs
