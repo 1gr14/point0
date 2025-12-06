@@ -2,15 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-PLUGIN
-const myPlugin = Point0.plugin('ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'onReq' | 'onRes', () => {}); or just Point0.ctxLoader(() => {}) myPoint.use(myPlugin)
-??? chain: const auth = x.chain((role?:string) => x.loader((c) => c.role === role)), myPage.use(auth('manager')), requireData()
-??? → chain: Point0.chain<TCtx, TData, TClientData>().what().ever()
-??? → chain: Point0.connection<typeof expoBase | typeof siteBase>().what().ever(); 
-??? ? so we need in extract also add base extracctFns
-??? lets add TBase/TRoot, and store there Infer of base, for example after Point0.connection<typeof server>()x.()x.() there will be still typeof server[Infer], wo we can remove TConnectedRootSourcePoint and TRequiredCtx, maye we Need store in Infer also this TRoot, and it can be nested for 5 levels for example
-??? add also .check it not mutate data or ctx, but can make it slimmer like authorized user, no it will break loader exists state
-
 EXPO
 expo example
 expo router
@@ -69,6 +60,8 @@ make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
 analyze if there same id points or route points, and throw error
+
+const plugin = <TExtra extends {}>(extra: TExtra) =><TData extends {}>({ data }: { data: TData }) => ({...data,a: 3,c: 4,...extra,}); const server2 = server1.loader(plugin({ x: 'x', a: 'a' }))
 
 --------------------------
 ------ after start0 ------
