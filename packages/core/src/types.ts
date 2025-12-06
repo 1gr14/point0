@@ -320,6 +320,9 @@ export type InputRaw<
     ? FlatInput<TRouteDefinition>
     : Record<never, never>
 
+export type WithMaybeOptionalReqiredCtx<TRequiredCtx extends RequiredCtx = RequiredCtx> =
+  TRequiredCtx extends UndefinedCtx ? { requiredCtx?: TRequiredCtx } : { requiredCtx: TRequiredCtx }
+
 export type HasRequiredKeysInZod<T extends ZodObject<any>> = keyof {
   [K in keyof T['shape'] as T['shape'][K] extends ZodOptional<any> | ZodDefault<any> ? never : K]: true
 } extends never

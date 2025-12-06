@@ -47,6 +47,7 @@ import type {
   Data,
   DestinationComponentType,
   EmptyCtx,
+  EndPoint,
   EndPointType,
   ErrorComponentType,
   ErrorHeadFn,
@@ -114,6 +115,7 @@ import type {
   UseLoaderResult,
   UsePointQueryResult,
   UseQueryOptions,
+  WithMaybeOptionalReqiredCtx,
   WrapperComponentType,
 } from './types.js'
 import { dedupeSlashes, mergeHeaders } from './utils.js'
@@ -2953,15 +2955,14 @@ export class Point0<
     withLayouts,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    requiredCtx: TRequiredCtx
     withLayouts?: boolean
-  }): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
+  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
     return (await Extractor.extract({
-      point: this as never,
-      input: input as never,
-      requiredCtx: requiredCtx as never,
+      point: this as never as EndPoint,
+      input,
       withLayouts,
-    })) as never
+      ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
+    })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
   }
 
   _getServerQueryKey({

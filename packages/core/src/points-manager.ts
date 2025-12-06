@@ -20,6 +20,7 @@ import type {
   RequiredCtx,
   RootPoint,
   UndefinedRoute,
+  WithMaybeOptionalReqiredCtx,
 } from './types.js'
 import { appendSlash, getBasepathOrNull, getHostnameOrNull, parseUrl, type ParsedUrl } from './utils.js'
 
@@ -894,8 +895,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
     parsedUrl?: ParsedUrl
     fallbackScope: PointsScope
     scope?: PointsScope
-    requiredCtx: TRequiredCtx
-  }): Promise<{
+  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
     task: FetchTask | undefined
     input: InputRaw
     suitable: GetSuitableResult
@@ -996,8 +996,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
     url: string
     fallbackScope: PointsScope
     scope?: PointsScope
-    requiredCtx: TRequiredCtx
-  }): Promise<{
+  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
     task: FetchTask | undefined
     input: InputRaw
     suitable: GetSuitableResult
@@ -1009,7 +1008,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
       parsedUrl,
       fallbackScope,
       scope,
-      requiredCtx,
+      ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
     })
   }
 
@@ -1020,8 +1019,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
   }: {
     point: TPoint
     input: TPoint['Infer']['InputRaw']
-    requiredCtx: TRequiredCtx
-  }): Promise<{
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<{
     input: TPoint['Infer']['InputRaw']
     suitable: GetSuitableResult
     extractor: Extractor
@@ -1058,8 +1056,7 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
     pointType: EndPointType
     pointName: PointName
     input: TPoint['Infer']['InputRaw']
-    requiredCtx: TRequiredCtx
-  }): Promise<{
+  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
     input: TPoint['Infer']['InputRaw']
     suitable: GetSuitableResult
     extractor: Extractor

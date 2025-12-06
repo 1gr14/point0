@@ -1,5 +1,6 @@
+import type { ExtractResult } from '@point0/core/extractor'
 import { PointsManagersGroup } from '@point0/core/points-manager'
-import type { EndPoint, PointsScope, RequiredCtx } from '@point0/core/types'
+import type { EndPoint, PointsScope, RequiredCtx, WithMaybeOptionalReqiredCtx } from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -8,7 +9,6 @@ import { parseEngineOptions, type EngineLogger, type EngineOptions } from './con
 import type { FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import { ServerBun } from './server.js'
-import type { ExtractResult } from '@point0/core/extractor'
 
 export class Engine<TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
@@ -154,7 +154,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     await intializedEngine.server.serve({ requiredCtx: options?.requiredCtx })
   }
 
-  async fetch(request: Request, requiredCtx?: RequiredCtx): Promise<Response> {
+  async fetch(request: Request, { requiredCtx }: { requiredCtx?: RequiredCtx }): Promise<Response> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }
@@ -172,9 +172,8 @@ export class Engine<TInitialized extends boolean = boolean> {
   }: {
     point: TPoint
     input: TPoint['Infer']['InputRaw']
-    requiredCtx: TPoint['Infer']['RequiredCtx']
     withLayouts?: boolean
-  }): Promise<ExtractResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ExtractResult> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }
@@ -184,7 +183,7 @@ export class Engine<TInitialized extends boolean = boolean> {
     const { extractor, suitable } = await this.pmg.prepareExtractorByPointAndInput({
       input,
       point,
-      requiredCtx,
+      ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>),
     })
     return await extractor.extract({ point: suitable.point, input, withLayouts })
   }

@@ -12,7 +12,7 @@ new Elysia()
   // .mount('*', engine.fetch.bind(engine))
   // if you have requiredCtx, do simething like:
   .all('*', async ({ request, store }) => {
-    return await engine.fetch(request, store) // second arg is just requiredCtx which will be passed to points
+    return await engine.fetch(request, { requiredCtx: store })
   })
   .listen(engine.server.port) // you can pick any port, so does not needed to use .server.port, but it is more readable
 

@@ -27,6 +27,7 @@ import type {
   RequiredCtx,
   ResponseOutput,
   UndefinedResponseOutput,
+  WithMaybeOptionalReqiredCtx,
 } from './types.js'
 
 export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -134,10 +135,9 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     point: TPoint
     input: TPoint['Infer']['InputRaw']
-    requiredCtx: TPoint['Infer']['RequiredCtx']
     extractor?: Extractor<TPoint['Infer']['RequiredCtx']> | undefined
     withLayouts?: boolean
-  }): Promise<ExtractResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ExtractResult> {
     if (!point._root) {
       throw new Error('Point root not found')
     }
