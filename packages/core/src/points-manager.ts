@@ -23,8 +23,8 @@ import type {
 } from './types.js'
 import { appendSlash, getBasepathOrNull, getHostnameOrNull, parseUrl, type ParsedUrl } from './utils.js'
 
-// TODO: when find suitable allow porvide "scope", then it will find only inside that
-// so remove force
+// TODO: maybe do not use modules, use just points collection. I think modules can help later with hmr or something else, so we can remove it later
+
 export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
   absPath: string | null
   readFn: PointsReadFn | null
@@ -785,82 +785,6 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 }
 
-export type LazyPointsCollectionRecord = {
-  type: EndPointType
-  name: PointName
-  route?: string | undefined
-  point: (() => Promise<EndPoint>) | EndPoint
-  layouts?: string[]
-}
-export type LazyPointsCollection = LazyPointsCollectionRecord[]
-export type ReadyPointsCollectionRecord = {
-  type: EndPointType
-  name: PointName
-  route?: string | undefined
-  point: EndPoint
-  Component?: React.ComponentType
-  layouts?: string[]
-}
-export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
-export type LazyRoutedPointsCollectionRecord = {
-  type: EndPointType
-  name: PointName
-  route: AnyRoute | UndefinedRoute
-  point: () => Promise<EndPoint>
-  Component?: React.LazyExoticComponent<React.ComponentType>
-  layouts: string[]
-}
-export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
-export type ReadyRoutedPointsCollectionRecord = {
-  type: EndPointType
-  name: PointName
-  route: AnyRoute | UndefinedRoute
-  point: EndPoint
-  Component?: React.ComponentType
-  layouts: string[]
-}
-export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
-export type RawPointsCollection = EndPoint[]
-
-export type LazyPointsModule = {
-  root_lazy: { point: RootPoint; type: 'root'; name: string }
-} & Record<string, LazyPointsCollectionRecord>
-export type ReadyPointsModule = { root_ready: { point: RootPoint } } & Record<string, { point: EndPoint }>
-
-export type PointsModuleType = 'ready' | 'lazy'
-
-export type LazyPoints = PointsManager<false>
-export type ReadyPoints = PointsManager<true>
-
-export type PagesTreeSourceRecord = {
-  layout: string | undefined
-  pages: string[]
-  nested: undefined | PagesTreeSourceRecord[]
-}
-export type PagesTreeSource = PagesTreeSourceRecord[]
-
-export type PagesTreeRecord = {
-  layoutName?: PointName
-  layoutPoint?: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
-  Layout?:
-    | React.ComponentType<{ children: React.ReactNode }>
-    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
-    | undefined
-  pages: Array<{
-    pageName: PointName
-    pageRoute: AnyRoute
-    pagePoint: PagePoint | (() => Promise<PagePoint>)
-    Page: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
-  }>
-  nested: undefined | PagesTreeRecord[]
-}
-export type PagesTree = PagesTreeRecord[]
-
-export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
-
-// TODO: when find suitable allow porvide "scope", then it will find only inside that
-// so remove force
-// TODO: add generic and type Source, and Connection so we can understand which ine used now
 export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pointsManagers: Array<PointsManager<true>>
 
@@ -1063,6 +987,32 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
     }
   }
 
+  async prepareExtractorByUrl({
+    url,
+    fallbackScope,
+    scope,
+    requiredCtx,
+  }: {
+    url: string
+    fallbackScope: PointsScope
+    scope?: PointsScope
+    requiredCtx: TRequiredCtx
+  }): Promise<{
+    task: FetchTask | undefined
+    input: InputRaw
+    suitable: GetSuitableResult
+    extractor: Extractor
+  }> {
+    const parsedUrl = parseUrl(url)
+    return await this.prepareExtractorByRequest({
+      request: new Request(url),
+      parsedUrl,
+      fallbackScope,
+      scope,
+      requiredCtx,
+    })
+  }
+
   async prepareExtractorByPointAndInput<TPoint extends EndPoint>({
     point,
     input,
@@ -1133,44 +1083,80 @@ export class PointsManagersGroup<TRequiredCtx extends RequiredCtx = RequiredCtx>
       extractor,
     }
   }
-
-  // async preparePageEversionRunByUrl({
-  //   url,
-  //   fallbackScope,
-  //   scope,
-  //   requiredCtx,
-  // }: {
-  //   url: string
-  //   fallbackScope: Scope
-  //   scope?: Scope
-  //   requiredCtx: TRequiredCtx
-  // }): Promise<{
-  //   suitable: GetSuitableResult
-  //   extractor: EversionRun
-  //   input: InputParsed
-  //   location: AnyLocation
-  // }> {
-  //   const location = Route0.getLocation(url)
-  //   const suitable = this.getSuitable({
-  //     pointType: 'page',
-  //     scope,
-  //     pageLocation: location,
-  //     fallbackScope,
-  //   })
-  //   const extractor = await suitable.???.createRun({
-  //     pageLocation: suitable.pageLocation,
-  //     currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
-  //     requiredCtx,
-  //   })
-  //   const input = { ...location.searchParams, ...suitable.pageLocation?.params }
-  //   return {
-  //     suitable,
-  //     extractor,
-  //     input,
-  //     location: suitable.pageLocation || location,
-  //   }
-  // }
 }
+
+export type LazyPointsCollectionRecord = {
+  type: EndPointType
+  name: PointName
+  route?: string | undefined
+  point: (() => Promise<EndPoint>) | EndPoint
+  layouts?: string[]
+}
+export type LazyPointsCollection = LazyPointsCollectionRecord[]
+export type ReadyPointsCollectionRecord = {
+  type: EndPointType
+  name: PointName
+  route?: string | undefined
+  point: EndPoint
+  Component?: React.ComponentType
+  layouts?: string[]
+}
+export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
+export type LazyRoutedPointsCollectionRecord = {
+  type: EndPointType
+  name: PointName
+  route: AnyRoute | UndefinedRoute
+  point: () => Promise<EndPoint>
+  Component?: React.LazyExoticComponent<React.ComponentType>
+  layouts: string[]
+}
+export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
+export type ReadyRoutedPointsCollectionRecord = {
+  type: EndPointType
+  name: PointName
+  route: AnyRoute | UndefinedRoute
+  point: EndPoint
+  Component?: React.ComponentType
+  layouts: string[]
+}
+export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
+export type RawPointsCollection = EndPoint[]
+
+export type LazyPointsModule = {
+  root_lazy: { point: RootPoint; type: 'root'; name: string }
+} & Record<string, LazyPointsCollectionRecord>
+export type ReadyPointsModule = { root_ready: { point: RootPoint } } & Record<string, { point: EndPoint }>
+
+export type PointsModuleType = 'ready' | 'lazy'
+
+export type LazyPoints = PointsManager<false>
+export type ReadyPoints = PointsManager<true>
+
+export type PagesTreeSourceRecord = {
+  layout: string | undefined
+  pages: string[]
+  nested: undefined | PagesTreeSourceRecord[]
+}
+export type PagesTreeSource = PagesTreeSourceRecord[]
+
+export type PagesTreeRecord = {
+  layoutName?: PointName
+  layoutPoint?: LayoutPoint | (() => Promise<LayoutPoint>) | undefined
+  Layout?:
+    | React.ComponentType<{ children: React.ReactNode }>
+    | React.LazyExoticComponent<React.ComponentType<{ children: React.ReactNode }>>
+    | undefined
+  pages: Array<{
+    pageName: PointName
+    pageRoute: AnyRoute
+    pagePoint: PagePoint | (() => Promise<PagePoint>)
+    Page: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>>
+  }>
+  nested: undefined | PagesTreeRecord[]
+}
+export type PagesTree = PagesTreeRecord[]
+
+export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
 
 export type GetSuitablePointResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
   point: EndPoint

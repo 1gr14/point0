@@ -63,7 +63,6 @@ export function RouterContextProvider({
   const [error, setError] = useState<Error | null>(null)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
-    // Point0._currentLocation.set(currentLocation)
     ExtractorStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
   }, [currentLocation])
 
@@ -233,27 +232,6 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
       routerContext.setPrevLocation(prevLocation)
       routerContext.setError(null)
       routerContext.setNextLocation(location)
-
-      // // simple mode
-      // if (routerContext.policy === 'simple') {
-      //   routerContext.setStatus('transitioning')
-
-      //   try {
-      //     await adapterNavigate(...(args as [string, ...any[]]))
-      //     routerContext.setStatus('idle')
-      //     routerContext.setNextLocation(null)
-      //     // ctx.setCurrentLocation(location)
-      //     return { location, error: null }
-      //   } catch (error) {
-      //     const error0 = Error0.from(error)
-      //     routerContext.setError(error0)
-      //     routerContext.setStatus('idle')
-      //     routerContext.setNextLocation(null)
-      //     return { location, error: error0 }
-      //   }
-      // }
-
-      // prefetch mode
       routerContext.setStatus('prefetching')
       try {
         await PointsManager.getGlobalPoints().prefetchSuitablePagePoint({
