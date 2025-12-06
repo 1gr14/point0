@@ -53,44 +53,17 @@ export type UndefinedProps = undefined
 export type EmptyProps = {}
 export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends UndefinedProps ? EmptyProps : TProps
 
-export type UseQueryOptions<
-  TQueryFnData = any,
-  TError = any,
-  TData = any,
-  TQueryKey extends QueryKey = QueryKey,
-> = OriginalUseQueryOptions<TQueryFnData, TError, TData, TQueryKey>
-export type ExtraUseQueryOptions<
-  TQueryFnData = any,
-  TError = any,
-  TData = any,
-  TQueryKey extends QueryKey = QueryKey,
-> = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'>
-export type UseInfiniteQueryOptions<
-  TInput extends InputRaw,
-  TQueryFnData = any,
-  TError = any,
-  TData = any,
-  TQueryKey extends QueryKey = QueryKey,
-  TPageParam = any,
-> = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam> & {
-  pageParamFromInput: keyof TInput
-}
-export type ExtraUseInfiniteQueryOptions<
-  TInput extends InputRaw,
-  TQueryFnData = any,
-  TError = any,
-  TData = any,
-  TQueryKey extends QueryKey = QueryKey,
-  TPageParam = any,
-> = Omit<UseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'queryFn' | 'queryKey'>
-export type PartialUseInfiniteQueryOptions<
-  TQueryFnData = any,
-  TError = any,
-  TData = any,
-  TQueryKey extends QueryKey = QueryKey,
-  TPageParam = any,
-> = Partial<ExtraUseInfiniteQueryOptions<InputRaw, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
-// used to avoid circular depedencies
+// export type QueryKey = readonly [string, ...string[]]
+export type QueryKey = readonly [
+  point0: 'point0',
+  serverOrClient: 'server' | 'client' | 'combined',
+  pointType: PointType,
+  pointName: PointName,
+  outputType: FetchOutputType,
+  finiteOrInfinite: 'finite' | 'infinite',
+  input: string,
+]
+
 export type Infer<
   TPointType extends PointType,
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
@@ -170,7 +143,6 @@ export type AnyPoint<
 >
 
 export type BasePoint<
-  TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
   TData extends Data | UndefinedData = any,
@@ -183,7 +155,7 @@ export type BasePoint<
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'base',
-  TLetsEndPointType,
+  UndefinedEndPointType,
   TRequiredCtx,
   TCtx,
   TData,
@@ -274,58 +246,6 @@ export type LayoutPoint<
   TProps
 >
 
-export type ResponsePoint<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TCtx extends Ctx = any,
-  TData extends Data | UndefinedData = any,
-  TClientData extends Data | UndefinedData = any,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TResponseOutput extends ResponseOutput = ResponseOutput,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-> = AnyPoint<
-  'response',
-  UndefinedEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
->
-
-export type ProviderPoint<
-  TRequiredCtx extends RequiredCtx = RequiredCtx,
-  TCtx extends Ctx = any,
-  TData extends Data | UndefinedData = any,
-  TClientData extends Data | UndefinedData = any,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends UndefinedInputSchema = any,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = any,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-> = AnyPoint<
-  'provider',
-  UndefinedEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
->
-
 export type EndPoint<
   TPointType extends EndPointType = EndPointType,
   TRequiredCtx extends RequiredCtx = any,
@@ -353,31 +273,7 @@ export type EndPoint<
   TProps
 >
 
-// TODO remove it
-// export type InferredRootSourcePoint<
-//   TRequiredCtx extends RequiredCtx = RequiredCtx,
-//   TCtx extends Ctx = any,
-//   TData extends Data | UndefinedData = any,
-//   TClientData extends Data | UndefinedData = any,
-// > = {
-//   Infer: Infer<TRequiredCtx, TCtx, TData, TClientData>
-//   _extractFns: ExtractFnRecord[]
-// }
-// export type UndefinedInferredRootSourcePoint = undefined
-// export type InferCtx<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
-//   TPoint extends AnyPoint<any, any, any, infer TCtx, any, any, any, any>
-//     ? TCtx
-//     : TPoint extends InferredRootSourcePoint
-//       ? TPoint['Infer']['Ctx']
-//       : EmptyCtx
-// export type InferData<TPoint extends AnyPoint | InferredRootSourcePoint | undefined> =
-//   TPoint extends AnyPoint<any, any, any, any, infer TData, any, any, any>
-//     ? TData
-//     : TPoint extends InferredRootSourcePoint
-//       ? TPoint['Infer']['Data']
-//       : EmptyData
-
-// point helpers
+// utils
 
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? Omit<TCtx, keyof TAppend> & TAppend
@@ -385,10 +281,123 @@ export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends Un
 export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends UnknownCtx> = TCtx extends Ctx
   ? Omit<TPrepend, keyof TCtx> & TPrepend
   : TPrepend
-
 export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
+
+export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
+export type FinalClientData<
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+> = TClientData extends Data ? TClientData : FinalData<TData>
+export type FinalClientQueriedData<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+> = TQueryResultType extends 'infiniteQuery'
+  ? InfiniteData<FinalClientData<TData, TClientData>>
+  : TQueryResultType extends 'query'
+    ? FinalClientData<TData, TClientData>
+    : FinalClientData<TData, TClientData>
+
+export type InputSchemaZod = ZodObject<any>
+export type InputSchema = InputSchemaZod
+export type UndefinedInputSchema = undefined
+export type InputParsed<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TInputSchema extends InputSchemaZod
+  ? ZodOutput<TInputSchema>
+  : TRouteDefinition extends RouteDefinition
+    ? FlatOutput<TRouteDefinition>
+    : Record<never, never>
+export type InputRaw<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TInputSchema extends InputSchemaZod
+  ? ZodInput<TInputSchema>
+  : TRouteDefinition extends RouteDefinition
+    ? FlatInput<TRouteDefinition>
+    : Record<never, never>
+
+export type HasRequiredKeysInZod<T extends ZodObject<any>> = keyof {
+  [K in keyof T['shape'] as T['shape'][K] extends ZodOptional<any> | ZodDefault<any> ? never : K]: true
+} extends never
+  ? false
+  : true
+
+export type IsInputOptional<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TRouteDefinition extends RouteDefinition
+  ? TInputSchema extends InputSchema
+    ? HasRequiredKeysInZod<TInputSchema> extends true
+      ? false
+      : true
+    : HasParams<TRouteDefinition> extends true
+      ? false
+      : true
+  : TInputSchema extends InputSchema
+    ? HasRequiredKeysInZod<TInputSchema> extends true
+      ? false
+      : true
+    : true
+
+export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | UndefinedProps> = TProps extends undefined
+  ? true
+  : keyof TProps extends never // no keys at all
+    ? true
+    : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      {} extends TProps // all keys optional
+      ? true
+      : false
+
+export type IsEmptyObject<T> = keyof T extends never ? true : false
+
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+export type ShowError<Message extends string> = { error: Message } & never
+
+export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+
+// fetching and queries
+
+export type UseQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+> = OriginalUseQueryOptions<TQueryFnData, TError, TData, TQueryKey>
+export type ExtraUseQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+> = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'>
+export type UseInfiniteQueryOptions<
+  TInput extends InputRaw,
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = OriginalUseInfiniteQueryOptions<TQueryFnData, TError, TData, TQueryKey, TPageParam> & {
+  pageParamFromInput: keyof TInput
+}
+export type ExtraUseInfiniteQueryOptions<
+  TInput extends InputRaw,
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = Omit<UseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'queryFn' | 'queryKey'>
+export type PartialUseInfiniteQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = Partial<ExtraUseInfiniteQueryOptions<InputRaw, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
 
 type NarrowQueryComponentPropStatus<
   T extends { status: 'pending' | 'error' | 'success' },
@@ -508,6 +517,8 @@ export type UseLoaderResult<
   location: AnyLocation
 }
 
+// endpoint components
+
 export type PageComponentProps<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
@@ -620,6 +631,8 @@ export type MountableComponent<
   TWithChildren extends boolean | null,
 > = React.ComponentType<MountableComponentProps<TInputSchema, TProps, TWithChildren>>
 
+// extra components
+
 export type DestinationComponentType = 'page' | 'component'
 export type LoadingComponentProps<
   TType extends DestinationComponentType,
@@ -701,20 +714,9 @@ export type ErrorComponentType<
   >
 >
 
-export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
-export type FinalClientData<
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
-> = TClientData extends Data ? TClientData : FinalData<TData>
-export type FinalClientQueriedData<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
-> = TQueryResultType extends 'infiniteQuery'
-  ? InfiniteData<FinalClientData<TData, TClientData>>
-  : TQueryResultType extends 'query'
-    ? FinalClientData<TData, TClientData>
-    : FinalClientData<TData, TClientData>
+export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
+
+// settings
 
 export type FetchOptionsFn = () => FetchOptions
 export type FetchOptionsOrFn = FetchOptionsFn | FetchOptions
@@ -735,27 +737,7 @@ export type PagePrefetchPolicy =
   | 'none'
 export type OnPrefetchFn = () => Promise<void> | void
 
-export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
-
-export type InputSchemaZod = ZodObject<any>
-export type InputSchema = InputSchemaZod
-export type UndefinedInputSchema = undefined
-export type InputParsed<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TInputSchema extends InputSchemaZod
-  ? ZodOutput<TInputSchema>
-  : TRouteDefinition extends RouteDefinition
-    ? FlatOutput<TRouteDefinition>
-    : Record<never, never>
-export type InputRaw<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TInputSchema extends InputSchemaZod
-  ? ZodInput<TInputSchema>
-  : TRouteDefinition extends RouteDefinition
-    ? FlatInput<TRouteDefinition>
-    : Record<never, never>
+// middlewares
 
 export type ResponseOutput = Response
 export type UndefinedResponseOutput = undefined
@@ -1005,82 +987,12 @@ export type MiddlewareHeadFn<
   props: MiddlewareHeadFnProps<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
 ) => ResolvableHead | string
 
-// export type StaticHeadsCollection = ResolvableHead[]
-
-// point methods
-
-// TODO: move here Ctx etc
-
-// endpoint helpers
-
-// export type IsInputOptional<
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = TRouteDefinition extends RouteDefinition
-//   ? TInputSchema extends InputSchema
-//     ? false
-//     : HasParams<TRouteDefinition> extends true
-//       ? false
-//       : true
-//   : TInputSchema extends InputSchema
-//     ? false
-//     : true
-export type HasRequiredKeysInZod<T extends ZodObject<any>> = keyof {
-  [K in keyof T['shape'] as T['shape'][K] extends ZodOptional<any> | ZodDefault<any> ? never : K]: true
-} extends never
-  ? false
-  : true
-
-export type IsInputOptional<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TRouteDefinition extends RouteDefinition
-  ? TInputSchema extends InputSchema
-    ? HasRequiredKeysInZod<TInputSchema> extends true
-      ? false
-      : true
-    : HasParams<TRouteDefinition> extends true
-      ? false
-      : true
-  : TInputSchema extends InputSchema
-    ? HasRequiredKeysInZod<TInputSchema> extends true
-      ? false
-      : true
-    : true
-
-export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | UndefinedProps> = TProps extends undefined
-  ? true
-  : keyof TProps extends never // no keys at all
-    ? true
-    : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-      {} extends TProps // all keys optional
-      ? true
-      : false
-
 export type FetchOutput<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
   TData extends Data | UndefinedData = Data | UndefinedData,
 > = TResponseOutput extends ResponseOutput ? TResponseOutput : FinalData<TData>
 
 export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
-
-export type IsEmptyObject<T> = keyof T extends never ? true : false
-
-// export type QueryKey = readonly [string, ...string[]]
-export type QueryKey = readonly [
-  point0: 'point0',
-  serverOrClient: 'server' | 'client' | 'combined',
-  pointType: PointType,
-  pointName: PointName,
-  outputType: FetchOutputType,
-  finiteOrInfinite: 'finite' | 'infinite',
-  input: string,
-]
-
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-export type ShowError<Message extends string> = { error: Message } & never
-
-export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
 
 // mountable app
 

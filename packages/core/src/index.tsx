@@ -152,7 +152,7 @@ export class Point0<
     return Point0._prevUnstableId++
   }
 
-  point: typeof this // this, needed for generator to collect points, TODO maybe remove it?
+  point: typeof this // this, needed for generator to collect points
 
   _base: BasePoint | undefined
   _root: RootPoint | undefined
@@ -176,7 +176,6 @@ export class Point0<
   _queryOptions: ExtraUseQueryOptions
   _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
   _queryResultType: TQueryResultType
-  // TODO: use wrapper
   _wrappers: WrapperComponentType[]
   _extractFns: ExtractFnRecord[]
   _clientExtractFns: ClientExtractFnRecord[]
@@ -267,7 +266,7 @@ export class Point0<
   private constructor(props: {
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
-    _base?: BasePoint<any, TRequiredCtx> | undefined
+    _base?: BasePoint | undefined
     _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
@@ -508,7 +507,7 @@ export class Point0<
     _scope?: PointsScope
     _attachedTo?: PointsScope[]
     _letsEndPointType?: TLetsEndPointType
-    _base?: BasePoint<any, TRequiredCtx> | undefined
+    _base?: BasePoint | undefined
     _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
@@ -807,7 +806,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'root',
-      _base: this as never as BasePoint<any, TRequiredCtx>,
+      _base: this as never as BasePoint,
       _root: this as never as RootPoint,
       _name: this._scope,
       _letsEndPointType: undefined,
@@ -817,7 +816,7 @@ export class Point0<
   // general settings
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
@@ -831,7 +830,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
@@ -843,15 +842,13 @@ export class Point0<
       TResponseOutput,
       TQueryResultType,
       TProps
-    >({
-      _pointType: 'middleware',
-    })
+    >({})
   }
 
   serverurl(
     serverurl: string,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -865,7 +862,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -878,7 +875,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _serverurl: serverurl,
     })
   }
@@ -886,7 +882,7 @@ export class Point0<
   baseurl(
     baseurl: string,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -900,7 +896,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -913,7 +909,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _baseurl: baseurl,
     })
   }
@@ -921,7 +916,7 @@ export class Point0<
   queryOptions(
     queryOptions: ExtraUseQueryOptions,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -935,7 +930,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -948,7 +943,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _defaultQueryOptions: queryOptions,
     })
   }
@@ -956,7 +950,7 @@ export class Point0<
   infiniteQueryOptions(
     infiniteQueryOptions: PartialUseInfiniteQueryOptions,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -970,7 +964,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -983,7 +977,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _defaultInfiniteQueryOptions: infiniteQueryOptions,
     })
   }
@@ -991,7 +984,7 @@ export class Point0<
   pageQueryOptions(
     pageQueryOptions: UseQueryOptions,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1005,7 +998,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1018,7 +1011,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _defaultPageQueryOptions: pageQueryOptions,
     })
   }
@@ -1026,7 +1018,7 @@ export class Point0<
   componentQueryOptions(
     componentQueryOptions: UseQueryOptions,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1040,7 +1032,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1053,7 +1045,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _defaultComponentQueryOptions: componentQueryOptions,
     })
   }
@@ -1061,7 +1052,7 @@ export class Point0<
   providerQueryOptions(
     providerQueryOptions: UseQueryOptions,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1075,7 +1066,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1088,7 +1079,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _defaultProviderQueryOptions: providerQueryOptions,
     })
   }
@@ -1096,7 +1086,7 @@ export class Point0<
   layoutQueryOptions(
     layoutQueryOptions: UseQueryOptions,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1110,7 +1100,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1123,7 +1113,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _defaultLayoutQueryOptions: layoutQueryOptions,
     })
   }
@@ -1131,7 +1120,7 @@ export class Point0<
   fetchOptions(
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1145,7 +1134,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1158,7 +1147,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
     })
   }
@@ -1177,7 +1165,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1191,7 +1179,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1204,7 +1192,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _errorComponent: errorComponent || (() => null), // in case if we prune error for serverNoSsr customer
     })
@@ -1222,7 +1209,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1248,7 +1235,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1295,7 +1282,7 @@ export class Point0<
       ? undefined
       : (props) => (!props.error ? {} : headFn(props as never))
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1308,7 +1295,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
       _pageErrorComponent: pageErrorComponent,
     })
@@ -1326,7 +1312,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1340,7 +1326,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1353,7 +1339,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _componentErrorComponent: componentErrorComponent || (() => null), // in case if we prune componentError for serverNoSsr customer
     })
@@ -1371,7 +1356,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1397,7 +1382,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1444,7 +1429,7 @@ export class Point0<
       ? undefined
       : (props) => (!props.loading ? {} : headFn(props as never))
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1457,7 +1442,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
       _pageLoadingComponent: pageLoadingComponent,
     })
@@ -1475,7 +1459,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1489,7 +1473,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1502,7 +1486,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _componentLoadingComponent: componentLoadingComponent || (() => null), // in case if we prune componentLoading for serverNoSsr customer
     })
@@ -1520,7 +1503,7 @@ export class Point0<
       TProps
     >,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1534,7 +1517,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1547,7 +1530,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _loadingComponent: loadingComponent || (() => null), // in case if we prune loading for serverNoSsr customer
     })
@@ -1592,7 +1574,7 @@ export class Point0<
   route<TNewRoute extends AnyRoute>(
     route: TNewRoute,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1608,7 +1590,7 @@ export class Point0<
   route<TNewRouteDefinition extends `/${string}`>(
     routeDefinition: TNewRouteDefinition,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1624,7 +1606,7 @@ export class Point0<
   route<TNewRouteDefinition extends string>(
     relativeRouteDefinition: TNewRouteDefinition,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1640,7 +1622,7 @@ export class Point0<
     TProps
   >
   route(): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1671,7 +1653,6 @@ export class Point0<
       return route
     })()
     return this._continue({
-      _pointType: 'middleware',
       _route: newRoute as CallabelRoute,
     }) as never
   }
@@ -1679,7 +1660,7 @@ export class Point0<
   ctx<TNewCtx extends Ctx = Ctx>(
     ctxFn: CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewCtx>,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TNewCtx,
@@ -1695,7 +1676,7 @@ export class Point0<
   ctx<TNewCtx extends Ctx = Ctx>(
     ctx: TNewCtx,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TNewCtx,
@@ -1711,7 +1692,7 @@ export class Point0<
   ctx<TNewCtx extends Ctx = Ctx>(
     ctxOrFn: TNewCtx,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TNewCtx,
@@ -1731,7 +1712,7 @@ export class Point0<
           ? ctxOrFn
           : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TNewCtx,
@@ -1744,7 +1725,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _extractFns: [...this._extractFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
     })
   }
@@ -1752,7 +1732,7 @@ export class Point0<
   loader<TNewData extends Data = Data>(
     loaderFn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1766,7 +1746,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
@@ -1779,7 +1759,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _extractFns: [
         ...this._extractFns,
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune loader for client
@@ -1791,7 +1770,7 @@ export class Point0<
   ctxLoader<TNewCtx extends Ctx = Ctx, TNewData extends Data = Data>(
     ctxLoaderFn: CtxLoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewCtx, TNewData>,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TNewCtx,
@@ -1805,7 +1784,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      'middleware',
+      TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TNewCtx,
@@ -1818,7 +1797,6 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _pointType: 'middleware',
       _extractFns: [
         ...this._extractFns,
         {
@@ -1899,16 +1877,16 @@ export class Point0<
     if (typeof head === 'function') {
       return this._continue({
         _headFns: [...this._headFns, head],
-      }) as never
+      })
     } else {
       return this._continue({
         _headFns: [...this._headFns, () => head],
-      }) as never
+      })
     }
   }
 
   props<TNewProps extends Props>(): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1921,15 +1899,13 @@ export class Point0<
     TQueryResultType,
     TNewProps
   > {
-    return this._continue({
-      _pointType: 'middleware',
-    }) as never
+    return this._continue({})
   }
 
   input<TNewInputSchema extends InputSchemaZod>(
     inputSchema: TNewInputSchema,
   ): Point0<
-    'middleware',
+    TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -1946,16 +1922,11 @@ export class Point0<
   >
   input(inputSchema: InputSchemaZod) {
     return this._continue({
-      _pointType: 'middleware',
       _inputSchema: this._inputSchema ? this._inputSchema.extend(inputSchema.shape) : inputSchema,
     }) as never
   }
 
   // end points
-
-  _isRoot(): boolean {
-    return this._name === this._scope
-  }
 
   lets<TNewLetsEndPointType extends EndPointType, TPointName extends PointName>(
     letsEndPointType: TNewLetsEndPointType,
@@ -2073,7 +2044,7 @@ export class Point0<
       TProps
     >({
       _pointType: 'base',
-      _base: this as never as BasePoint<any, TRequiredCtx>,
+      _base: this as never as BasePoint,
       _name: this._name ?? this._scope,
       // _letsEndPointType: undefined,
       // it is mea, that we can mark as base any other point type like layout, so we can restore loading, error, drom it not from higher base
@@ -2618,6 +2589,10 @@ export class Point0<
   }
 
   // internal utils
+
+  _isRoot(): boolean {
+    return this._name === this._scope && this._pointType === 'root'
+  }
 
   _getErrorComponent<TType extends DestinationComponentType>({
     type,
@@ -3632,7 +3607,6 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 
-  // TODO: add option to allow prefetch only server or only client, or combined query
   async prefetchQuery({
     input,
     location,
@@ -3684,7 +3658,6 @@ export class Point0<
     return queryOptions.queryKey
   }
 
-  // TODO: add option to allow prefetch only server or only client, or combined query
   async prefetchInfiniteQuery({
     input,
     location,
@@ -3808,8 +3781,6 @@ export class Point0<
         return
       }
     }
-
-    // TODO: alse fetch all attached components
 
     const pageWithLayouts = [this, ...this._layouts]
 
