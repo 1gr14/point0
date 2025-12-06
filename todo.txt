@@ -2,13 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-EXPO
-expo example
-expo router
-??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
-??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
-??? expo example, just define all queries and mutations as plugins and use them in site and expo
-
 reset _pointType in continue only in that places where it needed, else just preserve current value
 add _ to all clases, and hide all previate methods
 why do we need empty .loader() ?
@@ -18,9 +11,12 @@ fix fn prop type for public things, make input first arg, location is optional s
 add useInfiniteQuery
 prettify visible methods per TLetsEndpointType, and hide all private methods under _
 
-? someThing.attachment()..., and then somethingElse.attach()
-? get base/root specific things right from base, do not continue it after .base()
-? Point0 → P0, cli p0
+EXPO
+expo example
+expo router
+??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
+??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
+??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
 START0
 start0 without mono0
@@ -60,7 +56,9 @@ make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
 analyze if there same id points or route points, and throw error
-
+? someThing.attachment()..., and then somethingElse.attach()
+? get base/root specific things right from base, do not continue it after .base()
+? Point0 → P0, cli p0
 const plugin = <TExtra extends {}>(extra: TExtra) =><TData extends {}>({ data }: { data: TData }) => ({...data,a: 3,c: 4,...extra,}); const server2 = server1.loader(plugin({ x: 'x', a: 'a' }))
 
 --------------------------
