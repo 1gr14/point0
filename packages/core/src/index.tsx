@@ -176,7 +176,14 @@ export class Point0<
   _defaultComponentQueryOptions: ExtraUseQueryOptions | undefined
   _defaultProviderQueryOptions: ExtraUseQueryOptions | undefined
   _queryOptions: ExtraUseQueryOptions
-  _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>
+  _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+    InputRaw<TRouteDefinition, TInputSchema>,
+    FinalClientData<TData, TClientData>,
+    Error0,
+    InfiniteData<FinalClientData<TData, TClientData>>,
+    QueryKey,
+    unknown
+  >
   _queryResultType: TQueryResultType
   _wrappers: WrapperComponentType[]
   _extractFns: ExtractFnRecord[]
@@ -287,7 +294,16 @@ export class Point0<
     _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultProviderQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
-    _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
+    _infiniteQueryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
     _queryResultType?: TQueryResultType
     _extractFns?: ExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
@@ -525,7 +541,16 @@ export class Point0<
     _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultProviderQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
-    _infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
+    _infiniteQueryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
     _queryResultType?: TQueryResultType
     _wrappers?: WrapperComponentType[]
     _extractFns?: ExtractFnRecord[]
@@ -673,7 +698,14 @@ export class Point0<
       _queryOptions: overrides._queryOptions ?? { ...this._queryOptions },
       _infiniteQueryOptions: (overrides._infiniteQueryOptions ?? {
         ...this._infiniteQueryOptions,
-      }) as ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>>,
+      }) as ExtraUseInfiniteQueryOptions<
+        InputRaw<TRouteDefinition, TInputSchema>,
+        FinalClientData<TData, TClientData>,
+        Error0,
+        InfiniteData<FinalClientData<TData, TClientData>>,
+        QueryKey,
+        unknown
+      >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
       _extractFns: overrides._extractFns ?? this._extractFns,
       _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
@@ -2505,7 +2537,7 @@ export class Point0<
       InputRaw<TRouteDefinition, TInputSchema>,
       FinalClientData<TData, TClientData>,
       Error0,
-      FinalClientData<TData, TClientData>,
+      InfiniteData<FinalClientData<TData, TClientData>>,
       QueryKey,
       unknown
     >,
@@ -2834,7 +2866,9 @@ export class Point0<
     const location = useLocation()
     const serverQueryEnabled = this._hasLoader()
     const clientQueryEnabled = this._hasClientLoader()
-    const isInfiniteQuery = this._queryResultType === 'infiniteQuery'
+    if (this._queryResultType === 'infiniteQuery') {
+      throw new Error(`Point ${this._name} is not a finite query`)
+    }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
     }
@@ -2844,38 +2878,102 @@ export class Point0<
       // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
       // const { queryCache } = useQueryCacheMethod(input as never)
       // const { queryCache } = this.useQueryCache(input as never, 'data')
-      const useServerQueryMethod = isInfiniteQuery ? this._useServerInfiniteQuery : this._useServerQuery
-      const query = useServerQueryMethod({
+      const query = this._useServerQuery({
         input: input as never,
-        queryOptions: queryOptions as any,
+        queryOptions,
         fetchOptions,
       })
       return query as never
     }
 
     if (!serverQueryEnabled && clientQueryEnabled) {
-      const useClientQueryMethod =
-        this._queryResultType === 'infiniteQuery' ? this._useClientInfiniteQuery : this._useClientQuery
-      const query = useClientQueryMethod({
-        input,
-        data: {},
-        skipHeads: false,
-        queryOptions: {
-          ...queryOptions,
-        },
+      const query = this._useClientQuery({
+        input: input as never,
+        queryOptions,
         location,
-      } as never)
+      })
       return query as never
     }
 
-    const useClientQueryMethod =
-      this._queryResultType === 'infiniteQuery' ? this._useCombinedInfiniteQuery : this._useCombinedQuery
-    const query = useClientQueryMethod({
-      input,
+    const query = this._useCombinedQuery({
+      input: input as never,
       queryOptions,
       location,
       fetchOptions,
-    } as never)
+    })
+    return query as never
+  }
+
+  useInfiniteQuery = (
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [
+          input?: InputRaw<TRouteDefinition, TInputSchema>,
+          infiniteQueryOptions?:
+            | ExtraUseInfiniteQueryOptions<
+                InputRaw<TRouteDefinition, TInputSchema>,
+                FinalClientData<TData, TClientData>,
+                Error0,
+                InfiniteData<FinalClientData<TData, TClientData>>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
+          fetchOptions?: FetchOptions | undefined,
+        ]
+      : [
+          input: InputRaw<TRouteDefinition, TInputSchema>,
+          infiniteQueryOptions?:
+            | ExtraUseInfiniteQueryOptions<
+                InputRaw<TRouteDefinition, TInputSchema>,
+                FinalClientData<TData, TClientData>,
+                Error0,
+                InfiniteData<FinalClientData<TData, TClientData>>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
+          fetchOptions?: FetchOptions | undefined,
+        ]
+  ): UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, any> => {
+    const [input = {}, infiniteQueryOptions, fetchOptions] = args
+    const location = useLocation()
+    const serverQueryEnabled = this._hasLoader()
+    const clientQueryEnabled = this._hasClientLoader()
+    if (this._queryResultType !== 'infiniteQuery') {
+      throw new Error(`Point ${this._name} is not an infinite query`)
+    }
+    if (!serverQueryEnabled && !clientQueryEnabled) {
+      return { data: {}, query: undefined, clientQuery: undefined } as never
+    }
+
+    if (serverQueryEnabled && !clientQueryEnabled) {
+      // const isInitalSsrLocation = useIsInitalSsrLocation()
+      // const useQueryCacheMethod = isServerInfiniteQuery ? this.useInfiniteQueryCache : this.useQueryCache
+      // const { queryCache } = useQueryCacheMethod(input as never)
+      // const { queryCache } = this.useQueryCache(input as never, 'data')
+      const query = this._useServerInfiniteQuery({
+        input: input as never,
+        infiniteQueryOptions,
+        fetchOptions,
+      })
+      return query as never
+    }
+
+    if (!serverQueryEnabled && clientQueryEnabled) {
+      const query = this._useClientInfiniteQuery({
+        input: input as never,
+        infiniteQueryOptions,
+        location,
+      })
+      return query as never
+    }
+
+    const query = this._useCombinedInfiniteQuery({
+      input: input as never,
+      infiniteQueryOptions,
+      location,
+      fetchOptions,
+    })
     return query as never
   }
 
@@ -2883,16 +2981,37 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: ExtraUseQueryOptions | undefined,
+          queryOptions?:
+            | ExtraUseQueryOptions
+            | ExtraUseInfiniteQueryOptions<
+                InputRaw<TRouteDefinition, TInputSchema>,
+                FinalClientData<TData, TClientData>,
+                Error0,
+                InfiniteData<FinalClientData<TData, TClientData>>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
-          queryOptions?: ExtraUseQueryOptions | undefined,
+          queryOptions?:
+            | ExtraUseQueryOptions
+            | ExtraUseInfiniteQueryOptions<
+                InputRaw<TRouteDefinition, TInputSchema>,
+                FinalClientData<TData, TClientData>,
+                Error0,
+                InfiniteData<FinalClientData<TData, TClientData>>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
   ): UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any> => {
-    const query = this.useQuery(...args)
+    const query =
+      this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery(...(args as never)) : this.useQuery(...args)
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const result = React.useMemo(() => {
       return {
@@ -3224,17 +3343,17 @@ export class Point0<
 
   _getServerInfiniteQueryOptions({
     input,
-    queryOptions,
+    infiniteQueryOptions,
     fetchOptions,
     outputType,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    queryOptions:
+    infiniteQueryOptions:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalData<TData>,
+          FinalClientData<TData, TClientData>,
           Error0,
-          FinalData<TData>,
+          InfiniteData<FinalClientData<TData, TClientData>>,
           QueryKey,
           unknown
         >
@@ -3261,7 +3380,7 @@ export class Point0<
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
       ...this._infiniteQueryOptions,
-      ...queryOptions,
+      ...infiniteQueryOptions,
       queryKey,
       queryFn,
     }
@@ -3270,14 +3389,14 @@ export class Point0<
 
   _getClientInfiniteQueryOptions({
     input,
-    queryOptions,
+    infiniteQueryOptions,
     data,
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     data?: Data
     location?: AnyLocation
-    queryOptions?:
+    infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
           FinalClientData<TData, TClientData>,
@@ -3317,7 +3436,7 @@ export class Point0<
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
       ...this._infiniteQueryOptions,
-      ...queryOptions,
+      ...infiniteQueryOptions,
       queryKey,
       queryFn,
     } as never
@@ -3325,7 +3444,7 @@ export class Point0<
 
   _getCombinedInfiniteQueryOptions({
     input,
-    queryOptions,
+    infiniteQueryOptions,
     fetchOptions,
     location,
     queryClient,
@@ -3333,7 +3452,7 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
     fetchOptions?: FetchOptions | undefined
-    queryOptions?:
+    infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
           FinalClientData<TData, TClientData>,
@@ -3371,7 +3490,7 @@ export class Point0<
         }
         const serverFinityOpts = this._getServerQueryOptions({
           input: inputWithPageParam as never,
-          queryOptions,
+          queryOptions: infiniteQueryOptions,
           fetchOptions,
           outputType: 'data',
         })
@@ -3392,7 +3511,7 @@ export class Point0<
       const clientOpts = this._getClientInfiniteQueryOptions({
         input: input as never,
         data: serverData as never,
-        queryOptions,
+        infiniteQueryOptions,
         location,
       })
       return await (clientOpts as any).queryFn({ ...input, pageParam })
@@ -3401,7 +3520,7 @@ export class Point0<
       ...this._defaultQueryOptions,
       ...this._defaultInfiniteQueryOptions,
       ...this._infiniteQueryOptions,
-      ...queryOptions,
+      ...infiniteQueryOptions,
       queryKey,
       queryFn,
     } as never
@@ -3464,7 +3583,7 @@ export class Point0<
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedInfiniteQueryOptions({
         input: input as never,
-        queryOptions: infiniteQueryOptions,
+        infiniteQueryOptions,
         fetchOptions,
         queryClient,
         location,
@@ -3473,14 +3592,14 @@ export class Point0<
     if (hasClientLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getClientInfiniteQueryOptions({
         input: input as never,
-        queryOptions: infiniteQueryOptions as any,
+        infiniteQueryOptions,
         location,
       }) as never
     }
     if (hasServerLoader && (mode === 'server' || mode === 'serverAndClient')) {
       return this._getServerInfiniteQueryOptions({
         input: input as never,
-        queryOptions: infiniteQueryOptions as any,
+        infiniteQueryOptions,
         fetchOptions,
         outputType,
       }) as never
@@ -3545,31 +3664,54 @@ export class Point0<
 
   _useServerInfiniteQuery = ({
     input,
-    queryOptions,
+    infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
     outputType,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    queryOptions: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
+    infiniteQueryOptions:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
   }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponseOutput, TData>>, Error0> => {
-    const infiniteQueryOptions = this._getServerInfiniteQueryOptions({ input, queryOptions, fetchOptions, outputType })
+    const infiniteQueryOptions = this._getServerInfiniteQueryOptions({
+      input,
+      infiniteQueryOptions: providedInfiniteQueryOptions,
+      fetchOptions,
+      outputType,
+    })
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
 
   _useClientInfiniteQuery = ({
     input,
-    queryOptions,
+    infiniteQueryOptions: providedInfiniteQueryOptions,
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
-    queryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
+    infiniteQueryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
   }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
-      queryOptions: queryOptions as any,
+      infiniteQueryOptions: providedInfiniteQueryOptions,
       location,
     })
     return useInfiniteQuery(infiniteQueryOptions) as never
@@ -3577,19 +3719,28 @@ export class Point0<
 
   _useCombinedInfiniteQuery = ({
     input,
-    queryOptions,
+    infiniteQueryOptions: providedInfiniteQueryOptions,
     fetchOptions,
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
-    queryOptions?: ExtraUseInfiniteQueryOptions<InputRaw<TRouteDefinition, TInputSchema>> | undefined
+    infiniteQueryOptions?:
+      | ExtraUseInfiniteQueryOptions<
+          InputRaw<TRouteDefinition, TInputSchema>,
+          FinalClientData<TData, TClientData>,
+          Error0,
+          InfiniteData<FinalClientData<TData, TClientData>>,
+          QueryKey,
+          unknown
+        >
+      | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0> => {
     const queryClient = useQueryClient()
     const infiniteQueryOptions = this._getCombinedInfiniteQueryOptions({
       input,
-      queryOptions: queryOptions as any,
+      infiniteQueryOptions: providedInfiniteQueryOptions,
       queryClient,
       location,
       fetchOptions,
