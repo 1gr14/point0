@@ -1115,19 +1115,37 @@ export type NiceComponentMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ?
+        | 'component'
+        | 'props'
+        | 'input'
+        | 'queryOptions'
+        | 'infiniteQueryOptions'
+        | 'fetchOptions'
+        | 'error'
+        | 'loading'
+        | 'wrapper'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+    : 'component' | 'clientLoader'
 >
 
 export type NiceResponseMiddlePoint<

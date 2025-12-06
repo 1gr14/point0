@@ -2,10 +2,10 @@
 ------ before start0 -----
 --------------------------
 
+prettify visible methods per TLetsEndpointType and TPointType
+fix mountable component assign props
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
-prettify visible methods per TLetsEndpointType and TPointType
-? assign full point to component
 
 EXPO
 expo example
@@ -71,7 +71,7 @@ test for engine
 test for e2e
 
 static site generator
-site & docs ( https://docusaurus.io/ or better custom all in my site solution )
+site & docs (all docs in my site)
 choose license
 prepare start0 selling
 prepare subscription, only yearly model

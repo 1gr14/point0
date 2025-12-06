@@ -52,6 +52,10 @@ export const BestIdeaComponent = client
     return <div style={{ padding: '10px', border: '1px solid #f0f' }}>{children}</div>
   })
   .props<{ cta: string }>()
+  .clientLoader(async (o) => ({
+    ...o.data,
+    cllll: 'cllll',
+  }))
   .component(({ data, props }) => {
     return (
       <div>
@@ -60,6 +64,7 @@ export const BestIdeaComponent = client
         <p>TITLE: {data.bestIdea.title}</p>
         <p>CLD: {data.clD}</p>
         <p>CLDD: {data.clDD}</p>
+        <p>CLLLL: {data.cllll}</p>
         <p>
           <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
         </p>
