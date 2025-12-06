@@ -2,9 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-
-test helpers like. Engine.extract(myPoint) -> {ctx, data, head, error, status, response, ...}, user can be passed as prop of requiredCtx. Or maybe just myPoint.extract()
-
 convex as @point0/convex, .convex(await import('@point0/convex')), and then we just use convex queries, not react queries
 
 .onServerError, .onClientError

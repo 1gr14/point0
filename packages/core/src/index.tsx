@@ -28,7 +28,8 @@ import type { util as ZodUtil, ZodObject } from 'zod'
 import { ClientServerHelpers } from './client-server.js'
 import type { ExtractorStoreDefinedItem } from './extractor-store.js'
 import { ExtractorStore } from './extractor-store.js'
-import type { ExtractResult, Extractor } from './extractor.js'
+import type { ExtractResult } from './extractor.js'
+import { Extractor } from './extractor.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
 import type {
@@ -3452,24 +3453,22 @@ export class Point0<
   //     input,
   //   })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
   // }
-  // async extract(
-  //   ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-  //     ? [input?: InputRaw<TRouteDefinition, TInputSchema>,]
-  //     : [input: InputRaw<TRouteDefinition, TInputSchema>]
-  // ): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
-  //   const [input = {}] = args
-  //   const extractor = await Extractor.create({
-  //     points: this,
-  //     currentLocation: location,
-  //     requiredCtx: this.requiredCtx,
-  //     pageLocation: location,
-  //   })
-  //   return (await extractor.extract({
-  //     point: this as never,
-  //     input,
-  //     withLayouts: true,
-  //   })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  // }
+  async extract({
+    input,
+    requiredCtx,
+    withLayouts,
+  }: {
+    input: InputRaw<TRouteDefinition, TInputSchema>
+    requiredCtx: TRequiredCtx
+    withLayouts?: boolean
+  }): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
+    return (await Extractor.extract({
+      point: this as never,
+      input: input as never,
+      requiredCtx: requiredCtx as never,
+      withLayouts,
+    })) as never
+  }
 
   _getServerQueryKey({
     input,
