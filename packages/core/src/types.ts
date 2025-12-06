@@ -107,9 +107,9 @@ export type PointType =
   | 'infiniteQuery'
   | 'mutation'
   | 'layout'
-  | 'client-middleware'
+  | 'clientMiddleware'
   | 'provider'
-export type EndPointType = Exclude<PointType, 'middleware' | 'client-middleware'>
+export type EndPointType = Exclude<PointType, 'middleware' | 'clientMiddleware'>
 export type RenderablePointType = Extract<PointType, 'page' | 'component' | 'layout'>
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
@@ -1015,3 +1015,744 @@ export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
 
 export type AppProps = { points: PointsManager }
 export type AppComponent = (props: AppProps) => React.ReactElement
+
+// nice middle point
+
+export type NiceRootMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'root',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceBaseMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'base',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NicePageMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'page',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceComponentMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'component',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceResponseMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'response',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceQueryMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'query',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceInfiniteQueryMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'infiniteQuery',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceMutationMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'mutation',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceLayoutMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'layout',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceProviderMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends 'provider',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceMiddlePoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends EndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = TLetsEndPointType extends 'root'
+  ? NiceRootMiddlePoint<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >
+  : TLetsEndPointType extends 'base'
+    ? NiceBaseMiddlePoint<
+        TPointType,
+        TLetsEndPointType,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        TQueryResultType,
+        TProps
+      >
+    : TLetsEndPointType extends 'page'
+      ? NicePageMiddlePoint<
+          TPointType,
+          TLetsEndPointType,
+          TRequiredCtx,
+          TCtx,
+          TData,
+          TClientData,
+          TRouteDefinition,
+          TPrevRouteDefinition,
+          TInputSchema,
+          TResponseOutput,
+          TQueryResultType,
+          TProps
+        >
+      : TLetsEndPointType extends 'component'
+        ? NiceComponentMiddlePoint<
+            TPointType,
+            TLetsEndPointType,
+            TRequiredCtx,
+            TCtx,
+            TData,
+            TClientData,
+            TRouteDefinition,
+            TPrevRouteDefinition,
+            TInputSchema,
+            TResponseOutput,
+            TQueryResultType,
+            TProps
+          >
+        : TLetsEndPointType extends 'response'
+          ? NiceResponseMiddlePoint<
+              TPointType,
+              TLetsEndPointType,
+              TRequiredCtx,
+              TCtx,
+              TData,
+              TClientData,
+              TRouteDefinition,
+              TPrevRouteDefinition,
+              TInputSchema,
+              TResponseOutput,
+              TQueryResultType,
+              TProps
+            >
+          : TLetsEndPointType extends 'query'
+            ? NiceQueryMiddlePoint<
+                TPointType,
+                TLetsEndPointType,
+                TRequiredCtx,
+                TCtx,
+                TData,
+                TClientData,
+                TRouteDefinition,
+                TPrevRouteDefinition,
+                TInputSchema,
+                TResponseOutput,
+                TQueryResultType,
+                TProps
+              >
+            : TLetsEndPointType extends 'infiniteQuery'
+              ? NiceInfiniteQueryMiddlePoint<
+                  TPointType,
+                  TLetsEndPointType,
+                  TRequiredCtx,
+                  TCtx,
+                  TData,
+                  TClientData,
+                  TRouteDefinition,
+                  TPrevRouteDefinition,
+                  TInputSchema,
+                  TResponseOutput,
+                  TQueryResultType,
+                  TProps
+                >
+              : TLetsEndPointType extends 'mutation'
+                ? NiceMutationMiddlePoint<
+                    TPointType,
+                    TLetsEndPointType,
+                    TRequiredCtx,
+                    TCtx,
+                    TData,
+                    TClientData,
+                    TRouteDefinition,
+                    TPrevRouteDefinition,
+                    TInputSchema,
+                    TResponseOutput,
+                    TQueryResultType,
+                    TProps
+                  >
+                : TLetsEndPointType extends 'layout'
+                  ? NiceLayoutMiddlePoint<
+                      TPointType,
+                      TLetsEndPointType,
+                      TRequiredCtx,
+                      TCtx,
+                      TData,
+                      TClientData,
+                      TRouteDefinition,
+                      TPrevRouteDefinition,
+                      TInputSchema,
+                      TResponseOutput,
+                      TQueryResultType,
+                      TProps
+                    >
+                  : TLetsEndPointType extends 'provider'
+                    ? NiceProviderMiddlePoint<
+                        TPointType,
+                        TLetsEndPointType,
+                        TRequiredCtx,
+                        TCtx,
+                        TData,
+                        TClientData,
+                        TRouteDefinition,
+                        TPrevRouteDefinition,
+                        TInputSchema,
+                        TResponseOutput,
+                        TQueryResultType,
+                        TProps
+                      >
+                    : never
+
+// nice end point
+
+export type NiceRootEndPoint<
+  TPointType extends 'root',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceBaseEndPoint<
+  TPointType extends 'base',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NicePageEndPoint<
+  TPointType extends 'page',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = MountableComponent<TInputSchema, TProps, false> &
+  Pick<
+    Point0<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >,
+    'point' | 'lets'
+  >
+
+export type NiceComponentEndPoint<
+  TPointType extends 'component',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = MountableComponent<TInputSchema, TProps, false> &
+  Pick<
+    Point0<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >,
+    'point' | 'lets'
+  >
+
+export type NiceLayoutEndPoint<
+  TPointType extends 'layout',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = MountableComponent<TInputSchema, TProps, true> &
+  Pick<
+    Point0<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >,
+    'point' | 'lets'
+  >
+
+export type NiceResponseEndPoint<
+  TPointType extends 'response',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceQueryEndPoint<
+  TPointType extends 'query',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceInfiniteQueryEndPoint<
+  TPointType extends 'infiniteQuery',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceMutationEndPoint<
+  TPointType extends 'mutation',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>
+
+export type NiceProviderEndPoint<
+  TPointType extends 'provider',
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Point0<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TData,
+  TClientData,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TResponseOutput,
+  TQueryResultType,
+  TProps
+>

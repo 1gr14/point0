@@ -234,16 +234,17 @@ describe('Point0', () => {
     // not modified original server
     expect(server._extractFns).toHaveLength(0)
     const server2 = server1
+      .lets('base', 'base')
       .loader(({ data }) => ({
         ...data,
         a: 3,
         c: 4,
       }))
-      .root()
+      .base()
     expect(server2).toBeInstanceOf(Point0)
     expectTypeOf(server2).toEqualTypeOf<
       Point0<
-        'root',
+        'base',
         undefined,
         undefined,
         EmptyCtx,
@@ -268,6 +269,7 @@ describe('Point0', () => {
     const server = Point0.create('server').root()
     const url = '/z/x/c'
     const server1 = server
+      .lets('root', 'root')
       .ctx(() => ({
         a: 1,
         b: 2,
