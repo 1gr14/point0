@@ -53,8 +53,3 @@ export function mount(
 // we have absolutly same type in @point0/core/types, so if somebody need it, get it from there
 type AppProps = { points: PointsManager }
 type AppComponent = (props: AppProps) => React.ReactElement
-
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-if (import.meta.hot) {
-  import.meta.hot.accept()
-}

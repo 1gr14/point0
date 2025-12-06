@@ -433,6 +433,15 @@ Bun.serve({
       ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
       : null
 
+    const hmr =
+      loadedViteConfig.server?.hmr === false
+        ? false
+        : hmrPort === null
+          ? false
+          : {
+              ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+              port: hmrPort,
+            }
     return await createServer({
       ...loadedViteConfig,
       plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
@@ -442,15 +451,8 @@ Bun.serve({
       server: {
         ...loadedViteConfig.server,
         middlewareMode: true,
-        hmr:
-          loadedViteConfig.server?.hmr === false
-            ? false
-            : hmrPort === null
-              ? false
-              : {
-                  ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-                  port: hmrPort,
-                },
+        ws: !hmr ? false : loadedViteConfig.server?.ws,
+        hmr,
       },
       define: {
         ...loadedViteConfig.define,

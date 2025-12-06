@@ -51,7 +51,7 @@ export const ideasNewsPage_f1cgsfcemm_lazy = {
 export const generalLayout_10x3orfssi_lazy = {
   type: 'layout',
   name: 'generalLayout',
-  route: '/',
+  route: '/generalLayout',
   point: async () => (await import('../layouts/general.js')).generalLayout.point,
 } as LazyPointsCollectionRecord
 
