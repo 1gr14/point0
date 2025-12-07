@@ -4,6 +4,9 @@
 
 prettify visible methods per TLetsEndpointType and TPointType
 fix mountable component assign props
+remove root from lets
+.ssr(), and remove ssr option from engine
+prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
 
@@ -16,7 +19,7 @@ expo router
 
 START0
 start0 without mono0
-refactor Error0
+refactor Error0; check ConvexError style
 refactor Meta0
 refactor Ctx0
 refactor Env0
@@ -49,6 +52,7 @@ pruner: point0PruneScopePoints, totally remove points not related to the scope
 check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
 normzliae all errors texts everyhere
 .onServerError, .onClientError
+? expose point in NicePoint
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
@@ -62,20 +66,29 @@ const plugin = <TExtra extends {}>(extra: TExtra) =><TData extends {}>({ data }:
 ------ after start0 ------
 --------------------------
 
+.lets('multiPage').route('/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
+mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
+.robotsTxt(take, skip)
+
 find unused code
 example refactor
-
 example auth
+
 test for units
 test for engine
 test for e2e
 
-static site generator
-site & docs (all docs in my site)
-choose license
-prepare start0 selling
-prepare subscription, only yearly model
-npm @point0
+site
+docs (all docs in my site)
+license
+npm
+
+social pages
+video
+article
+
+launch
 
 ----------------
 ------ v2 ------
@@ -108,7 +121,6 @@ serverOnly, clientOnly, serverOnlyPackages, clientOnlyPackages, throw error if i
 .preventSsr()
 .openapi({method, body, search, headers, output})
 zustand
-robotsTxt(take, skip)
 node bun polyfill
 ? .output(z.object({}))
 websocket, messanger
