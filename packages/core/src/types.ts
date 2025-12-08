@@ -286,6 +286,14 @@ export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
 
+export type NewDataOrPrevData<
+  TPrevData extends Data | UndefinedData,
+  TNewData extends Data | UndefinedData,
+> = TNewData extends UndefinedData ? TPrevData : TNewData
+export type NewDataOrPrevDataOrNever<
+  TPrevData extends Data | UndefinedData,
+  TNewData extends Data | UndefinedData,
+> = TNewData extends Data ? TNewData : TPrevData extends Data ? TPrevData : never
 export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
 export type FinalClientData<
   TData extends Data | UndefinedData,
@@ -375,6 +383,9 @@ export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : fals
 export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+export type ThisOrIfAnyThenThat<TThis, TThat> = 0 extends 1 & TThis ? TThat : TThis
+export type IfDefinedThenElse<T, Then, Else = T> = T extends undefined ? Else : Then
+export type ThisOrInUndefinedThenThat<TThis, TThat> = TThis extends undefined ? TThat : TThis
 
 // fetching and queries
 
@@ -799,6 +810,12 @@ export type CtxFn<
 > = (props: CtxFnProps<TCtxInput, TData, TRouteDefinition, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
+export type InferCtxOrFnOutput<TCtxOrFn extends CtxFn<any, any, any, any, any> | Ctx> =
+  TCtxOrFn extends CtxFn<any, any, any, any, infer TCtxFnOutput>
+    ? TCtxFnOutput
+    : TCtxOrFn extends Ctx
+      ? TCtxOrFn
+      : never
 
 export type LoaderFnProps<
   TCtx extends Ctx = Ctx,
@@ -820,6 +837,8 @@ export type LoaderFn<
 > = (
   props: LoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>,
 ) => Promise<[number, TDataOutput]> | [number, TDataOutput] | Promise<TDataOutput> | TDataOutput
+export type InferLoaderFnDataOutput<TLoaderFn extends LoaderFn<any, any, any, any, any>> =
+  TLoaderFn extends LoaderFn<any, any, any, any, infer TDataOutput> ? TDataOutput : never
 
 export type CtxLoaderFnProps<
   TCtx extends Ctx = Ctx,

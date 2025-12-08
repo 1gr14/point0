@@ -64,6 +64,8 @@ import type {
   FinalProps,
   IfAnyThenElse,
   Infer,
+  InferCtxOrFnOutput,
+  InferLoaderFnDataOutput,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -2024,6 +2026,76 @@ export class Point0<
       _pointType: 'component',
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _component: component || ((() => null) as never), // in case if we prune component for serverNoSsr customer
+      _letsEndPointType: undefined,
+      _queryResultType: (this._queryResultType === undefined
+        ? this._hasLoader()
+          ? 'query'
+          : undefined
+        : this._queryResultType) as TQueryResultType extends undefined
+        ? TData extends undefined
+          ? undefined
+          : 'query'
+        : TQueryResultType,
+    })
+    const componentWithPoint = point._Component
+    // TODO:ASAP assign here all needed methods
+    Object.assign(componentWithPoint, { point, lets: point.lets.bind(point) })
+    return componentWithPoint as never
+    // Point0.setGlobalPoint(point)
+    // return point._Component
+  }
+
+  componentx<
+    // TXPointType extends PointType = TPointType,
+    // TXLetsEndPointType extends EndPointType | UndefinedEndPointType = TLetsEndPointType,
+    // TXRequiredCtx extends RequiredCtx = TRequiredCtx,
+    // TXCtx extends Ctx = TCtx,
+    // TXData extends Data | UndefinedData = TData,
+    // TXClientData extends Data | UndefinedData = TClientData,
+    // TXRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = TRouteDefinition,
+    // TXPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = TPrevRouteDefinition,
+    // TXInputSchema extends InputSchema | UndefinedInputSchema = TInputSchema,
+    // TXResponseOutput extends ResponseOutput | UndefinedResponseOutput = TResponseOutput,
+    // TXQueryResultType extends QueryResultType | UndefinedQueryResultType = TQueryResultType,
+    // TXProps extends Props | UndefinedProps = TProps,
+    TNewProps extends Props | UndefinedProps,
+    // TNewData extends Data = TData,
+    TCtxFn extends CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, any>,
+    TLoaderFn extends LoaderFn<InferCtxOrFnOutput<TCtxFn>, TData, TRouteDefinition, TInputSchema, any>,
+  >(options: {
+    name: string
+    props?: TNewProps
+    ctx?: TCtxFn
+    loader?: TLoaderFn
+    // loader?: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>
+    component: ComponentComponent<
+      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+      InferLoaderFnDataOutput<TLoaderFn>,
+      // { x: 3 },
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TNewProps extends Props ? TNewProps : TProps
+    >
+  }): NiceComponentEndPoint<
+    'component',
+    UndefinedEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+    TNewProps extends Props ? TNewProps : TProps
+  > {
+    // ): MountableComponent<TInputSchema, TProps, false> {
+    const point = this._continue({
+      _pointType: 'component',
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _component: options.component || ((() => null) as never), // in case if we prune component for serverNoSsr customer
       _letsEndPointType: undefined,
       _queryResultType: (this._queryResultType === undefined
         ? this._hasLoader()
