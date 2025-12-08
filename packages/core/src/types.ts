@@ -709,6 +709,8 @@ export type ErrorComponentProps<
   UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any>,
   'error'
 > & { error: Error0 } & { props: FinalProps<TProps> }
+
+// TODO: error component do not know anything about query, becouse it can be defined in any place before
 export type ErrorComponentType<
   TType extends DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -1031,19 +1033,44 @@ export type NiceRootMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  | 'requireCtx'
+  | 'serverurl'
+  | 'baseurl'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'error'
+  | 'pageError'
+  | 'componentError'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'route'
+  | 'ctx'
+  | 'loader'
+  | 'ctxLoader'
+  | 'head'
+  | 'input'
+  | 'root'
 >
 
 export type NiceBaseMiddlePoint<
@@ -1059,19 +1086,42 @@ export type NiceBaseMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  | 'base'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'error'
+  | 'pageError'
+  | 'componentError'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'wrapper'
+  | 'route'
+  | 'ctx'
+  | 'loader'
+  | 'ctxLoader'
+  | 'head'
+  | 'input'
 >
 
 export type NicePageMiddlePoint<
@@ -1087,19 +1137,41 @@ export type NicePageMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ?
+        | 'page'
+        | 'fetchOptions'
+        | 'error'
+        | 'loading'
+        | 'wrapper'
+        | 'route'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'head'
+        | 'props'
+        | 'base'
+        | 'input'
+        | 'query'
+        | 'onPrefetch'
+        | 'infiniteQuery'
+    : 'page' | 'clientLoader' | 'query' | 'infiniteQuery'
 >
 
 export type NiceComponentMiddlePoint<
@@ -1145,7 +1217,7 @@ export type NiceComponentMiddlePoint<
         | 'loader'
         | 'ctxLoader'
         | 'clientLoader'
-    : 'component' | 'clientLoader'
+    : 'component' | 'query' | 'infiniteQuery' | 'clientLoader'
 >
 
 export type NiceResponseMiddlePoint<

@@ -238,7 +238,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  private readonly _pageErrorComponent?: ErrorComponentType<
+  private readonly _pageErrorComponent: ErrorComponentType<
     'page',
     TQueryResultType,
     TData,
@@ -248,7 +248,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  private readonly _componentErrorComponent?: ErrorComponentType<
+  private readonly _componentErrorComponent: ErrorComponentType<
     'component',
     TQueryResultType,
     TData,
@@ -268,7 +268,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  private readonly _pageLoadingComponent?: LoadingComponentType<
+  private readonly _pageLoadingComponent: LoadingComponentType<
     'page',
     TQueryResultType,
     TData,
@@ -278,7 +278,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  private readonly _componentLoadingComponent?: LoadingComponentType<
+  private readonly _componentLoadingComponent: LoadingComponentType<
     'component',
     TQueryResultType,
     TData,
@@ -484,10 +484,12 @@ export class Point0<
     this._scrollPositionRestorePolicy = props._scrollPositionRestorePolicy ?? (() => null)
     this._prefetchPolicy = props._prefetchPolicy ?? 'serverClientQuery'
     this._onPrefetchFns = props._onPrefetchFns ?? []
-    this._errorComponent =
-      props._errorComponent ??
+    this._errorComponent = props._errorComponent
+    this._pageErrorComponent =
+      props._pageErrorComponent ??
       ((({ error }) => {
         const { stack, ...json } = error.toJSON()
+        // TODO: move console.error to .onClientError
         console.error(error)
         return React.createElement(
           React.Fragment,
@@ -496,7 +498,7 @@ export class Point0<
           React.createElement('pre', null, stack),
         )
       }) as ErrorComponentType<
-        DestinationComponentType,
+        'page',
         TQueryResultType,
         TData,
         TResponseOutput,
@@ -505,13 +507,33 @@ export class Point0<
         TRouteDefinition,
         TProps
       >)
-    this._pageErrorComponent = props._pageErrorComponent
-    this._componentErrorComponent = props._componentErrorComponent
-    this._pageLoadingComponent = props._pageLoadingComponent
-    this._loadingComponent =
-      props._loadingComponent ??
+    this._componentErrorComponent =
+      props._componentErrorComponent ??
+      ((({ error }) => {
+        const { stack, ...json } = error.toJSON()
+        // TODO: move console.error to .onClientError
+        console.error(error)
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement('pre', null, JSON.stringify(json, null, 2)),
+          React.createElement('pre', null, stack),
+        )
+      }) as ErrorComponentType<
+        'component',
+        TQueryResultType,
+        TData,
+        TResponseOutput,
+        TClientData,
+        TInputSchema,
+        TRouteDefinition,
+        TProps
+      >)
+    this._loadingComponent = props._loadingComponent
+    this._pageLoadingComponent =
+      props._pageLoadingComponent ??
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
-        DestinationComponentType,
+        'page',
         TQueryResultType,
         TData,
         TResponseOutput,
@@ -520,7 +542,18 @@ export class Point0<
         TRouteDefinition,
         TProps
       >)
-    this._componentLoadingComponent = props._componentLoadingComponent
+    this._componentLoadingComponent =
+      props._componentLoadingComponent ??
+      ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
+        'component',
+        TQueryResultType,
+        TData,
+        TResponseOutput,
+        TClientData,
+        TInputSchema,
+        TRouteDefinition,
+        TProps
+      >)
     this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
   }
 
@@ -1546,10 +1579,11 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType,
+    TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
     TProps
   > {
     return this._continue({
+      _queryResultType: this._queryResultType ?? 'query',
       _extractFns: [
         ...this._extractFns,
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune loader for client
@@ -1571,10 +1605,11 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType,
+    TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
     TProps
   > {
     return this._continue({
+      _queryResultType: this._queryResultType ?? 'query',
       _extractFns: [
         ...this._extractFns,
         {
@@ -1606,11 +1641,12 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType,
+    TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
     TProps
   > {
     return this._continue({
       _pointType: 'clientMiddleware',
+      _queryResultType: this._queryResultType ?? 'query',
       _clientExtractFns: [
         ...this._clientExtractFns,
         {
@@ -2295,10 +2331,11 @@ export class Point0<
     TRouteDefinition,
     TProps
   > {
-    return ({
-      page: this._pageErrorComponent,
-      component: this._componentErrorComponent,
-    }[type] ?? this._errorComponent) as never
+    return (this._errorComponent ??
+      {
+        page: this._pageErrorComponent,
+        component: this._componentErrorComponent,
+      }[type]) as never
   }
 
   private _getLoadingComponent<TType extends DestinationComponentType>({
@@ -2315,10 +2352,11 @@ export class Point0<
     TRouteDefinition,
     TProps
   > {
-    return ({
-      page: this._pageLoadingComponent,
-      component: this._componentLoadingComponent,
-    }[type] ?? this._loadingComponent) as never
+    return (this._loadingComponent ??
+      {
+        page: this._pageLoadingComponent,
+        component: this._componentLoadingComponent,
+      }[type]) as never
   }
 
   private _withWrappers(component: React.ReactNode): Exclude<React.ReactNode, Promise<any>> {

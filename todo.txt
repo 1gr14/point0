@@ -67,9 +67,21 @@ const plugin = <TExtra extends {}>(extra: TExtra) =><TData extends {}>({ data }:
 --------------------------
 
 .lets('multiPage').route('/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
+
 mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
+mySub = root.lets('subscription')
+.subscribeInput(z.object({chatId: z.string()}))
+.sendInput(z.union([z.object({eventType: z.literal('newMessage'), text: z.string()}), z.object({eventType: z.literal('newGuest'), name: z.string()})]))
+? .sendKey(z.object({eventType: z.literal('newMessage'), text: z.string()}) | z.object({eventType: z.literal('newGuest'), name: z.string()}))
+.subscription(throw if not belong to user, return filterFn like ());
+mySub.subscribe({chatId});
+mySub.send({chatId}, {eventType: 'newMessage', text: 'hello'});
+
 .robotsTxt(take, skip)
+
+--------------------------
 
 find unused code
 example refactor
