@@ -2,13 +2,63 @@
 ------ before start0 -----
 --------------------------
 
+serverurl
+baseurl
+queryOptions
+infiniteQueryOptions
+pageQueryOptions
+componentQueryOptions
+providerQueryOptions
+layoutQueryOptions
+fetchOptions
+error
+pageError
+componentError
+loading
+pageLoading
+componentLoading
+wrapper
+route
+ctx
+loader
+ctxLoader
+clientLoader
+head
+provider
+response
+scrollGetter
+scrollSetter
+scrollRestorePolicy
+prefetchPolicy
+onPrefetch
+
 prettify visible methods per TLetsEndpointType and TPointType
 fix mountable component assign props
-remove root from lets
+
+currentInput, so when we move through extend fns, we should updateIt, becouse it can changes, also provide inputRaw so we can see original input
+when page or layout then route, else input
+when set route for page check that layout params is same as page params or shrinker
+? by types if page/layout route params not acceptable to inputRaw, then throw error. Also if when define input and its not acceptable route params, then throw error
+
+ctx and loader in props should recieve "extract" fn which accept another point and its input
+
+fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
+? remove root from lets
+
+check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers
+
 .ssr(), and remove ssr option from engine
+
+rename props to options
+client loader fn should accept props
+
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
+
+page with name 404 auto insert in router routes
+
+file upload
 
 EXPO
 expo example
@@ -53,6 +103,7 @@ check why so slow server restart, check wht we can cache on start, like glob res
 normzliae all errors texts everyhere
 .onServerError, .onClientError
 ? expose point in NicePoint
+.info()
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
@@ -78,6 +129,8 @@ mySub = root.lets('subscription')
 .subscription(throw if not belong to user, return filterFn like ());
 mySub.subscribe({chatId});
 mySub.send({chatId}, {eventType: 'newMessage', text: 'hello'});
+Сабскрипшен, инпут (при сабскрайбе с клиента), оутпут (при сенде с сервера), в конечной точке вообще ничего не надо писать пустая функция,  все лоадеры и контексты вызовутся при сабскрайбе, весь инпут и хедеры передадутся в серч параметрах, но для лоадеров их превратим в фейковый реквест перед обработкой. На клиенте дать тчк он, и тчк юзОн, на сервере эти штуки будут проигнорированы. Сабскрайб происходит в момент тчк он или юзон и возвращает статус, состояние. И в самом поинте есть тчк онСенд в который передаётся информация о клиенте к которому мы подключаемся, чтобы если что можно было например отключить юзера или ещё чего в таком духе. Нам нужен отдельный клиентСенд и серверСенд
+Вебсокет: рум определяет клч рума и в аргументах указано это клиент зовёт, или сервер
 
 .robotsTxt(take, skip)
 
@@ -91,6 +144,7 @@ test for units
 test for engine
 test for e2e
 
+? logo heart 0
 site
 docs (all docs in my site)
 license
