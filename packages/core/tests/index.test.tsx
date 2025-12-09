@@ -16,7 +16,6 @@ import type {
   UndefinedProps,
   UndefinedQueryResultType,
   UndefinedResponseOutput,
-  UndefinedRoute,
   UndefinedRouteDefinition,
 } from '../src/types.js'
 
@@ -52,7 +51,7 @@ describe('Point0', () => {
         UndefinedProps
       >
     >()
-    expect(server._extractFns).toEqual([])
+    expect(server.point._extractFns).toEqual([])
   })
 
   it('extends with ctx fn', () => {
@@ -79,37 +78,37 @@ describe('Point0', () => {
         UndefinedProps
       >
     >()
-    // expect(server1._extractFns).toHaveLength(1)
-    // // not modified original server
-    // expect(server._extractFns).toHaveLength(0)
-    // const server2 = server1.ctx(({ ctx }) => ({
-    //   ...ctx,
-    //   a: 3,
-    //   c: 4,
-    // }))
-    // expect(server2).toBeInstanceOf(Point0)
+    expect(server1.point._extractFns).toHaveLength(1)
+    // not modified original server
+    expect(server.point._extractFns).toHaveLength(0)
+    const server2 = server1.ctx(({ ctx }) => ({
+      ...ctx,
+      a: 3,
+      c: 4,
+    }))
+    expect(server2).toBeInstanceOf(Point0)
 
-    // expectTypeOf(server2).toEqualTypeOf<
-    //   NiceRootMiddlePoint<
-    //     'middleware',
-    //     'root',
-    //     undefined,
-    //     { a: number; b: number; c: number },
-    //     undefined,
-    //     undefined,
-    //     undefined,
-    //     undefined,
-    //     undefined,
-    //     undefined,
-    //     undefined,
-    //     undefined
-    //   >
-    // >()
-    // expect(server2._extractFns).toHaveLength(2)
-    // // not modified original server1
-    // expect(server1._extractFns).toHaveLength(1)
-    // // not modified original server
-    // expect(server._extractFns).toHaveLength(0)
+    expectTypeOf(server2).toEqualTypeOf<
+      NiceRootMiddlePoint<
+        'middleware',
+        'root',
+        undefined,
+        { a: number; b: number; c: number },
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      >
+    >()
+    expect(server2.point._extractFns).toHaveLength(2)
+    // not modified original server1
+    expect(server1.point._extractFns).toHaveLength(1)
+    // not modified original server
+    expect(server.point._extractFns).toHaveLength(0)
   })
 
   it('extends with ctx with {}', async () => {
@@ -125,7 +124,7 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      Point0<
+      NiceRootEndPoint<
         'root',
         undefined,
         undefined,
@@ -140,9 +139,9 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server1._extractFns).toHaveLength(1)
+    expect(server1.point._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extractFns).toHaveLength(0)
+    expect(server.point._extractFns).toHaveLength(0)
     const server2 = server1.attach(
       Point0.create<typeof server1>('server2', ['server1'])
         .ctx({
@@ -154,7 +153,7 @@ describe('Point0', () => {
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
-      Point0<
+      NiceRootEndPoint<
         'root',
         undefined,
         undefined,
@@ -169,11 +168,11 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server2._extractFns).toHaveLength(2)
+    expect(server2.point._extractFns).toHaveLength(2)
     // not modified original server1
-    expect(server1._extractFns).toHaveLength(1)
+    expect(server1.point._extractFns).toHaveLength(1)
     // not modified original server
-    expect(server._extractFns).toHaveLength(0)
+    expect(server.point._extractFns).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPointBase02 = Point0.create<typeof server2>('client', ['server2']).root()
     const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent)

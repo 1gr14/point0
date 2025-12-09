@@ -79,6 +79,7 @@ import type {
   MountableComponentProps,
   NiceBaseEndPoint,
   NiceComponentEndPoint,
+  NiceEndPoint,
   NiceInfiniteQueryEndPoint,
   NiceLayoutEndPoint,
   NiceMiddlePoint,
@@ -785,17 +786,18 @@ export class Point0<
   }
 
   // call on on root points
-  attach<TPoint extends AnyPoint>(point: TPoint): TPoint {
+  attach<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any>>(
+    point: TPoint,
+  ): TPoint {
     const result = this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-misused-spread
       ...point,
-      _headFns: [...this._headFns, ...point._headFns],
-      _extractFns: [...this._extractFns, ...point._extractFns],
-      _clientExtractFns: [...this._clientExtractFns, ...point._clientExtractFns],
+      _headFns: [...this._headFns, ...point.point._headFns],
+      _extractFns: [...this._extractFns, ...point.point._extractFns],
+      _clientExtractFns: [...this._clientExtractFns, ...point.point._clientExtractFns],
       _scope: this._scope,
       _root: this._root,
       _attachedTo: [],
-    }) as TPoint
+    }) as never
     return result
   }
 
@@ -815,7 +817,7 @@ export class Point0<
     UndefinedQueryResultType,
     UndefinedProps
   >
-  static create<TRootPoint extends RootPoint>(
+  static create<TRootPoint extends NiceRootEndPoint<any, any, any, any, any, any, any, any, any, any, any, any>>(
     scope: string,
     attachedTo: PointsScope[],
   ): NiceRootMiddlePoint<
@@ -1867,7 +1869,7 @@ export class Point0<
 
   page<
     TPage extends PageComponent<
-      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+      TQueryResultType,
       TData,
       TResponseOutput,
       TClientData,
@@ -1889,12 +1891,12 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
-      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+      TQueryResultType,
       TProps
     >
   page<
     TPage extends PageComponent<
-      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+      TQueryResultType,
       TData,
       TResponseOutput,
       TClientData,
@@ -1920,7 +1922,7 @@ export class Point0<
       TPrevRouteDefinition,
       TInputSchema,
       TResponseOutput,
-      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+      TQueryResultType,
       TProps
     >
   page(
@@ -1931,27 +1933,9 @@ export class Point0<
             | ResolvableHead
             | string
           ),
-          PageComponent<
-            TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
-            TData,
-            TResponseOutput,
-            TClientData,
-            TRouteDefinition,
-            TInputSchema,
-            TProps
-          >,
+          PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>,
         ]
-      | [
-          PageComponent<
-            TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
-            TData,
-            TResponseOutput,
-            TClientData,
-            TRouteDefinition,
-            TInputSchema,
-            TProps
-          >,
-        ]
+      | [PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>]
   ): NicePageEndPoint<
     'page',
     UndefinedEndPointType,
@@ -1963,7 +1947,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+    TQueryResultType,
     TProps
   > {
     const [head, page] = args.length === 2 ? args : [undefined, args[0]]
@@ -1976,15 +1960,6 @@ export class Point0<
       _page: page,
       _letsEndPointType: undefined,
       _headFns: !successHeadFn ? this._headFns : [...this._headFns, successHeadFn],
-      _queryResultType: (this._queryResultType === undefined
-        ? this._hasLoader()
-          ? 'query'
-          : undefined
-        : this._queryResultType) as TQueryResultType extends undefined
-        ? TData extends undefined
-          ? undefined
-          : 'query'
-        : TQueryResultType,
     })
     const pageWithPoint = point._Page.bind(point)
     // TODO:ASAP assign here all needed methods
@@ -1995,14 +1970,7 @@ export class Point0<
   }
 
   component<
-    TComponent extends ComponentComponent<
-      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TProps
-    >,
+    TComponent extends ComponentComponent<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TProps>,
   >(
     component: TComponent,
   ): NiceComponentEndPoint<
@@ -2016,7 +1984,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+    TQueryResultType,
     TProps
   > {
     // ): MountableComponent<TInputSchema, TProps, false> {
@@ -2025,15 +1993,6 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _component: component || ((() => null) as never), // in case if we prune component for serverNoSsr customer
       _letsEndPointType: undefined,
-      _queryResultType: (this._queryResultType === undefined
-        ? this._hasLoader()
-          ? 'query'
-          : undefined
-        : this._queryResultType) as TQueryResultType extends undefined
-        ? TData extends undefined
-          ? undefined
-          : 'query'
-        : TQueryResultType,
     })
     const componentWithPoint = point._Component
     // TODO:ASAP assign here all needed methods
@@ -2045,7 +2004,7 @@ export class Point0<
 
   layout<
     TLayout extends LayoutComponent<
-      TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+      TQueryResultType,
       TData,
       TResponseOutput,
       TClientData,
@@ -2066,7 +2025,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+    TQueryResultType,
     TProps
   > {
     const point = this._continue({
@@ -2074,15 +2033,6 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _layout: layout || ((async ({ children }: { children: React.ReactNode }) => await children) as never), // in case if we prune layout for serverNoSsr customer
       _letsEndPointType: undefined,
-      _queryResultType: (this._queryResultType === undefined
-        ? this._hasLoader()
-          ? 'query'
-          : undefined
-        : this._queryResultType) as TQueryResultType extends undefined
-        ? TData extends undefined
-          ? undefined
-          : 'query'
-        : TQueryResultType,
     })
     const layoutWithPoint = point._Layout
     // TODO:ASAP assign here all needed methods
@@ -2108,7 +2058,7 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+    TQueryResultType,
     TProps
   >
   provider(): NiceProviderEndPoint<
@@ -2122,22 +2072,13 @@ export class Point0<
     TPrevRouteDefinition,
     TInputSchema,
     TResponseOutput,
-    TQueryResultType extends undefined ? (TData extends undefined ? undefined : 'query') : TQueryResultType,
+    TQueryResultType,
     TProps
   >
   provider(providerValueSetter?: ProviderValueSetterFn<any, any, any, any>) {
     const point = this._continue({
       _pointType: 'provider',
       _letsEndPointType: undefined,
-      _queryResultType: (this._queryResultType === undefined
-        ? this._hasLoader()
-          ? 'query'
-          : undefined
-        : this._queryResultType) as TQueryResultType extends undefined
-        ? TData extends undefined
-          ? undefined
-          : 'query'
-        : TQueryResultType,
       _providerValueSetter: providerValueSetter || (({ data }) => data),
       _ProviderReactContext: createContext<FinalClientData<TData, TClientData>>(null as never) as never,
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
@@ -2205,28 +2146,43 @@ export class Point0<
       FinalClientData<TData, TClientData>,
       QueryKey
     > = {},
-  ): NiceQueryEndPoint<
-    'query',
-    TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'query',
-    TProps
-  > {
+  ): TLetsEndPointType extends 'query'
+    ? NiceQueryEndPoint<
+        'query',
+        undefined,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        'query',
+        TProps
+      >
+    : NiceMiddlePoint<
+        TPointType,
+        TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        'query',
+        TProps
+      > {
     return this._continue({
-      _pointType: 'query',
+      _pointType: this._letsEndPointType === 'query' ? 'query' : this._pointType,
       _letsEndPointType: (this._letsEndPointType === 'query'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
       _queryResultType: 'query',
       _queryOptions: queryOptions,
-    })
+    }) as never
   }
 
   infiniteQuery(
@@ -2238,29 +2194,44 @@ export class Point0<
       QueryKey,
       unknown
     >,
-  ): NiceInfiniteQueryEndPoint<
-    'infiniteQuery',
-    TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    'infiniteQuery',
-    TProps
-  > {
+  ): TLetsEndPointType extends 'infiniteQuery'
+    ? NiceInfiniteQueryEndPoint<
+        'infiniteQuery',
+        undefined,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        'infiniteQuery',
+        TProps
+      >
+    : NiceMiddlePoint<
+        TPointType,
+        TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        'infiniteQuery',
+        TProps
+      > {
     return this._continue({
-      _pointType: 'infiniteQuery',
+      _pointType: this._letsEndPointType === 'infiniteQuery' ? 'infiniteQuery' : this._pointType,
       _letsEndPointType: (this._letsEndPointType === 'infiniteQuery'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       _queryResultType: 'infiniteQuery',
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _infiniteQueryOptions: infiniteQueryOptions ?? {}, // in case if we prune infiniteQuery for serverNoSsr customer
-    })
+    }) as never
   }
 
   mutation<TNewData extends Data = Data>(
@@ -2290,7 +2261,7 @@ export class Point0<
         },
       ] as never,
       _letsEndPointType: undefined,
-    })
+    }) as never
   }
 
   // internal utils

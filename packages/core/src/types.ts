@@ -1020,6 +1020,18 @@ export type AppComponent = (props: AppProps) => React.ReactElement
 
 // nice middle point
 
+export type WithRouteLiteralIfNoRoute<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TLiteral extends string,
+> = TRouteDefinition extends RouteDefinition ? TLiteral : TLiteral | 'route'
+
+export type WithQueryMiddleLiteralIfLoader<
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TQueryLiteral extends 'query' | 'infiniteQuery',
+  TLiteral extends string,
+> = TData extends Data ? TLiteral | TQueryLiteral : TClientData extends Data ? TLiteral | TQueryLiteral : TLiteral
+
 export type NiceRootMiddlePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'root',
@@ -1048,29 +1060,39 @@ export type NiceRootMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  | 'requireCtx'
-  | 'serverurl'
-  | 'baseurl'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
-  | 'pageQueryOptions'
-  | 'componentQueryOptions'
-  | 'providerQueryOptions'
-  | 'layoutQueryOptions'
-  | 'fetchOptions'
-  | 'error'
-  | 'pageError'
-  | 'componentError'
-  | 'pageLoading'
-  | 'componentLoading'
-  | 'loading'
-  | 'route'
-  | 'ctx'
-  | 'loader'
-  | 'ctxLoader'
-  | 'head'
-  | 'input'
-  | 'root'
+  WithRouteLiteralIfNoRoute<
+    TRouteDefinition,
+    | 'root'
+    | 'requireCtx'
+    | 'serverurl'
+    | 'baseurl'
+    | 'queryOptions'
+    | 'infiniteQueryOptions'
+    | 'pageQueryOptions'
+    | 'componentQueryOptions'
+    | 'providerQueryOptions'
+    | 'layoutQueryOptions'
+    | 'fetchOptions'
+    | 'pageError'
+    | 'componentError'
+    | 'error'
+    | 'pageLoading'
+    | 'componentLoading'
+    | 'loading'
+    | 'route'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'ctxLoader'
+    | 'clientLoader'
+    | 'head'
+    | 'scrollPosition'
+    | 'scrollRestore'
+    | 'prefetchPolicy'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
+  >
 >
 
 export type NiceBaseMiddlePoint<
@@ -1101,27 +1123,37 @@ export type NiceBaseMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  | 'base'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
-  | 'pageQueryOptions'
-  | 'componentQueryOptions'
-  | 'providerQueryOptions'
-  | 'layoutQueryOptions'
-  | 'fetchOptions'
-  | 'error'
-  | 'pageError'
-  | 'componentError'
-  | 'pageLoading'
-  | 'componentLoading'
-  | 'loading'
-  | 'wrapper'
-  | 'route'
-  | 'ctx'
-  | 'loader'
-  | 'ctxLoader'
-  | 'head'
-  | 'input'
+  WithRouteLiteralIfNoRoute<
+    TRouteDefinition,
+    | 'base'
+    | 'queryOptions'
+    | 'infiniteQueryOptions'
+    | 'pageQueryOptions'
+    | 'componentQueryOptions'
+    | 'providerQueryOptions'
+    | 'layoutQueryOptions'
+    | 'fetchOptions'
+    | 'pageError'
+    | 'componentError'
+    | 'error'
+    | 'pageLoading'
+    | 'componentLoading'
+    | 'loading'
+    | 'wrapper'
+    | 'route'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'ctxLoader'
+    | 'clientLoader'
+    | 'head'
+    | 'scrollPosition'
+    | 'scrollRestore'
+    | 'prefetchPolicy'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
+  >
 >
 
 export type NicePageMiddlePoint<
@@ -1153,25 +1185,40 @@ export type NicePageMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ?
-        | 'page'
-        | 'fetchOptions'
-        | 'error'
-        | 'loading'
-        | 'wrapper'
-        | 'route'
-        | 'ctx'
-        | 'loader'
-        | 'ctxLoader'
-        | 'clientLoader'
-        | 'head'
-        | 'props'
-        | 'base'
-        | 'input'
-        | 'query'
-        | 'onPrefetch'
-        | 'infiniteQuery'
-    : 'page' | 'clientLoader' | 'query' | 'infiniteQuery'
+    ? WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        WithRouteLiteralIfNoRoute<
+          TRouteDefinition,
+          | 'page'
+          | 'fetchOptions'
+          | 'error'
+          | 'loading'
+          | 'wrapper'
+          | 'route'
+          | 'input'
+          | 'ctx'
+          | 'loader'
+          | 'ctxLoader'
+          | 'clientLoader'
+          | 'head'
+          | 'props'
+          | 'base'
+          | 'scrollPosition'
+          | 'scrollRestore'
+          | 'prefetchPolicy'
+          | 'onPrefetch'
+          | 'point'
+          | 'Infer'
+        >
+      >
+    : WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        'page' | 'clientLoader' | 'point' | 'Infer'
+      >
 >
 
 export type NiceComponentMiddlePoint<
@@ -1203,21 +1250,32 @@ export type NiceComponentMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ?
+    ? WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
         | 'component'
-        | 'props'
-        | 'input'
-        | 'queryOptions'
-        | 'infiniteQueryOptions'
         | 'fetchOptions'
         | 'error'
         | 'loading'
         | 'wrapper'
+        | 'input'
         | 'ctx'
         | 'loader'
         | 'ctxLoader'
         | 'clientLoader'
-    : 'component' | 'query' | 'infiniteQuery' | 'clientLoader'
+        | 'props'
+        | 'base'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+      >
+    : WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        'component' | 'clientLoader' | 'point' | 'Infer'
+      >
 >
 
 export type NiceResponseMiddlePoint<
@@ -1233,19 +1291,22 @@ export type NiceResponseMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  'response' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'ctxLoader' | 'base' | 'point' | 'Infer'
 >
 
 export type NiceQueryMiddlePoint<
@@ -1261,19 +1322,38 @@ export type NiceQueryMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ? WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query',
+        | 'fetchOptions'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'base'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+      >
+    : WithQueryMiddleLiteralIfLoader<TData, TClientData, 'query', 'clientLoader' | 'point' | 'Infer'>
 >
 
 export type NiceInfiniteQueryMiddlePoint<
@@ -1289,19 +1369,38 @@ export type NiceInfiniteQueryMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ? WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'infiniteQuery',
+        | 'fetchOptions'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'base'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+      >
+    : WithQueryMiddleLiteralIfLoader<TData, TClientData, 'infiniteQuery', 'clientLoader' | 'point' | 'Infer'>
 >
 
 export type NiceMutationMiddlePoint<
@@ -1317,19 +1416,35 @@ export type NiceMutationMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ?
+        | 'mutation'
+        | 'fetchOptions'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'base'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+    : 'mutation' | 'clientLoader' | 'point' | 'Infer'
 >
 
 export type NiceLayoutMiddlePoint<
@@ -1345,19 +1460,58 @@ export type NiceLayoutMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ? WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        WithRouteLiteralIfNoRoute<
+          TRouteDefinition,
+          | 'layout'
+          | 'fetchOptions'
+          | 'pageError'
+          | 'error'
+          | 'pageLoading'
+          | 'loading'
+          | 'wrapper'
+          | 'route'
+          | 'input'
+          | 'ctx'
+          | 'loader'
+          | 'ctxLoader'
+          | 'clientLoader'
+          | 'head'
+          | 'props'
+          | 'base'
+          | 'scrollPosition'
+          | 'scrollRestore'
+          | 'prefetchPolicy'
+          | 'onPrefetch'
+          | 'point'
+          | 'Infer'
+        >
+      >
+    : WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        'layout' | 'clientLoader' | 'point' | 'Infer'
+      >
 >
 
 export type NiceProviderMiddlePoint<
@@ -1373,19 +1527,44 @@ export type NiceProviderMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  TPointType extends 'middleware'
+    ? WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        | 'provider'
+        | 'fetchOptions'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'base'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+      >
+    : WithQueryMiddleLiteralIfLoader<
+        TData,
+        TClientData,
+        'query' | 'infiniteQuery',
+        'provider' | 'clientLoader' | 'point' | 'Infer'
+      >
 >
 
 export type NiceMiddlePoint<
@@ -1568,19 +1747,22 @@ export type NiceRootEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  'attach' | 'lets' | 'point' | 'Infer'
 >
 
 export type NiceBaseEndPoint<
@@ -1596,20 +1778,44 @@ export type NiceBaseEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  'lets' | 'point' | 'Infer'
 >
+
+export type WithQueryEndLiteralsIfSuitable<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TLiteral extends string,
+> = TQueryResultType extends 'query'
+  ? TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'fetch' | 'extract'
+  : TQueryResultType extends 'infiniteQuery'
+    ?
+        | TLiteral
+        | 'useInfiniteQuery'
+        | 'getQueryKey'
+        | 'getInfiniteQueryOptions'
+        | 'prefetchInfiniteQuery'
+        | 'fetch'
+        | 'extract'
+    : TLiteral
+
+export type WithInputSchemaLiteralIfExists<
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TLiteral extends string,
+> = TInputSchema extends InputSchema ? TLiteral | 'inputSchema' : TLiteral
 
 export type NicePageEndPoint<
   TPointType extends 'page',
@@ -1640,7 +1846,10 @@ export type NicePageEndPoint<
       TQueryResultType,
       TProps
     >,
-    'point' | 'lets'
+    WithInputSchemaLiteralIfExists<
+      TInputSchema,
+      WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+    >
   >
 
 export type NiceComponentEndPoint<
@@ -1672,7 +1881,10 @@ export type NiceComponentEndPoint<
       TQueryResultType,
       TProps
     >,
-    'point' | 'lets'
+    WithInputSchemaLiteralIfExists<
+      TInputSchema,
+      WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+    >
   >
 
 export type NiceLayoutEndPoint<
@@ -1704,7 +1916,10 @@ export type NiceLayoutEndPoint<
       TQueryResultType,
       TProps
     >,
-    'point' | 'lets'
+    WithInputSchemaLiteralIfExists<
+      TInputSchema,
+      WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+    >
   >
 
 export type NiceResponseEndPoint<
@@ -1720,19 +1935,22 @@ export type NiceResponseEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<TInputSchema, 'fetch' | 'extract' | 'lets' | 'point' | 'Infer'>
 >
 
 export type NiceQueryEndPoint<
@@ -1748,19 +1966,25 @@ export type NiceQueryEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+  >
 >
 
 export type NiceInfiniteQueryEndPoint<
@@ -1776,19 +2000,25 @@ export type NiceInfiniteQueryEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+  >
 >
 
 export type NiceMutationEndPoint<
@@ -1804,19 +2034,25 @@ export type NiceMutationEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    'point' | 'lets' | 'fetch' | 'extract' | 'getMutationOptions' | 'useMutation' | 'Infer'
+  >
 >
 
 export type NiceProviderEndPoint<
@@ -1832,17 +2068,191 @@ export type NiceProviderEndPoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Point0<
-  TPointType,
-  TLetsEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TData,
-  TClientData,
-  TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
-  TResponseOutput,
-  TQueryResultType,
-  TProps
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    WithQueryEndLiteralsIfSuitable<
+      TQueryResultType,
+      'point' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'provider' | 'Provider' | 'Infer'
+    >
+  >
 >
+
+export type NiceEndPoint<
+  TPointType extends PointType,
+  TLetsEndPointType extends EndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = TPointType extends 'root'
+  ? NiceRootEndPoint<
+      TPointType,
+      TLetsEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >
+  : TPointType extends 'base'
+    ? NiceBaseEndPoint<
+        TPointType,
+        TLetsEndPointType,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        TQueryResultType,
+        TProps
+      >
+    : TPointType extends 'page'
+      ? NicePageEndPoint<
+          TPointType,
+          TLetsEndPointType,
+          TRequiredCtx,
+          TCtx,
+          TData,
+          TClientData,
+          TRouteDefinition,
+          TPrevRouteDefinition,
+          TInputSchema,
+          TResponseOutput,
+          TQueryResultType,
+          TProps
+        >
+      : TPointType extends 'component'
+        ? NiceComponentEndPoint<
+            TPointType,
+            TLetsEndPointType,
+            TRequiredCtx,
+            TCtx,
+            TData,
+            TClientData,
+            TRouteDefinition,
+            TPrevRouteDefinition,
+            TInputSchema,
+            TResponseOutput,
+            TQueryResultType,
+            TProps
+          >
+        : TPointType extends 'response'
+          ? NiceResponseEndPoint<
+              TPointType,
+              TLetsEndPointType,
+              TRequiredCtx,
+              TCtx,
+              TData,
+              TClientData,
+              TRouteDefinition,
+              TPrevRouteDefinition,
+              TInputSchema,
+              TResponseOutput,
+              TQueryResultType,
+              TProps
+            >
+          : TPointType extends 'query'
+            ? NiceQueryEndPoint<
+                TPointType,
+                TLetsEndPointType,
+                TRequiredCtx,
+                TCtx,
+                TData,
+                TClientData,
+                TRouteDefinition,
+                TPrevRouteDefinition,
+                TInputSchema,
+                TResponseOutput,
+                TQueryResultType,
+                TProps
+              >
+            : TPointType extends 'infiniteQuery'
+              ? NiceInfiniteQueryEndPoint<
+                  TPointType,
+                  TLetsEndPointType,
+                  TRequiredCtx,
+                  TCtx,
+                  TData,
+                  TClientData,
+                  TRouteDefinition,
+                  TPrevRouteDefinition,
+                  TInputSchema,
+                  TResponseOutput,
+                  TQueryResultType,
+                  TProps
+                >
+              : TPointType extends 'mutation'
+                ? NiceMutationEndPoint<
+                    TPointType,
+                    TLetsEndPointType,
+                    TRequiredCtx,
+                    TCtx,
+                    TData,
+                    TClientData,
+                    TRouteDefinition,
+                    TPrevRouteDefinition,
+                    TInputSchema,
+                    TResponseOutput,
+                    TQueryResultType,
+                    TProps
+                  >
+                : TPointType extends 'layout'
+                  ? NiceLayoutEndPoint<
+                      TPointType,
+                      TLetsEndPointType,
+                      TRequiredCtx,
+                      TCtx,
+                      TData,
+                      TClientData,
+                      TRouteDefinition,
+                      TPrevRouteDefinition,
+                      TInputSchema,
+                      TResponseOutput,
+                      TQueryResultType,
+                      TProps
+                    >
+                  : TPointType extends 'provider'
+                    ? NiceProviderEndPoint<
+                        TPointType,
+                        TLetsEndPointType,
+                        TRequiredCtx,
+                        TCtx,
+                        TData,
+                        TClientData,
+                        TRouteDefinition,
+                        TPrevRouteDefinition,
+                        TInputSchema,
+                        TResponseOutput,
+                        TQueryResultType,
+                        TProps
+                      >
+                    : never

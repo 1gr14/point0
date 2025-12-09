@@ -26,9 +26,8 @@ clientLoader
 head
 provider
 response
-scrollGetter
-scrollSetter
-scrollRestorePolicy
+scrollPosition
+scrollRestore
 prefetchPolicy
 onPrefetch
 
@@ -42,6 +41,13 @@ when set route for page check that layout params is same as page params or shrin
 
 ctx and loader in props should recieve "extract" fn which accept another point and its input
 
+do not podresolve TQueryResultType, just define it in places of loader, event if it was previously infiniteQuery, it is ok
+
+check onPrefetch work recursively
+check query and infiteqQuery and component respect onPrefetch
+
+check mutation clientLoader
+
 fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
 ? remove root from lets
 
@@ -51,6 +57,13 @@ check that when I import point, it is not duplicated on server, and gets from cl
 
 rename props to options
 client loader fn should accept props
+
+Перепроверить хук юзЛокатион
+
+Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
+
+Проверить, что инпут в клиентском лоадере присутствует
+Так пусть он уж и в компоненте присутствует
 
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
@@ -131,6 +144,20 @@ mySub.subscribe({chatId});
 mySub.send({chatId}, {eventType: 'newMessage', text: 'hello'});
 Сабскрипшен, инпут (при сабскрайбе с клиента), оутпут (при сенде с сервера), в конечной точке вообще ничего не надо писать пустая функция,  все лоадеры и контексты вызовутся при сабскрайбе, весь инпут и хедеры передадутся в серч параметрах, но для лоадеров их превратим в фейковый реквест перед обработкой. На клиенте дать тчк он, и тчк юзОн, на сервере эти штуки будут проигнорированы. Сабскрайб происходит в момент тчк он или юзон и возвращает статус, состояние. И в самом поинте есть тчк онСенд в который передаётся информация о клиенте к которому мы подключаемся, чтобы если что можно было например отключить юзера или ещё чего в таком духе. Нам нужен отдельный клиентСенд и серверСенд
 Вебсокет: рум определяет клч рума и в аргументах указано это клиент зовёт, или сервер
+!!!
+1 messanger. clientSendInput, serverSendInput, clientJoinInput, onClienSend, onServerSend, onClientJoin,
+2 Лоадеры и кткс штуки сами вызовутся, но в эти коробки передастся экстрактСелф, и его можно вызвать в любом клиентском колбеке, а кткс там везде это только реквайред кткс
+3 гет на поинте это произвольная функция с гетРумИнпут возвращает строку, её результат должен вернуть онСерверСенд и онКлиентСубскрайб, она запровайдится как гетРум в эти методы
+4 на клиенте в глобальном стейте поинта мы храним инфу о том, с какими гетРумИнаутами мы подписались, также при подписке мы и на сервере храним все инпуты под которыми мы подписались, и при рассылке это учитываем. 
+5 при создании румов надо хранить и ключ и инпут в отдельнйо мапе, чтобы по нему проходиться
+- 6 гетРумКей обязателен, если клиентСубскрайбИпут предоставлен и будет рантайм ошибка иначе ... ничего он не обязателен
+- 7 месседжФильтерInput дал схему, юзер когда делает x.subscribe({ input, filter: {id: {in:[1,2,3]}} }) и сам фильтр как объект дойдёт до коннекшена, и будет добавлени в мапу {room: [{wsId,filters}]}, каждое сообщение доставляясь проверяется на соответствие фильтрам если они есть и отдаютсяю в формате {meta: {filterHash}, message: {...originalMessage...}} 
+8 x.useSubscribe({input, filter, onMessage}, [deps]) при удалении компонента отправляется сообщение на вебсокет о том, что этот фильтр, или эта комната отписалась, 
+9 для кипалайва постоянно по чуть-чуть отправляем с клиента ping сообщения
+10 гетРумИнпут может вернуть и массив, например гетРумИнпут в онКлиентСубскрайб вернёт массив. clientSubscribeInput:{ids[]}, serverSendInput({id,diff}), onServerSend({input} => return {message: input, mark: input.id}), onClientJoin({input} => return {mark: input.ids.map()=>id.toString()})  // bad // mark({csInput, ssInput} => JSON.stringify(csInput ? csInput.ids.map()=>{id} : {id:ssInput.id})); 
+11 .mark(z.object()), so we only store on redis mark hash, not whole mark
+
+https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
 
 .robotsTxt(take, skip)
 
@@ -159,6 +186,8 @@ launch
 ----------------
 ------ v2 ------
 ----------------
+
+И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
 
 ! we just need own Messanger based on usual websocketsm it is enough
 (convex is just real-time helper (.lets('subscribe')), nothing special. And it is big combiner, which is bad)
