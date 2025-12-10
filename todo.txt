@@ -2,24 +2,18 @@
 ------ before start0 -----
 --------------------------
 
-Move AllPointsManager, move ServerExtractor
+provide inputRaw so we can see original input
+client loader fn should accept props
+client loader fn should accept input
+
 GlobalPoints → GlobalPointsManager
 ExtractorStore → SuperStore
+rename props to options
 
-provide inputRaw so we can see original input
-_serverInputSchema so not combine schemas each request
-
-when page or layout then route, else input
-when set route for page check that layout params is same as page params or shrinker
-? by types if page/layout route params not acceptable to inputRaw, then throw error. Also if when define input and its not acceptable route params, then throw error
+- when set route for page check that layout params is same as page params or shrinker
+when set route check by types that it input suitable to previous input
 prevent input oevrride previous methods if they were another
-
-Проверить, что инпут в клиентском лоадере присутствует
-Так пусть он уж и в компоненте присутствует
-
-ctx and loader in props should recieve "extract" fn which accept another point and its input
-
-
+? by types if page/layout route params not acceptable to inputRaw, then throw error. Also if when define input and its not acceptable route params, then throw error
 
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it
@@ -34,12 +28,9 @@ fix attach and shared: shared = P0.create({}); query = share.subquery(); site = 
 ? remove root from lets
 
 - check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
-! stop build clients for server, just build server. But preserve ability to build clients for server, but maybe not documented yet
+! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
 
 .ssr(), and remove ssr option from engine
-
-rename props to options
-client loader fn should accept props
 
 Перепроверить хук юзЛокатион
 

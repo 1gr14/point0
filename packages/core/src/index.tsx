@@ -172,6 +172,7 @@ export class Point0<
   readonly _pointType: TPointType
   private readonly _letsEndPointType: TLetsEndPointType
   inputSchema: TInputSchema
+  private readonly _serverInputSchema: InputSchema | undefined
   readonly _responseFn: TResponseOutput extends ResponseOutput
     ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
     : undefined
@@ -293,6 +294,7 @@ export class Point0<
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
+    _serverInputSchema?: InputSchema | undefined
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -410,6 +412,7 @@ export class Point0<
     this._base = props._base ?? undefined
     this._root = props._root ?? undefined
     this.inputSchema = (props.inputSchema ?? undefined) as TInputSchema
+    this._serverInputSchema = props._serverInputSchema
     this._serverurl = props._serverurl ?? undefined
     this._baseurl = props._baseurl ?? undefined
     this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
@@ -576,6 +579,7 @@ export class Point0<
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
+    _serverInputSchema?: InputSchema | undefined
     _responseFn?: TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
@@ -726,6 +730,7 @@ export class Point0<
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
       inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
+      _serverInputSchema: overrides._serverInputSchema ?? this._serverInputSchema,
       _responseFn: (overrides._responseFn ?? this._responseFn) as TResponseOutput extends ResponseOutput
         ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
         : undefined,
@@ -1724,6 +1729,12 @@ export class Point0<
   input(inputSchema: InputSchemaZod) {
     return this._continue({
       inputSchema: this.inputSchema ? this.inputSchema.extend(inputSchema.shape) : inputSchema,
+      _serverInputSchema:
+        this._pointType === 'middleware'
+          ? this._serverInputSchema
+            ? this._serverInputSchema.extend(inputSchema.shape)
+            : inputSchema
+          : this._serverInputSchema,
       _clientExtractActions:
         this._pointType === 'clientMiddleware'
           ? [
@@ -2437,10 +2448,7 @@ export class Point0<
       throw new Error(`Input error: ${inputError.message}`)
     }
     let currentInputParsed: InputParsed = input
-    let currentInputSchema: InputSchema | undefined = this._serverExtractActions
-      .filter((fn) => fn.type === 'input')
-      .map((fn) => fn.schema)
-      .reduce<InputSchema | undefined>((acc, schema) => (acc ? acc.extend(schema.shape) : schema), undefined)
+    let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
     for (const clientExtractAction of this._clientExtractActions) {
       switch (clientExtractAction.type) {
@@ -2497,10 +2505,7 @@ export class Point0<
       throw new Error(`Input error: ${inputError.message}`)
     }
     let currentInputParsed: InputParsed = input
-    let currentInputSchema: InputSchema | undefined = this._serverExtractActions
-      .filter((fn) => fn.type === 'input')
-      .map((fn) => fn.schema)
-      .reduce<InputSchema | undefined>((acc, schema) => (acc ? acc.extend(schema.shape) : schema), undefined)
+    let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
     for (const clientExtractAction of this._clientExtractActions) {
       switch (clientExtractAction.type) {
@@ -2810,24 +2815,6 @@ export class Point0<
       httpStatus: res.status,
     })
   }
-
-  // async extract({
-  //   input,
-  //   requiredCtx,
-  //   withLayouts,
-  // }: {
-  //   input: InputRaw<TRouteDefinition, TInputSchema>
-  //   withLayouts?: boolean
-  // } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<
-  //   ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  // > {
-  //   return (await ServerExtractor.extract({
-  //     point: this as never as EndPoint,
-  //     input,
-  //     withLayouts,
-  //     ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
-  //   })) as ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  // }
 
   async extract(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true

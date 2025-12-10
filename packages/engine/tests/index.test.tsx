@@ -201,7 +201,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
@@ -328,7 +328,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
@@ -369,7 +369,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
@@ -411,7 +411,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
@@ -463,7 +463,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
@@ -505,7 +505,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
@@ -544,7 +544,7 @@ describe('Point0', () => {
       },
       data: {},
       head: [],
-      error: undefined,
+      error: null,
       status: 200,
       response: undefined,
     })
