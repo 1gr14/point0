@@ -5,7 +5,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { ClientServerHelpers } from './client-server.js'
 import { ExtractorStore } from './extractor-store.js'
-import { Extractor } from './extractor.js'
+import { ServerExtractor } from './extractor.js'
 import type {
   EndPoint,
   EndPointType,
@@ -898,7 +898,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     task: FetchTask | undefined
     input: InputRaw
     suitable: GetSuitableResult
-    extractor: Extractor
+    extractor: ServerExtractor
   }> {
     parsedUrl ??= parseUrl(request.url)
     const task = await (async () => {
@@ -971,7 +971,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input: task?.pointInput,
       fallbackScope,
     })
-    const extractor = await Extractor.create({
+    const extractor = await ServerExtractor.create({
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
@@ -999,7 +999,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     task: FetchTask | undefined
     input: InputRaw
     suitable: GetSuitableResult
-    extractor: Extractor
+    extractor: ServerExtractor
   }> {
     const parsedUrl = parseUrl(url)
     return await this.prepareExtractorByRequest({
@@ -1021,7 +1021,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<{
     input: TPoint['Infer']['InputRaw']
     suitable: GetSuitableResult
-    extractor: Extractor
+    extractor: ServerExtractor
   }> {
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const suitable = this.getSuitable({
@@ -1031,7 +1031,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input,
       fallbackScope: point._scope,
     })
-    const extractor = await Extractor.create({
+    const extractor = await ServerExtractor.create({
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: location,
@@ -1058,7 +1058,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
     input: TPoint['Infer']['InputRaw']
     suitable: GetSuitableResult
-    extractor: Extractor
+    extractor: ServerExtractor
   }> {
     const suitable = this.getSuitable({
       pointType,
@@ -1067,7 +1067,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input,
       fallbackScope: scope,
     })
-    const extractor = await Extractor.create({
+    const extractor = await ServerExtractor.create({
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: suitable.pageLocation || Route0.getLocation('/'),

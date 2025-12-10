@@ -3,7 +3,8 @@
 --------------------------
 
 currentInput, so when we move through extend fns, we should updateIt, becouse it can changes, also provide inputRaw so we can see original input
-ExtractFn → extractAction
+ExtractorStore → SuperStore
+
 also if clientMiddleware then extractClientFns not manage input changes, also under the hood we shpudl have serverInputSchema, and clientInputSchema
 when page or layout then route, else input
 when set route for page check that layout params is same as page params or shrinker
@@ -192,7 +193,7 @@ launch
 ? .attachable(), like shared, but will not automatically attach to root, but can be attached manually
 ? route0 respect origin on match and try two clients with o99ne server
 ? html template parsing by provided vars via ejs
-? immutable ctx and data on extractFns calls
+? immutable ctx and data on serverExtractActions calls
 ? asterisk layout as .layout(true, () => <div/>)
 ? add engine client options serveByServer: boolean default true
 prefetch type not only prefetchPageDehydratedState, but also prefetchPageExtractorStore becouse there can be zustand or what else

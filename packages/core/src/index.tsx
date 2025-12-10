@@ -28,8 +28,8 @@ import type { ZodObject, util as ZodUtil } from 'zod'
 import { ClientServerHelpers } from './client-server.js'
 import type { ExtractorStoreDefinedItem } from './extractor-store.js'
 import { ExtractorStore } from './extractor-store.js'
-import type { ExtractResult } from './extractor.js'
-import { Extractor } from './extractor.js'
+import type { ServerExtractResult } from './extractor.js'
+import { ServerExtractor } from './extractor.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
 import type {
@@ -37,7 +37,7 @@ import type {
   AnyPoint,
   AppendCtx,
   BasePoint,
-  ClientExtractFnRecord,
+  ClientExtractAction,
   ClientLoaderFn,
   ComponentComponent,
   Ctx,
@@ -53,7 +53,7 @@ import type {
   ErrorHeadFn,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  ServerExtractFnRecord,
+  ServerExtractAction,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
@@ -200,8 +200,8 @@ export class Point0<
   >
   readonly _queryResultType: TQueryResultType
   private readonly _wrappers: WrapperComponentType[]
-  readonly _extractFns: ServerExtractFnRecord[]
-  private readonly _clientExtractFns: ClientExtractFnRecord[]
+  readonly _serverExtractActions: ServerExtractAction[]
+  private readonly _clientExtractActions: ClientExtractAction[]
   private readonly _providerValueSetter:
     | ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>>
     | undefined
@@ -323,8 +323,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    _extractFns?: ServerExtractFnRecord[]
-    _clientExtractFns?: ClientExtractFnRecord[]
+    _serverExtractActions?: ServerExtractAction[]
+    _clientExtractActions?: ClientExtractAction[]
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any>
     _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
     _useValue?: any
@@ -433,8 +433,8 @@ export class Point0<
     this._queryOptions = props._queryOptions ?? {}
     this._infiniteQueryOptions = props._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (props._queryResultType ?? undefined) as TQueryResultType
-    this._extractFns = props._extractFns ?? []
-    this._clientExtractFns = props._clientExtractFns ?? []
+    this._serverExtractActions = props._serverExtractActions ?? []
+    this._clientExtractActions = props._clientExtractActions ?? []
     this._providerValueSetter = props._providerValueSetter ?? undefined
     this._ProviderReactContext = props._ProviderReactContext ?? undefined
     this._useValue = props._useValue ? props._useValue.bind(this) : undefined
@@ -604,8 +604,8 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     _wrappers?: WrapperComponentType[]
-    _extractFns?: ServerExtractFnRecord[]
-    _clientExtractFns?: ClientExtractFnRecord[]
+    _serverExtractActions?: ServerExtractAction[]
+    _clientExtractActions?: ClientExtractAction[]
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any> | undefined
     _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
     _useValue?: any
@@ -758,8 +758,8 @@ export class Point0<
         unknown
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
-      _extractFns: overrides._extractFns ?? this._extractFns,
-      _clientExtractFns: overrides._clientExtractFns ?? this._clientExtractFns,
+      _serverExtractActions: overrides._serverExtractActions ?? this._serverExtractActions,
+      _clientExtractActions: overrides._clientExtractActions ?? this._clientExtractActions,
       _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
@@ -792,8 +792,8 @@ export class Point0<
     const result = this._continue({
       ...point,
       _headFns: [...this._headFns, ...point.point._headFns],
-      _extractFns: [...this._extractFns, ...point.point._extractFns],
-      _clientExtractFns: [...this._clientExtractFns, ...point.point._clientExtractFns],
+      _serverExtractActions: [...this._serverExtractActions, ...point.point._serverExtractActions],
+      _clientExtractActions: [...this._clientExtractActions, ...point.point._clientExtractActions],
       _scope: this._scope,
       _root: this._root,
       _attachedTo: [],
@@ -1564,7 +1564,10 @@ export class Point0<
           ? ctxOrFn
           : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._continue({
-      _extractFns: [...this._extractFns, { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() }] as never,
+      _serverExtractActions: [
+        ...this._serverExtractActions,
+        { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() },
+      ] as never,
     }) as never
   }
 
@@ -1586,8 +1589,8 @@ export class Point0<
   > {
     return this._continue({
       _queryResultType: this._queryResultType ?? 'query',
-      _extractFns: [
-        ...this._extractFns,
+      _serverExtractActions: [
+        ...this._serverExtractActions,
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune loader for client
         { type: 'loader', fn: loaderFn ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
       ] as never,
@@ -1612,8 +1615,8 @@ export class Point0<
   > {
     return this._continue({
       _queryResultType: this._queryResultType ?? 'query',
-      _extractFns: [
-        ...this._extractFns,
+      _serverExtractActions: [
+        ...this._serverExtractActions,
         {
           type: 'ctxLoader',
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune ctxLoader for client
@@ -1649,8 +1652,8 @@ export class Point0<
     return this._continue({
       _pointType: 'clientMiddleware',
       _queryResultType: this._queryResultType ?? 'query',
-      _clientExtractFns: [
-        ...this._clientExtractFns,
+      _clientExtractActions: [
+        ...this._clientExtractActions,
         {
           type: 'loader',
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -1726,14 +1729,20 @@ export class Point0<
   input(inputSchema: InputSchemaZod) {
     return this._continue({
       inputSchema: this.inputSchema ? this.inputSchema.extend(inputSchema.shape) : inputSchema,
-      _clientExtractFns:
+      _clientExtractActions:
         this._pointType === 'clientMiddleware'
-          ? [...this._clientExtractFns, { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() }]
-          : this._clientExtractFns,
-      _extractFns:
+          ? [
+              ...this._clientExtractActions,
+              { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
+            ]
+          : this._clientExtractActions,
+      _serverExtractActions:
         this._pointType === 'middleware'
-          ? [...this._extractFns, { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() }]
-          : this._extractFns,
+          ? [
+              ...this._serverExtractActions,
+              { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
+            ]
+          : this._serverExtractActions,
     }) as never
   }
 
@@ -1792,7 +1801,7 @@ export class Point0<
       _queryOptions: {},
       _infiniteQueryOptions: {} as never,
       _queryResultType: undefined,
-      _clientExtractFns: [],
+      _clientExtractActions: [],
       _fetchOptions: this._base?._fetchOptions,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
       _scrollPositionSetter: this._base?._scrollPositionSetter,
@@ -2296,8 +2305,8 @@ export class Point0<
   > {
     return this._continue({
       _pointType: 'mutation',
-      _extractFns: [
-        ...this._extractFns,
+      _serverExtractActions: [
+        ...this._serverExtractActions,
         {
           type: 'loader',
           fn: loaderFn || (({ data }: { data: TData }) => ({ ...data })),
@@ -2384,17 +2393,17 @@ export class Point0<
   }
 
   _hasLoader(): boolean {
-    return this._extractFns.some((fn) => fn.type === 'loader' || fn.type === 'ctxLoader')
+    return this._serverExtractActions.some((fn) => fn.type === 'loader' || fn.type === 'ctxLoader')
   }
 
   _hasClientLoader(): boolean {
-    return this._clientExtractFns.length > 0 && this._clientExtractFns.some((fn) => fn.type === 'loader')
+    return this._clientExtractActions.length > 0 && this._clientExtractActions.some((fn) => fn.type === 'loader')
   }
 
   private _hasClientAsyncLoader(): boolean {
     return (
-      this._clientExtractFns.length > 0 &&
-      this._clientExtractFns.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
+      this._clientExtractActions.length > 0 &&
+      this._clientExtractActions.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
     )
   }
 
@@ -2430,17 +2439,17 @@ export class Point0<
       throw new Error(`Input error: ${inputError.message}`)
     }
     let currentInputParsed: InputParsed = input
-    let currentInputSchema: InputSchema | undefined = this._extractFns
+    let currentInputSchema: InputSchema | undefined = this._serverExtractActions
       .filter((fn) => fn.type === 'input')
       .map((fn) => fn.schema)
       .reduce<InputSchema | undefined>((acc, schema) => (acc ? acc.extend(schema.shape) : schema), undefined)
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
-    for (const clientExtractFn of this._clientExtractFns) {
-      switch (clientExtractFn.type) {
+    for (const clientExtractAction of this._clientExtractActions) {
+      switch (clientExtractAction.type) {
         case 'input': {
           currentInputSchema = currentInputSchema
-            ? currentInputSchema.extend(clientExtractFn.schema.shape)
-            : clientExtractFn.schema
+            ? currentInputSchema.extend(clientExtractAction.schema.shape)
+            : clientExtractAction.schema
           const safeParseResult = currentInputSchema.safeParse(input)
           if (safeParseResult.error) {
             throw new Error(`Input error: ${safeParseResult.error.message}`)
@@ -2449,7 +2458,7 @@ export class Point0<
           break
         }
         case 'loader': {
-          currentClientData = await clientExtractFn.fn({
+          currentClientData = await clientExtractAction.fn({
             data: currentClientData,
             location,
             input: currentInputParsed,
@@ -2458,7 +2467,7 @@ export class Point0<
         }
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         default: {
-          throw new Error(`Unknown client extend fn type: ${(clientExtractFn as any).type}`)
+          throw new Error(`Unknown client extend fn type: ${(clientExtractAction as any).type}`)
         }
       }
     }
@@ -2490,17 +2499,17 @@ export class Point0<
       throw new Error(`Input error: ${inputError.message}`)
     }
     let currentInputParsed: InputParsed = input
-    let currentInputSchema: InputSchema | undefined = this._extractFns
+    let currentInputSchema: InputSchema | undefined = this._serverExtractActions
       .filter((fn) => fn.type === 'input')
       .map((fn) => fn.schema)
       .reduce<InputSchema | undefined>((acc, schema) => (acc ? acc.extend(schema.shape) : schema), undefined)
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
-    for (const clientExtractFn of this._clientExtractFns) {
-      switch (clientExtractFn.type) {
+    for (const clientExtractAction of this._clientExtractActions) {
+      switch (clientExtractAction.type) {
         case 'input': {
           currentInputSchema = currentInputSchema
-            ? currentInputSchema.extend(clientExtractFn.schema.shape)
-            : clientExtractFn.schema
+            ? currentInputSchema.extend(clientExtractAction.schema.shape)
+            : clientExtractAction.schema
           const safeParseResult = currentInputSchema.safeParse(input)
           if (safeParseResult.error) {
             throw new Error(`Input error: ${safeParseResult.error.message}`)
@@ -2509,7 +2518,7 @@ export class Point0<
           break
         }
         case 'loader': {
-          currentClientData = clientExtractFn.fn({
+          currentClientData = clientExtractAction.fn({
             data: currentClientData,
             location,
             input: currentInputParsed,
@@ -2518,7 +2527,7 @@ export class Point0<
         }
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         default: {
-          throw new Error(`Unknown client extend fn type: ${(clientExtractFn as any).type}`)
+          throw new Error(`Unknown client extend fn type: ${(clientExtractAction as any).type}`)
         }
       }
     }
@@ -2811,13 +2820,15 @@ export class Point0<
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<ExtractResult<TCtx, FinalData<TData>, TResponseOutput>> {
-    return (await Extractor.extract({
+  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<
+    ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+  > {
+    return (await ServerExtractor.extract({
       point: this as never as EndPoint,
       input,
       withLayouts,
       ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
-    })) as ExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+    })) as ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
   }
 
   _getServerQueryKey({

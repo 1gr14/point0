@@ -1,5 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { Extractor, ExtractResult } from '@point0/core/extractor'
+import type { ServerExtractor, ServerExtractResult } from '@point0/core/extractor'
 import type { LazyPointsModule, AllPointsManagers, ReadyPointsModule } from '@point0/core/points-manager'
 import { PointsManager } from '@point0/core/points-manager'
 import type { AnyPoint, AppComponent, InputParsed, PointsScope } from '@point0/core/types'
@@ -1202,8 +1202,8 @@ Bun.serve({
     pageLocation,
     input,
   }: {
-    extractor: Extractor
-    extractResult: ExtractResult
+    extractor: ServerExtractor
+    extractResult: ServerExtractResult
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
@@ -1227,7 +1227,7 @@ Bun.serve({
     pageLocation,
     input,
   }: {
-    extractor: Extractor
+    extractor: ServerExtractor
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
     input: InputParsed

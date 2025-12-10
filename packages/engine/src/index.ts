@@ -1,4 +1,4 @@
-import type { ExtractResult } from '@point0/core/extractor'
+import type { ServerExtractResult } from '@point0/core/extractor'
 import { AllPointsManagers } from '@point0/core/points-manager'
 import type {
   EndPoint,
@@ -185,7 +185,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     point: TPoint
     input: TPoint['Infer']['InputRaw']
     withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ExtractResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExtractResult> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }

@@ -1,5 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { Extractor } from '@point0/core/extractor'
+import type { ServerExtractor } from '@point0/core/extractor'
 import { ExtractorStore } from '@point0/core/extractor-store'
 import type { AnyPoint, AppComponent, InputRaw } from '@point0/core/types'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
@@ -123,7 +123,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
 }: {
   originalIndexHtml: string
   content?: TContent
-  extractor: Extractor
+  extractor: ServerExtractor
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   domRootElementId?: string
@@ -182,7 +182,7 @@ export async function getReadableStreamWithWrapper({
   prefix?: string
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
-  extractor: Extractor
+  extractor: ServerExtractor
 }) {
   const encoder = new TextEncoder()
 
@@ -241,7 +241,7 @@ export async function renderReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
-  extractor: Extractor
+  extractor: ServerExtractor
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
@@ -262,7 +262,7 @@ export async function renderAppAsReadableStream({
   ...props
 }: {
   App: AppComponent
-  extractor: Extractor
+  extractor: ServerExtractor
   pagePoint: AnyPoint | undefined
   pageLocation: AnyLocation
   input: InputRaw

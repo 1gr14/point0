@@ -9,7 +9,7 @@ import type {
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput } from 'zod'
-import type { Extractor } from './extractor.js'
+import type { ServerExtractor } from './extractor.js'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 
@@ -795,7 +795,7 @@ export type CtxFnProps<
   ctx: TCtxInput
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  extractor: Extractor
+  extractor: ServerExtractor
 }
 export type CtxFn<
   TCtxInput extends Ctx = Ctx,
@@ -816,7 +816,7 @@ export type LoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  extractor: Extractor
+  extractor: ServerExtractor
 }
 export type LoaderFn<
   TCtx extends Ctx = Ctx,
@@ -837,7 +837,7 @@ export type CtxLoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  extractor: Extractor
+  extractor: ServerExtractor
 }
 export type CtxLoaderFn<
   TCtx extends Ctx = Ctx,
@@ -852,7 +852,7 @@ export type CtxLoaderFn<
   | Promise<{ ctx: TCtxOutput; data: TDataOutput; status?: number }>
   | { ctx: TCtxOutput; data: TDataOutput; status?: number }
 
-export type ServerExtractFnRecord<
+export type ServerExtractAction<
   TType extends 'ctx' | 'loader' | 'ctxLoader' | 'input' = 'ctx' | 'loader' | 'ctxLoader' | 'input',
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
@@ -871,7 +871,7 @@ export type ServerExtractFnRecord<
           : never
         : never
 
-export type ClientExtractFnRecord<
+export type ClientExtractAction<
   TType extends 'loader' | 'input' = 'loader' | 'input',
   TClientData extends Data | UndefinedData = Data | UndefinedData,
   TPointType extends RenderablePointType = RenderablePointType,
@@ -893,7 +893,7 @@ export type ClientExtractFnRecord<
         }
       : never
     : never
-export type ClientExtractFnLocation<
+export type ClientExtractActionLocation<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TLetsEndPointType extends 'page'
@@ -913,7 +913,7 @@ export type ClientLoaderFnProps<
   TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<any, TClientData>
-  location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
+  location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
   input: InputParsed<TRouteDefinition, TInputSchema>
 }
 export type ClientLoaderFn<
@@ -932,7 +932,7 @@ export type ProviderValueSetterFnProps<
   TClientData extends Data | UndefinedData,
 > = {
   data: FinalClientData<any, TClientData>
-  location: ClientExtractFnLocation<TLetsEndPointType, TRouteDefinition>
+  location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
 }
 export type ProviderValueSetterFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
