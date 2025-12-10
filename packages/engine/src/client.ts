@@ -1,8 +1,7 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { ServerExtractor, ServerExtractResult } from '@point0/core/extractor'
-import type { LazyPointsModule, AllPointsManagers, ReadyPointsModule } from '@point0/core/points-manager'
+import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points-manager'
 import { PointsManager } from '@point0/core/points-manager'
-import type { AnyPoint, AppComponent, InputParsed, PointsScope } from '@point0/core/types'
+import type { AnyPoint, AppComponent, InputParsed, PointsScope, ServerExtractResult } from '@point0/core/types'
 import type { ParsedUrl } from '@point0/core/utils'
 import { getHostnameOrNull, parseUrl } from '@point0/core/utils'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
@@ -10,6 +9,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
+import type { AllPointsManagers } from './all-points-managers.js'
 import type {
   EngineLogger,
   EngineOptionsEnvParsed,
@@ -19,6 +19,7 @@ import type {
 } from './config.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
+import type { ServerExtractor } from './server-extractor.js'
 import type { ServerBun } from './server.js'
 import type { ClientBunBuildConfigDefinition, ClientBunPluginsDefinition } from './utils.js'
 import {

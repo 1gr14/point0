@@ -81,6 +81,14 @@
     "./walker": {
       "types": "./dist/walker.d.ts",
       "import": "./dist/walker.js"
+    },
+    "./server-extractor": {
+      "types": "./dist/server-extractor.d.ts",
+      "import": "./dist/server-extractor.js"
+    },
+    "./all-points-managers": {
+      "types": "./dist/all-points-managers.d.ts",
+      "import": "./dist/all-points-managers.js"
     }
   },
   "files": [

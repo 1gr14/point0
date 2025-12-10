@@ -43,10 +43,6 @@
       "types": "./dist/extractor-store.d.ts",
       "import": "./dist/extractor-store.js"
     },
-    "./extractor": {
-      "types": "./dist/extractor.d.ts",
-      "import": "./dist/extractor.js"
-    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js"

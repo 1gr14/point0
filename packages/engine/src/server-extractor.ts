@@ -1,35 +1,31 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
-import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
-import * as React from 'react'
-import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
-import type { ResolvableHead } from 'unhead/types'
-import { ClientServerHelpers } from './client-server.js'
-import { ExtractorStore } from './extractor-store.js'
-import { PointsManager } from './points-manager.js'
+import { ClientServerHelpers } from '@point0/core/client-server'
+import { ExtractorStore } from '@point0/core/extractor-store'
+import { PointsManager } from '@point0/core/points-manager'
 import type {
   AnyPoint,
   AppComponent,
   Ctx,
   Data,
-  EmptyCtx,
-  EmptyData,
   EndPoint,
   EndPointType,
-  ServerExtractAction,
-  FinalData,
   InputParsed,
   InputRaw,
+  InputSchema,
   PointName,
   PointsScope,
   QueryKey,
   RequiredCtx,
-  ResponseOutput,
-  UndefinedResponseOutput,
+  ServerExtractAction,
+  ServerExtractResult,
   WithMaybeOptionalReqiredCtx,
-  InputSchema,
-} from './types.js'
+} from '@point0/core/types'
+import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
+import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
+import * as React from 'react'
+import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
+import type { ResolvableHead } from 'unhead/types'
 
 export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   points: PointsManager<true, TRequiredCtx>
@@ -153,7 +149,22 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await extractor.extract({ point, input, withLayouts })
   }
 
-  async extract({ point, input, withLayouts }: ExtractOptions): Promise<ServerExtractResult> {
+  async extract(point: AnyPoint | undefined, input?: InputRaw): Promise<ServerExtractResult>
+  async extract({ point, input, withLayouts }: ExtractOptions): Promise<ServerExtractResult>
+  async extract(
+    ...args: [options: ExtractOptions] | [point: AnyPoint | undefined, input?: InputRaw]
+  ): Promise<ServerExtractResult> {
+    const {
+      point,
+      input = {},
+      withLayouts = false,
+    } = (() => {
+      if (args[0] === undefined || '_itIsPoint0' in args[0]) {
+        return { point: args[0], input: args[1], withLayouts: false }
+      }
+      return { point: args[0].point, input: args[0].input, withLayouts: args[0].withLayouts }
+    })()
+
     return await this.withServerGlobalState(async () => {
       if (point?._pointType === 'page' && withLayouts) {
         for (const layout of point._layouts) {
@@ -230,7 +241,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
-                  extractor: this as never,
+                  extract: this.extract.bind(this),
                 })
                 this.serverExtractActionsWithOutput.push({
                   output: currentCtx,
@@ -255,7 +266,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
-                  extractor: this as never,
+                  extract: this.extract.bind(this),
                 })
                 if (Array.isArray(result)) {
                   currentStatus = result[0]
@@ -283,7 +294,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
-                  extractor: this as never,
+                  extract: this.extract.bind(this),
                 })
                 currentCtx = ctx
                 currentData = data
@@ -641,22 +652,6 @@ export type ServerExtractActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxL
           record: ServerExtractAction<'ctxLoader'>
         }
       : never
-export type ServerExtractResult<
-  TCtx extends Ctx = Ctx,
-  TData extends Data = Data,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-> = {
-  ctx: TCtx
-  data: TData
-  head: ResolvableHead[]
-  response: TResponseOutput
-  error: unknown
-  status: number
-}
-export type InferServerExtractResult<TPoint extends AnyPoint> =
-  TPoint extends AnyPoint<any, any, any, infer TCtx, infer TData, any, any, any, any, infer TResponseOutput>
-    ? ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-    : ServerExtractResult<EmptyCtx, EmptyData, UndefinedResponseOutput>
 
 export type FetchTask = {
   pointType: EndPointType

@@ -1,5 +1,4 @@
-import type { ServerExtractResult } from '@point0/core/extractor'
-import { AllPointsManagers } from '@point0/core/points-manager'
+import { AllPointsManagers } from './all-points-managers.js'
 import type {
   EndPoint,
   OmitRequiredCtxRequestProp,
@@ -8,6 +7,7 @@ import type {
   UndefinedCtx,
   UndefinedCtxIfRequiredCtxContainsOnlyRequestProp,
   WithMaybeOptionalReqiredCtx,
+  ServerExtractResult,
 } from '@point0/core/types'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'

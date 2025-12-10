@@ -1,5 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { ServerExtractor } from '@point0/core/extractor'
+import type { ServerExtractor } from './server-extractor.js'
 import { ExtractorStore } from '@point0/core/extractor-store'
 import type { AnyPoint, AppComponent, InputRaw } from '@point0/core/types'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'

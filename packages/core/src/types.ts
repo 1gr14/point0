@@ -9,7 +9,6 @@ import type {
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput } from 'zod'
-import type { ServerExtractor } from './extractor.js'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 
@@ -786,6 +785,27 @@ export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
   props: InputFnProps<TInputSchema>,
 ) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 
+export type ServerExtractFn = <TPoint extends AnyPoint>(
+  point: TPoint,
+  ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
+    ? [input: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
+    : [input?: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
+) => Promise<
+  ServerExtractResult<TPoint['Infer']['Ctx'], FinalData<TPoint['Infer']['Data']>, TPoint['Infer']['ResponseOutput']>
+>
+export type ServerExtractResult<
+  TCtx extends Ctx = Ctx,
+  TData extends Data = Data,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+> = {
+  ctx: TCtx
+  data: TData
+  head: ResolvableHead[]
+  response: TResponseOutput
+  error: unknown
+  status: number
+}
+
 export type CtxFnProps<
   TCtxInput extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
@@ -795,7 +815,7 @@ export type CtxFnProps<
   ctx: TCtxInput
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  extractor: ServerExtractor
+  extract: ServerExtractFn
 }
 export type CtxFn<
   TCtxInput extends Ctx = Ctx,
@@ -816,7 +836,7 @@ export type LoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  extractor: ServerExtractor
+  extract: ServerExtractFn
 }
 export type LoaderFn<
   TCtx extends Ctx = Ctx,
@@ -837,7 +857,7 @@ export type CtxLoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
-  extractor: ServerExtractor
+  extract: ServerExtractFn
 }
 export type CtxLoaderFn<
   TCtx extends Ctx = Ctx,

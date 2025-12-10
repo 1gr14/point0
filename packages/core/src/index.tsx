@@ -28,8 +28,6 @@ import type { ZodObject, util as ZodUtil } from 'zod'
 import { ClientServerHelpers } from './client-server.js'
 import type { ExtractorStoreDefinedItem } from './extractor-store.js'
 import { ExtractorStore } from './extractor-store.js'
-import type { ServerExtractResult } from './extractor.js'
-import { ServerExtractor } from './extractor.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
 import type {
@@ -47,20 +45,17 @@ import type {
   Data,
   DestinationComponentType,
   EmptyCtx,
-  EndPoint,
   EndPointType,
   ErrorComponentType,
   ErrorHeadFn,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  ServerExtractAction,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
   FetchOutput,
   FetchOutputType,
   FinalClientData,
-  FinalData,
   FinalProps,
   IfAnyThenElse,
   Infer,
@@ -111,6 +106,7 @@ import type {
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
+  ServerExtractAction,
   SuccessHeadFn,
   UndefinedComponentComponent,
   UndefinedCtx,
@@ -129,7 +125,6 @@ import type {
   UseLoaderResult,
   UsePointQueryResult,
   UseQueryOptions,
-  WithMaybeOptionalReqiredCtx,
   WrapperComponentType,
 } from './types.js'
 import { dedupeSlashes, mergeHeaders } from './utils.js'
@@ -164,6 +159,7 @@ export class Point0<
   > = {} as never
 
   point: typeof this // this, needed for generator to collect points
+  _itIsPoint0 = true as const
 
   private static _prevUnstableId = 0
   private static _getNextUnstableId(): number {
@@ -2813,22 +2809,50 @@ export class Point0<
     })
   }
 
-  async extract({
-    input,
-    requiredCtx,
-    withLayouts,
-  }: {
-    input: InputRaw<TRouteDefinition, TInputSchema>
-    withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<
-    ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
-  > {
-    return (await ServerExtractor.extract({
-      point: this as never as EndPoint,
-      input,
-      withLayouts,
-      ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
-    })) as ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+  // async extract({
+  //   input,
+  //   requiredCtx,
+  //   withLayouts,
+  // }: {
+  //   input: InputRaw<TRouteDefinition, TInputSchema>
+  //   withLayouts?: boolean
+  // } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<
+  //   ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+  // > {
+  //   return (await ServerExtractor.extract({
+  //     point: this as never as EndPoint,
+  //     input,
+  //     withLayouts,
+  //     ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
+  //   })) as ServerExtractResult<TCtx, FinalData<TData>, TResponseOutput>
+  // }
+
+  async extract(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? TData extends Data
+        ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
+        : [input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : TData extends Data
+        ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
+        : [input: InputRaw<TRouteDefinition, TInputSchema>]
+  ): Promise<FinalClientData<TData, TClientData>> {
+    const [input = {}, fetchOptions] = args
+    const serverData = await (async () => {
+      if (this._hasLoader()) {
+        return await this.fetch(input as never, fetchOptions)
+      }
+      return {}
+    })()
+    if (this._hasClientLoader()) {
+      if (this._hasClientAsyncLoader()) {
+        const { clientData } = await this._extractClientAsync({ data: serverData, input: input as never })
+        return clientData as FinalClientData<TData, TClientData>
+      } else {
+        const { clientData } = this._extractClientSync({ data: serverData, input: input as never })
+        return clientData as FinalClientData<TData, TClientData>
+      }
+    }
+    return serverData as FinalClientData<TData, TClientData>
   }
 
   _getServerQueryKey({

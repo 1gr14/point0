@@ -2,9 +2,8 @@ import { Route0 } from '@devp0nt/route0'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { ServerExtractor } from '../src/extractor.js'
-import { Point0 } from '../src/index.js'
-import { PointsManager } from '../src/points-manager.js'
+import { Point0 } from '@point0/core'
+import { PointsManager } from '@point0/core/points-manager'
 import type {
   EmptyCtx,
   NiceRootEndPoint,
@@ -17,7 +16,8 @@ import type {
   UndefinedQueryResultType,
   UndefinedResponseOutput,
   UndefinedRouteDefinition,
-} from '../src/types.js'
+} from '@point0/core/types'
+import { ServerExtractor } from '../src/server-extractor.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 

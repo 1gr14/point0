@@ -1,4 +1,4 @@
-import type { AllPointsManagers } from '@point0/core/points-manager'
+import type { AllPointsManagers } from './all-points-managers.js'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { parseUrl, type ParsedUrl } from '@point0/core/utils'
 import type { ClientBun } from './client.js'

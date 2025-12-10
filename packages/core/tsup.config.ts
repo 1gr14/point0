@@ -10,7 +10,6 @@ const general = {
     'src/router.tsx',
     'src/points-manager.ts',
     'src/extractor-store.ts',
-    'src/extractor.ts',
     'src/types.ts',
     'src/unhead.ts',
     'src/utils.ts',

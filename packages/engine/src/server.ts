@@ -1,4 +1,5 @@
-import type { LazyPointsModule, AllPointsManagers, ReadyPointsModule } from '@point0/core/points-manager'
+import type { AllPointsManagers } from './all-points-managers.js'
+import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points-manager'
 import { PointsManager } from '@point0/core/points-manager'
 import type { PointsScope, RequiredCtx } from '@point0/core/types'
 import { prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
