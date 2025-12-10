@@ -3,6 +3,7 @@
 --------------------------
 
 currentInput, so when we move through extend fns, we should updateIt, becouse it can changes, also provide inputRaw so we can see original input
+ExtractFn → extractAction
 also if clientMiddleware then extractClientFns not manage input changes, also under the hood we shpudl have serverInputSchema, and clientInputSchema
 when page or layout then route, else input
 when set route for page check that layout params is same as page params or shrinker

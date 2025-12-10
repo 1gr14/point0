@@ -17,7 +17,7 @@ import type {
   EmptyData,
   EndPoint,
   EndPointType,
-  ExtractFnRecord,
+  ServerExtractFnRecord,
   FinalData,
   InputParsed,
   InputRaw,
@@ -28,6 +28,7 @@ import type {
   ResponseOutput,
   UndefinedResponseOutput,
   WithMaybeOptionalReqiredCtx,
+  InputSchema,
 } from './types.js'
 
 export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -168,6 +169,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
       const { parsedInput, inputError } = (() => {
         if (point?.inputSchema) {
           const parseResult = point.inputSchema.safeParse(input)
@@ -192,11 +194,31 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentCtx: Ctx = this.requiredCtx ?? {}
       let currentData: Data = {}
       let currentStatus = 200
+      let currentInputParsed: InputParsed = input
+      let currentInputSchema: InputSchema | undefined = undefined
       const extractFns = [...(point?._extractFns ?? [])]
 
       try {
         for (const extractFn of extractFns) {
           switch (extractFn.type) {
+            case 'input': {
+              currentInputSchema = currentInputSchema
+                ? currentInputSchema.extend(extractFn.schema.shape)
+                : extractFn.schema
+              const safeParseResult = currentInputSchema.safeParse(input)
+              if (safeParseResult.error) {
+                return {
+                  ctx: this.requiredCtx ?? {},
+                  data: {},
+                  head: [],
+                  error: safeParseResult.error,
+                  status: 422,
+                  response: undefined,
+                }
+              }
+              currentInputParsed = safeParseResult.data
+              break
+            }
             case 'ctx': {
               const ex = this.extractFnsWithOutput.find(
                 (e) => e.record.unstableId === extractFn.unstableId && e.record.type === 'ctx',
@@ -207,7 +229,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 currentCtx = await extractFn.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
-                  input: parsedInput,
+                  input: currentInputParsed,
                   extractor: this as never,
                 })
                 this.extractFnsWithOutput.push({
@@ -232,7 +254,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 const result = await extractFn.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
-                  input: parsedInput,
+                  input: currentInputParsed,
                   extractor: this as never,
                 })
                 if (Array.isArray(result)) {
@@ -260,7 +282,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 const { ctx, data, status } = await extractFn.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
-                  input: parsedInput,
+                  input: currentInputParsed,
                   extractor: this as never,
                 })
                 currentCtx = ctx
@@ -287,7 +309,7 @@ export class Extractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             return await point._responseFn({
               ctx: currentCtx,
               data: currentData,
-              input: parsedInput,
+              input: currentInputParsed,
             })
           }
           return undefined
@@ -606,17 +628,17 @@ export type ExtractOptions = {
 export type ExtractFnWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = TType extends 'ctx'
   ? {
       output: Ctx
-      record: ExtractFnRecord<'ctx'>
+      record: ServerExtractFnRecord<'ctx'>
     }
   : TType extends 'loader'
     ? {
         output: Data | [number, Data]
-        record: ExtractFnRecord<'loader'>
+        record: ServerExtractFnRecord<'loader'>
       }
     : TType extends 'ctxLoader'
       ? {
           output: { ctx: Ctx; data: Data; status?: number }
-          record: ExtractFnRecord<'ctxLoader'>
+          record: ServerExtractFnRecord<'ctxLoader'>
         }
       : never
 export type ExtractResult<

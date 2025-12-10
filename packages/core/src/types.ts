@@ -779,6 +779,13 @@ export type ResponseFn<
 > = (props: ResponseFnProps<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TResponseOutput> | TResponseOutput
 export type ResponseFnOutput<TResponseFn extends ResponseFn> = Awaited<ReturnType<TResponseFn>>
 
+export type InputFnProps<TInputSchema extends InputSchema = InputSchema> = {
+  inputRaw: InputRaw<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
+}
+export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
+  props: InputFnProps<TInputSchema>,
+) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
+
 export type CtxFnProps<
   TCtxInput extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
@@ -845,8 +852,8 @@ export type CtxLoaderFn<
   | Promise<{ ctx: TCtxOutput; data: TDataOutput; status?: number }>
   | { ctx: TCtxOutput; data: TDataOutput; status?: number }
 
-export type ExtractFnRecord<
-  TType extends 'ctx' | 'loader' | 'ctxLoader' = 'ctx' | 'loader' | 'ctxLoader',
+export type ServerExtractFnRecord<
+  TType extends 'ctx' | 'loader' | 'ctxLoader' | 'input' = 'ctx' | 'loader' | 'ctxLoader' | 'input',
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -858,10 +865,14 @@ export type ExtractFnRecord<
     ? { type: 'loader'; fn: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>; unstableId: number }
     : TType extends 'ctxLoader'
       ? { type: 'ctxLoader'; fn: CtxLoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>; unstableId: number }
-      : never
+      : TType extends 'input'
+        ? TInputSchema extends InputSchema
+          ? { type: 'input'; schema: TInputSchema; unstableId: number }
+          : never
+        : never
 
 export type ClientExtractFnRecord<
-  TType extends 'loader' = 'loader',
+  TType extends 'loader' | 'input' = 'loader' | 'input',
   TClientData extends Data | UndefinedData = Data | UndefinedData,
   TPointType extends RenderablePointType = RenderablePointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -873,7 +884,15 @@ export type ClientExtractFnRecord<
       fn: ClientLoaderFn<TPointType, TRouteDefinition, TInputSchema, TClientData, TOutput>
       unstableId: number
     }
-  : never
+  : TType extends 'input'
+    ? TInputSchema extends InputSchema
+      ? {
+          type: 'input'
+          schema: TInputSchema
+          unstableId: number
+        }
+      : never
+    : never
 export type ClientExtractFnLocation<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,

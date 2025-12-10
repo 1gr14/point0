@@ -53,7 +53,7 @@ import type {
   ErrorHeadFn,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
-  ExtractFnRecord,
+  ServerExtractFnRecord,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
@@ -200,7 +200,7 @@ export class Point0<
   >
   readonly _queryResultType: TQueryResultType
   private readonly _wrappers: WrapperComponentType[]
-  readonly _extractFns: ExtractFnRecord[]
+  readonly _extractFns: ServerExtractFnRecord[]
   private readonly _clientExtractFns: ClientExtractFnRecord[]
   private readonly _providerValueSetter:
     | ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>>
@@ -323,7 +323,7 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    _extractFns?: ExtractFnRecord[]
+    _extractFns?: ServerExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any>
     _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
@@ -604,7 +604,7 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     _wrappers?: WrapperComponentType[]
-    _extractFns?: ExtractFnRecord[]
+    _extractFns?: ServerExtractFnRecord[]
     _clientExtractFns?: ClientExtractFnRecord[]
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any> | undefined
     _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
@@ -1726,6 +1726,14 @@ export class Point0<
   input(inputSchema: InputSchemaZod) {
     return this._continue({
       inputSchema: this.inputSchema ? this.inputSchema.extend(inputSchema.shape) : inputSchema,
+      _clientExtractFns:
+        this._pointType === 'clientMiddleware'
+          ? [...this._clientExtractFns, { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() }]
+          : this._clientExtractFns,
+      _extractFns:
+        this._pointType === 'middleware'
+          ? [...this._extractFns, { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() }]
+          : this._extractFns,
     }) as never
   }
 
@@ -2380,14 +2388,12 @@ export class Point0<
   }
 
   _hasClientLoader(): boolean {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return this._clientExtractFns.length > 0 && this._clientExtractFns.some((fn) => fn.type === 'loader')
   }
 
   private _hasClientAsyncLoader(): boolean {
     return (
       this._clientExtractFns.length > 0 &&
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       this._clientExtractFns.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
     )
   }
@@ -2409,6 +2415,7 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
   }): Promise<{ clientData: Data }> {
     let currentClientData: Data = data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
       if (this.inputSchema) {
         const parseResult = this.inputSchema.safeParse(input)
@@ -2422,15 +2429,30 @@ export class Point0<
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
+    let currentInputParsed: InputParsed = input
+    let currentInputSchema: InputSchema | undefined = this._extractFns
+      .filter((fn) => fn.type === 'input')
+      .map((fn) => fn.schema)
+      .reduce<InputSchema | undefined>((acc, schema) => (acc ? acc.extend(schema.shape) : schema), undefined)
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        case 'input': {
+          currentInputSchema = currentInputSchema
+            ? currentInputSchema.extend(clientExtractFn.schema.shape)
+            : clientExtractFn.schema
+          const safeParseResult = currentInputSchema.safeParse(input)
+          if (safeParseResult.error) {
+            throw new Error(`Input error: ${safeParseResult.error.message}`)
+          }
+          currentInputParsed = safeParseResult.data
+          break
+        }
         case 'loader': {
           currentClientData = await clientExtractFn.fn({
             data: currentClientData,
             location,
-            input: parsedInput,
+            input: currentInputParsed,
           })
           break
         }
@@ -2453,6 +2475,7 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
   }): { clientData: AnyDataOrInfiniteData } {
     let currentClientData: AnyDataOrInfiniteData = data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
       if (this.inputSchema) {
         const parseResult = this.inputSchema.safeParse(input)
@@ -2466,15 +2489,30 @@ export class Point0<
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
+    let currentInputParsed: InputParsed = input
+    let currentInputSchema: InputSchema | undefined = this._extractFns
+      .filter((fn) => fn.type === 'input')
+      .map((fn) => fn.schema)
+      .reduce<InputSchema | undefined>((acc, schema) => (acc ? acc.extend(schema.shape) : schema), undefined)
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
     for (const clientExtractFn of this._clientExtractFns) {
       switch (clientExtractFn.type) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        case 'input': {
+          currentInputSchema = currentInputSchema
+            ? currentInputSchema.extend(clientExtractFn.schema.shape)
+            : clientExtractFn.schema
+          const safeParseResult = currentInputSchema.safeParse(input)
+          if (safeParseResult.error) {
+            throw new Error(`Input error: ${safeParseResult.error.message}`)
+          }
+          currentInputParsed = safeParseResult.data
+          break
+        }
         case 'loader': {
           currentClientData = clientExtractFn.fn({
             data: currentClientData,
             location,
-            input: parsedInput,
+            input: currentInputParsed,
           }) as Data
           break
         }

@@ -6,14 +6,42 @@ import { generalLayout } from '../layouts/general.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
+  // .input(
+  //   z.object({
+  //     title: z.string().min(1).max(10),
+  //     description: z.string().min(1).max(100),
+  //     content: z.string().min(1).max(1000),
+  //   }),
+  // )
   .input(
     z.object({
       title: z.string().min(1).max(10),
+    }),
+  )
+  .loader(async ({ input, data }) => {
+    console.log('input1', input)
+    return { ...data }
+  })
+  .input(
+    z.object({
       description: z.string().min(1).max(100),
+    }),
+  )
+  .loader(async ({ input, data }) => {
+    console.log('input2', input)
+    return { ...data }
+  })
+  .input(
+    z.object({
       content: z.string().min(1).max(1000),
     }),
   )
+  .loader(async ({ input, data }) => {
+    console.log('input3', input)
+    return { ...data }
+  })
   .mutation(async ({ input, ctx }) => {
+    console.log('input4', input)
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
