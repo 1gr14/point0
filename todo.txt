@@ -2,32 +2,32 @@
 ------ before start0 -----
 --------------------------
 
-check onPrefetch work recursively
-check query and infiteqQuery and component respect onPrefetch, and all others who have it
-
 double check what we broke in lets and that it is suitable to what we have in types
 
 check mutation clientLoader
 
-on request to server for query or mutation which has no serverLoader throw error
-
-fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
-? remove root from lets
-
-- check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
-! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
-
-.ssr(), and remove ssr option from engine
-
 check useLocation, is it really return no route on 404, and is it correctly return exact, parent, etc
 
+on request to server for query or mutation which has no serverLoader throw error
+
+page with name 404 auto insert in router routes
+
 Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
+
+check onPrefetch work recursively
+check query and infiteqQuery and component respect onPrefetch, and all others who have it
 
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
 
-page with name 404 auto insert in router routes
+.ssr(), and remove ssr option from engine
+
+- check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
+! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
+
+fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
+? remove root from lets
 
 file upload
 
