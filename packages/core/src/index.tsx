@@ -2468,6 +2468,7 @@ export class Point0<
             data: currentClientData,
             location,
             input: currentInputParsed,
+            inputRaw: input,
           })
           break
         }
@@ -2525,6 +2526,7 @@ export class Point0<
             data: currentClientData,
             location,
             input: currentInputParsed,
+            inputRaw: input,
           }) as Data
           break
         }

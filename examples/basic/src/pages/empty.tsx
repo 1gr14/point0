@@ -2,16 +2,18 @@ import { sharedQuery } from '@/lib/shared'
 import { client } from '../lib/client'
 
 export const empty = client
-  .lets('page', 'empty')
+  .lets('page', 'empty&x')
   // .route(routes.empty)
-  // .loader(({ input }) => {
-  //   return {
-  //     title: 'Empty',
-  //   }
-  // })
-  .clientLoader(({ data }) => {
+  .loader(({ input }) => {
+    return {
+      title: 'Empty',
+      xserver: input.x,
+    }
+  })
+  .clientLoader(({ data, input }) => {
     return {
       ...data,
+      xclient: input.x,
       ideasCountX3: 27,
     }
   })
@@ -22,6 +24,8 @@ export const empty = client
       return (
         <div>
           Empty
+          <br />X server: {data.xserver}
+          <br />X client: {data.xclient}
           <br />
           Ideas Count X3: {data.ideasCountX3}
           <br />

@@ -6,7 +6,14 @@ import type { RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
 import { _wrapUseNavigate, RouterContextProvider } from '@point0/core/router'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
-import { Route, Switch, useLocation as useWouterLocation, Link as WouterLink, Router as WouterRouter } from 'wouter'
+import {
+  Route,
+  Switch,
+  useLocation as useWouterLocation,
+  useSearchParams as useWouterSearchParams,
+  Link as WouterLink,
+  Router as WouterRouter,
+} from 'wouter'
 
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
@@ -59,7 +66,9 @@ export const Router = ({
 
   const useAdapterLocation: UseAdapterLocationFn = useCallback(() => {
     const [wouterLocation] = useWouterLocation()
-    return routes._.getLocation(wouterLocation)
+    const [wouterSearchParams] = useWouterSearchParams()
+    const pathnameWithSearchParams = [wouterLocation, wouterSearchParams.toString()].filter(Boolean).join('?')
+    return routes._.getLocation(pathnameWithSearchParams)
   }, [])
 
   return (

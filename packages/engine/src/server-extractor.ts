@@ -253,6 +253,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   data: { ...currentData },
                   input: currentInputParsed,
                   extract: this.extract.bind(this),
+                  inputRaw: input,
                 })
                 this.serverExtractActionsWithOutput.push({
                   output: currentCtx,
@@ -278,6 +279,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   data: { ...currentData },
                   input: currentInputParsed,
                   extract: this.extract.bind(this),
+                  inputRaw: input,
                 })
                 if (Array.isArray(result)) {
                   currentStatus = result[0]
@@ -306,6 +308,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   data: { ...currentData },
                   input: currentInputParsed,
                   extract: this.extract.bind(this),
+                  inputRaw: input,
                 })
                 currentCtx = ctx
                 currentData = data

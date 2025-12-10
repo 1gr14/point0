@@ -2,9 +2,7 @@
 ------ before start0 -----
 --------------------------
 
-provide inputRaw so we can see original input
 client loader fn should accept props
-client loader fn should accept input
 
 GlobalPoints → GlobalPointsManager
 ExtractorStore → SuperStore

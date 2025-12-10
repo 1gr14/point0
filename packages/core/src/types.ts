@@ -319,6 +319,7 @@ export type InputRaw<
   : TRouteDefinition extends RouteDefinition
     ? FlatInput<TRouteDefinition>
     : Record<never, never>
+export type InputRawUnknown = Record<string, unknown>
 
 export type WithMaybeOptionalReqiredCtx<TRequiredCtx extends RequiredCtx = RequiredCtx> =
   TRequiredCtx extends UndefinedCtx ? { requiredCtx?: TRequiredCtx } : { requiredCtx: TRequiredCtx }
@@ -824,6 +825,7 @@ export type CtxFnProps<
   ctx: TCtxInput
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
+  inputRaw: InputRawUnknown
   extract: ServerExtractFn
 }
 export type CtxFn<
@@ -845,6 +847,7 @@ export type LoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
+  inputRaw: InputRawUnknown
   extract: ServerExtractFn
 }
 export type LoaderFn<
@@ -866,6 +869,7 @@ export type CtxLoaderFnProps<
   ctx: TCtx
   data: FinalData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
+  inputRaw: InputRawUnknown
   extract: ServerExtractFn
 }
 export type CtxLoaderFn<
@@ -944,6 +948,7 @@ export type ClientLoaderFnProps<
   data: FinalClientData<any, TClientData>
   location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
   input: InputParsed<TRouteDefinition, TInputSchema>
+  inputRaw: InputRawUnknown
 }
 export type ClientLoaderFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,

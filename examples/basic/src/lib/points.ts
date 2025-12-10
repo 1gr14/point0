@@ -9,10 +9,10 @@ export const unnamed_26z5ww20orm_lazy = {
   point: async () => (await import('../pages/home.js')).default.point,
 } as LazyPointsCollectionRecord
 
-export const empty_13jt0867uzk_lazy = {
+export const empty_1e907mxbta1_lazy = {
   type: 'page',
-  name: 'empty',
-  route: '/empty',
+  name: 'empty&x',
+  route: '/empty&x',
   point: async () => (await import('../pages/empty.js')).empty.point,
 } as LazyPointsCollectionRecord
 

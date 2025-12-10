@@ -19,7 +19,7 @@ export const createIdeaMutation = client
       title: z.string().min(1).max(10),
     }),
   )
-  .loader(async ({ input, data }) => {
+  .loader(async ({ input, data, inputRaw }) => {
     return { ...data }
   })
   .input(
@@ -27,7 +27,7 @@ export const createIdeaMutation = client
       description: z.string().min(1).max(100),
     }),
   )
-  .loader(async ({ input, data }) => {
+  .loader(async ({ input, data, inputRaw }) => {
     return { ...data }
   })
   .input(
@@ -35,14 +35,14 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ input, data, extract }) => {
+  .loader(async ({ input, data, extract, inputRaw }) => {
     const result = await extract(BestIdeaComponent, { x: 22, y: 2 })
     if (result.error) {
       throw result.error
     }
     return { ...data, ...result.data }
   })
-  .mutation(async ({ input, ctx }) => {
+  .mutation(async ({ input, ctx, inputRaw }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
