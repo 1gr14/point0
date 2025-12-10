@@ -371,10 +371,13 @@ export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | Unde
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : false
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-export type ShowError<Message extends string> = { error: Message } & never
+// export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+
+export type ShowError<Message extends string> = {
+  readonly __error__: Message
+}
 
 // fetching and queries
 

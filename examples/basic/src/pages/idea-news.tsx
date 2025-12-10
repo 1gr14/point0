@@ -1,10 +1,12 @@
-import { Route0 } from '@devp0nt/route0'
 import { ideaLayout } from '../layouts/idea.js'
+import * as z from 'zod'
 
 export const ideasNewsPage = ideaLayout
   .lets('page', 'ideaNews')
-  // .route('news')
-  .route(Route0.create('/ideas/:id/news/:xxx'))
+  .route('news')
+  .input(z.object({ x: z.number() }))
+  .input(z.object({ id: z.string() }))
+  .input(z.object({ id: z.number() }))
   .page(
     ({ data: { idea }, input }) => `${idea.news.length} news for idea "${idea.title}"`,
     ({ data: { idea }, query }) => {

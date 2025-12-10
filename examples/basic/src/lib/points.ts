@@ -16,14 +16,6 @@ export const empty_1e907mxbta1_lazy = {
   point: async () => (await import('../pages/empty.js')).empty.point,
 } as LazyPointsCollectionRecord
 
-export const ideasNewsPage_28s169x55t9_lazy = {
-  type: 'page',
-  name: 'ideaNews',
-  route: '/ideaNews',
-  layouts: ['generalLayout', 'ideaLayout'],
-  point: async () => (await import('../pages/idea-news.js')).ideasNewsPage.point,
-} as LazyPointsCollectionRecord
-
 export const ideasPage_ssfqq9iosy_lazy = {
   type: 'page',
   name: 'ideas',
@@ -46,6 +38,14 @@ export const ideaPage_20lppw25s2w_lazy = {
   route: '/ideas/:id',
   layouts: ['generalLayout', 'ideaLayout'],
   point: async () => (await import('../pages/idea.js')).ideaPage.point,
+} as LazyPointsCollectionRecord
+
+export const ideasNewsPage_28s169x55t9_lazy = {
+  type: 'page',
+  name: 'ideaNews',
+  route: '/ideas/:id/news',
+  layouts: ['generalLayout', 'ideaLayout'],
+  point: async () => (await import('../pages/idea-news.js')).ideasNewsPage.point,
 } as LazyPointsCollectionRecord
 
 export const sharedEmptyPage_1etebo1y5ff_lazy = {

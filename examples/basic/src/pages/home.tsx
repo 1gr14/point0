@@ -11,6 +11,7 @@ import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
+import { Route0 } from '@devp0nt/route0'
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``

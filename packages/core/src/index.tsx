@@ -1,5 +1,13 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRoute, CallabelRoute, DedupeSlashes, Extended, KnownLocation } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  AnyRoute,
+  CallabelRoute,
+  DedupeSlashes,
+  Extended,
+  FlatInput,
+  KnownLocation,
+} from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -107,6 +115,7 @@ import type {
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
   ServerExtractAction,
+  ShowError,
   SuccessHeadFn,
   UndefinedComponentComponent,
   UndefinedCtx,
@@ -1424,7 +1433,9 @@ export class Point0<
   // middlewares
 
   route<TNewRoute extends AnyRoute>(
-    route: TNewRoute,
+    route: FlatInput<TNewRoute> extends InputRaw<TRouteDefinition, TInputSchema>
+      ? TNewRoute
+      : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`>,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1487,7 +1498,7 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  route(route?: CallabelRoute | RouteDefinition) {
+  route(route?: CallabelRoute | RouteDefinition | ShowError<string>) {
     const prevRoute = this._prevRoute
     const newRoute = (() => {
       if (typeof route === 'undefined') {
