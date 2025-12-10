@@ -2,21 +2,24 @@
 ------ before start0 -----
 --------------------------
 
-currentInput, so when we move through extend fns, we should updateIt, becouse it can changes, also provide inputRaw so we can see original input
+Move AllPointsManager, move ServerExtractor
+GlobalPoints → GlobalPointsManager
 ExtractorStore → SuperStore
 
-also if clientMiddleware then extractClientFns not manage input changes, also under the hood we shpudl have serverInputSchema, and clientInputSchema
+provide inputRaw so we can see original input
+_serverInputSchema so not combine schemas each request
+
 when page or layout then route, else input
 when set route for page check that layout params is same as page params or shrinker
 ? by types if page/layout route params not acceptable to inputRaw, then throw error. Also if when define input and its not acceptable route params, then throw error
 prevent input oevrride previous methods if they were another
+
 Проверить, что инпут в клиентском лоадере присутствует
 Так пусть он уж и в компоненте присутствует
-standard schema
 
 ctx and loader in props should recieve "extract" fn which accept another point and its input
 
-клиентЭкстракт и сервер экстракт, экстрактор переименовать на сервер экстрактор
+
 
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it
@@ -178,7 +181,7 @@ launch
 ------ v2 ------
 ----------------
 
-И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
+standard schema
 
 ! we just need own Messanger based on usual websocketsm it is enough
 (convex is just real-time helper (.lets('subscribe')), nothing special. And it is big combiner, which is bad)
@@ -197,6 +200,8 @@ launch
 ? asterisk layout as .layout(true, () => <div/>)
 ? add engine client options serveByServer: boolean default true
 prefetch type not only prefetchPageDehydratedState, but also prefetchPageExtractorStore becouse there can be zustand or what else
+
+И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
 
 convex example
 
