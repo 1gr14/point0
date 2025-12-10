@@ -32,12 +32,11 @@ import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
-import type { ZodObject, util as ZodUtil } from 'zod'
 import { ClientServerHelpers } from './client-server.js'
-import type { SuperStoreDefinedItem } from './super-store.js'
-import { SuperStore } from './super-store.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
+import type { SuperStoreDefinedItem } from './super-store.js'
+import { SuperStore } from './super-store.js'
 import type {
   AnyDataOrInfiniteData,
   AnyPoint,
@@ -77,6 +76,7 @@ import type {
   LoaderFn,
   LoadingComponentType,
   LoadingHeadFn,
+  MergeInputSchemas,
   MiddlewareHeadFn,
   MountableComponent,
   MountableComponentProps,
@@ -93,6 +93,7 @@ import type {
   NiceResponseEndPoint,
   NiceRootEndPoint,
   NiceRootMiddlePoint,
+  OmitUnnamedKeys,
   OnPrefetchFn,
   PageComponent,
   PagePrefetchPolicy,
@@ -1435,7 +1436,7 @@ export class Point0<
   route<TNewRoute extends AnyRoute>(
     route: FlatInput<TNewRoute> extends InputRaw<TRouteDefinition, TInputSchema>
       ? TNewRoute
-      : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`>,
+      : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1720,7 +1721,12 @@ export class Point0<
   }
 
   input<TNewInputSchema extends InputSchemaZod>(
-    inputSchema: TNewInputSchema,
+    inputSchema: InputParsed<
+      TRouteDefinition,
+      MergeInputSchemas<TInputSchema, TNewInputSchema>
+    > extends OmitUnnamedKeys<InputParsed<TRouteDefinition, TInputSchema>>
+      ? TNewInputSchema
+      : ShowError<`Provided schema is not assignable to previous input schema`> & TNewInputSchema,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1730,9 +1736,7 @@ export class Point0<
     TClientData,
     TRouteDefinition,
     TPrevRouteDefinition,
-    TInputSchema extends InputSchemaZod
-      ? ZodObject<ZodUtil.Extend<TInputSchema['shape'], TNewInputSchema['shape']>>
-      : TNewInputSchema,
+    MergeInputSchemas<TInputSchema, TNewInputSchema>,
     TResponseOutput,
     TQueryResultType,
     TProps

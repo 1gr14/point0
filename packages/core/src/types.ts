@@ -8,7 +8,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
-import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput } from 'zod'
+import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput, util as ZodUtil } from 'zod'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 
@@ -321,6 +321,17 @@ export type InputRaw<
     : Record<never, never>
 export type InputRawUnknown = Record<string, unknown>
 
+export type MergeInputSchemas<
+  TInputSchema1 extends InputSchema | UndefinedInputSchema,
+  TInputSchema2 extends InputSchema | UndefinedInputSchema,
+> = TInputSchema1 extends InputSchemaZod
+  ? TInputSchema2 extends InputSchemaZod
+    ? ZodObject<ZodUtil.Extend<TInputSchema1['shape'], TInputSchema2['shape']>>
+    : TInputSchema1
+  : TInputSchema2 extends InputSchemaZod
+    ? TInputSchema2
+    : Record<never, never>
+
 export type WithMaybeOptionalReqiredCtx<TRequiredCtx extends RequiredCtx = RequiredCtx> =
   TRequiredCtx extends UndefinedCtx ? { requiredCtx?: TRequiredCtx } : { requiredCtx: TRequiredCtx }
 export type OmitRequiredCtxRequestProp<TRequiredCtx extends RequiredCtx = RequiredCtx> =
@@ -374,6 +385,10 @@ export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : fals
 // export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+
+export type OmitUnnamedKeys<T> = {
+  [K in keyof T as string extends K ? never : K]: T[K]
+}
 
 export type ShowError<Message extends string> = {
   readonly __error__: Message
