@@ -1962,8 +1962,20 @@ export class Point0<
       _headFns: !successHeadFn ? this._headFns : [...this._headFns, successHeadFn],
     })
     const pageWithPoint = point._Page.bind(point)
-    // TODO:ASAP assign here all needed methods
-    Object.assign(pageWithPoint, { point, lets: point.lets.bind(point) })
+    Object.assign(pageWithPoint, {
+      point,
+      lets: point.lets.bind(point),
+      inputSchema: point.inputSchema,
+      useQuery: point.useQuery.bind(point),
+      getQueryKey: point.getQueryKey.bind(point),
+      getQueryOptions: point.getQueryOptions.bind(point),
+      prefetchQuery: point.prefetchQuery.bind(point),
+      fetch: point.fetch.bind(point),
+      extract: point.extract.bind(point),
+      useInfiniteQuery: point.useInfiniteQuery.bind(point),
+      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
+      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+    })
     return pageWithPoint as never
     // Point0.setGlobalPoint(point)
     // return point._Page
@@ -1995,8 +2007,20 @@ export class Point0<
       _letsEndPointType: undefined,
     })
     const componentWithPoint = point._Component
-    // TODO:ASAP assign here all needed methods
-    Object.assign(componentWithPoint, { point, lets: point.lets.bind(point) })
+    Object.assign(componentWithPoint, {
+      point,
+      lets: point.lets.bind(point),
+      inputSchema: point.inputSchema,
+      useQuery: point.useQuery.bind(point),
+      getQueryKey: point.getQueryKey.bind(point),
+      getQueryOptions: point.getQueryOptions.bind(point),
+      prefetchQuery: point.prefetchQuery.bind(point),
+      fetch: point.fetch.bind(point),
+      extract: point.extract.bind(point),
+      useInfiniteQuery: point.useInfiniteQuery.bind(point),
+      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
+      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+    })
     return componentWithPoint as never
     // Point0.setGlobalPoint(point)
     // return point._Component
@@ -2035,8 +2059,20 @@ export class Point0<
       _letsEndPointType: undefined,
     })
     const layoutWithPoint = point._Layout
-    // TODO:ASAP assign here all needed methods
-    Object.assign(layoutWithPoint, { point, lets: point.lets.bind(point) })
+    Object.assign(layoutWithPoint, {
+      point,
+      lets: point.lets.bind(point),
+      inputSchema: point.inputSchema,
+      useQuery: point.useQuery.bind(point),
+      getQueryKey: point.getQueryKey.bind(point),
+      getQueryOptions: point.getQueryOptions.bind(point),
+      prefetchQuery: point.prefetchQuery.bind(point),
+      fetch: point.fetch.bind(point),
+      extract: point.extract.bind(point),
+      useInfiniteQuery: point.useInfiniteQuery.bind(point),
+      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
+      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+    })
     return layoutWithPoint as never
   }
 

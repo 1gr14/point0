@@ -2,56 +2,34 @@
 ------ before start0 -----
 --------------------------
 
-serverurl
-baseurl
-queryOptions
-infiniteQueryOptions
-pageQueryOptions
-componentQueryOptions
-providerQueryOptions
-layoutQueryOptions
-fetchOptions
-error
-pageError
-componentError
-loading
-pageLoading
-componentLoading
-wrapper
-route
-ctx
-loader
-ctxLoader
-clientLoader
-head
-provider
-response
-scrollPosition
-scrollRestore
-prefetchPolicy
-onPrefetch
-
-prettify visible methods per TLetsEndpointType and TPointType
-fix mountable component assign props
-
 currentInput, so when we move through extend fns, we should updateIt, becouse it can changes, also provide inputRaw so we can see original input
+also if clientMiddleware then extractClientFns not manage input changes, also under the hood we shpudl have serverInputSchema, and clientInputSchema
 when page or layout then route, else input
 when set route for page check that layout params is same as page params or shrinker
 ? by types if page/layout route params not acceptable to inputRaw, then throw error. Also if when define input and its not acceptable route params, then throw error
+prevent input oevrride previous methods if they were another
+Проверить, что инпут в клиентском лоадере присутствует
+Так пусть он уж и в компоненте присутствует
+standard schema
 
 ctx and loader in props should recieve "extract" fn which accept another point and its input
 
-do not podresolve TQueryResultType, just define it in places of loader, event if it was previously infiniteQuery, it is ok
+клиентЭкстракт и сервер экстракт, экстрактор переименовать на сервер экстрактор
 
 check onPrefetch work recursively
-check query and infiteqQuery and component respect onPrefetch
+check query and infiteqQuery and component respect onPrefetch, and all others who have it
+
+double check what we broke in lets and that it is suitable to what we have in types
 
 check mutation clientLoader
+
+on request to server for query or mutation which has no serverLoader throw error
 
 fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
 ? remove root from lets
 
-check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers
+- check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
+! stop build clients for server, just build server. But preserve ability to build clients for server, but maybe not documented yet
 
 .ssr(), and remove ssr option from engine
 
@@ -61,9 +39,6 @@ client loader fn should accept props
 Перепроверить хук юзЛокатион
 
 Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
-
-Проверить, что инпут в клиентском лоадере присутствует
-Так пусть он уж и в компоненте присутствует
 
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
@@ -79,6 +54,8 @@ expo router
 ??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
 ??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
+
+example monorepo
 
 START0
 start0 without mono0
@@ -107,6 +84,7 @@ check if mutation can be client only
 ? location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
 ? on navigate on unknown location do window location change
 watch glob optional for build watch, and builwatch itself
+? __POINT0_QUERY_KEY_PREFIX__, adn find all other point0 from small "p" and fix it
 check if superjson works correctly with query and mutation and eversion store
 ? use arrays in points files
 ? extract required ctx type from root points
@@ -124,7 +102,7 @@ analyze if there same id points or route points, and throw error
 ? someThing.attachment()..., and then somethingElse.attach()
 ? get base/root specific things right from base, do not continue it after .base()
 ? Point0 → P0, cli p0
-const plugin = <TExtra extends {}>(extra: TExtra) =><TData extends {}>({ data }: { data: TData }) => ({...data,a: 3,c: 4,...extra,}); const server2 = server1.loader(plugin({ x: 'x', a: 'a' }))
+rest important TODO in code
 
 --------------------------
 ------ after start0 ------
@@ -133,6 +111,8 @@ const plugin = <TExtra extends {}>(extra: TExtra) =><TData extends {}>({ data }:
 .lets('multiPage').route('/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
+
+? .lets('init', 'something').onError().onSuccess().init({client:()=>{}, server:()=>{}, clientAndServer:()=>{}, deps: ['otherInitPoint1', 'otherInitPoint2']})
 
 mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
 mySub = root.lets('subscription')
@@ -156,6 +136,15 @@ mySub.send({chatId}, {eventType: 'newMessage', text: 'hello'});
 9 для кипалайва постоянно по чуть-чуть отправляем с клиента ping сообщения
 10 гетРумИнпут может вернуть и массив, например гетРумИнпут в онКлиентСубскрайб вернёт массив. clientSubscribeInput:{ids[]}, serverSendInput({id,diff}), onServerSend({input} => return {message: input, mark: input.id}), onClientJoin({input} => return {mark: input.ids.map()=>id.toString()})  // bad // mark({csInput, ssInput} => JSON.stringify(csInput ? csInput.ids.map()=>{id} : {id:ssInput.id})); 
 11 .mark(z.object()), so we only store on redis mark hash, not whole mark
+???
+Client send accept both zod schema, and callback, also client Send, and return types is known messages
+кроме рум схемы, ещё и рум оутпут, в неё заходит инпут а выходит то, что выходит, а по умолчанию выходит стрингифаед инпут
+И для тех кто готов на медленное соединение позволить месседжПикер, тогда на сервере мы храним весь руминпут в редисе, а далее сервер идёт по всем подпискам и отсылает только туда, кто пикнет
+!!!!!!!
+Вебсокет то у нас всегда один. То есть по сути это всегда просто субскрипшен. То есть не обязательно клиенту подписываться на поинт, на который он будет отправлять, и наоборот отправлять на который он подписался
+это строго должно быть в 1 количестве. вот как рут в 1 количестве, так и вебсокет myWs = .lets('websocket').input().loader().websocket({defaultInput, inputSchema, onOpen: () => { return wsData }}) → это получается попадает в генерик TWsData
+x = myWs.lets('messanger').roomSchema(schema).clientSubscribe(input, handler).clientSend(input, handler).serverSend(input, handler).messanger(); handler = ({input}) => ({message: {any}, room: [...roomSchemaInputs]}); TMessage ещё один генерик, но пусть они все будут в TWebsocket там прямо и хранятся в одном месте
+x.server.send(input); x.client.send(input); x.client.useSubscribe({ input, room, onMessage })
 
 https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
 
