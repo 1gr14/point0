@@ -2,9 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-prevent input oevrride previous methods if they were another
-? by types if page/layout route params not acceptable to inputRaw, then throw error. Also if when define input and its not acceptable route params, then throw error
-
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it
 
