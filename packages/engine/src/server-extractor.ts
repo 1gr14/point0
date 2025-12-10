@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0, type AnyLocation } from '@devp0nt/route0'
 import { ClientServerHelpers } from '@point0/core/client-server'
-import { ExtractorStore } from '@point0/core/extractor-store'
+import { SuperStore } from '@point0/core/super-store'
 import { PointsManager } from '@point0/core/points-manager'
 import type {
   AnyPoint,
@@ -77,7 +77,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
   }): Promise<ServerExtractor<TRequiredCtx>> {
     const serverGlobalState = {}
-    return await ExtractorStore.runWithServerStorageProvider(serverGlobalState, async () => {
+    return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new ServerExtractor<TRequiredCtx>({
         points,
         pageLocation,
@@ -85,7 +85,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         serverExtractActionsWithOutput: [],
         serverGlobalState: {
           __POINT0_SCOPE__: points.scope,
-          __POINT0_QUERY_CLIENT__: ExtractorStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
+          __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,
           __POINT0_CURRENT_LOCATION__: currentLocation,
           ...serverGlobalState,
@@ -96,7 +96,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   getQueryClient(): QueryClient {
     return ClientServerHelpers.isClient
-      ? ExtractorStore.get('__POINT0_QUERY_CLIENT__')
+      ? SuperStore.get('__POINT0_QUERY_CLIENT__')
       : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
 
@@ -106,7 +106,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   setSsrLocation(ssrLocation: AnyLocation): void {
     if (ClientServerHelpers.isClient) {
-      ExtractorStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
+      SuperStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
     }
     this.serverGlobalState.__POINT0_SSR_LOCATION__ = ssrLocation
@@ -114,14 +114,14 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   setCurrentLocation(currentLocation: AnyLocation): void {
     if (ClientServerHelpers.isClient) {
-      ExtractorStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
+      SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
       return
     }
     this.serverGlobalState.__POINT0_CURRENT_LOCATION__ = currentLocation
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
-    return await ExtractorStore.runWithServerStorageProvider(this.serverGlobalState, callback)
+    return await SuperStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
   static async extract<TPoint extends EndPoint>({
@@ -629,7 +629,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = ExtractorStore.getConfig('__POINT0_QUERY_CLIENT__')?.init()
+      const tempQueryClient = SuperStore.getConfig('__POINT0_QUERY_CLIENT__')?.init()
       if (!tempQueryClient) {
         throw new Error('Query client not found')
       }

@@ -26,8 +26,8 @@ export const ideasPage = generalLayout
     pageParamFromInput: 'page',
   })
   .page(
-    (props) => {
-      return `${props.data.pages[0].ideasCount} ideas x`
+    (o) => {
+      return `${o.data.pages[0].ideasCount} ideas x`
     },
     ({ data, query }) => {
       const [count, setCount] = useState(() => 0)

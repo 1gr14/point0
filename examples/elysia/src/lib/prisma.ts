@@ -30,10 +30,10 @@ export const prisma = {
       return newIdea
     },
 
-    findMany: async (props: { take?: number; skip?: number } = {}): Promise<Idea[]> => {
+    findMany: async (o: { take?: number; skip?: number } = {}): Promise<Idea[]> => {
       // Simulate async database call
       await wait()
-      return [...fakeIdeas].slice(props.skip ?? 0, (props.skip ?? 0) + (props.take ?? fakeIdeas.length))
+      return [...fakeIdeas].slice(o.skip ?? 0, (o.skip ?? 0) + (o.take ?? fakeIdeas.length))
     },
 
     findUniqueOrThrow: async ({ where }: { where: { id: number } }): Promise<Idea> => {

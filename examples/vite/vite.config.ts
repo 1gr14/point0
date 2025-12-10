@@ -5,8 +5,8 @@ import svgr from 'vite-plugin-svgr'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { analyzer } from 'vite-bundle-analyzer'
 
-export default defineConfig((props) => {
+export default defineConfig((options) => {
   return {
-    plugins: [react(), svgr(), tsconfigPaths(), props.mode.includes('client') ? analyzer() : null] as PluginOption[],
+    plugins: [react(), svgr(), tsconfigPaths(), options.mode.includes('client') ? analyzer() : null] as PluginOption[],
   }
 })

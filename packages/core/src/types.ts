@@ -760,7 +760,7 @@ export type OnPrefetchFn = () => Promise<void> | void
 
 export type ResponseOutput = Response
 export type UndefinedResponseOutput = undefined
-export type ResponseFnProps<
+export type ResponseFnOptions<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -776,14 +776,16 @@ export type ResponseFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TResponseOutput extends ResponseOutput = ResponseOutput,
-> = (props: ResponseFnProps<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TResponseOutput> | TResponseOutput
+> = (
+  options: ResponseFnOptions<TCtx, TData, TRouteDefinition, TInputSchema>,
+) => Promise<TResponseOutput> | TResponseOutput
 export type ResponseFnOutput<TResponseFn extends ResponseFn> = Awaited<ReturnType<TResponseFn>>
 
-export type InputFnProps<TInputSchema extends InputSchema = InputSchema> = {
+export type InputFnOptions<TInputSchema extends InputSchema = InputSchema> = {
   inputRaw: InputRaw<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 }
 export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
-  props: InputFnProps<TInputSchema>,
+  options: InputFnOptions<TInputSchema>,
 ) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 
 export type ServerExtractFn = <TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any>>(
@@ -816,7 +818,7 @@ export type ServerExtractResult<
       status: number
     }
 
-export type CtxFnProps<
+export type CtxFnOptions<
   TCtxInput extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -834,11 +836,11 @@ export type CtxFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxOutput extends Ctx = Ctx,
-> = (props: CtxFnProps<TCtxInput, TData, TRouteDefinition, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
+> = (props: CtxFnOptions<TCtxInput, TData, TRouteDefinition, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
 export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
 export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
 
-export type LoaderFnProps<
+export type LoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -857,10 +859,10 @@ export type LoaderFn<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TDataOutput extends Data = Data,
 > = (
-  props: LoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>,
+  options: LoaderFnOptions<TCtx, TData, TRouteDefinition, TInputSchema>,
 ) => Promise<[number, TDataOutput]> | [number, TDataOutput] | Promise<TDataOutput> | TDataOutput
 
-export type CtxLoaderFnProps<
+export type CtxLoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -880,7 +882,7 @@ export type CtxLoaderFn<
   TCtxOutput extends Ctx = Ctx,
   TDataOutput extends Data = Data,
 > = (
-  props: CtxLoaderFnProps<TCtx, TData, TRouteDefinition, TInputSchema>,
+  options: CtxLoaderFnOptions<TCtx, TData, TRouteDefinition, TInputSchema>,
 ) =>
   | Promise<{ ctx: TCtxOutput; data: TDataOutput; status?: number }>
   | { ctx: TCtxOutput; data: TDataOutput; status?: number }
@@ -939,7 +941,7 @@ export type ClientExtractActionLocation<
       ? AnyLocation
       : never
 
-export type ClientLoaderFnProps<
+export type ClientLoaderFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
@@ -957,10 +959,10 @@ export type ClientLoaderFn<
   TClientData extends Data | UndefinedData,
   TClientDataOutput extends Data,
 > = (
-  props: ClientLoaderFnProps<TLetsEndPointType, TRouteDefinition, TInputSchema, TClientData>,
+  options: ClientLoaderFnOptions<TLetsEndPointType, TRouteDefinition, TInputSchema, TClientData>,
 ) => Promise<TClientDataOutput> | TClientDataOutput
 
-export type ProviderValueSetterFnProps<
+export type ProviderValueSetterFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientData extends Data | UndefinedData,
@@ -973,7 +975,7 @@ export type ProviderValueSetterFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientData extends Data | UndefinedData,
   TClientDataOutput extends Data,
-> = (props: ProviderValueSetterFnProps<TLetsEndPointType, TRouteDefinition, TClientData>) => TClientDataOutput
+> = (options: ProviderValueSetterFnOptions<TLetsEndPointType, TRouteDefinition, TClientData>) => TClientDataOutput
 
 // head
 
@@ -985,7 +987,7 @@ export type SuccessHeadFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
 > = (
-  props: Omit<
+  options: Omit<
     PageComponentProps<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, any>,
     'query' | 'props'
   >,
@@ -999,7 +1001,7 @@ export type ErrorHeadFn<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = (
-  props: Omit<
+  options: Omit<
     ErrorComponentProps<
       any,
       TQueryResultType,
@@ -1022,7 +1024,7 @@ export type LoadingHeadFn<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = (
-  props: Omit<
+  options: Omit<
     LoadingComponentProps<
       any,
       TQueryResultType,
@@ -1037,7 +1039,7 @@ export type LoadingHeadFn<
   >,
 ) => ResolvableHead | string
 
-export type MiddlewareHeadFnProps<
+export type MiddlewareHeadFnOptions<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
@@ -1056,7 +1058,14 @@ export type MiddlewareHeadFn<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
-  props: MiddlewareHeadFnProps<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+  options: MiddlewareHeadFnOptions<
+    TQueryResultType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition
+  >,
 ) => ResolvableHead | string
 
 export type FetchOutput<

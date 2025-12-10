@@ -3,7 +3,7 @@ import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { ClientServerHelpers } from './client-server.js'
-import { ExtractorStore } from './extractor-store.js'
+import { SuperStore } from './super-store.js'
 import type {
   EndPoint,
   EndPointType,
@@ -76,7 +76,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.hostname = getHostnameOrNull(this.baseurl)
     PointsManager.setGlobalPoints(this)
     if (ClientServerHelpers.isClient) {
-      ExtractorStore.setWeak('__POINT0_SCOPE__', this.scope)
+      SuperStore.setWeak('__POINT0_SCOPE__', this.scope)
     }
   }
 
@@ -768,9 +768,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return createdPoints
   }
   static getGlobalPoints = (scope?: PointsScope): PointsManager => {
-    scope ??= ExtractorStore.getWeak<PointsScope>('__POINT0_SCOPE__')
+    scope ??= SuperStore.getWeak<PointsScope>('__POINT0_SCOPE__')
     if (!scope) {
-      throw new Error('Points scope not found if ExtractorStore. You should provide scope.')
+      throw new Error('Points scope not found if SuperStore. You should provide scope.')
     }
     const points =
       scope in (globalThis as any).__POINT0_POINTS__ ? (globalThis as any).__POINT0_POINTS__[scope] : undefined

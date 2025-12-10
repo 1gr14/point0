@@ -26,8 +26,8 @@ import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import type { ZodObject, util as ZodUtil } from 'zod'
 import { ClientServerHelpers } from './client-server.js'
-import type { ExtractorStoreDefinedItem } from './extractor-store.js'
-import { ExtractorStore } from './extractor-store.js'
+import type { SuperStoreDefinedItem } from './super-store.js'
+import { SuperStore } from './super-store.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
 import type {
@@ -286,7 +286,7 @@ export class Point0<
     TProps
   >
 
-  private constructor(props: {
+  private constructor(options: {
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint | undefined
@@ -407,49 +407,49 @@ export class Point0<
     _unstableId?: number
   }) {
     this.point = this
-    this._scope = props._scope
-    this._attachedTo = props._attachedTo
-    this._base = props._base ?? undefined
-    this._root = props._root ?? undefined
-    this.inputSchema = (props.inputSchema ?? undefined) as TInputSchema
-    this._serverInputSchema = props._serverInputSchema
-    this._serverurl = props._serverurl ?? undefined
-    this._baseurl = props._baseurl ?? undefined
-    this._responseFn = (props._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
+    this._scope = options._scope
+    this._attachedTo = options._attachedTo
+    this._base = options._base ?? undefined
+    this._root = options._root ?? undefined
+    this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
+    this._serverInputSchema = options._serverInputSchema
+    this._serverurl = options._serverurl ?? undefined
+    this._baseurl = options._baseurl ?? undefined
+    this._responseFn = (options._responseFn ?? undefined) as TResponseOutput extends ResponseOutput
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
-    this._pointType = props._pointType
-    this._letsEndPointType = props._letsEndPointType
-    this._wrappers = props._wrappers ?? []
-    this._headFns = props._headFns ?? []
-    this._defaultQueryOptions = props._defaultQueryOptions ?? {}
-    this._defaultInfiniteQueryOptions = props._defaultInfiniteQueryOptions ?? {}
-    this._defaultLayoutQueryOptions = props._defaultLayoutQueryOptions ?? {}
-    this._defaultComponentQueryOptions = props._defaultComponentQueryOptions ?? {}
-    this._defaultProviderQueryOptions = props._defaultProviderQueryOptions ?? {}
-    this._defaultPageQueryOptions = props._defaultPageQueryOptions ?? {}
-    this._queryOptions = props._queryOptions ?? {}
-    this._infiniteQueryOptions = props._infiniteQueryOptions ?? ({} as never)
-    this._queryResultType = (props._queryResultType ?? undefined) as TQueryResultType
-    this._serverExtractActions = props._serverExtractActions ?? []
-    this._clientExtractActions = props._clientExtractActions ?? []
-    this._providerValueSetter = props._providerValueSetter ?? undefined
-    this._ProviderReactContext = props._ProviderReactContext ?? undefined
-    this._useValue = props._useValue ? props._useValue.bind(this) : undefined
+    this._pointType = options._pointType
+    this._letsEndPointType = options._letsEndPointType
+    this._wrappers = options._wrappers ?? []
+    this._headFns = options._headFns ?? []
+    this._defaultQueryOptions = options._defaultQueryOptions ?? {}
+    this._defaultInfiniteQueryOptions = options._defaultInfiniteQueryOptions ?? {}
+    this._defaultLayoutQueryOptions = options._defaultLayoutQueryOptions ?? {}
+    this._defaultComponentQueryOptions = options._defaultComponentQueryOptions ?? {}
+    this._defaultProviderQueryOptions = options._defaultProviderQueryOptions ?? {}
+    this._defaultPageQueryOptions = options._defaultPageQueryOptions ?? {}
+    this._queryOptions = options._queryOptions ?? {}
+    this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
+    this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
+    this._serverExtractActions = options._serverExtractActions ?? []
+    this._clientExtractActions = options._clientExtractActions ?? []
+    this._providerValueSetter = options._providerValueSetter ?? undefined
+    this._ProviderReactContext = options._ProviderReactContext ?? undefined
+    this._useValue = options._useValue ? options._useValue.bind(this) : undefined
     this._route =
-      props._route ??
+      options._route ??
       (undefined as TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute)
     this._prevRoute =
-      props._prevRoute ??
+      options._prevRoute ??
       (undefined as TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute)
-    this._page = props._page ?? undefined
-    this._component = props._component ?? undefined
-    this._layout = props._layout ?? undefined
-    this._layouts = props._layouts ?? []
-    this._name = props._name
-    this._fetchOptions = props._fetchOptions ?? (() => ({}))
+    this._page = options._page ?? undefined
+    this._component = options._component ?? undefined
+    this._layout = options._layout ?? undefined
+    this._layouts = options._layouts ?? []
+    this._name = options._name
+    this._fetchOptions = options._fetchOptions ?? (() => ({}))
     this._scrollPositionGetter =
-      props._scrollPositionGetter ??
+      options._scrollPositionGetter ??
       (() => {
         if (typeof window === 'undefined' || typeof document === 'undefined') {
           return { x: 0, y: 0 }
@@ -463,7 +463,7 @@ export class Point0<
         return { x, y }
       })
     this._scrollPositionSetter =
-      props._scrollPositionSetter ??
+      options._scrollPositionSetter ??
       (({ x, y }) => {
         if (typeof window === 'undefined' || typeof document === 'undefined') {
           return
@@ -480,12 +480,12 @@ export class Point0<
         // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
         doc.scrollTop = body.scrollTop = y ?? 0
       })
-    this._scrollPositionRestorePolicy = props._scrollPositionRestorePolicy ?? (() => null)
-    this._prefetchPolicy = props._prefetchPolicy ?? 'serverClientQuery'
-    this._onPrefetchFns = props._onPrefetchFns ?? []
-    this._errorComponent = props._errorComponent
+    this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
+    this._prefetchPolicy = options._prefetchPolicy ?? 'serverClientQuery'
+    this._onPrefetchFns = options._onPrefetchFns ?? []
+    this._errorComponent = options._errorComponent
     this._pageErrorComponent =
-      props._pageErrorComponent ??
+      options._pageErrorComponent ??
       ((({ error }) => {
         const { stack, ...json } = error.toJSON()
         // TODO: move console.error to .onClientError
@@ -507,7 +507,7 @@ export class Point0<
         TProps
       >)
     this._componentErrorComponent =
-      props._componentErrorComponent ??
+      options._componentErrorComponent ??
       ((({ error }) => {
         const { stack, ...json } = error.toJSON()
         // TODO: move console.error to .onClientError
@@ -528,9 +528,9 @@ export class Point0<
         TRouteDefinition,
         TProps
       >)
-    this._loadingComponent = props._loadingComponent
+    this._loadingComponent = options._loadingComponent
     this._pageLoadingComponent =
-      props._pageLoadingComponent ??
+      options._pageLoadingComponent ??
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
         'page',
         TQueryResultType,
@@ -542,7 +542,7 @@ export class Point0<
         TProps
       >)
     this._componentLoadingComponent =
-      props._componentLoadingComponent ??
+      options._componentLoadingComponent ??
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
         'component',
         TQueryResultType,
@@ -553,7 +553,7 @@ export class Point0<
         TRouteDefinition,
         TProps
       >)
-    this._unstableId = props._unstableId ?? Point0._getNextUnstableId()
+    this._unstableId = options._unstableId ?? Point0._getNextUnstableId()
   }
 
   private _continue<
@@ -1210,7 +1210,7 @@ export class Point0<
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
-      : (props) => (!props.error ? {} : headFn(props as never))
+      : (options) => (!options.error ? {} : headFn(options as never))
     return this._continue({
       _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
       _pageErrorComponent: pageErrorComponent,
@@ -1331,7 +1331,7 @@ export class Point0<
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
-      : (props) => (!props.loading ? {} : headFn(props as never))
+      : (options) => (!options.loading ? {} : headFn(options as never))
     return this._continue({
       _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
       _pageLoadingComponent: pageLoadingComponent,
@@ -1977,7 +1977,7 @@ export class Point0<
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const successHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
-      : (props) => (!props.data || props.loading || props.error ? {} : headFn(props as never))
+      : (options) => (!options.data || options.loading || options.error ? {} : headFn(options as never))
     const point = this._continue({
       _pointType: 'page',
       _page: page,
@@ -4115,7 +4115,7 @@ export class Point0<
   // provider
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> {
-    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
+    const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
       `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     if (!value) {
@@ -4127,7 +4127,7 @@ export class Point0<
   }
 
   getValueSafe(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TData, TClientData> | undefined {
-    const value = ExtractorStore.getWeak<FinalClientData<TData, TClientData>>(
+    const value = SuperStore.getWeak<FinalClientData<TData, TClientData>>(
       `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
     )
     return value
@@ -4179,7 +4179,7 @@ export class Point0<
       )
     }
     const value = this._providerValueSetter(result)
-    ExtractorStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
+    SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input)}`, value)
     return this._withWrappers(
       React.createElement(this._ProviderReactContext.Provider, {
         value,
@@ -4242,9 +4242,9 @@ export class Point0<
 
   // extractor store
 
-  static define = ExtractorStore.define.bind(ExtractorStore)
+  static define = SuperStore.define.bind(SuperStore)
 
-  static defineQueryClient(init: () => QueryClient): ExtractorStoreDefinedItem<QueryClient, DehydratedState> {
+  static defineQueryClient(init: () => QueryClient): SuperStoreDefinedItem<QueryClient, DehydratedState> {
     Point0._queryClient.config.init = init
     return Point0._queryClient
   }
@@ -4253,17 +4253,17 @@ export class Point0<
     return Point0._queryClient.get()
   }
 
-  static readonly _ssrLocation = ExtractorStore.define<AnyLocation | undefined, true>(
+  static readonly _ssrLocation = SuperStore.define<AnyLocation | undefined, true>(
     '__POINT0_SSR_LOCATION__',
     () => undefined,
     true,
   )
-  private static readonly _currentLocation = ExtractorStore.define<AnyLocation, true>(
+  private static readonly _currentLocation = SuperStore.define<AnyLocation, true>(
     '__POINT0_CURRENT_LOCATION__',
     () => Route0.getLocation('/'),
     true,
   )
-  private static readonly _queryClient = ExtractorStore.define<QueryClient, DehydratedState>(
+  private static readonly _queryClient = SuperStore.define<QueryClient, DehydratedState>(
     '__POINT0_QUERY_CLIENT__',
     () => new QueryClient(),
     (queryClient) =>

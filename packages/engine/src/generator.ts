@@ -332,9 +332,9 @@ export class FilesGenerator {
     return results.every((r) => r)
   }
 
-  // private emitExtractorStoreInitialization(): string[] {
+  // private emitSuperStoreInitialization(): string[] {
   //   const lines: string[] = []
-  //   lines.push(`await import('point0/core/extractor-store.js').then(async ({ ExtractorStore }) => await ExtractorStore.init({}))`)
+  //   lines.push(`await import('point0/core/super-store.js').then(async ({ SuperStore }) => await SuperStore.init({}))`)
   //   return lines
   // }
 
@@ -425,7 +425,7 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
-    // lines.push(...this.emitExtractorStoreInitialization())
+    // lines.push(...this.emitSuperStoreInitialization())
     lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points-manager'`)
     // lines.push(`import { Point0 } from '@point0/core'`)
 
@@ -534,7 +534,7 @@ export class FilesGenerator {
     }
     lines.push(`import type { EndPoint } from '@point0/core/types'`)
 
-    // lines.push(...this.emitExtractorStoreInitialization())
+    // lines.push(...this.emitSuperStoreInitialization())
 
     const { importLines, importedPoints } = this.emitNamedImports({
       points,
@@ -580,7 +580,7 @@ export class FilesGenerator {
   //   const lines: string[] = []
   //   if (this.banner) lines.push(this.banner)
 
-  //   // lines.push(...this.emitExtractorStoreInitialization())
+  //   // lines.push(...this.emitSuperStoreInitialization())
   //   lines.push(`import React from 'react'`)
   //   lines.push(`import { Route, Switch } from 'wouter'`)
   //   lines.push(``)

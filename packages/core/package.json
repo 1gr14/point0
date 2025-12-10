@@ -39,9 +39,9 @@
       "types": "./dist/points-manager.d.ts",
       "import": "./dist/points-manager.js"
     },
-    "./extractor-store": {
-      "types": "./dist/extractor-store.d.ts",
-      "import": "./dist/extractor-store.js"
+    "./super-store": {
+      "types": "./dist/super-store.d.ts",
+      "import": "./dist/super-store.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",

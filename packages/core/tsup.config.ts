@@ -9,7 +9,7 @@ const general = {
     'src/points.ts',
     'src/router.tsx',
     'src/points-manager.ts',
-    'src/extractor-store.ts',
+    'src/super-store.ts',
     'src/types.ts',
     'src/unhead.ts',
     'src/utils.ts',

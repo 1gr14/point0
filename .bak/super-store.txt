@@ -4,24 +4,24 @@ import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import superjson from 'superjson'
 
-export class ExtractorStore<TState extends ExtractorStoreState> {
+export class SuperStore<TState extends SuperStoreState> {
   private static dehydrated: Record<string, unknown> = {}
-  private static instance: ExtractorStore<ExtractorStoreState> | null = null
-  static config: ExtractorStoreConfig<ExtractorStoreState> = {}
+  private static instance: SuperStore<SuperStoreState> | null = null
+  static config: SuperStoreConfig<SuperStoreState> = {}
 
-  private static clientState: ExtractorStoreState | null = null
-  private static serverStorage: ExtractorStoreServerStorage | null = null
+  private static clientState: SuperStoreState | null = null
+  private static serverStorage: SuperStoreServerStorage | null = null
 
-  static async init<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>>(
+  static async init<TConfigInput extends SuperStoreConfigInput<SuperStoreState>>(
     config?: TConfigInput,
-  ): Promise<ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>> {
+  ): Promise<SuperStore<SuperStoreStateByConfigInput<TConfigInput>>> {
     config ??= {} as TConfigInput
     if (this.instance) {
       this.extendConfig(this.configInputToConfig(config))
-      return this.instance as ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>
+      return this.instance as SuperStore<SuperStoreStateByConfigInput<TConfigInput>>
     }
 
-    const instance = new ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>()
+    const instance = new SuperStore<SuperStoreStateByConfigInput<TConfigInput>>()
     this.instance = instance
 
     if (process.env.IS_CLIENT) {
@@ -29,32 +29,32 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
     } else {
       await this.initServer(config)
     }
-    return this.instance as ExtractorStore<ExtractorStoreStateByConfigInput<TConfigInput>>
+    return this.instance as SuperStore<SuperStoreStateByConfigInput<TConfigInput>>
   }
 
-  private static initClient(config?: ExtractorStoreConfigInput<ExtractorStoreState>, dehydrated?: Record<string, unknown>): void {
-    this.instance = new ExtractorStore<ExtractorStoreState>()
+  private static initClient(config?: SuperStoreConfigInput<SuperStoreState>, dehydrated?: Record<string, unknown>): void {
+    this.instance = new SuperStore<SuperStoreState>()
     this.serverStorage = null
     this.clientState ??= {}
     this.extendConfig(this.configInputToConfig(config ?? {}))
-    this.normalizeExtractorStoreConfig()
+    this.normalizeSuperStoreConfig()
     if (dehydrated) {
       this.dehydrated = dehydrated
     } else {
-      if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_EXTRACTOR_STORE__ !== 'undefined') {
-        this.dehydrated = superjson.parse((window as any).__DEHYDRATED_EXTRACTOR_STORE__)
+      if (typeof window !== 'undefined' && typeof (window as any)?.__DEHYDRATED_SUPER_STORE__ !== 'undefined') {
+        this.dehydrated = superjson.parse((window as any).__DEHYDRATED_SUPER_STORE__)
       }
     }
   }
 
-  private static async initServer(config?: ExtractorStoreConfigInput<ExtractorStoreState>): Promise<void> {
-    const instance = new ExtractorStore<ExtractorStoreState>()
+  private static async initServer(config?: SuperStoreConfigInput<SuperStoreState>): Promise<void> {
+    const instance = new SuperStore<SuperStoreState>()
     this.instance = instance
     this.extendConfig(this.configInputToConfig(config ?? {}))
     const { AsyncLocalStorage } = await import('node:async_hooks')
-    this.serverStorage = new AsyncLocalStorage<ExtractorStoreState>()
+    this.serverStorage = new AsyncLocalStorage<SuperStoreState>()
     this.clientState = null
-    this.normalizeExtractorStoreConfig()
+    this.normalizeSuperStoreConfig()
   }
 
   private static initIfClientAndNotInitialized(): void {
@@ -66,17 +66,17 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
   // here we can define one prop and get back this proxied value
   define<TValue, TDehydratedValue = TValue>(
     key: string,
-    config: ExtractorStoreConfigInputItem<TValue, TDehydratedValue>,
+    config: SuperStoreConfigInputItem<TValue, TDehydratedValue>,
   ): { get: () => TValue; set: (value: TValue) => void } {
-    return ExtractorStore.define(key, config)
+    return SuperStore.define(key, config)
   }
 
   static define<TValue, TDehydratedValue = TValue>(
     key: string,
-    config: ExtractorStoreConfigInputItem<TValue, TDehydratedValue>,
+    config: SuperStoreConfigInputItem<TValue, TDehydratedValue>,
   ): { get: () => TValue; set: (value: TValue) => void } {
     // Merge a single-key config using the same transformer as init()
-    const normalized = this.configInputToConfig({ [key]: config } as ExtractorStoreConfigInput<ExtractorStoreState>)
+    const normalized = this.configInputToConfig({ [key]: config } as SuperStoreConfigInput<SuperStoreState>)
     this.extendConfig(normalized)
 
     // Return a live proxy to that property
@@ -87,9 +87,9 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
   }
 
   private static readonly configInputToConfig = (
-    configInput: ExtractorStoreConfigInput<ExtractorStoreState>,
-  ): ExtractorStoreConfig<ExtractorStoreState> => {
-    const config: ExtractorStoreConfig<ExtractorStoreState> = {}
+    configInput: SuperStoreConfigInput<SuperStoreState>,
+  ): SuperStoreConfig<SuperStoreState> => {
+    const config: SuperStoreConfig<SuperStoreState> = {}
     for (const [key, value] of Object.entries(configInput)) {
       const configItem = value
       if (typeof configItem === 'function') {
@@ -105,7 +105,7 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
     return config
   }
 
-  private static extendConfig(config: ExtractorStoreConfig<ExtractorStoreState>): void {
+  private static extendConfig(config: SuperStoreConfig<SuperStoreState>): void {
     for (const [key, value] of Object.entries(config)) {
       this.config[key] = value
     }
@@ -115,23 +115,23 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
   }
 
   getState = (): TState => {
-    return ExtractorStore.getState() as TState
+    return SuperStore.getState() as TState
   }
-  static getState = (): ExtractorStoreState => {
+  static getState = (): SuperStoreState => {
     this.initIfClientAndNotInitialized()
     if (process.env.IS_CLIENT) {
       if (!this.clientState) {
-        throw new Error('Client state not found. Please, call await ExtractorStore.init() first')
+        throw new Error('Client state not found. Please, call await SuperStore.init() first')
       }
       return this.clientState
     } else {
       if (!this.serverStorage || !this.instance) {
-        throw new Error('Server storage and instance are not initialized. Please, call await ExtractorStore.init() first')
+        throw new Error('Server storage and instance are not initialized. Please, call await SuperStore.init() first')
       }
       const serverStore = this.serverStorage.getStore()
       if (!serverStore) {
         throw new Error(
-          'Server store not found. You should call this function on server only inside server context wrapped in ExtractorStore.runWithServerStoreProvider',
+          'Server store not found. You should call this function on server only inside server context wrapped in SuperStore.runWithServerStoreProvider',
         )
       }
       return serverStore
@@ -162,12 +162,12 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
     return dehydrated
   }
 
-  get<TKey extends ExtractorStoreKey<TState>>(key: TKey): TState[TKey] {
-    return ExtractorStore.get(key)
+  get<TKey extends SuperStoreKey<TState>>(key: TKey): TState[TKey] {
+    return SuperStore.get(key)
   }
   static get<TValue = unknown>(key: string): TValue {
     const state = this.getState()
-    const configItem = this.config[key] as ExtractorStoreConfigItem<ExtractorStoreState, unknown> | undefined
+    const configItem = this.config[key] as SuperStoreConfigItem<SuperStoreState, unknown> | undefined
     if (!configItem) {
       throw new Error(`Key "${key}" not found in config`)
     }
@@ -200,30 +200,30 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
     }
   }
 
-  set<TKey extends ExtractorStoreKey<TState>>(key: TKey, value: TState[TKey]): ExtractorStore<TState>
-  set<TPartialState extends Partial<TState>>(state: TPartialState): ExtractorStore<TState>
-  set(arg1: any, arg2?: any): ExtractorStore<TState> {
-    return ExtractorStore.set(arg1, arg2) as ExtractorStore<TState>
+  set<TKey extends SuperStoreKey<TState>>(key: TKey, value: TState[TKey]): SuperStore<TState>
+  set<TPartialState extends Partial<TState>>(state: TPartialState): SuperStore<TState>
+  set(arg1: any, arg2?: any): SuperStore<TState> {
+    return SuperStore.set(arg1, arg2) as SuperStore<TState>
   }
-  static set(key: string, value: unknown): ExtractorStore<ExtractorStoreState>
-  static set(state: ExtractorStoreState): ExtractorStore<ExtractorStoreState>
-  static set(...args: any[]): ExtractorStore<ExtractorStoreState> {
+  static set(key: string, value: unknown): SuperStore<SuperStoreState>
+  static set(state: SuperStoreState): SuperStore<SuperStoreState>
+  static set(...args: any[]): SuperStore<SuperStoreState> {
     const state = this.getState()
-    const partialState = ((): Partial<ExtractorStoreState> => {
+    const partialState = ((): Partial<SuperStoreState> => {
       if (typeof args[0] === 'string') {
-        return { [args[0]]: args[1] } as Partial<ExtractorStoreState>
+        return { [args[0]]: args[1] } as Partial<SuperStoreState>
       } else {
-        return args[0] as Partial<ExtractorStoreState>
+        return args[0] as Partial<SuperStoreState>
       }
     })()
     for (const [key, value] of Object.entries(partialState)) {
-      const configItem = this.config[key] as ExtractorStoreConfigItem<ExtractorStoreState, unknown> | undefined
+      const configItem = this.config[key] as SuperStoreConfigItem<SuperStoreState, unknown> | undefined
       if (!configItem) {
         throw new Error(`Key "${key}" not found in config`)
       }
       state[key] = value
     }
-    return this.instance as ExtractorStore<ExtractorStoreState>
+    return this.instance as SuperStore<SuperStoreState>
   }
 
   static setWeak<TValue = unknown>(key: string, value: TValue): void {
@@ -238,17 +238,17 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
     })
   }
 
-  runWithServerStateProvider<TState extends ExtractorStoreState = ExtractorStoreState, TResult = unknown>(
-    serverExtractorStoreState: Partial<TState>,
+  runWithServerStateProvider<TState extends SuperStoreState = SuperStoreState, TResult = unknown>(
+    serverSuperStoreState: Partial<TState>,
     callback: () => TResult,
   ): TResult {
-    return ExtractorStore.runWithServerStateProvider(serverExtractorStoreState, callback)
+    return SuperStore.runWithServerStateProvider(serverSuperStoreState, callback)
   }
 
-  static runWithServerStateProvider<TResult>(serverExtractorStoreState: Partial<ExtractorStoreState>, callback: () => TResult): TResult {
+  static runWithServerStateProvider<TResult>(serverSuperStoreState: Partial<SuperStoreState>, callback: () => TResult): TResult {
     this.initIfClientAndNotInitialized()
     if (this.serverStorage) {
-      return this.serverStorage.run(serverExtractorStoreState, callback)
+      return this.serverStorage.run(serverSuperStoreState, callback)
     } else {
       return callback()
     }
@@ -305,7 +305,7 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
     }
   }
 
-  private static normalizeExtractorStoreConfig(): void {
+  private static normalizeSuperStoreConfig(): void {
     this.normalizeQueryClientConfig()
     this.normalizeSsrLocationConfig()
     this.normalizeCurrentLocationConfig()
@@ -314,47 +314,47 @@ export class ExtractorStore<TState extends ExtractorStoreState> {
 
 const isPromiseKey = (prop: PropertyKey) => prop === 'then' || prop === 'catch' || prop === 'finally'
 
-export type ExtractorStoreServerStorage = AsyncLocalStorage<ExtractorStoreState>
+export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 
-export type ExtractorStoreState = { [key: string]: unknown }
-export type ExtractorStoreKey<TStore extends ExtractorStoreState> = Extract<keyof TStore, string>
+export type SuperStoreState = { [key: string]: unknown }
+export type SuperStoreKey<TStore extends SuperStoreState> = Extract<keyof TStore, string>
 
-export type ExtractorStoreConfigItemInitFn<TValue = unknown> = () => TValue
-export type ExtractorStoreConfigItem<TValue, TDehydratedValue> = {
+export type SuperStoreConfigItemInitFn<TValue = unknown> = () => TValue
+export type SuperStoreConfigItem<TValue, TDehydratedValue> = {
   init: () => TValue
   dehydrate: ((value: TValue) => TDehydratedValue) | undefined // | TDehydratedValue // in case it is not dehydrateable here will be null
   hydrate: ((dehydratedValue: TDehydratedValue, init: () => TValue) => TValue) | undefined // | TDehydratedValue // and here
 }
-export type ExtractorStoreConfig<TStore extends ExtractorStoreState> = Record<ExtractorStoreKey<TStore>, ExtractorStoreConfigItem<any, any>>
-export type ExtractorStoreStateByConfig<TConfig extends ExtractorStoreConfig<ExtractorStoreState>> = {
+export type SuperStoreConfig<TStore extends SuperStoreState> = Record<SuperStoreKey<TStore>, SuperStoreConfigItem<any, any>>
+export type SuperStoreStateByConfig<TConfig extends SuperStoreConfig<SuperStoreState>> = {
   [key in keyof TConfig]: ReturnType<TConfig[key]['init']>
 }
 
-export type ExtractorStoreConfigInputItem<TValue, TDehydratedValue> =
-  | ExtractorStoreConfigItem<TValue, TDehydratedValue>
-  | ExtractorStoreConfigItemInitFn<TValue>
-export type ExtractorStoreConfigInput<TStore extends ExtractorStoreState> = Record<
-  ExtractorStoreKey<TStore>,
-  ExtractorStoreConfigInputItem<any, any>
+export type SuperStoreConfigInputItem<TValue, TDehydratedValue> =
+  | SuperStoreConfigItem<TValue, TDehydratedValue>
+  | SuperStoreConfigItemInitFn<TValue>
+export type SuperStoreConfigInput<TStore extends SuperStoreState> = Record<
+  SuperStoreKey<TStore>,
+  SuperStoreConfigInputItem<any, any>
 >
 
-export type ExtractorStoreConfigByInput<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>> = {
-  [key in keyof TConfigInput]: TConfigInput[key] extends ExtractorStoreConfigItemInitFn<infer TValue>
-    ? ExtractorStoreConfigItem<TValue, TValue>
-    : TConfigInput[key] extends ExtractorStoreConfigItem<infer TValue, infer TDehydratedValue>
-      ? ExtractorStoreConfigItem<TValue, TDehydratedValue>
+export type SuperStoreConfigByInput<TConfigInput extends SuperStoreConfigInput<SuperStoreState>> = {
+  [key in keyof TConfigInput]: TConfigInput[key] extends SuperStoreConfigItemInitFn<infer TValue>
+    ? SuperStoreConfigItem<TValue, TValue>
+    : TConfigInput[key] extends SuperStoreConfigItem<infer TValue, infer TDehydratedValue>
+      ? SuperStoreConfigItem<TValue, TDehydratedValue>
       : never
 }
-export type ExtractorStoreStateByConfigInput<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>> = {
-  [key in keyof TConfigInput]: ReturnType<ExtractorStoreConfigByInput<TConfigInput>[key]['init']>
+export type SuperStoreStateByConfigInput<TConfigInput extends SuperStoreConfigInput<SuperStoreState>> = {
+  [key in keyof TConfigInput]: ReturnType<SuperStoreConfigByInput<TConfigInput>[key]['init']>
 }
-export type ExtractorStoreByConfigInput<TConfigInput extends ExtractorStoreConfigInput<ExtractorStoreState>> = ExtractorStore<
-  ExtractorStoreStateByConfigInput<TConfigInput>
+export type SuperStoreByConfigInput<TConfigInput extends SuperStoreConfigInput<SuperStoreState>> = SuperStore<
+  SuperStoreStateByConfigInput<TConfigInput>
 >
 
-export type ExtractorStoreProxy<TState> = TState & {
+export type SuperStoreProxy<TState> = TState & {
   define: <TValue, TDehydratedValue = TValue>(
     key: string,
-    config: ExtractorStoreConfigInputItem<TValue, TDehydratedValue>,
+    config: SuperStoreConfigInputItem<TValue, TDehydratedValue>,
   ) => TValue
 }

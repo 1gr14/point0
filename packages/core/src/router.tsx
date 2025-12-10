@@ -4,7 +4,7 @@ import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ExtractorStore } from './extractor-store.js'
+import { SuperStore } from './super-store.js'
 import { PointsManager } from './points-manager.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
@@ -13,12 +13,12 @@ export type RouterStatus = 'idle' | 'prefetching' | 'transitioning'
 
 export type UseRouterContextFn = () => RouterContextValue
 export type UseNavigateFn = (href: string) => never | Promise<never>
-export type UseOnNavigateFn = (props: {
+export type UseOnNavigateFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 }) => void | (() => any)
-export type UseOnNavigateDetailedFn = (props: {
+export type UseOnNavigateDetailedFn = (options: {
   prevLocation: AnyLocation
   nextLocation: AnyLocation
   status: RouterStatus
@@ -63,7 +63,7 @@ export function RouterContextProvider({
   const [error, setError] = useState<Error | null>(null)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
-    ExtractorStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
+    SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
   }, [currentLocation])
 
   const value = useMemo(

@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { ServerExtractor } from './server-extractor.js'
-import { ExtractorStore } from '@point0/core/extractor-store'
+import { SuperStore } from '@point0/core/super-store'
 import type { AnyPoint, AppComponent, InputRaw } from '@point0/core/types'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
@@ -148,7 +148,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   }
   html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
-    content: '<!-- __POINT0_DEHYDRATED_EXTRACTOR_STORE__ -->',
+    content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
     html,
   })
 
@@ -199,12 +199,12 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const dehydrated = ExtractorStore.dehydrate()
+    const dehydrated = SuperStore.dehydrate()
     const escapedJS = escapeForInlineJSON(superjson.stringify(dehydrated))
     const compiledPrefix = (prefix ?? '').replace(
-      '<!-- __POINT0_DEHYDRATED_EXTRACTOR_STORE__ -->',
-      `<script id="__POINT0_DEHYDRATED_EXTRACTOR_STORE_SCRIPT__">
-         window.__POINT0_DEHYDRATED_EXTRACTOR_STORE__ = ${JSON.stringify(escapedJS)};
+      '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
+      `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
+         window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${JSON.stringify(escapedJS)};
        </script>`,
     )
 

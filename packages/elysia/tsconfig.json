@@ -16,7 +16,7 @@
       "@point0/core/utils": ["../core/src/utils.ts"],
       "@point0/core/client-server": ["../core/src/client-server.ts"],
       "@point0/core/points-manager": ["../core/src/points-manager.ts"],
-      "@point0/core/extractor-store": ["../core/src/extractor-store.ts"],
+      "@point0/core/super-store": ["../core/src/super-store.ts"],
       "@point0/engine": ["../engine/src/index.ts"]
     }
   },

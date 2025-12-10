@@ -1,10 +1,12 @@
+import { Route0 } from '@devp0nt/route0'
 import { ideaLayout } from '../layouts/idea.js'
 
 export const ideasNewsPage = ideaLayout
   .lets('page', 'ideaNews')
-  .route('news')
+  // .route('news')
+  .route(Route0.create('/ideas/:id/news/:xxx'))
   .page(
-    ({ data: { idea } }) => `${idea.news.length} news for idea "${idea.title}"`,
+    ({ data: { idea }, input }) => `${idea.news.length} news for idea "${idea.title}"`,
     ({ data: { idea }, query }) => {
       return (
         <div>
