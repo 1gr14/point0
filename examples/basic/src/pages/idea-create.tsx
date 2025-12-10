@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
+import { BestIdeaComponent } from './home.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
@@ -19,7 +20,6 @@ export const createIdeaMutation = client
     }),
   )
   .loader(async ({ input, data }) => {
-    console.log('input1', input)
     return { ...data }
   })
   .input(
@@ -28,7 +28,6 @@ export const createIdeaMutation = client
     }),
   )
   .loader(async ({ input, data }) => {
-    console.log('input2', input)
     return { ...data }
   })
   .input(
@@ -36,12 +35,14 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ input, data }) => {
-    console.log('input3', input)
-    return { ...data }
+  .loader(async ({ input, data, extract }) => {
+    const result = await extract(BestIdeaComponent, { x: 22, y: 2 })
+    if (result.error) {
+      throw result.error
+    }
+    return { ...data, ...result.data }
   })
   .mutation(async ({ input, ctx }) => {
-    console.log('input4', input)
     const idea = await ctx.prisma.idea.create({
       data: input,
     })

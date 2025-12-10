@@ -156,10 +156,9 @@ export class Point0<
     TResponseOutput,
     TQueryResultType,
     TProps
-  > = {} as never
+  > = '__I_AM_POINT0__' as never
 
   point: typeof this // this, needed for generator to collect points
-  _itIsPoint0 = true as const
 
   private static _prevUnstableId = 0
   private static _getNextUnstableId(): number {
@@ -1976,6 +1975,7 @@ export class Point0<
     })
     const pageWithPoint = point._Page.bind(point)
     Object.assign(pageWithPoint, {
+      Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
       inputSchema: point.inputSchema,
@@ -2021,6 +2021,7 @@ export class Point0<
     })
     const componentWithPoint = point._Component
     Object.assign(componentWithPoint, {
+      Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
       inputSchema: point.inputSchema,
@@ -2073,6 +2074,7 @@ export class Point0<
     })
     const layoutWithPoint = point._Layout
     Object.assign(layoutWithPoint, {
+      Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
       inputSchema: point.inputSchema,
@@ -2836,6 +2838,11 @@ export class Point0<
         ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<FinalClientData<TData, TClientData>> {
+    if (Point0.isServer) {
+      throw new Error(
+        'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
+      )
+    }
     const [input = {}, fetchOptions] = args
     const serverData = await (async () => {
       if (this._hasLoader()) {

@@ -785,11 +785,11 @@ export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
   props: InputFnProps<TInputSchema>,
 ) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 
-export type ServerExtractFn = <TPoint extends AnyPoint>(
+export type ServerExtractFn = <TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any>>(
   point: TPoint,
   ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
-    ? [input: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
-    : [input?: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
+    ? [input?: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
+    : [input: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
 ) => Promise<
   ServerExtractResult<TPoint['Infer']['Ctx'], FinalData<TPoint['Infer']['Data']>, TPoint['Infer']['ResponseOutput']>
 >
@@ -797,14 +797,23 @@ export type ServerExtractResult<
   TCtx extends Ctx = Ctx,
   TData extends Data = Data,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
-> = {
-  ctx: TCtx
-  data: TData
-  head: ResolvableHead[]
-  response: TResponseOutput
-  error: unknown
-  status: number
-}
+> =
+  | {
+      ctx: TCtx
+      data: TData
+      head: ResolvableHead[]
+      response: TResponseOutput
+      error: null
+      status: number
+    }
+  | {
+      ctx: UnknownCtx
+      data: UnknownData
+      head: ResolvableHead[]
+      response: UndefinedResponseOutput | TResponseOutput
+      error: Error0
+      status: number
+    }
 
 export type CtxFnProps<
   TCtxInput extends Ctx = Ctx,

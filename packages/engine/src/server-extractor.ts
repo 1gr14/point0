@@ -20,6 +20,7 @@ import type {
   ServerExtractAction,
   ServerExtractResult,
   WithMaybeOptionalReqiredCtx,
+  NiceEndPoint,
 } from '@point0/core/types'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
@@ -149,19 +150,29 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await extractor.extract({ point, input, withLayouts })
   }
 
-  async extract(point: AnyPoint | undefined, input?: InputRaw): Promise<ServerExtractResult>
+  async extract(
+    point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+    input?: InputRaw,
+  ): Promise<ServerExtractResult>
   async extract({ point, input, withLayouts }: ExtractOptions): Promise<ServerExtractResult>
   async extract(
-    ...args: [options: ExtractOptions] | [point: AnyPoint | undefined, input?: InputRaw]
+    ...args:
+      | [options: ExtractOptions]
+      | [
+          point: AnyPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+          input?: InputRaw,
+        ]
   ): Promise<ServerExtractResult> {
     const {
       point,
       input = {},
       withLayouts = false,
     } = (() => {
-      if (args[0] === undefined || '_itIsPoint0' in args[0]) {
-        return { point: args[0], input: args[1], withLayouts: false }
+      if (args[0] === undefined || 'Infer' in args[0]) {
+        // so it is NiceEndPoint provided like first argument
+        return { point: args[0]?.point, input: args[1], withLayouts: false }
       }
+      // so it is AnyPoint provided in object
       return { point: args[0].point, input: args[0].input, withLayouts: args[0].withLayouts }
     })()
 
@@ -332,7 +343,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             data: currentData,
             head: this.getCurrentPageHead({ point, input, data: currentData, error: null }),
             response,
-            error: undefined,
+            error: null,
             status: currentStatus,
           }
         } else {
@@ -350,22 +361,24 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       } catch (error) {
         try {
           await this.appendQueryClientCache({ data: currentData, point, error, input })
+          const error0 = Error0.from(error)
           return {
             ctx: currentCtx,
             data: currentData,
             head: this.getCurrentPageHead({ point: point ?? this.points.root, input, data: currentData, error }),
-            error,
-            status: Error0.from(error).httpStatus ?? 500,
+            error: error0,
+            status: error0.httpStatus ?? 500,
             response: undefined,
           }
         } catch (error2) {
           // in case if we have error in head resolver
+          const error0 = Error0.from(error)
           return {
             ctx: currentCtx,
             data: currentData,
             head: [],
-            error,
-            status: Error0.from(error2).httpStatus ?? 500,
+            error: error0,
+            status: error0.httpStatus ?? 500,
             response: undefined,
           }
         }
