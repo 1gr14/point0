@@ -2,6 +2,13 @@
 ------ before start0 -----
 --------------------------
 
+И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
+Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
+
+Квери и мутэйшон показывают ошибку на последнем методе, если нет лоадеров
+
+респонс поинт имеет только сервер лоадеры
+
 double check what we broke in lets and that it is suitable to what we have in types
 
 check mutation clientLoader
@@ -16,6 +23,7 @@ page with name 404 auto insert in router routes
 
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it
+Префеоч мод есть только у маунтаблов, и причём видомо дегидрейтед квери есть только у пейджа, надо проверить
 
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not
 move all types to [name].types.ts, and export everything from types.ts, or just bundle only index.ts
@@ -30,6 +38,9 @@ fix attach and shared: shared = P0.create({}); query = share.subquery(); site = 
 ? remove root from lets
 
 file upload
+
+HMR
+Вероятно хмру поможет если я буду возвращать просто внутренний компонент, а на местах, где рендерю оборачивал бы в Компонент и передавал в него сам поинт. Или может даже достаточно возвращать сам компонент, а на местах использотвать point.Component, а накрайняк если нельзя на него даже ничгео ассайнить, тогда из displayName возьмём название поинта и подтянем его из глобала когда будем делать <Component0 point={point} />
 
 EXPO
 expo example
@@ -47,7 +58,9 @@ refactor Meta0
 refactor Ctx0
 refactor Env0
 refactor Logger0
+
 unwind and tailwind
+https://oxc.rs/docs/guide/usage/linter/config
 
 --------------------------
 ------ while start0 ------
@@ -97,6 +110,48 @@ static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe no
 
 ? .lets('init', 'something').onError().onSuccess().init({client:()=>{}, server:()=>{}, clientAndServer:()=>{}, deps: ['otherInitPoint1', 'otherInitPoint2']})
 
+https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
+
+.robotsTxt(take, skip)
+
+--------------------------
+
+hide todo.txt
+
+find unused code
+example refactor
+example auth
+
+test for units
+test for engine
+test for e2e (maybe lightpanda)
+
+? logo heart 0
+site
+docs (all docs in my site)
+license
+npm
+
+social pages
+video
+article
+
+launch
+
+-------------------------- 
+------ launch-notes ------
+--------------------------
+
+Уточнить в промо, что всё грузится одномоментно, вообще не дожидаясь ничего, и приложить скрины ремикса
+Философия: используя либу ты не должен думать как она работает, должен думать да я с этой либы горы сверну, и не чувствовать её, а делать своё дело
+Философия: ты должен просто увидев пару примеров понять как тебе использовать библиотеку
+
+
+
+---------------------- 
+------ realtime ------
+----------------------
+
 mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
 mySub = root.lets('subscription')
 .subscribeInput(z.object({chatId: z.string()}))
@@ -128,38 +183,17 @@ Client send accept both zod schema, and callback, also client Send, and return t
 это строго должно быть в 1 количестве. вот как рут в 1 количестве, так и вебсокет myWs = .lets('websocket').input().loader().websocket({defaultInput, inputSchema, onOpen: () => { return wsData }}) → это получается попадает в генерик TWsData
 x = myWs.lets('messanger').roomSchema(schema).clientSubscribe(input, handler).clientSend(input, handler).serverSend(input, handler).messanger(); handler = ({input}) => ({message: {any}, room: [...roomSchemaInputs]}); TMessage ещё один генерик, но пусть они все будут в TWebsocket там прямо и хранятся в одном месте
 x.server.send(input); x.client.send(input); x.client.useSubscribe({ input, room, onMessage })
+!!!!!! return data getter by id .liveQuery.initialData<TData>([] if no loaders provider can be setted up);({subscribeToIds: o => o.data.id, onSubscribe: () => {check ability so subscribe to ids, or even maube rooms inputs}, updateItemByIdAndData: <TLiveData>o => o.data}); .liveInfinityQuery({subscribeToIds: o => o.data.pages.flatMap(p => p.item.id), subscribeToNewItems (default = !nextCursor), updateItemByIdAndData: <TLiveData>o => {...o.data.pages.find(o.id), ...o.data}), addItemByIdAndData: <TLiveData>o => [...pages, page]); myLiveQuery.server.send({ id: 1, isNew: boolean, data: {name: 'John'} }); myLiveQuery.useLiveQuery({ids: [1]});
+elysia and uWebSocket separate realizations
+И вообще либу обёртку для призмы и чего либо ещё сделать, чтобы можно было эту обёртку использовать, для создания и редактирования и запроса из бд с текущим апи призмы, но возвращать нам будут не только ответ на запрос, но и хелперы для лайв квери и тогда любую бд можно превратить в лайв-бд
 
-https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
-
-.robotsTxt(take, skip)
-
---------------------------
-
-find unused code
-example refactor
-example auth
-
-test for units
-test for engine
-test for e2e
-
-? logo heart 0
-site
-docs (all docs in my site)
-license
-npm
-
-social pages
-video
-article
-
-launch
-
-----------------
------- v2 ------
-----------------
+-------------------
+------ later ------
+-------------------
 
 standard schema
+
+? .openapi(), why? we can just use engine.extract inside elysia enpoints and it is enough
 
 ! we just need own Messanger based on usual websocketsm it is enough
 (convex is just real-time helper (.lets('subscribe')), nothing special. And it is big combiner, which is bad)
@@ -201,8 +235,7 @@ optional params in routes
 ? interstallar
 ? split index.ts code
 
-EVERSION STORE
 rethink SuperStore, when we understand if it is needed at all
-eversion store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
+super store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
 
 Static site generation as well. In the Static method, using async, we just need to get an array of known input parameters, and add a command that will generate the HTML files after the build.
