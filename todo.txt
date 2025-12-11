@@ -2,13 +2,7 @@
 ------ before start0 -----
 --------------------------
 
-lets(..., route)
-do not reset routes path if / provided
 ? if fount in routes Rpute0.create('...') then in waler use string from it
-so route always known immediatelly
-so remove .() helper
-so fix walker
-in lets to do not loose prev route never, so set current route as prev route if it is not page or layout
 
 double check what we broke in lets and that it is suitable to what we have in types
 Лэйоуту не нужно самому объявлять без, пусть он просто модифицирует квери опшены чтоли и сам становится базой сам по себе

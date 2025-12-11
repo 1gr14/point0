@@ -174,12 +174,12 @@ export class Walker {
                     const shouldHaveRoute = pointType === 'page' || pointType === 'layout'
                     const { route, errors: routeErrors } = shouldHaveRoute
                       ? await this.resolveFullRoute({
+                          loggableFileAbs: fileAbs,
                           fileAbs,
                           baseIdentifier: id.name,
                           scope,
                           pointType,
                           pointName,
-                          fallbackTo: pointType === 'page' ? 'pointName' : 'emptyString',
                         })
                       : { route: undefined, errors: [] }
                     errors.push(...routeErrors)
@@ -239,12 +239,12 @@ export class Walker {
 
               const { route, errors: routeErrors } = shouldHaveRoute
                 ? await this.resolveFullRoute({
+                    loggableFileAbs: fileAbs,
                     fileAbs,
                     baseIdentifier: 'default',
                     scope,
                     pointType,
                     pointName,
-                    fallbackTo: pointType === 'page' ? 'pointName' : 'emptyString',
                   })
                 : { route: undefined, errors: [] }
               errors.push(...routeErrors)
@@ -837,29 +837,40 @@ export class Walker {
 
   /**
    * Look through the AST and try to find:
-   * - `.route('/news')` → routeSegment = '/news'
-   * - `.route(routes.ideaNews)` → we try to resolve from this.routes
+   * - `.lets('page', 'news', '/news')` → routeSegment = '/news'
+   * - `.lets('page', 'news')` → routeSegment = 'news'
+   * - `.lets('layout', 'news', '/news')` → routeSegment = '/news'
+   * - `.lets('layout', 'news')` → routeSegment = ''
+   * - `.lets('page|layout', 'news', routes.ideaNews)` → we try to resolve from this.routes
+   * - `.lets('page|layout', 'news', Route0.create(something))` → get something from it
    */
   private findRouteOnIdentifier({
-    fileAbs,
+    loggableFileAbs,
     ast,
     baseIdentifier,
     scope,
     pointType,
     pointName,
-    fallbackTo,
   }: {
-    fileAbs: string
+    loggableFileAbs: string
     ast: babel.ParseResult<any>
     baseIdentifier: string
     scope: string
     pointType: EndPointType
     pointName: string
-    fallbackTo: 'pointName' | 'emptyString' | false
-  }): { routeSegment?: string; routeFull?: AnyRoute; fallbackRouteSegment?: string; errors: unknown[] } {
+  }): { routeSegment?: string; routeFull?: AnyRoute; errors: unknown[] } {
     let routeSegment: string | undefined
     let routeFull: AnyRoute | undefined
+    let foundPointType: string | undefined
     const errors: unknown[] = []
+
+    // if (pointType !== 'page' && pointType !== 'layout') {
+    //   return {
+    //     routeSegment,
+    //     routeFull,
+    //     errors,
+    //   }
+    // }
 
     try {
       traverse(ast, {
@@ -868,55 +879,133 @@ export class Walker {
           if (
             callee.type === 'MemberExpression' &&
             callee.property.type === 'Identifier' &&
-            callee.property.name === 'route'
+            callee.property.name === 'lets'
           ) {
             const topLevelAssignedIdentifier = this.findTopLevelAssignedIdentifier(p.get('callee').get('object'))
             if (topLevelAssignedIdentifier !== baseIdentifier) return
 
             // proceed if the chain belongs to our identifier
-            if (p.node.arguments.length === 0) {
-              routeSegment = ''
-            } else {
-              const arg = p.node.arguments.at(0)
-              if (arg?.type === 'StringLiteral') {
-                routeSegment = arg.value
-              } else if (arg?.type === 'MemberExpression') {
-                // e.g. .route(routes.ideaNews)
-                const prop = arg.property
-                if (prop.type === 'Identifier') {
-                  const routeKey = prop.name
-                  const scopeRoute = this.getRouteByScope(scope, routeKey)
-                  if (scopeRoute) {
-                    routeFull = scopeRoute
-                  } else {
-                    errors.push(new Error(`unknown route key '${routeKey}'`))
-                    console.warn(
-                      `🔴 ${nodePath.relative(this.cwd, fileAbs)} unknown route key '${routeKey}' for ${baseIdentifier}`,
-                    )
-                  }
+
+            const pointTypeArg = p.node.arguments.at(0)
+            const pointNameArg = p.node.arguments.at(1)
+            const routeArg = p.node.arguments.at(2)
+            foundPointType = (() => {
+              if (pointTypeArg?.type === 'StringLiteral') {
+                return pointTypeArg.value as EndPointType
+              }
+              return undefined
+            })()
+            if (!foundPointType) {
+              errors.push(new Error('point type not found'))
+              console.warn(
+                `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} point type not found for ${baseIdentifier}`,
+              )
+            } else if (foundPointType !== 'page' && foundPointType !== 'layout') {
+              // eslint-disable-next-line no-useless-return -- .lets is only way to provide route, and only page and layout have them
+              return
+            } else if (routeArg?.type === 'StringLiteral') {
+              routeSegment = routeArg.value
+            } else if (routeArg?.type === 'MemberExpression') {
+              // e.g. .lets('page', 'news', routes.ideaNews)
+              const prop = routeArg.property
+              if (prop.type === 'Identifier') {
+                const routeKey = prop.name
+                const scopeRoute = this.getRouteByScope(scope, routeKey)
+                if (scopeRoute) {
+                  routeFull = scopeRoute
+                } else {
+                  errors.push(new Error(`unknown route key '${routeKey}'`))
+                  console.warn(
+                    `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} unknown route key '${routeKey}' for ${baseIdentifier}`,
+                  )
                 }
               }
+            } else if (routeArg) {
+              errors.push(new Error(`invalid route argument ${routeArg.type}`))
+              console.warn(
+                `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} invalid route argument: ${routeArg.type} for ${baseIdentifier}`,
+              )
+            } else if (!pointNameArg) {
+              errors.push(new Error('point name not found'))
+              console.warn(
+                `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} point name not found for ${baseIdentifier}`,
+              )
+            } else if (pointNameArg.type === 'StringLiteral') {
+              routeSegment = foundPointType === 'page' ? pointNameArg.value : ''
+            } else if (pointNameArg.type === 'MemberExpression') {
+              // e.g. .lets('page', 'news', routes.ideaNews)
+              const prop = pointNameArg.property
+              if (prop.type === 'Identifier') {
+                const routeKey = prop.name
+                const scopeRoute = this.getRouteByScope(scope, routeKey)
+                if (scopeRoute) {
+                  routeFull = scopeRoute
+                } else {
+                  errors.push(new Error(`unknown route key '${routeKey}'`))
+                  console.warn(
+                    `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} unknown route key '${routeKey}' for ${baseIdentifier}`,
+                  )
+                }
+              }
+            } else {
+              errors.push(new Error(`invalid point name argument ${pointNameArg.type}`))
+              console.warn(
+                `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} invalid point name argument: ${pointNameArg.type} for ${baseIdentifier}`,
+              )
             }
+            // const arg = p.node.arguments.at(0)
+            // if (arg?.type === 'StringLiteral') {
+            //   routeSegment = arg.value
+            // } else if (arg?.type === 'MemberExpression') {
+            //   // e.g. .route(routes.ideaNews)
+            //   const prop = arg.property
+            //   if (prop.type === 'Identifier') {
+            //     const routeKey = prop.name
+            //     const scopeRoute = this.getRouteByScope(scope, routeKey)
+            //     if (scopeRoute) {
+            //       routeFull = scopeRoute
+            //     } else {
+            //       errors.push(new Error(`unknown route key '${routeKey}'`))
+            //       console.warn(
+            //         `🔴 ${nodePath.relative(this.cwd, fileAbs)} unknown route key '${routeKey}' for ${baseIdentifier}`,
+            //       )
+            //     }
+            //   }
+            // }
           }
         },
       })
 
+      if (foundPointType !== 'page' && foundPointType !== 'layout') {
+        return {
+          routeSegment,
+          routeFull,
+          errors: [...errors],
+        }
+      }
+
+      if (routeSegment === undefined && routeFull === undefined) {
+        // looks like impossible error
+        console.warn(
+          `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} can not find route on identifier ${pointType}.${pointName}`,
+        )
+        return {
+          routeSegment: undefined,
+          routeFull: undefined,
+          errors: [...errors, new Error('no route found')],
+        }
+      }
+
       return {
         routeSegment,
         routeFull,
-        fallbackRouteSegment:
-          (pointType === 'page' || pointType === 'layout') && fallbackTo === 'pointName'
-            ? pointName
-            : fallbackTo === 'emptyString'
-              ? ''
-              : undefined,
         errors,
       }
     } catch (e) {
       console.warn(
-        `🔴 ${nodePath.relative(this.cwd, fileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+        `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} find route on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
-      return { routeSegment: undefined, routeFull: undefined, fallbackRouteSegment: undefined, errors: [...errors, e] }
+      return { routeSegment: undefined, routeFull: undefined, errors: [...errors, e] }
     }
   }
 
@@ -1167,19 +1256,19 @@ export class Walker {
 
   private async resolveFullRoute(
     {
+      loggableFileAbs,
       fileAbs,
       baseIdentifier,
       scope,
       pointType,
       pointName,
-      fallbackTo,
     }: {
+      loggableFileAbs: string
       fileAbs: string
       baseIdentifier: string
       scope: string
       pointType: EndPointType
       pointName: string
-      fallbackTo: 'pointName' | 'emptyString' | false
     },
     _seen = new Set<string>(),
   ): Promise<{ route: AnyRoute | undefined; errors: unknown[] }> {
@@ -1227,7 +1316,7 @@ export class Walker {
         this.astCache.set(fileAbs, ast)
       }
     } catch (e) {
-      console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)}: parse failed: ${(e as Error).message}`)
+      console.warn(`🔴 ${nodePath.relative(this.cwd, loggableFileAbs)}: parse failed: ${(e as Error).message}`)
       cacheMap.set(cacheKey, undefined)
       return { route: undefined, errors: [...errors, e] }
     }
@@ -1235,14 +1324,13 @@ export class Walker {
     //
     // 1) find route on THIS identifier
     //
-    const { routeSegment, fallbackRouteSegment, routeFull } = this.findRouteOnIdentifier({
-      fileAbs,
+    const { routeSegment, routeFull } = this.findRouteOnIdentifier({
+      loggableFileAbs,
       ast,
       baseIdentifier,
       scope,
       pointType,
       pointName,
-      fallbackTo,
     })
 
     // if it was a full route (like .route(routes.ideaNews)) – we're done
@@ -1263,14 +1351,11 @@ export class Walker {
 
     // no parent – we can only return what we have here
     if (!parentIdentifier) {
-      const finalRoute =
-        routeSegment !== undefined
-          ? Route0.from(dedupeSlashes(`/${routeSegment}`))
-          : fallbackRouteSegment !== undefined
-            ? Route0.from(dedupeSlashes(`/${fallbackRouteSegment}`))
-            : undefined
+      const finalRoute = routeSegment !== undefined ? Route0.from(dedupeSlashes(`/${routeSegment}`)) : undefined
       if (!finalRoute) {
-        console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} parent identifier not found for ${baseIdentifier}`)
+        console.warn(
+          `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} parent identifier not found for ${baseIdentifier}`,
+        )
         cacheMap.set(cacheKey, undefined)
         return { route: undefined, errors: [...errors, new Error(`parent identifier not found for ${baseIdentifier}`)] }
       } else {
@@ -1279,12 +1364,7 @@ export class Walker {
       }
     }
     if (parentIdentifier === 'Point0') {
-      const finalRoute =
-        routeSegment !== undefined
-          ? Route0.from(dedupeSlashes(`/${routeSegment}`))
-          : fallbackRouteSegment !== undefined
-            ? Route0.from(dedupeSlashes(`/${fallbackRouteSegment}`))
-            : undefined
+      const finalRoute = routeSegment !== undefined ? Route0.from(dedupeSlashes(`/${routeSegment}`)) : undefined
       cacheMap.set(cacheKey, finalRoute)
       return { route: finalRoute, errors }
     }
@@ -1299,7 +1379,7 @@ export class Walker {
       : fileAbs
     if (!parentAbs) {
       console.warn(
-        `🔴 ${nodePath.relative(this.cwd, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
+        `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
       )
       cacheMap.set(cacheKey, undefined)
       return {
@@ -1313,12 +1393,12 @@ export class Walker {
     //
     const { route: parentRoute, errors: resolveFullRouteErrors } = await this.resolveFullRoute(
       {
+        loggableFileAbs,
         fileAbs: parentAbs,
         baseIdentifier: parentIdentifier,
         scope,
         pointType,
         pointName,
-        fallbackTo: false,
       },
       _seen,
     )
@@ -1329,16 +1409,12 @@ export class Walker {
     //
     const finalRoute =
       parentRoute !== undefined && routeSegment !== undefined
-        ? routeSegment.startsWith('/')
-          ? Route0.from(routeSegment)
-          : routeSegment === ''
-            ? parentRoute.clone()
-            : parentRoute.extend(routeSegment)
+        ? routeSegment === ''
+          ? parentRoute.clone()
+          : parentRoute.extend(routeSegment)
         : routeSegment !== undefined
           ? Route0.from(dedupeSlashes(`/${routeSegment}`))
-          : fallbackRouteSegment !== undefined
-            ? Route0.from(dedupeSlashes(`/${fallbackRouteSegment}`))
-            : undefined
+          : undefined
     cacheMap.set(cacheKey, finalRoute)
     return { route: finalRoute, errors }
   }
