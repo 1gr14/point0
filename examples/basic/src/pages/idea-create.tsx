@@ -1,9 +1,9 @@
 import { client } from '@/lib/client.js'
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { BestIdeaComponent } from './home.js'
+import { useMutation } from '@tanstack/react-query'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
@@ -42,11 +42,16 @@ export const createIdeaMutation = client
     }
     return { ...data, ...result.data }
   })
-  .mutation(async ({ input, ctx, inputRaw }) => {
+  .loader(async ({ input, ctx, inputRaw }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
     return { idea }
+  })
+  .mutation({
+    onSuccess: () => {
+      console.info('success')
+    },
   })
 
 export const generateIdeaMutation = client.lets('response', 'generateIdea').response(async ({ input, ctx }) => {
@@ -69,7 +74,7 @@ export const generateIdeaMutation = client.lets('response', 'generateIdea').resp
 
 const Page = () => {
   // any hook or whatever here, it is just client code
-  const mutation = useMutation(createIdeaMutation.getMutationOptions())
+  const mutation = createIdeaMutation.useMutation()
   const [title, setTitle] = useState(() => 'a')
   const [description, setDescription] = useState('b')
   const [content, setContent] = useState('c')

@@ -14,6 +14,7 @@ import type {
   InfiniteData,
   MutationOptions,
   UseInfiniteQueryResult,
+  UseMutationOptions,
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
@@ -190,6 +191,8 @@ export class Point0<
   readonly _scope: PointsScope
   private readonly _attachedTo: PointsScope[]
   private readonly _headFns: MiddlewareHeadFn[]
+  private readonly _defaultMutationOptions: UseMutationOptions | undefined
+  private readonly _mutationOptions: UseMutationOptions | undefined
   private readonly _defaultQueryOptions: ExtraUseQueryOptions | undefined
   private readonly _defaultInfiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined
   private readonly _defaultPageQueryOptions: ExtraUseQueryOptions | undefined
@@ -313,13 +316,15 @@ export class Point0<
     _attachedTo: PointsScope[]
     _wrappers?: WrapperComponentType[]
     _headFns?: MiddlewareHeadFn[]
-    _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
-    _defaultQueryOptions?: ExtraUseQueryOptions | undefined
-    _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
-    _defaultLayoutQueryOptions?: ExtraUseQueryOptions | undefined
-    _defaultComponentQueryOptions?: ExtraUseQueryOptions | undefined
-    _defaultProviderQueryOptions?: ExtraUseQueryOptions | undefined
-    _queryOptions?: ExtraUseQueryOptions | undefined
+    _defaultMutationOptions?: UseMutationOptions
+    _mutationOptions?: UseMutationOptions
+    _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions
+    _defaultQueryOptions?: ExtraUseQueryOptions
+    _defaultPageQueryOptions?: ExtraUseQueryOptions
+    _defaultLayoutQueryOptions?: ExtraUseQueryOptions
+    _defaultComponentQueryOptions?: ExtraUseQueryOptions
+    _defaultProviderQueryOptions?: ExtraUseQueryOptions
+    _queryOptions?: ExtraUseQueryOptions
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
@@ -433,6 +438,8 @@ export class Point0<
     this._letsEndPointType = options._letsEndPointType
     this._wrappers = options._wrappers ?? []
     this._headFns = options._headFns ?? []
+    this._defaultMutationOptions = options._defaultMutationOptions ?? {}
+    this._mutationOptions = options._mutationOptions ?? {}
     this._defaultQueryOptions = options._defaultQueryOptions ?? {}
     this._defaultInfiniteQueryOptions = options._defaultInfiniteQueryOptions ?? {}
     this._defaultLayoutQueryOptions = options._defaultLayoutQueryOptions ?? {}
@@ -595,6 +602,8 @@ export class Point0<
       ? ResponseFn<TCtx, TData, TRouteDefinition, TInputSchema, TResponseOutput>
       : undefined
     _headFns?: MiddlewareHeadFn[]
+    _defaultMutationOptions?: UseMutationOptions | undefined
+    _mutationOptions?: UseMutationOptions | undefined
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
     _defaultQueryOptions?: ExtraUseQueryOptions | undefined
     _defaultPageQueryOptions?: ExtraUseQueryOptions | undefined
@@ -747,6 +756,8 @@ export class Point0<
         : undefined,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _headFns: overrides._headFns ?? this._headFns,
+      _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
+      _mutationOptions: overrides._mutationOptions ?? { ...this._mutationOptions },
       _defaultQueryOptions: overrides._defaultQueryOptions ?? { ...this._defaultQueryOptions },
       _defaultInfiniteQueryOptions: overrides._defaultInfiniteQueryOptions ?? { ...this._defaultInfiniteQueryOptions },
       _defaultPageQueryOptions: overrides._defaultPageQueryOptions ?? { ...this._defaultPageQueryOptions },
@@ -957,6 +968,27 @@ export class Point0<
   }
 
   // general settings
+
+  mutationOptions(
+    mutationOptions: UseMutationOptions,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _defaultMutationOptions: mutationOptions,
+    }) as never
+  }
 
   queryOptions(
     queryOptions: ExtraUseQueryOptions,
@@ -1814,6 +1846,8 @@ export class Point0<
       _serverurl: this._base?._serverurl,
       _baseurl: this._base?._baseurl,
       _headFns: this._base?._headFns,
+      _defaultMutationOptions: this._base?._defaultMutationOptions,
+      _mutationOptions: {},
       _defaultQueryOptions: this._base?._defaultQueryOptions,
       _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
       _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
@@ -2338,7 +2372,11 @@ export class Point0<
   }
 
   mutation<TNewData extends Data = Data>(
-    loaderFn?: LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewData>,
+    ...args: HasAnyLoader<TData, TClientData> extends true
+      ? [mutationOptions?: UseMutationOptions]
+      : [
+          ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .mutation()`>,
+        ]
   ): NiceMutationEndPoint<
     'mutation',
     UndefinedEndPointType,
@@ -2353,16 +2391,10 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
+    const [mutationOptions = {}] = args
     return this._continue({
       _pointType: 'mutation',
-      _serverExtractActions: [
-        ...this._serverExtractActions,
-        {
-          type: 'loader',
-          fn: loaderFn || (({ data }: { data: TData }) => ({ ...data })),
-          unstableId: Point0._getNextUnstableId(),
-        },
-      ] as never,
+      _mutationOptions: mutationOptions as UseMutationOptions,
       _letsEndPointType: undefined,
     }) as never
   }
@@ -3565,9 +3597,10 @@ export class Point0<
       return data
     }
     return {
+      ...this._defaultMutationOptions,
+      ...this._mutationOptions,
       ...mutationOptions,
       mutationFn,
-      // TODO: add .mutationOptions helper
     } as MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>>
   }
 

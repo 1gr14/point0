@@ -13,11 +13,16 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .mutation(async ({ input, ctx }) => {
+  .loader(async ({ input, ctx, inputRaw }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
     return { idea }
+  })
+  .mutation({
+    onSuccess: () => {
+      console.info('success')
+    },
   })
 
 export const generateIdeaMutation = client.lets('response', 'generateIdea').response(async ({ input, ctx }) => {

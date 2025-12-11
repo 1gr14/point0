@@ -1109,14 +1109,6 @@ export type WithRouteLiteralIfNoRoute<
   TLiteral extends string,
 > = TRouteDefinition extends RouteDefinition ? TLiteral : TLiteral | 'route'
 
-export type WithQueryMiddleLiteralIfLoader<
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
-  TQueryLiteral extends 'query' | 'infiniteQuery',
-  TLiteral extends string,
-  // > = TData extends Data ? TLiteral | TQueryLiteral : TClientData extends Data ? TLiteral | TQueryLiteral : TLiteral
-> = TLiteral | TQueryLiteral
-
 export type NiceRootMiddlePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'root',
@@ -1270,40 +1262,32 @@ export type NicePageMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
-        WithRouteLiteralIfNoRoute<
-          TRouteDefinition,
-          | 'page'
-          | 'fetchOptions'
-          | 'error'
-          | 'loading'
-          | 'wrapper'
-          | 'route'
-          | 'input'
-          | 'ctx'
-          | 'loader'
-          | 'ctxLoader'
-          | 'clientLoader'
-          | 'head'
-          | 'props'
-          | 'base'
-          | 'scrollPosition'
-          | 'scrollRestore'
-          | 'prefetchPolicy'
-          | 'onPrefetch'
-          | 'point'
-          | 'Infer'
-        >
+    ? WithRouteLiteralIfNoRoute<
+        TRouteDefinition,
+        | 'page'
+        | 'fetchOptions'
+        | 'error'
+        | 'loading'
+        | 'wrapper'
+        | 'route'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'head'
+        | 'props'
+        | 'base'
+        | 'scrollPosition'
+        | 'scrollRestore'
+        | 'prefetchPolicy'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+        | 'query'
+        | 'infiniteQuery'
       >
-    : WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
-        'page' | 'clientLoader' | 'point' | 'Infer'
-      >
+    : 'page' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
 >
 
 export type NiceComponentMiddlePoint<
@@ -1335,10 +1319,7 @@ export type NiceComponentMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
+    ?
         | 'component'
         | 'fetchOptions'
         | 'error'
@@ -1354,13 +1335,9 @@ export type NiceComponentMiddlePoint<
         | 'onPrefetch'
         | 'point'
         | 'Infer'
-      >
-    : WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
-        'component' | 'clientLoader' | 'point' | 'Infer'
-      >
+        | 'query'
+        | 'infiniteQuery'
+    : 'component' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
 >
 
 export type NiceResponseMiddlePoint<
@@ -1423,10 +1400,7 @@ export type NiceQueryMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query',
+    ?
         | 'fetchOptions'
         | 'input'
         | 'ctx'
@@ -1437,8 +1411,8 @@ export type NiceQueryMiddlePoint<
         | 'onPrefetch'
         | 'point'
         | 'Infer'
-      >
-    : WithQueryMiddleLiteralIfLoader<TData, TClientData, 'query', 'clientLoader' | 'point' | 'Infer'>
+        | 'query'
+    : 'clientLoader' | 'point' | 'Infer' | 'query'
 >
 
 export type NiceInfiniteQueryMiddlePoint<
@@ -1470,10 +1444,7 @@ export type NiceInfiniteQueryMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'infiniteQuery',
+    ?
         | 'fetchOptions'
         | 'input'
         | 'ctx'
@@ -1484,8 +1455,8 @@ export type NiceInfiniteQueryMiddlePoint<
         | 'onPrefetch'
         | 'point'
         | 'Infer'
-      >
-    : WithQueryMiddleLiteralIfLoader<TData, TClientData, 'infiniteQuery', 'clientLoader' | 'point' | 'Infer'>
+        | 'infiniteQuery'
+    : 'clientLoader' | 'point' | 'Infer' | 'infiniteQuery'
 >
 
 export type NiceMutationMiddlePoint<
@@ -1561,42 +1532,34 @@ export type NiceLayoutMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
-        WithRouteLiteralIfNoRoute<
-          TRouteDefinition,
-          | 'layout'
-          | 'fetchOptions'
-          | 'pageError'
-          | 'error'
-          | 'pageLoading'
-          | 'loading'
-          | 'wrapper'
-          | 'route'
-          | 'input'
-          | 'ctx'
-          | 'loader'
-          | 'ctxLoader'
-          | 'clientLoader'
-          | 'head'
-          | 'props'
-          | 'base'
-          | 'scrollPosition'
-          | 'scrollRestore'
-          | 'prefetchPolicy'
-          | 'onPrefetch'
-          | 'point'
-          | 'Infer'
-        >
+    ? WithRouteLiteralIfNoRoute<
+        TRouteDefinition,
+        | 'layout'
+        | 'fetchOptions'
+        | 'pageError'
+        | 'error'
+        | 'pageLoading'
+        | 'loading'
+        | 'wrapper'
+        | 'route'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'head'
+        | 'props'
+        | 'base'
+        | 'scrollPosition'
+        | 'scrollRestore'
+        | 'prefetchPolicy'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+        | 'query'
+        | 'infiniteQuery'
       >
-    : WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
-        'layout' | 'clientLoader' | 'point' | 'Infer'
-      >
+    : 'layout' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
 >
 
 export type NiceProviderMiddlePoint<
@@ -1628,10 +1591,7 @@ export type NiceProviderMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
+    ?
         | 'provider'
         | 'fetchOptions'
         | 'input'
@@ -1643,13 +1603,9 @@ export type NiceProviderMiddlePoint<
         | 'onPrefetch'
         | 'point'
         | 'Infer'
-      >
-    : WithQueryMiddleLiteralIfLoader<
-        TData,
-        TClientData,
-        'query' | 'infiniteQuery',
-        'provider' | 'clientLoader' | 'point' | 'Infer'
-      >
+        | 'query'
+        | 'infiniteQuery'
+    : 'provider' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
 >
 
 export type NiceMiddlePoint<

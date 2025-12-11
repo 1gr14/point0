@@ -302,7 +302,7 @@ export class Walker {
     const customerToMethods = (customer: PruneCustomerFlat): string[] => {
       const methods = {
         none: [],
-        client: ['loader', 'ctx', 'mutation', 'response', 'onRequest', 'onResponse'],
+        client: ['loader', 'ctx', 'ctxLoader', 'response'],
         serverSsr: ['scrollPosition', 'clientLoader'],
         serverNoSsr: [
           'scrollPosition',
@@ -317,6 +317,9 @@ export class Walker {
           'componentError',
           'pageLoading',
           'componentLoading',
+          'query',
+          'infiniteQuery',
+          'mutation',
         ],
       }[customer]
 
@@ -341,10 +344,8 @@ export class Walker {
             'scrollPosition',
             'loader',
             'ctx',
-            'mutation',
+            'ctxLoader',
             'response',
-            'onRequest',
-            'onResponse',
             'clientLoader',
             'page',
             'component',
@@ -356,6 +357,9 @@ export class Walker {
             'componentError',
             'pageLoading',
             'componentLoading',
+            'query',
+            'infiniteQuery',
+            'mutation',
           ]
 
     const code =
