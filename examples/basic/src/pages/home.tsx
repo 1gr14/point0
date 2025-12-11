@@ -88,7 +88,7 @@ export default generalLayout
     return <div>Loadingx...</div>
   })
   // .loader()
-  .page(() => {
+  .page((o) => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
