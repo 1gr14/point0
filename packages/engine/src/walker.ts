@@ -842,7 +842,7 @@ export class Walker {
    * - `.lets('layout', 'news', '/news')` → routeSegment = '/news'
    * - `.lets('layout', 'news')` → routeSegment = ''
    * - `.lets('page|layout', 'news', routes.ideaNews)` → we try to resolve from this.routes
-   * - `.lets('page|layout', 'news', Route0.create(something))` → get something from it
+   * - `.lets('page|layout', 'news', Route0.create('any/string/here'))` → routeFull = Route0.from('any/string/here')
    */
   private findRouteOnIdentifier({
     loggableFileAbs,
@@ -863,14 +863,6 @@ export class Walker {
     let routeFull: AnyRoute | undefined
     let foundPointType: string | undefined
     const errors: unknown[] = []
-
-    // if (pointType !== 'page' && pointType !== 'layout') {
-    //   return {
-    //     routeSegment,
-    //     routeFull,
-    //     errors,
-    //   }
-    // }
 
     try {
       traverse(ast, {
@@ -920,6 +912,31 @@ export class Walker {
                   )
                 }
               }
+            } else if (routeArg?.type === 'CallExpression') {
+              // e.g. .lets('page', 'news', Route0.create('any/string/here'))
+              const callee = routeArg.callee
+              if (
+                callee.type === 'MemberExpression' &&
+                callee.property.type === 'Identifier' &&
+                callee.property.name === 'create' &&
+                callee.object.type === 'Identifier' &&
+                callee.object.name === 'Route0'
+              ) {
+                const createArg = routeArg.arguments.at(0)
+                if (createArg?.type === 'StringLiteral') {
+                  routeFull = Route0.from(createArg.value)
+                } else {
+                  errors.push(new Error(`Route0.create() first argument must be a string literal`))
+                  console.warn(
+                    `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} Route0.create() first argument must be a string literal for ${baseIdentifier}`,
+                  )
+                }
+              } else {
+                errors.push(new Error(`invalid route argument CallExpression`))
+                console.warn(
+                  `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} invalid route argument: CallExpression (not Route0.create) for ${baseIdentifier}`,
+                )
+              }
             } else if (routeArg) {
               errors.push(new Error(`invalid route argument ${routeArg.type}`))
               console.warn(
@@ -953,25 +970,6 @@ export class Walker {
                 `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} invalid point name argument: ${pointNameArg.type} for ${baseIdentifier}`,
               )
             }
-            // const arg = p.node.arguments.at(0)
-            // if (arg?.type === 'StringLiteral') {
-            //   routeSegment = arg.value
-            // } else if (arg?.type === 'MemberExpression') {
-            //   // e.g. .route(routes.ideaNews)
-            //   const prop = arg.property
-            //   if (prop.type === 'Identifier') {
-            //     const routeKey = prop.name
-            //     const scopeRoute = this.getRouteByScope(scope, routeKey)
-            //     if (scopeRoute) {
-            //       routeFull = scopeRoute
-            //     } else {
-            //       errors.push(new Error(`unknown route key '${routeKey}'`))
-            //       console.warn(
-            //         `🔴 ${nodePath.relative(this.cwd, fileAbs)} unknown route key '${routeKey}' for ${baseIdentifier}`,
-            //       )
-            //     }
-            //   }
-            // }
           }
         },
       })
@@ -997,7 +995,7 @@ export class Walker {
       }
 
       return {
-        routeSegment,
+        routeSegment: routeSegment === '/' ? '' : routeSegment,
         routeFull,
         errors,
       }

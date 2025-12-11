@@ -1,5 +1,6 @@
 import { sharedQuery } from '@/lib/shared'
 import { client } from '../lib/client'
+import { Route0 } from '@devp0nt/route0'
 
 // export const emptyQuery = client.lets('infiniteQuery', 'empty').infiniteQuery({})
 // export const emptyQuery1 = client.lets('infiniteQuery', 'empty').infiniteQuery()
@@ -47,7 +48,8 @@ export const empty = client
 
 export const sharedEmptyPage = client
   .attach(sharedQuery)
-  .lets('page', 'sharedEmpty')
+  // .lets('page', 'sharedEmpty')
+  .lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2'))
   .page(({ data }) => {
     return (
       <div>
