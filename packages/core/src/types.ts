@@ -299,6 +299,10 @@ export type FinalClientQueriedData<
   : TQueryResultType extends 'query'
     ? FinalClientData<TData, TClientData>
     : FinalClientData<TData, TClientData>
+export type HasAnyLoader<
+  TData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData,
+> = TData extends Data ? true : TClientData extends Data ? true : false
 
 export type InputSchemaZod = ZodObject<any>
 export type InputSchema = InputSchemaZod
@@ -1110,7 +1114,8 @@ export type WithQueryMiddleLiteralIfLoader<
   TClientData extends Data | UndefinedData,
   TQueryLiteral extends 'query' | 'infiniteQuery',
   TLiteral extends string,
-> = TData extends Data ? TLiteral | TQueryLiteral : TClientData extends Data ? TLiteral | TQueryLiteral : TLiteral
+  // > = TData extends Data ? TLiteral | TQueryLiteral : TClientData extends Data ? TLiteral | TQueryLiteral : TLiteral
+> = TLiteral | TQueryLiteral
 
 export type NiceRootMiddlePoint<
   TPointType extends PointType,

@@ -2,13 +2,13 @@
 ------ before start0 -----
 --------------------------
 
-Квери и мутэйшон показывают ошибку на последнем методе, если нет лоадеров
 
 респонс поинт имеет только сервер лоадеры
 
 double check what we broke in lets and that it is suitable to what we have in types
 
 check mutation clientLoader
+мутэйшон показывают ошибку на последнем методе, если нет лоадеров
 
 check useLocation, is it really return no route on 404, and is it correctly return exact, parent, etc
 

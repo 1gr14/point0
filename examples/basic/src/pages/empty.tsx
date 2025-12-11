@@ -1,6 +1,17 @@
 import { sharedQuery } from '@/lib/shared'
 import { client } from '../lib/client'
 
+// export const emptyQuery = client.lets('infiniteQuery', 'empty').infiniteQuery({})
+// export const emptyQuery1 = client.lets('infiniteQuery', 'empty').infiniteQuery()
+// export const emptyQuery2 = client
+//   .lets('infiniteQuery', 'empty')
+//   .loader(() => ({}))
+//   .infiniteQuery({getNextPageParam: () => 1, initialPageParam: 0, pageParamFromInput: 'x'})
+// export const emptyQuery3 = client
+//   .lets('infiniteQuery', 'empty')
+//   .loader(() => ({}))
+//   .infiniteQuery()
+
 export const empty = client
   .lets('page', 'empty&x')
   // .route(routes.empty)

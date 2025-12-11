@@ -64,6 +64,7 @@ import type {
   FetchOutputType,
   FinalClientData,
   FinalProps,
+  HasAnyLoader,
   IfAnyThenElse,
   Infer,
   InputParsed,
@@ -2217,12 +2218,18 @@ export class Point0<
   }
 
   query(
-    queryOptions: ExtraUseQueryOptions<
-      FinalClientData<TData, TClientData>,
-      Error0,
-      FinalClientData<TData, TClientData>,
-      QueryKey
-    > = {},
+    ...args: HasAnyLoader<TData, TClientData> extends true
+      ? [
+          queryOptions?: ExtraUseQueryOptions<
+            FinalClientData<TData, TClientData>,
+            Error0,
+            FinalClientData<TData, TClientData>,
+            QueryKey
+          >,
+        ]
+      : [
+          ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .query()`>,
+        ]
   ): TLetsEndPointType extends 'query'
     ? NiceQueryEndPoint<
         'query',
@@ -2252,25 +2259,37 @@ export class Point0<
         'query',
         TProps
       > {
+    const [queryOptions = {}] = args
     return this._continue({
       _pointType: this._letsEndPointType === 'query' ? 'query' : this._pointType,
       _letsEndPointType: (this._letsEndPointType === 'query'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
       _queryResultType: 'query',
-      _queryOptions: queryOptions,
+      _queryOptions: queryOptions as ExtraUseQueryOptions<
+        FinalClientData<TData, TClientData>,
+        Error0,
+        FinalClientData<TData, TClientData>,
+        QueryKey
+      >,
     }) as never
   }
 
   infiniteQuery(
-    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-      InputRaw<TRouteDefinition, TInputSchema>,
-      FinalClientData<TData, TClientData>,
-      Error0,
-      InfiniteData<FinalClientData<TData, TClientData>>,
-      QueryKey,
-      unknown
-    >,
+    ...args: HasAnyLoader<TData, TClientData> extends true
+      ? [
+          infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+            InputRaw<TRouteDefinition, TInputSchema>,
+            FinalClientData<TData, TClientData>,
+            Error0,
+            InfiniteData<FinalClientData<TData, TClientData>>,
+            QueryKey,
+            unknown
+          >,
+        ]
+      : [
+          ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .infiniteQuery()`>,
+        ]
   ): TLetsEndPointType extends 'infiniteQuery'
     ? NiceInfiniteQueryEndPoint<
         'infiniteQuery',
@@ -2300,14 +2319,21 @@ export class Point0<
         'infiniteQuery',
         TProps
       > {
+    const [infiniteQueryOptions = {}] = args
     return this._continue({
       _pointType: this._letsEndPointType === 'infiniteQuery' ? 'infiniteQuery' : this._pointType,
       _letsEndPointType: (this._letsEndPointType === 'infiniteQuery'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
       _queryResultType: 'infiniteQuery',
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _infiniteQueryOptions: infiniteQueryOptions ?? {}, // in case if we prune infiniteQuery for serverNoSsr customer
+      _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
+        InputRaw<TRouteDefinition, TInputSchema>,
+        FinalClientData<TData, TClientData>,
+        Error0,
+        InfiniteData<FinalClientData<TData, TClientData>>,
+        QueryKey,
+        unknown
+      >,
     }) as never
   }
 
@@ -4475,9 +4501,9 @@ export class Point0<
   }
 }
 
-export type * from './types.js'
 export * from './points-manager.js'
 export * from './router.js'
 export * from './super-store.js'
+export type * from './types.js'
 export * from './unhead.js'
 export * from './utils.js'
