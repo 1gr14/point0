@@ -45,17 +45,17 @@ export const BestIdeaComponent = client
     ...data,
     clDD: ctx.clC,
   }))
+  .props<{ cta: string }>()
+  .clientLoader(async (o) => ({
+    ...o.data,
+    cllll: 'cllll',
+  }))
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #f0f' }}>{children}</div>
   })
-  .props<{ cta: string }>()
-  .clientLoader(async (o) => ({
-    ...o.data,
-    cllll: 'cllll',
-  }))
   .loading(({ input, props }) => {
     return <div>Loading...</div>
   })

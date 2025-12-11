@@ -340,7 +340,13 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            head: this.getCurrentPageHead({ point, input, data: currentData, error: null }),
+            head: this.getCurrentPageHead({
+              point,
+              input: currentInputParsed,
+              inputRaw: input,
+              data: currentData,
+              error: null,
+            }),
             response,
             error: null,
             status: currentStatus,
@@ -351,7 +357,13 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            head: this.getCurrentPageHead({ point: this.points.root, input, data: currentData, error }),
+            head: this.getCurrentPageHead({
+              point: this.points.root,
+              input: currentInputParsed,
+              inputRaw: input,
+              data: currentData,
+              error,
+            }),
             error,
             status: 404,
             response: undefined,
@@ -364,7 +376,13 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            head: this.getCurrentPageHead({ point: point ?? this.points.root, input, data: currentData, error }),
+            head: this.getCurrentPageHead({
+              point: point ?? this.points.root,
+              input: currentInputParsed,
+              inputRaw: input,
+              data: currentData,
+              error,
+            }),
             error: error0,
             status: error0.httpStatus ?? 500,
             response: undefined,
@@ -568,11 +586,13 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   getCurrentPageHead({
     point,
     input,
+    inputRaw,
     data,
     error,
   }: {
     point: AnyPoint
-    input: InputRaw
+    input: InputParsed
+    inputRaw: InputRaw
     data: Data
     error: unknown
   }): ResolvableHead[] {
@@ -583,10 +603,12 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       data: !point._hasClientLoader() ? data : undefined,
       error: error ? Error0.from(error) : null,
       input,
+      inputRaw,
       location: this.pageLocation,
       loading: point._hasClientLoader() && !error,
+      query: null,
     }
-    return point._extractHead(useLoaderResult)
+    return point._extractHead(useLoaderResult as never)
   }
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {

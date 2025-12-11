@@ -1,14 +1,6 @@
 import type { LazyPointsCollectionRecord } from '@point0/core'
 import { client as root } from './client.js'
 
-export const unnamed_xlz7nckd56_lazy = {
-  type: 'page',
-  name: 'home',
-  route: '/',
-  layouts: ['generalLayout'],
-  point: async () => (await import('../pages/home.js')).default.point,
-} as LazyPointsCollectionRecord
-
 export const empty_2amkwtcj9yz_lazy = {
   type: 'page',
   name: 'empty',
@@ -21,6 +13,14 @@ export const sharedEmptyPage_1eh47lm9zhm_lazy = {
   name: 'sharedEmpty',
   route: '/empty/shared',
   point: async () => (await import('../pages/empty.js')).sharedEmptyPage.point,
+} as LazyPointsCollectionRecord
+
+export const unnamed_xlz7nckd56_lazy = {
+  type: 'page',
+  name: 'home',
+  route: '/home',
+  layouts: ['generalLayout'],
+  point: async () => (await import('../pages/home.js')).default.point,
 } as LazyPointsCollectionRecord
 
 export const ideasPage_2219ahp9gxy_lazy = {
@@ -58,7 +58,7 @@ export const ideasNewsPage_408hi1t0rg_lazy = {
 export const generalLayout_27c91mv210p_lazy = {
   type: 'layout',
   name: 'generalLayout',
-  route: '/generalLayout',
+  route: '/',
   point: async () => (await import('../layouts/general.js')).generalLayout.point,
 } as LazyPointsCollectionRecord
 
@@ -116,3 +116,4 @@ export const root_lazy = {
   name: 'client',
   point: root.point,
 }
+

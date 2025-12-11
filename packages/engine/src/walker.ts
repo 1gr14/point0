@@ -480,7 +480,7 @@ export class Walker {
     // Mutate AST: clean arguments
     for (const { node, method } of itemsToStrip) {
       if (node.arguments.length) {
-        if (['page', 'pageError', 'pageLoading'].includes(method)) {
+        if (['page', 'pageError', 'pageLoading', 'loading'].includes(method)) {
           if (node.arguments.length === 2) {
             node.arguments[1] = makeArrowFnReturnNull()
           } else {

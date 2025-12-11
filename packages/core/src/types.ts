@@ -517,58 +517,140 @@ export type UsePointQueryResult<
     ? UseClientQueryResult<TQueryResultType, TData, TClientData, TStatus>
     : undefined
 export type SpecificUseLoaderResult<
+  TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TClientData extends Data | UndefinedData,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TStatus extends 'pending' | 'error' | 'success',
   TLocation extends AnyLocation,
-> = Omit<
-  UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, TStatus>,
-  'data' | 'error' | 'loading' | 'location'
-> & { location: TLocation } & (TStatus extends 'success'
-    ? 'pending' extends TStatus
-      ? 'error' extends TStatus
-        ? {
-            data: FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined
-            loading: boolean
-            error: Error0 | null
-          }
-        : { data: FinalClientQueriedData<TQueryResultType, TData, TClientData>; loading: boolean }
-      : 'error' extends TStatus
-        ? { data: FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined; error: Error0 | null }
-        : { data: FinalClientQueriedData<TQueryResultType, TData, TClientData> }
-    : // Has no success
-      TStatus extends 'pending'
-      ? 'error' extends TStatus
-        ? { loading: boolean; error: Error0 | null }
-        : { loading: true }
-      : TStatus extends 'error'
-        ? { error: Error0 }
-        : never)
+  // > = Omit<
+  //   UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, TStatus>,
+  //   'data' | 'error' | 'loading' | 'location'
+  // > & { location: TLocation } & (TStatus extends 'success'
+  //     ? 'pending' extends TStatus
+  //       ? 'error' extends TStatus
+  //         ? {
+  //             data: FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined
+  //             loading: boolean
+  //             error: Error0 | null
+  //           }
+  //         : { data: FinalClientQueriedData<TQueryResultType, TData, TClientData>; loading: boolean }
+  //       : 'error' extends TStatus
+  //         ? { data: FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined; error: Error0 | null }
+  //         : { data: FinalClientQueriedData<TQueryResultType, TData, TClientData> }
+  //     : // Has no success
+  //       TStatus extends 'pending'
+  //       ? 'error' extends TStatus
+  //         ? { loading: boolean; error: Error0 | null }
+  //         : { loading: true }
+  //       : TStatus extends 'error'
+  //         ? { error: Error0 }
+  //         : never)
+> = IfAnyThenElse<
+  TStatus,
+  | UseLoaderResult<
+      'success',
+      TQueryResultType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TLocation
+    >
+  | UseLoaderResult<
+      'error',
+      TQueryResultType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TLocation
+    >
+  | UseLoaderResult<
+      'pending',
+      TQueryResultType,
+      TData,
+      TResponseOutput,
+      TClientData,
+      TInputSchema,
+      TRouteDefinition,
+      TLocation
+    >,
+  UseLoaderResult<
+    TStatus,
+    TQueryResultType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    TLocation
+  >
+>
 
 export type UseLoaderResult<
+  TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TClientData extends Data | UndefinedData,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TStatus extends 'pending' | 'error' | 'success',
-> = {
-  data: IfAnyThenElse<
-    TStatus,
-    FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined,
-    TStatus extends 'success' ? FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined : undefined
-  >
-  error: IfAnyThenElse<TStatus, Error0 | null, TStatus extends 'error' ? Error0 : null>
-  loading: IfAnyThenElse<TStatus, boolean, TStatus extends 'pending' ? true : false>
-  query: UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, TStatus>
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  location: AnyLocation
-}
+  TLocation extends AnyLocation,
+  // > = {
+  //   data: IfAnyThenElse<
+  //     TStatus,
+  //     FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined,
+  //     TStatus extends 'success' ? FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined : undefined
+  //   >
+  //   error: IfAnyThenElse<TStatus, Error0 | null, TStatus extends 'error' ? Error0 : null>
+  //   loading: IfAnyThenElse<TStatus, boolean, TStatus extends 'pending' ? true : false>
+  //   query: UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, TStatus>
+  //   input: InputParsed<TRouteDefinition, TInputSchema>
+  //   inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+  //   location: AnyLocation
+  // }
+> = TStatus extends 'success'
+  ? {
+      data: FinalClientQueriedData<TQueryResultType, TData, TClientData>
+      error: null
+      loading: false
+      query: HasAnyLoader<TData, TClientData> extends true
+        ? UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, TStatus>
+        : null
+      input: InputParsed<TRouteDefinition, TInputSchema>
+      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+      location: TLocation
+    }
+  : TStatus extends 'pending'
+    ? {
+        data: undefined
+        error: null
+        loading: true
+        query: HasAnyLoader<TData, TClientData> extends true
+          ? UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, TStatus>
+          : null
+        input: InputParsed<TRouteDefinition, TInputSchema>
+        inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+        location: TLocation
+      }
+    : TStatus extends 'error'
+      ? {
+          data: undefined
+          error: Error0
+          loading: true
+          query: HasAnyLoader<TData, TClientData> extends true
+            ? UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, TStatus>
+            : null
+          input: InputParsed<TRouteDefinition, TInputSchema> | null
+          inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+          location: TLocation
+        }
+      : never
 
 // endpoint components
 
@@ -581,15 +663,15 @@ export type PageComponentProps<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = SpecificUseLoaderResult<
+  'success',
   TQueryResultType,
   TData,
   TResponseOutput,
   TClientData,
   TInputSchema,
   TRouteDefinition,
-  'success',
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-> & { props: FinalProps<TProps> }
+> & { props: FinalProps<TProps>; location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>> }
 export type PageComponent<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
@@ -612,13 +694,13 @@ export type LayoutComponentProps<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = SpecificUseLoaderResult<
+  'success',
   TQueryResultType,
   TData,
   TResponseOutput,
   TClientData,
   TInputSchema,
   TRouteDefinition,
-  'success',
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>> | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
 > & { props: FinalProps<TProps>; children: React.ReactNode }
 export type LayoutComponent<
@@ -642,13 +724,13 @@ export type ComponentComponentProps<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = SpecificUseLoaderResult<
+  'success',
   TQueryResultType,
   TData,
   TResponseOutput,
   TClientData,
   TInputSchema,
   UndefinedRouteDefinition,
-  'success',
   AnyLocation
 > & { props: FinalProps<TProps> }
 export type ComponentComponent<
@@ -698,16 +780,17 @@ export type LoadingComponentProps<
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = {
   type: TType
+  props: FinalProps<TProps>
 } & SpecificUseLoaderResult<
+  'pending',
   TQueryResultType,
   TData,
   TResponseOutput,
   TClientData,
   TInputSchema,
   TRouteDefinition,
-  'pending',
   AnyLocation
-> & { props: FinalProps<TProps> }
+>
 export type LoadingComponentType<
   TType extends DestinationComponentType = DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
@@ -741,12 +824,17 @@ export type ErrorComponentProps<
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = {
   type: TType
-} & Omit<
-  UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any>,
-  'error'
-> & { error: Error0 } & { props: FinalProps<TProps> }
-
-// TODO: error component do not know anything about query, becouse it can be defined in any place before
+  props: FinalProps<TProps>
+} & SpecificUseLoaderResult<
+  'error',
+  TQueryResultType,
+  TData,
+  TResponseOutput,
+  TClientData,
+  TInputSchema,
+  TRouteDefinition,
+  AnyLocation
+>
 export type ErrorComponentType<
   TType extends DestinationComponentType = DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
@@ -769,7 +857,39 @@ export type ErrorComponentType<
   >
 >
 
-export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
+// export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
+export type WrapperComponentProps<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+> = SpecificUseLoaderResult<
+  any,
+  TQueryResultType,
+  TData,
+  TResponseOutput,
+  TClientData,
+  TInputSchema,
+  TRouteDefinition,
+  AnyLocation
+> & {
+  props: FinalProps<TProps>
+  children: React.ReactNode
+}
+export type WrapperComponentType<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+> = React.ComponentType<
+  WrapperComponentProps<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, TProps>
+>
 
 // settings
 
@@ -1023,9 +1143,14 @@ export type SuccessHeadFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = (
-  options: Omit<
-    PageComponentProps<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, any>,
-    'query' | 'props'
+  options: MiddlewareHeadFnOptions<
+    'success',
+    TQueryResultType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition
   >,
 ) => ResolvableHead | string
 
@@ -1037,18 +1162,14 @@ export type ErrorHeadFn<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
-  options: Omit<
-    ErrorComponentProps<
-      any,
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      any
-    >,
-    'type' | 'props' | 'query'
+  options: MiddlewareHeadFnOptions<
+    'error',
+    TQueryResultType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition
   >,
 ) => ResolvableHead | string
 
@@ -1060,22 +1181,19 @@ export type LoadingHeadFn<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
-  options: Omit<
-    LoadingComponentProps<
-      any,
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      any
-    >,
-    'type' | 'props' | 'query'
+  options: MiddlewareHeadFnOptions<
+    'pending',
+    TQueryResultType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition
   >,
 ) => ResolvableHead | string
 
 export type MiddlewareHeadFnOptions<
+  TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
@@ -1083,10 +1201,20 @@ export type MiddlewareHeadFnOptions<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = Omit<
-  UseLoaderResult<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition, any>,
+  SpecificUseLoaderResult<
+    TStatus,
+    TQueryResultType,
+    TData,
+    TResponseOutput,
+    TClientData,
+    TInputSchema,
+    TRouteDefinition,
+    ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+  >,
   'query'
->
+> // we omit it, becouse we try get page head on server also, where we have no current query
 export type MiddlewareHeadFn<
+  TStatus extends 'pending' | 'error' | 'success' = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
@@ -1095,6 +1223,7 @@ export type MiddlewareHeadFn<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
   options: MiddlewareHeadFnOptions<
+    TStatus,
     TQueryResultType,
     TData,
     TResponseOutput,
@@ -1242,7 +1371,6 @@ export type NiceBaseMiddlePoint<
   | 'pageLoading'
   | 'componentLoading'
   | 'loading'
-  | 'wrapper'
   | 'input'
   | 'ctx'
   | 'loader'
@@ -1308,7 +1436,7 @@ export type NicePageMiddlePoint<
         | 'query'
         | 'infiniteQuery'
       >
-    : 'page' | 'error' | 'loading' | 'point' | 'Infer'
+    : 'page' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
 >
 
 export type NiceComponentMiddlePoint<
@@ -1359,7 +1487,7 @@ export type NiceComponentMiddlePoint<
         | 'query'
         | 'infiniteQuery'
       >
-    : 'component' | 'error' | 'loading' | 'point' | 'Infer'
+    : 'component' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
 >
 
 export type NiceResponseMiddlePoint<
@@ -1570,7 +1698,7 @@ export type NiceLayoutMiddlePoint<
         | 'query'
         | 'infiniteQuery'
       >
-    : 'layout' | 'loading' | 'error' | 'point' | 'Infer'
+    : 'layout' | 'loading' | 'error' | 'wrapper' | 'point' | 'Infer'
 >
 
 export type NiceProviderMiddlePoint<
