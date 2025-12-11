@@ -1,9 +1,8 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { LazyPointsModule, ReadyPointsModule } from '@point0/core/points-manager'
-import { PointsManager } from '@point0/core/points-manager'
-import { SuperStore } from '@point0/core/super-store'
+import type { LazyPointsModule, ReadyPointsModule } from '@point0/core'
+import { PointsManager , SuperStore } from '@point0/core'
 
 let reactRoot: Root | null = null
 

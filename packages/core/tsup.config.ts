@@ -3,18 +3,7 @@ import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 
 // TODO: set best options
 const general = {
-  entry: [
-    'src/index.tsx',
-    'src/mount.ts',
-    'src/points.ts',
-    'src/router.tsx',
-    'src/points-manager.ts',
-    'src/super-store.ts',
-    'src/types.ts',
-    'src/unhead.ts',
-    'src/utils.ts',
-    'src/client-server.ts',
-  ],
+  entry: ['src/index.tsx'],
   clean: false,
   dts: true,
   sourcemap: true,
@@ -23,7 +12,7 @@ const general = {
   target: 'es2022',
   external: ['bun:test'],
   treeshake: true,
-  bundle: false,
+  bundle: true,
   esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
   tsconfig: './tsconfig.json',

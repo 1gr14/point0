@@ -22,42 +22,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./mount": {
-      "types": "./dist/mount.d.ts",
-      "import": "./dist/mount.js"
-    },
-    "./points": {
-      "types": "./dist/points.d.ts",
-      "import": "./dist/points.js"
-    },
-    "./router": {
-      "types": "./dist/router.d.ts",
-      "import": "./dist/router.js"
-    },
-    "./points-manager": {
-      "types": "./dist/points-manager.d.ts",
-      "import": "./dist/points-manager.js"
-    },
-    "./super-store": {
-      "types": "./dist/super-store.d.ts",
-      "import": "./dist/super-store.js"
-    },
-    "./types": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/types.js"
-    },
-    "./unhead": {
-      "types": "./dist/unhead.d.ts",
-      "import": "./dist/unhead.js"
-    },
-    "./utils": {
-      "types": "./dist/utils.d.ts",
-      "import": "./dist/utils.js"
-    },
-    "./client-server": {
-      "types": "./dist/client-server.d.ts",
-      "import": "./dist/client-server.js"
     }
   },
   "files": [

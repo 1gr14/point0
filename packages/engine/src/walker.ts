@@ -13,8 +13,8 @@ import type {
 } from '@babel/types'
 import type { AnyRoute, Routes } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { EndPointType, PointName, PointsScope } from '@point0/core/types'
-import { dedupeSlashes } from '@point0/core/utils'
+import type { EndPointType, PointName, PointsScope } from '@point0/core'
+import { dedupeSlashes } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import type { PointsScope } from '@point0/core/types'
+import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
 import { Engine } from './index.js'
 

@@ -1,8 +1,6 @@
 import type { Routes } from '@devp0nt/route0'
-import type { LazyPointsModule, PointsModuleType, ReadyPointsModule } from '@point0/core/points-manager'
-import { PointsManager } from '@point0/core/points-manager'
-import type { AppComponent, PointsScope } from '@point0/core/types'
-import { appendSlash, prependAndDeappendSlash } from '@point0/core/utils'
+import type { AppComponent, LazyPointsModule, PointsModuleType, PointsScope, ReadyPointsModule } from '@point0/core'
+import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import type {

@@ -1,19 +1,19 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import type { PointsManager } from '@point0/core/points-manager'
 import type {
   EndPoint,
   EndPointType,
   InputParsed,
   InputRaw,
+  ParsedUrl,
   PointName,
+  PointsManager,
   PointsScope,
   RequiredCtx,
   WithMaybeOptionalReqiredCtx,
-} from '@point0/core/types'
-import type { ParsedUrl } from '@point0/core/utils'
-import { parseUrl } from '@point0/core/utils'
+} from '@point0/core'
+import { parseUrl } from '@point0/core'
 import { ServerExtractor } from './server-extractor.js'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {

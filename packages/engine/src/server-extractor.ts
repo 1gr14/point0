@@ -1,8 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import { ClientServerHelpers } from '@point0/core/client-server'
-import { SuperStore } from '@point0/core/super-store'
-import { PointsManager } from '@point0/core/points-manager'
 import type {
   AnyPoint,
   AppComponent,
@@ -13,6 +10,7 @@ import type {
   InputParsed,
   InputRaw,
   InputSchema,
+  NiceEndPoint,
   PointName,
   PointsScope,
   QueryKey,
@@ -20,8 +18,8 @@ import type {
   ServerExtractAction,
   ServerExtractResult,
   WithMaybeOptionalReqiredCtx,
-  NiceEndPoint,
-} from '@point0/core/types'
+} from '@point0/core'
+import { Point0, PointsManager, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -95,9 +93,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   getQueryClient(): QueryClient {
-    return ClientServerHelpers.isClient
-      ? SuperStore.get('__POINT0_QUERY_CLIENT__')
-      : this.serverGlobalState.__POINT0_QUERY_CLIENT__
+    return Point0.isClient ? SuperStore.get('__POINT0_QUERY_CLIENT__') : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
 
   getScope(): PointsScope {
@@ -105,7 +101,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
-    if (ClientServerHelpers.isClient) {
+    if (Point0.isClient) {
       SuperStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
     }
@@ -113,7 +109,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
-    if (ClientServerHelpers.isClient) {
+    if (Point0.isClient) {
       SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
       return
     }

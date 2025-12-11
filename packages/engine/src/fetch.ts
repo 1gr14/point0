@@ -1,6 +1,6 @@
+import type { ParsedUrl, PointsScope, RequiredCtx } from '@point0/core'
+import { parseUrl } from '@point0/core'
 import type { AllPointsManagers } from './all-points-managers.js'
-import type { PointsScope, RequiredCtx } from '@point0/core/types'
-import { parseUrl, type ParsedUrl } from '@point0/core/utils'
 import type { ClientBun } from './client.js'
 import type { EngineLogger } from './config.js'
 import { toJsonErrorResponse } from './error.js'

@@ -8,7 +8,7 @@ const general = {
   splitting: false,
   minify: false,
   target: 'es2022',
-  external: ['bun:test', '@point0/core', '@point0/core/*', '@point0/engine', '@point0/engine/*'],
+  external: ['bun:test', '@point0/core', '@point0/engine', '@point0/engine/*'],
   treeshake: false,
   bundle: false,
   platform: 'node',

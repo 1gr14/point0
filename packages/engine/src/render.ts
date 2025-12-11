@@ -1,13 +1,13 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { ServerExtractor } from './server-extractor.js'
-import { SuperStore } from '@point0/core/super-store'
-import type { AnyPoint, AppComponent, InputRaw } from '@point0/core/types'
+import type { AnyPoint, AppComponent, InputRaw } from '@point0/core'
+import { SuperStore } from '@point0/core'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
+import type { ServerExtractor } from './server-extractor.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (

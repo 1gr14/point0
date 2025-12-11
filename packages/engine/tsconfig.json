@@ -7,15 +7,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "paths": {
-      "@point0/core": ["../core/src/index.tsx"],
-      "@point0/core/mount": ["../core/src/mount.ts"],
-      "@point0/core/router": ["../core/src/router.tsx"],
-      "@point0/core/types": ["../core/src/types.ts"],
-      "@point0/core/unhead": ["../core/src/unhead.ts"],
-      "@point0/core/utils": ["../core/src/utils.ts"],
-      "@point0/core/client-server": ["../core/src/client-server.ts"],
-      "@point0/core/points-manager": ["../core/src/points-manager.ts"],
-      "@point0/core/super-store": ["../core/src/super-store.ts"]
+      "@point0/core": ["../core/src/index.tsx"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],

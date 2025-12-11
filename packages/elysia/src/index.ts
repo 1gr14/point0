@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { parseUrl } from '@point0/core/utils'
+import { parseUrl } from '@point0/core'
 import type { Engine } from '@point0/engine'
 
 export const hmr = (engine: Engine, options: { enabled?: boolean } = {}) => {

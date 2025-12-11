@@ -1,4 +1,4 @@
-import type { PointsScope } from '@point0/core/types'
+import type { PointsScope } from '@point0/core'
 import MagicString from 'magic-string'
 import type { Plugin } from 'vite'
 import type { PruneCustomer } from './walker.js'

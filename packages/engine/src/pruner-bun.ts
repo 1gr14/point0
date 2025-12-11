@@ -1,6 +1,6 @@
 import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
-import type { PointsScope } from '@point0/core/types'
+import type { PointsScope } from '@point0/core'
 import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
 

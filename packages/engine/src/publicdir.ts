@@ -1,5 +1,5 @@
-import type { PointsScope } from '@point0/core/types'
-import { parseUrl, prependAndDeappendSlash, type ParsedUrl } from '@point0/core/utils'
+import type { ParsedUrl, PointsScope } from '@point0/core'
+import { parseUrl, prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { withError } from './utils.js'

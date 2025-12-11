@@ -1,6 +1,6 @@
 import type { Routes } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
-import type { PointsModuleType } from '@point0/core/points-manager'
+import type { PointsModuleType } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -426,7 +426,7 @@ export class FilesGenerator {
       lines.push(target.banner)
     }
     // lines.push(...this.emitSuperStoreInitialization())
-    lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core/points-manager'`)
+    lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core'`)
     // lines.push(`import { Point0 } from '@point0/core'`)
 
     if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
@@ -532,7 +532,7 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
-    lines.push(`import type { EndPoint } from '@point0/core/types'`)
+    lines.push(`import type { EndPoint } from '@point0/core'`)
 
     // lines.push(...this.emitSuperStoreInitialization())
 

@@ -1,5 +1,5 @@
 import { Link } from '@point0/wouter'
-import { useIsRouterPrefetching } from '@point0/core/router'
+import { useIsRouterPrefetching } from '@point0/core'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'
 

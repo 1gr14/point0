@@ -28,7 +28,7 @@ const general = {
   splitting: false,
   minify: false,
   target: 'es2022',
-  external: ['bun:test', '@point0/core', '@point0/core/*'],
+  external: ['bun:test', '@point0/core'],
   treeshake: false,
   bundle: false,
   platform: 'node',

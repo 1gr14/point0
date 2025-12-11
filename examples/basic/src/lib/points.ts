@@ -1,4 +1,4 @@
-import type { LazyPointsCollectionRecord } from '@point0/core/points-manager'
+import type { LazyPointsCollectionRecord } from '@point0/core'
 import { client as root } from './client.js'
 
 export const unnamed_26z5ww20orm_lazy = {
@@ -122,4 +122,3 @@ export const root_lazy = {
   name: 'client',
   point: root.point,
 }
-

@@ -1,4 +1,4 @@
-import { useIsRouterPrefetching, useOnNavigate, useOnNavigateDetailed } from '@point0/core/router'
+import { useIsRouterPrefetching, useOnNavigate, useOnNavigateDetailed } from '@point0/core'
 import { Link } from '@point0/wouter'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'

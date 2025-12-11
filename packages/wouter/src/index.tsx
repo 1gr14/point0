@@ -1,9 +1,6 @@
 import type { AnyLocation, AnyRoute, Routes } from '@devp0nt/route0'
-import { Point0 } from '@point0/core'
-import { ClientServerHelpers } from '@point0/core/client-server'
-import type { PagesTree } from '@point0/core/points-manager'
-import type { RouterStatus, UseAdapterLocationFn } from '@point0/core/router'
-import { _wrapUseNavigate, RouterContextProvider } from '@point0/core/router'
+import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
+import { _wrapUseNavigate, Point0, RouterContextProvider } from '@point0/core'
 import React, { Fragment, useCallback, useMemo } from 'react'
 import type { LinkProps } from 'wouter'
 import {
@@ -55,7 +52,7 @@ export const Router = ({
   children: React.ReactNode
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
-    if (ClientServerHelpers.isClient) {
+    if (Point0.isClient) {
       return {}
     }
     if (!ssrLocation) {

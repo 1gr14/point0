@@ -1,17 +1,17 @@
-import { AllPointsManagers } from './all-points-managers.js'
 import type {
   EndPoint,
   OmitRequiredCtxRequestProp,
   PointsScope,
   RequiredCtx,
+  ServerExtractResult,
   UndefinedCtx,
   UndefinedCtxIfRequiredCtxContainsOnlyRequestProp,
   WithMaybeOptionalReqiredCtx,
-  ServerExtractResult,
-} from '@point0/core/types'
+} from '@point0/core'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from './config.js'
 import type { FilesGeneratorTargetOptions } from './generator.js'
