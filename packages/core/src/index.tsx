@@ -70,6 +70,7 @@ import type {
   Infer,
   InputParsed,
   InputRaw,
+  InputRawMaybeOptional,
   InputSchema,
   InputSchemaZod,
   IsInputOptional,
@@ -2371,9 +2372,15 @@ export class Point0<
     }) as never
   }
 
-  mutation<TNewData extends Data = Data>(
+  mutation(
     ...args: HasAnyLoader<TData, TClientData> extends true
-      ? [mutationOptions?: UseMutationOptions]
+      ? [
+          mutationOptions?: UseMutationOptions<
+            FinalClientData<TData, TClientData>,
+            Error0,
+            InputRawMaybeOptional<TRouteDefinition, TInputSchema>
+          >,
+        ]
       : [
           ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .mutation()`>,
         ]
@@ -2382,7 +2389,7 @@ export class Point0<
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TNewData,
+    TData,
     TClientData,
     TRouteDefinition,
     TPrevRouteDefinition,
@@ -2874,6 +2881,7 @@ export class Point0<
       pointName: this._name,
     })
     const res = await fetch(url.toString(), {
+      ...this._fetchOptions?.(),
       ...fetchOptions,
       headers,
       method,
@@ -2901,7 +2909,7 @@ export class Point0<
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<FinalClientData<TData, TClientData>> {
     if (Point0.isServer) {
-      throw new Error(
+      throw new Error0(
         'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
       )
     }
@@ -3208,13 +3216,17 @@ export class Point0<
   > {
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
-      const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-      const data = await this.fetch(
-        { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
-        fetchOptions,
-        outputType,
-      )
-      return data
+      try {
+        const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+        const data = await this.fetch(
+          { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam } as never,
+          fetchOptions,
+          outputType,
+        )
+        return data
+      } catch (error) {
+        throw Error0.from(error)
+      }
     }
     const result = {
       ...this._defaultQueryOptions,
@@ -3255,22 +3267,30 @@ export class Point0<
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: true })
     const queryFn = this._hasClientAsyncLoader()
       ? async ({ pageParam }: { pageParam: unknown }) => {
-          const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-          const { clientData } = await this._extractClientAsync({
-            data: data || {},
-            location,
-            input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
-          })
-          return clientData
+          try {
+            const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+            const { clientData } = await this._extractClientAsync({
+              data: data || {},
+              location,
+              input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
+            })
+            return clientData
+          } catch (error) {
+            throw Error0.from(error)
+          }
         }
       : ({ pageParam }: { pageParam: unknown }) => {
-          const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-          const { clientData } = this._extractClientSync({
-            data: data || {},
-            location,
-            input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
-          })
-          return clientData
+          try {
+            const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
+            const { clientData } = this._extractClientSync({
+              data: data || {},
+              location,
+              input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
+            })
+            return clientData
+          } catch (error) {
+            throw Error0.from(error)
+          }
         }
     return {
       ...this._defaultQueryOptions,
@@ -3311,50 +3331,56 @@ export class Point0<
   > {
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
     const queryFn = async (ctx: { pageParam: unknown }) => {
-      const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
-      const serverData = await (async () => {
-        queryClient ??= Point0.getQueryClient()
-        const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
-        const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
-        if (infiniteCachedServerData) {
-          const pageParamIndex = (infiniteCachedServerData as any).pageParams.findIndex((p: unknown) => p === pageParam)
-          if (pageParamIndex !== -1) {
-            return (infiniteCachedServerData as any).pages[pageParamIndex]
+      try {
+        const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
+        const serverData = await (async () => {
+          queryClient ??= Point0.getQueryClient()
+          const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
+          const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
+          if (infiniteCachedServerData) {
+            const pageParamIndex = (infiniteCachedServerData as any).pageParams.findIndex(
+              (p: unknown) => p === pageParam,
+            )
+            if (pageParamIndex !== -1) {
+              return (infiniteCachedServerData as any).pages[pageParamIndex]
+            }
           }
-        }
-        const inputWithPageParam = { ...input, [this._infiniteQueryOptions.pageParamFromInput]: pageParam }
-        const finiteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
-        const finiteCachedServerData = queryClient.getQueryData(finiteServerKey)
-        if (finiteCachedServerData) {
-          return finiteCachedServerData
-        }
-        const serverFinityOpts = this._getServerQueryOptions({
-          input: inputWithPageParam as never,
-          queryOptions: infiniteQueryOptions,
-          fetchOptions,
-          outputType: 'data',
-        })
-        const serverFinityResult = await queryClient.fetchQuery(serverFinityOpts as any)
-        queryClient.setQueryData(infiniteServerKey, (data: { pages: any[]; pageParams: unknown[] } | undefined) => {
-          const pageParamIndex = data?.pageParams.findIndex((p: unknown) => p === pageParam)
-          if (pageParamIndex === undefined || pageParamIndex === -1) {
-            return data
+          const inputWithPageParam = { ...input, [this._infiniteQueryOptions.pageParamFromInput]: pageParam }
+          const finiteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
+          const finiteCachedServerData = queryClient.getQueryData(finiteServerKey)
+          if (finiteCachedServerData) {
+            return finiteCachedServerData
           }
-          return {
-            pages: [...(data?.pages || []), serverFinityResult],
-            pageParams: [...(data?.pageParams || []), pageParam],
-          }
-        })
-        return serverFinityResult
-      })()
+          const serverFinityOpts = this._getServerQueryOptions({
+            input: inputWithPageParam as never,
+            queryOptions: infiniteQueryOptions,
+            fetchOptions,
+            outputType: 'data',
+          })
+          const serverFinityResult = await queryClient.fetchQuery(serverFinityOpts as any)
+          queryClient.setQueryData(infiniteServerKey, (data: { pages: any[]; pageParams: unknown[] } | undefined) => {
+            const pageParamIndex = data?.pageParams.findIndex((p: unknown) => p === pageParam)
+            if (pageParamIndex === undefined || pageParamIndex === -1) {
+              return data
+            }
+            return {
+              pages: [...(data?.pages || []), serverFinityResult],
+              pageParams: [...(data?.pageParams || []), pageParam],
+            }
+          })
+          return serverFinityResult
+        })()
 
-      const clientOpts = this._getClientInfiniteQueryOptions({
-        input: input as never,
-        data: serverData as never,
-        infiniteQueryOptions,
-        location,
-      })
-      return await (clientOpts as any).queryFn({ ...input, pageParam })
+        const clientOpts = this._getClientInfiniteQueryOptions({
+          input: input as never,
+          data: serverData as never,
+          infiniteQueryOptions,
+          location,
+        })
+        return await (clientOpts as any).queryFn({ ...input, pageParam })
+      } catch (error) {
+        throw Error0.from(error)
+      }
     }
     const result = {
       ...this._defaultQueryOptions,
@@ -3591,23 +3617,60 @@ export class Point0<
   getMutationOptions(
     mutationOptions?: MutationOptions,
     fetchOptions?: FetchOptions,
-  ): MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>> {
+  ): MutationOptions<
+    FinalClientData<TData, TClientData>,
+    Error0,
+    InputRawMaybeOptional<TRouteDefinition, TInputSchema>
+  > {
     const mutationFn = async (input: Record<string, any> = {}) => {
-      const data = await this.fetch(input as never, fetchOptions)
-      return data
+      try {
+        // const data = await this.fetch(input as never, fetchOptions)
+        // return data
+        if (Point0.isServer) {
+          throw new Error(
+            'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
+          )
+        }
+        const serverData = await (async () => {
+          if (this._hasLoader()) {
+            return await this.fetch(input as never, fetchOptions)
+          }
+          return {}
+        })()
+        if (this._hasClientLoader()) {
+          if (this._hasClientAsyncLoader()) {
+            const { clientData } = await this._extractClientAsync({ data: serverData, input: input as never })
+            return clientData as FinalClientData<TData, TClientData>
+          } else {
+            const { clientData } = this._extractClientSync({ data: serverData, input: input as never })
+            return clientData as FinalClientData<TData, TClientData>
+          }
+        }
+        return serverData as FinalClientData<TData, TClientData>
+      } catch (error) {
+        throw Error0.from(error)
+      }
     }
     return {
       ...this._defaultMutationOptions,
       ...this._mutationOptions,
       ...mutationOptions,
       mutationFn,
-    } as MutationOptions<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>>
+    } as MutationOptions<
+      FinalClientData<TData, TClientData>,
+      Error0,
+      InputRawMaybeOptional<TRouteDefinition, TInputSchema>
+    >
   }
 
   useMutation = (
     mutationOptions?: MutationOptions | undefined,
     fetchOptions?: FetchOptions | undefined,
-  ): UseMutationResult<FetchOutput<TResponseOutput, TData>, Error0, InputParsed<TRouteDefinition, TInputSchema>> => {
+  ): UseMutationResult<
+    FinalClientData<TData, TClientData>,
+    Error0,
+    InputRawMaybeOptional<TRouteDefinition, TInputSchema>
+  > => {
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 

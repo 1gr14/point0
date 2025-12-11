@@ -323,6 +323,13 @@ export type InputRaw<
   : TRouteDefinition extends RouteDefinition
     ? FlatInput<TRouteDefinition>
     : Record<never, never>
+export type InputRawMaybeOptional<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  IsInputOptional<TRouteDefinition, TInputSchema> extends true
+    ? InputRaw<TRouteDefinition, TInputSchema> | undefined
+    : InputRaw<TRouteDefinition, TInputSchema>
 export type InputRawUnknown = Record<string, unknown>
 
 export type MergeInputSchemas<
@@ -1143,6 +1150,7 @@ export type NiceRootMiddlePoint<
     | 'requireCtx'
     | 'serverurl'
     | 'baseurl'
+    | 'mutationOptions'
     | 'queryOptions'
     | 'infiniteQueryOptions'
     | 'pageQueryOptions'
@@ -1203,6 +1211,7 @@ export type NiceBaseMiddlePoint<
   WithRouteLiteralIfNoRoute<
     TRouteDefinition,
     | 'base'
+    | 'mutationOptions'
     | 'queryOptions'
     | 'infiniteQueryOptions'
     | 'pageQueryOptions'
@@ -1837,20 +1846,20 @@ export type NiceBaseEndPoint<
   'lets' | 'point' | 'Infer'
 >
 
+export type WithFetchIfHasLoader<TData extends Data | UndefinedData, TLiteral extends string> = TData extends Data
+  ? TLiteral | 'fetch'
+  : TLiteral
 export type WithQueryEndLiteralsIfSuitable<
+  TData extends Data | UndefinedData,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TLiteral extends string,
 > = TQueryResultType extends 'query'
-  ? TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'fetch' | 'extract'
+  ? WithFetchIfHasLoader<TData, TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'extract'>
   : TQueryResultType extends 'infiniteQuery'
-    ?
-        | TLiteral
-        | 'useInfiniteQuery'
-        | 'getQueryKey'
-        | 'getInfiniteQueryOptions'
-        | 'prefetchInfiniteQuery'
-        | 'fetch'
-        | 'extract'
+    ? WithFetchIfHasLoader<
+        TData,
+        TLiteral | 'useInfiniteQuery' | 'getQueryKey' | 'getInfiniteQueryOptions' | 'prefetchInfiniteQuery' | 'extract'
+      >
     : TLiteral
 
 export type WithInputSchemaLiteralIfExists<
@@ -1889,7 +1898,7 @@ export type NicePageEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+      WithQueryEndLiteralsIfSuitable<TData, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
 
@@ -1924,7 +1933,7 @@ export type NiceComponentEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+      WithQueryEndLiteralsIfSuitable<TData, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
 
@@ -1959,7 +1968,7 @@ export type NiceLayoutEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+      WithQueryEndLiteralsIfSuitable<TData, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
 
@@ -2024,7 +2033,7 @@ export type NiceQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+    WithQueryEndLiteralsIfSuitable<TData, TQueryResultType, 'point' | 'lets' | 'Infer'>
   >
 >
 
@@ -2058,7 +2067,7 @@ export type NiceInfiniteQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<TQueryResultType, 'point' | 'lets' | 'Infer'>
+    WithQueryEndLiteralsIfSuitable<TData, TQueryResultType, 'point' | 'lets' | 'Infer'>
   >
 >
 
@@ -2092,7 +2101,7 @@ export type NiceMutationEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    'point' | 'lets' | 'fetch' | 'extract' | 'getMutationOptions' | 'useMutation' | 'Infer'
+    WithFetchIfHasLoader<TData, 'point' | 'lets' | 'extract' | 'getMutationOptions' | 'useMutation' | 'Infer'>
   >
 >
 
@@ -2127,6 +2136,7 @@ export type NiceProviderEndPoint<
   WithInputSchemaLiteralIfExists<
     TInputSchema,
     WithQueryEndLiteralsIfSuitable<
+      TData,
       TQueryResultType,
       'point' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'provider' | 'Provider' | 'Infer'
     >

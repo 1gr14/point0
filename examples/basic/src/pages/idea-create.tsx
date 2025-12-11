@@ -3,7 +3,6 @@ import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { BestIdeaComponent } from './home.js'
-import { useMutation } from '@tanstack/react-query'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
@@ -48,9 +47,15 @@ export const createIdeaMutation = client
     })
     return { idea }
   })
+  .clientLoader(async (o) => {
+    return { ...o.data, x: 1 }
+  })
   .mutation({
-    onSuccess: () => {
-      console.info('success')
+    onSuccess: (x) => {
+      console.info('success', x)
+    },
+    onMutate: (x) => {
+      console.info('mutate', x)
     },
   })
 
