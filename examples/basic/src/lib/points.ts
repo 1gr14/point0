@@ -1,19 +1,19 @@
 import type { LazyPointsCollectionRecord } from '@point0/core'
 import { client as root } from './client.js'
 
-export const unnamed_26z5ww20orm_lazy = {
-  type: 'page',
-  name: 'home',
-  route: '/',
-  layouts: ['generalLayout'],
-  point: async () => (await import('../pages/home.js')).default.point,
-} as LazyPointsCollectionRecord
-
 export const empty_1e907mxbta1_lazy = {
   type: 'page',
   name: 'empty&x',
   route: '/empty&x',
   point: async () => (await import('../pages/empty.js')).empty.point,
+} as LazyPointsCollectionRecord
+
+export const unnamed_26z5ww20orm_lazy = {
+  type: 'page',
+  name: 'home',
+  route: '/home',
+  layouts: ['generalLayout'],
+  point: async () => (await import('../pages/home.js')).default.point,
 } as LazyPointsCollectionRecord
 
 export const ideasPage_ssfqq9iosy_lazy = {

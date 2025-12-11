@@ -2,6 +2,12 @@
 ------ before start0 -----
 --------------------------
 
+lets(..., route)
+so route always known immediatelly
+so remove .route() helper
+so fix walker
+in lets to do not loose prev route never, so set current route as prev route if it is not page or layout
+
 double check what we broke in lets and that it is suitable to what we have in types
 Лэйоуту не нужно самому объявлять без, пусть он просто модифицирует квери опшены чтоли и сам становится базой сам по себе
 
