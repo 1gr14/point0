@@ -179,7 +179,7 @@ export class Walker {
                           scope,
                           pointType,
                           pointName,
-                          fallbackToPointName: true,
+                          fallbackTo: pointType === 'page' ? 'pointName' : 'emptyString',
                         })
                       : { route: undefined, errors: [] }
                     errors.push(...routeErrors)
@@ -244,7 +244,7 @@ export class Walker {
                     scope,
                     pointType,
                     pointName,
-                    fallbackToPointName: true,
+                    fallbackTo: pointType === 'page' ? 'pointName' : 'emptyString',
                   })
                 : { route: undefined, errors: [] }
               errors.push(...routeErrors)
@@ -847,7 +847,7 @@ export class Walker {
     scope,
     pointType,
     pointName,
-    fallbackToPointName,
+    fallbackTo,
   }: {
     fileAbs: string
     ast: babel.ParseResult<any>
@@ -855,7 +855,7 @@ export class Walker {
     scope: string
     pointType: EndPointType
     pointName: string
-    fallbackToPointName: boolean
+    fallbackTo: 'pointName' | 'emptyString' | false
   }): { routeSegment?: string; routeFull?: AnyRoute; fallbackRouteSegment?: string; errors: unknown[] } {
     let routeSegment: string | undefined
     let routeFull: AnyRoute | undefined
@@ -905,7 +905,11 @@ export class Walker {
         routeSegment,
         routeFull,
         fallbackRouteSegment:
-          (pointType === 'page' || pointType === 'layout') && fallbackToPointName ? pointName : undefined,
+          (pointType === 'page' || pointType === 'layout') && fallbackTo === 'pointName'
+            ? pointName
+            : fallbackTo === 'emptyString'
+              ? ''
+              : undefined,
         errors,
       }
     } catch (e) {
@@ -1168,14 +1172,14 @@ export class Walker {
       scope,
       pointType,
       pointName,
-      fallbackToPointName,
+      fallbackTo,
     }: {
       fileAbs: string
       baseIdentifier: string
       scope: string
       pointType: EndPointType
       pointName: string
-      fallbackToPointName: boolean
+      fallbackTo: 'pointName' | 'emptyString' | false
     },
     _seen = new Set<string>(),
   ): Promise<{ route: AnyRoute | undefined; errors: unknown[] }> {
@@ -1238,7 +1242,7 @@ export class Walker {
       scope,
       pointType,
       pointName,
-      fallbackToPointName,
+      fallbackTo,
     })
 
     // if it was a full route (like .route(routes.ideaNews)) – we're done
@@ -1314,7 +1318,7 @@ export class Walker {
         scope,
         pointType,
         pointName,
-        fallbackToPointName: false,
+        fallbackTo: false,
       },
       _seen,
     )

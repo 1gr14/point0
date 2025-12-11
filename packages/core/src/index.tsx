@@ -1813,7 +1813,7 @@ export class Point0<
     TCtx,
     TData,
     UndefinedData,
-    TNewLetsEndPointType extends 'page' | 'layout'
+    TNewLetsEndPointType extends 'page'
       ? TRouteDefinition extends RouteDefinition
         ? Extended<TRouteDefinition, TPointName>['definition']
         : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
@@ -1826,7 +1826,7 @@ export class Point0<
   > {
     const prevRoute = this._route
     const newRoute = (() => {
-      if (letsEndPointType === 'page' || letsEndPointType === 'layout') {
+      if (letsEndPointType === 'page') {
         return prevRoute ? prevRoute.extend(pointName) : Route0.from(dedupeSlashes(`/${pointName}`))
       }
       return undefined

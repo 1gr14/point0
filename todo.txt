@@ -2,13 +2,8 @@
 ------ before start0 -----
 --------------------------
 
-fetch options fn or object
-check mutation clientLoader
-
 double check what we broke in lets and that it is suitable to what we have in types
 Лэйоуту не нужно самому объявлять без, пусть он просто модифицирует квери опшены чтоли и сам становится базой сам по себе
-
-? Лэйоут роут по умолчанию не нейм а пустая строка
 
 check useLocation, is it really return no route on 404, and is it correctly return exact, parent, etc
 provide Routes to use location, so if no route then exact false, else exact true
