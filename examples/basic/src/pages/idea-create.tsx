@@ -164,4 +164,4 @@ const Page = () => {
   )
 }
 
-export default generalLayout.lets('page', 'newIdea').route('/ideas/new').head('New Idea').page(Page)
+export default generalLayout.lets('page', 'newIdea', '/ideas/new').head('New Idea').page(Page)

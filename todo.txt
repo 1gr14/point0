@@ -3,8 +3,10 @@
 --------------------------
 
 lets(..., route)
+do not reset routes path if / provided
+? if fount in routes Rpute0.create('...') then in waler use string from it
 so route always known immediatelly
-so remove .route() helper
+so remove .() helper
 so fix walker
 in lets to do not loose prev route never, so set current route as prev route if it is not page or layout
 
@@ -121,7 +123,7 @@ rest important TODO in code
 ------ after start0 ------
 --------------------------
 
-.lets('multiPage').route('/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+.lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 

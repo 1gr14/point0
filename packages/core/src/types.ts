@@ -285,6 +285,12 @@ export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
 
+export type EmptyStringIfStandaloneSlash<TRouteDefinition extends RouteDefinition> = TRouteDefinition extends `/`
+  ? ''
+  : TRouteDefinition
+export type StandaloneSlashIfUndefined<TRouteDefinition extends RouteDefinition | undefined> =
+  TRouteDefinition extends undefined ? '/' : TRouteDefinition
+
 export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
 export type FinalClientData<
   TData extends Data | UndefinedData,
@@ -1111,11 +1117,6 @@ export type AppComponent = (props: AppProps) => React.ReactElement
 
 // nice middle point
 
-export type WithRouteLiteralIfNoRoute<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TLiteral extends string,
-> = TRouteDefinition extends RouteDefinition ? TLiteral : TLiteral | 'route'
-
 export type NiceRootMiddlePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'root',
@@ -1144,40 +1145,36 @@ export type NiceRootMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  WithRouteLiteralIfNoRoute<
-    TRouteDefinition,
-    | 'root'
-    | 'requireCtx'
-    | 'serverurl'
-    | 'baseurl'
-    | 'mutationOptions'
-    | 'queryOptions'
-    | 'infiniteQueryOptions'
-    | 'pageQueryOptions'
-    | 'componentQueryOptions'
-    | 'providerQueryOptions'
-    | 'layoutQueryOptions'
-    | 'fetchOptions'
-    | 'pageError'
-    | 'componentError'
-    | 'error'
-    | 'pageLoading'
-    | 'componentLoading'
-    | 'loading'
-    | 'route'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'ctxLoader'
-    | 'clientLoader'
-    | 'head'
-    | 'scrollPosition'
-    | 'scrollRestore'
-    | 'prefetchPolicy'
-    | 'onPrefetch'
-    | 'point'
-    | 'Infer'
-  >
+  | 'root'
+  | 'requireCtx'
+  | 'serverurl'
+  | 'baseurl'
+  | 'mutationOptions'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'pageError'
+  | 'componentError'
+  | 'error'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'ctxLoader'
+  | 'clientLoader'
+  | 'head'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'point'
+  | 'Infer'
 >
 
 export type NiceBaseMiddlePoint<
@@ -1208,38 +1205,34 @@ export type NiceBaseMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  WithRouteLiteralIfNoRoute<
-    TRouteDefinition,
-    | 'base'
-    | 'mutationOptions'
-    | 'queryOptions'
-    | 'infiniteQueryOptions'
-    | 'pageQueryOptions'
-    | 'componentQueryOptions'
-    | 'providerQueryOptions'
-    | 'layoutQueryOptions'
-    | 'fetchOptions'
-    | 'pageError'
-    | 'componentError'
-    | 'error'
-    | 'pageLoading'
-    | 'componentLoading'
-    | 'loading'
-    | 'wrapper'
-    | 'route'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'ctxLoader'
-    | 'clientLoader'
-    | 'head'
-    | 'scrollPosition'
-    | 'scrollRestore'
-    | 'prefetchPolicy'
-    | 'onPrefetch'
-    | 'point'
-    | 'Infer'
-  >
+  | 'base'
+  | 'mutationOptions'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'pageError'
+  | 'componentError'
+  | 'error'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'wrapper'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'ctxLoader'
+  | 'clientLoader'
+  | 'head'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'point'
+  | 'Infer'
 >
 
 export type NicePageMiddlePoint<
@@ -1271,14 +1264,12 @@ export type NicePageMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithRouteLiteralIfNoRoute<
-        TRouteDefinition,
+    ?
         | 'page'
         | 'fetchOptions'
         | 'error'
         | 'loading'
         | 'wrapper'
-        | 'route'
         | 'input'
         | 'ctx'
         | 'loader'
@@ -1295,7 +1286,6 @@ export type NicePageMiddlePoint<
         | 'Infer'
         | 'query'
         | 'infiniteQuery'
-      >
     : 'page' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
 >
 
@@ -1541,8 +1531,7 @@ export type NiceLayoutMiddlePoint<
     TProps
   >,
   TPointType extends 'middleware'
-    ? WithRouteLiteralIfNoRoute<
-        TRouteDefinition,
+    ?
         | 'layout'
         | 'fetchOptions'
         | 'pageError'
@@ -1550,7 +1539,6 @@ export type NiceLayoutMiddlePoint<
         | 'pageLoading'
         | 'loading'
         | 'wrapper'
-        | 'route'
         | 'input'
         | 'ctx'
         | 'loader'
@@ -1567,7 +1555,6 @@ export type NiceLayoutMiddlePoint<
         | 'Infer'
         | 'query'
         | 'infiniteQuery'
-      >
     : 'layout' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
 >
 

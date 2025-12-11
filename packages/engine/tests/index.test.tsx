@@ -174,7 +174,7 @@ describe('Point0', () => {
     expect(server.point._serverExtractActions).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPointBase02 = Point0.create<typeof server2>('client', ['server2']).root()
-    const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent)
+    const clientPoint02 = clientPointBase02.lets('page', 'page', '/').page(pageComponent)
     // const eversion2 = Eversion.create()
     const run = await ServerExtractor.create({
       points: PointsManager.ready({
@@ -278,21 +278,19 @@ describe('Point0', () => {
       .root()
     const pageComponent = () => <div>Hello</div>
     const clientPointBase01 = Point0.create<typeof server1>('client', ['server1']).root()
-    const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
+    const clientPoint01 = clientPointBase01.lets('page', 'page', '/').page(pageComponent).point
     expectTypeOf<(typeof clientPoint01)['Infer']['QueryResultType']>().toEqualTypeOf<undefined>()
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const clientPoint011 = clientPointBase01
-      .lets('page', 'page')
-      .route(Route0.create('/'))
+      .lets('page', 'page', '/')
       .loader(() => ({}))
       .page(({ query }) => <div>Hello</div>).point
     expectTypeOf<(typeof clientPoint011)['Infer']['QueryResultType']>().toEqualTypeOf<'query'>()
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const clientPoint0111 = clientPointBase01
-      .lets('page', 'page')
-      .route(Route0.create('/'))
+      .lets('page', 'page', '/')
       .loader(() => ({ x: 1 }))
       .infiniteQuery({
         initialPageParam: 0,
@@ -341,7 +339,7 @@ describe('Point0', () => {
         .root(),
     )
     const clientPointBase02 = Point0.create<typeof server2>('client', ['server2']).root()
-    const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
+    const clientPoint02 = clientPointBase02.lets('page', 'page', '/').page(pageComponent).point
     // const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     // const eversion2Connection = await eversion2.connect({
     //   points: Points.ready({ root: clientPointBase02 }),
@@ -380,7 +378,7 @@ describe('Point0', () => {
         .root(),
     )
     const clientPointBase03 = Point0.create<typeof server3>('client', ['server3']).root()
-    const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
+    const clientPoint03 = clientPointBase03.lets('page', 'page', '/').page(pageComponent).point
     // const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     // const eversion3Connection = await eversion3.connect({
     //   points: Points.ready({ root: clientPointBase03 }),
@@ -430,7 +428,7 @@ describe('Point0', () => {
     )
     const pageComponent = () => <div>Hello</div>
     const clientPointBase01 = Point0.create<typeof server1>('client', ['server1']).root()
-    const clientPoint01 = clientPointBase01.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
+    const clientPoint01 = clientPointBase01.lets('page', 'page', '/').page(pageComponent).point
     // const eversion1 = await Eversion.create({ points: Points.ready({ root: server1 }) })
     // const eversion1Connection = await eversion1.connect({
     //   points: Points.ready({ root: clientPointBase01 }),
@@ -476,7 +474,7 @@ describe('Point0', () => {
         .root(),
     )
     const clientPointBase02 = Point0.create<typeof server2>('client', ['server2']).root()
-    const clientPoint02 = clientPointBase02.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
+    const clientPoint02 = clientPointBase02.lets('page', 'page', '/').page(pageComponent).point
     // const eversion2 = await Eversion.create({ points: Points.ready({ root: server2 }) })
     // const eversion2Connection = await eversion2.connect({
     //   points: Points.ready({ root: clientPointBase02 }),
@@ -517,7 +515,7 @@ describe('Point0', () => {
         .root(),
     )
     const clientPointBase03 = Point0.create<typeof server3>('client', ['server3']).root()
-    const clientPoint03 = clientPointBase03.lets('page', 'page').route(Route0.create('/')).page(pageComponent).point
+    const clientPoint03 = clientPointBase03.lets('page', 'page', '/').page(pageComponent).point
     // const eversion3 = await Eversion.create({ points: Points.ready({ root: server3 }) })
     // const eversion3Connection = await eversion3.connect({
     //   points: Points.ready({ root: clientPointBase03 }),
@@ -553,10 +551,8 @@ describe('Point0', () => {
   //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   //   const server = Point0.server()
   //   const clientPage1 = Point0.client<typeof server>()
-  //     .route(Route0.create('/hello/:name'))
   //     .page(({ location }) => <div>Hello, {location.params.name}</div>)
   //   const clientPage2 = Point0.client<typeof server>()
-  //     .route(Route0.create('/bye/:name'))
   //     .page(({ location }) => <div>Bye, {location.params.name}</div>)
   //   const points: PagesCollection = [
   //     [clientPage1.getRoute(), async () => clientPage1],
@@ -630,7 +626,7 @@ describe('Point0', () => {
   //   const routeX = Route0.create('/my/:id')
   //   const pageX = clientPoint0
   //     .lets('page', 'page')
-  //     .route(routeX)
+  //     .ro_ute(routeX)
   //     .ctx(({ ctx, input }) => ({
   //       ...ctx,
   //       // TODO: fix it

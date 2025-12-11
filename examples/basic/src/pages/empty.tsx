@@ -13,8 +13,7 @@ import { client } from '../lib/client'
 //   .infiniteQuery()
 
 export const empty = client
-  .lets('page', 'empty&x')
-  // .route(routes.empty)
+  .lets('page', 'empty', 'empty&x')
   .loader(({ input }) => {
     return {
       title: 'Empty',
@@ -49,7 +48,6 @@ export const empty = client
 export const sharedEmptyPage = client
   .attach(sharedQuery)
   .lets('page', 'sharedEmpty')
-  // .route(routes.sharedEmpty)
   .page(({ data }) => {
     return (
       <div>

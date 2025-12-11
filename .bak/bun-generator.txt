@@ -865,8 +865,8 @@
 
 //   /**
 //    * Look through the AST and try to find:
-//    * - `.route('/news')` → routeSegment = '/news'
-//    * - `.route(routes.ideaNews)` → we try to resolve from this.routes
+//    * - `.ro_ute('/news')` → routeSegment = '/news'
+//    * - `.ro_ute(routes.ideaNews)` → we try to resolve from this.routes
 //    */
 //   private findRouteOnIdentifier({
 //     fileAbs,
@@ -895,7 +895,7 @@
 //             if (arg?.type === 'StringLiteral') {
 //               routeSegment = arg.value
 //             } else if (arg?.type === 'MemberExpression') {
-//               // .route(routes.ideaNews)
+//               // .ro_ute(routes.ideaNews)
 //               const prop = arg.property
 //               if (prop.type === 'Identifier') {
 //                 const routeKey = prop.name
@@ -1078,7 +1078,7 @@
 
 //   /**
 //    * Given an init node like:
-//    *   ideaLayout.lets(...).route(...)
+//    *   ideaLayout.lets(...).ro_ute(...)
 //    *   generalLayout
 //    *   someCall(...)
 //    * return JUST the base identifier ("ideaLayout", "generalLayout", "client", ...)
@@ -1156,7 +1156,7 @@
 //     //
 //     const { routeSegment, routeFull } = this.findRouteOnIdentifier({ fileAbs, ast, baseIdentifier })
 
-//     // if it was a full route (like .route(routes.ideaNews)) – we're done
+//     // if it was a full route (like .ro_ute(routes.ideaNews)) – we're done
 //     if (routeFull) {
 //       cacheForFile.set(cacheKey, routeFull)
 //       return { route: routeFull, errors }

@@ -44,8 +44,7 @@ export const BestIdeaComponent = client
   })
 
 export default generalLayout
-  .lets('page', 'home')
-  .route('/')
+  .lets('page', 'home', '/')
   .head({
     title: 'IdeaNick Forever!',
     titleTemplate: null,

@@ -53,6 +53,7 @@ import type {
   Data,
   DestinationComponentType,
   EmptyCtx,
+  EmptyStringIfStandaloneSlash,
   EndPointType,
   ErrorComponentType,
   ErrorHeadFn,
@@ -120,6 +121,7 @@ import type {
   ScrollPositionSetter,
   ServerExtractAction,
   ShowError,
+  StandaloneSlashIfUndefined,
   SuccessHeadFn,
   UndefinedComponentComponent,
   UndefinedCtx,
@@ -1467,94 +1469,6 @@ export class Point0<
 
   // middlewares
 
-  route<TNewRoute extends AnyRoute>(
-    route: FlatInput<TNewRoute> extends InputRaw<TRouteDefinition, TInputSchema>
-      ? TNewRoute
-      : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
-  ): NiceMiddlePoint<
-    TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TNewRoute['definition'],
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  route<TNewRouteDefinition extends `/${string}`>(
-    routeDefinition: TNewRouteDefinition,
-  ): NiceMiddlePoint<
-    TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    Route0<TNewRouteDefinition>['definition'],
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  route<TNewRouteDefinition extends string>(
-    relativeRouteDefinition: TNewRouteDefinition,
-  ): NiceMiddlePoint<
-    TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TPrevRouteDefinition extends RouteDefinition
-      ? Extended<TPrevRouteDefinition, TNewRouteDefinition>['definition']
-      : Route0<DedupeSlashes<`/${TNewRouteDefinition}`>>['definition'],
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  route(): NiceMiddlePoint<
-    TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TPrevRouteDefinition extends RouteDefinition ? TPrevRouteDefinition : never,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  route(route?: CallabelRoute | RouteDefinition | ShowError<string>) {
-    const prevRoute = this._prevRoute
-    const newRoute = (() => {
-      if (typeof route === 'undefined') {
-        if (!prevRoute) {
-          throw new Error('Parent of this point have no route, so you cannot use .route() without argument')
-        }
-        return prevRoute.clone()
-      }
-      if (typeof route === 'string') {
-        if (route.startsWith('/')) {
-          return Route0.from(route)
-        }
-        return prevRoute ? prevRoute.extend(route) : Route0.from(dedupeSlashes(`/${route}`))
-      }
-      return route
-    })()
-    return this._continue({
-      _route: newRoute as CallabelRoute,
-    }) as never
-  }
-
   ctx<TNewCtx extends Ctx = Ctx>(
     ctxFn: CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, TNewCtx>,
   ): NiceMiddlePoint<
@@ -1803,7 +1717,152 @@ export class Point0<
 
   // end points
 
-  lets<TNewLetsEndPointType extends EndPointType, TPointName extends PointName>(
+  // TODO:ASAP remove it
+  // route<TNewRoute extends AnyRoute>(
+  //   route: FlatInput<TNewRoute> extends InputRaw<TRouteDefinition, TInputSchema>
+  //     ? TNewRoute
+  //     : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
+  // ): NiceMiddlePoint<
+  //   TPointType,
+  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TNewRoute['definition'],
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // >
+  // route<TNewRouteDefinition extends `/${string}`>(
+  //   routeDefinition: TNewRouteDefinition,
+  // ): NiceMiddlePoint<
+  //   TPointType,
+  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   Route0<TNewRouteDefinition>['definition'],
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // >
+  // route<TNewRouteDefinition extends string>(
+  //   relativeRouteDefinition: TNewRouteDefinition,
+  // ): NiceMiddlePoint<
+  //   TPointType,
+  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TPrevRouteDefinition extends RouteDefinition
+  //     ? Extended<TPrevRouteDefinition, TNewRouteDefinition>['definition']
+  //     : Route0<DedupeSlashes<`/${TNewRouteDefinition}`>>['definition'],
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // >
+  // route(): NiceMiddlePoint<
+  //   TPointType,
+  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TPrevRouteDefinition extends RouteDefinition ? TPrevRouteDefinition : never,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // >
+  // route(route?: CallabelRoute | RouteDefinition | ShowError<string>) {
+  //   const prevRoute = this._prevRoute
+  //   const newRoute = (() => {
+  //     if (typeof route === 'undefined') {
+  //       if (!prevRoute) {
+  //         throw new Error('Parent of this point have no route, so you cannot use .() without argument')
+  //       }
+  //       return prevRoute.clone()
+  //     }
+  //     if (typeof route === 'string') {
+  //       if (route.startsWith('/')) {
+  //         return Route0.from(route)
+  //       }
+  //       return prevRoute ? prevRoute.extend(route) : Route0.from(dedupeSlashes(`/${route}`))
+  //     }
+  //     return route
+  //   })()
+  //   return this._continue({
+  //     _route: newRoute as CallabelRoute,
+  //   }) as never
+  // }
+
+  lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = TPointName>(
+    letsEndPointType: 'page',
+    pointName: TPointName,
+    route?: TProvidedRoute,
+  ): NiceMiddlePoint<
+    'middleware',
+    'page',
+    TRequiredCtx,
+    TCtx,
+    TData,
+    UndefinedData,
+    TProvidedRoute extends AnyRoute
+      ? FlatInput<TProvidedRoute> extends InputRaw<TRouteDefinition, TInputSchema>
+        ? TProvidedRoute['definition']
+        : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
+            TProvidedRoute['definition']
+      : TProvidedRoute extends RouteDefinition
+        ? Extended<
+            StandaloneSlashIfUndefined<TRouteDefinition>,
+            EmptyStringIfStandaloneSlash<TProvidedRoute>
+          >['definition']
+        : never,
+    TRouteDefinition,
+    TInputSchema,
+    UndefinedResponseOutput,
+    TQueryResultType,
+    UndefinedProps
+  >
+  lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = '/'>(
+    letsEndPointType: 'layout',
+    pointName: TPointName,
+    route?: TProvidedRoute,
+  ): NiceMiddlePoint<
+    'middleware',
+    'layout',
+    TRequiredCtx,
+    TCtx,
+    TData,
+    UndefinedData,
+    TProvidedRoute extends AnyRoute
+      ? FlatInput<TProvidedRoute> extends InputRaw<TRouteDefinition, TInputSchema>
+        ? TProvidedRoute['definition']
+        : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
+            TProvidedRoute['definition']
+      : TProvidedRoute extends RouteDefinition
+        ? Extended<
+            StandaloneSlashIfUndefined<TRouteDefinition>,
+            EmptyStringIfStandaloneSlash<TProvidedRoute>
+          >['definition']
+        : never,
+    TRouteDefinition,
+    TInputSchema,
+    UndefinedResponseOutput,
+    TQueryResultType,
+    UndefinedProps
+  >
+  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout'>, TPointName extends PointName>(
     letsEndPointType: TNewLetsEndPointType,
     pointName: TPointName,
   ): NiceMiddlePoint<
@@ -1813,23 +1872,41 @@ export class Point0<
     TCtx,
     TData,
     UndefinedData,
-    TNewLetsEndPointType extends 'page'
-      ? TRouteDefinition extends RouteDefinition
-        ? Extended<TRouteDefinition, TPointName>['definition']
-        : Route0<DedupeSlashes<`/${TPointName}`>>['definition']
-      : UndefinedRouteDefinition,
+    TRouteDefinition,
     TRouteDefinition,
     TInputSchema,
     UndefinedResponseOutput,
     TQueryResultType,
     UndefinedProps
-  > {
+  >
+  lets<TNewLetsEndPointType extends EndPointType, TPointName extends PointName>(
+    letsEndPointType: TNewLetsEndPointType,
+    pointName: TPointName,
+    route?: AnyRoute | string,
+  ) {
     const prevRoute = this._route
     const newRoute = (() => {
       if (letsEndPointType === 'page') {
-        return prevRoute ? prevRoute.extend(pointName) : Route0.from(dedupeSlashes(`/${pointName}`))
+        if (typeof route === 'string' || !route) {
+          const routeOrPointName = route ?? pointName
+          if (routeOrPointName === '/') {
+            return prevRoute?.clone() ?? Route0.from('/')
+          }
+          return prevRoute ? prevRoute.extend(routeOrPointName) : Route0.from(dedupeSlashes(`/${routeOrPointName}`))
+        }
+        return route
       }
-      return undefined
+      if (letsEndPointType === 'layout') {
+        if (typeof route === 'string' || !route) {
+          const routeNormalized = route ?? '/'
+          if (routeNormalized === '/') {
+            return prevRoute?.clone() ?? Route0.from('/')
+          }
+          return prevRoute ? prevRoute.extend(routeNormalized) : Route0.from(dedupeSlashes(`/${routeNormalized}`))
+        }
+        return route
+      }
+      return prevRoute
     })()
     return this._continue({
       _pointType: 'middleware',

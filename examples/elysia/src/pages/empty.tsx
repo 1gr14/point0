@@ -3,8 +3,7 @@ import { client } from '../lib/client'
 import { routes } from '../lib/routes'
 
 export const empty = client
-  .lets('page', 'empty')
-  .route(routes.empty)
+  .lets('page', 'empty', routes.empty)
   // .loader(({ input }) => {
   //   return {
   //     title: 'Empty',
@@ -31,8 +30,7 @@ export const empty = client
 
 export const sharedEmptyPage = client
   .attach(sharedQuery)
-  .lets('page', 'sharedEmpty')
-  .route(routes.sharedEmpty)
+  .lets('page', 'sharedEmpty', routes.sharedEmpty)
   .page(({ data }) => {
     return (
       <div>

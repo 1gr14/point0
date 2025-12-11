@@ -13,8 +13,8 @@ describe('points', () => {
       const base = Point0.create('base').root()
       const points = PointsManager.ready({
         root_ready: base,
-        one: base.lets('page', '1').route('/1').page(PC).point,
-        two: base.lets('page', '2').route('/2').page(PC).point,
+        one: base.lets('page', '1', '/1').page(PC).point,
+        two: base.lets('page', '2', '/2').page(PC).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -28,11 +28,11 @@ describe('points', () => {
 
     it('one layout page', () => {
       const base = Point0.create('base').root()
-      const layout = base.lets('layout', 'layout').route('/layout').layout(PC).point
+      const layout = base.lets('layout', 'layout', '/layout').layout(PC).point
       const points = PointsManager.ready({
         root_ready: base,
-        one: base.lets('page', '1').route('/1').page(PC).point,
-        two: layout.lets('page', '2').route('/2').page(PC).point,
+        one: base.lets('page', '1', '/1').page(PC).point,
+        two: layout.lets('page', '2', '/2').page(PC).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -51,13 +51,13 @@ describe('points', () => {
 
     it('two layouts page', () => {
       const base = Point0.create('base').root()
-      const layout1 = base.lets('layout', 'layout1').route('/layout1').layout(PC).point
-      const layout2 = layout1.lets('layout', 'layout2').route('/layout2').layout(PC).point
+      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
+      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
       const points = PointsManager.ready({
         root_ready: base,
-        one: base.lets('page', '1').route('/1').page(PC).point,
-        two: layout1.lets('page', '2').route('/2').page(PC).point,
-        three: layout2.lets('page', '3').route('/3').page(PC).point,
+        one: base.lets('page', '1', '/1').page(PC).point,
+        two: layout1.lets('page', '2', '/2').page(PC).point,
+        three: layout2.lets('page', '3', '/3').page(PC).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -82,16 +82,16 @@ describe('points', () => {
 
     it('two layouts two pages', () => {
       const base = Point0.create('base').root()
-      const layout1 = base.lets('layout', 'layout1').route('/layout1').layout(PC).point
-      const layout2 = layout1.lets('layout', 'layout2').route('/layout2').layout(PC).point
+      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
+      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
       const points = PointsManager.ready({
         root_ready: base,
-        zero: base.lets('page', '0').route('/0').page(PC).point,
-        one: base.lets('page', '1').route('/1').page(PC).point,
-        two: layout1.lets('page', '2').route('/2').page(PC).point,
-        three: layout1.lets('page', '3').route('/3').page(PC).point,
-        four: layout2.lets('page', '4').route('/4').page(PC).point,
-        five: layout2.lets('page', '5').route('/5').page(PC).point,
+        zero: base.lets('page', '0', '/0').page(PC).point,
+        one: base.lets('page', '1', '/1').page(PC).point,
+        two: layout1.lets('page', '2', '/2').page(PC).point,
+        three: layout1.lets('page', '3', '/3').page(PC).point,
+        four: layout2.lets('page', '4', '/4').page(PC).point,
+        five: layout2.lets('page', '5', '/5').page(PC).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([

@@ -13,8 +13,7 @@ export const getIdea = async (ctx: Ctx, id: number) => {
 // TODO: add getIdeaChain, or getIdeaQuery and use it in layout and for example in updatePage
 
 export const ideaPage = ideaLayout
-  .lets('page', 'idea')
-  .route()
+  .lets('page', 'idea', '/')
   .loader(async ({ ctx, input }) => {
     // it excutes on server, but defined in client file,
     // prisma will never come her on client, becouse of dead code optimization on build
