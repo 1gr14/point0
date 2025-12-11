@@ -1,13 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type {
-  AnyLocation,
-  AnyRoute,
-  CallabelRoute,
-  DedupeSlashes,
-  Extended,
-  FlatInput,
-  KnownLocation,
-} from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, CallabelRoute, Extended, FlatInput, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type {
   DehydratedState,
@@ -180,7 +172,7 @@ export class Point0<
     return Point0._prevUnstableId++
   }
 
-  private readonly _base: BasePoint | undefined
+  private readonly _base: BasePoint | LayoutPoint | undefined
   readonly _root: RootPoint | undefined
   private readonly _serverurl: string | undefined
   readonly _baseurl: string | null | undefined
@@ -242,7 +234,7 @@ export class Point0<
   private readonly _prefetchPolicy: PagePrefetchPolicy
   private readonly _onPrefetchFns: OnPrefetchFn[]
   private readonly _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
-  private readonly _errorComponent?: ErrorComponentType<
+  private readonly _layoutErrorComponent: ErrorComponentType<
     DestinationComponentType,
     TQueryResultType,
     TData,
@@ -253,7 +245,7 @@ export class Point0<
     TProps
   >
   private readonly _pageErrorComponent: ErrorComponentType<
-    'page',
+    DestinationComponentType,
     TQueryResultType,
     TData,
     TResponseOutput,
@@ -263,7 +255,7 @@ export class Point0<
     TProps
   >
   private readonly _componentErrorComponent: ErrorComponentType<
-    'component',
+    DestinationComponentType,
     TQueryResultType,
     TData,
     TResponseOutput,
@@ -272,7 +264,7 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
-  private readonly _loadingComponent?: LoadingComponentType<
+  private readonly _layoutLoadingComponent: LoadingComponentType<
     DestinationComponentType,
     TQueryResultType,
     TData,
@@ -283,7 +275,7 @@ export class Point0<
     TProps
   >
   private readonly _pageLoadingComponent: LoadingComponentType<
-    'page',
+    DestinationComponentType,
     TQueryResultType,
     TData,
     TResponseOutput,
@@ -293,7 +285,7 @@ export class Point0<
     TProps
   >
   private readonly _componentLoadingComponent: LoadingComponentType<
-    'component',
+    DestinationComponentType,
     TQueryResultType,
     TData,
     TResponseOutput,
@@ -306,7 +298,7 @@ export class Point0<
   private constructor(options: {
     _pointType: TPointType
     _letsEndPointType: TLetsEndPointType
-    _base?: BasePoint | undefined
+    _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
@@ -363,7 +355,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    _errorComponent?: ErrorComponentType<
+    _layoutErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
       TData,
@@ -374,7 +366,7 @@ export class Point0<
       TProps
     >
     _pageErrorComponent?: ErrorComponentType<
-      'page',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -384,7 +376,7 @@ export class Point0<
       TProps
     >
     _componentErrorComponent?: ErrorComponentType<
-      'component',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -393,7 +385,7 @@ export class Point0<
       TRouteDefinition,
       TProps
     >
-    _loadingComponent?: LoadingComponentType<
+    _layoutLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
       TData,
@@ -404,7 +396,7 @@ export class Point0<
       TProps
     >
     _pageLoadingComponent?: LoadingComponentType<
-      'page',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -414,7 +406,7 @@ export class Point0<
       TProps
     >
     _componentLoadingComponent?: LoadingComponentType<
-      'component',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -504,7 +496,28 @@ export class Point0<
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
     this._prefetchPolicy = options._prefetchPolicy ?? 'serverClientQuery'
     this._onPrefetchFns = options._onPrefetchFns ?? []
-    this._errorComponent = options._errorComponent
+    this._layoutErrorComponent =
+      options._layoutErrorComponent ??
+      ((({ error }) => {
+        const { stack, ...json } = error.toJSON()
+        // TODO: move console.error to .onClientError
+        console.error(error)
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement('pre', null, JSON.stringify(json, null, 2)),
+          React.createElement('pre', null, stack),
+        )
+      }) as ErrorComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TData,
+        TResponseOutput,
+        TClientData,
+        TInputSchema,
+        TRouteDefinition,
+        TProps
+      >)
     this._pageErrorComponent =
       options._pageErrorComponent ??
       ((({ error }) => {
@@ -518,7 +531,7 @@ export class Point0<
           React.createElement('pre', null, stack),
         )
       }) as ErrorComponentType<
-        'page',
+        DestinationComponentType,
         TQueryResultType,
         TData,
         TResponseOutput,
@@ -536,11 +549,12 @@ export class Point0<
         return React.createElement(
           React.Fragment,
           null,
+          // TODO: for react native use another element, not pre, but text or whatever
           React.createElement('pre', null, JSON.stringify(json, null, 2)),
           React.createElement('pre', null, stack),
         )
       }) as ErrorComponentType<
-        'component',
+        DestinationComponentType,
         TQueryResultType,
         TData,
         TResponseOutput,
@@ -549,11 +563,22 @@ export class Point0<
         TRouteDefinition,
         TProps
       >)
-    this._loadingComponent = options._loadingComponent
+    this._layoutLoadingComponent =
+      options._layoutLoadingComponent ??
+      ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TData,
+        TResponseOutput,
+        TClientData,
+        TInputSchema,
+        TRouteDefinition,
+        TProps
+      >)
     this._pageLoadingComponent =
       options._pageLoadingComponent ??
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
-        'page',
+        DestinationComponentType,
         TQueryResultType,
         TData,
         TResponseOutput,
@@ -565,7 +590,7 @@ export class Point0<
     this._componentLoadingComponent =
       options._componentLoadingComponent ??
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
-        'component',
+        DestinationComponentType,
         TQueryResultType,
         TData,
         TResponseOutput,
@@ -595,7 +620,7 @@ export class Point0<
     _scope?: PointsScope
     _attachedTo?: PointsScope[]
     _letsEndPointType?: TLetsEndPointType
-    _base?: BasePoint | undefined
+    _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
@@ -656,7 +681,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    _errorComponent?: ErrorComponentType<
+    _layoutErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
       TData,
@@ -667,7 +692,7 @@ export class Point0<
       TProps
     >
     _pageErrorComponent?: ErrorComponentType<
-      'page',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -677,7 +702,7 @@ export class Point0<
       TProps
     >
     _componentErrorComponent?: ErrorComponentType<
-      'component',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -686,7 +711,7 @@ export class Point0<
       TRouteDefinition,
       TProps
     >
-    _loadingComponent?: LoadingComponentType<
+    _layoutLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
       TData,
@@ -697,7 +722,7 @@ export class Point0<
       TProps
     >
     _pageLoadingComponent?: LoadingComponentType<
-      'page',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -707,7 +732,7 @@ export class Point0<
       TProps
     >
     _componentLoadingComponent?: LoadingComponentType<
-      'component',
+      DestinationComponentType,
       TQueryResultType,
       TData,
       TResponseOutput,
@@ -801,10 +826,10 @@ export class Point0<
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
       _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
-      _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
+      _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
       _componentErrorComponent: (overrides._componentErrorComponent ?? this._componentErrorComponent) as never,
-      _loadingComponent: (overrides._loadingComponent ?? this._loadingComponent) as never,
+      _layoutLoadingComponent: (overrides._layoutLoadingComponent ?? this._layoutLoadingComponent) as never,
       _pageLoadingComponent: (overrides._pageLoadingComponent ?? this._pageLoadingComponent) as never,
       _componentLoadingComponent: (overrides._componentLoadingComponent ?? this._componentLoadingComponent) as never,
     })
@@ -1143,16 +1168,7 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: ErrorComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    errorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1169,23 +1185,62 @@ export class Point0<
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _errorComponent: errorComponent || (() => null), // in case if we prune error for serverNoSsr customer
+      _layoutErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _pageErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _componentErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+    }) as never
+  }
+
+  layoutError(
+    layoutErrorComponent: TLetsEndPointType extends 'layout'
+      ? ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : ErrorComponentType,
+  ): NiceMiddlePoint<
+    TLetsEndPointType extends 'layout' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _layoutErrorComponent: (layoutErrorComponent as never) || (() => null), // in case if we prune layoutError for serverNoSsr customer
     }) as never
   }
 
   pageError(
-    pageErrorComponent: ErrorComponentType<
-      'page',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    pageErrorComponent: TLetsEndPointType extends 'page'
+      ? ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : ErrorComponentType,
   ): NiceMiddlePoint<
-    TPointType,
+    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1199,19 +1254,14 @@ export class Point0<
     TProps
   >
   pageError(
-    head: ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-    pageErrorComponent: ErrorComponentType<
-      'page',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    ...args: TLetsEndPointType extends 'page'
+      ? [
+          head: ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+          pageErrorComponent: ErrorComponentType,
+        ]
+      : never
   ): NiceMiddlePoint<
-    TPointType,
+    'renderMiddleware',
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1226,30 +1276,20 @@ export class Point0<
   >
   pageError(
     ...args:
+      | [ErrorHeadFn<any, any, any, any, any, any>, ErrorComponentType<any, any, any, any, any, any, any, any>]
       | [
-          ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-          ErrorComponentType<
-            'page',
-            TQueryResultType,
-            TData,
-            TResponseOutput,
-            TClientData,
-            TInputSchema,
-            TRouteDefinition,
-            TProps
-          >,
-        ]
-      | [
-          ErrorComponentType<
-            'page',
-            TQueryResultType,
-            TData,
-            TResponseOutput,
-            TClientData,
-            TInputSchema,
-            TRouteDefinition,
-            TProps
-          >,
+          TLetsEndPointType extends 'page'
+            ? ErrorComponentType<
+                DestinationComponentType,
+                TQueryResultType,
+                TData,
+                TResponseOutput,
+                TClientData,
+                TInputSchema,
+                TRouteDefinition,
+                TProps
+              >
+            : ErrorComponentType,
         ]
   ) {
     const [head, pageErrorComponent] = args.length === 2 ? args : [undefined, args[0]]
@@ -1259,21 +1299,24 @@ export class Point0<
       : (options) => (!options.error ? {} : headFn(options as never))
     return this._continue({
       _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
-      _pageErrorComponent: pageErrorComponent,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
+      _pageErrorComponent: (pageErrorComponent as never) || (() => null), // in case if we prune pageError for serverNoSsr customer
     }) as never
   }
 
   componentError(
-    componentErrorComponent: ErrorComponentType<
-      'component',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    componentErrorComponent: TLetsEndPointType extends 'component'
+      ? ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1290,23 +1333,58 @@ export class Point0<
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _componentErrorComponent: componentErrorComponent || (() => null), // in case if we prune componentError for serverNoSsr customer
+      _componentErrorComponent: (componentErrorComponent as never) || (() => null), // in case if we prune componentError for serverNoSsr customer
+    }) as never
+  }
+
+  layoutLoading(
+    layoutLoadingComponent: TLetsEndPointType extends 'layout'
+      ? LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : LoadingComponentType,
+  ): NiceMiddlePoint<
+    TLetsEndPointType extends 'layout' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null), // in case if we prune layoutLoading for serverNoSsr customer
     }) as never
   }
 
   pageLoading(
-    pageLoadingComponent: LoadingComponentType<
-      'page',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    pageLoadingComponent: TLetsEndPointType extends 'page'
+      ? LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : LoadingComponentType,
   ): NiceMiddlePoint<
-    TPointType,
+    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1320,19 +1398,14 @@ export class Point0<
     TProps
   >
   pageLoading(
-    head: LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-    pageLoadingComponent: LoadingComponentType<
-      'page',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    ...args: TLetsEndPointType extends 'page'
+      ? [
+          head: LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+          pageLoadingComponent: LoadingComponentType,
+        ]
+      : never
   ): NiceMiddlePoint<
-    TPointType,
+    'renderMiddleware',
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1349,28 +1422,21 @@ export class Point0<
     ...args:
       | [
           LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-          LoadingComponentType<
-            'page',
-            TQueryResultType,
-            TData,
-            TResponseOutput,
-            TClientData,
-            TInputSchema,
-            TRouteDefinition,
-            TProps
-          >,
+          LoadingComponentType,
         ]
       | [
-          LoadingComponentType<
-            'page',
-            TQueryResultType,
-            TData,
-            TResponseOutput,
-            TClientData,
-            TInputSchema,
-            TRouteDefinition,
-            TProps
-          >,
+          TLetsEndPointType extends 'page'
+            ? LoadingComponentType<
+                DestinationComponentType,
+                TQueryResultType,
+                TData,
+                TResponseOutput,
+                TClientData,
+                TInputSchema,
+                TRouteDefinition,
+                TProps
+              >
+            : LoadingComponentType,
         ]
   ) {
     const [head, pageLoadingComponent] = args.length === 2 ? args : [undefined, args[0]]
@@ -1380,23 +1446,26 @@ export class Point0<
       : (options) => (!options.loading ? {} : headFn(options as never))
     return this._continue({
       _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
-      _pageLoadingComponent: pageLoadingComponent,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
+      _pageLoadingComponent: (pageLoadingComponent as never) || (() => null), // in case if we prune pageLoading for serverNoSsr customer
     }) as never
   }
 
   componentLoading(
-    componentLoadingComponent: LoadingComponentType<
-      'component',
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    componentLoadingComponent: TLetsEndPointType extends 'component'
+      ? LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : LoadingComponentType,
   ): NiceMiddlePoint<
-    TPointType,
+    TLetsEndPointType extends 'component' ? 'renderMiddleware' : TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1411,21 +1480,12 @@ export class Point0<
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _componentLoadingComponent: componentLoadingComponent || (() => null), // in case if we prune componentLoading for serverNoSsr customer
+      _componentLoadingComponent: (componentLoadingComponent as never) || (() => null), // in case if we prune componentLoading for serverNoSsr customer
     }) as never
   }
 
   loading(
-    loadingComponent: LoadingComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TData,
-      TResponseOutput,
-      TClientData,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    loadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1442,7 +1502,11 @@ export class Point0<
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _loadingComponent: loadingComponent || (() => null), // in case if we prune loading for serverNoSsr customer
+      _layoutLoadingComponent: (loadingComponent as never) || ((() => null) as never), // in case if we prune loading for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _pageLoadingComponent: (loadingComponent as never) || ((() => null) as never), // in case if we prune loading for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      _componentLoadingComponent: (loadingComponent as never) || ((() => null) as never), // in case if we prune loading for serverNoSsr customer
     }) as never
   }
 
@@ -1943,10 +2007,10 @@ export class Point0<
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
       _wrappers: this._base?._wrappers ?? [],
-      _errorComponent: this._base?._errorComponent as never,
+      _layoutErrorComponent: this._base?._layoutErrorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
       _componentErrorComponent: this._base?._componentErrorComponent as never,
-      _loadingComponent: this._base?._loadingComponent as never,
+      _layoutLoadingComponent: this._base?._layoutLoadingComponent as never,
       _pageLoadingComponent: this._base?._pageLoadingComponent as never,
       _componentLoadingComponent: this._base?._componentLoadingComponent as never,
     }) as never
@@ -1975,47 +2039,25 @@ export class Point0<
     })
   }
 
-  base(): TLetsEndPointType extends 'base'
-    ? NiceBaseEndPoint<
-        'base',
-        UndefinedEndPointType,
-        TRequiredCtx,
-        TCtx,
-        TData,
-        TClientData,
-        TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
-        TResponseOutput,
-        TQueryResultType,
-        TProps
-      >
-    : NiceMiddlePoint<
-        'base',
-        TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-        TRequiredCtx,
-        TCtx,
-        TData,
-        TClientData,
-        TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
-        TResponseOutput,
-        TQueryResultType,
-        TProps
-      > {
-    if (this._letsEndPointType === 'base') {
-      return this._continue({
-        _pointType: 'base',
-        _base: this as never as BasePoint,
-        _letsEndPointType: undefined,
-      }) as never
-    } else {
-      // it is means, that we can mark as base any other point type like layout, so we can restore loading, error, drom it not from higher base
-      return this._continue({
-        _base: this as never as BasePoint,
-      }) as never
-    }
+  base(): NiceBaseEndPoint<
+    'base',
+    UndefinedEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _pointType: 'base',
+      _base: this as never as BasePoint,
+      _letsEndPointType: undefined,
+    }) as never
   }
 
   page<
@@ -2210,6 +2252,7 @@ export class Point0<
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _layout: layout || ((async ({ children }: { children: React.ReactNode }) => await children) as never), // in case if we prune layout for serverNoSsr customer
       _letsEndPointType: undefined,
+      _base: this as never as BasePoint,
     })
     const layoutWithPoint = point._Layout
     Object.assign(layoutWithPoint, {
@@ -2521,11 +2564,11 @@ export class Point0<
     TRouteDefinition,
     TProps
   > {
-    return (this._errorComponent ??
-      {
-        page: this._pageErrorComponent,
-        component: this._componentErrorComponent,
-      }[type]) as never
+    return {
+      page: this._pageErrorComponent,
+      component: this._componentErrorComponent,
+      layout: this._layoutErrorComponent,
+    }[type] as never
   }
 
   private _getLoadingComponent<TType extends DestinationComponentType>({
@@ -2542,11 +2585,11 @@ export class Point0<
     TRouteDefinition,
     TProps
   > {
-    return (this._loadingComponent ??
-      {
-        page: this._pageLoadingComponent,
-        component: this._componentLoadingComponent,
-      }[type]) as never
+    return {
+      page: this._pageLoadingComponent,
+      component: this._componentLoadingComponent,
+      layout: this._layoutLoadingComponent,
+    }[type] as never
   }
 
   private _withWrappers(component: React.ReactNode): Exclude<React.ReactNode, Promise<any>> {
@@ -4530,9 +4573,9 @@ export class Point0<
   scrollPosition(
     getter: ScrollPositionGetter,
     setter: ScrollPositionSetter,
-  ): Point0<
+  ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
     TData,
@@ -4546,7 +4589,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType,
+      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
       TRequiredCtx,
       TCtx,
       TData,
@@ -4562,15 +4605,15 @@ export class Point0<
       _scrollPositionGetter: getter ?? this._scrollPositionGetter,
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _scrollPositionSetter: setter ?? this._scrollPositionSetter,
-    })
+    }) as never
   }
 
   scrollRestore(
     // true - restore, false - do not restore, null - set {x: 0, y: 0}
     policy: ScrollPositionRestorePolicy | boolean | null,
-  ): Point0<
+  ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
     TData,
@@ -4584,7 +4627,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType,
+      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
       TRequiredCtx,
       TCtx,
       TData,
@@ -4597,7 +4640,7 @@ export class Point0<
       TProps
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy,
-    })
+    }) as never
   }
 
   private static readonly _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> =
@@ -4607,9 +4650,9 @@ export class Point0<
 
   prefetchPolicy(
     policy: PagePrefetchPolicy,
-  ): Point0<
+  ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
     TData,
@@ -4623,7 +4666,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType,
+      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
       TRequiredCtx,
       TCtx,
       TData,
@@ -4636,14 +4679,14 @@ export class Point0<
       TProps
     >({
       _prefetchPolicy: policy,
-    })
+    }) as never
   }
 
   onPrefetch(
     fn: OnPrefetchFn,
-  ): Point0<
+  ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
     TData,
@@ -4657,7 +4700,7 @@ export class Point0<
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType,
+      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
       TRequiredCtx,
       TCtx,
       TData,
@@ -4670,7 +4713,7 @@ export class Point0<
       TProps
     >({
       _onPrefetchFns: [...this._onPrefetchFns, fn],
-    })
+    }) as never
   }
 }
 

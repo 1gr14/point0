@@ -2,18 +2,11 @@
 ------ before start0 -----
 --------------------------
 
-? if fount in routes Rpute0.create('...') then in waler use string from it
-
-double check what we broke in lets and that it is suitable to what we have in types
-Лэйоуту не нужно самому объявлять без, пусть он просто модифицирует квери опшены чтоли и сам становится базой сам по себе
-
 check useLocation, is it really return no route on 404, and is it correctly return exact, parent, etc
 provide Routes to use location, so if no route then exact false, else exact true
 
 Link prefetch on hover .prefetchOnHover() available for any point, and working with walker so lazy points know it
 Link access {href}|{to}|{route=string, input={}}, available via const Link = assignRoutesToLink(Link, Routes)
-
-on request to server for query or mutation which has no serverLoader throw error
 
 page with name 404 auto insert in router routes
 
@@ -112,6 +105,7 @@ analyze if there same id points or route points, and throw error
 ? get base/root specific things right from base, do not continue it after .base()
 ? Point0 → P0, cli p0
 rest important TODO in code
+? on request to server for query or mutation which has no serverLoader throw error
 
 --------------------------
 ------ after start0 ------

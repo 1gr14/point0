@@ -107,8 +107,9 @@ export type PointType =
   | 'mutation'
   | 'layout'
   | 'clientMiddleware'
+  | 'renderMiddleware'
   | 'provider'
-export type EndPointType = Exclude<PointType, 'middleware' | 'clientMiddleware'>
+export type EndPointType = Exclude<PointType, 'middleware' | 'clientMiddleware' | 'renderMiddleware'>
 export type RenderablePointType = Extract<PointType, 'page' | 'component' | 'layout'>
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
@@ -685,16 +686,16 @@ export type MountableComponent<
 
 // extra components
 
-export type DestinationComponentType = 'page' | 'component'
+export type DestinationComponentType = 'page' | 'component' | 'layout'
 export type LoadingComponentProps<
-  TType extends DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TProps extends Props | UndefinedProps,
+  TType extends DestinationComponentType = DestinationComponentType,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = {
   type: TType
 } & SpecificUseLoaderResult<
@@ -708,14 +709,14 @@ export type LoadingComponentProps<
   AnyLocation
 > & { props: FinalProps<TProps> }
 export type LoadingComponentType<
-  TType extends DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TProps extends Props | UndefinedProps,
+  TType extends DestinationComponentType = DestinationComponentType,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<
   LoadingComponentProps<
     TType,
@@ -730,14 +731,14 @@ export type LoadingComponentType<
 >
 
 export type ErrorComponentProps<
-  TType extends DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TProps extends Props | UndefinedProps,
+  TType extends DestinationComponentType = DestinationComponentType,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = {
   type: TType
 } & Omit<
@@ -747,14 +748,14 @@ export type ErrorComponentProps<
 
 // TODO: error component do not know anything about query, becouse it can be defined in any place before
 export type ErrorComponentType<
-  TType extends DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TProps extends Props | UndefinedProps,
+  TType extends DestinationComponentType = DestinationComponentType,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<
   ErrorComponentProps<
     TType,
@@ -1015,12 +1016,12 @@ export type ProviderValueSetterFn<
 // head
 
 export type SuccessHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = (
   options: Omit<
     PageComponentProps<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, any>,
@@ -1029,12 +1030,12 @@ export type SuccessHeadFn<
 ) => ResolvableHead | string
 
 export type ErrorHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
   options: Omit<
     ErrorComponentProps<
@@ -1052,12 +1053,12 @@ export type ErrorHeadFn<
 ) => ResolvableHead | string
 
 export type LoadingHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
-  TClientData extends Data | UndefinedData,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponseOutput extends ResponseOutput | UndefinedResponseOutput = ResponseOutput | UndefinedResponseOutput,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
   options: Omit<
     LoadingComponentProps<
@@ -1157,9 +1158,11 @@ export type NiceRootMiddlePoint<
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
   | 'fetchOptions'
+  | 'layoutError'
   | 'pageError'
   | 'componentError'
   | 'error'
+  | 'layoutLoading'
   | 'pageLoading'
   | 'componentLoading'
   | 'loading'
@@ -1214,9 +1217,11 @@ export type NiceBaseMiddlePoint<
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
   | 'fetchOptions'
+  | 'layoutError'
   | 'pageError'
   | 'componentError'
   | 'error'
+  | 'layoutLoading'
   | 'pageLoading'
   | 'componentLoading'
   | 'loading'
@@ -1267,8 +1272,8 @@ export type NicePageMiddlePoint<
     ?
         | 'page'
         | 'fetchOptions'
-        | 'error'
-        | 'loading'
+        | 'pageError'
+        | 'pageLoading'
         | 'wrapper'
         | 'input'
         | 'ctx'
@@ -1286,7 +1291,9 @@ export type NicePageMiddlePoint<
         | 'Infer'
         | 'query'
         | 'infiniteQuery'
-    : 'page' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
+    : TPointType extends 'clientMiddleware'
+      ? 'page' | 'pageError' | 'pageLoading' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
+      : 'page' | 'pageError' | 'pageLoading' | 'point' | 'Infer'
 >
 
 export type NiceComponentMiddlePoint<
@@ -1321,8 +1328,8 @@ export type NiceComponentMiddlePoint<
     ?
         | 'component'
         | 'fetchOptions'
-        | 'error'
-        | 'loading'
+        | 'componentError'
+        | 'componentLoading'
         | 'wrapper'
         | 'input'
         | 'ctx'
@@ -1336,7 +1343,17 @@ export type NiceComponentMiddlePoint<
         | 'Infer'
         | 'query'
         | 'infiniteQuery'
-    : 'component' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
+    : TPointType extends 'clientMiddleware'
+      ?
+          | 'component'
+          | 'componentError'
+          | 'componentLoading'
+          | 'clientLoader'
+          | 'point'
+          | 'Infer'
+          | 'query'
+          | 'infiniteQuery'
+      : 'component' | 'componentError' | 'componentLoading' | 'point' | 'Infer'
 >
 
 export type NiceResponseMiddlePoint<
@@ -1534,10 +1551,11 @@ export type NiceLayoutMiddlePoint<
     ?
         | 'layout'
         | 'fetchOptions'
+        | 'pageQueryOptions'
         | 'pageError'
-        | 'error'
+        | 'layoutError'
         | 'pageLoading'
-        | 'loading'
+        | 'layoutLoading'
         | 'wrapper'
         | 'input'
         | 'ctx'
@@ -1555,7 +1573,9 @@ export type NiceLayoutMiddlePoint<
         | 'Infer'
         | 'query'
         | 'infiniteQuery'
-    : 'layout' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
+    : TPointType extends 'clientMiddleware'
+      ? 'layout' | 'layoutLoading' | 'layoutError' | 'clientLoader' | 'point' | 'Infer' | 'query' | 'infiniteQuery'
+      : 'layout' | 'layoutLoading' | 'layoutError' | 'point' | 'Infer'
 >
 
 export type NiceProviderMiddlePoint<
