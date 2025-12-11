@@ -56,6 +56,9 @@ export const BestIdeaComponent = client
     ...o.data,
     cllll: 'cllll',
   }))
+  .loading(({ input, props }) => {
+    return <div>Loading...</div>
+  })
   .component(({ data, props }) => {
     return (
       <div>
@@ -81,7 +84,7 @@ export default generalLayout
   .onPrefetch(async () => {
     await BestIdeaComponent.point.prefetchQuery({ x: 10, y: 20 })
   })
-  .pageLoading((o) => {
+  .loading((o) => {
     return <div>Loadingx...</div>
   })
   // .loader()

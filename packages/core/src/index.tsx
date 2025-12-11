@@ -1168,33 +1168,7 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: ErrorComponentType,
-  ): NiceMiddlePoint<
-    TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _layoutErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _pageErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _componentErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
-    }) as never
-  }
-
-  layoutError(
-    layoutErrorComponent: TLetsEndPointType extends 'layout'
+    errorComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
       ? ErrorComponentType<
           DestinationComponentType,
           TQueryResultType,
@@ -1207,7 +1181,90 @@ export class Point0<
         >
       : ErrorComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'layout' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  error(
+    ...args: TLetsEndPointType extends 'page'
+      ? [
+          head: ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+          pageErrorComponent: ErrorComponentType<
+            DestinationComponentType,
+            TQueryResultType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >,
+        ]
+      : never
+  ): NiceMiddlePoint<
+    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  error(...args: [head: any, errorComponent: any] | [errorComponent: any]) {
+    const [head, errorComponent] = (args.length === 2 ? args : [undefined, args[0]]) as [
+      ErrorHeadFn | undefined,
+      ErrorComponentType,
+    ]
+    if (this._letsEndPointType === 'page') {
+      const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+      const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
+        ? undefined
+        : (options) => (!options.error ? {} : headFn(options as never))
+      return this._continue({
+        _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
+        _pageErrorComponent: (errorComponent as never) || (() => null), // in case if we prune pageError for serverNoSsr customer
+      }) as never
+    } else if (this._letsEndPointType === 'layout') {
+      return this._continue({
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _layoutErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+      }) as never
+    } else if (this._letsEndPointType === 'component') {
+      return this._continue({
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _componentErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+      }) as never
+    } else {
+      return this._continue({
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _layoutErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _pageErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _componentErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+      }) as never
+    }
+  }
+
+  layoutError(
+    layoutErrorComponent: ErrorComponentType,
+  ): NiceMiddlePoint<
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1227,20 +1284,10 @@ export class Point0<
   }
 
   pageError(
-    pageErrorComponent: TLetsEndPointType extends 'page'
-      ? ErrorComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TData,
-          TResponseOutput,
-          TClientData,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
-      : ErrorComponentType,
+    head: ErrorHeadFn,
+    pageErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1254,14 +1301,9 @@ export class Point0<
     TProps
   >
   pageError(
-    ...args: TLetsEndPointType extends 'page'
-      ? [
-          head: ErrorHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-          pageErrorComponent: ErrorComponentType,
-        ]
-      : never
+    pageErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
-    'renderMiddleware',
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1275,23 +1317,21 @@ export class Point0<
     TProps
   >
   pageError(
-    ...args:
-      | [ErrorHeadFn<any, any, any, any, any, any>, ErrorComponentType<any, any, any, any, any, any, any, any>]
-      | [
-          TLetsEndPointType extends 'page'
-            ? ErrorComponentType<
-                DestinationComponentType,
-                TQueryResultType,
-                TData,
-                TResponseOutput,
-                TClientData,
-                TInputSchema,
-                TRouteDefinition,
-                TProps
-              >
-            : ErrorComponentType,
-        ]
-  ) {
+    ...args: [head: ErrorHeadFn, pageErrorComponent: ErrorComponentType] | [pageErrorComponent: ErrorComponentType]
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
     const [head, pageErrorComponent] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
@@ -1305,18 +1345,7 @@ export class Point0<
   }
 
   componentError(
-    componentErrorComponent: TLetsEndPointType extends 'component'
-      ? ErrorComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TData,
-          TResponseOutput,
-          TClientData,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
-      : ErrorComponentType,
+    componentErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1338,20 +1367,9 @@ export class Point0<
   }
 
   layoutLoading(
-    layoutLoadingComponent: TLetsEndPointType extends 'layout'
-      ? LoadingComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TData,
-          TResponseOutput,
-          TClientData,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
-      : LoadingComponentType,
+    layoutLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'layout' ? 'renderMiddleware' : TPointType,
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1371,20 +1389,10 @@ export class Point0<
   }
 
   pageLoading(
-    pageLoadingComponent: TLetsEndPointType extends 'page'
-      ? LoadingComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TData,
-          TResponseOutput,
-          TClientData,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
-      : LoadingComponentType,
+    head: LoadingHeadFn,
+    pageLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1398,14 +1406,9 @@ export class Point0<
     TProps
   >
   pageLoading(
-    ...args: TLetsEndPointType extends 'page'
-      ? [
-          head: LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-          pageLoadingComponent: LoadingComponentType,
-        ]
-      : never
+    pageLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
-    'renderMiddleware',
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1420,25 +1423,22 @@ export class Point0<
   >
   pageLoading(
     ...args:
-      | [
-          LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
-          LoadingComponentType,
-        ]
-      | [
-          TLetsEndPointType extends 'page'
-            ? LoadingComponentType<
-                DestinationComponentType,
-                TQueryResultType,
-                TData,
-                TResponseOutput,
-                TClientData,
-                TInputSchema,
-                TRouteDefinition,
-                TProps
-              >
-            : LoadingComponentType,
-        ]
-  ) {
+      | [head: LoadingHeadFn, pageLoadingComponent: LoadingComponentType]
+      | [pageLoadingComponent: LoadingComponentType]
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
     const [head, pageLoadingComponent] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
@@ -1452,20 +1452,9 @@ export class Point0<
   }
 
   componentLoading(
-    componentLoadingComponent: TLetsEndPointType extends 'component'
-      ? LoadingComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TData,
-          TResponseOutput,
-          TClientData,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
-      : LoadingComponentType,
+    componentLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'component' ? 'renderMiddleware' : TPointType,
+    TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1485,9 +1474,20 @@ export class Point0<
   }
 
   loading(
-    loadingComponent: LoadingComponentType,
+    pageLoadingComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
+      ? LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TData,
+          TResponseOutput,
+          TClientData,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >
+      : LoadingComponentType,
   ): NiceMiddlePoint<
-    TPointType,
+    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
     TCtx,
@@ -1499,15 +1499,69 @@ export class Point0<
     TResponseOutput,
     TQueryResultType,
     TProps
-  > {
-    return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _layoutLoadingComponent: (loadingComponent as never) || ((() => null) as never), // in case if we prune loading for serverNoSsr customer
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _pageLoadingComponent: (loadingComponent as never) || ((() => null) as never), // in case if we prune loading for serverNoSsr customer
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _componentLoadingComponent: (loadingComponent as never) || ((() => null) as never), // in case if we prune loading for serverNoSsr customer
-    }) as never
+  >
+  loading(
+    ...args: TLetsEndPointType extends 'page'
+      ? [
+          head: LoadingHeadFn<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TRouteDefinition>,
+          pageLoadingComponent: LoadingComponentType<
+            DestinationComponentType,
+            TQueryResultType,
+            TData,
+            TResponseOutput,
+            TClientData,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >,
+        ]
+      : never
+  ): NiceMiddlePoint<
+    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  loading(...args: [head: any, pageLoadingComponent: any] | [pageLoadingComponent: any]) {
+    const [head, ladingComponent] = args.length === 2 ? args : [undefined, args[0]]
+    if (this._letsEndPointType === 'page') {
+      const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+      const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
+        ? undefined
+        : (options) => (!options.error ? {} : headFn(options as never))
+      return this._continue({
+        _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
+        _pageLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune pageLoading for serverNoSsr customer
+      }) as never
+    } else if (this._letsEndPointType === 'layout') {
+      return this._continue({
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _layoutLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+      }) as never
+    } else if (this._letsEndPointType === 'component') {
+      return this._continue({
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _componentLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+      }) as never
+    } else {
+      return this._continue({
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _layoutLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _pageLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        _componentLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+      }) as never
+    }
   }
 
   wrapper(
