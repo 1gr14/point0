@@ -1,4 +1,5 @@
 import { Route0, Routes } from '@devp0nt/route0'
+import { createLinkWithRoutes } from '@point0/wouter'
 
 const home = Route0.create('/')
 const empty = home.extend('/empty')
@@ -17,3 +18,5 @@ export const routes = Routes.create({
   idea,
   ideaNews,
 })
+
+export const LinkX = createLinkWithRoutes(routes)

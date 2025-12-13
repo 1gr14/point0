@@ -1,4 +1,4 @@
-import type { AnyLocation, AnyRoute, RoutesPretty } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, FlatInput, HasParams, RoutesPretty } from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
 import { _wrapUseNavigate, Point0, RouterContextProvider } from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
@@ -12,8 +12,8 @@ import {
   Router as WouterRouter,
 } from 'wouter'
 
-import type { BrowserLocationHook } from 'wouter/use-browser-location'
 import type { BaseLocationHook, NavigationalProps } from 'wouter'
+import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
@@ -29,7 +29,7 @@ type HTMLLinkAttributes = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'classNa
   className?: string | undefined | ((isActive: boolean) => string | undefined)
 }
 
-type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
+export type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
   AsChildProps<
     { children: ReactElement; onClick?: MouseEventHandler },
     HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
@@ -107,6 +107,31 @@ export const Link = (props: LinkProps) => {
       }}
     />
   )
+}
+
+export const createLinkWithRoutes = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
+  return <TRouteName extends Exclude<keyof TRoutes, '_'>>(
+    props: {
+      route: TRouteName
+    } & (HasParams<TRoutes[TRouteName]> extends true
+      ? { input: FlatInput<TRoutes[TRouteName]> }
+      : { input?: FlatInput<TRoutes[TRouteName]> }) &
+      AsChildProps<
+        { children: ReactElement; onClick?: MouseEventHandler },
+        HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
+      >,
+  ) => {
+    const { route: routeName, input, ...rest } = props
+    const to = useMemo(() => {
+      const route = routes[routeName]
+      if (!route) {
+        console.error(`Route ${String(route)} not found`)
+        return '#'
+      }
+      return route.flat(input || {})
+    }, [routeName, JSON.stringify(input)])
+    return <Link {...(rest as any)} to={to} />
+  }
 }
 
 export const Router = ({

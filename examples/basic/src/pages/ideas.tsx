@@ -1,8 +1,7 @@
-import { Link } from '@point0/wouter'
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
-import { routes } from '../lib/routes.js'
+import { LinkX } from '../lib/routes.js'
 
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
@@ -49,7 +48,10 @@ export const ideasPage = generalLayout
               .map((idea) => (
                 <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
                   <h3>
-                    <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link>
+                    {/* <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link> */}
+                    <LinkX route="idea" input={{ id: idea.id, '#': 'zxc' }}>
+                      {idea.title}
+                    </LinkX>
                   </h3>
                   <p>
                     {idea.description}
@@ -57,7 +59,10 @@ export const ideasPage = generalLayout
                     Amazing: {idea.amazing}
                   </p>
                   <p>
-                    <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link>
+                    {/* <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link> */}
+                    <LinkX route="ideaNews" input={{ id: idea.id }}>
+                      News
+                    </LinkX>
                   </p>
                 </div>
               ))}
@@ -74,7 +79,8 @@ export const ideasPage = generalLayout
             </button>
           )}
           <nav>
-            <Link to="/">← Back to Home</Link>
+            {/* <Link to="/">← Back to Home</Link> */}
+            <LinkX route="home">← Back to Home</LinkX>
           </nav>
         </div>
       )
