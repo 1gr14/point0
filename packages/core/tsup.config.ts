@@ -3,7 +3,7 @@ import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 
 // TODO: set best options
 const general = {
-  entry: ['src/index.tsx'],
+  entry: ['src/index.ts'],
   clean: false,
   dts: true,
   sourcemap: true,
