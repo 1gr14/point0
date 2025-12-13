@@ -28,7 +28,7 @@ export type UseIsInitalSsrLocationFn = () => boolean
 
 type RouterContextValue = {
   ssrLocation: AnyLocation | null
-  isSsr: boolean
+  // isSsr: boolean
   prevLocation: AnyLocation | null
   currentLocation: AnyLocation
   nextLocation: AnyLocation | null
@@ -66,13 +66,13 @@ export function RouterContextProvider({
   useEffect(() => {
     SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
   }, [currentLocation])
-  const [isSsr, setIsSsr] = useState(!!ssrLocation)
 
-  useEffect(() => {
-    if (isSsr) {
-      setIsSsr(false)
-    }
-  }, [isSsr])
+  // const [isSsr, setIsSsr] = useState(!!ssrLocation)
+  // useEffect(() => {
+  //   if (isSsr) {
+  //     setIsSsr(false)
+  //   }
+  // }, [isSsr])
 
   const value = useMemo(
     () => ({
@@ -87,7 +87,7 @@ export function RouterContextProvider({
       setStatus,
       setError,
       useAdapterLocation,
-      isSsr,
+      // isSsr,
     }),
     [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
@@ -112,12 +112,14 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- try remove usage of routerCtx.currentLocation
   location ??= locationByAdapter ?? routerCtx.currentLocation
   return useMemo(() => {
-    const hashSuffix = routerCtx.isSsr ? '' : typeof window !== 'undefined' ? window.location.hash : ''
+    // const hashSuffix = routerCtx.isSsr ? '' : typeof window !== 'undefined' ? window.location.hash : ''
+    const hashSuffix = typeof window !== 'undefined' ? window.location.hash : ''
     if (!route) {
       return { ...(PointsManager.getPointsManager().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
     }
     return { ...(Route0.from(route).getLocation(location) as KnownLocation<TRoute>), hash: hashSuffix }
-  }, [route, location, PointsManager.getPointsManager().routesHash, routerCtx.isSsr])
+    // }, [route, location, PointsManager.getPointsManager().routesHash, routerCtx.isSsr])
+  }, [route, location, PointsManager.getPointsManager().routesHash])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {

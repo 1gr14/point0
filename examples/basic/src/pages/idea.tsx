@@ -2,7 +2,6 @@ import { Link } from '@point0/wouter'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
-import { Link0 } from '@/lib/routes.js'
 
 export const getIdea = async (ctx: Ctx, id: number) => {
   const idea = await ctx.prisma.idea.findUniqueOrThrow({
@@ -24,7 +23,6 @@ export const ideaPage = ideaLayout
     return [202, { idea }]
   })
   .clientLoader(async ({ data, location }) => {
-    console.log('location', location)
     return {
       ...data,
       zxc: 333,
