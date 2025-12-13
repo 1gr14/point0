@@ -2,6 +2,14 @@
 ------ before start0 -----
 --------------------------
 
+Разрещить пустой пейдж, компонент, лэйоут
+Лэйоут лоадинг в лэйоуте надо убрать, он такой же как лоадинг. Не, надо просто вернуть обычный дашлоадинг и всё заработает
+Проверить, что при фетче и эроре фетч возвращает такую же эррорз какую возвращает сервер такую и видит фронт со всей метой
+Убедиться, что на сервер мы отправляем рау инпут, и в квери Кеше храним рпуинпут
+Роут0 пусть на входе принимает только строки
+убрать рут из летс
+вернуть клиент лоадер в рута
+
 check useLocation, is it really return no route on 404, and is it correctly return exact, parent, etc
 provide Routes to use location, so if no route then exact false, else exact true
 
@@ -15,6 +23,10 @@ page with name 404 auto insert in router routes
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it
 Префеоч мод есть только у маунтаблов, и причём видомо дегидрейтед квери есть только у пейджа, надо проверить
+
+.info() с положением каждого отдельного компонента
+
+.enabled()
 
 file upload
 
@@ -35,11 +47,14 @@ prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in e
 
 - check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
 ! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
+Парс вайт мод
 
 ---
 
 HMR
-Вероятно хмру поможет если я буду возвращать просто внутренний компонент, а на местах, где рендерю оборачивал бы в Компонент и передавал в него сам поинт. Или может даже достаточно возвращать сам компонент, а на местах использотвать point.Component, а накрайняк если нельзя на него даже ничгео ассайнить, тогда из displayName возьмём название поинта и подтянем его из глобала когда будем делать <Component0 point={point} />
+Вероятно хмру поможет если я буду возвращать просто внутренний компонент, а на местах, где рендерю оборачивал бы в Компонент и передавал в него сам поинт. Или может даже достаточно возвращать сам компонент, а на местах использотвать point.Component, а накрайняк если нельзя на него даже ничгео ассайнить, тогда из displayName возьмём название поинта и подтянем его из глобала когда будем делать <Mount point={point} /> <point.Page /> <point.Component /> <point.Layout />
+Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
+FinalClientData, FinalQueriedClientData в инфер
 
 EXPO
 expo example
@@ -63,6 +78,11 @@ refactor Ctx0
 refactor Env0
 refactor Logger0
 
+mcp server for point0, so when it is in dev mode it provides info about all points
+mcp server .lets('mcp', 'whatever') or mdx doc. even with loaders. And it becomes available via mcp server, and can be used to autogonerate .curecor rules or event not
+mcp server .lets('batchMcp').mcp([{name,description,input,loader?}]) for extrnal libraries like UiHero and all others so we always have fresh docs for each library we use
+
+drizzle
 unwind and tailwind
 https://oxc.rs/docs/guide/usage/linter/config
 
@@ -111,13 +131,16 @@ rest important TODO in code
 ------ after start0 ------
 --------------------------
 
-.lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
+? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
 ? .lets('init', 'something').onError().onSuccess().init({client:()=>{}, server:()=>{}, clientAndServer:()=>{}, deps: ['otherInitPoint1', 'otherInitPoint2']})
 
 https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
+
+.lets('cron')
 
 .robotsTxt(take, skip)
 
@@ -149,10 +172,6 @@ launch
 ------ launch-notes ------
 --------------------------
 
-Уточнить в промо, что всё грузится одномоментно, вообще не дожидаясь ничего, и приложить скрины ремикса
-Философия: используя либу ты не должен думать как она работает, должен думать да я с этой либы горы сверну, и не чувствовать её, а делать своё дело
-Философия: ты должен просто увидев пару примеров понять как тебе использовать библиотеку
-Фотка с воздушным шариком и колпачком праздничным в честь лоунча поинт0
 
 
 ---------------------- 
@@ -193,14 +212,15 @@ x.server.send(input); x.client.send(input); x.client.useSubscribe({ input, room,
 !!!!!! return data getter by id .liveQuery.initialData<TData>([] if no loaders provider can be setted up);({subscribeToIds: o => o.data.id, onSubscribe: () => {check ability so subscribe to ids, or even maube rooms inputs}, updateItemByIdAndData: <TLiveData>o => o.data}); .liveInfinityQuery({subscribeToIds: o => o.data.pages.flatMap(p => p.item.id), subscribeToNewItems (default = !nextCursor), updateItemByIdAndData: <TLiveData>o => {...o.data.pages.find(o.id), ...o.data}), addItemByIdAndData: <TLiveData>o => [...pages, page]); myLiveQuery.server.send({ id: 1, isNew: boolean, data: {name: 'John'} }); myLiveQuery.useLiveQuery({ids: [1]});
 elysia and uWebSocket separate realizations
 И вообще либу обёртку для призмы и чего либо ещё сделать, чтобы можно было эту обёртку использовать, для создания и редактирования и запроса из бд с текущим апи призмы, но возвращать нам будут не только ответ на запрос, но и хелперы для лайв квери и тогда любую бд можно превратить в лайв-бд
+Лоадер лайв квери должен просто вернуть билдер дризла или объект с роу и информацией о подписках (айдиФилдНейм)
+Для дкса просто фильтр пусть будет в мессенджере и он может быть зод схемой, а может быть функцией которую мы застрингифаем и будем использовать при рассылке
+Обёртка над дризлом для реальайма на бэке запоминает что надо отправлять, а возвращая на фронт кроме роусов ещё метк, тем самым фронт как раз и заставляет на это подписаться
 
 -------------------
 ------ later ------
 -------------------
 
 meta object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
-
-mcp server for point0, so when it is in dev mode it provides info about all points
 
 standard schema
 
