@@ -11,7 +11,7 @@ import type {
   Node,
   TSDeclareFunction,
 } from '@babel/types'
-import type { AnyRoute, Routes } from '@devp0nt/route0'
+import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core'
 import { dedupeSlashes } from '@point0/core'
@@ -29,7 +29,7 @@ export class Walker {
   readonly cwd: string
 
   // <scope, Routes>
-  readonly routes: Record<string, Routes>
+  readonly routes: Record<string, RoutesPretty>
 
   // Map<fileAbs, content>
   readonly filesContentCache = new Map<string, string>()
@@ -43,6 +43,9 @@ export class Walker {
   // Map<fileAbs:baseIdentifier, Map<string[]>>
   readonly layoutsCache = new Map<string, string[]>()
 
+  // Map<fileAbs:baseIdentifier, boolean>
+  readonly prefetchOnHoverCache = new Map<string, boolean>()
+
   // Cache for TypeScript compiler options per directory
   // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
   private readonly tsConfigCache = new Map<string, any>()
@@ -50,7 +53,7 @@ export class Walker {
   // Lazy-loaded TypeScript module (null if not available)
   private tsModule: typeof import('typescript') | null | undefined = undefined
 
-  constructor(options: { cwd?: string; routes?: Record<string, Routes> } = {}) {
+  constructor(options: { cwd?: string; routes?: Record<string, RoutesPretty> } = {}) {
     this.cwd = options.cwd ?? process.cwd()
     this.routes = options.routes ?? {}
   }
@@ -73,7 +76,7 @@ export class Walker {
     }
   }
 
-  getRoutesByScope(scope: string): Routes | undefined {
+  getRoutesByScope(scope: string): RoutesPretty | undefined {
     return this.routes[scope]
   }
 
@@ -196,12 +199,18 @@ export class Walker {
                         : { layouts: [], errors: [] }
                     errors.push(...layoutsErrors)
 
+                    const shouldBePrefetchedOnLinkHover =
+                      pointType !== 'page'
+                        ? false
+                        : await this.resolveShouldBePrefetchedOnLinkHover({ fileAbs, baseIdentifier: id.name })
+
                     return {
                       type: pointType,
                       name: pointName,
                       exportName: id.name,
                       fileAbs,
                       route,
+                      shouldBePrefetchedOnLinkHover,
                       layouts,
                       scope,
                       attachedTo,
@@ -261,12 +270,18 @@ export class Walker {
                   : { layouts: [], errors: [] }
               errors.push(...layoutsErrors)
 
+              const shouldBePrefetchedOnLinkHover =
+                pointType !== 'page'
+                  ? false
+                  : await this.resolveShouldBePrefetchedOnLinkHover({ fileAbs, baseIdentifier: 'default' })
+
               return {
                 exportName: 'default',
                 type: pointType,
                 name: pointName,
                 fileAbs,
                 route,
+                shouldBePrefetchedOnLinkHover,
                 layouts,
                 scope,
                 attachedTo,
@@ -1012,6 +1027,50 @@ export class Walker {
   }
 
   /**
+   * Finds .prefetchOnHover(value) call in the chain for a given identifier.
+   * Returns the boolean value if found, undefined otherwise.
+   */
+  private findPrefetchOnHoverOnIdentifier({
+    loggableFileAbs,
+    ast,
+    baseIdentifier,
+  }: {
+    loggableFileAbs: string
+    ast: babel.ParseResult<any>
+    baseIdentifier: string
+  }): boolean | undefined {
+    let foundValue: boolean | undefined = undefined
+
+    try {
+      traverse(ast, {
+        CallExpression: (p) => {
+          const callee = p.node.callee
+          if (
+            callee.type === 'MemberExpression' &&
+            callee.property.type === 'Identifier' &&
+            callee.property.name === 'prefetchOnHover'
+          ) {
+            const topLevelAssignedIdentifier = this.findTopLevelAssignedIdentifier(p.get('callee').get('object'))
+            if (topLevelAssignedIdentifier !== baseIdentifier) return
+
+            // proceed if the chain belongs to our identifier
+            const valueArg = p.node.arguments.at(0)
+            if (valueArg?.type === 'BooleanLiteral') {
+              foundValue = valueArg.value
+            }
+          }
+        },
+      })
+    } catch (e) {
+      console.warn(
+        `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} find prefetchOnHover on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+      )
+    }
+
+    return foundValue
+  }
+
+  /**
    * For a given export name (baseIdentifier), figure out WHAT it is based on.
    *
    * Handles:
@@ -1579,6 +1638,121 @@ export class Walker {
     return { layouts, errors }
   }
 
+  /**
+   * Resolves shouldBePrefetchedOnLinkHover by finding .prefetchOnHover(value) in the chain.
+   * If not found on current identifier, goes up the parent chain.
+   * Returns false if not found anywhere.
+   */
+  private async resolveShouldBePrefetchedOnLinkHover(
+    {
+      fileAbs,
+      baseIdentifier,
+    }: {
+      fileAbs: string
+      baseIdentifier: string
+    },
+    _seen = new Set<string>(),
+  ): Promise<boolean> {
+    const cacheKey = `${fileAbs}::${baseIdentifier}`
+    const cacheMap = this.prefetchOnHoverCache
+    const cacheValue = cacheMap.get(cacheKey)
+
+    if (cacheValue !== undefined) {
+      return cacheValue
+    }
+
+    // guard against cycles: fileAbs#id
+    const seenKey = `${fileAbs}::${baseIdentifier}`
+    if (_seen.has(seenKey)) {
+      cacheMap.set(cacheKey, false)
+      return false
+    }
+    _seen.add(seenKey)
+
+    let ast: babel.ParseResult<any>
+    try {
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        const content = this.filesContentCache.get(fileAbs) ?? (await nodeFs.readFile(fileAbs, 'utf8'))
+        this.filesContentCache.set(fileAbs, content)
+        ast = babel.parse(content, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
+    } catch (e) {
+      console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)}: parse failed: ${(e as Error).message}`)
+      cacheMap.set(cacheKey, false)
+      return false
+    }
+
+    //
+    // 1) find .prefetchOnHover on THIS identifier
+    //
+    const thisValue = this.findPrefetchOnHoverOnIdentifier({
+      loggableFileAbs: fileAbs,
+      ast,
+      baseIdentifier,
+    })
+
+    // if found – we're done
+    if (thisValue !== undefined) {
+      cacheMap.set(cacheKey, thisValue)
+      return thisValue
+    }
+
+    //
+    // 2) find parent identifier for THIS export
+    //
+    const { parentIdentifier, parentImportPath } = this.findParentRef({ fileAbs, ast, baseIdentifier })
+
+    // no parent – return false (default)
+    if (!parentIdentifier || parentIdentifier === 'Point0') {
+      cacheMap.set(cacheKey, false)
+      return false
+    }
+
+    //
+    // 3) resolve parent fileAbs
+    //
+    const parentAbs = parentImportPath
+      ? await this.detectExistingFilePathByImportPath(parentImportPath, fileAbs)
+      : fileAbs
+
+    if (!parentAbs) {
+      console.warn(
+        `🔴 ${nodePath.relative(this.cwd, fileAbs)} parent ${parentIdentifier} path not found: ${parentImportPath}`,
+      )
+      cacheMap.set(cacheKey, false)
+      return false
+    }
+
+    //
+    // 4) recurse to parent
+    //
+    const parentValue = await this.resolveShouldBePrefetchedOnLinkHover(
+      {
+        fileAbs: parentAbs,
+        baseIdentifier: parentIdentifier,
+      },
+      _seen,
+    )
+
+    cacheMap.set(cacheKey, parentValue)
+    return parentValue
+  }
+
   private async resolveScope(
     {
       fileAbs,
@@ -1974,7 +2148,8 @@ export type CollectedPoint = {
   type: EndPointType
   name: PointName
   exportName: string
-  route?: AnyRoute
+  route: AnyRoute | undefined
+  shouldBePrefetchedOnLinkHover: boolean
   layouts?: string[]
   fileAbs: string
 }

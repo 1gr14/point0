@@ -1,4 +1,4 @@
-import type { Routes } from '@devp0nt/route0'
+import type { Routes, RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import type { PointsModuleType } from '@point0/core'
 import fg from 'fast-glob'
@@ -25,7 +25,7 @@ export type FilesGeneratorOptions = {
 
 export type FilesGeneratorTargetOptions = {
   scope: string
-  routes?: Routes | string | null
+  routes?: RoutesPretty | string | null
   points?: string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
@@ -33,7 +33,7 @@ export type FilesGeneratorTargetOptions = {
 
 type FilesGeneratorTarget = {
   scope: string
-  routes: Routes | null
+  routes: RoutesPretty | null
   banner: string | null
   pointsModuleType: PointsModuleType
   outputPointsAbs: string | null
@@ -47,7 +47,7 @@ export class FilesGenerator {
   readonly cwd: string
   readonly tempDir: string
   readonly targets: FilesGeneratorTarget[]
-  readonly routes: Record<string, Routes>
+  readonly routes: Record<string, RoutesPretty>
 
   readonly watchDir: string
   readonly watchIgnore: string[]
@@ -454,6 +454,9 @@ export class FilesGenerator {
         if (point.route) {
           lines.push(`  route: '${point.route.definition}',`)
         }
+        if (point.type === 'page') {
+          lines.push(`  shouldBePrefetchedOnLinkHover: ${point.shouldBePrefetchedOnLinkHover ? 'true' : 'false'},`)
+        }
         if (point.type === 'page' && point.layouts?.length) {
           const arr = point.layouts
             .map((r) => `'${r}'`)
@@ -786,6 +789,7 @@ export class FilesGenerator {
       a.name === b.name &&
       a.type === b.type &&
       a.exportName === b.exportName &&
+      a.shouldBePrefetchedOnLinkHover === b.shouldBePrefetchedOnLinkHover &&
       a.route?.definition === b.route?.definition &&
       (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
     )

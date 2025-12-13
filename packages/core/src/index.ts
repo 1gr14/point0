@@ -240,6 +240,7 @@ export class Point0<
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
   private readonly _prefetchPolicy: PagePrefetchPolicy
   private readonly _onPrefetchFns: OnPrefetchFn[]
+  readonly shouldBePrefetchedOnLinkHover: boolean
   private readonly _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
   private readonly _errorComponent:
     | ErrorComponentType<
@@ -386,6 +387,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
+    shouldBePrefetchedOnLinkHover?: boolean
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -547,6 +549,7 @@ export class Point0<
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
     this._prefetchPolicy = options._prefetchPolicy ?? 'serverClientQuery'
     this._onPrefetchFns = options._onPrefetchFns ?? []
+    this.shouldBePrefetchedOnLinkHover = options.shouldBePrefetchedOnLinkHover ?? false
     this._layoutErrorComponent =
       options._layoutErrorComponent ??
       ((({ error }) => {
@@ -733,6 +736,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
+    shouldBePrefetchedOnLinkHover?: boolean
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -898,6 +902,7 @@ export class Point0<
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
       _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
+      shouldBePrefetchedOnLinkHover: overrides.shouldBePrefetchedOnLinkHover ?? this.shouldBePrefetchedOnLinkHover,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -2136,6 +2141,7 @@ export class Point0<
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
+      shouldBePrefetchedOnLinkHover: this._base?.shouldBePrefetchedOnLinkHover ?? false,
       _wrappers: this._base?._wrappers ?? [],
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
@@ -3267,7 +3273,7 @@ export class Point0<
 
     headers.set('Content-Type', 'application/json')
     const outputType = args[2] ?? (this._pointType === 'response' ? 'response' : 'data')
-    const scope = this._attachedTo.length === 0 ? this._scope : Point0.getPoints().scope
+    const scope = this._attachedTo.length === 0 ? this._scope : Point0.getPointsManager().scope
     const body = stringify({
       outputType,
       scope,
@@ -4847,7 +4853,7 @@ export class Point0<
     },
   )
 
-  static getPoints = PointsManager.getGlobalPoints.bind(PointsManager)
+  static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
 
   // client-server helpers
 
@@ -5007,6 +5013,27 @@ export class Point0<
       TProps
     >({
       _onPrefetchFns: [...this._onPrefetchFns, fn],
+    }) as never
+  }
+
+  prefetchOnHover(
+    shouldBePrefetchedOnLinkHover: boolean,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      shouldBePrefetchedOnLinkHover,
     }) as never
   }
 }

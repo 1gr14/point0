@@ -1,4 +1,4 @@
-import type { Routes } from '@devp0nt/route0'
+import type { RoutesPretty } from '@devp0nt/route0'
 import type { AppComponent, LazyPointsModule, PointsModuleType, PointsScope, ReadyPointsModule } from '@point0/core'
 import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
@@ -56,7 +56,7 @@ export type EngineServerOptions = {
   publicdirOutdir?: string | null
   bunBuildConfig?: ServerBunBuildConfigDefinition
   bunPlugins?: ServerBunPluginsDefinition
-  routes?: Routes | string | null
+  routes?: RoutesPretty<any> | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
 }
@@ -78,7 +78,7 @@ export type EngineClientOptions = {
   outdir?: string | null
   serverOutdir?: string | null
   publicdirOutdir?: string | null
-  routes?: Routes | string | null
+  routes?: RoutesPretty<any> | string | null
   pointsModuleType?: PointsModuleType
   banner?: string | null
   prune?: boolean
@@ -127,7 +127,7 @@ export type EngineClientOptionsParsed = {
   bunPlugins: ClientBunPluginsDefinition
   serverOutdir: string | null
   publicdirOutdir: string | null
-  routes: Routes | string | null
+  routes: RoutesPretty<any> | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
   prune: boolean
@@ -147,7 +147,7 @@ export type EngineServerOptionsParsed = {
   fallbackScope: PointsScope
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
-  routes: Routes | string | null
+  routes: RoutesPretty<any> | string | null
   pointsModuleType: PointsModuleType
   banner: string | null
 }

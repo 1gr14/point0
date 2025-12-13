@@ -1,4 +1,4 @@
-import type { AnyLocation, AnyRoute, Routes } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
 import { _wrapUseNavigate, Point0, RouterContextProvider } from '@point0/core'
 import React, { Fragment, useCallback, useMemo } from 'react'
@@ -18,13 +18,41 @@ const _useNavigate = () => {
 }
 export const useNavigate = _wrapUseNavigate(_useNavigate)
 
-export const Link = (props: LinkProps) => {
-  const { to, href, onClick, replace, ...rest } = props
+export const Link = ((props: LinkProps & { onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any }) => {
+  const { to, href, onClick, onMouseEnter, replace, ...rest } = props
   const navigate = useNavigate()
   const finalHref = to || href
+  const pointWithLocation = useMemo(() => {
+    if (!finalHref) {
+      return undefined
+    }
+    return Point0.getPointsManager()._getPagePointByHref(finalHref)
+  }, [finalHref])
   return (
     <WouterLink
       {...rest}
+      {...{
+        onMouseEnter: (e) => {
+          console.info(
+            'onMouseEnter',
+            pointWithLocation?.point.shouldBePrefetchedOnLinkHover,
+            pointWithLocation?.location,
+            pointWithLocation?.point,
+          )
+          if (pointWithLocation?.point.shouldBePrefetchedOnLinkHover) {
+            console.log('prefetching')
+            Point0.getPointsManager()
+              .prefetchSuitablePagePoint({
+                location: pointWithLocation.location,
+              })
+              .catch((e) => {
+                // TODO: replace with onClientError handler
+                console.error('Failed to prefetch page on hover', e)
+              })
+          }
+          void onMouseEnter?.(e)
+        },
+      }}
       href={href as never}
       to={to}
       replace={replace}
@@ -38,18 +66,18 @@ export const Link = (props: LinkProps) => {
       }}
     />
   )
-}
+}) as typeof WouterLink
 
 export const Router = ({
   ssrLocation = Point0._ssrLocation.get(),
-  routes = Point0.getPoints().routes,
+  routes = Point0.getPointsManager().routes,
   status,
   children,
   Page404,
   pagesTree,
 }: {
   ssrLocation?: AnyLocation | undefined
-  routes?: Routes
+  routes?: RoutesPretty
   status?: RouterStatus
   children?: React.ReactNode
   Page404?: React.ComponentType
@@ -83,7 +111,7 @@ export const Router = ({
 
 export const RouterRoutes = ({
   Page404 = () => <div>Page Not Found</div>,
-  pagesTree = Point0.getPoints().pagesTree,
+  pagesTree = Point0.getPointsManager().pagesTree,
 }: {
   Page404?: React.ComponentType
   pagesTree?: PagesTree
@@ -98,7 +126,7 @@ const combinePagesRoutesToRegexForLayout = (routes: AnyRoute[]) => {
 }
 
 export const RenderPagesTree = ({
-  pagesTree = Point0.getPoints().pagesTree,
+  pagesTree = Point0.getPointsManager().pagesTree,
   Page404 = () => <div>Page Not Found</div>,
   level = 0,
 }: {

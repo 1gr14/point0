@@ -1,5 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
@@ -104,10 +104,10 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   location ??= locationByAdapter ?? routerCtx.currentLocation
   return useMemo(() => {
     if (!route) {
-      return PointsManager.getGlobalPoints().routes._.getLocation(location) as AnyLocation
+      return PointsManager.getPointsManager().routes._.getLocation(location) as AnyLocation
     }
     return Route0.from(route).getLocation(location) as KnownLocation<TRoute>
-  }, [route, location, PointsManager.getGlobalPoints().routesHash])
+  }, [route, location, PointsManager.getPointsManager().routesHash])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -228,13 +228,13 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
     return async (...args: Parameters<ReturnType<T>>) => {
       const href = args[0]
       const prevLocation = routerContext.currentLocation
-      const location = PointsManager.getGlobalPoints().routes._.getLocation(href)
+      const location = PointsManager.getPointsManager().routes._.getLocation(href)
       routerContext.setPrevLocation(prevLocation)
       routerContext.setError(null)
       routerContext.setNextLocation(location)
       routerContext.setStatus('prefetching')
       try {
-        await PointsManager.getGlobalPoints().prefetchSuitablePagePoint({
+        await PointsManager.getPointsManager().prefetchSuitablePagePoint({
           location,
           queryClient,
         })

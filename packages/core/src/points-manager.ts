@@ -1,4 +1,4 @@
-import type { AnyLocation, AnyRoute, ExactLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
@@ -32,7 +32,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   root: RootPoint
   collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
   ready: TReady
-  routes: Routes
+  routes: RoutesPretty
   routesHash: string
   pagesTreeSource: PagesTreeSource
   pagesTree: PagesTree
@@ -55,7 +55,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     readFn: PointsReadFn | null
     root: RootPoint
     collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
-    routes: Routes
+    routes: RoutesPretty
     ready: boolean
     scope: PointsScope
     pagesTreeSource: PagesTreeSource
@@ -74,7 +74,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.baseurl = this.root._baseurl
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
-    PointsManager.setGlobalPoints(this)
+    PointsManager.setPointsManager(this)
     if (ClientServerHelpers.isClient) {
       SuperStore.setWeak('__POINT0_SCOPE__', this.scope)
     }
@@ -181,7 +181,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (this.ready && !points.ready) {
       await this.replace(await this.load(true))
     } else {
-      PointsManager.setGlobalPoints(this)
+      PointsManager.setPointsManager(this)
     }
   }
 
@@ -223,7 +223,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     routes,
     points,
   }: {
-    routes?: Routes
+    routes?: RoutesPretty
     points: T
   }): T {
     routes ??= this.toRoutes({ points })
@@ -274,6 +274,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         type: point._pointType,
         name: point._name || '__POINT0_UNNAMED__',
         point,
+        shouldBePrefetchedOnLinkHover: point.shouldBePrefetchedOnLinkHover,
         layouts: point._layouts.map((l) => l._name || '__POINT0_UNNAMED__'),
         route: point._route,
         root: point._isRoot(),
@@ -342,6 +343,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         type: record.type,
         name: record.name,
         route: record.route ? Route0.from(record.route) : undefined,
+        shouldBePrefetchedOnLinkHover: record.shouldBePrefetchedOnLinkHover,
         point: record.point,
         layouts: record.layouts ?? [],
         Component:
@@ -378,7 +380,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     points,
   }: {
     points: Array<{ type: PointType; name: PointName; route?: string | undefined | AnyRoute }>
-  }): Routes => {
+  }): RoutesPretty => {
     const routes: Record<string, AnyRoute> = {}
     for (const item of points) {
       const type = item.type
@@ -433,6 +435,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           ready: true,
           point,
           route,
+          shouldBePrefetchedOnLinkHover: record.shouldBePrefetchedOnLinkHover,
           name: pointName || record.name,
           type: pointType,
           layouts: recordLayouts,
@@ -627,6 +630,11 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     }
   }
 
+  static _pagesPrefetchingPromises: Map<string, Promise<PagePoint | undefined>> = new Map<
+    string,
+    Promise<PagePoint | undefined>
+  >()
+
   prefetchSuitablePagePoint = async ({
     location,
     queryClient,
@@ -636,16 +644,34 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     queryClient?: QueryClient
     policy?: PagePrefetchPolicy
   }): Promise<PagePoint | undefined> => {
-    const result = await this.loadSuitablePage({ location })
-    if (!result) {
-      return undefined
+    const locationString = JSON.stringify(location)
+    const exPromise = PointsManager._pagesPrefetchingPromises.get(locationString)
+    if (exPromise) {
+      return await exPromise
     }
-    await result.page.prefetchPage(result.page._getUnsafeInputRawByLocation(location), undefined, {
-      queryClient,
-      location,
-      policy,
-    })
-    return result.page
+    const promise = (async () => {
+      const result = await this.loadSuitablePage({ location })
+      console.log('HAS MATCH', !!result)
+      if (!result) {
+        return undefined
+      }
+      console.log('prefetching page input', result.page._getUnsafeInputRawByLocation(location))
+      await result.page.prefetchPage(result.page._getUnsafeInputRawByLocation(location), undefined, {
+        queryClient,
+        location,
+        policy,
+      })
+      return result.page
+    })()
+    PointsManager._pagesPrefetchingPromises.set(locationString, promise)
+    try {
+      const result = await promise
+      PointsManager._pagesPrefetchingPromises.delete(locationString)
+      return result
+    } catch (error) {
+      PointsManager._pagesPrefetchingPromises.delete(locationString)
+      throw error
+    }
   }
 
   isPageLocationSuitable = ({ pageLocation }: { pageLocation: AnyLocation }): boolean => {
@@ -757,23 +783,41 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return undefined
   }
 
+  _getPagePointByHref = (
+    href: string,
+  ):
+    | { point: ReadyRoutedPointsCollectionRecord | LazyRoutedPointsCollectionRecord; location: ExactLocation }
+    | undefined => {
+    const location = this.routes._.getLocation(href)
+    if (!location.exact || !location.route) {
+      return undefined
+    }
+    const point = this.collection.find((p) => p.type === 'page' && p.route?.definition === location.route)
+    if (!point) {
+      return undefined
+    }
+    return { point, location }
+  }
+
   // global
 
-  private static readonly setGlobalPoints = (points: ReadyPointsModule | LazyPointsModule | PointsManager) => {
+  private static readonly setPointsManager = (points: ReadyPointsModule | LazyPointsModule | PointsManager) => {
     const createdPoints = PointsManager.create(points)
-    if (!(globalThis as any).__POINT0_POINTS__) {
-      ;(globalThis as any).__POINT0_POINTS__ = {}
+    if (!(globalThis as any).__POINT0_POINTS_MANAGER__) {
+      ;(globalThis as any).__POINT0_POINTS_MANAGER__ = {}
     }
-    ;(globalThis as any).__POINT0_POINTS__[createdPoints.scope] = createdPoints
+    ;(globalThis as any).__POINT0_POINTS_MANAGER__[createdPoints.scope] = createdPoints
     return createdPoints
   }
-  static getGlobalPoints = (scope?: PointsScope): PointsManager => {
+  static getPointsManager = (scope?: PointsScope): PointsManager => {
     scope ??= SuperStore.getWeak<PointsScope>('__POINT0_SCOPE__')
     if (!scope) {
       throw new Error('Points scope not found if SuperStore. You should provide scope.')
     }
     const points =
-      scope in (globalThis as any).__POINT0_POINTS__ ? (globalThis as any).__POINT0_POINTS__[scope] : undefined
+      scope in (globalThis as any).__POINT0_POINTS_MANAGER__
+        ? (globalThis as any).__POINT0_POINTS_MANAGER__[scope]
+        : undefined
     if (!points) {
       throw new Error('Points not found. Forget to call Points.create()?')
     }
@@ -785,6 +829,7 @@ export type LazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
+  shouldBePrefetchedOnLinkHover?: boolean
   point: (() => Promise<EndPoint>) | EndPoint
   layouts?: string[]
 }
@@ -793,6 +838,7 @@ export type ReadyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
+  shouldBePrefetchedOnLinkHover: boolean
   point: EndPoint
   Component?: React.ComponentType
   layouts?: string[]
@@ -803,6 +849,7 @@ export type LazyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: () => Promise<EndPoint>
+  shouldBePrefetchedOnLinkHover: boolean
   Component?: React.LazyExoticComponent<React.ComponentType>
   layouts: string[]
 }
@@ -812,6 +859,7 @@ export type ReadyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint
+  shouldBePrefetchedOnLinkHover: boolean
   Component?: React.ComponentType
   layouts: string[]
 }

@@ -1332,6 +1332,7 @@ export type NiceRootMiddlePoint<
     | 'scrollRestore'
     | 'prefetchPolicy'
     | 'onPrefetch'
+    | 'prefetchOnHover'
     | 'point'
     | 'Infer'
   >
@@ -1394,6 +1395,7 @@ export type NiceBaseMiddlePoint<
     | 'scrollRestore'
     | 'prefetchPolicy'
     | 'onPrefetch'
+    | 'prefetchOnHover'
     | 'point'
     | 'Infer'
   >
@@ -1446,6 +1448,7 @@ export type NicePageMiddlePoint<
         | 'scrollRestore'
         | 'prefetchPolicy'
         | 'onPrefetch'
+        | 'prefetchOnHover'
         | 'point'
         | 'Infer'
         | 'query'
@@ -1708,6 +1711,7 @@ export type NiceLayoutMiddlePoint<
         | 'scrollRestore'
         | 'prefetchPolicy'
         | 'onPrefetch'
+        | 'prefetchOnHover'
         | 'point'
         | 'Infer'
         | 'query'

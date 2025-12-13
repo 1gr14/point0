@@ -2,8 +2,8 @@
 ------ before start0 -----
 --------------------------
 
-Link prefetch on hover .prefetchOnHover() available for any point, and working with walker so lazy points know it
 Link access {href}|{to}|{route=string, input={}}, available via const Link = assignRoutesToLink(Link, Routes)
+CallableRoute<CallableRoute<>>
 page with name 404 auto insert in router routes
 
 Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию

@@ -1,6 +1,6 @@
 import { ideaLayout } from '../layouts/idea.js'
 
-export const ideasNewsPage = ideaLayout.lets('page', 'ideaNews', 'news').page(
+export const ideaNewsPage = ideaLayout.lets('page', 'ideaNews', 'news').page(
   ({ data: { idea }, input }) => `${idea.news.length} news for idea "${idea.title}"`,
   ({ data: { idea }, query }) => {
     return (
@@ -22,4 +22,4 @@ export const ideasNewsPage = ideaLayout.lets('page', 'ideaNews', 'news').page(
   },
 )
 
-export default ideasNewsPage
+export default ideaNewsPage
