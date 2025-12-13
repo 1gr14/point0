@@ -827,7 +827,7 @@ export type LazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
-  shouldBePrefetchedOnLinkHover?: boolean
+  shouldBePrefetchedOnLinkHover?: boolean | number
   point: (() => Promise<EndPoint>) | EndPoint
   layouts?: string[]
 }
@@ -836,7 +836,7 @@ export type ReadyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
-  shouldBePrefetchedOnLinkHover: boolean
+  shouldBePrefetchedOnLinkHover: boolean | number
   point: EndPoint
   Component?: React.ComponentType
   layouts?: string[]
@@ -847,7 +847,7 @@ export type LazyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: () => Promise<EndPoint>
-  shouldBePrefetchedOnLinkHover: boolean
+  shouldBePrefetchedOnLinkHover: boolean | number
   Component?: React.LazyExoticComponent<React.ComponentType>
   layouts: string[]
 }
@@ -857,7 +857,7 @@ export type ReadyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint
-  shouldBePrefetchedOnLinkHover: boolean
+  shouldBePrefetchedOnLinkHover: boolean | number
   Component?: React.ComponentType
   layouts: string[]
 }

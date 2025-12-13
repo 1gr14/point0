@@ -1,8 +1,8 @@
 import type { AnyLocation, AnyRoute, RoutesPretty } from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
 import { _wrapUseNavigate, Point0, RouterContextProvider } from '@point0/core'
-import React, { Fragment, useCallback, useMemo } from 'react'
-import type { LinkProps } from 'wouter'
+import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
+import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import {
   Route,
   Switch,
@@ -12,16 +12,37 @@ import {
   Router as WouterRouter,
 } from 'wouter'
 
+import type { BrowserLocationHook } from 'wouter/use-browser-location'
+import type { BaseLocationHook, NavigationalProps } from 'wouter'
+
 const _useNavigate = () => {
   const [, navigate] = useWouterLocation()
   return navigate
 }
 export const useNavigate = _wrapUseNavigate(_useNavigate)
 
-export const Link = ((props: LinkProps & { onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any }) => {
-  const { to, href, onClick, onMouseEnter, replace, ...rest } = props
+type AsChildProps<ComponentProps, DefaultElementProps> =
+  | ({ asChild?: false } & DefaultElementProps)
+  | ({ asChild: true } & ComponentProps)
+
+type HTMLLinkAttributes = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'> & {
+  className?: string | undefined | ((isActive: boolean) => string | undefined)
+}
+
+type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
+  AsChildProps<
+    { children: ReactElement; onClick?: MouseEventHandler },
+    HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
+  >
+
+export const Link = (props: LinkProps) => {
+  const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
+    onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
+    onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
+  }
   const navigate = useNavigate()
   const finalHref = to || href
+  const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pointWithLocation = useMemo(() => {
     if (!finalHref) {
       return undefined
@@ -39,17 +60,38 @@ export const Link = ((props: LinkProps & { onMouseEnter?: (e: React.MouseEvent<H
             pointWithLocation?.location,
             pointWithLocation?.point,
           )
-          if (pointWithLocation?.point.shouldBePrefetchedOnLinkHover) {
-            Point0.getPointsManager()
-              .prefetchSuitablePagePoint({
-                location: pointWithLocation.location,
-              })
-              .catch((e) => {
-                // TODO: replace with onClientError handler
-                console.error('Failed to prefetch page on hover', e)
-              })
+          if (pointWithLocation && pointWithLocation.point.shouldBePrefetchedOnLinkHover !== false) {
+            // Clear any existing timeout
+            if (prefetchTimeoutRef.current) {
+              clearTimeout(prefetchTimeoutRef.current)
+            }
+            // Set a N ms delay before prefetching
+            prefetchTimeoutRef.current = setTimeout(
+              () => {
+                prefetchTimeoutRef.current = null
+                Point0.getPointsManager()
+                  .prefetchSuitablePagePoint({
+                    location: pointWithLocation.location,
+                  })
+                  .catch((e) => {
+                    // TODO: replace with onClientError handler
+                    console.error('Failed to prefetch page on hover', e)
+                  })
+              },
+              pointWithLocation.point.shouldBePrefetchedOnLinkHover === true
+                ? 30
+                : pointWithLocation.point.shouldBePrefetchedOnLinkHover,
+            )
           }
           void onMouseEnter?.(e)
+        },
+        onMouseLeave: (e) => {
+          // Cancel prefetch if mouse leaves before the N ms delay completes
+          if (prefetchTimeoutRef.current) {
+            clearTimeout(prefetchTimeoutRef.current)
+            prefetchTimeoutRef.current = null
+          }
+          void onMouseLeave?.(e)
         },
       }}
       href={href as never}
@@ -65,7 +107,7 @@ export const Link = ((props: LinkProps & { onMouseEnter?: (e: React.MouseEvent<H
       }}
     />
   )
-}) as typeof WouterLink
+}
 
 export const Router = ({
   ssrLocation = Point0._ssrLocation.get(),

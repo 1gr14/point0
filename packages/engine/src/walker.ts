@@ -44,7 +44,7 @@ export class Walker {
   readonly layoutsCache = new Map<string, string[]>()
 
   // Map<fileAbs:baseIdentifier, boolean>
-  readonly prefetchOnHoverCache = new Map<string, boolean>()
+  readonly prefetchOnHoverCache = new Map<string, boolean | number>()
 
   // Cache for TypeScript compiler options per directory
   // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
@@ -1038,8 +1038,8 @@ export class Walker {
     loggableFileAbs: string
     ast: babel.ParseResult<any>
     baseIdentifier: string
-  }): boolean | undefined {
-    let foundValue: boolean | undefined = undefined
+  }): boolean | number | undefined {
+    let foundValue: boolean | number | undefined = undefined
 
     try {
       traverse(ast, {
@@ -1056,6 +1056,8 @@ export class Walker {
             // proceed if the chain belongs to our identifier
             const valueArg = p.node.arguments.at(0)
             if (valueArg?.type === 'BooleanLiteral') {
+              foundValue = valueArg.value
+            } else if (valueArg?.type === 'NumericLiteral') {
               foundValue = valueArg.value
             }
           }
@@ -1652,7 +1654,7 @@ export class Walker {
       baseIdentifier: string
     },
     _seen = new Set<string>(),
-  ): Promise<boolean> {
+  ): Promise<boolean | number> {
     const cacheKey = `${fileAbs}::${baseIdentifier}`
     const cacheMap = this.prefetchOnHoverCache
     const cacheValue = cacheMap.get(cacheKey)
@@ -2149,7 +2151,7 @@ export type CollectedPoint = {
   name: PointName
   exportName: string
   route: AnyRoute | undefined
-  shouldBePrefetchedOnLinkHover: boolean
+  shouldBePrefetchedOnLinkHover: boolean | number
   layouts?: string[]
   fileAbs: string
 }

@@ -1,11 +1,11 @@
 import { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, AnyRoute, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
+import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SuperStore } from './super-store.js'
 import { PointsManager } from './points-manager.js'
+import { SuperStore } from './super-store.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 

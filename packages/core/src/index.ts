@@ -240,7 +240,7 @@ export class Point0<
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
   private readonly _prefetchPolicy: PagePrefetchPolicy
   private readonly _onPrefetchFns: OnPrefetchFn[]
-  readonly shouldBePrefetchedOnLinkHover: boolean
+  readonly shouldBePrefetchedOnLinkHover: boolean | number
   private readonly _ProviderReactContext: Context<FinalClientData<TData, TClientData>> | undefined
   private readonly _errorComponent:
     | ErrorComponentType<
@@ -387,7 +387,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    shouldBePrefetchedOnLinkHover?: boolean
+    shouldBePrefetchedOnLinkHover?: boolean | number
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -736,7 +736,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    shouldBePrefetchedOnLinkHover?: boolean
+    shouldBePrefetchedOnLinkHover?: boolean | number
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -5017,7 +5017,7 @@ export class Point0<
   }
 
   prefetchOnHover(
-    shouldBePrefetchedOnLinkHover: boolean,
+    shouldBePrefetchedOnLinkHover: boolean | number,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,

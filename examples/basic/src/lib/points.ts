@@ -45,11 +45,11 @@ export const ideaPage_1lbwy4x6i7a_lazy = {
   point: async () => (await import('../pages/idea.js')).ideaPage.point,
 } as LazyPointsCollectionRecord
 
-export const ideaNewsPage_18u70x2zxcv_lazy = {
+export const ideaNewsPage_swg9xetjej_lazy = {
   type: 'page',
   name: 'ideaNews',
   route: '/ideas/:id/news',
-  shouldBePrefetchedOnLinkHover: true,
+  shouldBePrefetchedOnLinkHover: 2000,
   layouts: ['generalLayout', 'ideaLayout'],
   point: async () => (await import('../pages/idea-news.js')).ideaNewsPage.point,
 } as LazyPointsCollectionRecord
