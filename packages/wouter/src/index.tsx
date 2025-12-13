@@ -45,11 +45,15 @@ export const Router = ({
   routes = Point0.getPoints().routes,
   status,
   children,
+  Page404,
+  pagesTree,
 }: {
   ssrLocation?: AnyLocation | undefined
   routes?: Routes
   status?: RouterStatus
-  children: React.ReactNode
+  children?: React.ReactNode
+  Page404?: React.ComponentType
+  pagesTree?: PagesTree
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
     if (Point0.isClient) {
@@ -71,7 +75,7 @@ export const Router = ({
   return (
     <WouterRouter {...wouterRouterProps}>
       <RouterContextProvider useAdapterLocation={useAdapterLocation} ssrLocation={ssrLocation} status={status}>
-        {children}
+        {children ?? <RouterRoutes Page404={Page404} pagesTree={pagesTree} />}
       </RouterContextProvider>
     </WouterRouter>
   )

@@ -25,6 +25,15 @@ export const client = Point0.create('client')
     titleTemplate: '%s | IdeaNick',
     htmlAttrs: { lang: 'en' },
   }))
+  .error(({ error }) => {
+    console.log(434, error)
+    return (
+      <div>
+        <div>Error: {error.message}</div>
+        <pre>{JSON.stringify(error.stack, null, 2)}</pre>
+      </div>
+    )
+  })
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

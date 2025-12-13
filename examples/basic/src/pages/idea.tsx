@@ -2,6 +2,7 @@ import { Link } from '@point0/wouter'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
+import { useLocation } from '@point0/core'
 
 export const getIdea = async (ctx: Ctx, id: number) => {
   const idea = await ctx.prisma.idea.findUniqueOrThrow({

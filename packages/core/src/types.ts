@@ -1,5 +1,12 @@
 import type { Error0 } from '@devp0nt/error0'
-import type { AnyLocation, ChildrenLocation, ExactLocation, FlatInput, FlatOutput, HasParams } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  ChildrenLocation,
+  ExactLocation,
+  FlatInputStringOnly,
+  FlatOutput,
+  HasParams,
+} from '@devp0nt/route0'
 import type {
   InfiniteData,
   UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
@@ -328,7 +335,7 @@ export type InputRaw<
 > = TInputSchema extends InputSchemaZod
   ? ZodInput<TInputSchema>
   : TRouteDefinition extends RouteDefinition
-    ? FlatInput<TRouteDefinition>
+    ? FlatInputStringOnly<TRouteDefinition>
     : Record<never, never>
 export type InputRawMaybeOptional<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -1293,37 +1300,41 @@ export type NiceRootMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  | 'root'
-  | 'requireCtx'
-  | 'serverurl'
-  | 'baseurl'
-  | 'mutationOptions'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
-  | 'pageQueryOptions'
-  | 'componentQueryOptions'
-  | 'providerQueryOptions'
-  | 'layoutQueryOptions'
-  | 'fetchOptions'
-  | 'layoutError'
-  | 'pageError'
-  | 'componentError'
-  | 'error'
-  | 'layoutLoading'
-  | 'pageLoading'
-  | 'componentLoading'
-  | 'loading'
-  | 'input'
-  | 'ctx'
-  | 'loader'
-  | 'ctxLoader'
-  | 'head'
-  | 'scrollPosition'
-  | 'scrollRestore'
-  | 'prefetchPolicy'
-  | 'onPrefetch'
-  | 'point'
-  | 'Infer'
+  CutServerLoadersIfClientMiddleware<
+    TPointType,
+    | 'root'
+    | 'requireCtx'
+    | 'serverurl'
+    | 'baseurl'
+    | 'mutationOptions'
+    | 'queryOptions'
+    | 'infiniteQueryOptions'
+    | 'pageQueryOptions'
+    | 'componentQueryOptions'
+    | 'providerQueryOptions'
+    | 'layoutQueryOptions'
+    | 'fetchOptions'
+    | 'layoutError'
+    | 'pageError'
+    | 'componentError'
+    | 'error'
+    | 'layoutLoading'
+    | 'pageLoading'
+    | 'componentLoading'
+    | 'loading'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'ctxLoader'
+    | 'clientLoader'
+    | 'head'
+    | 'scrollPosition'
+    | 'scrollRestore'
+    | 'prefetchPolicy'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
+  >
 >
 
 export type NiceBaseMiddlePoint<
@@ -1354,34 +1365,38 @@ export type NiceBaseMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  | 'base'
-  | 'mutationOptions'
-  | 'queryOptions'
-  | 'infiniteQueryOptions'
-  | 'pageQueryOptions'
-  | 'componentQueryOptions'
-  | 'providerQueryOptions'
-  | 'layoutQueryOptions'
-  | 'fetchOptions'
-  | 'layoutError'
-  | 'pageError'
-  | 'componentError'
-  | 'error'
-  | 'layoutLoading'
-  | 'pageLoading'
-  | 'componentLoading'
-  | 'loading'
-  | 'input'
-  | 'ctx'
-  | 'loader'
-  | 'ctxLoader'
-  | 'head'
-  | 'scrollPosition'
-  | 'scrollRestore'
-  | 'prefetchPolicy'
-  | 'onPrefetch'
-  | 'point'
-  | 'Infer'
+  CutServerLoadersIfClientMiddleware<
+    TPointType,
+    | 'base'
+    | 'mutationOptions'
+    | 'queryOptions'
+    | 'infiniteQueryOptions'
+    | 'pageQueryOptions'
+    | 'componentQueryOptions'
+    | 'providerQueryOptions'
+    | 'layoutQueryOptions'
+    | 'fetchOptions'
+    | 'layoutError'
+    | 'pageError'
+    | 'componentError'
+    | 'error'
+    | 'layoutLoading'
+    | 'pageLoading'
+    | 'componentLoading'
+    | 'loading'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'ctxLoader'
+    | 'clientLoader'
+    | 'head'
+    | 'scrollPosition'
+    | 'scrollRestore'
+    | 'prefetchPolicy'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
+  >
 >
 
 export type NicePageMiddlePoint<
@@ -1714,37 +1729,42 @@ export type NiceProviderMiddlePoint<
   TResponseOutput extends ResponseOutput | UndefinedResponseOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = Pick<
-  Point0<
-    TPointType,
-    TLetsEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >,
-  CutServerLoadersIfClientMiddleware<
-    TPointType,
-    | 'provider'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'ctxLoader'
-    | 'clientLoader'
-    | 'onPrefetch'
-    | 'point'
-    | 'Infer'
-    | 'query'
-    | 'infiniteQuery'
-  >
->
+> = TPointType extends 'middleware' | 'clientMiddleware'
+  ? Pick<
+      Point0<
+        TPointType,
+        TLetsEndPointType,
+        TRequiredCtx,
+        TCtx,
+        TData,
+        TClientData,
+        TRouteDefinition,
+        TPrevRouteDefinition,
+        TInputSchema,
+        TResponseOutput,
+        TQueryResultType,
+        TProps
+      >,
+      CutServerLoadersIfClientMiddleware<
+        TPointType,
+        | 'provider'
+        | 'fetchOptions'
+        | 'input'
+        | 'ctx'
+        | 'loader'
+        | 'ctxLoader'
+        | 'clientLoader'
+        | 'onPrefetch'
+        | 'point'
+        | 'Infer'
+        | 'query'
+        | 'infiniteQuery'
+        | 'error'
+        | 'loading'
+        | 'wrapper'
+      >
+    >
+  : 'provider' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
 
 export type NiceMiddlePoint<
   TPointType extends PointType,

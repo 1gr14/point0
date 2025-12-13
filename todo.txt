@@ -2,17 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-Разрещить пустой пейдж, компонент, лэйоут
-Лэйоут лоадинг в лэйоуте надо убрать, он такой же как лоадинг. Не, надо просто вернуть обычный дашлоадинг и всё заработает
-Проверить, что при фетче и эроре фетч возвращает такую же эррорз какую возвращает сервер такую и видит фронт со всей метой
-Убедиться, что на сервер мы отправляем рау инпут, и в квери Кеше храним рпуинпут
-Роут0 пусть на входе принимает только строки
-убрать рут из летс
-вернуть клиент лоадер в рута
-
-check useLocation, is it really return no route on 404, and is it correctly return exact, parent, etc
-provide Routes to use location, so if no route then exact false, else exact true
-
 Link prefetch on hover .prefetchOnHover() available for any point, and working with walker so lazy points know it
 Link access {href}|{to}|{route=string, input={}}, available via const Link = assignRoutesToLink(Link, Routes)
 
@@ -31,6 +20,9 @@ check query and infiteqQuery and component respect onPrefetch, and all others wh
 file upload
 
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
+
+bunup
+oxc lint
 
 И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
 Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
@@ -138,13 +130,15 @@ rest important TODO in code
 
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
-? .lets('init', 'something').onError().onSuccess().init({client:()=>{}, server:()=>{}, clientAndServer:()=>{}, deps: ['otherInitPoint1', 'otherInitPoint2']})
+.lets('init', 'something').onError().onSuccess().init({client:()=>{}, server:()=>{}, clientAndServer:()=>{}, deps: ['otherInitPoint1', 'otherInitPoint2']})
 
 https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
 
-.lets('cron')
-
 .robotsTxt(take, skip)
+
+.lets('openapi')
+
+engine server onFetch hook
 
 --------------------------
 
