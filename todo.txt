@@ -2,7 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-Квери пусть имеет опциональные локейшены, а остальные пусть имеют правильные локэйшены
 Респонс путь не имеет летс, может что-то ещё пусть не имеет летс если надо
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it

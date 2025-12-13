@@ -35,6 +35,7 @@ type RouterContextValue = {
   status: RouterStatus
   error: Error | null
   useAdapterLocation: UseAdapterLocationFn
+  preventLocationHash: boolean
 
   // setters
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
@@ -50,6 +51,7 @@ export type RouterContextProviderProps = {
   status?: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | null
+  preventLocationHash?: boolean
 }
 
 export function RouterContextProvider({
@@ -57,6 +59,7 @@ export function RouterContextProvider({
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
+  preventLocationHash = false,
 }: RouterContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
@@ -88,6 +91,7 @@ export function RouterContextProvider({
       setError,
       useAdapterLocation,
       // isSsr,
+      preventLocationHash,
     }),
     [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
@@ -113,7 +117,7 @@ export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefi
   location ??= locationByAdapter ?? routerCtx.currentLocation
   return useMemo(() => {
     // const hashSuffix = routerCtx.isSsr ? '' : typeof window !== 'undefined' ? window.location.hash : ''
-    const hashSuffix = typeof window !== 'undefined' ? window.location.hash : ''
+    const hashSuffix = routerCtx.preventLocationHash ? '' : typeof window !== 'undefined' ? window.location.hash : ''
     if (!route) {
       return { ...(PointsManager.getPointsManager().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
     }

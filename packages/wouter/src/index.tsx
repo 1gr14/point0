@@ -157,13 +157,17 @@ export const Router = ({
   children,
   Page404,
   pagesTree,
+  hook,
+  preventLocationHash,
 }: {
   ssrLocation?: AnyLocation | undefined
+  preventLocationHash?: boolean
   routes?: RoutesPretty
   status?: RouterStatus
   children?: React.ReactNode
   Page404?: React.ComponentType
   pagesTree?: PagesTree
+  hook?: BaseLocationHook
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
     if (Point0.isClient) {
@@ -183,8 +187,13 @@ export const Router = ({
   }, [])
 
   return (
-    <WouterRouter {...wouterRouterProps}>
-      <RouterContextProvider useAdapterLocation={useAdapterLocation} ssrLocation={ssrLocation} status={status}>
+    <WouterRouter {...wouterRouterProps} hook={hook}>
+      <RouterContextProvider
+        useAdapterLocation={useAdapterLocation}
+        ssrLocation={ssrLocation}
+        status={status}
+        preventLocationHash={preventLocationHash}
+      >
         {children ?? <RouterRoutes Page404={Page404} pagesTree={pagesTree} />}
       </RouterContextProvider>
     </WouterRouter>

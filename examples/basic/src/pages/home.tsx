@@ -59,7 +59,7 @@ export const BestIdeaComponent = client
   .loading(({ input, props }) => {
     return <div>Loading...</div>
   })
-  .component(({ data, props }) => {
+  .component(({ data, props, location }) => {
     return (
       <div>
         <h1>Best Idea {data.mult}</h1>
@@ -88,7 +88,7 @@ export default generalLayout
     return <div>Loadingx...</div>
   })
   // .loader()
-  .page((o) => {
+  .page(({ location }) => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
