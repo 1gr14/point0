@@ -2,9 +2,12 @@
 ------ before start0 -----
 --------------------------
 
-createNavigate0
+check if superjson works correctly with query and mutation and eversion store
 
-file upload
+fetchWithCancel
+cancel by input, or cancel all
+on fetch error maybe no json, then if it is thore, do res.text()
+.axios(provide axios instance)
 
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
 bunup
@@ -17,7 +20,8 @@ oxc lint
 Лоадеру и ктксу уже дать опцию для некэширования {cache: null | string}
 Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
 
-.init(), and rename current TInit to TLoad
+root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
+.init(), and rename current TInit to TLoad, it has no context at all, it just return data
 
 .enabled()
 
@@ -90,7 +94,6 @@ check if mutation can be client only
 ? on navigate on unknown location do window location change
 watch glob optional for build watch, and builwatch itself
 ? __POINT0_QUERY_KEY_PREFIX__, adn find all other point0 from small "p" and fix it
-check if superjson works correctly with query and mutation and eversion store
 ? use arrays in points files
 ? extract required ctx type from root points
 pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
@@ -208,9 +211,17 @@ elysia and uWebSocket separate realizations
 ------ later ------
 -------------------
 
+LETS NOT DO IT
+? То что не имеет смысла чейнить, пусть будет третьим аргументом летс, там просто объект со всеми настройками, даже инпут логично иметь там, а вот лоадеры и ктксеры пусть будут на месте
+? Пропсы пусть генериком прикидывается перед вызовом функции компонента
+? Если в летс опциях уже названа конечная точка типо пейдж, то это финальный поинт
+? И логично сразу с тестами волкера сделать
+
 meta object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
 
 standard schema
+
+И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
 
 ? .openapi(), why? we can just use engine.extract inside elysia enpoints and it is enough
 

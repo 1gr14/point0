@@ -143,3 +143,16 @@ export const getWindowScrollPositionGetterBySelector = (selector: string) => {
 export const getWindowScrollPositionSetterBySelector = (selector: string) => {
   return getWindowScrollPositionSetterByElementGetter(() => document.querySelector(selector))
 }
+
+export const isContainsBinary = (value: unknown): boolean => {
+  if (value instanceof File || value instanceof Blob) {
+    return true
+  }
+  if (Array.isArray(value)) {
+    return value.some(isContainsBinary)
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value).some(isContainsBinary)
+  }
+  return false
+}

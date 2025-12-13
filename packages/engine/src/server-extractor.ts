@@ -184,6 +184,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           })
         }
       }
+      console.log('input', input)
 
       // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
 

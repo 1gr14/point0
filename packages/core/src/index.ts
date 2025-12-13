@@ -130,7 +130,6 @@ import type {
   UndefinedInputSchema,
   UndefinedLayoutComponent,
   UndefinedPageComponent,
-  UndefinedPointName,
   UndefinedProps,
   UndefinedQueryResultType,
   UndefinedResponseOutput,
@@ -147,6 +146,7 @@ import {
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
   getWindowScrollPositionSetterBySelector,
+  isContainsBinary,
   mergeHeaders,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
@@ -220,6 +220,7 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
+  // readonly _asFormData: boolean | undefined
   private readonly _wrappers: WrapperComponentType[]
   readonly _serverExtractActions: ServerExtractAction[]
   private readonly _clientExtractActions: ClientExtractAction[]
@@ -241,7 +242,7 @@ export class Point0<
     | LayoutComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
     | UndefinedLayoutComponent
   readonly _layouts: LayoutPoint[]
-  readonly _name: PointName | UndefinedPointName
+  readonly _name: PointName
   private readonly _unstableId: number
   private readonly _fetchOptions: FetchOptionsFn | undefined
   private readonly _scrollPositionGetter: ScrollPositionGetter
@@ -372,6 +373,7 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
+    // _asFormData?: boolean | undefined
     _serverExtractActions?: ServerExtractAction[]
     _clientExtractActions?: ClientExtractAction[]
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any>
@@ -389,7 +391,7 @@ export class Point0<
       | LayoutComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
       | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
-    _name?: PointName | UndefinedPointName
+    _name: PointName
     _fetchOptions?: FetchOptionsFn
     _scrollPositionGetter?: ScrollPositionGetter
     _scrollPositionSetter?: ScrollPositionSetter
@@ -506,6 +508,7 @@ export class Point0<
     this._queryOptions = options._queryOptions ?? {}
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
+    // this._asFormData = options._asFormData
     this._serverExtractActions = options._serverExtractActions ?? []
     this._clientExtractActions = options._clientExtractActions ?? []
     this._providerValueSetter = options._providerValueSetter ?? undefined
@@ -684,6 +687,7 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
+    // _asFormData?: boolean | undefined
     _wrappers?: WrapperComponentType[]
     _serverExtractActions?: ServerExtractAction[]
     _clientExtractActions?: ClientExtractAction[]
@@ -708,7 +712,7 @@ export class Point0<
       | LayoutComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
       | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
-    _name?: PointName | UndefinedPointName
+    _name?: PointName
     _fetchOptions?: FetchOptionsFn
     _scrollPositionGetter?: ScrollPositionGetter
     _scrollPositionSetter?: ScrollPositionSetter
@@ -863,6 +867,7 @@ export class Point0<
         unknown
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
+      // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExtractActions: overrides._serverExtractActions ?? this._serverExtractActions,
       _clientExtractActions: overrides._clientExtractActions ?? this._clientExtractActions,
       _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
@@ -950,6 +955,7 @@ export class Point0<
       _attachedTo: attachedTo ?? [],
       _letsEndPointType: 'root',
       _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
+      _name: scope,
     }) as never
   }
 
@@ -1054,6 +1060,27 @@ export class Point0<
   }
 
   // general settings
+
+  // asFormData(
+  //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
+  // ): NiceMiddlePoint<
+  //   TPointType,
+  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // > {
+  //   return this._continue({
+  //     _asFormData: shouldAddMultipartFormDataHeaderToFetchOptions,
+  //   }) as never
+  // }
 
   mutationOptions(
     mutationOptions: UseMutationOptions,
@@ -3250,16 +3277,44 @@ export class Point0<
     const url = new URL('/_point0', this._serverurl)
     const method = 'post'
 
-    headers.set('Content-Type', 'application/json')
     const outputType = args[2] ?? (this._pointType === 'response' ? 'response' : 'data')
     const scope = this._attachedTo.length === 0 ? this._scope : Point0.getPointsManager().scope
-    const body = stringify({
-      outputType,
-      scope,
-      pointInput: input,
-      pointType: this._pointType,
-      pointName: this._name,
-    })
+
+    // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
+    const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
+
+    const body = (() => {
+      if (shouldAddMultipartFormDataHeaderToFetchOptions) {
+        // Don't set Content-Type header for FormData - fetch will set it automatically with boundary
+        const formData = new FormData()
+
+        // Append metadata fields
+        formData.append('outputType', outputType)
+        formData.append('scope', scope)
+        formData.append('pointType', this._pointType)
+        formData.append('pointName', this._name)
+
+        // Loop over input object entries and append to FormData
+        for (const [key, value] of Object.entries(input)) {
+          if (value instanceof File || value instanceof Blob) {
+            formData.append(`pointInput.${key}`, value)
+          } else if (value != null) {
+            formData.append(`pointInput.${key}`, stringify(value))
+          }
+        }
+        return formData
+      } else {
+        headers.set('Content-Type', 'application/json')
+        return stringify({
+          outputType,
+          scope,
+          pointType: this._pointType,
+          pointName: this._name,
+          pointInput: input,
+        })
+      }
+    })()
+
     const res = await fetch(url.toString(), {
       ...this._fetchOptions?.(),
       ...fetchOptions,
@@ -4450,7 +4505,7 @@ export class Point0<
           prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
         } else {
           Point0._prevPageScrollPositions.push({
-            name: this._name ?? 'unknown',
+            name: this._name,
             input: inputRaw,
             x: currentPageScrollPosition?.x ?? 0,
             y: currentPageScrollPosition?.y ?? 0,

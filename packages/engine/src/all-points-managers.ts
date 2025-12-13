@@ -137,6 +137,36 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return undefined
       }
       const bodyRaw = await (async () => {
+        console.log('request.headers.get(Content-Type)', request.headers.get('Content-Type'))
+        if (request.headers.get('Content-Type')?.includes('multipart/form-data')) {
+          const formData = await request.formData()
+          const pointInput: Record<string, unknown> = {}
+          const dataWithoutInput: {
+            outputType: string | undefined
+            scope: string | undefined
+            pointType: string | undefined
+            pointName: string | undefined
+          } = {
+            outputType: undefined,
+            scope: undefined,
+            pointType: undefined,
+            pointName: undefined,
+          }
+          for (const [key, value] of formData.entries()) {
+            console.log('key', key)
+            if (key.startsWith('pointInput.')) {
+              if (typeof value === 'string') {
+                // TODO:ASAP use superjson
+                pointInput[key.slice(11)] = JSON.parse(value)
+              } else {
+                pointInput[key.slice(11)] = value
+              }
+            } else if (typeof value === 'string' && key in dataWithoutInput) {
+              dataWithoutInput[key as keyof typeof dataWithoutInput] = value
+            }
+          }
+          return { ...dataWithoutInput, pointInput }
+        }
         try {
           return await request.json()
         } catch (error) {
@@ -161,23 +191,27 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         const { pointType, outputType, pointInput, scope, pointName } = bodyRaw as Record<string, unknown>
         if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
           throw new Error(
-            `Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${JSON.stringify(pointType).slice(0, 100)}`,
+            `Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${JSON.stringify(pointType ?? 'undefined').slice(0, 100)}`,
           )
         }
         if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
           throw new Error(
-            `Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${JSON.stringify(outputType).slice(0, 100)}`,
+            `Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${JSON.stringify(outputType ?? 'undefined').slice(0, 100)}`,
           )
         }
         if (!pointInput || typeof pointInput !== 'object' || Array.isArray(pointInput)) {
-          throw new Error(`Invalid pointInput: must be an object, got ${JSON.stringify(pointInput).slice(0, 100)}`)
+          throw new Error(
+            `Invalid pointInput: must be an object, got ${JSON.stringify(pointInput ?? 'undefined').slice(0, 100)}`,
+          )
         }
         if (typeof scope !== 'string' || scope.length === 0) {
-          throw new Error(`Invalid scope: must be a non-empty string, got ${JSON.stringify(scope).slice(0, 100)}`)
+          throw new Error(
+            `Invalid scope: must be a non-empty string, got ${JSON.stringify(scope ?? 'undefined').slice(0, 100)}`,
+          )
         }
         if (typeof pointName !== 'string' || pointName.length === 0) {
           throw new Error(
-            `Invalid pointName: must be a non-empty string, got ${JSON.stringify(pointName).slice(0, 100)}`,
+            `Invalid pointName: must be a non-empty string, got ${JSON.stringify(pointName ?? 'undefined').slice(0, 100)}`,
           )
         }
         return {

@@ -1536,7 +1536,16 @@ export type NiceResponseMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  'response' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'ctxLoader' | 'base' | 'point' | 'Infer'
+  | 'response'
+  // | 'asFormData'
+  | 'fetchOptions'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'ctxLoader'
+  | 'base'
+  | 'point'
+  | 'Infer'
 >
 
 export type NiceQueryMiddlePoint<
@@ -1655,7 +1664,16 @@ export type NiceMutationMiddlePoint<
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
-    'mutation' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'ctxLoader' | 'clientLoader' | 'point' | 'Infer'
+    | 'mutation'
+    // | 'asFormData'
+    | 'fetchOptions'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'ctxLoader'
+    | 'clientLoader'
+    | 'point'
+    | 'Infer'
   >
 >
 

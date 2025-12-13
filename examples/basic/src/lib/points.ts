@@ -18,6 +18,14 @@ export const empty_26z4arz84c0_lazy = {
   point: async () => (await import('../pages/empty.js')).empty.point,
 } as LazyPointsCollectionRecord
 
+export const filePage_k5oe64f0zy_lazy = {
+  type: 'page',
+  name: 'file',
+  route: '/file',
+  shouldBePrefetchedOnLinkHover: true,
+  point: async () => (await import('../pages/file.js')).filePage.point,
+} as LazyPointsCollectionRecord
+
 export const ideasPage_dsuwn7kpg6_lazy = {
   type: 'page',
   name: 'ideas',
@@ -92,6 +100,12 @@ export const createIdeaMutation_covj1sfftq_lazy = {
   type: 'mutation',
   name: 'createIdea',
   point: async () => (await import('../pages/idea-create.js')).createIdeaMutation.point,
+} as LazyPointsCollectionRecord
+
+export const uploadFileMutation_231owori99c_lazy = {
+  type: 'mutation',
+  name: 'uploadFile',
+  point: async () => (await import('../pages/file.js')).uploadFileMutation.point,
 } as LazyPointsCollectionRecord
 
 export const sharedQuery_ehd68url3u_lazy = {
