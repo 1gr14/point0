@@ -4053,7 +4053,7 @@ export class Point0<
     mutationOptions?: MutationOptions,
     fetchOptions?: FetchOptions,
   ): MutationOptions<
-    FinalClientData<TData, TClientData>,
+    TResponseOutput extends ResponseOutput ? TResponseOutput : FinalClientData<TData, TClientData>,
     Error0,
     InputRawMaybeOptional<TRouteDefinition, TInputSchema>
   > {
@@ -4075,13 +4075,19 @@ export class Point0<
         if (this._hasClientLoader()) {
           if (this._hasClientAsyncLoader()) {
             const { clientData } = await this._extractClientAsync({ data: serverData, input: input as never })
-            return clientData as FinalClientData<TData, TClientData>
+            return clientData as TResponseOutput extends ResponseOutput
+              ? TResponseOutput
+              : FinalClientData<TData, TClientData>
           } else {
             const { clientData } = this._extractClientSync({ data: serverData, input: input as never })
-            return clientData as FinalClientData<TData, TClientData>
+            return clientData as TResponseOutput extends ResponseOutput
+              ? TResponseOutput
+              : FinalClientData<TData, TClientData>
           }
         }
-        return serverData as FinalClientData<TData, TClientData>
+        return serverData as TResponseOutput extends ResponseOutput
+          ? TResponseOutput
+          : FinalClientData<TData, TClientData>
       } catch (error) {
         throw Error0.from(error)
       }
@@ -4092,7 +4098,7 @@ export class Point0<
       ...mutationOptions,
       mutationFn,
     } as MutationOptions<
-      FinalClientData<TData, TClientData>,
+      TResponseOutput extends ResponseOutput ? TResponseOutput : FinalClientData<TData, TClientData>,
       Error0,
       InputRawMaybeOptional<TRouteDefinition, TInputSchema>
     >
@@ -4102,7 +4108,7 @@ export class Point0<
     mutationOptions?: MutationOptions | undefined,
     fetchOptions?: FetchOptions | undefined,
   ): UseMutationResult<
-    FinalClientData<TData, TClientData>,
+    TResponseOutput extends ResponseOutput ? TResponseOutput : FinalClientData<TData, TClientData>,
     Error0,
     InputRawMaybeOptional<TRouteDefinition, TInputSchema>
   > => {

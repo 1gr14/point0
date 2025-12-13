@@ -2,6 +2,8 @@
 ------ before start0 -----
 --------------------------
 
+finalMiddleware, not renderMiddleware. And if loader return Reponse, not Data, then done, and it is possible only for mutations, and we can remove reponse
+
 check if superjson works correctly with query and mutation and eversion store
 
 fetchWithCancel
