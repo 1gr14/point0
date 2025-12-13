@@ -26,7 +26,6 @@ export const client = Point0.create('client')
     htmlAttrs: { lang: 'en' },
   }))
   .error(({ error }) => {
-    console.log(434, error)
     return (
       <div>
         <div>Error: {error.message}</div>

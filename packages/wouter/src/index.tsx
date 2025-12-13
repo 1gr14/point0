@@ -40,7 +40,6 @@ export const Link = ((props: LinkProps & { onMouseEnter?: (e: React.MouseEvent<H
             pointWithLocation?.point,
           )
           if (pointWithLocation?.point.shouldBePrefetchedOnLinkHover) {
-            console.log('prefetching')
             Point0.getPointsManager()
               .prefetchSuitablePagePoint({
                 location: pointWithLocation.location,

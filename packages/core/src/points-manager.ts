@@ -651,11 +651,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     }
     const promise = (async () => {
       const result = await this.loadSuitablePage({ location })
-      console.log('HAS MATCH', !!result)
       if (!result) {
         return undefined
       }
-      console.log('prefetching page input', result.page._getUnsafeInputRawByLocation(location))
       await result.page.prefetchPage(result.page._getUnsafeInputRawByLocation(location), undefined, {
         queryClient,
         location,
