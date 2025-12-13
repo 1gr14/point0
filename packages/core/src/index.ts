@@ -547,7 +547,7 @@ export class Point0<
         doc.scrollTop = body.scrollTop = y ?? 0
       })
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
-    this._prefetchPolicy = options._prefetchPolicy ?? 'serverClientQuery'
+    this._prefetchPolicy = options._prefetchPolicy ?? 'everything'
     this._onPrefetchFns = options._onPrefetchFns ?? []
     this.shouldBePrefetchedOnLinkHover = options.shouldBePrefetchedOnLinkHover ?? false
     this._layoutErrorComponent =
@@ -4075,6 +4075,23 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 
+  async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {
+    const prefetchFns =
+      preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchFns])
+    if (Array.isArray(preventPrefetchFns)) {
+      for (const fn of preventPrefetchFns) {
+        if (prefetchFns.has(fn)) {
+          prefetchFns.delete(fn)
+        }
+      }
+    }
+    await Promise.all(
+      Array.from(prefetchFns).map(async (fn) => {
+        await fn()
+      }),
+    )
+  }
+
   async prefetchQuery(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
@@ -4087,6 +4104,7 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchOutputType
+            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
       : [
@@ -4099,6 +4117,7 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchOutputType
+            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
   ): Promise<undefined | QueryKey> {
@@ -4110,6 +4129,7 @@ export class Point0<
       outputType,
       force,
       mode = 'serverAndClient',
+      preventPrefetchFns,
     } = settings
     if (!this._hasLoader() && !this._hasClientLoader()) {
       return
@@ -4137,7 +4157,7 @@ export class Point0<
     if (query && !force) {
       return
     }
-    await queryClient.prefetchQuery(queryOptions as never)
+    await Promise.all([this._callPrefetchFns({ preventPrefetchFns }), queryClient.prefetchQuery(queryOptions as never)])
     return queryOptions.queryKey
   }
 
@@ -4162,6 +4182,7 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchOutputType
+            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
       : [
@@ -4183,6 +4204,7 @@ export class Point0<
             force?: boolean
             mode?: QueryMode
             outputType?: FetchOutputType
+            preventPrefetchFns?: boolean | OnPrefetchFn[]
           },
         ]
   ): Promise<undefined | QueryKey> {
@@ -4194,6 +4216,7 @@ export class Point0<
       outputType,
       force,
       mode = 'serverAndClient',
+      preventPrefetchFns,
     } = settings
     if (!this._hasLoader() && !this._hasClientLoader()) {
       return
@@ -4221,7 +4244,10 @@ export class Point0<
     if (query && !force) {
       return
     }
-    await queryClient.prefetchInfiniteQuery(queryOptions as never)
+    await Promise.all([
+      this._callPrefetchFns({ preventPrefetchFns }),
+      queryClient.prefetchInfiniteQuery(queryOptions as never),
+    ])
     return queryOptions.queryKey
   }
 
@@ -4340,7 +4366,7 @@ export class Point0<
     const pageWithLayouts = [this, ...this._layouts]
 
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>(pageWithLayouts.flatMap((p) => p._onPrefetchFns))]
-    const onPrefetchFnsCalling = Promise.all(
+    const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
         // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
         return await fn()
@@ -4383,6 +4409,7 @@ export class Point0<
             fetchOptions,
             force,
             mode,
+            preventPrefetchFns: true,
           })
         } else {
           return await p.prefetchQuery(inputHere as never, queryOptions, {
@@ -4391,12 +4418,13 @@ export class Point0<
             fetchOptions,
             force,
             mode,
+            preventPrefetchFns: true,
           })
         }
       }),
     )
 
-    await Promise.all([queriesPrefetching, onPrefetchFnsCalling])
+    await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
   }
 
   // mountable components
