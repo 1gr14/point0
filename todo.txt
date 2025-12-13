@@ -56,6 +56,8 @@ HMR
 Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
 FinalClientData, FinalQueriedClientData в инфер
 
+bunup
+
 EXPO
 expo example
 expo router
