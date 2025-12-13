@@ -46,10 +46,13 @@ export const BestIdeaComponent = client
     clDD: ctx.clC,
   }))
   .props<{ cta: string }>()
-  .clientLoader(async (o) => ({
-    ...o.data,
-    cllll: 'cllll',
-  }))
+  .clientLoader(async (o) => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    return {
+      ...o.data,
+      cllll: 'cllll',
+    }
+  })
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
@@ -80,9 +83,6 @@ export default generalLayout
   .head({
     title: 'IdeaNick Forever!',
     titleTemplate: null,
-  })
-  .onPrefetch(async () => {
-    await BestIdeaComponent.point.prefetchQuery({ x: 10, y: 20 })
   })
   .loading((o) => {
     return <div>Loadingx...</div>

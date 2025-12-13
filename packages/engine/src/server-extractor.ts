@@ -631,9 +631,10 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: InputRaw
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
-      if (!pagePoint._hasLoader()) {
-        return
-      }
+      // do not uncomment it. If page itself has no loaders, it does not mean, that it not has any components which has loaders
+      // if (!pagePoint._hasLoader()) {
+      //   return
+      // }
       const prefetchPageQueryOptions = pagePoint._getServerQueryOptions({
         input,
         // location: this.pageLocation as AnyLocation,
@@ -643,7 +644,6 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         outputType: 'queryClientDehydratedState',
       })
 
-      // you said you already have this:
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)

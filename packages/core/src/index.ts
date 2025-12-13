@@ -4523,7 +4523,6 @@ export class Point0<
   }
 
   _Component = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
@@ -4531,8 +4530,8 @@ export class Point0<
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
       restProps: FinalProps<TProps>
     }>(() => {
-      const { input: providedInput, ...restProps } = props as any
-      const inputRaw = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
+      const { input: providedInput = {}, ...restProps } = props as any
+      const inputRaw = { ...providedInput }
       return { inputRaw, restProps }
     }, [props])
 
