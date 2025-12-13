@@ -1,4 +1,4 @@
-import { Link } from '@point0/wouter'
+import { Link0 } from '@/lib/routes.js'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
@@ -43,7 +43,7 @@ export const ideaPage = ideaLayout
         >
           <p>
             <b>
-              <Link to="#zxc">zxc</Link>-<Link to="#zxv">xcv</Link>
+              <Link0 to="#zxc">zxc</Link0>-<Link0 to="#zxv">xcv</Link0>
               {state}: {idea.description}
             </b>
           </p>
@@ -52,8 +52,7 @@ export const ideaPage = ideaLayout
           </p>
           <p>{idea.content}</p>
           <nav>
-            <Link to="/ideas">← Back to Ideas</Link>
-            <Link to="/">← Back to Home</Link>
+            <Link0 route="ideas">← Back to Ideas</Link0>
           </nav>
         </div>
       )

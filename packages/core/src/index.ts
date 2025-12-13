@@ -141,7 +141,7 @@ import type {
   UseQueryOptions,
   WrapperComponentType,
 } from './types.js'
-import { dedupeSlashes, mergeHeaders } from './utils.js'
+import { dedupeSlashes, mergeHeaders, windowScrollPositionGetter, windowScrollPositionSetter } from './utils.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -514,38 +514,8 @@ export class Point0<
     this._layouts = options._layouts ?? []
     this._name = options._name
     this._fetchOptions = options._fetchOptions ?? (() => ({}))
-    this._scrollPositionGetter =
-      options._scrollPositionGetter ??
-      (() => {
-        if (typeof window === 'undefined' || typeof document === 'undefined') {
-          return { x: 0, y: 0 }
-        }
-        const doc = document.documentElement
-        const body = document.body
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const x = window.pageXOffset !== undefined ? window.pageXOffset : doc.scrollLeft || body.scrollLeft || 0
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const y = window.pageYOffset !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
-        return { x, y }
-      })
-    this._scrollPositionSetter =
-      options._scrollPositionSetter ??
-      (({ x, y }) => {
-        if (typeof window === 'undefined' || typeof document === 'undefined') {
-          return
-        }
-        if (typeof window.scrollTo === 'function') {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          window.scrollTo(x ?? 0, y ?? 0)
-          return
-        }
-        const doc = document.documentElement
-        const body = document.body
-        // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
-        doc.scrollLeft = body.scrollLeft = x ?? 0
-        // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
-        doc.scrollTop = body.scrollTop = y ?? 0
-      })
+    this._scrollPositionGetter = options._scrollPositionGetter ?? windowScrollPositionGetter
+    this._scrollPositionSetter = options._scrollPositionSetter ?? windowScrollPositionSetter
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
     this._prefetchPolicy = options._prefetchPolicy ?? 'everything'
     this._onPrefetchFns = options._onPrefetchFns ?? []

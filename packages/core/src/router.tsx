@@ -232,7 +232,7 @@ export const useOnNavigateDetailed = (fn: UseOnNavigateDetailedFn) => {
   }, [ctx.status, ctx.error, isNavigating])
 }
 
-export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) => any>(
+export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) => any>(
   useAdapterNavigate: T,
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
   return () => {
@@ -242,9 +242,14 @@ export function _wrapUseNavigate<T extends () => (href: string, ...args: any[]) 
     const adapterNavigate = useAdapterNavigate()
 
     return async (...args: Parameters<ReturnType<T>>) => {
-      const href = args[0]
+      const to = (() => {
+        if (args[0].startsWith('#') && !routerContext.preventLocationHash) {
+          return routerContext.currentLocation.pathname + args[0]
+        }
+        return args[0]
+      })()
       const prevLocation = routerContext.currentLocation
-      const location = PointsManager.getPointsManager().routes._.getLocation(href)
+      const location = PointsManager.getPointsManager().routes._.getLocation(to)
       routerContext.setPrevLocation(prevLocation)
       routerContext.setError(null)
       routerContext.setNextLocation(location)

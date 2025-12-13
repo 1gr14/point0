@@ -1,4 +1,5 @@
 import type { DehydratedState } from '@tanstack/react-query'
+import type { ScrollPositionGetter, ScrollPositionSetter } from './types.js'
 
 export function mergeHeaders(
   base?: HeadersInit,
@@ -82,4 +83,34 @@ export const appendSlash = <T extends string | undefined | null>(path: T): T => 
     return undefined as T
   }
   return (path + '/').replace(/\/\/+/g, '/') as T
+}
+
+export const windowScrollPositionGetter: ScrollPositionGetter = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return { x: 0, y: 0 }
+  }
+  const doc = document.documentElement
+  const body = document.body
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const x = window.pageXOffset !== undefined ? window.pageXOffset : doc.scrollLeft || body.scrollLeft || 0
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const y = window.pageYOffset !== undefined ? window.pageYOffset : doc.scrollTop || body.scrollTop || 0
+  return { x, y }
+}
+
+export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: number; y: number }) => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return
+  }
+  if (typeof window.scrollTo === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    window.scrollTo(x ?? 0, y ?? 0)
+    return
+  }
+  const doc = document.documentElement
+  const body = document.body
+  // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
+  doc.scrollLeft = body.scrollLeft = x ?? 0
+  // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
+  doc.scrollTop = body.scrollTop = y ?? 0
 }

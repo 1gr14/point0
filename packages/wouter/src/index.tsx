@@ -8,7 +8,7 @@ import type {
   RoutesPretty,
 } from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
-import { _wrapUseNavigate, Point0, RouterContextProvider } from '@point0/core'
+import { _wrapUseNavigate, Point0, RouterContext, RouterContextProvider, useLocation } from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import {
@@ -20,7 +20,7 @@ import {
   Router as WouterRouter,
 } from 'wouter'
 
-import type { BaseLocationHook, NavigationalProps } from 'wouter'
+import type { BaseLocationHook, HookNavigationOptions, NavigationalProps } from 'wouter'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 const _useNavigate = () => {
@@ -51,11 +51,11 @@ type HTMLLinkAttributes = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'classNa
   className?: string | undefined | ((isActive: boolean) => string | undefined)
 }
 
-export type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> &
-  AsChildProps<
-    { children: ReactElement; onClick?: MouseEventHandler },
-    HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
-  >
+export type LinkAsChildProps = AsChildProps<
+  { children: ReactElement; onClick?: MouseEventHandler },
+  HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
+>
+export type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
 
 export const Link = (props: LinkProps) => {
   const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
@@ -63,14 +63,23 @@ export const Link = (props: LinkProps) => {
     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
   }
   const navigate = useNavigate()
-  const finalHref = to || href
+  const location = useLocation()
+  const routerCtx = React.useContext(RouterContext)
+  if (!routerCtx) {
+    throw new Error('Link must be used within RouterContextProvider')
+  }
+  const finalTo = to || href || '#'
   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pointWithLocation = useMemo(() => {
-    if (!finalHref) {
+    if (!finalTo) {
       return undefined
     }
-    return Point0.getPointsManager()._getPagePointByHref(finalHref)
-  }, [finalHref])
+    if (finalTo.startsWith('#')) {
+      const hashSuffix = routerCtx.preventLocationHash ? '' : finalTo
+      return Point0.getPointsManager()._getPagePointByHref(location.pathname + hashSuffix)
+    }
+    return Point0.getPointsManager()._getPagePointByHref(finalTo)
+  }, [finalTo, location, routerCtx.preventLocationHash])
   return (
     <WouterLink
       {...rest}
@@ -110,44 +119,72 @@ export const Link = (props: LinkProps) => {
           void onMouseLeave?.(e)
         },
       }}
-      href={href as never}
-      to={to}
+      to={finalTo}
       replace={replace}
       onClick={(e) => {
-        if (finalHref) {
-          if (e.metaKey || e.ctrlKey) return
-          e.preventDefault()
-          void navigate(finalHref, { replace })
-          onClick?.(e)
-        }
+        if (e.metaKey || e.ctrlKey) return
+        e.preventDefault()
+        void navigate(finalTo, { replace })
+        onClick?.(e)
       }}
     />
   )
 }
 
-export const createLink0 = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
-  return <TRouteName extends ExtractRoutesKeys<TRoutes>>(
-    props: {
-      route: TRouteName
-    } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+export const createLink0 = <
+  TRoutes extends RoutesPretty<any>,
+  TBaseLocationHook extends BaseLocationHook = BrowserLocationHook,
+>(
+  routes: TRoutes,
+) => {
+  function Link0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    props: { route: TRouteName } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
       ? { input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }
       : { input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }) &
-      AsChildProps<
-        { children: ReactElement; onClick?: MouseEventHandler },
-        HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
-      >,
-  ) => {
-    const { route: routeName, input, ...rest } = props
-    const to = useMemo(() => {
-      const route = routes[routeName]
-      if (!route) {
-        console.error(`Route ${String(route)} not found`)
+      LinkAsChildProps &
+      HookNavigationOptions<TBaseLocationHook>,
+  ): React.ReactElement
+  function Link0(
+    props: { to: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>,
+  ): React.ReactElement
+  function Link0(
+    props: { href: string } & LinkAsChildProps & HookNavigationOptions<TBaseLocationHook>,
+  ): React.ReactElement
+  function Link0(props: {
+    to?: string
+    href?: string
+    route?: string
+    input?: Record<string, any>
+  }): React.ReactElement {
+    const {
+      route: routeName,
+      input = {},
+      to: providedTo,
+      href: providedHref,
+      ...rest
+    } = props as typeof props & { input?: Record<string, any>; to?: string; href?: string }
+    const finalTo = useMemo(() => {
+      if (providedTo !== undefined) {
+        return providedTo
+      }
+      if (providedHref !== undefined) {
+        return providedHref
+      }
+      if (routeName === undefined) {
+        console.error('routeName is required for Link without to or href')
         return '#'
       }
-      return route.flat(input || {})
-    }, [routeName, JSON.stringify(input)])
-    return <Link {...(rest as any)} to={to} />
+      const route = routes[routeName]
+      if (!route) {
+        // TODO: replace with onClientError handler
+        console.error(`Route "${routeName}" not found`)
+        return '#'
+      }
+      return route.flat(input)
+    }, [routeName, JSON.stringify(input), providedTo, providedHref])
+    return <Link {...(rest as any)} to={finalTo} />
   }
+  return Link0
 }
 
 export const Router = ({
