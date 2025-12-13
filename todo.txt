@@ -2,15 +2,16 @@
 ------ before start0 -----
 --------------------------
 
-Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
-
+Криэйт линк 0
+Квери пусть имеет опциональные локейшены, а остальные пусть имеют правильные локэйшены
+Респонс путь не имеет летс, может что-то ещё пусть не имеет летс если надо
 check onPrefetch work recursively
 check query and infiteqQuery and component respect onPrefetch, and all others who have it
 Префеоч мод есть только у маунтаблов, и причём видомо дегидрейтед квери есть только у пейджа, надо проверить
 
-.info() с положением каждого отдельного компонента
+Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
 
-.init()
+.init(), and rename current TInit to TLoad
 
 .enabled()
 
@@ -69,6 +70,9 @@ refactor Ctx0
 refactor Env0
 refactor Logger0
 
+.meta()
+.info() с положением каждого отдельного компонента
+cli list page, cli get page pageName
 mcp server for point0, so when it is in dev mode it provides info about all points
 mcp server .lets('mcp', 'whatever') or mdx doc. even with loaders. And it becomes available via mcp server, and can be used to autogonerate .curecor rules or event not
 mcp server .lets('batchMcp').mcp([{name,description,input,loader?}]) for extrnal libraries like UiHero and all others so we always have fresh docs for each library we use

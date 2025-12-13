@@ -3,7 +3,7 @@ import type {
   AnyRoute,
   ExtractRoute,
   ExtractRoutesKeys,
-  FlatInput,
+  FlatInputWithHash,
   HasParams,
   RoutesPretty,
 } from '@devp0nt/route0'
@@ -28,6 +28,20 @@ const _useNavigate = () => {
   return navigate
 }
 export const useNavigate = _wrapUseNavigate(_useNavigate)
+
+export const createUseNavigate0 = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
+  return () => {
+    const navigate = useNavigate()
+    return async <TRouteName extends ExtractRoutesKeys<TRoutes>>(
+      ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+        ? [route: TRouteName, input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
+        : [route: TRouteName, input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
+    ) => {
+      const [route, input] = args
+      return await navigate(routes[route].flat(input || {}))
+    }
+  }
+}
 
 type AsChildProps<ComponentProps, DefaultElementProps> =
   | ({ asChild?: false } & DefaultElementProps)
@@ -62,12 +76,6 @@ export const Link = (props: LinkProps) => {
       {...rest}
       {...{
         onMouseEnter: (e) => {
-          console.info(
-            'onMouseEnter',
-            pointWithLocation?.point.shouldBePrefetchedOnLinkHover,
-            pointWithLocation?.location,
-            pointWithLocation?.point,
-          )
           if (pointWithLocation && pointWithLocation.point.shouldBePrefetchedOnLinkHover !== false) {
             // Clear any existing timeout
             if (prefetchTimeoutRef.current) {
@@ -117,13 +125,13 @@ export const Link = (props: LinkProps) => {
   )
 }
 
-export const createLinkWithRoutes = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
+export const createLink0 = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
   return <TRouteName extends ExtractRoutesKeys<TRoutes>>(
     props: {
       route: TRouteName
     } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
-      ? { input: FlatInput<ExtractRoute<TRoutes, TRouteName>> }
-      : { input?: FlatInput<ExtractRoute<TRoutes, TRouteName>> }) &
+      ? { input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }
+      : { input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>> }) &
       AsChildProps<
         { children: ReactElement; onClick?: MouseEventHandler },
         HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>

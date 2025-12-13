@@ -1,4 +1,6 @@
+// import { useNavigate0 } from '@/lib/routes.js'
 import { ideaLayout } from '../layouts/idea.js'
+import { useEffect } from 'react'
 
 export const ideaNewsPage = ideaLayout
   .lets('page', 'ideaNews', 'news')
@@ -6,6 +8,11 @@ export const ideaNewsPage = ideaLayout
   .page(
     ({ data: { idea }, input }) => `${idea.news.length} news for idea "${idea.title}"`,
     ({ data: { idea }, query }) => {
+      // const navigate = useNavigate0()
+      useEffect(() => {
+        // navigate('home').catch(console.error)
+        // navigate('idea', { id: idea.id, pp: 3, hash: 'zxc' }).catch(console.error)
+      }, [])
       return (
         <div>
           <h3>News</h3>

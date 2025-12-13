@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
-import { LinkX } from '../lib/routes.js'
+import { Link0 } from '../lib/routes.js'
 
 export const ideasPage = generalLayout
   .lets('page', 'ideas')
@@ -49,9 +49,9 @@ export const ideasPage = generalLayout
                 <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
                   <h3>
                     {/* <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link> */}
-                    <LinkX route="idea" input={{ id: idea.id, '#': 'zxc' }}>
+                    <Link0 route="idea" input={{ id: idea.id, hash: 'xcv' }}>
                       {idea.title}
-                    </LinkX>
+                    </Link0>
                   </h3>
                   <p>
                     {idea.description}
@@ -60,9 +60,9 @@ export const ideasPage = generalLayout
                   </p>
                   <p>
                     {/* <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link> */}
-                    <LinkX route="ideaNews" input={{ id: idea.id }}>
+                    <Link0 route="ideaNews" input={{ id: idea.id, hash: 'zxc' }}>
                       News
-                    </LinkX>
+                    </Link0>
                   </p>
                 </div>
               ))}
@@ -80,7 +80,7 @@ export const ideasPage = generalLayout
           )}
           <nav>
             {/* <Link to="/">← Back to Home</Link> */}
-            <LinkX route="home">← Back to Home</LinkX>
+            <Link0 route="home">← Back to Home</Link0>
           </nav>
         </div>
       )
