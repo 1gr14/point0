@@ -2122,6 +2122,21 @@ export class Point0<
     }) as never
   }
 
+  page(): MountableComponent<TInputSchema, TProps, false> &
+    NicePageEndPoint<
+      'page',
+      UndefinedEndPointType,
+      TRequiredCtx,
+      TCtx,
+      TData,
+      TClientData,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TResponseOutput,
+      TQueryResultType,
+      TProps
+    >
   page<
     TPage extends PageComponent<
       TQueryResultType,
@@ -2190,7 +2205,10 @@ export class Point0<
           ),
           PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>,
         ]
-      | [PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>]
+      | [
+          | PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+          | undefined,
+        ]
   ): NicePageEndPoint<
     'page',
     UndefinedEndPointType,
@@ -2205,7 +2223,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    const [head, page] = args.length === 2 ? args : [undefined, args[0]]
+    const [head, page = () => null] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const successHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
@@ -2237,10 +2255,42 @@ export class Point0<
     // return point._Page
   }
 
+  // component(): NiceComponentEndPoint<
+  //   'component',
+  //   UndefinedEndPointType,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // >
+  // component<
+  //   TComponent extends ComponentComponent<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TProps>,
+  // >(
+  //   component: TComponent,
+  // ): NiceComponentEndPoint<
+  //   'component',
+  //   UndefinedEndPointType,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponseOutput,
+  //   TQueryResultType,
+  //   TProps
+  // >
   component<
     TComponent extends ComponentComponent<TQueryResultType, TData, TResponseOutput, TClientData, TInputSchema, TProps>,
   >(
-    component: TComponent,
+    component?: TComponent,
   ): NiceComponentEndPoint<
     'component',
     UndefinedEndPointType,
@@ -2258,8 +2308,7 @@ export class Point0<
     // ): MountableComponent<TInputSchema, TProps, false> {
     const point = this._continue({
       _pointType: 'component',
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _component: component || ((() => null) as never), // in case if we prune component for serverNoSsr customer
+      _component: component || ((() => null) as never),
       _letsEndPointType: undefined,
     })
     const componentWithPoint = point._Component
@@ -2294,7 +2343,7 @@ export class Point0<
       TProps
     >,
   >(
-    layout: TLayout,
+    layout?: TLayout,
   ): NiceLayoutEndPoint<
     'layout',
     UndefinedEndPointType,
@@ -2311,8 +2360,7 @@ export class Point0<
   > {
     const point = this._continue({
       _pointType: 'layout',
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _layout: layout || ((async ({ children }: { children: React.ReactNode }) => await children) as never), // in case if we prune layout for serverNoSsr customer
+      _layout: layout || ((({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children) as never),
       _letsEndPointType: undefined,
       _base: this as never as BasePoint,
     })
@@ -2336,7 +2384,7 @@ export class Point0<
   }
 
   provider<TNewClientData extends Data = Data>(
-    valueSetter: ProviderValueSetterFn<
+    valueSetter?: ProviderValueSetterFn<
       TLetsEndPointType,
       TRouteDefinition,
       FinalClientData<TData, TClientData>,
@@ -2355,26 +2403,11 @@ export class Point0<
     TResponseOutput,
     TQueryResultType,
     TProps
-  >
-  provider(): NiceProviderEndPoint<
-    'provider',
-    UndefinedEndPointType,
-    TRequiredCtx,
-    TCtx,
-    TData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TResponseOutput,
-    TQueryResultType,
-    TProps
-  >
-  provider(providerValueSetter?: ProviderValueSetterFn<any, any, any, any>) {
+  > {
     const point = this._continue({
       _pointType: 'provider',
       _letsEndPointType: undefined,
-      _providerValueSetter: providerValueSetter || (({ data }) => data),
+      _providerValueSetter: valueSetter || (({ data }) => data),
       _ProviderReactContext: createContext<FinalClientData<TData, TClientData>>(null as never) as never,
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
         if (!point._ProviderReactContext) {
