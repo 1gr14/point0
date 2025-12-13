@@ -2839,7 +2839,9 @@ export class Point0<
     }
     let currentInputParsed: InputParsed = input
     let currentInputSchema: InputSchema | undefined = this._serverInputSchema
+    console.log('extractClientAsync location before ', location)
     location ??= this._getSelfLocationByAnotherLocationOrInput(location, input)
+    console.log('extractClientAsync location after', location)
     for (const clientExtractAction of this._clientExtractActions) {
       switch (clientExtractAction.type) {
         case 'input': {
@@ -3016,6 +3018,7 @@ export class Point0<
   ): UsePointQueryResult<TQueryResultType, TData, TResponseOutput, TClientData, any> {
     const [input = {}, queryOptions, fetchOptions] = args
     const location = useLocation()
+    console.log('useQuery location', location)
     const serverQueryEnabled = this._hasLoader()
     const clientQueryEnabled = this._hasClientLoader()
     if (this._queryResultType === 'infiniteQuery') {
@@ -3172,6 +3175,7 @@ export class Point0<
     AnyLocation
   > {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    console.log('loader location', location)
 
     const { inputRaw, inputParsed, inputParseError } = React.useMemo<
       | {
@@ -3474,6 +3478,7 @@ export class Point0<
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
     const queryFn = this._hasClientAsyncLoader()
       ? async () => {
+          console.log('getClientQueryOptions location', location)
           const { clientData } = await this._extractClientAsync({ data: data || {}, location, input })
           return clientData
         }
@@ -3515,6 +3520,8 @@ export class Point0<
         const serverOpts = this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType: 'data' })
         return await queryClient.fetchQuery(serverOpts as any)
       })()
+
+      console.log('getCombinedQueryOptions location', location)
 
       const clientOpts = this._getClientQueryOptions({
         input: input as never,
@@ -3918,6 +3925,7 @@ export class Point0<
     fetchOptions?: FetchOptions | undefined
   }): UseQueryResult<FinalClientData<TData, TClientData>, Error0> {
     const queryClient = useQueryClient()
+    console.log('_useCombinedQuery location', location)
     return useQuery(
       this._getCombinedQueryOptions({
         input,
