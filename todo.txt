@@ -2,7 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-Криэйт линк 0
 Квери пусть имеет опциональные локейшены, а остальные пусть имеют правильные локэйшены
 Респонс путь не имеет летс, может что-то ещё пусть не имеет летс если надо
 check onPrefetch work recursively
@@ -11,14 +10,9 @@ check query and infiteqQuery and component respect onPrefetch, and all others wh
 
 Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
 
-.init(), and rename current TInit to TLoad
-
-.enabled()
-
 file upload
 
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
-
 bunup
 oxc lint
 
@@ -28,6 +22,10 @@ oxc lint
 Конечно плагин можно завернуть в функцию и накидать туда генериков
 Лоадеру и ктксу уже дать опцию для некэширования {cache: null | string}
 Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
+
+.init(), and rename current TInit to TLoad
+
+.enabled()
 
 ---
 
@@ -45,8 +43,6 @@ HMR
 Вероятно хмру поможет если я буду возвращать просто внутренний компонент, а на местах, где рендерю оборачивал бы в Компонент и передавал в него сам поинт. Или может даже достаточно возвращать сам компонент, а на местах использотвать point.Component, а накрайняк если нельзя на него даже ничгео ассайнить, тогда из displayName возьмём название поинта и подтянем его из глобала когда будем делать <Mount point={point} /> <point.Page /> <point.Component /> <point.Layout />
 Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
 FinalClientData, FinalQueriedClientData в инфер
-
-bunup
 
 EXPO
 expo example
