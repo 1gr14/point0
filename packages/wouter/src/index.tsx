@@ -1,4 +1,12 @@
-import type { AnyLocation, AnyRoute, FlatInput, HasParams, RoutesPretty } from '@devp0nt/route0'
+import type {
+  AnyLocation,
+  AnyRoute,
+  ExtractRoute,
+  ExtractRoutesKeys,
+  FlatInput,
+  HasParams,
+  RoutesPretty,
+} from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
 import { _wrapUseNavigate, Point0, RouterContextProvider } from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
@@ -110,12 +118,12 @@ export const Link = (props: LinkProps) => {
 }
 
 export const createLinkWithRoutes = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
-  return <TRouteName extends Exclude<keyof TRoutes, '_'>>(
+  return <TRouteName extends ExtractRoutesKeys<TRoutes>>(
     props: {
       route: TRouteName
-    } & (HasParams<TRoutes[TRouteName]> extends true
-      ? { input: FlatInput<TRoutes[TRouteName]> }
-      : { input?: FlatInput<TRoutes[TRouteName]> }) &
+    } & (HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? { input: FlatInput<ExtractRoute<TRoutes, TRouteName>> }
+      : { input?: FlatInput<ExtractRoute<TRoutes, TRouteName>> }) &
       AsChildProps<
         { children: ReactElement; onClick?: MouseEventHandler },
         HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>

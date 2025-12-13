@@ -12,7 +12,7 @@
     "types": "tsc --noEmit"
   },
   "dependencies": {
-    "@devp0nt/route0": "^1.0.0-next.43",
+    "@devp0nt/route0": "^1.0.0-next.45",
     "@point0/core": "workspace:*",
     "@point0/engine": "workspace:*",
     "@point0/wouter": "workspace:*",

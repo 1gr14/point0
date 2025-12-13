@@ -2,11 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-# as flat input
-hash as usual input
-CallableRoute<CallableRoute<>>
-route Infer, routes Infer
-
 Скрол позишен может принимать строку, тогда будет элемент найден по селектору, или дом элемент может быть запрошен через 1 функцию
 
 check onPrefetch work recursively

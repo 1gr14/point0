@@ -2,7 +2,7 @@ import { Error0 } from '@devp0nt/error0'
 import type {
   AnyLocation,
   AnyRoute,
-  CallabelRoute,
+  CallableRoute,
   Extended,
   FlatInputStringOnly,
   KnownLocation,
@@ -218,9 +218,9 @@ export class Point0<
     | ProviderValueSetterFn<any, any, any, FinalClientData<TData, TClientData>>
     | undefined
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
-  readonly _route: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
+  readonly _route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _prevRoute: TPrevRouteDefinition extends RouteDefinition
-    ? CallabelRoute<TPrevRouteDefinition>
+    ? CallableRoute<TPrevRouteDefinition>
     : UndefinedRoute
   private readonly _page:
     | PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
@@ -368,8 +368,8 @@ export class Point0<
     _providerValueSetter?: ProviderValueSetterFn<any, any, any, any>
     _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
     _useValue?: any
-    _route?: TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute
-    _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute
+    _route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
+    _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallableRoute<TPrevRouteDefinition> : UndefinedRoute
     _page?:
       | PageComponent<TQueryResultType, TData, TResponseOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
       | UndefinedPageComponent
@@ -504,10 +504,10 @@ export class Point0<
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
     this._route =
       options._route ??
-      (undefined as TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute)
+      (undefined as TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute)
     this._prevRoute =
       options._prevRoute ??
-      (undefined as TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute)
+      (undefined as TPrevRouteDefinition extends RouteDefinition ? CallableRoute<TPrevRouteDefinition> : UndefinedRoute)
     this._page = options._page ?? undefined
     this._component = options._component ?? undefined
     this._layout = options._layout ?? undefined
@@ -712,11 +712,11 @@ export class Point0<
     _ProviderReactContext?: Context<FinalClientData<TData, TClientData>> | undefined
     _useValue?: any
     _route?: IfAnyThenElse<
-      TRouteDefinition extends RouteDefinition ? CallabelRoute<TRouteDefinition> : UndefinedRoute,
+      TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
     _prevRoute?: IfAnyThenElse<
-      TPrevRouteDefinition extends RouteDefinition ? CallabelRoute<TPrevRouteDefinition> : UndefinedRoute,
+      TPrevRouteDefinition extends RouteDefinition ? CallableRoute<TPrevRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
     _page?:
@@ -1987,7 +1987,7 @@ export class Point0<
   //   TQueryResultType,
   //   TProps
   // >
-  // route(route?: CallabelRoute | RouteDefinition | ShowError<string>) {
+  // route(route?: CallableRoute | RouteDefinition | ShowError<string>) {
   //   const prevRoute = this._prevRoute
   //   const newRoute = (() => {
   //     if (typeof route === 'undefined') {
@@ -2005,7 +2005,7 @@ export class Point0<
   //     return route
   //   })()
   //   return this._continue({
-  //     _route: newRoute as CallabelRoute,
+  //     _route: newRoute as CallableRoute,
   //   }) as never
   // }
 
@@ -2806,11 +2806,11 @@ export class Point0<
     )
   }
 
-  private _getRouteForce(): CallabelRoute<NonNullable<TRouteDefinition>> {
+  private _getRouteForce(): CallableRoute<NonNullable<TRouteDefinition>> {
     if (!this._route) {
       throw new Error(`No client route provided for this point. Name: ${this._name}.`)
     }
-    return this._route as CallabelRoute<NonNullable<TRouteDefinition>>
+    return this._route as CallableRoute<NonNullable<TRouteDefinition>>
   }
 
   private async _extractClientAsync({
@@ -2991,7 +2991,7 @@ export class Point0<
     if (location) {
       return route.getLocation(route.flat({ ...location.searchParams, ...location.params, ...input }))
     }
-    return route.getLocation(route.flat({ ...input }))
+    return route.getLocation(route.flat({ ...(input || {}) }))
   }
 
   _getUnsafeInputRawByLocation(location: AnyLocation): InputRaw<TRouteDefinition, TInputSchema> {
