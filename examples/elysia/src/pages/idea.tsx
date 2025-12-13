@@ -1,4 +1,4 @@
-import { Link } from '@point0/wouter'
+import { Link } from '@/lib/navigate'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'

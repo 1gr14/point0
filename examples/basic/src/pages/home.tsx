@@ -1,5 +1,5 @@
 import { Point0 } from '@point0/core'
-import { Link } from '@point0/wouter'
+import { Link } from '@/lib/navigate'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'

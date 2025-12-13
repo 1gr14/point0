@@ -1,3 +1,4 @@
+import { Error0 } from '@devp0nt/error0'
 import type {
   AnyLocation,
   AnyRoute,
@@ -8,7 +9,14 @@ import type {
   RoutesPretty,
 } from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
-import { _wrapUseNavigate, Point0, RouterContext, RouterContextProvider, useLocation } from '@point0/core'
+import {
+  _wrapNavigate,
+  _wrapUseNavigate,
+  Point0,
+  RouterContextProvider,
+  useLocation,
+  useRouterContext,
+} from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import {
@@ -23,23 +31,116 @@ import {
 import type { BaseLocationHook, HookNavigationOptions, NavigationalProps } from 'wouter'
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
-const _useNavigate = () => {
+const _useNativeNavigate = () => {
   const [, navigate] = useWouterLocation()
   return navigate
 }
-export const useNavigate = _wrapUseNavigate(_useNavigate)
+export const useSimpleNavigate = _wrapUseNavigate(_useNativeNavigate)
 
-export const createUseNavigate0 = <TRoutes extends RoutesPretty<any>>(routes: TRoutes) => {
-  return () => {
-    const navigate = useNavigate()
-    return async <TRouteName extends ExtractRoutesKeys<TRoutes>>(
-      ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
-        ? [route: TRouteName, input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
-        : [route: TRouteName, input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
-    ) => {
-      const [route, input] = args
-      return await navigate(routes[route].flat(input || {}))
+export const createNavigate0 = <
+  TRoutes extends RoutesPretty<any>,
+  TNavigate extends (to: string, ...rest: any[]) => any,
+>(
+  routes: TRoutes,
+  navigate: TNavigate,
+) => {
+  const wrappedNavigate = _wrapNavigate(navigate)
+  async function navigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+      ? [
+          route: TRouteName,
+          input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+          ...rest: Tail<Parameters<TNavigate>>,
+        ]
+      : [
+          route: TRouteName,
+          input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+          ...rest: Tail<Parameters<TNavigate>>,
+        ]
+  ): Promise<{ location: AnyLocation; error: Error0 | null }> {
+    const [routeName, input, ...rest] = args
+    const route = routes[routeName]
+    if (!route) {
+      throw new Error0(`Route "${String(routeName)}" not found`)
     }
+    const to = route.flat(input || {}) as string
+    return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
+  }
+  return navigate0
+}
+
+type Tail<T extends readonly unknown[]> = T extends readonly [any, ...infer R] ? R : never
+
+export const createUseNavigate0 = <
+  TRoutes extends RoutesPretty<any>,
+  TUseNavigate extends () => (to: string, ...args: any[]) => any = typeof useSimpleNavigate,
+>(
+  routes: TRoutes,
+  useNavigate?: TUseNavigate,
+) => {
+  return () => {
+    const simpleNavigate = useNavigate ? useNavigate() : useSimpleNavigate()
+    function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+      ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+        ? [
+            route: TRouteName,
+            input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
+          ]
+        : [
+            route: TRouteName,
+            input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+            ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
+          ]
+    ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    // function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    //   ...args: OnlyIfHasParams<
+    //     ExtractRoute<TRoutes, TRouteName>,
+    //     [
+    //       route: TRouteName,
+    //       input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+    //       ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
+    //     ]
+    //   >
+    // ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    // function useNavigate0<TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    //   ...args: OnlyIfNoParams<
+    //     ExtractRoute<TRoutes, TRouteName>,
+    //     [
+    //       route: TRouteName,
+    //       input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>,
+    //       ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>,
+    //     ]
+    //   >
+    // ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    // function useNavigate0(
+    //   to: { to: string },
+    //   ...rest: Tail<Parameters<ReturnType<TUseNavigate>>>
+    // ): Promise<{ location: AnyLocation; error: Error0 | null }>
+    async function useNavigate0(...args: any[]) {
+      const { to, rest } = ((): { to: string; rest: Tail<Parameters<ReturnType<TUseNavigate>>> } => {
+        if (typeof args[0] === 'string') {
+          // it is route name
+          const route = routes[args[0]]
+          if (!route) {
+            throw new Error(`Route "${args[0]}" not found`)
+          }
+          return { to: route.flat(args[1] || {}), rest: args.slice(2) as Tail<Parameters<ReturnType<TUseNavigate>>> }
+        }
+        throw new Error0('Invalid useNavigate arguments', { meta: { args } })
+        // return { to: args[0].to, rest: args.slice(1) as Tail<Parameters<ReturnType<TUseNavigate>>> }
+      })()
+      return await simpleNavigate(to, ...rest)
+    }
+    return useNavigate0
+    // return async <TRouteName extends ExtractRoutesKeys<TRoutes>>(
+    //   ...args: HasParams<ExtractRoute<TRoutes, TRouteName>> extends true
+    //     ? [route: TRouteName, input: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
+    //     : [route: TRouteName, input?: FlatInputWithHash<ExtractRoute<TRoutes, TRouteName>>]
+    // ) => {
+    //   const [route, input] = args
+    //   return await navigate(routes[route].flat(input || {}))
+    // }
   }
 }
 
@@ -51,23 +152,20 @@ type HTMLLinkAttributes = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'classNa
   className?: string | undefined | ((isActive: boolean) => string | undefined)
 }
 
-export type LinkAsChildProps = AsChildProps<
+type LinkAsChildProps = AsChildProps<
   { children: ReactElement; onClick?: MouseEventHandler },
   HTMLLinkAttributes & RefAttributes<HTMLAnchorElement>
 >
-export type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
+type LinkProps<H extends BaseLocationHook = BrowserLocationHook> = NavigationalProps<H> & LinkAsChildProps
 
-export const Link = (props: LinkProps) => {
+export const SimpleLink = (props: LinkProps) => {
   const { to, href, onClick, onMouseEnter, onMouseLeave, replace, ...rest } = props as LinkProps & {
     onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => any
     onMouseLeave?: (e: React.MouseEvent<HTMLAnchorElement>) => any
   }
-  const navigate = useNavigate()
+  const navigate = useSimpleNavigate()
   const location = useLocation()
-  const routerCtx = React.useContext(RouterContext)
-  if (!routerCtx) {
-    throw new Error('Link must be used within RouterContextProvider')
-  }
+  const routerCtx = useRouterContext()
   const finalTo = to || href || '#'
   const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pointWithLocation = useMemo(() => {
@@ -182,7 +280,7 @@ export const createLink0 = <
       }
       return route.flat(input)
     }, [routeName, JSON.stringify(input), providedTo, providedHref])
-    return <Link {...(rest as any)} to={finalTo} />
+    return <SimpleLink {...(rest as any)} to={finalTo} />
   }
   return Link0
 }

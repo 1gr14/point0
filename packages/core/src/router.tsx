@@ -1,7 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation, AnyRouteOrDefinition, KnownLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PointsManager } from './points-manager.js'
@@ -95,8 +94,19 @@ export function RouterContextProvider({
     }),
     [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
+  useEffect(() => {
+    _routerContextHolder.value = value
+  }, [value])
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
+}
+
+const _routerContextHolder = { value: null as RouterContextValue | null }
+export const getRouterContext = (): RouterContextValue => {
+  if (_routerContextHolder.value) {
+    return _routerContextHolder.value
+  }
+  throw new Error('RouterContextProvider is not yet initialized')
 }
 
 /** Hooks **/
@@ -236,9 +246,9 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
   useAdapterNavigate: T,
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
   return () => {
+    // return _wrapNavigate(useAdapterNavigate())
     const routerContext = React.useContext(RouterContext)
     if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
-    const queryClient = useQueryClient()
     const adapterNavigate = useAdapterNavigate()
 
     return async (...args: Parameters<ReturnType<T>>) => {
@@ -257,7 +267,6 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
       try {
         await PointsManager.getPointsManager().prefetchSuitablePagePoint({
           location,
-          queryClient,
         })
         routerContext.setStatus('transitioning')
         await adapterNavigate(...(args as [string, ...any[]]))
@@ -273,6 +282,44 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
         routerContext.setNextLocation(null)
         return { location, error: error0 }
       }
+    }
+  }
+}
+
+export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
+  adapterNavigate: T,
+): (...args: Parameters<T>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
+  return async (...args: Parameters<T>) => {
+    const routerContext = getRouterContext()
+    const to = (() => {
+      if (args[0].startsWith('#') && !routerContext.preventLocationHash) {
+        return routerContext.currentLocation.pathname + args[0]
+      }
+      return args[0]
+    })()
+    const prevLocation = routerContext.currentLocation
+    const location = PointsManager.getPointsManager().routes._.getLocation(to)
+    routerContext.setPrevLocation(prevLocation)
+    routerContext.setError(null)
+    routerContext.setNextLocation(location)
+    routerContext.setStatus('prefetching')
+    try {
+      await PointsManager.getPointsManager().prefetchSuitablePagePoint({
+        location,
+      })
+      routerContext.setStatus('transitioning')
+      await adapterNavigate(...(args as [string, ...any[]]))
+      routerContext.setStatus('idle')
+      routerContext.setNextLocation(null)
+      return { location, error: null }
+    } catch (error) {
+      const error0 = Error0.from(error)
+      routerContext.setError(error0)
+      routerContext.setStatus('transitioning')
+      await adapterNavigate(...(args as [string, ...any[]]))
+      routerContext.setStatus('idle')
+      routerContext.setNextLocation(null)
+      return { location, error: error0 }
     }
   }
 }

@@ -114,3 +114,32 @@ export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: 
   // eslint-disable-next-line no-multi-assign, @typescript-eslint/no-unnecessary-condition
   doc.scrollTop = body.scrollTop = y ?? 0
 }
+
+export const getWindowScrollPositionGetterByElementGetter = (elementGetter: () => HTMLElement | null) => {
+  return () => {
+    const element = elementGetter()
+    if (!element) {
+      return { x: 0, y: 0 }
+    }
+    return { x: element.scrollLeft, y: element.scrollTop }
+  }
+}
+
+export const getWindowScrollPositionSetterByElementGetter = (elementGetter: () => HTMLElement | null) => {
+  return (position: { x: number; y: number }) => {
+    const element = elementGetter()
+    if (!element) {
+      return
+    }
+    element.scrollLeft = position.x
+    element.scrollTop = position.y
+  }
+}
+
+export const getWindowScrollPositionGetterBySelector = (selector: string) => {
+  return getWindowScrollPositionGetterByElementGetter(() => document.querySelector(selector))
+}
+
+export const getWindowScrollPositionSetterBySelector = (selector: string) => {
+  return getWindowScrollPositionSetterByElementGetter(() => document.querySelector(selector))
+}

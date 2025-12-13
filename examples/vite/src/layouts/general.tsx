@@ -1,4 +1,4 @@
-import { Link } from '@point0/wouter'
+import { Link } from '@/lib/navigate'
 import { useIsRouterPrefetching } from '@point0/core'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'

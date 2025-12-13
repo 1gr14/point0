@@ -1,5 +1,4 @@
 import { Route0, Routes } from '@devp0nt/route0'
-import { createLink0, createUseNavigate0 } from '@point0/wouter'
 
 const home = Route0.create('/')
 const empty = home.extend('/empty')
@@ -18,6 +17,3 @@ export const routes = Routes.create({
   idea,
   ideaNews,
 })
-
-export const Link0 = createLink0(routes)
-export const useNavigate0 = createUseNavigate0(routes)

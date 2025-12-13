@@ -141,7 +141,16 @@ import type {
   UseQueryOptions,
   WrapperComponentType,
 } from './types.js'
-import { dedupeSlashes, mergeHeaders, windowScrollPositionGetter, windowScrollPositionSetter } from './utils.js'
+import {
+  dedupeSlashes,
+  getWindowScrollPositionGetterByElementGetter,
+  getWindowScrollPositionGetterBySelector,
+  getWindowScrollPositionSetterByElementGetter,
+  getWindowScrollPositionSetterBySelector,
+  mergeHeaders,
+  windowScrollPositionGetter,
+  windowScrollPositionSetter,
+} from './utils.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -4869,6 +4878,38 @@ export class Point0<
   // scroll restoration
 
   scrollPosition(
+    documentElementGetter: () => HTMLElement | null,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  scrollPosition(
+    selector: string,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponseOutput,
+    TQueryResultType,
+    TProps
+  >
+  scrollPosition(
     getter: ScrollPositionGetter,
     setter: ScrollPositionSetter,
   ): NiceMiddlePoint<
@@ -4884,7 +4925,26 @@ export class Point0<
     TResponseOutput,
     TQueryResultType,
     TProps
-  > {
+  >
+  scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter]) {
+    const { getter, setter } = (() => {
+      if (args.length === 2) {
+        return { getter: args[0], setter: args[1] }
+      }
+      if (typeof args[0] === 'function') {
+        return {
+          getter: getWindowScrollPositionGetterByElementGetter(args[0]),
+          setter: getWindowScrollPositionSetterByElementGetter(args[0]),
+        }
+      }
+      if (typeof args[0] === 'string') {
+        return {
+          getter: getWindowScrollPositionGetterBySelector(args[0]),
+          setter: getWindowScrollPositionSetterBySelector(args[0]),
+        }
+      }
+      throw new Error('Invalid arguments for scrollPosition')
+    })()
     return this._continue<
       TPointType,
       TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -4901,7 +4961,7 @@ export class Point0<
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
       _scrollPositionGetter: getter ?? this._scrollPositionGetter,
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
       _scrollPositionSetter: setter ?? this._scrollPositionSetter,
     }) as never
   }

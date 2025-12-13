@@ -1,4 +1,4 @@
-import { Link } from '@point0/wouter'
+import { Link } from '@/lib/navigate'
 import { Point0 } from '@point0/core'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'

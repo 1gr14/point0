@@ -1,4 +1,4 @@
-import { Link0 } from '@/lib/routes.js'
+import { Link } from '@/lib/navigate'
 import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
@@ -33,6 +33,12 @@ export const ideaPage = ideaLayout
       title: idea.title,
     }),
     ({ data: { idea }, location }) => {
+      // const x = useNavigate()
+      // useEffect(() => {
+      //   setTimeout(() => {
+      //     x('home')
+      //   }, 1000)
+      // }, [])
       // any hook or whatever here, it is just client code
       const [state, setState] = useState(() => 0)
       return (
@@ -43,7 +49,7 @@ export const ideaPage = ideaLayout
         >
           <p>
             <b>
-              <Link0 to="#zxc">zxc</Link0>-<Link0 to="#zxv">xcv</Link0>
+              <Link to="#zxc">zxc</Link>-<Link to="#zxv">xcv</Link>
               {state}: {idea.description}
             </b>
           </p>
@@ -52,7 +58,7 @@ export const ideaPage = ideaLayout
           </p>
           <p>{idea.content}</p>
           <nav>
-            <Link0 route="ideas">← Back to Ideas</Link0>
+            <Link route="ideas">← Back to Ideas</Link>
           </nav>
         </div>
       )

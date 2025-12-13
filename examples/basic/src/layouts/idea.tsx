@@ -1,4 +1,4 @@
-import { Link } from '@point0/wouter'
+import { Link } from '@/lib/navigate'
 import { routes } from '../lib/routes'
 import { generalLayout } from './general'
 
