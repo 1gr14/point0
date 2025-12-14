@@ -27,6 +27,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
+import { flatten } from 'flat'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
@@ -3466,35 +3467,28 @@ export class Point0<
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
     const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
 
+    const bodySrc = {
+      outputType,
+      scope,
+      pointType: this._pointType,
+      pointName: this._name,
+      pointInput: input,
+    }
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
-        // Don't set Content-Type header for FormData - fetch will set it automatically with boundary
         const formData = new FormData()
-
-        // Append metadata fields
-        formData.append('outputType', outputType)
-        formData.append('scope', scope)
-        formData.append('pointType', this._pointType)
-        formData.append('pointName', this._name)
-
-        // Loop over input object entries and append to FormData
-        for (const [key, value] of Object.entries(input)) {
+        const flattened: Record<string, unknown> = flatten(bodySrc)
+        for (const [key, value] of Object.entries(flattened)) {
           if (value instanceof File || value instanceof Blob) {
-            formData.append(`pointInput.${key}`, value)
-          } else if (value != null) {
-            formData.append(`pointInput.${key}`, stringify(value))
+            formData.append(key, value)
+          } else if (value !== undefined) {
+            formData.append(key, stringify(value))
           }
         }
         return formData
       } else {
         headers.set('Content-Type', 'application/json')
-        return stringify({
-          outputType,
-          scope,
-          pointType: this._pointType,
-          pointName: this._name,
-          pointInput: input,
-        })
+        return stringify(bodySrc)
       }
     })()
 

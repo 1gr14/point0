@@ -14,6 +14,7 @@ import type {
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
 import { parseUrl } from '@point0/core'
+import { unflatten } from 'flat'
 import { ServerExtractor } from './server-extractor.js'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -139,31 +140,16 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const bodyRaw = await (async () => {
         if (request.headers.get('Content-Type')?.includes('multipart/form-data')) {
           const formData = await request.formData()
-          const pointInput: Record<string, unknown> = {}
-          const dataWithoutInput: {
-            outputType: string | undefined
-            scope: string | undefined
-            pointType: string | undefined
-            pointName: string | undefined
-          } = {
-            outputType: undefined,
-            scope: undefined,
-            pointType: undefined,
-            pointName: undefined,
-          }
-          for (const [key, value] of formData.entries()) {
-            if (key.startsWith('pointInput.')) {
-              if (typeof value === 'string') {
-                // TODO:ASAP use superjson
-                pointInput[key.slice(11)] = JSON.parse(value)
-              } else {
-                pointInput[key.slice(11)] = value
-              }
-            } else if (typeof value === 'string' && key in dataWithoutInput) {
-              dataWithoutInput[key as keyof typeof dataWithoutInput] = value
+          const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+            if (typeof value === 'string') {
+              acc[key] = JSON.parse(value)
+            } else {
+              acc[key] = value
             }
-          }
-          return { ...dataWithoutInput, pointInput }
+            return acc
+          }, {})
+          const unflattened = unflatten(parsed)
+          return unflattened
         }
         try {
           return await request.json()
