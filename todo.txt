@@ -2,8 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-provider value setter can be async and be just client loader, and provider({}) should just accept query options
-
 point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
 
 .extractDetailed() → {output, clientData, serverData, response, input, inputRaw, location, status}
@@ -79,6 +77,7 @@ cli list page, cli get page pageName
 mcp server for point0, so when it is in dev mode it provides info about all points
 mcp server .lets('mcp', 'whatever') or mdx doc. even with loaders. And it becomes available via mcp server, and can be used to autogonerate .curecor rules or event not
 mcp server .lets('batchMcp').mcp([{name,description,input,loader?}]) for extrnal libraries like UiHero and all others so we always have fresh docs for each library we use
+cli extract point by type and name, so agent can see errors right in terminal
 
 drizzle
 unwind and tailwind
@@ -127,6 +126,7 @@ rest important TODO in code
 refactor types names and order
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
+Move type errors to its own types, so we can reuse them
 
 --------------------------
 ------ after start0 ------

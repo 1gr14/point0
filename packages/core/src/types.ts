@@ -1212,17 +1212,21 @@ export type ClientLoaderFn<
 export type ProviderValueSetterFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TClientData extends Data | UndefinedData,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = {
-  data: FinalClientData<any, TClientData>
+  data: FinalClientData<TLastServerOutput, TLastClientOutput>
   location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
 }
 export type ProviderValueSetterFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TClientData extends Data | UndefinedData,
-  TClientDataOutput extends Data,
-> = (options: ProviderValueSetterFnOptions<TLetsEndPointType, TRouteDefinition, TClientData>) => TClientDataOutput
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
+  TNewClientData extends Data,
+> = (
+  options: ProviderValueSetterFnOptions<TLetsEndPointType, TRouteDefinition, TLastServerOutput, TLastClientOutput>,
+) => TNewClientData
 
 // head
 
