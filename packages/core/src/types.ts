@@ -2067,25 +2067,21 @@ export type NiceBaseEndPoint<
 >
 
 export type WithFetchIfHasServerLoader<
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TLiteral extends string,
-> = TData extends Data ? TLiteral | 'fetch' : TResponse extends Response ? TLiteral | 'fetch' : TLiteral
+> = TLastServerOutput extends LastOutput ? TLiteral | 'fetch' : TLiteral
 export type WithQueryEndLiteralsIfSuitable<
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TLiteral extends string,
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
-      TData,
-      TResponse,
+      TLastServerOutput,
       TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'extract'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
-        TData,
-        TResponse,
+        TLastServerOutput,
         TLiteral | 'useInfiniteQuery' | 'getQueryKey' | 'getInfiniteQueryOptions' | 'prefetchInfiniteQuery' | 'extract'
       >
     : TLiteral
@@ -2132,7 +2128,7 @@ export type NicePageEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TData, TResponse, TQueryResultType, 'point' | 'lets' | 'Infer'>
+      WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
 
@@ -2173,7 +2169,7 @@ export type NiceComponentEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TData, TResponse, TQueryResultType, 'point' | 'lets' | 'Infer'>
+      WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
 
@@ -2214,7 +2210,7 @@ export type NiceLayoutEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TData, TResponse, TQueryResultType, 'point' | 'lets' | 'Infer'>
+      WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
 
@@ -2254,7 +2250,7 @@ export type NiceQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<TData, TResponse, TQueryResultType, 'point' | 'lets' | 'Infer'>
+    WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
   >
 >
 
@@ -2294,7 +2290,7 @@ export type NiceInfiniteQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<TData, TResponse, TQueryResultType, 'point' | 'lets' | 'Infer'>
+    WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
   >
 >
 
@@ -2335,8 +2331,7 @@ export type NiceMutationEndPoint<
   WithInputSchemaLiteralIfExists<
     TInputSchema,
     WithFetchIfHasServerLoader<
-      TData,
-      TResponse,
+      TLastServerOutput,
       'point' | 'lets' | 'extract' | 'getMutationOptions' | 'useMutation' | 'Infer'
     >
   >
@@ -2379,8 +2374,7 @@ export type NiceProviderEndPoint<
   WithInputSchemaLiteralIfExists<
     TInputSchema,
     WithQueryEndLiteralsIfSuitable<
-      TData,
-      TResponse,
+      TLastServerOutput,
       TQueryResultType,
       'point' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'provider' | 'Provider' | 'Infer'
     >

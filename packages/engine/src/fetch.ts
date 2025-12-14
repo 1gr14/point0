@@ -5,6 +5,7 @@ import type { ClientBun } from './client.js'
 import type { EngineLogger } from './config.js'
 import { toJsonErrorResponse } from './error.js'
 import type { ServerBun } from './server.js'
+import { Error0 } from '@devp0nt/error0'
 
 export const engineFetch = async ({
   bunServer,
@@ -173,13 +174,17 @@ export const engineFetch = async ({
       return toJsonErrorResponse(extractResult.error, extractResult.status)
     }
 
-    if (extractResult.response) {
-      extractResult.response.headers.set('X-Point0-Response', 'true')
-      return extractResult.response
+    if (extractResult.output instanceof Response) {
+      extractResult.output.headers.set('X-Point0-Response', 'true')
+      return extractResult.output
+    }
+
+    if (!extractResult.output) {
+      return toJsonErrorResponse(new Error0('No output'), 404)
     }
 
     // else we try to get endpoint json
-    return new Response(JSON.stringify(extractResult.data), {
+    return new Response(JSON.stringify(extractResult.output), {
       headers: { 'Content-Type': 'application/json' },
       status: extractResult.status,
     })
@@ -196,7 +201,7 @@ async function fetchAbsFilePathOnDevServer({
   parsedUrl?: ParsedUrl
   request: Request
 }): Promise<Response | undefined> {
-  // if it is client bun dev serverm and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
+  // if it is client bun dev server and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
   if (process.env.NODE_ENV === 'production') {
     return undefined
   }

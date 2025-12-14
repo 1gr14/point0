@@ -2,23 +2,12 @@
 ------ before start0 -----
 --------------------------
 
-Infer.ClientResponse, Infer.LastDataOrResponse, Infer.Output, Infer.QueriedOutput
-allow any loaders have repsonse, just check if last ethod return data if it is query
-TResponse exetnds Response ? finalMiddleware : TPointType
-check that client extract impossible if no loaders
-remove .response()
 headfn on server when infinite query should have correctly formated data
-fetch engine fn should reponse header if iutput is response
-Response → Response
 point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
 
 provider value setter can be async and be just client loader, and provider({}) should just accept query options
 
 .extractDetailed() → {output, clientData, serverData, response, input, inputRaw, location, status}
-
-refactor types names and order
-try do EmptyData as {}
-remove default generic values it is unsafe, better add AnySomethingType for it
 
 Кткслоадер нул дропает все лоадеры, и клиент лоадер нул, дропает клиентские лоадеры, а в летс не надо дропать
 
@@ -135,6 +124,10 @@ analyze if there same id points or route points, and throw error
 ? Point0 → P0, cli p0
 rest important TODO in code
 ? on request to server for query or mutation which has no serverLoader throw error
+
+refactor types names and order
+try do EmptyData as {}
+remove default generic values it is unsafe, better add AnySomethingType for it
 
 --------------------------
 ------ after start0 ------

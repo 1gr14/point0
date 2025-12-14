@@ -1274,15 +1274,17 @@ export class Point0<
 
   error(
     errorComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
-      ? ErrorComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TLastServerOutput,
-          TLastClientOutput,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
+      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
+        : ErrorComponentType<
+            DestinationComponentType,
+            TQueryResultType,
+            TLastServerOutput,
+            TLastClientOutput,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >
       : ErrorComponentType,
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
@@ -1303,18 +1305,20 @@ export class Point0<
   >
   error(
     ...args: TLetsEndPointType extends 'page'
-      ? [
-          head: ErrorHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
-          pageErrorComponent: ErrorComponentType<
-            DestinationComponentType,
-            TQueryResultType,
-            TLastServerOutput,
-            TLastClientOutput,
-            TInputSchema,
-            TRouteDefinition,
-            TProps
-          >,
-        ]
+      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
+        : [
+            head: ErrorHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
+            pageErrorComponent: ErrorComponentType<
+              DestinationComponentType,
+              TQueryResultType,
+              TLastServerOutput,
+              TLastClientOutput,
+              TInputSchema,
+              TRouteDefinition,
+              TProps
+            >,
+          ]
       : never
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
@@ -1613,15 +1617,17 @@ export class Point0<
 
   loading(
     pageLoadingComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
-      ? LoadingComponentType<
-          DestinationComponentType,
-          TQueryResultType,
-          TLastServerOutput,
-          TLastClientOutput,
-          TInputSchema,
-          TRouteDefinition,
-          TProps
-        >
+      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
+        : LoadingComponentType<
+            DestinationComponentType,
+            TQueryResultType,
+            TLastServerOutput,
+            TLastClientOutput,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >
       : LoadingComponentType,
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
@@ -1642,18 +1648,20 @@ export class Point0<
   >
   loading(
     ...args: TLetsEndPointType extends 'page'
-      ? [
-          head: LoadingHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
-          pageLoadingComponent: LoadingComponentType<
-            DestinationComponentType,
-            TQueryResultType,
-            TLastServerOutput,
-            TLastClientOutput,
-            TInputSchema,
-            TRouteDefinition,
-            TProps
-          >,
-        ]
+      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
+        : [
+            head: LoadingHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
+            pageLoadingComponent: LoadingComponentType<
+              DestinationComponentType,
+              TQueryResultType,
+              TLastServerOutput,
+              TLastClientOutput,
+              TInputSchema,
+              TRouteDefinition,
+              TProps
+            >,
+          ]
       : never
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
@@ -1706,14 +1714,25 @@ export class Point0<
   }
 
   wrapper(
-    wrapperComponent: WrapperComponentType<
-      TQueryResultType,
-      TLastServerOutput,
-      TLastClientOutput,
-      TInputSchema,
-      TRouteDefinition,
-      TProps
-    >,
+    wrapperComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
+      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
+        : WrapperComponentType<
+            TQueryResultType,
+            TLastServerOutput,
+            TLastClientOutput,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >
+      : WrapperComponentType<
+          TQueryResultType,
+          TLastServerOutput,
+          TLastClientOutput,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >,
   ): NiceMiddlePoint<
     'renderMiddleware',
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -2349,7 +2368,7 @@ export class Point0<
 
   page(
     ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
-      ? [ShowError<`Page can not return response. Last loader should provide plain object data, not response.`>]
+      ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
       : never[]
   ): MountableComponent<TInputSchema, TProps, false> &
     NicePageEndPoint<
