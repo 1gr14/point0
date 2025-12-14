@@ -120,7 +120,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.scope = input.scope
     this.cwd = input.cwd
     this.allPointsManagers = input.allPointsManagers
-    this.providedPointsManager = input.pointsManager
+    this.providedPointsManager = input.providedPointsManager
     this.pointsFile = input.pointsFile
     // this.pointsDistFile = input.pointsDistFile
     this.pointsManager = input.pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
@@ -190,7 +190,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }): ClientBun<false> {
     const providedPointsManager = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
-    const pointsManager = null
+    const pointsManager = providedPointsManager
 
     const serverViteDevServer = null
     const clientViteDevServer = null

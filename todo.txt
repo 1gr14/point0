@@ -2,8 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-Кткслоадер нул дропает все лоадеры, и клиент лоадер нул, дропает клиентские лоадеры, а в летс не надо дропать
-
 check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson) + .superjson(boolean)
 
@@ -30,13 +28,15 @@ oxc lint
 
 ---
 
-prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not. Or maybe just lets add .app(App) to root
-
 .ssr(), and remove ssr option from engine
+
+prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not. Or maybe just lets add .app(App) to root
 
 - check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
 ! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
-Парс вайт мод
+parseViteMode()
+stop pruning for serverSsr
+in engine options: point: string | module; pointsLazy?: string; pointsReady?: string it is where to save points files
 
 ---
 

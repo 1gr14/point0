@@ -108,7 +108,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }): ServerBun<false> {
     const providedPointsManager = typeof input.points === 'string' ? null : input.points
     const pointsFile = typeof input.points === 'string' ? input.points : null
-    const pointsManager = null
+    const pointsManager = providedPointsManager
 
     const publicdir = Publicdir.create({
       hostname: null,

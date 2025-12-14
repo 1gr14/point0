@@ -39,7 +39,6 @@ import { useLocation, useRouterContext } from './router.js'
 import type { SuperStoreDefinedItem } from './super-store.js'
 import { SuperStore } from './super-store.js'
 import type {
-  AnyDataOrInfiniteData,
   AnyPoint,
   AnyUnqueriedLoaderResult,
   AnyUseLoaderResult,
@@ -1958,7 +1957,32 @@ export class Point0<
     TProps,
     TLastServerOutput,
     TNewClientLastOutput
-  > {
+  >
+  clientLoader(
+    dropClientLoaders: null,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    UndefinedData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    UndefinedResponse,
+    TQueryResultType,
+    TProps,
+    TLastServerOutput,
+    UndefinedLastOutput
+  >
+  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | null) {
+    if (clientLoaderFn === null) {
+      return this._continue({
+        _clientExtractActions: [],
+      }) as never
+    }
     return this._continue({
       _pointType: 'clientMiddleware',
       _queryResultType: this._queryResultType ?? 'query',

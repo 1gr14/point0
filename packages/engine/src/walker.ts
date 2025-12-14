@@ -333,6 +333,7 @@ export class Walker {
           'componentError',
           'layoutLoading',
           'pageLoading',
+          'provider',
           'componentLoading',
           'query',
           'infiniteQuery',
@@ -500,6 +501,12 @@ export class Walker {
             node.arguments[1] = makeArrowFnReturnNull()
           } else {
             node.arguments[0] = makeArrowFnReturnNull()
+          }
+        } else if (method === 'clientLoader') {
+          if (node.arguments[0]?.type === 'NullLiteral') {
+            // Keep as is - argument[0] is null
+          } else {
+            node.arguments = []
           }
         } else {
           node.arguments = []

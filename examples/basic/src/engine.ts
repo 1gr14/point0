@@ -18,6 +18,8 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
       ssr: true,
       app: './app.js',
       points: './lib/points.ts',
+      // pointsModuleType: 'ready',
+      // points: await import('./lib/points'),
       // routes: './lib/routes.generated.ts',
       routes,
       indexHtml: './index.html',
