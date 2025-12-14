@@ -10,6 +10,7 @@ import type {
   InputParsed,
   InputRaw,
   InputSchema,
+  LastOutput,
   NiceEndPoint,
   PointName,
   PointsScope,
@@ -147,7 +148,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   async extract(
-    point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+    point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
     input?: InputRaw,
   ): Promise<ServerExtractResult>
   async extract({ point, input, withLayouts }: ExtractOptions): Promise<ServerExtractResult>
@@ -157,7 +158,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       | [
           point:
             | AnyPoint
-            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
             | undefined,
           input?: InputRaw,
         ]
@@ -206,15 +207,17 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           ctx: this.requiredCtx ?? {},
           data: {},
           head: [],
-          error: inputError,
+          error: Error0.from(inputError),
           status: 422,
           response: undefined,
+          output: {},
         }
       }
 
       let currentCtx: Ctx = this.requiredCtx ?? {}
       let currentData: Data = {}
       let currentResponse: Response | undefined = undefined
+      let currentLastOutput: LastOutput = currentData
       let currentStatus = 200
       let currentInputParsed: InputParsed = input
       let currentInputSchema: InputSchema | undefined = undefined
@@ -231,11 +234,12 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               if (safeParseResult.error) {
                 return {
                   ctx: this.requiredCtx ?? {},
-                  data: {},
+                  data: currentData,
                   head: [],
-                  error: safeParseResult.error,
+                  error: Error0.from(safeParseResult.error),
                   status: 422,
-                  response: undefined,
+                  response: currentResponse,
+                  output: currentLastOutput,
                 }
               }
               currentInputParsed = safeParseResult.data
@@ -272,14 +276,18 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   currentStatus = ex.output[0]
                   if (ex.output[1] instanceof Response) {
                     currentResponse = ex.output[1]
+                    currentLastOutput = ex.output[1]
                   } else {
                     currentData = ex.output[1]
+                    currentLastOutput = ex.output[1]
                   }
                 } else {
                   if (ex.output instanceof Response) {
                     currentResponse = ex.output
+                    currentLastOutput = ex.output
                   } else {
                     currentData = ex.output
+                    currentLastOutput = ex.output
                   }
                 }
               } else {
@@ -295,14 +303,18 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   currentStatus = result[0]
                   if (result[1] instanceof Response) {
                     currentResponse = result[1]
+                    currentLastOutput = result[1]
                   } else {
                     currentData = result[1]
+                    currentLastOutput = result[1]
                   }
                 } else {
                   if (result instanceof Response) {
                     currentResponse = result
+                    currentLastOutput = result
                   } else {
                     currentData = result
+                    currentLastOutput = result
                   }
                 }
                 this.serverExtractActionsWithOutput.push({
@@ -317,6 +329,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 (e) => e.record.unstableId === serverExtractAction.unstableId && e.record.type === 'ctxLoader',
               ) as ServerExtractActionWithOutput<'ctxLoader'> | undefined
               if (ex) {
+                currentResponse = ex.output.response ?? currentResponse
                 currentData = { ...ex.output.data }
                 currentCtx = { ...ex.output.ctx }
                 currentStatus = ex.output.status ?? currentStatus
@@ -328,13 +341,15 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   extract: this.extract.bind(this),
                   inputRaw: input,
                   response: currentResponse,
+                  output: currentLastOutput,
                 })
                 currentCtx = result?.ctx ?? currentCtx
                 currentData = result?.data ?? currentData
                 currentResponse = result?.response ?? currentResponse
                 currentStatus = result?.status ?? currentStatus
+                currentLastOutput = result?.data ?? currentLastOutput
                 this.serverExtractActionsWithOutput.push({
-                  output: { ctx: currentCtx, data: currentData, response: currentResponse },
+                  output: { ctx: currentCtx, data: currentData, response: currentResponse, output: currentLastOutput },
                   record: serverExtractAction,
                 })
               }
@@ -374,6 +389,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             response: currentResponse,
             error: null,
             status: currentStatus,
+            output: currentLastOutput,
           }
         } else {
           const error = new Error0(`Point Not Found`)
@@ -390,7 +406,8 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }),
             error,
             status: 404,
-            response: undefined,
+            response: currentResponse,
+            output: currentLastOutput,
           }
         }
       } catch (error) {
@@ -409,7 +426,8 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             }),
             error: error0,
             status: error0.httpStatus ?? 500,
-            response: undefined,
+            response: currentResponse,
+            output: currentLastOutput,
           }
         } catch (error2) {
           // in case if we have error in head resolver
@@ -420,7 +438,8 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             head: [],
             error: error0,
             status: error0.httpStatus ?? 500,
-            response: undefined,
+            response: currentResponse,
+            output: currentLastOutput,
           }
         }
       }

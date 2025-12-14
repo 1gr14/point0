@@ -49,6 +49,8 @@ export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 export type AnyInfiniteData = InfiniteData<any, any>
 export type AnyDataOrInfiniteData = Data | (InfiniteData<any, any> & { [key: string]: unknown })
+export type LastOutput = Data | Response
+export type UndefinedLastOutput = undefined
 
 export type QueryResultType = 'query' | 'infiniteQuery'
 export type UndefinedQueryResultType = undefined
@@ -84,7 +86,8 @@ export type Infer<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = {
   PointType: TPointType
   LetsEndPointType: TLetsEndPointType
@@ -101,13 +104,16 @@ export type Infer<
   Props: TProps
   InputParsed: InputParsed<TRouteDefinition, TInputSchema>
   InputRaw: InputRaw<TRouteDefinition, TInputSchema>
-  LastDataOrResponse: TLastDataOrResponse
-  QueriedData: TLastDataOrResponse extends Response
+  LastServerOutput: TLastServerOutput
+  LastClientOutput: TLastClientOutput
+  QueriedData: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
     ? never
     : FinalClientQueriedData<TQueryResultType, TData, TClientData>
-  FetchOutput: TData extends Data ? TData : TResponse extends Response ? TResponse : never
-  ClientExtractOutput: TLastDataOrResponse extends Response ? TLastDataOrResponse : FinalClientData<TData, TClientData>
-  ServerExtractOutput: ServerExtractResult<TCtx, TData, TResponse>
+  FetchOutput: TLastServerOutput extends LastOutput ? TLastServerOutput : never
+  ClientExtractOutput: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
+    ? FinalLastOutput<TLastServerOutput, TLastClientOutput>
+    : never
+  ServerExtractOutput: ServerExtractResult<TCtx, TData, TResponse, TLastServerOutput>
 }
 
 // points types
@@ -145,7 +151,8 @@ export type AnyPoint<
   TClientResponse extends Response | UndefinedResponse = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = any,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = any,
 > = Point0<
   TPointType,
   TLetsEndPointType,
@@ -160,7 +167,8 @@ export type AnyPoint<
   TClientResponse,
   TQueryResultType,
   TProps,
-  TLastDataOrResponse
+  TLastServerOutput,
+  TLastClientOutput
 >
 
 export type BasePoint<
@@ -175,7 +183,8 @@ export type BasePoint<
   TClientResponse extends UndefinedResponse = UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = any,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = any,
 > = AnyPoint<
   'base',
   UndefinedEndPointType,
@@ -190,7 +199,8 @@ export type BasePoint<
   TClientResponse,
   TQueryResultType,
   TProps,
-  TLastDataOrResponse
+  TLastServerOutput,
+  TLastClientOutput
 >
 
 export type RootPoint<
@@ -205,7 +215,8 @@ export type RootPoint<
   TClientResponse extends UndefinedResponse = UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = any,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = any,
 > = AnyPoint<
   'root',
   UndefinedEndPointType,
@@ -220,7 +231,8 @@ export type RootPoint<
   TClientResponse,
   TQueryResultType,
   TProps,
-  TLastDataOrResponse
+  TLastServerOutput,
+  TLastClientOutput
 >
 
 export type PagePoint<
@@ -236,7 +248,8 @@ export type PagePoint<
   TClientResponse extends Response | UndefinedResponse = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = any,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = any,
 > = AnyPoint<
   'page',
   UndefinedEndPointType,
@@ -251,7 +264,8 @@ export type PagePoint<
   TClientResponse,
   TQueryResultType,
   TProps,
-  TLastDataOrResponse
+  TLastServerOutput,
+  TLastClientOutput
 >
 
 export type LayoutPoint<
@@ -266,7 +280,8 @@ export type LayoutPoint<
   TClientResponse extends Response | UndefinedResponse = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = any,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = any,
 > = AnyPoint<
   'layout',
   UndefinedEndPointType,
@@ -281,7 +296,8 @@ export type LayoutPoint<
   TClientResponse,
   TQueryResultType,
   TProps,
-  TLastDataOrResponse
+  TLastServerOutput,
+  TLastClientOutput
 >
 
 export type EndPoint<
@@ -297,7 +313,8 @@ export type EndPoint<
   TClientResponse extends Response | UndefinedResponse = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = any,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = any,
 > = AnyPoint<
   TPointType,
   UndefinedEndPointType,
@@ -312,7 +329,8 @@ export type EndPoint<
   TClientResponse,
   TQueryResultType,
   TProps,
-  TLastDataOrResponse
+  TLastServerOutput,
+  TLastClientOutput
 >
 
 // utils
@@ -333,22 +351,26 @@ export type EmptyStringIfStandaloneSlash<TRouteDefinition extends RouteDefinitio
 export type StandaloneSlashIfUndefined<TRouteDefinition extends RouteDefinition | undefined> =
   TRouteDefinition extends undefined ? '/' : TRouteDefinition
 
-export type FinalData<TData extends Data | UndefinedData> = TData extends UndefinedData ? EmptyData : TData
+export type DataOrEmptyData<TData extends Data | UndefinedData> = TData extends Data ? TData : EmptyData
 export type FinalClientData<
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
-> = TClientData extends Data ? TClientData : FinalData<TData>
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
+> = TLastClientOutput extends Data ? TLastClientOutput : TLastServerOutput extends Data ? TLastServerOutput : never
+export type FinalLastOutput<
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
+> = TLastClientOutput extends LastOutput ? TLastClientOutput : TLastServerOutput
 
 export type FinalClientQueriedData<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = TQueryResultType extends 'infiniteQuery'
-  ? InfiniteData<FinalClientData<TData, TClientData>>
+  ? InfiniteData<FinalClientData<TLastServerOutput, TLastClientOutput>>
   : TQueryResultType extends 'query'
-    ? FinalClientData<TData, TClientData>
-    : FinalClientData<TData, TClientData>
-export type HasAnyLoader<
+    ? FinalClientData<TLastServerOutput, TLastClientOutput>
+    : FinalClientData<TLastServerOutput, TLastClientOutput>
+export type HasAnyLoaderByOutputs<
   TData extends Data | UndefinedData,
   TResponse extends Response | UndefinedResponse,
   TClientData extends Data | UndefinedData,
@@ -362,6 +384,10 @@ export type HasAnyLoader<
       : TClientResponse extends Response
         ? true
         : false
+export type HasAnyLoaderByLastOutput<
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
+> = TLastServerOutput extends LastOutput ? true : TLastClientOutput extends LastOutput ? true : false
 
 export type InputSchemaZod = ZodObject<any>
 export type InputSchema = InputSchemaZod
@@ -511,106 +537,76 @@ type NarrowQueryComponentPropStatus<
 > = IfAnyThenElse<S, T, Extract<T, { status: S }>>
 export type UseServerQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TStatus extends 'pending' | 'error' | 'success',
-> = TData extends UndefinedData
-  ? undefined
+> = TLastServerOutput extends UndefinedLastOutput
+  ? never
   : TQueryResultType extends 'infiniteQuery'
     ? NarrowQueryComponentPropStatus<
-        UseInfiniteQueryResult<InfiniteData<FetchOutput<TResponse, TData>>, Error0>,
+        UseInfiniteQueryResult<InfiniteData<FetchOutput<TLastServerOutput>>, Error0>,
         TStatus
       >
     : TQueryResultType extends 'query'
-      ? NarrowQueryComponentPropStatus<UseQueryResult<FetchOutput<TResponse, TData>, Error0>, TStatus>
-      : undefined
+      ? NarrowQueryComponentPropStatus<UseQueryResult<FetchOutput<TLastServerOutput>, Error0>, TStatus>
+      : never
 export type UseClientQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TStatus extends 'pending' | 'error' | 'success',
-> = TClientData extends UndefinedData
-  ? undefined
+> = TLastClientOutput extends UndefinedLastOutput
+  ? never
   : TQueryResultType extends 'infiniteQuery'
-    ? NarrowQueryComponentPropStatus<
-        UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0>,
-        TStatus
-      >
+    ? NarrowQueryComponentPropStatus<UseInfiniteQueryResult<InfiniteData<TLastClientOutput>, Error0>, TStatus>
     : TQueryResultType extends 'query'
-      ? NarrowQueryComponentPropStatus<UseQueryResult<FinalClientData<TData, TClientData>, Error0>, TStatus>
-      : undefined
+      ? NarrowQueryComponentPropStatus<UseQueryResult<TLastClientOutput, Error0>, TStatus>
+      : never
 export type UseCombinedQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TStatus extends 'pending' | 'error' | 'success',
-> = TClientData extends UndefinedData
-  ? undefined
-  : TData extends UndefinedData
-    ? undefined
+> = TLastClientOutput extends UndefinedLastOutput
+  ? never
+  : TLastServerOutput extends UndefinedLastOutput
+    ? never
     : TQueryResultType extends 'infiniteQuery'
       ? NarrowQueryComponentPropStatus<
-          UseInfiniteQueryResult<InfiniteData<FinalClientData<TData, TClientData>>, Error0>,
+          UseInfiniteQueryResult<InfiniteData<FinalClientData<TLastServerOutput, TLastClientOutput>>, Error0>,
           TStatus
         >
       : TQueryResultType extends 'query'
-        ? NarrowQueryComponentPropStatus<UseQueryResult<FinalClientData<TData, TClientData>, Error0>, TStatus>
-        : undefined
+        ? NarrowQueryComponentPropStatus<
+            UseQueryResult<FinalClientData<TLastServerOutput, TLastClientOutput>, Error0>,
+            TStatus
+          >
+        : never
 export type UsePointQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TStatus extends 'pending' | 'error' | 'success',
-> = TData extends Data
-  ? TClientData extends Data
-    ? UseCombinedQueryResult<TQueryResultType, TData, TClientData, TStatus>
-    : UseServerQueryResult<TQueryResultType, TData, TResponse, TStatus>
-  : TClientData extends Data
-    ? UseClientQueryResult<TQueryResultType, TData, TClientData, TStatus>
+> = TLastServerOutput extends Data
+  ? TLastClientOutput extends Data
+    ? UseCombinedQueryResult<TQueryResultType, TLastServerOutput, TLastClientOutput, TStatus>
+    : UseServerQueryResult<TQueryResultType, TLastServerOutput, TStatus>
+  : TLastClientOutput extends Data
+    ? UseClientQueryResult<TQueryResultType, TLastClientOutput, TStatus>
     : undefined
 export type SpecificUseLoaderResult<
   TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TLocation extends AnyLocation,
-  // > = Omit<
-  //   UseLoaderResult<TQueryResultType, TData, TResponse, TClientData, TInputSchema, TRouteDefinition, TStatus>,
-  //   'data' | 'error' | 'loading' | 'location'
-  // > & { location: TLocation } & (TStatus extends 'success'
-  //     ? 'pending' extends TStatus
-  //       ? 'error' extends TStatus
-  //         ? {
-  //             data: FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined
-  //             loading: boolean
-  //             error: Error0 | null
-  //           }
-  //         : { data: FinalClientQueriedData<TQueryResultType, TData, TClientData>; loading: boolean }
-  //       : 'error' extends TStatus
-  //         ? { data: FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined; error: Error0 | null }
-  //         : { data: FinalClientQueriedData<TQueryResultType, TData, TClientData> }
-  //     : // Has no success
-  //       TStatus extends 'pending'
-  //       ? 'error' extends TStatus
-  //         ? { loading: boolean; error: Error0 | null }
-  //         : { loading: true }
-  //       : TStatus extends 'error'
-  //         ? { error: Error0 }
-  //         : never)
 > = IfAnyThenElse<
   TStatus,
   | UseLoaderResult<
       'success',
       TQueryResultType,
-      TData,
-      TResponse,
-      TClientData,
-      TClientResponse,
+      TLastServerOutput,
+      TLastClientOutput,
       TInputSchema,
       TRouteDefinition,
       TLocation
@@ -618,10 +614,8 @@ export type SpecificUseLoaderResult<
   | UseLoaderResult<
       'error',
       TQueryResultType,
-      TData,
-      TResponse,
-      TClientData,
-      TClientResponse,
+      TLastServerOutput,
+      TLastClientOutput,
       TInputSchema,
       TRouteDefinition,
       TLocation
@@ -629,10 +623,8 @@ export type SpecificUseLoaderResult<
   | UseLoaderResult<
       'pending',
       TQueryResultType,
-      TData,
-      TResponse,
-      TClientData,
-      TClientResponse,
+      TLastServerOutput,
+      TLastClientOutput,
       TInputSchema,
       TRouteDefinition,
       TLocation
@@ -640,10 +632,8 @@ export type SpecificUseLoaderResult<
   UseLoaderResult<
     TStatus,
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition,
     TLocation
@@ -653,33 +643,18 @@ export type SpecificUseLoaderResult<
 export type UseLoaderResult<
   TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TLocation extends AnyLocation,
-  // > = {
-  //   data: IfAnyThenElse<
-  //     TStatus,
-  //     FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined,
-  //     TStatus extends 'success' ? FinalClientQueriedData<TQueryResultType, TData, TClientData> | undefined : undefined
-  //   >
-  //   error: IfAnyThenElse<TStatus, Error0 | null, TStatus extends 'error' ? Error0 : null>
-  //   loading: IfAnyThenElse<TStatus, boolean, TStatus extends 'pending' ? true : false>
-  //   query: UsePointQueryResult<TQueryResultType, TData, TResponse, TClientData, TStatus>
-  //   input: InputParsed<TRouteDefinition, TInputSchema>
-  //   inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-  //   location: AnyLocation
-  // }
 > = TStatus extends 'success'
   ? {
-      data: FinalClientQueriedData<TQueryResultType, TData, TClientData>
+      data: FinalClientQueriedData<TQueryResultType, TLastServerOutput, TLastClientOutput>
       error: null
       loading: false
-      query: HasAnyLoader<TData, TResponse, TClientData, TClientResponse> extends true
-        ? UsePointQueryResult<TQueryResultType, TData, TResponse, TClientData, TStatus>
+      query: HasAnyLoaderByLastOutput<TLastServerOutput, TLastClientOutput> extends true
+        ? UsePointQueryResult<TQueryResultType, TLastServerOutput, TLastClientOutput, TStatus>
         : null
       input: InputParsed<TRouteDefinition, TInputSchema>
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -690,8 +665,8 @@ export type UseLoaderResult<
         data: undefined
         error: null
         loading: true
-        query: HasAnyLoader<TData, TResponse, TClientData, TClientResponse> extends true
-          ? UsePointQueryResult<TQueryResultType, TData, TResponse, TClientData, TStatus>
+        query: HasAnyLoaderByLastOutput<TLastServerOutput, TLastClientOutput> extends true
+          ? UsePointQueryResult<TQueryResultType, TLastServerOutput, TLastClientOutput, TStatus>
           : null
         input: InputParsed<TRouteDefinition, TInputSchema>
         inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -702,8 +677,8 @@ export type UseLoaderResult<
           data: undefined
           error: Error0
           loading: true
-          query: HasAnyLoader<TData, TResponse, TClientData, TClientResponse> extends true
-            ? UsePointQueryResult<TQueryResultType, TData, TResponse, TClientData, TStatus>
+          query: HasAnyLoaderByLastOutput<TLastServerOutput, TLastClientOutput> extends true
+            ? UsePointQueryResult<TQueryResultType, TLastServerOutput, TLastClientOutput, TStatus>
             : null
           input: InputParsed<TRouteDefinition, TInputSchema> | null
           inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -715,119 +690,83 @@ export type UseLoaderResult<
 
 export type PageComponentProps<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = SpecificUseLoaderResult<
   'success',
   TQueryResultType,
-  TData,
-  TResponse,
-  TClientData,
-  TClientResponse,
+  TLastServerOutput,
+  TLastClientOutput,
   TInputSchema,
   TRouteDefinition,
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
 > & { props: FinalProps<TProps>; location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>> }
 export type PageComponent<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = React.ComponentType<
-  PageComponentProps<
-    TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
-    TRouteDefinition,
-    TInputSchema,
-    TProps
-  >
+  PageComponentProps<TQueryResultType, TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema, TProps>
 >
 export type UndefinedPageComponent = undefined
 
 export type LayoutComponentProps<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = SpecificUseLoaderResult<
   'success',
   TQueryResultType,
-  TData,
-  TResponse,
-  TClientData,
-  TClientResponse,
+  TLastServerOutput,
+  TLastClientOutput,
   TInputSchema,
   TRouteDefinition,
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>> | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
 > & { props: FinalProps<TProps>; children: React.ReactNode }
 export type LayoutComponent<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = React.ComponentType<
-  LayoutComponentProps<
-    TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
-    TRouteDefinition,
-    TInputSchema,
-    TProps
-  >
+  LayoutComponentProps<TQueryResultType, TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema, TProps>
 >
 export type UndefinedLayoutComponent = undefined
 
 export type ComponentComponentProps<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = SpecificUseLoaderResult<
   'success',
   TQueryResultType,
-  TData,
-  TResponse,
-  TClientData,
-  TClientResponse,
+  TLastServerOutput,
+  TLastClientOutput,
   TInputSchema,
   UndefinedRouteDefinition,
   AnyLocation
 > & { props: FinalProps<TProps> }
 export type ComponentComponent<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = React.ComponentType<
-  ComponentComponentProps<TQueryResultType, TData, TResponse, TClientData, TClientResponse, TInputSchema, TProps>
+  ComponentComponentProps<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TProps>
 >
 export type UndefinedComponentComponent = undefined
 
@@ -858,10 +797,8 @@ export type DestinationComponentType = 'page' | 'component' | 'layout'
 export type LoadingComponentProps<
   TType extends DestinationComponentType = DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
@@ -871,10 +808,8 @@ export type LoadingComponentProps<
 } & SpecificUseLoaderResult<
   'pending',
   TQueryResultType,
-  TData,
-  TResponse,
-  TClientData,
-  TClientResponse,
+  TLastServerOutput,
+  TLastClientOutput,
   TInputSchema,
   TRouteDefinition,
   AnyLocation
@@ -882,10 +817,8 @@ export type LoadingComponentProps<
 export type LoadingComponentType<
   TType extends DestinationComponentType = DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
@@ -893,10 +826,8 @@ export type LoadingComponentType<
   LoadingComponentProps<
     TType,
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -906,10 +837,8 @@ export type LoadingComponentType<
 export type ErrorComponentProps<
   TType extends DestinationComponentType = DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
@@ -919,10 +848,8 @@ export type ErrorComponentProps<
 } & SpecificUseLoaderResult<
   'error',
   TQueryResultType,
-  TData,
-  TResponse,
-  TClientData,
-  TClientResponse,
+  TLastServerOutput,
+  TLastClientOutput,
   TInputSchema,
   TRouteDefinition,
   AnyLocation
@@ -930,10 +857,8 @@ export type ErrorComponentProps<
 export type ErrorComponentType<
   TType extends DestinationComponentType = DestinationComponentType,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
@@ -941,10 +866,8 @@ export type ErrorComponentType<
   ErrorComponentProps<
     TType,
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -954,20 +877,16 @@ export type ErrorComponentType<
 // export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 export type WrapperComponentProps<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = SpecificUseLoaderResult<
   any,
   TQueryResultType,
-  TData,
-  TResponse,
-  TClientData,
-  TClientResponse,
+  TLastServerOutput,
+  TLastClientOutput,
   TInputSchema,
   TRouteDefinition,
   AnyLocation
@@ -977,24 +896,13 @@ export type WrapperComponentProps<
 }
 export type WrapperComponentType<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<
-  WrapperComponentProps<
-    TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
-    TInputSchema,
-    TRouteDefinition,
-    TProps
-  >
+  WrapperComponentProps<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition, TProps>
 >
 
 // settings
@@ -1023,25 +931,6 @@ export type OnPrefetchFn = () => Promise<void> | void
 export type UndefinedResponse = undefined
 export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
-export type ResponseFnOptions<
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = {
-  ctx: TCtx
-  data: FinalData<TData>
-  input: InputParsed<TRouteDefinition, TInputSchema>
-}
-export type ResponseFn<
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TResponse extends Response = Response,
-> = (options: ResponseFnOptions<TCtx, TData, TRouteDefinition, TInputSchema>) => Promise<TResponse> | TResponse
-export type ResponseFnOutput<TResponseFn extends ResponseFn> = Awaited<ReturnType<TResponseFn>>
-
 export type InputFnOptions<TInputSchema extends InputSchema = InputSchema> = {
   inputRaw: InputRaw<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 }
@@ -1050,27 +939,29 @@ export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
 ) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 
 export type ServerExtractFn = <
-  TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
   ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
     ? [input?: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
     : [input: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
 ) => Promise<
-  ServerExtractResult<TPoint['Infer']['Ctx'], FinalData<TPoint['Infer']['Data']>, TPoint['Infer']['Response']>
+  ServerExtractResult<TPoint['Infer']['Ctx'], DataOrEmptyData<TPoint['Infer']['Data']>, TPoint['Infer']['Response']>
 >
 export type ServerExtractResult<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
 > =
   | {
       ctx: TCtx
-      data: TData extends Data ? TData : EmptyData
+      data: DataOrEmptyData<TData>
       head: ResolvableHead[]
       response: TResponse
       error: null
       status: number
+      output: TLastServerOutput
     }
   | {
       ctx: UnknownCtx
@@ -1079,79 +970,10 @@ export type ServerExtractResult<
       response: UndefinedResponse | TResponse
       error: Error0
       status: number
+      output: LastOutput | UndefinedLastOutput
     }
 
-// export type CtxFnOptions<
-//   TCtxInput extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = {
-//   ctx: TCtxInput
-//   data: FinalData<TData>
-//   input: InputParsed<TRouteDefinition, TInputSchema>
-//   inputRaw: InputRawUnknown
-//   extract: ServerExtractFn
-// }
-// export type CtxFn<
-//   TCtxInput extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TCtxOutput extends Ctx = Ctx,
-// > = (props: CtxFnOptions<TCtxInput, TData, TRouteDefinition, TInputSchema>) => Promise<TCtxOutput> | TCtxOutput
-// export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
-// export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
-
-// export type LoaderFnOptions<
-//   TCtx extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = {
-//   ctx: TCtx
-//   data: FinalData<TData>
-//   input: InputParsed<TRouteDefinition, TInputSchema>
-//   inputRaw: InputRawUnknown
-//   extract: ServerExtractFn
-// }
-// export type LoaderFn<
-//   TCtx extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TDataOutput extends Data = Data,
-// > = (
-//   options: LoaderFnOptions<TCtx, TData, TRouteDefinition, TInputSchema>,
-// ) => Promise<[number, TDataOutput]> | [number, TDataOutput] | Promise<TDataOutput> | TDataOutput
-
-// export type CtxLoaderFnOptions<
-//   TCtx extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-// > = {
-//   ctx: TCtx
-//   data: FinalData<TData>
-//   input: InputParsed<TRouteDefinition, TInputSchema>
-//   inputRaw: InputRawUnknown
-//   extract: ServerExtractFn
-// }
-// export type CtxLoaderFn<
-//   TCtx extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TCtxOutput extends Ctx | UndefinedCtx = UndefinedCtx,
-//   TDataOutput extends Data | UndefinedData = UndefinedData,
-// > = (
-//   options: CtxLoaderFnOptions<TCtx, TData, TRouteDefinition, TInputSchema>,
-// ) =>
-//   | Promise<{ ctx?: TCtxOutput; data?: TDataOutput; status?: number } | undefined>
-//   | { ctx?: TCtxOutput; data?: TDataOutput; status?: number }
-//   | undefined
-
-export type CtxWithResponseFnOptions<
+export type CtxFnOptions<
   TCtxInput extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
@@ -1159,13 +981,13 @@ export type CtxWithResponseFnOptions<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   ctx: TCtxInput
-  data: FinalData<TData>
+  data: DataOrEmptyData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   extract: ServerExtractFn
   response: TResponse
 }
-export type CtxWithResponseFn<
+export type CtxFn<
   TCtxInput extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
@@ -1173,17 +995,12 @@ export type CtxWithResponseFn<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxOutput extends Ctx = Ctx,
 > = (
-  props: CtxWithResponseFnOptions<TCtxInput, TData, TResponse, TRouteDefinition, TInputSchema>,
+  props: CtxFnOptions<TCtxInput, TData, TResponse, TRouteDefinition, TInputSchema>,
 ) => Promise<TCtxOutput> | TCtxOutput
-export type CtxWithResponseFnOutput<TCtxWithResponseFn extends CtxWithResponseFn> = Awaited<
-  ReturnType<TCtxWithResponseFn>
->
-export type InferCtxWithResponseFnOutput<TCtxWithResponseFn> =
-  TCtxWithResponseFn extends CtxWithResponseFn<any, any, any, infer TCtxWithResponseFnOutput>
-    ? TCtxWithResponseFnOutput
-    : never
+export type CtxFnOutput<TCtxFn extends CtxFn> = Awaited<ReturnType<TCtxFn>>
+export type InferCtxFnOutput<TCtxFn> = TCtxFn extends CtxFn<any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
 
-export type LoaderWithResponseFnOptions<
+export type LoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
@@ -1191,136 +1008,87 @@ export type LoaderWithResponseFnOptions<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = {
   ctx: TCtx
-  data: FinalData<TData>
+  data: DataOrEmptyData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   extract: ServerExtractFn
   response: TResponse
 }
-export type LoaderWithResponseFn<
+export type LoaderFn<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TDataOrResponse extends Data | Response = Data | Response,
+  TNewServerLastOutput extends LastOutput = LastOutput,
 > = (
-  options: LoaderWithResponseFnOptions<TCtx, TData, TResponse, TRouteDefinition, TInputSchema>,
-) => Promise<[number, TDataOrResponse]> | [number, TDataOrResponse] | Promise<TDataOrResponse> | TDataOrResponse
-
-export type CtxLoaderWithResponseFnOptions<
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = {
-  ctx: TCtx
-  data: FinalData<TData>
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  inputRaw: InputRawUnknown
-  extract: ServerExtractFn
-  response: TResponse
-}
-export type CtxLoaderWithResponseFn<
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TCtxOutput extends Ctx | UndefinedCtx = Ctx | UndefinedCtx,
-  TDataOutput extends Data | UndefinedData = Data | UndefinedData,
-  TResponseOutput extends Response | UndefinedResponse = Response | UndefinedResponse,
-> = (
-  options: CtxLoaderWithResponseFnOptions<TCtx, TData, TResponse, TRouteDefinition, TInputSchema>,
+  options: LoaderFnOptions<TCtx, TData, TResponse, TRouteDefinition, TInputSchema>,
 ) =>
-  | Promise<{ ctx?: TCtxOutput; data?: TDataOutput; status?: number; response?: TResponseOutput } | undefined>
-  | { ctx?: TCtxOutput; data?: TDataOutput; status?: number; response?: TResponseOutput }
+  | Promise<[number, TNewServerLastOutput]>
+  | [number, TNewServerLastOutput]
+  | Promise<TNewServerLastOutput>
+  | TNewServerLastOutput
+
+export type CtxLoaderFnOptions<
+  TCtx extends Ctx = Ctx,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = {
+  ctx: TCtx
+  data: DataOrEmptyData<TData>
+  input: InputParsed<TRouteDefinition, TInputSchema>
+  inputRaw: InputRawUnknown
+  extract: ServerExtractFn
+  response: TResponse
+  output: TLastServerOutput
+}
+export type CtxLoaderFn<
+  TCtx extends Ctx = Ctx,
+  TData extends Data | UndefinedData = Data | UndefinedData,
+  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TNewCtx extends Ctx | UndefinedCtx = Ctx | UndefinedCtx,
+  TNewData extends Data | UndefinedData = Data | UndefinedData,
+  TNewResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TNewLastOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+> = (
+  options: CtxLoaderFnOptions<TCtx, TData, TResponse, TLastServerOutput, TRouteDefinition, TInputSchema>,
+) =>
+  | Promise<
+      { ctx?: TNewCtx; data?: TNewData; status?: number; response?: TNewResponse; output?: TNewLastOutput } | undefined
+    >
+  | { ctx?: TNewCtx; data?: TNewData; status?: number; response?: TNewResponse; output?: TNewLastOutput }
   | undefined
 
-// export type ServerExtractAction<
-//   TType extends 'ctx' | 'loader' | 'ctxLoader' | 'input' = 'ctx' | 'loader' | 'ctxLoader' | 'input',
-//   TCtx extends Ctx = Ctx,
-//   TData extends Data | UndefinedData = Data | UndefinedData,
-//   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TOutput extends Ctx | Data | Response = Ctx | Data | Response,
-// > = TType extends 'ctx'
-//   ? {
-//       type: 'ctx'
-//       fn:
-//         | CtxFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
-//         | CtxWithResponseFn<TCtx, TData, TResponse, TRouteDefinition, TInputSchema, TOutput>
-//       unstableId: number
-//     }
-//   : TType extends 'loader'
-//     ? {
-//         type: 'loader'
-//         fn:
-//           | LoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
-//           | LoaderWithResponseFn<TCtx, TData, TResponse, TRouteDefinition, TInputSchema, TOutput>
-//         unstableId: number
-//       }
-//     : TType extends 'ctxLoader'
-//       ? {
-//           type: 'ctxLoader'
-//           fn:
-//             | CtxLoaderFn<TCtx, TData, TRouteDefinition, TInputSchema, TOutput>
-//             | CtxLoaderWithResponseFn<TCtx, TData, TResponse, TRouteDefinition, TInputSchema, TOutput>
-//           unstableId: number
-//         }
-//       : TType extends 'input'
-//         ? TInputSchema extends InputSchema
-//           ? { type: 'input'; schema: TInputSchema; unstableId: number }
-//           : never
-//         : never
 export type ServerExtractAction<
   TType extends 'ctx' | 'loader' | 'ctxLoader' | 'input' = 'ctx' | 'loader' | 'ctxLoader' | 'input',
 > = TType extends 'ctx'
   ? {
       type: 'ctx'
-      fn: CtxWithResponseFn
+      fn: CtxFn
       unstableId: number
     }
   : TType extends 'loader'
     ? {
         type: 'loader'
-        fn: LoaderWithResponseFn
+        fn: LoaderFn
         unstableId: number
       }
     : TType extends 'ctxLoader'
       ? {
           type: 'ctxLoader'
-          fn: CtxLoaderWithResponseFn
+          fn: CtxLoaderFn
           unstableId: number
         }
       : TType extends 'input'
         ? { type: 'input'; schema: InputSchema; unstableId: number }
         : never
 
-// export type ClientExtractAction<
-//   TType extends 'loader' | 'input' = 'loader' | 'input',
-//   TClientData extends Data | UndefinedData = Data | UndefinedData,
-//   TPointType extends RenderablePointType = RenderablePointType,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TOutput extends Ctx | Data = Ctx | Data,
-// > = TType extends 'loader'
-//   ? {
-//       type: 'loader'
-//       fn: ClientLoaderFn<TPointType, TRouteDefinition, TInputSchema, TClientData, TOutput>
-//       unstableId: number
-//     }
-//   : TType extends 'input'
-//     ? TInputSchema extends InputSchema
-//       ? {
-//           type: 'input'
-//           schema: TInputSchema
-//           unstableId: number
-//         }
-//       : never
-//     : never
 export type ClientExtractAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
   ? {
       type: 'loader'
@@ -1348,67 +1116,48 @@ export type ClientLoaderFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
+  TClientData extends Data | UndefinedData = Data | UndefinedData,
+  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
 > = {
-  data: FinalClientData<TData, TClientData>
+  // server can return to client only data or response
+  data: TLastClientOutput extends undefined
+    ? TLastServerOutput extends Response
+      ? EmptyData
+      : TLastServerOutput extends Data
+        ? TLastServerOutput
+        : EmptyData
+    : DataOrEmptyData<TClientData>
   location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
+  response: TLastClientOutput extends undefined
+    ? TLastServerOutput extends Response
+      ? TLastServerOutput
+      : UndefinedResponse
+    : TClientResponse
 }
 export type ClientLoaderFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientDataOutput extends Data = Data,
-> = (
-  options: ClientLoaderFnOptions<TLetsEndPointType, TRouteDefinition, TInputSchema, TData, TClientData>,
-) => Promise<TClientDataOutput> | TClientDataOutput
-
-export type ClientLoaderWithResponseFnOptions<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-> = {
-  // if response exists, then we have no data from server, we have only response
-  // but if client loader before add some client data, the we have both data and response
-  // I do not want add one more generic to Point0 to store there TClientResponse, and so we miss knowledge about server response type, ok I will add this generic
-  data: TResponse extends Response
-    ? TClientData extends undefined
-      ? never
-      : TClientData
-    : FinalClientData<TData, TClientData>
-  location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  inputRaw: InputRawUnknown
-  response: TClientResponse extends Response ? TClientResponse : TResponse
-}
-export type ClientLoaderWithResponseFn<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TData extends Data | UndefinedData = Data | UndefinedData,
   TClientData extends Data | UndefinedData = Data | UndefinedData,
   TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientDataOrResponse extends Data | Response = Data | Response,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TNewClientLastOutput extends LastOutput = LastOutput,
 > = (
-  options: ClientLoaderWithResponseFnOptions<
+  options: ClientLoaderFnOptions<
     TLetsEndPointType,
     TRouteDefinition,
     TInputSchema,
-    TData,
     TClientData,
     TClientResponse,
-    TResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
-) => Promise<TClientDataOrResponse> | TClientDataOrResponse
+) => Promise<TNewClientLastOutput> | TNewClientLastOutput
 
 export type ProviderValueSetterFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
@@ -1429,20 +1178,16 @@ export type ProviderValueSetterFn<
 
 export type SuccessHeadFn<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = (
   options: MiddlewareHeadFnOptions<
     'success',
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition
   >,
@@ -1450,20 +1195,16 @@ export type SuccessHeadFn<
 
 export type ErrorHeadFn<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
   options: MiddlewareHeadFnOptions<
     'error',
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition
   >,
@@ -1471,20 +1212,16 @@ export type ErrorHeadFn<
 
 export type LoadingHeadFn<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
   options: MiddlewareHeadFnOptions<
     'pending',
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition
   >,
@@ -1493,20 +1230,16 @@ export type LoadingHeadFn<
 export type MiddlewareHeadFnOptions<
   TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = Omit<
   SpecificUseLoaderResult<
     TStatus,
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition,
     ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
@@ -1516,29 +1249,22 @@ export type MiddlewareHeadFnOptions<
 export type MiddlewareHeadFn<
   TStatus extends 'pending' | 'error' | 'success' = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TClientData extends Data | UndefinedData = Data | UndefinedData,
-  TClientResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
   options: MiddlewareHeadFnOptions<
     TStatus,
     TQueryResultType,
-    TData,
-    TResponse,
-    TClientData,
-    TClientResponse,
+    TLastServerOutput,
+    TLastClientOutput,
     TInputSchema,
     TRouteDefinition
   >,
 ) => ResolvableHead | string
 
-export type FetchOutput<
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-> = TResponse extends Response ? TResponse : FinalData<TData>
+export type FetchOutput<TLastServerOutput extends LastOutput | UndefinedLastOutput> = TLastServerOutput
 
 export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
 
@@ -1548,19 +1274,6 @@ export type AppProps = { points: PointsManager }
 export type AppComponent = (props: AppProps) => React.ReactElement
 
 // nice middle point
-
-// export type WithoutServerMiddleLoaderLiterals<
-//   TPointType extends PointType,
-//   TLiteral extends string,
-// > = TPointType extends 'clientMiddleware' | 'renderMiddleware'
-//   ? TLiteral
-//   : Exclude<TLiteral, 'ctx' | 'loader' | 'ctxLoader'>
-// export type WithoutServerAndClientMiddleLoaderLiterals<
-//   TPointType extends PointType,
-//   TLiteral extends string,
-// > = TPointType extends 'renderMiddleware'
-//   ? TLiteral
-//   : Exclude<TLiteral, 'ctx' | 'loader' | 'ctxLoader' | 'clientLoader'>
 
 export type CutServerLoadersIfClientMiddleware<
   TPointType extends PointType,
@@ -1581,7 +1294,8 @@ export type NiceRootMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1597,7 +1311,8 @@ export type NiceRootMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
@@ -1651,7 +1366,8 @@ export type NiceBaseMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1667,7 +1383,8 @@ export type NiceBaseMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
@@ -1718,7 +1435,8 @@ export type NicePageMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1734,7 +1452,8 @@ export type NicePageMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   TPointType extends 'middleware' | 'clientMiddleware'
     ? CutServerLoadersIfClientMiddleware<
@@ -1778,7 +1497,8 @@ export type NiceComponentMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1794,7 +1514,8 @@ export type NiceComponentMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   TPointType extends 'middleware' | 'clientMiddleware'
     ? CutServerLoadersIfClientMiddleware<
@@ -1819,54 +1540,6 @@ export type NiceComponentMiddlePoint<
     : 'component' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
 >
 
-// export type NiceResponseMiddlePoint<
-//   TPointType extends PointType,
-//   TLetsEndPointType extends 'response',
-//   TRequiredCtx extends RequiredCtx,
-//   TCtx extends Ctx,
-//   TData extends Data | UndefinedData,
-//   TClientData extends Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-//   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema,
-//   TResponse extends Response | UndefinedResponse,
-//   TClientResponse extends Response | UndefinedResponse,
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TProps extends Props | UndefinedProps,
-//   TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
-// > = Pick<
-//   Point0<
-//     TPointType,
-//     TLetsEndPointType,
-//     TRequiredCtx,
-//     TCtx,
-//     TData,
-//     TClientData,
-//     TRouteDefinition,
-//     TPrevRouteDefinition,
-//     TInputSchema,
-//     TResponse,
-//     TClientResponse,
-//     TQueryResultType,
-//     TProps,
-//     TLastDataOrResponse
-//   >,
-//   CutServerLoadersIfClientMiddleware<
-//     TPointType,
-//     | 'response'
-//     | 'mutation'
-//     // | 'asFormData'
-//     | 'fetchOptions'
-//     | 'input'
-//     | 'ctx'
-//     | 'loader'
-//     | 'ctxLoader'
-//     | 'clientLoader'
-//     | 'point'
-//     | 'Infer'
-//   >
-// >
-
 export type NiceQueryMiddlePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'query',
@@ -1881,7 +1554,8 @@ export type NiceQueryMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1897,7 +1571,8 @@ export type NiceQueryMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
@@ -1928,7 +1603,8 @@ export type NiceInfiniteQueryMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1944,7 +1620,8 @@ export type NiceInfiniteQueryMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
@@ -1975,7 +1652,8 @@ export type NiceMutationMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -1991,7 +1669,8 @@ export type NiceMutationMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
@@ -2022,7 +1701,8 @@ export type NiceLayoutMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2038,7 +1718,8 @@ export type NiceLayoutMiddlePoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   TPointType extends 'middleware' | 'clientMiddleware'
     ? CutServerLoadersIfClientMiddleware<
@@ -2087,7 +1768,8 @@ export type NiceProviderMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = TPointType extends 'middleware' | 'clientMiddleware'
   ? Pick<
       Point0<
@@ -2104,7 +1786,8 @@ export type NiceProviderMiddlePoint<
         TClientResponse,
         TQueryResultType,
         TProps,
-        TLastDataOrResponse
+        TLastServerOutput,
+        TLastClientOutput
       >,
       CutServerLoadersIfClientMiddleware<
         TPointType,
@@ -2141,7 +1824,8 @@ export type NiceMiddlePoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = TLetsEndPointType extends 'root'
   ? NiceRootMiddlePoint<
       TPointType,
@@ -2157,7 +1841,8 @@ export type NiceMiddlePoint<
       TClientResponse,
       TQueryResultType,
       TProps,
-      TLastDataOrResponse
+      TLastServerOutput,
+      TLastClientOutput
     >
   : TLetsEndPointType extends 'base'
     ? NiceBaseMiddlePoint<
@@ -2174,7 +1859,8 @@ export type NiceMiddlePoint<
         TClientResponse,
         TQueryResultType,
         TProps,
-        TLastDataOrResponse
+        TLastServerOutput,
+        TLastClientOutput
       >
     : TLetsEndPointType extends 'page'
       ? NicePageMiddlePoint<
@@ -2191,7 +1877,8 @@ export type NiceMiddlePoint<
           TClientResponse,
           TQueryResultType,
           TProps,
-          TLastDataOrResponse
+          TLastServerOutput,
+          TLastClientOutput
         >
       : TLetsEndPointType extends 'component'
         ? NiceComponentMiddlePoint<
@@ -2208,26 +1895,10 @@ export type NiceMiddlePoint<
             TClientResponse,
             TQueryResultType,
             TProps,
-            TLastDataOrResponse
+            TLastServerOutput,
+            TLastClientOutput
           >
-        : // : TLetsEndPointType extends 'response'
-          //   ? NiceResponseMiddlePoint<
-          //       TPointType,
-          //       TLetsEndPointType,
-          //       TRequiredCtx,
-          //       TCtx,
-          //       TData,
-          //       TClientData,
-          //       TRouteDefinition,
-          //       TPrevRouteDefinition,
-          //       TInputSchema,
-          //       TResponse,
-          //       TClientResponse,
-          //       TQueryResultType,
-          //       TProps,
-          //       TLastDataOrResponse
-          //     >
-          TLetsEndPointType extends 'query'
+        : TLetsEndPointType extends 'query'
           ? NiceQueryMiddlePoint<
               TPointType,
               TLetsEndPointType,
@@ -2242,7 +1913,8 @@ export type NiceMiddlePoint<
               TClientResponse,
               TQueryResultType,
               TProps,
-              TLastDataOrResponse
+              TLastServerOutput,
+              TLastClientOutput
             >
           : TLetsEndPointType extends 'infiniteQuery'
             ? NiceInfiniteQueryMiddlePoint<
@@ -2259,7 +1931,8 @@ export type NiceMiddlePoint<
                 TClientResponse,
                 TQueryResultType,
                 TProps,
-                TLastDataOrResponse
+                TLastServerOutput,
+                TLastClientOutput
               >
             : TLetsEndPointType extends 'mutation'
               ? NiceMutationMiddlePoint<
@@ -2276,7 +1949,8 @@ export type NiceMiddlePoint<
                   TClientResponse,
                   TQueryResultType,
                   TProps,
-                  TLastDataOrResponse
+                  TLastServerOutput,
+                  TLastClientOutput
                 >
               : TLetsEndPointType extends 'layout'
                 ? NiceLayoutMiddlePoint<
@@ -2293,7 +1967,8 @@ export type NiceMiddlePoint<
                     TClientResponse,
                     TQueryResultType,
                     TProps,
-                    TLastDataOrResponse
+                    TLastServerOutput,
+                    TLastClientOutput
                   >
                 : TLetsEndPointType extends 'provider'
                   ? NiceProviderMiddlePoint<
@@ -2310,7 +1985,8 @@ export type NiceMiddlePoint<
                       TClientResponse,
                       TQueryResultType,
                       TProps,
-                      TLastDataOrResponse
+                      TLastServerOutput,
+                      TLastClientOutput
                     >
                   : never
 
@@ -2330,7 +2006,8 @@ export type NiceRootEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2346,7 +2023,8 @@ export type NiceRootEndPoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   'attach' | 'lets' | 'point' | 'Infer'
 >
@@ -2365,7 +2043,8 @@ export type NiceBaseEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2381,7 +2060,8 @@ export type NiceBaseEndPoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   'lets' | 'point' | 'Infer'
 >
@@ -2429,7 +2109,8 @@ export type NicePageEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = MountableComponent<TInputSchema, TProps, false> &
   Pick<
     Point0<
@@ -2446,7 +2127,8 @@ export type NicePageEndPoint<
       TClientResponse,
       TQueryResultType,
       TProps,
-      TLastDataOrResponse
+      TLastServerOutput,
+      TLastClientOutput
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
@@ -2468,7 +2150,8 @@ export type NiceComponentEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = MountableComponent<TInputSchema, TProps, false> &
   Pick<
     Point0<
@@ -2485,7 +2168,8 @@ export type NiceComponentEndPoint<
       TClientResponse,
       TQueryResultType,
       TProps,
-      TLastDataOrResponse
+      TLastServerOutput,
+      TLastClientOutput
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
@@ -2507,7 +2191,8 @@ export type NiceLayoutEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = MountableComponent<TInputSchema, TProps, true> &
   Pick<
     Point0<
@@ -2524,55 +2209,14 @@ export type NiceLayoutEndPoint<
       TClientResponse,
       TQueryResultType,
       TProps,
-      TLastDataOrResponse
+      TLastServerOutput,
+      TLastClientOutput
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
       WithQueryEndLiteralsIfSuitable<TData, TResponse, TQueryResultType, 'point' | 'lets' | 'Infer'>
     >
   >
-
-// export type NiceResponseEndPoint<
-//   TPointType extends 'response',
-//   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-//   TRequiredCtx extends RequiredCtx,
-//   TCtx extends Ctx,
-//   TData extends Data | UndefinedData,
-//   TClientData extends Data | UndefinedData,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-//   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-//   TInputSchema extends InputSchema | UndefinedInputSchema,
-//   TResponse extends Response | UndefinedResponse,
-//   TClientResponse extends Response | UndefinedResponse,
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-//   TProps extends Props | UndefinedProps,
-//   TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
-// > = Pick<
-//   Point0<
-//     TPointType,
-//     TLetsEndPointType,
-//     TRequiredCtx,
-//     TCtx,
-//     TData,
-//     TClientData,
-//     TRouteDefinition,
-//     TPrevRouteDefinition,
-//     TInputSchema,
-//     TResponse,
-//     TClientResponse,
-//     TQueryResultType,
-//     TProps,
-//     TLastDataOrResponse
-//   >,
-//   WithInputSchemaLiteralIfExists<
-//     TInputSchema,
-//     WithFetchIfHasServerLoader<
-//       TData,
-//       TResponse,
-//       'extract' | 'getMutationOptions' | 'useMutation' | 'lets' | 'point' | 'Infer'
-//     >
-//   >
-// >
 
 export type NiceQueryEndPoint<
   TPointType extends 'query',
@@ -2588,7 +2232,8 @@ export type NiceQueryEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2604,7 +2249,8 @@ export type NiceQueryEndPoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
@@ -2626,7 +2272,8 @@ export type NiceInfiniteQueryEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2642,7 +2289,8 @@ export type NiceInfiniteQueryEndPoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
@@ -2664,7 +2312,8 @@ export type NiceMutationEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2680,7 +2329,8 @@ export type NiceMutationEndPoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
@@ -2706,7 +2356,8 @@ export type NiceProviderEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = Pick<
   Point0<
     TPointType,
@@ -2722,7 +2373,8 @@ export type NiceProviderEndPoint<
     TClientResponse,
     TQueryResultType,
     TProps,
-    TLastDataOrResponse
+    TLastServerOutput,
+    TLastClientOutput
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
@@ -2749,7 +2401,8 @@ export type NiceEndPoint<
   TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastDataOrResponse extends Data | Response | UndefinedLastDataOrResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = TPointType extends 'root'
   ? NiceRootEndPoint<
       TPointType,
@@ -2765,7 +2418,8 @@ export type NiceEndPoint<
       TClientResponse,
       TQueryResultType,
       TProps,
-      TLastDataOrResponse
+      TLastServerOutput,
+      TLastClientOutput
     >
   : TPointType extends 'base'
     ? NiceBaseEndPoint<
@@ -2782,7 +2436,8 @@ export type NiceEndPoint<
         TClientResponse,
         TQueryResultType,
         TProps,
-        TLastDataOrResponse
+        TLastServerOutput,
+        TLastClientOutput
       >
     : TPointType extends 'page'
       ? NicePageEndPoint<
@@ -2799,7 +2454,8 @@ export type NiceEndPoint<
           TClientResponse,
           TQueryResultType,
           TProps,
-          TLastDataOrResponse
+          TLastServerOutput,
+          TLastClientOutput
         >
       : TPointType extends 'component'
         ? NiceComponentEndPoint<
@@ -2816,26 +2472,10 @@ export type NiceEndPoint<
             TClientResponse,
             TQueryResultType,
             TProps,
-            TLastDataOrResponse
+            TLastServerOutput,
+            TLastClientOutput
           >
-        : // : TPointType extends 'response'
-          //   ? NiceResponseEndPoint<
-          //       TPointType,
-          //       TLetsEndPointType,
-          //       TRequiredCtx,
-          //       TCtx,
-          //       TData,
-          //       TClientData,
-          //       TRouteDefinition,
-          //       TPrevRouteDefinition,
-          //       TInputSchema,
-          //       TResponse,
-          //       TClientResponse,
-          //       TQueryResultType,
-          //       TProps,
-          //       TLastDataOrResponse
-          //     >
-          TPointType extends 'query'
+        : TPointType extends 'query'
           ? NiceQueryEndPoint<
               TPointType,
               TLetsEndPointType,
@@ -2850,7 +2490,8 @@ export type NiceEndPoint<
               TClientResponse,
               TQueryResultType,
               TProps,
-              TLastDataOrResponse
+              TLastServerOutput,
+              TLastClientOutput
             >
           : TPointType extends 'infiniteQuery'
             ? NiceInfiniteQueryEndPoint<
@@ -2867,7 +2508,8 @@ export type NiceEndPoint<
                 TClientResponse,
                 TQueryResultType,
                 TProps,
-                TLastDataOrResponse
+                TLastServerOutput,
+                TLastClientOutput
               >
             : TPointType extends 'mutation'
               ? NiceMutationEndPoint<
@@ -2884,7 +2526,8 @@ export type NiceEndPoint<
                   TClientResponse,
                   TQueryResultType,
                   TProps,
-                  TLastDataOrResponse
+                  TLastServerOutput,
+                  TLastClientOutput
                 >
               : TPointType extends 'layout'
                 ? NiceLayoutEndPoint<
@@ -2901,7 +2544,8 @@ export type NiceEndPoint<
                     TClientResponse,
                     TQueryResultType,
                     TProps,
-                    TLastDataOrResponse
+                    TLastServerOutput,
+                    TLastClientOutput
                   >
                 : TPointType extends 'provider'
                   ? NiceProviderEndPoint<
@@ -2918,6 +2562,7 @@ export type NiceEndPoint<
                       TClientResponse,
                       TQueryResultType,
                       TProps,
-                      TLastDataOrResponse
+                      TLastServerOutput,
+                      TLastClientOutput
                     >
                   : never

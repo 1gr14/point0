@@ -7,11 +7,11 @@ import type {
   UndefinedData,
   UndefinedEndPointType,
   UndefinedInputSchema,
+  UndefinedLastOutput,
   UndefinedProps,
   UndefinedQueryResultType,
   UndefinedResponse,
   UndefinedRouteDefinition,
-  UndefinedLastDataOrResponse,
 } from '@point0/core'
 import { Point0, PointsManager } from '@point0/core'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
@@ -50,7 +50,8 @@ describe('Point0', () => {
         UndefinedResponse,
         UndefinedQueryResultType,
         UndefinedProps,
-        UndefinedLastDataOrResponse
+        UndefinedLastOutput,
+        UndefinedLastOutput
       >
     >()
     expect(server.point._serverExtractActions).toEqual([])
@@ -79,7 +80,8 @@ describe('Point0', () => {
         UndefinedResponse,
         UndefinedQueryResultType,
         UndefinedProps,
-        UndefinedLastDataOrResponse
+        UndefinedLastOutput,
+        UndefinedLastOutput
       >
     >()
     expect(server1.point._serverExtractActions).toHaveLength(1)
@@ -98,6 +100,7 @@ describe('Point0', () => {
         'root',
         undefined,
         { a: number; b: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -144,6 +147,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         undefined
       >
     >()
@@ -166,6 +170,7 @@ describe('Point0', () => {
         undefined,
         undefined,
         { a: number; c: number },
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -214,6 +219,7 @@ describe('Point0', () => {
       error: null,
       status: 200,
       response: undefined,
+      output: {},
     })
   })
 
@@ -474,6 +480,7 @@ describe('Point0', () => {
       error: null,
       status: 200,
       response: undefined,
+      output: {},
     })
     const server2 = server1.attach(
       Point0.create<typeof server1>('server2', ['server1'])
@@ -516,6 +523,7 @@ describe('Point0', () => {
       error: null,
       status: 200,
       response: undefined,
+      output: {},
     })
     const server3 = server1.attach(
       Point0.create<typeof server1>('server3', ['server1'])
@@ -555,6 +563,7 @@ describe('Point0', () => {
       error: null,
       status: 200,
       response: undefined,
+      output: {},
     })
   })
 

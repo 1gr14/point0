@@ -5,7 +5,10 @@
 Infer.ClientResponse, Infer.LastDataOrResponse, Infer.Output, Infer.QueriedOutput
 allow any loaders have repsonse, just check if last ethod return data if it is query
 TResponse exetnds Response ? finalMiddleware : TPointType
+check that client extract impossible if no loaders
 remove .response()
+headfn on server when infinite query should have correctly formated data
+fetch engine fn should reponse header if iutput is response
 Response → Response
 point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
 
@@ -16,6 +19,8 @@ provider value setter can be async and be just client loader, and provider({}) s
 refactor types names and order
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
+
+Кткслоадер нул дропает все лоадеры, и клиент лоадер нул, дропает клиентские лоадеры, а в летс не надо дропать
 
 check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson) + .superjson(boolean)
@@ -148,10 +153,14 @@ https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe examp
 
 methods: .headers(({reqOnly}) => {}); helpers inslide loaders: setHeaders((prevHeaders) => {override}) or setHeaders({extends}); .fetchHeaders((prevHeaders) => {override}) or .fetchHeaders({extends})
 .headersInput(z.object())
+Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
 .lets('openapi', 'my endpoint').openapi({method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
 _slug ← _name
 
-engine server onFetch hook
+engine server onFetch hook, onAfterPublicdirFetch hook
+
+standard schema
+Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
 
 .axios(provide axios instance) .axios(false), .axios(true)
 onUploadProgress, onDownloadProgress
@@ -240,8 +249,6 @@ LETS NOT DO IT
 ? И логично сразу с тестами волкера сделать
 
 meta object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
-
-standard schema
 
 И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
 
