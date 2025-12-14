@@ -174,6 +174,7 @@ export const engineFetch = async ({
     }
 
     if (extractResult.response) {
+      extractResult.response.headers.set('X-Point0-Response', 'true')
       return extractResult.response
     }
 

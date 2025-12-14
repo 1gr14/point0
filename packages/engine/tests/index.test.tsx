@@ -1,8 +1,4 @@
 import { Route0 } from '@devp0nt/route0'
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
-import * as nodeFs from 'node:fs'
-import * as nodePath from 'node:path'
-import { Point0, PointsManager } from '@point0/core'
 import type {
   EmptyCtx,
   NiceRootEndPoint,
@@ -13,9 +9,14 @@ import type {
   UndefinedInputSchema,
   UndefinedProps,
   UndefinedQueryResultType,
-  UndefinedResponseOutput,
+  UndefinedResponse,
   UndefinedRouteDefinition,
+  UndefinedLastDataOrResponse,
 } from '@point0/core'
+import { Point0, PointsManager } from '@point0/core'
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
+import * as nodeFs from 'node:fs'
+import * as nodePath from 'node:path'
 import { ServerExtractor } from '../src/server-extractor.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
@@ -45,9 +46,11 @@ describe('Point0', () => {
         UndefinedRouteDefinition,
         UndefinedRouteDefinition,
         UndefinedInputSchema,
-        UndefinedResponseOutput,
+        UndefinedResponse,
+        UndefinedResponse,
         UndefinedQueryResultType,
-        UndefinedProps
+        UndefinedProps,
+        UndefinedLastDataOrResponse
       >
     >()
     expect(server.point._serverExtractActions).toEqual([])
@@ -72,9 +75,11 @@ describe('Point0', () => {
         UndefinedRouteDefinition,
         UndefinedRouteDefinition,
         UndefinedInputSchema,
-        UndefinedResponseOutput,
+        UndefinedResponse,
+        UndefinedResponse,
         UndefinedQueryResultType,
-        UndefinedProps
+        UndefinedProps,
+        UndefinedLastDataOrResponse
       >
     >()
     expect(server1.point._serverExtractActions).toHaveLength(1)
@@ -93,6 +98,8 @@ describe('Point0', () => {
         'root',
         undefined,
         { a: number; b: number; c: number },
+        undefined,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -135,6 +142,8 @@ describe('Point0', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
         undefined
       >
     >()
@@ -157,6 +166,8 @@ describe('Point0', () => {
         undefined,
         undefined,
         { a: number; c: number },
+        undefined,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -584,7 +595,7 @@ describe('Point0', () => {
     //     UndefinedRoute,
     //     UndefinedRoute,
     //     UndefinedInputSchema,
-    //     UndefinedResponseOutput,
+    //     UndefinedResponse,
     //     UndefinedQueryResultType,
     //     UndefinedProps
     //   >

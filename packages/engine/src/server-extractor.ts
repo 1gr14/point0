@@ -147,7 +147,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   async extract(
-    point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+    point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
     input?: InputRaw,
   ): Promise<ServerExtractResult>
   async extract({ point, input, withLayouts }: ExtractOptions): Promise<ServerExtractResult>
@@ -155,7 +155,10 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ...args:
       | [options: ExtractOptions]
       | [
-          point: AnyPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+          point:
+            | AnyPoint
+            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+            | undefined,
           input?: InputRaw,
         ]
   ): Promise<ServerExtractResult> {
@@ -184,7 +187,6 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           })
         }
       }
-      console.log('input', input)
 
       // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
 
@@ -212,6 +214,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       let currentCtx: Ctx = this.requiredCtx ?? {}
       let currentData: Data = {}
+      let currentResponse: Response | undefined = undefined
       let currentStatus = 200
       let currentInputParsed: InputParsed = input
       let currentInputSchema: InputSchema | undefined = undefined
@@ -251,6 +254,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   input: currentInputParsed,
                   extract: this.extract.bind(this),
                   inputRaw: input,
+                  response: currentResponse,
                 })
                 this.serverExtractActionsWithOutput.push({
                   output: currentCtx,
@@ -266,23 +270,40 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               if (ex) {
                 if (Array.isArray(ex.output)) {
                   currentStatus = ex.output[0]
-                  currentData = ex.output[1]
+                  if (ex.output[1] instanceof Response) {
+                    currentResponse = ex.output[1]
+                  } else {
+                    currentData = ex.output[1]
+                  }
                 } else {
-                  currentData = ex.output
+                  if (ex.output instanceof Response) {
+                    currentResponse = ex.output
+                  } else {
+                    currentData = ex.output
+                  }
                 }
               } else {
-                const result = await serverExtractAction.fn({
+                const result: [number, Data | Response] | Data | Response = await serverExtractAction.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
                   extract: this.extract.bind(this),
                   inputRaw: input,
+                  response: currentResponse,
                 })
                 if (Array.isArray(result)) {
                   currentStatus = result[0]
-                  currentData = result[1]
+                  if (result[1] instanceof Response) {
+                    currentResponse = result[1]
+                  } else {
+                    currentData = result[1]
+                  }
                 } else {
-                  currentData = result
+                  if (result instanceof Response) {
+                    currentResponse = result
+                  } else {
+                    currentData = result
+                  }
                 }
                 this.serverExtractActionsWithOutput.push({
                   output: result,
@@ -300,18 +321,20 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 currentCtx = { ...ex.output.ctx }
                 currentStatus = ex.output.status ?? currentStatus
               } else {
-                const { ctx, data, status } = await serverExtractAction.fn({
+                const result = await serverExtractAction.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
                   extract: this.extract.bind(this),
                   inputRaw: input,
+                  response: currentResponse,
                 })
-                currentCtx = ctx
-                currentData = data
-                currentStatus = status ?? currentStatus
+                currentCtx = result?.ctx ?? currentCtx
+                currentData = result?.data ?? currentData
+                currentResponse = result?.response ?? currentResponse
+                currentStatus = result?.status ?? currentStatus
                 this.serverExtractActionsWithOutput.push({
-                  output: { ctx: currentCtx, data: currentData },
+                  output: { ctx: currentCtx, data: currentData, response: currentResponse },
                   record: serverExtractAction,
                 })
               }
@@ -323,19 +346,19 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
-        const response = await (async () => {
-          if (point?._pointType === 'response') {
-            if (!point._responseFn) {
-              throw new Error('Response function not found')
-            }
-            return await point._responseFn({
-              ctx: currentCtx,
-              data: currentData,
-              input: currentInputParsed,
-            })
-          }
-          return undefined
-        })()
+        // const response = await (async () => {
+        //   if (point?._pointType === 'response') {
+        //     if (!point._responseFn) {
+        //       throw new Error('Response function not found')
+        //     }
+        //     return await point._responseFn({
+        //       ctx: currentCtx,
+        //       data: currentData,
+        //       input: currentInputParsed,
+        //     })
+        //   }
+        //   return undefined
+        // })()
         if (point) {
           await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
           return {
@@ -348,7 +371,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               data: currentData,
               error: null,
             }),
-            response,
+            response: currentResponse,
             error: null,
             status: currentStatus,
           }
@@ -678,12 +701,12 @@ export type ServerExtractActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxL
     }
   : TType extends 'loader'
     ? {
-        output: Data | [number, Data]
+        output: Data | Response | [number, Data | Response]
         record: ServerExtractAction<'loader'>
       }
     : TType extends 'ctxLoader'
       ? {
-          output: { ctx: Ctx; data: Data; status?: number }
+          output: { ctx: Ctx; data: Data; response: Response | undefined; status?: number }
           record: ServerExtractAction<'ctxLoader'>
         }
       : never

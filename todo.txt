@@ -2,14 +2,28 @@
 ------ before start0 -----
 --------------------------
 
-finalMiddleware, not renderMiddleware. And if loader return Reponse, not Data, then done, and it is possible only for mutations, and we can remove reponse
+Infer.ClientResponse, Infer.LastDataOrResponse, Infer.Output, Infer.QueriedOutput
+allow any loaders have repsonse, just check if last ethod return data if it is query
+TResponse exetnds Response ? finalMiddleware : TPointType
+remove .response()
+Response → Response
+point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
+
+provider value setter can be async and be just client loader, and provider({}) should just accept query options
+
+.extractDetailed() → {output, clientData, serverData, response, input, inputRaw, location, status}
+
+refactor types names and order
+try do EmptyData as {}
+remove default generic values it is unsafe, better add AnySomethingType for it
 
 check if superjson works correctly with query and mutation and eversion store
+.superjson(superjson) + .superjson(boolean)
 
 fetchWithCancel
+.getFetchOptions()
 cancel by input, or cancel all
 on fetch error maybe no json, then if it is thore, do res.text()
-.axios(provide axios instance)
 
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
 bunup
@@ -22,8 +36,8 @@ oxc lint
 Лоадеру и ктксу уже дать опцию для некэширования {cache: null | string}
 Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
 
-root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
-.init(), and rename current TInit to TLoad, it has no context at all, it just return data
+? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
+.lets('init', 'db', [dep1, dep2]), and rename current TInit to TLoad, it has no context at all, it just return data
 
 .enabled()
 
@@ -122,7 +136,7 @@ rest important TODO in code
 --------------------------
 
 ! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
-? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
@@ -132,9 +146,15 @@ https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe examp
 
 .robotsTxt(take, skip)
 
-.lets('openapi')
+methods: .headers(({reqOnly}) => {}); helpers inslide loaders: setHeaders((prevHeaders) => {override}) or setHeaders({extends}); .fetchHeaders((prevHeaders) => {override}) or .fetchHeaders({extends})
+.headersInput(z.object())
+.lets('openapi', 'my endpoint').openapi({method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
+_slug ← _name
 
 engine server onFetch hook
+
+.axios(provide axios instance) .axios(false), .axios(true)
+onUploadProgress, onDownloadProgress
 
 --------------------------
 

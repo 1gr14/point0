@@ -59,27 +59,69 @@ export const createIdeaMutation = client
     },
   })
 
-export const generateIdeaMutation = client.lets('response', 'generateIdea').response(async ({ input, ctx }) => {
-  const stream = new ReadableStream({
-    async start(controller) {
-      const text = 'o'.repeat(100) // 100 symbols
-      for (const char of text) {
-        controller.enqueue(char)
-        await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
-      }
-      controller.close()
-    },
-  })
+export const generateIdeaMutation = client
+  .lets('mutation', 'generateIdea')
+  .loader(async ({ input, ctx }) => {
+    const stream = new ReadableStream({
+      async start(controller) {
+        const text = 'o'.repeat(100) // 100 symbols
+        for (const char of text) {
+          controller.enqueue(char)
+          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
+        }
+        controller.close()
+      },
+    })
 
-  // Return a streaming response
-  return new Response(stream, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    // Return a streaming response
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
   })
-})
+  .mutation()
+
+export const clientFnMutation = client
+  .lets('mutation', 'clientFnMutation')
+  .clientLoader(async ({ input, data, response }) => {
+    return new Response('HELLO!', {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  })
+  .mutation()
+
+export const clientFn2Mutation = client
+  .lets('mutation', 'clientFn2Mutation')
+  .loader(async ({ input, ctx }) => {
+    const stream = new ReadableStream({
+      async start(controller) {
+        const text = 'o'.repeat(100) // 100 symbols
+        for (const char of text) {
+          controller.enqueue(char)
+          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
+        }
+        controller.close()
+      },
+    })
+
+    // Return a streaming response
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  })
+  .clientLoader(async ({ input, data, response }) => {
+    return { x: 123 }
+  })
+  .clientLoader(async ({ input, data, response }) => {
+    return response
+  })
+  .mutation()
 
 const Page = () => {
   // any hook or whatever here, it is just client code
   const mutation = createIdeaMutation.useMutation()
+  const generateIdea = generateIdeaMutation.useMutation()
+  const clientFn = clientFnMutation.useMutation()
+  const clientFn2 = clientFn2Mutation.useMutation()
   const [title, setTitle] = useState(() => 'a')
   const [description, setDescription] = useState('b')
   const [content, setContent] = useState('c')
@@ -130,9 +172,38 @@ const Page = () => {
         <p>{generated}</p>
         <button
           onClick={() => {
-            generateIdeaMutation
-              .fetch()
+            clientFn
+              .mutateAsync()
+              .then((res) => {
+                console.info('res', res)
+              })
+              .catch((err: unknown) => {
+                console.info('err', err)
+              })
+          }}
+        >
+          Client Fn
+        </button>
+        <button
+          onClick={() => {
+            clientFn2
+              .mutateAsync()
+              .then((res) => {
+                console.info('res', res)
+              })
+              .catch((err: unknown) => {
+                console.info('err', err)
+              })
+          }}
+        >
+          Client Fn 2
+        </button>
+        <button
+          onClick={() => {
+            generateIdea
+              .mutateAsync()
               .then(async (res) => {
+                console.info('res', res)
                 if (!res.body) {
                   setGenerated('No body')
                   return

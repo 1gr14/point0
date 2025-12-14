@@ -96,10 +96,28 @@ export const ExternalHelperComponent2_n1xbrdietv_lazy = {
   point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent2.point,
 } as LazyPointsCollectionRecord
 
+export const clientFn2Mutation_13ogi387skq_lazy = {
+  type: 'mutation',
+  name: 'clientFn2Mutation',
+  point: async () => (await import('../pages/idea-create.js')).clientFn2Mutation.point,
+} as LazyPointsCollectionRecord
+
+export const clientFnMutation_267786urot4_lazy = {
+  type: 'mutation',
+  name: 'clientFnMutation',
+  point: async () => (await import('../pages/idea-create.js')).clientFnMutation.point,
+} as LazyPointsCollectionRecord
+
 export const createIdeaMutation_covj1sfftq_lazy = {
   type: 'mutation',
   name: 'createIdea',
   point: async () => (await import('../pages/idea-create.js')).createIdeaMutation.point,
+} as LazyPointsCollectionRecord
+
+export const generateIdeaMutation_2cgsxzalkcb_lazy = {
+  type: 'mutation',
+  name: 'generateIdea',
+  point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation.point,
 } as LazyPointsCollectionRecord
 
 export const uploadFileMutation_231owori99c_lazy = {
@@ -112,12 +130,6 @@ export const sharedQuery_ehd68url3u_lazy = {
   type: 'query',
   name: 'sharedQuery',
   point: async () => root.point.attach((await import('./shared.js')).sharedQuery.point),
-} as LazyPointsCollectionRecord
-
-export const generateIdeaMutation_26eqf9w1e8t_lazy = {
-  type: 'response',
-  name: 'generateIdea',
-  point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation.point,
 } as LazyPointsCollectionRecord
 
 export const clientCtx1_2aazoua7zcl_lazy = {

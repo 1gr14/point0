@@ -15,14 +15,14 @@ export const filePage = client.lets('page', 'file').page(() => {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedFile) {
-      console.log('No file selected')
+      console.info('No file selected')
       return
     }
 
     void (async () => {
       try {
         const result = await uploadFile.mutateAsync({ file: selectedFile })
-        console.log('Upload mutation result:', result)
+        console.info('Upload mutation result:', result)
       } catch (error) {
         console.error('Upload mutation error:', error)
       }

@@ -25,23 +25,26 @@ export const createIdeaMutation = client
     },
   })
 
-export const generateIdeaMutation = client.lets('response', 'generateIdea').response(async ({ input, ctx }) => {
-  const stream = new ReadableStream({
-    async start(controller) {
-      const text = 'o'.repeat(100) // 100 symbols
-      for (const char of text) {
-        controller.enqueue(char)
-        await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
-      }
-      controller.close()
-    },
-  })
+export const generateIdeaMutation = client
+  .lets('mutation', 'generateIdea')
+  .loader(async ({ input, ctx, inputRaw }) => {
+    const stream = new ReadableStream({
+      async start(controller) {
+        const text = 'o'.repeat(100) // 100 symbols
+        for (const char of text) {
+          controller.enqueue(char)
+          await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol
+        }
+        controller.close()
+      },
+    })
 
-  // Return a streaming response
-  return new Response(stream, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    // Return a streaming response
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
   })
-})
+  .mutation()
 
 const Page = () => {
   // any hook or whatever here, it is just client code

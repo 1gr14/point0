@@ -22,6 +22,7 @@ export const ideaPage = ideaLayout
     })
     return { idea }
   })
+  // .Infer
   .page(
     ({ data: { idea } }) => ({
       title: idea.title,

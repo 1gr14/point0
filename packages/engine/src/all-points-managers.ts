@@ -137,7 +137,6 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return undefined
       }
       const bodyRaw = await (async () => {
-        console.log('request.headers.get(Content-Type)', request.headers.get('Content-Type'))
         if (request.headers.get('Content-Type')?.includes('multipart/form-data')) {
           const formData = await request.formData()
           const pointInput: Record<string, unknown> = {}
@@ -153,7 +152,6 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             pointName: undefined,
           }
           for (const [key, value] of formData.entries()) {
-            console.log('key', key)
             if (key.startsWith('pointInput.')) {
               if (typeof value === 'string') {
                 // TODO:ASAP use superjson
