@@ -102,6 +102,12 @@ export type Infer<
   InputParsed: InputParsed<TRouteDefinition, TInputSchema>
   InputRaw: InputRaw<TRouteDefinition, TInputSchema>
   LastDataOrResponse: TLastDataOrResponse
+  QueriedData: TLastDataOrResponse extends Response
+    ? never
+    : FinalClientQueriedData<TQueryResultType, TData, TClientData>
+  FetchOutput: TData extends Data ? TData : TResponse extends Response ? TResponse : never
+  ClientExtractOutput: TLastDataOrResponse extends Response ? TLastDataOrResponse : FinalClientData<TData, TClientData>
+  ServerExtractOutput: ServerExtractResult<TCtx, TData, TResponse>
 }
 
 // points types
@@ -1055,12 +1061,12 @@ export type ServerExtractFn = <
 >
 export type ServerExtractResult<
   TCtx extends Ctx = Ctx,
-  TData extends Data = Data,
+  TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
 > =
   | {
       ctx: TCtx
-      data: TData
+      data: TData extends Data ? TData : EmptyData
       head: ResolvableHead[]
       response: TResponse
       error: null
