@@ -2,10 +2,9 @@
 ------ before start0 -----
 --------------------------
 
-headfn on server when infinite query should have correctly formated data
-point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
-
 provider value setter can be async and be just client loader, and provider({}) should just accept query options
+
+point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
 
 .extractDetailed() → {output, clientData, serverData, response, input, inputRaw, location, status}
 

@@ -40,6 +40,8 @@ import { SuperStore } from './super-store.js'
 import type {
   AnyDataOrInfiniteData,
   AnyPoint,
+  AnyUnqueriedLoaderResult,
+  AnyUseLoaderResult,
   AppendCtx,
   BasePoint,
   ClientExtractAction,
@@ -119,7 +121,6 @@ import type {
   ScrollPositionSetter,
   ServerExtractAction,
   ShowError,
-  SpecificUseLoaderResult,
   StandaloneSlashIfUndefined,
   SuccessHeadFn,
   UndefinedClientResponse,
@@ -1308,7 +1309,7 @@ export class Point0<
       ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: ErrorHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
+            head: ErrorHeadFn<TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
             pageErrorComponent: ErrorComponentType<
               DestinationComponentType,
               TQueryResultType,
@@ -1651,7 +1652,7 @@ export class Point0<
       ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: LoadingHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
+            head: LoadingHeadFn<TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
             pageLoadingComponent: LoadingComponentType<
               DestinationComponentType,
               TQueryResultType,
@@ -2436,7 +2437,7 @@ export class Point0<
         ]
       : [
           head:
-            | SuccessHeadFn<TQueryResultType, TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema>
+            | SuccessHeadFn<TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema>
             | ResolvableHead
             | string,
           page: TPage,
@@ -2470,7 +2471,8 @@ export class Point0<
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     const successHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
-      : (options) => (!options.data || options.loading || options.error ? {} : headFn(options as never))
+      : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        (options) => (!options.data || options.loading || options.error ? {} : headFn(options as never))
     const point = this._continue({
       _pointType: 'page',
       _page: page,
@@ -2918,7 +2920,7 @@ export class Point0<
   }: {
     props: FinalProps<TProps>
     component: React.ReactNode
-    useLoaderResult: SpecificUseLoaderResult<
+    useLoaderResult: AnyUseLoaderResult<
       any,
       TQueryResultType,
       TLastServerOutput,
@@ -3117,9 +3119,8 @@ export class Point0<
   }
 
   _extractHead(
-    useLoaderResult: SpecificUseLoaderResult<
+    unqueriedLoaderResult: AnyUnqueriedLoaderResult<
       any,
-      TQueryResultType,
       TLastServerOutput,
       TLastClientOutput,
       TInputSchema,
@@ -3129,7 +3130,7 @@ export class Point0<
   ): ResolvableHead[] {
     const head: ResolvableHead[] = []
     for (const headFn of this._headFns) {
-      const headFnResult = headFn(useLoaderResult as never)
+      const headFnResult = headFn(unqueriedLoaderResult as never)
       const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
       head.push(headFnResultResolvable)
     }
@@ -3137,9 +3138,8 @@ export class Point0<
   }
 
   private _useHead(
-    useLoaderResult: SpecificUseLoaderResult<
+    unqueriedLoaderResult: AnyUnqueriedLoaderResult<
       any,
-      TQueryResultType,
       TLastServerOutput,
       TLastClientOutput,
       TInputSchema,
@@ -3147,7 +3147,7 @@ export class Point0<
       AnyLocation
     >,
   ): void {
-    for (const headItem of this._extractHead(useLoaderResult)) {
+    for (const headItem of this._extractHead(unqueriedLoaderResult)) {
       useHead(headItem as never)
     }
   }
@@ -3346,7 +3346,7 @@ export class Point0<
             | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
-  ): SpecificUseLoaderResult<
+  ): AnyUseLoaderResult<
     any,
     TQueryResultType,
     TLastServerOutput,
@@ -3354,7 +3354,7 @@ export class Point0<
     TInputSchema,
     TRouteDefinition,
     AnyLocation
-  > {
+  > & { lastPageOrData: FinalClientData<TLastServerOutput, TLastClientOutput> } {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, inputParsed, inputParseError } = React.useMemo<
@@ -3421,6 +3421,7 @@ export class Point0<
           location,
           input: inputParsed,
           inputRaw,
+          lastPageOrData: {},
         }
       }, [inputParseError, inputRaw, inputParsed, location])
       return result as never
@@ -3428,6 +3429,8 @@ export class Point0<
     const query =
       this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery(...(args as never)) : this.useQuery(...args)
     const result = React.useMemo(() => {
+      const lastPageOrData =
+        this._queryResultType === 'infiniteQuery' ? (query?.data?.pages as any)?.at(-1) : query?.data
       return {
         data: query?.data,
         loading: query?.isLoading,
@@ -3436,6 +3439,7 @@ export class Point0<
         location,
         input: inputParsed,
         inputRaw,
+        lastPageOrData,
       }
     }, [query, query?.data, query?.error, query?.isLoading, inputRaw, inputParsed, location])
     return result as never
@@ -4711,7 +4715,7 @@ export class Point0<
 
     const result = this._useLoader(inputRaw, this._defaultPageQueryOptions)
 
-    this._useHead(result)
+    this._useHead({ ...result, data: result.lastPageOrData } as AnyUnqueriedLoaderResult<any, any, any, any, any, any>)
 
     if (!this._page) {
       // impossible error

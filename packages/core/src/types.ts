@@ -592,7 +592,8 @@ export type UsePointQueryResult<
   : TLastClientOutput extends Data
     ? UseClientQueryResult<TQueryResultType, TLastClientOutput, TStatus>
     : undefined
-export type SpecificUseLoaderResult<
+
+export type AnyUseLoaderResult<
   TStatus extends 'pending' | 'error' | 'success',
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TLastServerOutput extends LastOutput | UndefinedLastOutput,
@@ -685,6 +686,55 @@ export type UseLoaderResult<
           location: TLocation
         }
       : never
+export type UnqueriedLoaderResult<
+  TStatus extends 'pending' | 'error' | 'success',
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
+  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation,
+> = TStatus extends 'success'
+  ? {
+      data: FinalClientData<TLastServerOutput, TLastClientOutput>
+      error: null
+      loading: false
+      input: InputParsed<TRouteDefinition, TInputSchema>
+      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+      location: TLocation
+    }
+  : TStatus extends 'pending'
+    ? {
+        data: undefined
+        error: null
+        loading: true
+        input: InputParsed<TRouteDefinition, TInputSchema>
+        inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+        location: TLocation
+      }
+    : TStatus extends 'error'
+      ? {
+          data: undefined
+          error: Error0
+          loading: true
+          input: InputParsed<TRouteDefinition, TInputSchema> | null
+          inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+          location: TLocation
+        }
+      : never
+export type AnyUnqueriedLoaderResult<
+  TStatus extends 'pending' | 'error' | 'success' = any,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation = AnyLocation,
+> = IfAnyThenElse<
+  TStatus,
+  | UnqueriedLoaderResult<'success', TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition, TLocation>
+  | UnqueriedLoaderResult<'error', TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition, TLocation>
+  | UnqueriedLoaderResult<'pending', TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition, TLocation>,
+  UnqueriedLoaderResult<TStatus, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition, TLocation>
+>
 
 // endpoint components
 
@@ -695,7 +745,7 @@ export type PageComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
-> = SpecificUseLoaderResult<
+> = UseLoaderResult<
   'success',
   TQueryResultType,
   TLastServerOutput,
@@ -723,7 +773,7 @@ export type LayoutComponentProps<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
-> = SpecificUseLoaderResult<
+> = UseLoaderResult<
   'success',
   TQueryResultType,
   TLastServerOutput,
@@ -750,7 +800,7 @@ export type ComponentComponentProps<
   TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
-> = SpecificUseLoaderResult<
+> = UseLoaderResult<
   'success',
   TQueryResultType,
   TLastServerOutput,
@@ -805,7 +855,7 @@ export type LoadingComponentProps<
 > = {
   type: TType
   props: FinalProps<TProps>
-} & SpecificUseLoaderResult<
+} & UseLoaderResult<
   'pending',
   TQueryResultType,
   TLastServerOutput,
@@ -845,7 +895,7 @@ export type ErrorComponentProps<
 > = {
   type: TType
   props: FinalProps<TProps>
-} & SpecificUseLoaderResult<
+} & UseLoaderResult<
   'error',
   TQueryResultType,
   TLastServerOutput,
@@ -882,7 +932,7 @@ export type WrapperComponentProps<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = SpecificUseLoaderResult<
+> = AnyUseLoaderResult<
   any,
   TQueryResultType,
   TLastServerOutput,
@@ -1177,91 +1227,54 @@ export type ProviderValueSetterFn<
 // head
 
 export type SuccessHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = (
-  options: MiddlewareHeadFnOptions<
-    'success',
-    TQueryResultType,
-    TLastServerOutput,
-    TLastClientOutput,
-    TInputSchema,
-    TRouteDefinition
-  >,
+  options: MiddlewareHeadFnOptions<'success', TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
 ) => ResolvableHead | string
 
 export type ErrorHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
-  options: MiddlewareHeadFnOptions<
-    'error',
-    TQueryResultType,
-    TLastServerOutput,
-    TLastClientOutput,
-    TInputSchema,
-    TRouteDefinition
-  >,
+  options: MiddlewareHeadFnOptions<'error', TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
 ) => ResolvableHead | string
 
 export type LoadingHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
-  options: MiddlewareHeadFnOptions<
-    'pending',
-    TQueryResultType,
-    TLastServerOutput,
-    TLastClientOutput,
-    TInputSchema,
-    TRouteDefinition
-  >,
+  options: MiddlewareHeadFnOptions<'pending', TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
 ) => ResolvableHead | string
 
 export type MiddlewareHeadFnOptions<
   TStatus extends 'pending' | 'error' | 'success',
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-> = Omit<
-  SpecificUseLoaderResult<
-    TStatus,
-    TQueryResultType,
-    TLastServerOutput,
-    TLastClientOutput,
-    TInputSchema,
-    TRouteDefinition,
-    ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-  >,
-  'query'
-> // we omit it, becouse we try get page head on server also, where we have no current query
+> = AnyUnqueriedLoaderResult<
+  TStatus,
+  TLastServerOutput,
+  TLastClientOutput,
+  TInputSchema,
+  TRouteDefinition,
+  ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+>
 export type MiddlewareHeadFn<
   TStatus extends 'pending' | 'error' | 'success' = any,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = (
-  options: MiddlewareHeadFnOptions<
-    TStatus,
-    TQueryResultType,
-    TLastServerOutput,
-    TLastClientOutput,
-    TInputSchema,
-    TRouteDefinition
-  >,
+  options: MiddlewareHeadFnOptions<TStatus, TLastServerOutput, TLastClientOutput, TInputSchema, TRouteDefinition>,
 ) => ResolvableHead | string
 
 export type FetchOutput<TLastServerOutput extends LastOutput | UndefinedLastOutput> = TLastServerOutput

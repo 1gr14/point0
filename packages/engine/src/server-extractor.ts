@@ -2,6 +2,7 @@ import { Error0 } from '@devp0nt/error0'
 import { Route0, type AnyLocation } from '@devp0nt/route0'
 import type {
   AnyPoint,
+  AnyUnqueriedLoaderResult,
   AppComponent,
   Ctx,
   Data,
@@ -642,16 +643,15 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (!this.pageLocation) {
       return []
     }
-    const useLoaderResult = {
+    const unqueriedLoaderResult = {
       data: !point._hasClientLoader() ? data : undefined,
       error: error ? Error0.from(error) : null,
       input,
       inputRaw,
       location: this.pageLocation,
       loading: point._hasClientLoader() && !error,
-      query: null,
-    }
-    return point._extractHead(useLoaderResult as never)
+    } as AnyUnqueriedLoaderResult<any, any, any, any, any, any>
+    return point._extractHead(unqueriedLoaderResult)
   }
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {
