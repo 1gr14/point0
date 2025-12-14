@@ -13,7 +13,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         scope: 'server',
-        points: { root_ready: Point0.create('server').root() } as never,
+        points: { _root_ready: Point0.create('server').root() } as never,
         port: 3000,
         entry: './index.server.ts',
         outdir: '../dist/server',
@@ -122,7 +122,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         scope: 'server',
-        points: { root_ready: Point0.create('server').root() } as never,
+        points: { _root_ready: Point0.create('server').root() } as never,
         port: 3000,
         entry: './index.server.ts',
         outdir: '../dist/server',

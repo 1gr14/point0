@@ -194,7 +194,7 @@ describe('Point0', () => {
     // const eversion2 = Eversion.create()
     const run = await ServerExtractor.create({
       points: PointsManager.ready({
-        root_ready: server2.attach(clientPointBase02),
+        _root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
       }),
       pageLocation: Route0.getLocation('/'),
@@ -328,7 +328,7 @@ describe('Point0', () => {
   //   // })
   //   const run = await ServerExtractor.create({
   //     points: PointsManager.ready({
-  //       root_ready: server1.attach(clientPointBase01),
+  //       _root_ready: server1.attach(clientPointBase01),
   //       page: server1.attach(clientPoint01.point),
   //     }),
   //     pageLocation: Route0.getLocation(url),
@@ -368,7 +368,7 @@ describe('Point0', () => {
   //   // })
   //   const run2 = await ServerExtractor.create({
   //     points: PointsManager.ready({
-  //       root_ready: server2.attach(clientPointBase02),
+  //       _root_ready: server2.attach(clientPointBase02),
   //       page: server2.attach(clientPoint02.point),
   //     }),
   //     pageLocation: Route0.getLocation(url),
@@ -407,7 +407,7 @@ describe('Point0', () => {
   //   // })
   //   const run3 = await ServerExtractor.create({
   //     points: PointsManager.ready({
-  //       root_ready: server3.attach(clientPointBase03),
+  //       _root_ready: server3.attach(clientPointBase03),
   //       page: server3.attach(clientPoint03.point),
   //     }),
   //     pageLocation: Route0.getLocation(url),
@@ -457,7 +457,7 @@ describe('Point0', () => {
     // })
     const run1 = await ServerExtractor.create({
       points: PointsManager.ready({
-        root_ready: server1.attach(clientPointBase01),
+        _root_ready: server1.attach(clientPointBase01),
         page: server1.attach(clientPoint01.point),
       }),
       pageLocation: Route0.getLocation(url),
@@ -504,7 +504,7 @@ describe('Point0', () => {
     // })
     const run2 = await ServerExtractor.create({
       points: PointsManager.ready({
-        root_ready: server2.attach(clientPointBase02),
+        _root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
       }),
       pageLocation: Route0.getLocation(url),
@@ -546,7 +546,7 @@ describe('Point0', () => {
     // })
     const run3 = await ServerExtractor.create({
       points: PointsManager.ready({
-        root_ready: server3.attach(clientPointBase03),
+        _root_ready: server3.attach(clientPointBase03),
         page: server3.attach(clientPoint03.point),
       }),
       pageLocation: Route0.getLocation(url),

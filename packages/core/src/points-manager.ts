@@ -85,17 +85,17 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     readyPoints: TReadyPointsModule,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): PointsManager<true, TReadyPointsModule['root_ready']['point']['Infer']['RequiredCtx']> => {
-    const { root_ready, ...rest } = readyPoints
+  ): PointsManager<true, TReadyPointsModule['_root_ready']['point']['Infer']['RequiredCtx']> => {
+    const { _root_ready, ...rest } = readyPoints
     const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
     const rawPoints = PointsManager.rawToReadyPointsCollection(readyPointsWithoutRoot)
     const routedPoints = PointsManager.toRoutedPointsCollection(rawPoints)
     const routes = PointsManager.toRoutes({ points: routedPoints })
     const pagesTreeSource = PointsManager.toPagesTreeSource({ points: routedPoints })
     const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new PointsManager<true, TReadyPointsModule['root_ready']['point']['Infer']['RequiredCtx']>({
-      root: root_ready.point,
-      scope: root_ready.point._scope,
+    return new PointsManager<true, TReadyPointsModule['_root_ready']['point']['Infer']['RequiredCtx']>({
+      root: _root_ready.point,
+      scope: _root_ready.point._scope,
       collection: routedPoints,
       routes,
       ready: true,
@@ -111,16 +111,16 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     lazyPoints: TLazyPointsModule,
     absPath?: string,
     readFn?: PointsReadFn,
-  ): PointsManager<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']> => {
-    const { root_lazy, ...rest } = lazyPoints
+  ): PointsManager<false, TLazyPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']> => {
+    const { _root_lazy, ...rest } = lazyPoints
     const lazyPointsWithoutRoot = Object.values(rest) as LazyRoutedPointsCollection
     const routedPoints = PointsManager.toRoutedPointsCollection(lazyPointsWithoutRoot)
     const routes = PointsManager.toRoutes({ points: routedPoints })
     const pagesTreeSource = PointsManager.toPagesTreeSource({ points: routedPoints })
     const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new PointsManager<false, TLazyPointsModule['root_lazy']['point']['Infer']['RequiredCtx']>({
-      root: root_lazy.point,
-      scope: root_lazy.point._scope,
+    return new PointsManager<false, TLazyPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']>({
+      root: _root_lazy.point,
+      scope: _root_lazy.point._scope,
       collection: routedPoints,
       routes,
       ready: false,
@@ -150,7 +150,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       : TPoints extends ReadyPointsModule
         ? TPoints['root']['point']['Infer']['RequiredCtx']
         : TPoints extends LazyPointsModule
-          ? TPoints['root_lazy']['point']['Infer']['RequiredCtx']
+          ? TPoints['_root_lazy']['point']['Infer']['RequiredCtx']
           : RequiredCtx
   > => {
     if (points instanceof PointsManager) {
@@ -865,9 +865,9 @@ export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
 
 export type LazyPointsModule = {
-  root_lazy: { point: RootPoint; type: 'root'; name: string }
+  _root_lazy: { point: RootPoint; type: 'root'; name: string }
 } & Record<string, LazyPointsCollectionRecord>
-export type ReadyPointsModule = { root_ready: { point: RootPoint } } & Record<string, { point: EndPoint }>
+export type ReadyPointsModule = { _root_ready: { point: RootPoint } } & Record<string, { point: EndPoint }>
 
 export type PointsModuleType = 'ready' | 'lazy'
 

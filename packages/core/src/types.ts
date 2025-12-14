@@ -110,10 +110,13 @@ export type Infer<
     ? never
     : FinalClientQueriedData<TQueryResultType, TData, TClientData>
   FetchOutput: TLastServerOutput extends LastOutput ? TLastServerOutput : never
-  ClientExtractOutput: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
+  ClientExtractResult: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
     ? FinalLastOutput<TLastServerOutput, TLastClientOutput>
     : never
-  ServerExtractOutput: ServerExtractResult<TCtx, TData, TResponse, TLastServerOutput>
+  ClientExtractDetailedResult: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
+    ? ClientExtractDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
+    : never
+  ServerExtractResult: ServerExtractResult<TCtx, TData, TResponse, TLastServerOutput>
 }
 
 // points types
@@ -493,6 +496,22 @@ export type ShowError<Message extends string> = {
 
 // fetching and queries
 
+export type ClientExtractDetailedResult<
+  TData extends Data | UndefinedData,
+  TResponse extends Response | UndefinedResponse,
+  TClientData extends Data | UndefinedData,
+  TClientResponse extends Response | UndefinedResponse,
+  TLastServerOutput extends LastOutput | UndefinedLastOutput,
+  TLastClientOutput extends LastOutput | UndefinedLastOutput,
+> = {
+  serverData: TData
+  serverResponse: TResponse
+  serverOutput: TLastServerOutput
+  clientData: TClientData
+  clientResponse: TClientResponse
+  clientOutput: TLastClientOutput
+  output: FinalLastOutput<TLastServerOutput, TLastClientOutput>
+}
 export type UseQueryOptions<
   TQueryFnData = any,
   TError = any,
@@ -2094,12 +2113,18 @@ export type WithQueryEndLiteralsIfSuitable<
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
       TLastServerOutput,
-      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'extract'
+      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'extract' | 'extractDetailed'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
         TLastServerOutput,
-        TLiteral | 'useInfiniteQuery' | 'getQueryKey' | 'getInfiniteQueryOptions' | 'prefetchInfiniteQuery' | 'extract'
+        | TLiteral
+        | 'useInfiniteQuery'
+        | 'getQueryKey'
+        | 'getInfiniteQueryOptions'
+        | 'prefetchInfiniteQuery'
+        | 'extract'
+        | 'extractDetailed'
       >
     : TLiteral
 
@@ -2349,7 +2374,7 @@ export type NiceMutationEndPoint<
     TInputSchema,
     WithFetchIfHasServerLoader<
       TLastServerOutput,
-      'point' | 'lets' | 'extract' | 'getMutationOptions' | 'useMutation' | 'Infer'
+      'point' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'extract' | 'extractDetailed'
     >
   >
 >

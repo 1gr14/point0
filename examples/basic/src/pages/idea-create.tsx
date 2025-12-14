@@ -89,6 +89,15 @@ export const clientFnMutation = client
   })
   .mutation()
 
+export const clientFnMutationX = client
+  .lets('mutation', 'clientFnMutation')
+  .loader(async ({ input, data, response }) => {
+    return new Response('HELLO!', {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  })
+  .mutation()
+
 export const clientFn2Mutation = client
   .lets('mutation', 'clientFn2Mutation')
   .loader(async ({ input, ctx }) => {

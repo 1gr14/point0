@@ -46,6 +46,7 @@ import type {
   AppendCtx,
   BasePoint,
   ClientExtractAction,
+  ClientExtractDetailedResult,
   ClientLoaderFn,
   ComponentComponent,
   Ctx,
@@ -2490,6 +2491,7 @@ export class Point0<
       prefetchQuery: point.prefetchQuery.bind(point),
       fetch: point.fetch.bind(point),
       extract: point.extract.bind(point),
+      extractDetailed: point.extractDetailed.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
@@ -2540,6 +2542,7 @@ export class Point0<
       prefetchQuery: point.prefetchQuery.bind(point),
       fetch: point.fetch.bind(point),
       extract: point.extract.bind(point),
+      extractDetailed: point.extractDetailed.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
@@ -2600,6 +2603,7 @@ export class Point0<
       prefetchQuery: point.prefetchQuery.bind(point),
       fetch: point.fetch.bind(point),
       extract: point.extract.bind(point),
+      extractDetailed: point.extractDetailed.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
@@ -2630,7 +2634,7 @@ export class Point0<
     TQueryResultType,
     TProps,
     TLastServerOutput,
-    TLastClientOutput
+    TNewClientData
   > {
     const point = this._continue({
       _pointType: 'provider',
@@ -2968,14 +2972,18 @@ export class Point0<
     location,
     input,
   }: {
-    data: Data
+    data: Data | undefined
     response: Response | undefined
     location?: AnyLocation
     input: InputRaw<TRouteDefinition, TInputSchema>
-  }): Promise<{ clientData: Data; clientResponse: Response | undefined; lastClientDataOrResponse: Data | Response }> {
-    let currentClientData: Data = data
+  }): Promise<{
+    clientData: Data | undefined
+    clientResponse: Response | undefined
+    clientOutput: Data | Response | undefined
+  }> {
+    let currentClientData: Data | undefined = data
     let currentClientResponse: Response | undefined = response
-    let currentLastDataOrResponse: Data | Response = response ?? data
+    let currentClientOutput: Data | Response | undefined = response ?? data
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
       if (this.inputSchema) {
@@ -3011,7 +3019,7 @@ export class Point0<
         }
         case 'loader': {
           const result = await clientExtractAction.fn({
-            data: currentClientData,
+            data: currentClientData ?? {},
             location,
             input: currentInputParsed,
             inputRaw: input,
@@ -3019,10 +3027,10 @@ export class Point0<
           })
           if (result instanceof Response) {
             currentClientResponse = result
-            currentLastDataOrResponse = result
+            currentClientOutput = result
           } else {
             currentClientData = result
-            currentLastDataOrResponse = result
+            currentClientOutput = result
           }
           break
         }
@@ -3035,28 +3043,29 @@ export class Point0<
     return {
       clientData: currentClientData,
       clientResponse: currentClientResponse,
-      lastClientDataOrResponse: currentLastDataOrResponse,
+      clientOutput: currentClientOutput,
     }
   }
 
+  // TODO: merge it with _extractClientAsync
   private _extractClientSync({
     data,
     response,
     location,
     input,
   }: {
-    data: AnyDataOrInfiniteData
+    data: Data | undefined
     response: Response | undefined
     location?: AnyLocation
     input: InputRaw<TRouteDefinition, TInputSchema>
   }): {
-    clientData: AnyDataOrInfiniteData
+    clientData: Data | undefined
     clientResponse: Response | undefined
-    lastClientDataOrResponse: Data | Response
+    clientOutput: Data | Response | undefined
   } {
-    let currentClientData: AnyDataOrInfiniteData = data
+    let currentClientData: Data | undefined = data
     let currentClientResponse: Response | undefined = undefined
-    let currentLastDataOrResponse: Data | Response = response ?? data
+    let currentClientOutput: Data | Response | undefined = response ?? data
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
       if (this.inputSchema) {
@@ -3092,7 +3101,7 @@ export class Point0<
         }
         case 'loader': {
           const result = clientExtractAction.fn({
-            data: currentClientData,
+            data: currentClientData ?? {},
             location,
             input: currentInputParsed,
             inputRaw: input,
@@ -3100,10 +3109,10 @@ export class Point0<
           })
           if (result instanceof Response) {
             currentClientResponse = result
-            currentLastDataOrResponse = result
+            currentClientOutput = result
           } else {
-            currentClientData = result as AnyDataOrInfiniteData
-            currentLastDataOrResponse = result as Data | Response
+            currentClientData = result as Data
+            currentClientOutput = result as Data | Response
           }
           break
         }
@@ -3116,7 +3125,7 @@ export class Point0<
     return {
       clientData: currentClientData,
       clientResponse: currentClientResponse,
-      lastClientDataOrResponse: currentLastDataOrResponse,
+      clientOutput: currentClientOutput,
     }
   }
 
@@ -3515,6 +3524,98 @@ export class Point0<
     }
   }
 
+  async extractDetailed(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? TData extends Data
+        ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
+        : [input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : TData extends Data
+        ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
+        : [input: InputRaw<TRouteDefinition, TInputSchema>]
+  ): Promise<
+    ClientExtractDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
+  > {
+    if (Point0.isServer) {
+      throw new Error0(
+        'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
+      )
+    }
+    const [input = {}, fetchOptions] = args
+    const { serverData, serverResponse, serverOutput } = await (async () => {
+      if (this._hasLoader()) {
+        const serverDataOrResponse = await this.fetch(input as never, fetchOptions)
+        if (serverDataOrResponse instanceof Response) {
+          return { serverData: undefined, serverResponse: serverDataOrResponse, serverOutput: serverDataOrResponse }
+        }
+        return { serverData: serverDataOrResponse, serverResponse: undefined, serverOutput: serverDataOrResponse }
+      }
+      return { serverData: undefined, serverResponse: undefined, serverOutput: undefined }
+    })()
+    if (this._hasClientLoader()) {
+      if (this._hasClientAsyncLoader()) {
+        const { clientOutput, clientData, clientResponse } = await this._extractClientAsync({
+          data: serverData || {},
+          response: serverResponse,
+          input: input as never,
+        })
+        return {
+          serverData,
+          serverResponse,
+          serverOutput,
+          clientData,
+          clientResponse,
+          clientOutput,
+          output: clientOutput ?? serverOutput,
+        } as ClientExtractDetailedResult<
+          TData,
+          TResponse,
+          TClientData,
+          TClientResponse,
+          TLastServerOutput,
+          TLastClientOutput
+        >
+      } else {
+        const { clientOutput, clientData, clientResponse } = this._extractClientSync({
+          data: serverData || {},
+          response: serverResponse,
+          input: input as never,
+        })
+        return {
+          serverData,
+          serverResponse,
+          serverOutput,
+          clientData,
+          clientResponse,
+          clientOutput,
+          output: clientOutput ?? serverOutput,
+        } as ClientExtractDetailedResult<
+          TData,
+          TResponse,
+          TClientData,
+          TClientResponse,
+          TLastServerOutput,
+          TLastClientOutput
+        >
+      }
+    }
+    return {
+      serverData,
+      serverResponse,
+      serverOutput,
+      clientData: undefined,
+      clientResponse: undefined,
+      clientOutput: undefined,
+      output: serverOutput,
+    } as ClientExtractDetailedResult<
+      TData,
+      TResponse,
+      TClientData,
+      TClientResponse,
+      TLastServerOutput,
+      TLastClientOutput
+    >
+  }
+
   async extract(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? TData extends Data
@@ -3524,36 +3625,8 @@ export class Point0<
         ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<FinalLastOutput<TLastServerOutput, TLastClientOutput>> {
-    if (Point0.isServer) {
-      throw new Error0(
-        'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
-      )
-    }
-    const [input = {}, fetchOptions] = args
-    const serverDataOrResponse = await (async () => {
-      if (this._hasLoader()) {
-        return await this.fetch(input as never, fetchOptions)
-      }
-      return {}
-    })()
-    if (this._hasClientLoader()) {
-      if (this._hasClientAsyncLoader()) {
-        const { lastClientDataOrResponse } = await this._extractClientAsync({
-          data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
-          response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
-          input: input as never,
-        })
-        return lastClientDataOrResponse as FinalLastOutput<TLastServerOutput, TLastClientOutput>
-      } else {
-        const { lastClientDataOrResponse } = this._extractClientSync({
-          data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
-          response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
-          input: input as never,
-        })
-        return lastClientDataOrResponse as FinalLastOutput<TLastServerOutput, TLastClientOutput>
-      }
-    }
-    return serverDataOrResponse as FinalLastOutput<TLastServerOutput, TLastClientOutput>
+    const detailedResult = await this.extractDetailed(...args)
+    return detailedResult.output
   }
 
   _getServerQueryKey({
@@ -4283,19 +4356,19 @@ export class Point0<
         })()
         if (this._hasClientLoader()) {
           if (this._hasClientAsyncLoader()) {
-            const { lastClientDataOrResponse } = await this._extractClientAsync({
+            const { clientOutput } = await this._extractClientAsync({
               data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
               response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
               input: input as never,
             })
-            return lastClientDataOrResponse
+            return clientOutput
           } else {
-            const { lastClientDataOrResponse } = this._extractClientSync({
+            const { clientOutput } = this._extractClientSync({
               data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
               response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
               input: input as never,
             })
-            return lastClientDataOrResponse
+            return clientOutput
           }
         }
         return serverDataOrResponse as FinalLastOutput<TLastServerOutput, TLastClientOutput>

@@ -98,9 +98,8 @@ export const clientCtx3_11wnml4ki1j_lazy = {
   point: async () => (await import('./client-ctx.js')).clientCtx3.point,
 } as LazyPointsCollectionRecord
 
-export const root_lazy = {
+export const _root_lazy = {
   type: 'root' as const,
   name: 'client',
   point: root.point,
 }
-

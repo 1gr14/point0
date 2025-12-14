@@ -140,7 +140,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout._name}`, layout]))
     extractor ??= await ServerExtractor.create({
-      points: PointsManager.ready({ root_ready: point._root, point, ...layoutsObject }),
+      points: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
       currentLocation: location,
       requiredCtx,
       pageLocation: point._pointType === 'page' ? location : undefined,

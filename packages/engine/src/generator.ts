@@ -448,7 +448,7 @@ export class FilesGenerator {
       lines.push(`export {}`)
     } else {
       for (const point of importedPoints) {
-        lines.push(`export const ${point.renamedExportName}_lazy = {`)
+        lines.push(`export const _${point.renamedExportName}_lazy = {`)
         lines.push(`  type: '${point.type}'${point.type === 'root' ? ' as const' : ''},`)
         lines.push(`  name: '${point.name}',`)
         if (point.route) {
@@ -555,16 +555,16 @@ export class FilesGenerator {
       for (const point of importedPoints) {
         const exportNameSuffix = '.point'
         if (point.type === 'root') {
-          lines.push(`export const ${point.renamedExportName}_ready = ${point.renamedExportName}${exportNameSuffix}`)
+          lines.push(`export const _${point.renamedExportName}_ready = ${point.renamedExportName}${exportNameSuffix}`)
         } else {
           if (point.scope === target.scope) {
             lines.push(
-              `export const ${point.renamedExportName}_ready = ${point.renamedExportName}${exportNameSuffix} as EndPoint`,
+              `export const _${point.renamedExportName}_ready = ${point.renamedExportName}${exportNameSuffix} as EndPoint`,
             )
           } else {
             // it is attached
             lines.push(
-              `export const ${point.renamedExportName}_ready = root.point.attach(${point.renamedExportName}${exportNameSuffix}) as EndPoint`,
+              `export const _${point.renamedExportName}_ready = root.point.attach(${point.renamedExportName}${exportNameSuffix}) as EndPoint`,
             )
           }
         }

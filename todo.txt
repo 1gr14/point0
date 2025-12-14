@@ -2,10 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-point input formdata may be nested so pointInput.x__0__ parse and stringify recursively
-
-.extractDetailed() → {output, clientData, serverData, response, input, inputRaw, location, status}
-
 Кткслоадер нул дропает все лоадеры, и клиент лоадер нул, дропает клиентские лоадеры, а в летс не надо дропать
 
 check if superjson works correctly with query and mutation and eversion store
@@ -28,7 +24,7 @@ oxc lint
 Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
 
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
-.lets('init', 'db', [dep1, dep2]), and rename current TInit to TLoad, it has no context at all, it just return data
+.lets('init', 'db', {dep1, dep2}), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx
 
 .enabled()
 

@@ -1,5 +1,5 @@
-import { Point0 } from '@point0/core'
 import { Link } from '@/lib/navigate'
+import { Point0 } from '@point0/core'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
@@ -11,6 +11,7 @@ import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
+import { clientFnMutation, clientFnMutationX } from './idea-create.js'
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``
@@ -110,6 +111,21 @@ export default generalLayout
           onClick={() => {
             setState(state + 1)
             setState2(state2 + 1)
+            BestIdeaComponent.extractDetailed({ x: 10, y: 20 })
+              .then((result) => {
+                console.info(result)
+              })
+              .catch((error) => {
+                console.error(error)
+              })
+            clientFnMutation
+              .extractDetailed()
+              .then((result) => {
+                console.info(1, result)
+              })
+              .catch((error) => {
+                console.error(error)
+              })
           }}
         >
           Click me
