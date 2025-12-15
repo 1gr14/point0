@@ -117,6 +117,7 @@ import type {
   RequiredCtx,
   RootPoint,
   RouteDefinition,
+  SafeParseInputResult,
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
@@ -3105,6 +3106,53 @@ export class Point0<
     return this._route as CallableRoute<NonNullable<TRouteDefinition>>
   }
 
+  parseInputSafe(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>]
+  ): SafeParseInputResult<TRouteDefinition, TInputSchema> {
+    const [input = {}] = args
+    if (this.inputSchema) {
+      const parseResult = this.inputSchema.safeParse(input)
+      if (parseResult.success) {
+        return {
+          success: true,
+          data: parseResult.data as InputParsed<TRouteDefinition, TInputSchema>,
+          error: undefined,
+        }
+      }
+      return { success: false, data: undefined, error: Error0.from(parseResult.error) }
+    }
+    if (this._route) {
+      const parseResult = this._route.parseFlatInputSafe(input)
+      if (parseResult.success) {
+        return {
+          success: true,
+          data: parseResult.data as InputParsed<TRouteDefinition, TInputSchema>,
+          error: undefined,
+        }
+      }
+      return { success: false, data: undefined, error: Error0.from(parseResult.error) }
+    }
+    return {
+      success: true,
+      data: {} as InputParsed<TRouteDefinition, TInputSchema>,
+      error: undefined,
+    }
+  }
+
+  parseInput(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>]
+  ): InputParsed<TRouteDefinition, TInputSchema> {
+    const result = this.parseInputSafe(...args)
+    if (!result.success) {
+      throw result.error
+    }
+    return result.data
+  }
+
   private async _executeClientAsync({
     data,
     response,
@@ -3125,19 +3173,16 @@ export class Point0<
     let currentClientOutput: Data | Response | undefined = response ?? data
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
-      if (this.inputSchema) {
-        const parseResult = this.inputSchema.safeParse(input)
-        if (parseResult.success) {
-          return { parsedInput: parseResult.data, inputError: undefined }
-        }
-        return { parsedInput: {}, inputError: parseResult.error }
+      const result = this.parseInputSafe(input)
+      if (!result.success) {
+        return { parsedInput: {}, inputError: result.error }
       }
-      return { parsedInput: input, inputError: undefined }
+      return { parsedInput: result.data, inputError: undefined }
     })()
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
-    let currentInputParsed: InputParsed = input
+    let currentInputParsed: InputParsed = this._route ? this._route.parseFlatInput(input) : {}
     let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??=
       this._pointType === 'page' || this._pointType === 'layout'
@@ -3207,19 +3252,16 @@ export class Point0<
     let currentClientOutput: Data | Response | undefined = response ?? data
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
-      if (this.inputSchema) {
-        const parseResult = this.inputSchema.safeParse(input)
-        if (parseResult.success) {
-          return { parsedInput: parseResult.data, inputError: undefined }
-        }
-        return { parsedInput: {}, inputError: parseResult.error }
+      const result = this.parseInputSafe(input)
+      if (!result.success) {
+        return { parsedInput: {}, inputError: result.error }
       }
-      return { parsedInput: input, inputError: undefined }
+      return { parsedInput: result.data, inputError: undefined }
     })()
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
-    let currentInputParsed: InputParsed = input
+    let currentInputParsed: InputParsed = this._route ? this._route.parseFlatInput(input) : {}
     let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??=
       this._pointType === 'page' || this._pointType === 'layout'
@@ -3520,11 +3562,6 @@ export class Point0<
         }
     >(() => {
       const inputRaw = (args[0] || {}) as InputRaw<TRouteDefinition, TInputSchema>
-      // const safeParseResult = this.inputSchema?.safeParse(inputRaw)
-      // if (safeParseResult?.error) {
-      //   return { inputRaw, inputParsed: null, inputParseError: Error0.from(safeParseResult.error) }
-      // }
-      // const inputParsed = (safeParseResult?.data ?? inputRaw) as InputParsed<TRouteDefinition, TInputSchema>
       const parsed = (():
         | {
             inputParsed: InputParsed<TRouteDefinition, TInputSchema>
@@ -3534,29 +3571,11 @@ export class Point0<
             inputParsed: null
             inputParseError: Error0
           } => {
-        if (this.inputSchema) {
-          const safeParseResult = this.inputSchema.safeParse(inputRaw)
-          if (safeParseResult.error) {
-            return { inputParsed: null, inputParseError: Error0.from(safeParseResult.error) }
-          }
-          return {
-            inputParsed: safeParseResult.data as InputParsed<TRouteDefinition, TInputSchema>,
-            inputParseError: null,
-          }
-        } else {
-          try {
-            const inputParsed = Object.entries(inputRaw).reduce<InputParsed<TRouteDefinition, TInputSchema>>(
-              (acc, [key, value]) => {
-                ;(acc as any)[key] = String(value)
-                return acc
-              },
-              {} as InputParsed<TRouteDefinition, TInputSchema>,
-            )
-            return { inputParsed, inputParseError: null }
-          } catch (error) {
-            return { inputParsed: null, inputParseError: Error0.from(error) }
-          }
+        const result = this.parseInputSafe(inputRaw)
+        if (!result.success) {
+          return { inputParsed: null, inputParseError: result.error }
         }
+        return { inputParsed: result.data, inputParseError: null }
       })()
       return { inputRaw, ...parsed }
     }, [stringify(args[0])])

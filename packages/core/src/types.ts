@@ -15,7 +15,15 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
-import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput, util as ZodUtil } from 'zod'
+import type {
+  ZodDefault,
+  input as ZodInput,
+  ZodObject,
+  ZodOptional,
+  output as ZodOutput,
+  ZodSafeParseResult,
+  util as ZodUtil,
+} from 'zod'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 
@@ -431,6 +439,21 @@ export type MergeInputSchemas<
   : TInputSchema2 extends InputSchemaZod
     ? TInputSchema2
     : Record<never, never>
+
+export type SafeParseInputResult<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  | {
+      success: true
+      data: InputParsed<TRouteDefinition, TInputSchema>
+      error: undefined
+    }
+  | {
+      success: false
+      data: undefined
+      error: Error0
+    }
 
 export type WithMaybeOptionalReqiredCtx<TRequiredCtx extends RequiredCtx = RequiredCtx> =
   TRequiredCtx extends UndefinedCtx ? { requiredCtx?: TRequiredCtx } : { requiredCtx: TRequiredCtx }

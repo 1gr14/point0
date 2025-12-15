@@ -190,18 +190,17 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
 
-      // const mergedInput = { ...point?._getUnsafeInputRawByLocation(location), ...input }
-
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
       const { parsedInput, inputError } = (() => {
-        if (point?.inputSchema) {
-          const parseResult = point.inputSchema.safeParse(input)
-          if (parseResult.success) {
-            return { parsedInput: parseResult.data, inputError: undefined }
-          }
-          return { parsedInput: {}, inputError: parseResult.error }
+        if (!point) {
+          // we will throw 404 later, so input unused
+          return { parsedInput: {}, inputError: undefined }
         }
-        return { parsedInput: input, inputError: undefined }
+        const result = point.parseInputSafe(input)
+        if (!result.success) {
+          return { parsedInput: {}, inputError: result.error }
+        }
+        return { parsedInput: result.data, inputError: undefined }
       })()
       if (inputError) {
         return {
@@ -220,12 +219,32 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentResponse: Response | undefined = undefined
       let currentLastOutput: LastOutput = currentData
       let currentStatus = 200
-      let currentInputParsed: InputParsed = input
+      let currentInputParsed: InputParsed = {}
       let currentInputSchema: InputSchema | undefined = undefined
-      const serverExecuteActions = [...(point?._serverExecuteActions ?? [])]
 
       try {
-        for (const serverExecuteAction of serverExecuteActions) {
+        currentInputParsed = !point?._route ? currentInputParsed : point._route.parseFlatInput(input) // will never throw, becouse we parse it before
+
+        if (!point) {
+          const error = new Error0(`Point Not Found`)
+          return {
+            ctx: currentCtx,
+            data: currentData,
+            head: this.getCurrentPageHead({
+              point: this.points.root,
+              input: currentInputParsed,
+              inputRaw: input,
+              data: currentData,
+              error,
+            }),
+            error,
+            status: 404,
+            response: currentResponse,
+            output: currentLastOutput,
+          }
+        }
+
+        for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
             case 'input': {
               currentInputSchema = currentInputSchema
@@ -375,41 +394,21 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         //   }
         //   return undefined
         // })()
-        if (point) {
-          await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
-          return {
-            ctx: currentCtx,
+        await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
+        return {
+          ctx: currentCtx,
+          data: currentData,
+          head: this.getCurrentPageHead({
+            point,
+            input: currentInputParsed,
+            inputRaw: input,
             data: currentData,
-            head: this.getCurrentPageHead({
-              point,
-              input: currentInputParsed,
-              inputRaw: input,
-              data: currentData,
-              error: null,
-            }),
-            response: currentResponse,
             error: null,
-            status: currentStatus,
-            output: currentLastOutput,
-          }
-        } else {
-          const error = new Error0(`Point Not Found`)
-          await this.appendQueryClientCache({ data: currentData, point, error, input })
-          return {
-            ctx: currentCtx,
-            data: currentData,
-            head: this.getCurrentPageHead({
-              point: this.points.root,
-              input: currentInputParsed,
-              inputRaw: input,
-              data: currentData,
-              error,
-            }),
-            error,
-            status: 404,
-            response: currentResponse,
-            output: currentLastOutput,
-          }
+          }),
+          response: currentResponse,
+          error: null,
+          status: currentStatus,
+          output: currentLastOutput,
         }
       } catch (error) {
         try {

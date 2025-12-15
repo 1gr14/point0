@@ -2,15 +2,13 @@
 ------ before start0 -----
 --------------------------
 
-Сам роут должен иметь парс инаут функции и убедиться, что мы их вызываем при отсутвии инпут схемы
-Хелпер safeParseInput
+point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
+
+---
 
 check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson) + .superjson(boolean)
 
-point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
-
----
 
 .ssr(), and remove ssr option from engine
 
@@ -166,7 +164,9 @@ https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe examp
 methods: .headers(({reqOnly}) => {}); helpers inslide loaders: setHeaders((prevHeaders) => {override}) or setHeaders({extends}); .fetchHeaders((prevHeaders) => {override}) or .fetchHeaders({extends})
 .headersInput(z.object())
 Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
-.lets('openapi', 'my endpoint').openapi({method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
+.lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
+TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
+if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
 _slug ← _name
 
 engine server onFetch hook, onAfterPublicdirFetch hook
