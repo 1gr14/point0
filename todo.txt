@@ -42,7 +42,6 @@ and how cool it be to set init points just in usual ctx of points. Incredible co
 HMR
 Вероятно хмру поможет если я буду возвращать просто внутренний компонент, а на местах, где рендерю оборачивал бы в Компонент и передавал в него сам поинт. Или может даже достаточно возвращать сам компонент, а на местах использотвать point.Component, а накрайняк если нельзя на него даже ничгео ассайнить, тогда из displayName возьмём название поинта и подтянем его из глобала когда будем делать <Mount point={point} /> <point.Page /> <point.Component /> <point.Layout />
 Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
-FinalClientData, FinalQueriedClientData в инфер
 
 EXPO
 expo example
@@ -58,6 +57,11 @@ remove root from lets
 Руту запретить все лоадеры иначе как аттачить, и вообще будто бы логично и для mcp и для init
 или аттач разрешить только туда где типы рута одинаковые, и соответственно рут поинт хранить генериком
 Короче разобраться с этим вонючим аттачем, что-то с ним не так
+
+refactor types names and order
+TData → TServerData, etc
+try do EmptyData as {}
+remove default generic values it is unsafe, better add AnySomethingType for it
 
 ---
 
@@ -139,9 +143,6 @@ fetchWithCancel
 cancel by input, or cancel all
 on fetch error maybe no json, then if it is thore, do res.text()
 
-refactor types names and order
-try do EmptyData as {}
-remove default generic values it is unsafe, better add AnySomethingType for it
 Move type errors to its own types, so we can reuse them
 
 bunup
