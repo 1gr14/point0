@@ -110,7 +110,6 @@ import type {
   PointsScope,
   PrependCtx,
   Props,
-  ProviderValueSetterFn,
   QueryKey,
   QueryMode,
   QueryResultType,
@@ -230,7 +229,7 @@ export class Point0<
   private readonly _wrappers: WrapperComponentType[]
   readonly _serverExtractActions: ServerExtractAction[]
   private readonly _clientExtractActions: ClientExtractAction[]
-  private readonly _providerValueSetter: ProviderValueSetterFn<any, any, any, any, any> | undefined
+  // private readonly _providerValueSetter: ProviderValueSetterFn<any, any, any, any, any> | undefined
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly _route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _prevRoute: TPrevRouteDefinition extends RouteDefinition
@@ -369,7 +368,7 @@ export class Point0<
     // _asFormData?: boolean | undefined
     _serverExtractActions?: ServerExtractAction[]
     _clientExtractActions?: ClientExtractAction[]
-    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any>
+    // _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any>
     _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TLastClientOutput>> | undefined
     _useValue?: any
     _route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
@@ -493,7 +492,7 @@ export class Point0<
     // this._asFormData = options._asFormData
     this._serverExtractActions = options._serverExtractActions ?? []
     this._clientExtractActions = options._clientExtractActions ?? []
-    this._providerValueSetter = options._providerValueSetter ?? undefined
+    // this._providerValueSetter = options._providerValueSetter ?? undefined
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
     this._route =
@@ -667,7 +666,7 @@ export class Point0<
     _wrappers?: WrapperComponentType[]
     _serverExtractActions?: ServerExtractAction[]
     _clientExtractActions?: ClientExtractAction[]
-    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any> | undefined
+    // _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any> | undefined
     _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TLastClientOutput>> | undefined
     _useValue?: any
     _route?: IfAnyThenElse<
@@ -841,7 +840,7 @@ export class Point0<
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExtractActions: overrides._serverExtractActions ?? this._serverExtractActions,
       _clientExtractActions: overrides._clientExtractActions ?? this._clientExtractActions,
-      _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
+      // _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
       _route: (overrides._route ?? this._route) as never,
@@ -2251,6 +2250,26 @@ export class Point0<
     TLastServerOutput,
     TLastClientOutput
   >
+  lets<TPointName extends PointName>(
+    letsEndPointType: 'provider',
+    pointName: TPointName,
+  ): NiceMiddlePoint<
+    'middleware',
+    'provider',
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TRouteDefinition,
+    TInputSchema,
+    TClientResponse,
+    TResponse,
+    TQueryResultType extends 'infiniteQuery' ? 'query' : TQueryResultType, // provider can not be infinite query
+    UndefinedProps,
+    TLastServerOutput,
+    TLastClientOutput
+  >
   lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'root'>, TPointName extends PointName>(
     letsEndPointType: TNewLetsEndPointType,
     pointName: TPointName,
@@ -2305,8 +2324,14 @@ export class Point0<
       _page: undefined,
       _component: undefined,
       _layout: undefined,
+      _queryResultType:
+        letsEndPointType === 'provider'
+          ? this._queryResultType === 'infiniteQuery'
+            ? 'query'
+            : this._queryResultType
+          : this._queryResultType,
       _ProviderReactContext: undefined,
-      _providerValueSetter: undefined,
+      // _providerValueSetter: undefined,
       _useValue: undefined,
       _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
       _serverurl: this._base?._serverurl,
@@ -2635,21 +2660,92 @@ export class Point0<
     return layoutWithPoint as never
   }
 
-  provider<TNewClientData extends Data = Data>(
-    valueSetter?: ProviderValueSetterFn<
-      TLetsEndPointType,
-      TRouteDefinition,
-      TLastServerOutput,
-      TLastClientOutput,
-      TNewClientData
-    >,
+  // we should allow porovide valueSetter, becouse you may want provide some functions and other complex things
+  // while usual clientLoader can return only plain data.
+  // oops. clientLoader can reeturn anything, cool! Lets then comment it.
+  // TODO: remove _providerValueSetter usage
+  // provider<TNewClientData extends Data = Data>(
+  //   valueSetter?: ProviderValueSetterFn<
+  //     TLetsEndPointType,
+  //     TRouteDefinition,
+  //     TLastServerOutput,
+  //     TLastClientOutput,
+  //     TNewClientData
+  //   >,
+  // ): NiceProviderEndPoint<
+  //   'provider',
+  //   UndefinedEndPointType,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TNewClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponse,
+  //   TClientResponse,
+  //   TQueryResultType,
+  //   TProps,
+  //   TLastServerOutput,
+  //   TNewClientData
+  // > {
+  //   const point = this._continue({
+  //     _pointType: 'provider',
+  //     _letsEndPointType: undefined,
+  //     _providerValueSetter: valueSetter || (({ data }) => data),
+  //     _ProviderReactContext: createContext<FinalClientData<TLastServerOutput, TLastClientOutput>>(
+  //       null as never,
+  //     ) as never,
+  //     _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
+  //       if (!point._ProviderReactContext) {
+  //         throw new Error('ProviderReactContext 2 not found on point: ' + point._name)
+  //       }
+
+  //       if (keys == null) {
+  //         // no keys — return full context
+  //         return useContextSelector(point._ProviderReactContext, (ctx) => {
+  //           if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //           return ctx
+  //         })
+  //       }
+
+  //       if (Array.isArray(keys)) {
+  //         // multiple keys — build a memoized object
+  //         return useContextSelector(point._ProviderReactContext, (ctx) => {
+  //           if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //           const picked = {} as any
+  //           for (const key of keys) {
+  //             picked[key] = ctx[key]
+  //           }
+  //           return picked
+  //         })
+  //       }
+
+  //       // single key
+  //       return useContextSelector(point._ProviderReactContext, (ctx) => {
+  //         if (!ctx) throw new Error('useValue must be used within a Provider.')
+  //         return ctx[keys]
+  //       })
+  //     },
+  //   })
+  //   return point as never
+  // }
+
+  provider(
+    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data
+      ? []
+      : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        ? [ShowError<`Provider can not return response. Last loader should provide plain object data, not response.`>]
+        : [
+            ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .provider()`>,
+          ]
   ): NiceProviderEndPoint<
     'provider',
-    UndefinedEndPointType,
+    undefined,
     TRequiredCtx,
     TCtx,
     TData,
-    TNewClientData,
+    TClientData,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
@@ -2658,12 +2754,22 @@ export class Point0<
     TQueryResultType,
     TProps,
     TLastServerOutput,
-    TNewClientData
+    TLastClientOutput
   > {
-    const point = this._continue({
+    return this._continue({
+      // _pointType: this._letsEndPointType === 'query' ? 'query' : this._pointType,
+      // _letsEndPointType: (this._letsEndPointType === 'query'
+      //   ? undefined
+      //   : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
+      // _queryResultType: 'query',
+      // _queryOptions: queryOptions as ExtraUseQueryOptions<
+      //   FinalClientData<TLastServerOutput, TLastClientOutput>,
+      //   Error0,
+      //   FinalClientData<TLastServerOutput, TLastClientOutput>,
+      //   QueryKey
+      // >,
       _pointType: 'provider',
       _letsEndPointType: undefined,
-      _providerValueSetter: valueSetter || (({ data }) => data),
       _ProviderReactContext: createContext<FinalClientData<TLastServerOutput, TLastClientOutput>>(
         null as never,
       ) as never,
@@ -2698,13 +2804,47 @@ export class Point0<
           return ctx[keys]
         })
       },
-    })
-    return point as never
+    }) as never
   }
 
   query(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data
-      ? [
+    ...args: TLetsEndPointType extends 'query'
+      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data
+        ? [
+            queryOptions?: ExtraUseQueryOptions<
+              FinalClientData<TLastServerOutput, TLastClientOutput>,
+              Error0,
+              FinalClientData<TLastServerOutput, TLastClientOutput>,
+              QueryKey
+            >,
+          ]
+        : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+          ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+          : [
+              ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .query()`>,
+            ]
+      : never
+  ): NiceQueryEndPoint<
+    'query',
+    undefined,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    TClientResponse,
+    'query',
+    TProps,
+    TLastServerOutput,
+    TLastClientOutput
+  >
+  query(
+    ...args: TLetsEndPointType extends 'query'
+      ? never
+      : [
           queryOptions?: ExtraUseQueryOptions<
             FinalClientData<TLastServerOutput, TLastClientOutput>,
             Error0,
@@ -2712,60 +2852,38 @@ export class Point0<
             QueryKey
           >,
         ]
-      : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
-        ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-        : [
-            ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .query()`>,
-          ]
-  ): TLetsEndPointType extends 'query'
-    ? NiceQueryEndPoint<
-        'query',
-        undefined,
-        TRequiredCtx,
-        TCtx,
-        TData,
-        TClientData,
-        TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
-        TResponse,
-        TClientResponse,
-        'query',
-        TProps,
-        TLastServerOutput,
-        TLastClientOutput
-      >
-    : NiceMiddlePoint<
-        TPointType,
-        TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-        TRequiredCtx,
-        TCtx,
-        TData,
-        TClientData,
-        TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
-        TResponse,
-        TClientResponse,
-        'query',
-        TProps,
-        TLastServerOutput,
-        TLastClientOutput
-      > {
-    const [queryOptions = {}] = args
-    return this._continue({
-      _pointType: this._letsEndPointType === 'query' ? 'query' : this._pointType,
-      _letsEndPointType: (this._letsEndPointType === 'query'
-        ? undefined
-        : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
-      _queryResultType: 'query',
-      _queryOptions: queryOptions as ExtraUseQueryOptions<
-        FinalClientData<TLastServerOutput, TLastClientOutput>,
-        Error0,
-        FinalClientData<TLastServerOutput, TLastClientOutput>,
-        QueryKey
-      >,
-    }) as never
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    TClientResponse,
+    'query',
+    TProps,
+    TLastServerOutput,
+    TLastClientOutput
+  >
+  query(...args: any) {
+    const [queryOptions = {}] = args as [ExtraUseQueryOptions]
+    if (this._letsEndPointType === 'query') {
+      return this._continue({
+        _pointType: 'query',
+        _letsEndPointType: undefined,
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
+    } else {
+      return this._continue({
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
+    }
   }
 
   infiniteQuery(
@@ -5054,9 +5172,9 @@ export class Point0<
     if (!this._ProviderReactContext) {
       throw new Error('ProviderReactContext not found on point: ' + this._name)
     }
-    if (!this._providerValueSetter) {
-      throw new Error('providerValueSetter not found on point: ' + this._name)
-    }
+    // if (!this._providerValueSetter) {
+    //   throw new Error('providerValueSetter not found on point: ' + this._name)
+    // }
 
     const { inputRaw, children } = React.useMemo<{
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -5101,11 +5219,11 @@ export class Point0<
         props,
       })
     }
-    const value = this._providerValueSetter(result)
+    const value = result.data
     SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(inputRaw)}`, value)
     return this._withWrappers({
       component: React.createElement(this._ProviderReactContext.Provider, {
-        value,
+        value: value as FinalClientData<TLastServerOutput, TLastClientOutput>, // becouse ts think we can have infinite query data here, but we can not
         children,
       }),
       useLoaderResult: result,

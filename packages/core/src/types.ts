@@ -1228,24 +1228,24 @@ export type ClientLoaderFn<
   >,
 ) => Promise<TNewClientLastOutput> | TNewClientLastOutput
 
-export type ProviderValueSetterFnOptions<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TLastServerOutput extends LastOutput | UndefinedLastOutput,
-  TLastClientOutput extends LastOutput | UndefinedLastOutput,
-> = {
-  data: FinalClientData<TLastServerOutput, TLastClientOutput>
-  location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
-}
-export type ProviderValueSetterFn<
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TLastServerOutput extends LastOutput | UndefinedLastOutput,
-  TLastClientOutput extends LastOutput | UndefinedLastOutput,
-  TNewClientData extends Data,
-> = (
-  options: ProviderValueSetterFnOptions<TLetsEndPointType, TRouteDefinition, TLastServerOutput, TLastClientOutput>,
-) => TNewClientData
+// export type ProviderValueSetterFnOptions<
+//   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TLastServerOutput extends LastOutput | UndefinedLastOutput,
+//   TLastClientOutput extends LastOutput | UndefinedLastOutput,
+// > = {
+//   data: FinalClientData<TLastServerOutput, TLastClientOutput>
+//   location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
+// }
+// export type ProviderValueSetterFn<
+//   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TLastServerOutput extends LastOutput | UndefinedLastOutput,
+//   TLastClientOutput extends LastOutput | UndefinedLastOutput,
+//   TNewClientData extends Data,
+// > = (
+//   options: ProviderValueSetterFnOptions<TLetsEndPointType, TRouteDefinition, TLastServerOutput, TLastClientOutput>,
+// ) => TNewClientData
 
 // head
 
@@ -1838,7 +1838,7 @@ export type NiceProviderMiddlePoint<
         | 'point'
         | 'Infer'
         | 'query'
-        | 'infiniteQuery'
+        // | 'infiniteQuery'
         | 'error'
         | 'loading'
         | 'wrapper'

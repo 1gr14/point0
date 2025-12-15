@@ -2,17 +2,14 @@
 ------ before start0 -----
 --------------------------
 
+extract → execute
+Сам роут должен иметь парс инаут функции и убедиться, что мы их вызываем при отсутвии инпут схемы
+Хелпер safeParseInput
+
 check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson) + .superjson(boolean)
 
-fetchWithCancel
-.getFetchOptions()
-cancel by input, or cancel all
-on fetch error maybe no json, then if it is thore, do res.text()
-
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
-bunup
-oxc lint
 
 И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
 Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
@@ -22,7 +19,10 @@ oxc lint
 Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
 
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
-.lets('init', 'db', {dep1, dep2}), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx
+.lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
+So we also need <my.Init>{children}</my.Init> and <Init />, bet
+So we need be able to auto init or not, lets add .auto(true | false) by default true
+and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
 
 .enabled()
 
@@ -30,7 +30,7 @@ oxc lint
 
 .ssr(), and remove ssr option from engine
 
-prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not. Or maybe just lets add .app(App) to root
+prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not.
 
 - check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
 ! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
@@ -52,17 +52,20 @@ expo router
 ??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
 ??? expo example, just define all queries and mutations as plugins and use them in site and expo
 
-fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
-? remove root from lets
-
 example monorepo
+
+fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
+remove root from lets
+Руту запретить все лоадеры иначе как аттачить, и вообще будто бы логично и для mcp и для init
+или аттач разрешить только туда где типы рута одинаковые, и соответственно рут поинт хранить генериком
+Короче разобраться с этим вонючим аттачем, что-то с ним не так
 
 ---
 
 START0
 start0 without mono0
 refactor Error0; check ConvexError style; base has only cause recursion, everything else is plugins like isFetchError
-refactor Meta0
+refactor Meta0; Мета0 это просто асунк стор, который позволяет прокинуть мету в глобальщину, и тогда никакое трио не нужно
 refactor Ctx0
 refactor Env0
 refactor Logger0
@@ -74,6 +77,7 @@ mcp server for point0, so when it is in dev mode it provides info about all poin
 mcp server .lets('mcp', 'whatever') or mdx doc. even with loaders. And it becomes available via mcp server, and can be used to autogonerate .curecor rules or event not
 mcp server .lets('batchMcp').mcp([{name,description,input,loader?}]) for extrnal libraries like UiHero and all others so we always have fresh docs for each library we use
 cli extract point by type and name, so agent can see errors right in terminal
+В мдкс для мсп пути к файлам указывать через импорт с макросом, который заменяет их на просто строку полного пути, чтобы не сбивались пути при рефакторе
 
 drizzle
 unwind and tailwind
@@ -106,23 +110,43 @@ pruner: P0.ifClientServer({client: , server: })
 pruner: P0.ifEnv({browser: , mobile: , electronRenderer: , electronMain: })
 check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
 normzliae all errors texts everyhere
-.onServerError, .onClientError
+.onServerError, .onClientError, .onServerExecute, .onClientExecute, 
 ? expose point in NicePoint
 .info()
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
 analyze if there same id points or route points, and throw error
+Пропсы пусть дополнительно генериком прикидывается перед вызовом функции компонента/loading/error с проверкой не стали ли они уже предыдущих
 ? someThing.attachment()..., and then somethingElse.attach()
 ? get base/root specific things right from base, do not continue it after .base()
 ? Point0 → P0, cli p0
 rest important TODO in code
+Пририписки unsafe заменить на safe в клиент сервере и поправить прунер, да вообще не нужен сейф
 ? on request to server for query or mutation which has no serverLoader throw error
+? Юзкомбайнедквери заменить на юзелиентэндсерверквери
+В сервер экстрактор добавить флаг для пропуска добавления квери в дегидрейтед стейт, заодно убедиться что при экстракте то что квери попадает, а что не квери не попадает
+loader(() => {}, {cache: false | string})
+Проверка инпута на клиенте при юзлоадере должна быть опционально отключена, и тогда останется только на клиенте проверка инпута
+батч квери, батчпрефетч, батч екзкьют
+
+Если какие-то квери были заэкстенджены и не были изменены, то при их фетче закладывать в кэш и то, что они фетяанулись, и наоборот. 
+? Главное сср перед дегидрацией удалить дубли, а во время гидрации восстановить.
+? При генерации поинтов записывать их лоадерс хэш и по нему сравнивать, и такой же должен быть в рантайме (или из лэзи поинтов надо устанавливать этот хэш дополнительно вручную)
+! Да просто хранить сэйм клиент квери, сэйм сервер квери, сэйм комбайнед квери, и фетчить именно по сэйм квери, а не по себе
+
+fetchWithCancel
+.getFetchOptions()
+cancel by input, or cancel all
+on fetch error maybe no json, then if it is thore, do res.text()
 
 refactor types names and order
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
 Move type errors to its own types, so we can reuse them
+
+bunup
+oxc lint
 
 --------------------------
 ------ after start0 ------
@@ -153,7 +177,9 @@ standard schema
 .axios(provide axios instance) .axios(false), .axios(true)
 onUploadProgress, onDownloadProgress
 
---------------------------
+--------------------
+------ launch ------
+--------------------
 
 hide todo.txt
 
@@ -230,9 +256,10 @@ elysia and uWebSocket separate realizations
 ------ later ------
 -------------------
 
+Проверить что можно и нужно ли делать для юзБатчКвери
+
 LETS NOT DO IT
 ? То что не имеет смысла чейнить, пусть будет третьим аргументом летс, там просто объект со всеми настройками, даже инпут логично иметь там, а вот лоадеры и ктксеры пусть будут на месте
-? Пропсы пусть генериком прикидывается перед вызовом функции компонента
 ? Если в летс опциях уже названа конечная точка типо пейдж, то это финальный поинт
 ? И логично сразу с тестами волкера сделать
 

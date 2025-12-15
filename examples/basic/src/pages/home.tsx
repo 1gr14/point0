@@ -11,7 +11,7 @@ import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
-import { clientFnMutation, clientFnMutationX } from './idea-create.js'
+import { clientFnMutation } from './idea-create.js'
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``
@@ -45,16 +45,16 @@ export const BestIdeaComponent = client
   .loader(async ({ ctx, input, data }) => ({
     ...data,
     clDD: ctx.clC,
+    slDate: new Date(),
   }))
   .props<{ cta: string }>()
   .clientLoader(async (o) => {
     await new Promise((resolve) => setTimeout(resolve, 500))
     return {
       ...o.data,
-      cllll: 'cllll',
+      cllll: new Date(),
     }
   })
-  .clientLoader(null)
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
@@ -72,7 +72,8 @@ export const BestIdeaComponent = client
         <p>TITLE: {data.bestIdea.title}</p>
         <p>CLD: {data.clD}</p>
         <p>CLDD: {data.clDD}</p>
-        <p>CLLLL: {data.cllll}</p>
+        <p>SLDATE: {typeof data.slDate}</p>
+        <p>CLLLL: {typeof data.cllll}</p>
         <p>
           <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
         </p>
@@ -94,15 +95,13 @@ export default generalLayout
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
-      someVar.set(state)
-    }, [state])
-    useEffect(() => {
       setTimeout(() => {
         // console.info(clientCtx1.getValue())
       }, 1000)
     }, [])
     const ctx1 = clientCtx1.useValue()
     const ctx2 = clientCtx2.useValue()
+    console.info(ctx2.sayHello())
     const x = clientCtx1.useValue('shmest')
     const y = clientCtx1.useValue(['test', 'shmest'])
     someStable.set(456)
