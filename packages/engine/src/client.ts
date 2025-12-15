@@ -7,7 +7,7 @@ import type {
   ParsedUrl,
   PointsScope,
   ReadyPointsModule,
-  ServerExtractResult,
+  ServerExecuteResult,
 } from '@point0/core'
 import { getHostnameOrNull, parseUrl, PointsManager } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
@@ -25,7 +25,7 @@ import type {
 } from './config.js'
 import { Publicdir } from './publicdir.js'
 import { addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
-import type { ServerExtractor } from './server-extractor.js'
+import type { Executor } from './executor.js'
 import type { ServerBun } from './server.js'
 import type { ClientBunBuildConfigDefinition, ClientBunPluginsDefinition } from './utils.js'
 import {
@@ -1203,22 +1203,22 @@ Bun.serve({
   }
 
   async renderAsReadableStream({
-    extractor,
-    extractResult,
+    executor,
+    executeResult,
     pagePoint,
     pageLocation,
     input,
   }: {
-    extractor: ServerExtractor
-    extractResult: ServerExtractResult
+    executor: Executor
+    executeResult: ServerExecuteResult
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<ReadableStream> {
     return await renderAppAsReadableStream({
       App: await this.getFreshAppComponent(),
-      extractor,
-      head: extractResult.head,
+      executor,
+      head: executeResult.head,
       pagePoint,
       pageLocation,
       input,
@@ -1229,17 +1229,17 @@ Bun.serve({
   }
 
   async prefetchAppPagePointDeep({
-    extractor,
+    executor,
     pagePoint,
     pageLocation,
     input,
   }: {
-    extractor: ServerExtractor
+    executor: Executor
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<void> {
-    await extractor.prefetchAppPagePointDeep({
+    await executor.prefetchAppPagePointDeep({
       App: await this.getFreshAppComponent(),
       renderToReadableStream,
       pageLocation,

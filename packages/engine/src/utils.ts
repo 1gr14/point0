@@ -200,7 +200,7 @@ export type ClientBunBuildConfigDefinitionFn = (
 ) => Partial<BuildConfig>
 export type ClientBunBuildConfigDefinition = ClientBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
-export const extractServerBunBuildConfig = async ({
+export const executeServerBunBuildConfig = async ({
   nodeEnv,
   bunBuildConfig,
   bunPlugins,
@@ -209,11 +209,11 @@ export const extractServerBunBuildConfig = async ({
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
-  const extractedBunConfig = typeof bunBuildConfig === 'function' ? bunBuildConfig({ nodeEnv }) : bunBuildConfig
-  const extractedBunPlugins = await extractServerBunPlugins({ nodeEnv, command: 'build', bunPlugins })
+  const executeedBunConfig = typeof bunBuildConfig === 'function' ? bunBuildConfig({ nodeEnv }) : bunBuildConfig
+  const executeedBunPlugins = await executeServerBunPlugins({ nodeEnv, command: 'build', bunPlugins })
   return {
-    ...extractedBunConfig,
-    plugins: [...extractedBunPlugins, ...(extractedBunConfig.plugins ?? [])],
+    ...executeedBunConfig,
+    plugins: [...executeedBunPlugins, ...(executeedBunConfig.plugins ?? [])],
   }
 }
 
@@ -228,14 +228,14 @@ export const extractClientBunBuildConfig = async ({
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
-  const extractedBunConfig = typeof bunBuildConfig === 'function' ? bunBuildConfig({ nodeEnv, target }) : bunBuildConfig
-  const extractedBunPlugins =
+  const executeedBunConfig = typeof bunBuildConfig === 'function' ? bunBuildConfig({ nodeEnv, target }) : bunBuildConfig
+  const executeedBunPlugins =
     target === 'client'
-      ? await extractClientBunPlugins({ nodeEnv, command: 'build', bunPlugins })
-      : await extractServerBunPlugins({ nodeEnv, command: 'build', bunPlugins })
+      ? await executeClientBunPlugins({ nodeEnv, command: 'build', bunPlugins })
+      : await executeServerBunPlugins({ nodeEnv, command: 'build', bunPlugins })
   return {
-    ...extractedBunConfig,
-    plugins: [...extractedBunPlugins, ...(extractedBunConfig.plugins ?? [])],
+    ...executeedBunConfig,
+    plugins: [...executeedBunPlugins, ...(executeedBunConfig.plugins ?? [])],
   }
 }
 
@@ -259,7 +259,7 @@ export type ClientBunPluginsDefinitionFn = (
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
 
-export const extractServerBunPlugins = async ({
+export const executeServerBunPlugins = async ({
   nodeEnv,
   command,
   bunPlugins,
@@ -279,7 +279,7 @@ export const extractServerBunPlugins = async ({
   )
 }
 
-export const extractClientBunPlugins = async ({
+export const executeClientBunPlugins = async ({
   nodeEnv,
   command,
   bunPlugins,
@@ -326,9 +326,9 @@ export const extractClientBunDevPluginsStrings = async ({
   )
 }
 
-export const loadBunPlugins = async ({ extractedBunPlugins }: { extractedBunPlugins: BunPlugin[] }): Promise<void> => {
+export const loadBunPlugins = async ({ executeedBunPlugins }: { executeedBunPlugins: BunPlugin[] }): Promise<void> => {
   await Promise.all(
-    extractedBunPlugins.map(async (p) => {
+    executeedBunPlugins.map(async (p) => {
       await plugin(p)
     }),
   )

@@ -15,7 +15,7 @@ import type {
 } from '@point0/core'
 import { parseUrl } from '@point0/core'
 import { unflatten } from 'flat'
-import { ServerExtractor } from './server-extractor.js'
+import { Executor } from './executor.js'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pointsManagers: Array<PointsManager<true>>
@@ -115,7 +115,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
-  async prepareExtractorByRequest({
+  async prepareExecutorByRequest({
     request,
     parsedUrl,
     fallbackScope,
@@ -130,7 +130,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     task: FetchTask | undefined
     input: InputRaw
     suitable: GetSuitableResult
-    extractor: ServerExtractor
+    executor: Executor
   }> {
     parsedUrl ??= parseUrl(request.url)
     const task = await (async () => {
@@ -220,7 +220,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input: task?.pointInput,
       fallbackScope,
     })
-    const extractor = await ServerExtractor.create({
+    const executor = await Executor.create({
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
@@ -231,11 +231,11 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       task,
       input,
       suitable,
-      extractor,
+      executor,
     }
   }
 
-  async prepareExtractorByUrl({
+  async prepareExecutorByUrl({
     url,
     fallbackScope,
     scope,
@@ -248,10 +248,10 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     task: FetchTask | undefined
     input: InputRaw
     suitable: GetSuitableResult
-    extractor: ServerExtractor
+    executor: Executor
   }> {
     const parsedUrl = parseUrl(url)
-    return await this.prepareExtractorByRequest({
+    return await this.prepareExecutorByRequest({
       request: new Request(url),
       parsedUrl,
       fallbackScope,
@@ -260,7 +260,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  async prepareExtractorByPointAndInput<TPoint extends EndPoint>({
+  async prepareExecutorByPointAndInput<TPoint extends EndPoint>({
     point,
     input,
     requiredCtx,
@@ -270,7 +270,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<{
     input: TPoint['Infer']['InputRaw']
     suitable: GetSuitableResult
-    extractor: ServerExtractor
+    executor: Executor
   }> {
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const suitable = this.getSuitable({
@@ -280,7 +280,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input,
       fallbackScope: point._scope,
     })
-    const extractor = await ServerExtractor.create({
+    const executor = await Executor.create({
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: location,
@@ -289,11 +289,11 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return {
       input,
       suitable,
-      extractor,
+      executor,
     }
   }
 
-  async prepareExtractorByPointScopeTypeNameInput<TPoint extends EndPoint>({
+  async prepareExecutorByPointScopeTypeNameInput<TPoint extends EndPoint>({
     scope,
     pointType,
     pointName,
@@ -307,7 +307,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
     input: TPoint['Infer']['InputRaw']
     suitable: GetSuitableResult
-    extractor: ServerExtractor
+    executor: Executor
   }> {
     const suitable = this.getSuitable({
       pointType,
@@ -316,7 +316,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input,
       fallbackScope: scope,
     })
-    const extractor = await ServerExtractor.create({
+    const executor = await Executor.create({
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: suitable.pageLocation || Route0.getLocation('/'),
@@ -325,7 +325,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return {
       input,
       suitable,
-      extractor,
+      executor,
     }
   }
 }

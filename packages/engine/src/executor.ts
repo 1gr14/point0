@@ -17,8 +17,8 @@ import type {
   PointsScope,
   QueryKey,
   RequiredCtx,
-  ServerExtractAction,
-  ServerExtractResult,
+  ServerExecuteAction,
+  ServerExecuteResult,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
 import { Point0, PointsManager, SuperStore } from '@point0/core'
@@ -28,9 +28,9 @@ import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead } from 'unhead/types'
 
-export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   points: PointsManager<true, TRequiredCtx>
-  serverExtractActionsWithOutput: Array<ServerExtractActionWithOutput<any>>
+  serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverGlobalState: {
@@ -44,11 +44,11 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     points,
     pageLocation,
     requiredCtx,
-    serverExtractActionsWithOutput,
+    serverExecuteActionsWithOutput,
     serverGlobalState,
   }: {
     points: PointsManager<true, TRequiredCtx>
-    serverExtractActionsWithOutput: Array<ServerExtractActionWithOutput<any>>
+    serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverGlobalState: {
@@ -59,7 +59,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }) {
     this.points = points
-    this.serverExtractActionsWithOutput = serverExtractActionsWithOutput
+    this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
     this.serverGlobalState = serverGlobalState
@@ -75,14 +75,14 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
-  }): Promise<ServerExtractor<TRequiredCtx>> {
+  }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
-      return new ServerExtractor<TRequiredCtx>({
+      return new Executor<TRequiredCtx>({
         points,
         pageLocation,
         requiredCtx,
-        serverExtractActionsWithOutput: [],
+        serverExecuteActionsWithOutput: [],
         serverGlobalState: {
           __POINT0_SCOPE__: points.scope,
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
@@ -122,8 +122,8 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await SuperStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
-  static async extract<TPoint extends EndPoint>({
-    extractor,
+  static async execute<TPoint extends EndPoint>({
+    executor,
     point,
     input,
     requiredCtx,
@@ -131,31 +131,31 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     point: TPoint
     input: TPoint['Infer']['InputRaw']
-    extractor?: ServerExtractor<TPoint['Infer']['RequiredCtx']> | undefined
+    executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
     withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExtractResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExecuteResult> {
     if (!point._root) {
       throw new Error('Point root not found')
     }
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout._name}`, layout]))
-    extractor ??= await ServerExtractor.create({
+    executor ??= await Executor.create({
       points: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
       currentLocation: location,
       requiredCtx,
       pageLocation: point._pointType === 'page' ? location : undefined,
     })
-    return await extractor.extract({ point, input, withLayouts })
+    return await executor.execute({ point, input, withLayouts })
   }
 
-  async extract(
+  async execute(
     point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
     input?: InputRaw,
-  ): Promise<ServerExtractResult>
-  async extract({ point, input, withLayouts }: ExtractOptions): Promise<ServerExtractResult>
-  async extract(
+  ): Promise<ServerExecuteResult>
+  async execute({ point, input, withLayouts }: ExecuteOptions): Promise<ServerExecuteResult>
+  async execute(
     ...args:
-      | [options: ExtractOptions]
+      | [options: ExecuteOptions]
       | [
           point:
             | AnyPoint
@@ -163,7 +163,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             | undefined,
           input?: InputRaw,
         ]
-  ): Promise<ServerExtractResult> {
+  ): Promise<ServerExecuteResult> {
     const {
       point,
       input = {},
@@ -183,7 +183,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           if (!layout._hasLoader()) {
             continue
           }
-          await this.extract({
+          await this.execute({
             point: layout,
             input,
           })
@@ -222,15 +222,15 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentStatus = 200
       let currentInputParsed: InputParsed = input
       let currentInputSchema: InputSchema | undefined = undefined
-      const serverExtractActions = [...(point?._serverExtractActions ?? [])]
+      const serverExecuteActions = [...(point?._serverExecuteActions ?? [])]
 
       try {
-        for (const serverExtractAction of serverExtractActions) {
-          switch (serverExtractAction.type) {
+        for (const serverExecuteAction of serverExecuteActions) {
+          switch (serverExecuteAction.type) {
             case 'input': {
               currentInputSchema = currentInputSchema
-                ? currentInputSchema.extend(serverExtractAction.schema.shape)
-                : serverExtractAction.schema
+                ? currentInputSchema.extend(serverExecuteAction.schema.shape)
+                : serverExecuteAction.schema
               const safeParseResult = currentInputSchema.safeParse(input)
               if (safeParseResult.error) {
                 return {
@@ -247,31 +247,31 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               break
             }
             case 'ctx': {
-              const ex = this.serverExtractActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExtractAction.unstableId && e.record.type === 'ctx',
-              ) as ServerExtractActionWithOutput<'ctx'> | undefined
+              const ex = this.serverExecuteActionsWithOutput.find(
+                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
+              ) as ServerExecuteActionWithOutput<'ctx'> | undefined
               if (ex) {
                 currentCtx = { ...ex.output }
               } else {
-                currentCtx = await serverExtractAction.fn({
+                currentCtx = await serverExecuteAction.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
-                  extract: this.extract.bind(this),
+                  execute: this.execute.bind(this),
                   inputRaw: input,
                   response: currentResponse,
                 })
-                this.serverExtractActionsWithOutput.push({
+                this.serverExecuteActionsWithOutput.push({
                   output: currentCtx,
-                  record: serverExtractAction,
+                  record: serverExecuteAction,
                 })
               }
               break
             }
             case 'loader': {
-              const ex = this.serverExtractActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExtractAction.unstableId && e.record.type === 'loader',
-              ) as ServerExtractActionWithOutput<'loader'> | undefined
+              const ex = this.serverExecuteActionsWithOutput.find(
+                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
+              ) as ServerExecuteActionWithOutput<'loader'> | undefined
               if (ex) {
                 if (Array.isArray(ex.output)) {
                   currentStatus = ex.output[0]
@@ -292,11 +292,11 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   }
                 }
               } else {
-                const result: [number, Data | Response] | Data | Response = await serverExtractAction.fn({
+                const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
-                  extract: this.extract.bind(this),
+                  execute: this.execute.bind(this),
                   inputRaw: input,
                   response: currentResponse,
                 })
@@ -318,28 +318,28 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                     currentLastOutput = result
                   }
                 }
-                this.serverExtractActionsWithOutput.push({
+                this.serverExecuteActionsWithOutput.push({
                   output: result,
-                  record: serverExtractAction,
+                  record: serverExecuteAction,
                 })
               }
               break
             }
             case 'ctxLoader': {
-              const ex = this.serverExtractActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExtractAction.unstableId && e.record.type === 'ctxLoader',
-              ) as ServerExtractActionWithOutput<'ctxLoader'> | undefined
+              const ex = this.serverExecuteActionsWithOutput.find(
+                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctxLoader',
+              ) as ServerExecuteActionWithOutput<'ctxLoader'> | undefined
               if (ex) {
                 currentResponse = ex.output.response ?? currentResponse
                 currentData = { ...ex.output.data }
                 currentCtx = { ...ex.output.ctx }
                 currentStatus = ex.output.status ?? currentStatus
               } else {
-                const result = await serverExtractAction.fn({
+                const result = await serverExecuteAction.fn({
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
-                  extract: this.extract.bind(this),
+                  execute: this.execute.bind(this),
                   inputRaw: input,
                   response: currentResponse,
                   output: currentLastOutput,
@@ -349,16 +349,16 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 currentResponse = result?.response ?? currentResponse
                 currentStatus = result?.status ?? currentStatus
                 currentLastOutput = result?.data ?? currentLastOutput
-                this.serverExtractActionsWithOutput.push({
+                this.serverExecuteActionsWithOutput.push({
                   output: { ctx: currentCtx, data: currentData, response: currentResponse, output: currentLastOutput },
-                  record: serverExtractAction,
+                  record: serverExecuteAction,
                 })
               }
               break
             }
             // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
             default:
-              throw new Error(`Unknown extend function type: ${(serverExtractAction as any).type}`)
+              throw new Error(`Unknown extend function type: ${(serverExecuteAction as any).type}`)
           }
         }
 
@@ -515,7 +515,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (seenQueryHashes.has(hash)) {
           return []
         }
-        const parsedQueryKey = ServerExtractor.parseQueryKey(query.queryKey)
+        const parsedQueryKey = Executor.parseQueryKey(query.queryKey)
         if (!parsedQueryKey) {
           return []
         }
@@ -543,7 +543,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           input: suitableMarker.input,
         })
         if (suitable) {
-          await this.extract({ point: suitable.point, input: suitableMarker.input })
+          await this.execute({ point: suitable.point, input: suitableMarker.input })
         }
       }
 
@@ -651,7 +651,7 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       location: this.pageLocation,
       loading: point._hasClientLoader() && !error,
     } as AnyUnqueriedLoaderResult<any, any, any, any, any, any>
-    return point._extractHead(unqueriedLoaderResult)
+    return point._executeHead(unqueriedLoaderResult)
   }
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {
@@ -708,25 +708,25 @@ export class ServerExtractor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 }
 
-export type ExtractOptions = {
+export type ExecuteOptions = {
   point?: AnyPoint | undefined
   input: InputRaw
   withLayouts?: boolean
 }
-export type ServerExtractActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = TType extends 'ctx'
+export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = TType extends 'ctx'
   ? {
       output: Ctx
-      record: ServerExtractAction<'ctx'>
+      record: ServerExecuteAction<'ctx'>
     }
   : TType extends 'loader'
     ? {
         output: Data | Response | [number, Data | Response]
-        record: ServerExtractAction<'loader'>
+        record: ServerExecuteAction<'loader'>
       }
     : TType extends 'ctxLoader'
       ? {
           output: { ctx: Ctx; data: Data; response: Response | undefined; status?: number }
-          record: ServerExtractAction<'ctxLoader'>
+          record: ServerExecuteAction<'ctxLoader'>
         }
       : never
 

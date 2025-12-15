@@ -3,7 +3,7 @@ import type {
   OmitRequiredCtxRequestProp,
   PointsScope,
   RequiredCtx,
-  ServerExtractResult,
+  ServerExecuteResult,
   UndefinedCtx,
   UndefinedCtxIfRequiredCtxContainsOnlyRequestProp,
   WithMaybeOptionalReqiredCtx,
@@ -176,7 +176,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     })
   }
 
-  async extract<TPoint extends EndPoint>({
+  async execute<TPoint extends EndPoint>({
     point,
     input,
     requiredCtx,
@@ -185,19 +185,19 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     point: TPoint
     input: TPoint['Infer']['InputRaw']
     withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExtractResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExecuteResult> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }
     if (!point._root) {
       throw new Error('Point root not found')
     }
-    const { extractor, suitable } = await this.allPointsManagers.prepareExtractorByPointAndInput({
+    const { executor, suitable } = await this.allPointsManagers.prepareExecutorByPointAndInput({
       input,
       point,
       ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>),
     })
-    return await extractor.extract({ point: suitable.point, input, withLayouts })
+    return await executor.execute({ point: suitable.point, input, withLayouts })
   }
 
   async clean(): Promise<void> {

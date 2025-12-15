@@ -111,7 +111,7 @@ export default generalLayout
           onClick={() => {
             setState(state + 1)
             setState2(state2 + 1)
-            BestIdeaComponent.extractDetailed({ x: 10, y: 20 })
+            BestIdeaComponent.executeDetailed({ x: 10, y: 20 })
               .then((result) => {
                 console.info(result)
               })
@@ -119,7 +119,7 @@ export default generalLayout
                 console.error(error)
               })
             clientFnMutation
-              .extractDetailed()
+              .executeDetailed()
               .then((result) => {
                 console.info(1, result)
               })

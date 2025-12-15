@@ -34,8 +34,8 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ input, data, extract, inputRaw }) => {
-    const result = await extract(BestIdeaComponent, { x: 22, y: 2 })
+  .loader(async ({ input, data, execute, inputRaw }) => {
+    const result = await execute(BestIdeaComponent, { x: 22, y: 2 })
     if (result.error) {
       throw result.error
     }

@@ -1,27 +1,27 @@
-import { ServerExtractor } from '@point0/engine/server-extractor'
+import { Executor } from '@point0/engine/executor'
 import { describe, expect, it } from 'bun:test'
 import { ideaPage } from './idea'
 import { engine } from '@/engine'
 
 describe('idea page', () => {
-  // it.concurrent('should work with point.extract', async () => {
-  //   const result = await ideaPage.point.extract({
+  // it.concurrent('should work with point.execute', async () => {
+  //   const result = await ideaPage.point.execute({
   //     input: { id: '1' },
   //     requiredCtx: { request: new Request('/') },
   //   })
   //   expect(result.status).toBe(202)
   // })
-  it.concurrent('should work with Extractor.extract', async () => {
-    const result = await ServerExtractor.extract({
+  it.concurrent('should work with Executor.execute', async () => {
+    const result = await Executor.execute({
       point: ideaPage.point,
       input: { id: '1' },
       requiredCtx: { request: new Request('/') },
     })
     expect(result.status).toBe(202)
   })
-  it.concurrent('should work with engine.extract', async () => {
+  it.concurrent('should work with engine.execute', async () => {
     await engine.init({ preventClientDevServers: true })
-    const result = await engine.extract({
+    const result = await engine.execute({
       point: ideaPage.point,
       input: { id: '1' },
       requiredCtx: { request: new Request('/') },

@@ -19,7 +19,7 @@ const general = {
     'src/utils.ts',
     'src/walker.ts',
     'src/client-server.ts',
-    'src/server-extractor.ts',
+    'src/executor.ts',
     'src/all-points-managers.ts',
   ],
   clean: false,

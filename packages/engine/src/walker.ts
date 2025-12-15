@@ -104,14 +104,14 @@ export class Walker {
           return { collectedPoints: [], errors: [e] }
         }
       }
-      return await this.extractCollectedPointsFromContent({ content, fileAbs })
+      return await this.executeCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
       console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)}: parse failed: ${(e as Error).message}`)
       return { collectedPoints: [], errors: [e] }
     }
   }
 
-  private async extractCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): Promise<{
+  private async executeCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): Promise<{
     collectedPoints: CollectedPoint[]
     errors: unknown[]
   }> {
@@ -1814,7 +1814,7 @@ export class Walker {
     }
 
     //
-    // 1) find the export for baseIdentifier and extract its init expression
+    // 1) find the export for baseIdentifier and execute its init expression
     //
     let initNode: Expression | Declaration | null | undefined = undefined
 
@@ -1879,7 +1879,7 @@ export class Walker {
     //
     // 2) walk through the chain to find Point0.create
     //
-    const scopeFormChain = this.extractScopeFromChain({ fileAbs, node: initNode })
+    const scopeFormChain = this.executeScopeFromChain({ fileAbs, node: initNode })
     if (scopeFormChain) {
       return { scope: scopeFormChain.scope, attachedTo: scopeFormChain.attachedTo, errors }
     }
@@ -1926,9 +1926,9 @@ export class Walker {
   }
 
   /**
-   * Extracts scope from a chain by walking left to find Point0.create('scope')
+   * Executes scope from a chain by walking left to find Point0.create('scope')
    */
-  private extractScopeFromChain({
+  private executeScopeFromChain({
     fileAbs,
     node,
   }: {
@@ -1986,7 +1986,7 @@ export class Walker {
       return { scope, attachedTo: [] }
     }
 
-    // fallback – try to extract from template literal or other string types
+    // fallback – try to execute from template literal or other string types
     console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} scope not found as string literal in ${method} call`)
     return undefined
   }

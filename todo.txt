@@ -2,7 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-extract → execute
 Сам роут должен иметь парс инаут функции и убедиться, что мы их вызываем при отсутвии инпут схемы
 Хелпер safeParseInput
 
@@ -10,6 +9,18 @@ check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson) + .superjson(boolean)
 
 point0.ts, engine.ts, and export everything form engine/index.ts (may be engine not) and core/index.ts (but core should be onefile), and check that pruner still works
+
+---
+
+.ssr(), and remove ssr option from engine
+
+prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not.
+
+- check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
+! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
+parseViteMode()
+stop pruning for serverSsr
+in engine options: point: string | module; pointsLazy?: string; pointsReady?: string it is where to save points files
 
 И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
 Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
@@ -25,18 +36,6 @@ So we need be able to auto init or not, lets add .auto(true | false) by default 
 and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
 
 .enabled()
-
----
-
-.ssr(), and remove ssr option from engine
-
-prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not.
-
-- check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
-! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
-parseViteMode()
-stop pruning for serverSsr
-in engine options: point: string | module; pointsLazy?: string; pointsReady?: string it is where to save points files
 
 ---
 

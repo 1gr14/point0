@@ -8,7 +8,7 @@ export const Svg = ({ src, ...props }: { src: string } & React.SVGProps<SVGSVGEl
     return null
   }
 
-  // --- 1. Extract <svg ...> opening tag ---
+  // --- 1. Execute <svg ...> opening tag ---
   const openTagMatch = /^<svg([^>]*)>/i.exec(trimmed)
   if (!openTagMatch) return null
 
@@ -29,7 +29,7 @@ export const Svg = ({ src, ...props }: { src: string } & React.SVGProps<SVGSVGEl
     attrs[camel] = rawValue
   }
 
-  // --- 3. Extract inner content ---
+  // --- 3. Execute inner content ---
   const inner = trimmed.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '')
 
   return <svg {...attrs} {...props} dangerouslySetInnerHTML={{ __html: inner }} />

@@ -73,7 +73,7 @@ export const engineFetch = async ({
 
     // TODO: lets provide here wrapResponse and wrapRequest and call it
     // TODO: also there on error fo input not throw it but return as error
-    const { task, input, suitable, extractor } = await allPointsManagers.prepareExtractorByRequest({
+    const { task, input, suitable, executor } = await allPointsManagers.prepareExecutorByRequest({
       request,
       parsedUrl,
       fallbackScope,
@@ -105,24 +105,24 @@ export const engineFetch = async ({
             // I think it will never throw, but who knows
             throw new Error('Page Critical Error: Not Found')
           }
-          const extractResult = await extractor.extract({
+          const executeResult = await executor.execute({
             point: suitable.point,
             input,
             withLayouts: true,
           })
-          if (extractResult.error) {
-            logger.error(extractResult.error, meta)
+          if (executeResult.error) {
+            logger.error(executeResult.error, meta)
           }
           const readableStream = await relatedClient.renderAsReadableStream({
-            extractor,
-            extractResult,
+            executor,
+            executeResult,
             pagePoint: suitable.point,
             pageLocation: suitable.pageLocation,
             input,
           })
           return new Response(readableStream, {
             headers: { 'Content-Type': 'text/html' },
-            status: extractResult.status,
+            status: executeResult.status,
           })
         } catch (error) {
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
@@ -147,12 +147,12 @@ export const engineFetch = async ({
           throw new Error('Page Critical Error: Not Found')
         }
         await relatedClient.prefetchAppPagePointDeep({
-          extractor,
+          executor,
           pagePoint: suitable.point,
           pageLocation: suitable.pageLocation,
           input,
         })
-        const dehydratedState = await extractor.getQueryClientDehydratedState()
+        const dehydratedState = await executor.getQueryClientDehydratedState()
         return new Response(JSON.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
@@ -162,31 +162,31 @@ export const engineFetch = async ({
       throw new Error(`Client not found for point "${suitable.point?._name ?? 'unknown'}" while requested page html`)
     }
 
-    const extractResult = await extractor.extract({
+    const executeResult = await executor.execute({
       point: suitable.point,
       input,
     })
-    if (extractResult.error) {
-      logger.error(extractResult.error, meta)
+    if (executeResult.error) {
+      logger.error(executeResult.error, meta)
     }
 
-    if (extractResult.error) {
-      return toJsonErrorResponse(extractResult.error, extractResult.status)
+    if (executeResult.error) {
+      return toJsonErrorResponse(executeResult.error, executeResult.status)
     }
 
-    if (extractResult.output instanceof Response) {
-      extractResult.output.headers.set('X-Point0-Response', 'true')
-      return extractResult.output
+    if (executeResult.output instanceof Response) {
+      executeResult.output.headers.set('X-Point0-Response', 'true')
+      return executeResult.output
     }
 
-    if (!extractResult.output) {
+    if (!executeResult.output) {
       return toJsonErrorResponse(new Error0('No output'), 404)
     }
 
     // else we try to get endpoint json
-    return new Response(JSON.stringify(extractResult.output), {
+    return new Response(JSON.stringify(executeResult.output), {
       headers: { 'Content-Type': 'application/json' },
-      status: extractResult.status,
+      status: executeResult.status,
     })
   } catch (error) {
     logger.error(error, meta)

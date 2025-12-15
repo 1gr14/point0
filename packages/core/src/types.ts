@@ -110,13 +110,13 @@ export type Infer<
     ? never
     : FinalClientQueriedData<TQueryResultType, TData, TClientData>
   FetchOutput: TLastServerOutput extends LastOutput ? TLastServerOutput : never
-  ClientExtractResult: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
+  ClientExecuteResult: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
     ? FinalLastOutput<TLastServerOutput, TLastClientOutput>
     : never
-  ClientExtractDetailedResult: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
-    ? ClientExtractDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
+  ClientExecuteDetailedResult: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
+    ? ClientExecuteDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
     : never
-  ServerExtractResult: ServerExtractResult<TCtx, TData, TResponse, TLastServerOutput>
+  ServerExecuteResult: ServerExecuteResult<TCtx, TData, TResponse, TLastServerOutput>
 }
 
 // points types
@@ -496,7 +496,7 @@ export type ShowError<Message extends string> = {
 
 // fetching and queries
 
-export type ClientExtractDetailedResult<
+export type ClientExecuteDetailedResult<
   TData extends Data | UndefinedData,
   TResponse extends Response | UndefinedResponse,
   TClientData extends Data | UndefinedData,
@@ -1007,7 +1007,7 @@ export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
   options: InputFnOptions<TInputSchema>,
 ) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 
-export type ServerExtractFn = <
+export type ServerExecuteFn = <
   TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
@@ -1015,9 +1015,9 @@ export type ServerExtractFn = <
     ? [input?: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
     : [input: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
 ) => Promise<
-  ServerExtractResult<TPoint['Infer']['Ctx'], DataOrEmptyData<TPoint['Infer']['Data']>, TPoint['Infer']['Response']>
+  ServerExecuteResult<TPoint['Infer']['Ctx'], DataOrEmptyData<TPoint['Infer']['Data']>, TPoint['Infer']['Response']>
 >
-export type ServerExtractResult<
+export type ServerExecuteResult<
   TCtx extends Ctx = Ctx,
   TData extends Data | UndefinedData = Data | UndefinedData,
   TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
@@ -1053,7 +1053,7 @@ export type CtxFnOptions<
   data: DataOrEmptyData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
-  extract: ServerExtractFn
+  execute: ServerExecuteFn
   response: TResponse
 }
 export type CtxFn<
@@ -1080,7 +1080,7 @@ export type LoaderFnOptions<
   data: DataOrEmptyData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
-  extract: ServerExtractFn
+  execute: ServerExecuteFn
   response: TResponse
 }
 export type LoaderFn<
@@ -1110,7 +1110,7 @@ export type CtxLoaderFnOptions<
   data: DataOrEmptyData<TData>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
-  extract: ServerExtractFn
+  execute: ServerExecuteFn
   response: TResponse
   output: TLastServerOutput
 }
@@ -1134,7 +1134,7 @@ export type CtxLoaderFn<
   | { ctx?: TNewCtx; data?: TNewData; status?: number; response?: TNewResponse; output?: TNewLastOutput }
   | undefined
 
-export type ServerExtractAction<
+export type ServerExecuteAction<
   TType extends 'ctx' | 'loader' | 'ctxLoader' | 'input' = 'ctx' | 'loader' | 'ctxLoader' | 'input',
 > = TType extends 'ctx'
   ? {
@@ -1158,7 +1158,7 @@ export type ServerExtractAction<
         ? { type: 'input'; schema: InputSchema; unstableId: number }
         : never
 
-export type ClientExtractAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
+export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
   ? {
       type: 'loader'
       fn: ClientLoaderFn
@@ -1168,7 +1168,7 @@ export type ClientExtractAction<TType extends 'loader' | 'input' = 'loader' | 'i
     ? { type: 'input'; schema: InputSchema; unstableId: number }
     : never
 
-export type ClientExtractActionLocation<
+export type ClientExecuteActionLocation<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TLetsEndPointType extends 'page'
@@ -1198,7 +1198,7 @@ export type ClientLoaderFnOptions<
         ? TLastServerOutput
         : EmptyData
     : DataOrEmptyData<TClientData>
-  location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
+  location: ClientExecuteActionLocation<TLetsEndPointType, TRouteDefinition>
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   response: TLastClientOutput extends undefined
@@ -1235,7 +1235,7 @@ export type ClientLoaderFn<
 //   TLastClientOutput extends LastOutput | UndefinedLastOutput,
 // > = {
 //   data: FinalClientData<TLastServerOutput, TLastClientOutput>
-//   location: ClientExtractActionLocation<TLetsEndPointType, TRouteDefinition>
+//   location: ClientExecuteActionLocation<TLetsEndPointType, TRouteDefinition>
 // }
 // export type ProviderValueSetterFn<
 //   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
@@ -2113,7 +2113,7 @@ export type WithQueryEndLiteralsIfSuitable<
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
       TLastServerOutput,
-      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'extract' | 'extractDetailed'
+      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'execute' | 'executeDetailed'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
@@ -2123,8 +2123,8 @@ export type WithQueryEndLiteralsIfSuitable<
         | 'getQueryKey'
         | 'getInfiniteQueryOptions'
         | 'prefetchInfiniteQuery'
-        | 'extract'
-        | 'extractDetailed'
+        | 'execute'
+        | 'executeDetailed'
       >
     : TLiteral
 
@@ -2374,7 +2374,7 @@ export type NiceMutationEndPoint<
     TInputSchema,
     WithFetchIfHasServerLoader<
       TLastServerOutput,
-      'point' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'extract' | 'extractDetailed'
+      'point' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
     >
   >
 >

@@ -17,7 +17,7 @@ import { Point0, PointsManager } from '@point0/core'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { ServerExtractor } from '../src/server-extractor.js'
+import { Executor } from '../src/executor.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
@@ -54,7 +54,7 @@ describe('Point0', () => {
         UndefinedLastOutput
       >
     >()
-    expect(server.point._serverExtractActions).toEqual([])
+    expect(server.point._serverExecuteActions).toEqual([])
   })
 
   it('extends with ctx fn', () => {
@@ -84,9 +84,9 @@ describe('Point0', () => {
         UndefinedLastOutput
       >
     >()
-    expect(server1.point._serverExtractActions).toHaveLength(1)
+    expect(server1.point._serverExecuteActions).toHaveLength(1)
     // not modified original server
-    expect(server.point._serverExtractActions).toHaveLength(0)
+    expect(server.point._serverExecuteActions).toHaveLength(0)
     const server2 = server1.ctx(({ ctx }) => ({
       ...ctx,
       a: 3,
@@ -113,11 +113,11 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server2.point._serverExtractActions).toHaveLength(2)
+    expect(server2.point._serverExecuteActions).toHaveLength(2)
     // not modified original server1
-    expect(server1.point._serverExtractActions).toHaveLength(1)
+    expect(server1.point._serverExecuteActions).toHaveLength(1)
     // not modified original server
-    expect(server.point._serverExtractActions).toHaveLength(0)
+    expect(server.point._serverExecuteActions).toHaveLength(0)
   })
 
   it('extends with ctx with {}', async () => {
@@ -151,9 +151,9 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server1.point._serverExtractActions).toHaveLength(1)
+    expect(server1.point._serverExecuteActions).toHaveLength(1)
     // not modified original server
-    expect(server.point._serverExtractActions).toHaveLength(0)
+    expect(server.point._serverExecuteActions).toHaveLength(0)
     const server2 = server1.attach(
       Point0.create<typeof server1>('server2', ['server1'])
         .ctx({
@@ -183,16 +183,16 @@ describe('Point0', () => {
         undefined
       >
     >()
-    expect(server2.point._serverExtractActions).toHaveLength(2)
+    expect(server2.point._serverExecuteActions).toHaveLength(2)
     // not modified original server1
-    expect(server1.point._serverExtractActions).toHaveLength(1)
+    expect(server1.point._serverExecuteActions).toHaveLength(1)
     // not modified original server
-    expect(server.point._serverExtractActions).toHaveLength(0)
+    expect(server.point._serverExecuteActions).toHaveLength(0)
     const pageComponent = () => <div>Hello</div>
     const clientPointBase02 = Point0.create<typeof server2>('client', ['server2']).root()
     const clientPoint02 = clientPointBase02.lets('page', 'page', '/').page(pageComponent)
     // const eversion2 = Eversion.create()
-    const run = await ServerExtractor.create({
+    const run = await Executor.create({
       points: PointsManager.ready({
         _root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
@@ -208,7 +208,7 @@ describe('Point0', () => {
     // })
     // const x: AnyPoint = clientPoint02.point
     // x._route.get()
-    expect(await run.extract({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
+    expect(await run.execute({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
       ctx: {
         a: 3,
         b: 2,
@@ -248,9 +248,9 @@ describe('Point0', () => {
   //       undefined
   //     >
   //   >()
-  //   // expect(server1._serverExtractActions).toHaveLength(1)
+  //   // expect(server1._serverExecuteActions).toHaveLength(1)
   //   // not modified original server
-  //   // expect(server._serverExtractActions).toHaveLength(0)
+  //   // expect(server._serverExecuteActions).toHaveLength(0)
   //   const server2 = server1
   //     .lets('base', 'base')
   //     .loader(({ data }) => ({
@@ -276,14 +276,14 @@ describe('Point0', () => {
   //       undefined
   //     >
   //   >()
-  //   expect(server2._serverExtractActions).toHaveLength(2)
+  //   expect(server2._serverExecuteActions).toHaveLength(2)
   //   // not modified original server1
-  //   expect(server1._serverExtractActions).toHaveLength(1)
+  //   expect(server1._serverExecuteActions).toHaveLength(1)
   //   // not modified original server
-  //   expect(server._serverExtractActions).toHaveLength(0)
+  //   expect(server._serverExecuteActions).toHaveLength(0)
   // })
 
-  // it('extract without required ctx', async () => {
+  // it('execute without required ctx', async () => {
   //   const server = Point0.create('server').root()
   //   const url = '/z/x/c'
   //   const server1 = server
@@ -326,7 +326,7 @@ describe('Point0', () => {
   //   //   currentLocation: Route0.getLocation(url),
   //   //   requiredCtx: undefined,
   //   // })
-  //   const run = await ServerExtractor.create({
+  //   const run = await Executor.create({
   //     points: PointsManager.ready({
   //       _root_ready: server1.attach(clientPointBase01),
   //       page: server1.attach(clientPoint01.point),
@@ -335,7 +335,7 @@ describe('Point0', () => {
   //     currentLocation: Route0.getLocation(url),
   //     requiredCtx: undefined,
   //   })
-  //   expect(await run.extract({ point: server1.attach(clientPoint01.point), input: {} })).toEqual({
+  //   expect(await run.execute({ point: server1.attach(clientPoint01.point), input: {} })).toEqual({
   //     ctx: {
   //       a: 1,
   //       b: 2,
@@ -366,7 +366,7 @@ describe('Point0', () => {
   //   //   currentLocation: Route0.getLocation(url),
   //   //   requiredCtx: undefined,
   //   // })
-  //   const run2 = await ServerExtractor.create({
+  //   const run2 = await Executor.create({
   //     points: PointsManager.ready({
   //       _root_ready: server2.attach(clientPointBase02),
   //       page: server2.attach(clientPoint02.point),
@@ -375,7 +375,7 @@ describe('Point0', () => {
   //     currentLocation: Route0.getLocation(url),
   //     requiredCtx: undefined,
   //   })
-  //   expect(await run2.extract({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
+  //   expect(await run2.execute({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
   //     ctx: {
   //       a: 3,
   //       b: 2,
@@ -405,7 +405,7 @@ describe('Point0', () => {
   //   //   currentLocation: Route0.getLocation(url),
   //   //   requiredCtx: undefined,
   //   // })
-  //   const run3 = await ServerExtractor.create({
+  //   const run3 = await Executor.create({
   //     points: PointsManager.ready({
   //       _root_ready: server3.attach(clientPointBase03),
   //       page: server3.attach(clientPoint03.point),
@@ -415,7 +415,7 @@ describe('Point0', () => {
   //     requiredCtx: undefined,
   //   })
   //   expect(
-  //     await run3.extract({
+  //     await run3.execute({
   //       point: server3.attach(clientPoint03.point),
   //       input: {},
   //     }),
@@ -431,7 +431,7 @@ describe('Point0', () => {
   //   })
   // })
 
-  it('extract ctx with required ctx input', async () => {
+  it('execute ctx with required ctx input', async () => {
     const server = Point0.create('server').requireCtx<{ r: string }>().root()
     const url = '/z/x/c'
     const server1 = server.attach(
@@ -455,7 +455,7 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: { r: 'str' },
     // })
-    const run1 = await ServerExtractor.create({
+    const run1 = await Executor.create({
       points: PointsManager.ready({
         _root_ready: server1.attach(clientPointBase01),
         page: server1.attach(clientPoint01.point),
@@ -465,7 +465,7 @@ describe('Point0', () => {
       requiredCtx: { r: 'str' },
     })
     expect(
-      await run1.extract({
+      await run1.execute({
         point: server1.attach(clientPoint01.point),
         input: {},
       }),
@@ -502,7 +502,7 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: { r: 'str' },
     // })
-    const run2 = await ServerExtractor.create({
+    const run2 = await Executor.create({
       points: PointsManager.ready({
         _root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
@@ -511,7 +511,7 @@ describe('Point0', () => {
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
-    expect(await run2.extract({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
+    expect(await run2.execute({ point: server2.attach(clientPoint02.point), input: {} })).toEqual({
       ctx: {
         r: 'str',
         a: 3,
@@ -544,7 +544,7 @@ describe('Point0', () => {
     //   currentLocation: Route0.getLocation(url),
     //   requiredCtx: { r: 'str' },
     // })
-    const run3 = await ServerExtractor.create({
+    const run3 = await Executor.create({
       points: PointsManager.ready({
         _root_ready: server3.attach(clientPointBase03),
         page: server3.attach(clientPoint03.point),
@@ -553,7 +553,7 @@ describe('Point0', () => {
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
     })
-    expect(await run3.extract({ point: server3.attach(clientPoint03.point), input: {} })).toEqual({
+    expect(await run3.execute({ point: server3.attach(clientPoint03.point), input: {} })).toEqual({
       ctx: {
         r: 'str',
         c: 5,
@@ -578,11 +578,11 @@ describe('Point0', () => {
   //     [clientPage1.getRoute(), async () => clientPage1],
   //     [clientPage2.getRoute(), clientPage2],
   //   ]
-  //   const { element: reactEl1 } = await Point0.extractSuitablePageElement({ routePath: '/hello/world', points })
+  //   const { element: reactEl1 } = await Point0.executeSuitablePageElement({ routePath: '/hello/world', points })
   //   expect(React.isValidElement(reactEl1)).toBe(true)
   //   const html1 = renderToStaticMarkup(reactEl1)
   //   expect(html1).toBe('<div>Hello, world</div>')
-  //   const { element: reactEl2 } = await Point0.extractSuitablePageElement({ routePath: '/bye/bye', points })
+  //   const { element: reactEl2 } = await Point0.executeSuitablePageElement({ routePath: '/bye/bye', points })
   //   expect(React.isValidElement(reactEl2)).toBe(true)
   //   const html2 = renderToStaticMarkup(reactEl2)
   //   expect(html2).toBe('<div>Bye, bye</div>')
@@ -609,7 +609,7 @@ describe('Point0', () => {
     //     UndefinedProps
     //   >
     // >()
-    // expect(clientPoint0._serverExtractActions).toEqual([])
+    // expect(clientPoint0._serverExecuteActions).toEqual([])
   })
 
   // it('creates ready page', () => {

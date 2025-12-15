@@ -44,8 +44,8 @@ import type {
   AnyUseLoaderResult,
   AppendCtx,
   BasePoint,
-  ClientExtractAction,
-  ClientExtractDetailedResult,
+  ClientExecuteAction,
+  ClientExecuteDetailedResult,
   ClientLoaderFn,
   ComponentComponent,
   Ctx,
@@ -119,7 +119,7 @@ import type {
   ScrollPositionGetter,
   ScrollPositionRestorePolicy,
   ScrollPositionSetter,
-  ServerExtractAction,
+  ServerExecuteAction,
   ShowError,
   StandaloneSlashIfUndefined,
   SuccessHeadFn,
@@ -227,8 +227,8 @@ export class Point0<
   readonly _queryResultType: TQueryResultType
   // readonly _asFormData: boolean | undefined
   private readonly _wrappers: WrapperComponentType[]
-  readonly _serverExtractActions: ServerExtractAction[]
-  private readonly _clientExtractActions: ClientExtractAction[]
+  readonly _serverExecuteActions: ServerExecuteAction[]
+  private readonly _clientExecuteActions: ClientExecuteAction[]
   // private readonly _providerValueSetter: ProviderValueSetterFn<any, any, any, any, any> | undefined
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly _route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
@@ -366,8 +366,8 @@ export class Point0<
       | undefined
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
-    _serverExtractActions?: ServerExtractAction[]
-    _clientExtractActions?: ClientExtractAction[]
+    _serverExecuteActions?: ServerExecuteAction[]
+    _clientExecuteActions?: ClientExecuteAction[]
     // _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any>
     _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TLastClientOutput>> | undefined
     _useValue?: any
@@ -490,8 +490,8 @@ export class Point0<
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
     // this._asFormData = options._asFormData
-    this._serverExtractActions = options._serverExtractActions ?? []
-    this._clientExtractActions = options._clientExtractActions ?? []
+    this._serverExecuteActions = options._serverExecuteActions ?? []
+    this._clientExecuteActions = options._clientExecuteActions ?? []
     // this._providerValueSetter = options._providerValueSetter ?? undefined
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
@@ -664,8 +664,8 @@ export class Point0<
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
     _wrappers?: WrapperComponentType[]
-    _serverExtractActions?: ServerExtractAction[]
-    _clientExtractActions?: ClientExtractAction[]
+    _serverExecuteActions?: ServerExecuteAction[]
+    _clientExecuteActions?: ClientExecuteAction[]
     // _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any> | undefined
     _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TLastClientOutput>> | undefined
     _useValue?: any
@@ -838,8 +838,8 @@ export class Point0<
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
       // _asFormData: overrides._asFormData ?? this._asFormData,
-      _serverExtractActions: overrides._serverExtractActions ?? this._serverExtractActions,
-      _clientExtractActions: overrides._clientExtractActions ?? this._clientExtractActions,
+      _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
+      _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
       // _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
@@ -874,8 +874,8 @@ export class Point0<
     const result = this._continue({
       ...point,
       _headFns: [...this._headFns, ...point.point._headFns],
-      _serverExtractActions: [...this._serverExtractActions, ...point.point._serverExtractActions],
-      _clientExtractActions: [...this._clientExtractActions, ...point.point._clientExtractActions],
+      _serverExecuteActions: [...this._serverExecuteActions, ...point.point._serverExecuteActions],
+      _clientExecuteActions: [...this._clientExecuteActions, ...point.point._clientExecuteActions],
       _scope: this._scope,
       _root: this._root,
       _attachedTo: [],
@@ -1820,8 +1820,8 @@ export class Point0<
           ? ctxOrFn
           : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
     return this._continue({
-      _serverExtractActions: [
-        ...this._serverExtractActions,
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
         { type: 'ctx', fn: ctxFn, unstableId: Point0._getNextUnstableId() },
       ] as never,
     }) as never
@@ -1848,8 +1848,8 @@ export class Point0<
   > {
     return this._continue({
       _queryResultType: this._queryResultType ?? 'query',
-      _serverExtractActions: [
-        ...this._serverExtractActions,
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune loader for client
         { type: 'loader', fn: loaderFn ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
       ] as never,
@@ -1910,8 +1910,8 @@ export class Point0<
   > {
     return this._continue({
       _queryResultType: this._queryResultType ?? 'query',
-      _serverExtractActions: [
-        ...this._serverExtractActions,
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
         {
           type: 'ctxLoader',
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune ctxLoader for client
@@ -1979,14 +1979,14 @@ export class Point0<
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | null) {
     if (clientLoaderFn === null) {
       return this._continue({
-        _clientExtractActions: [],
+        _clientExecuteActions: [],
       }) as never
     }
     return this._continue({
       _pointType: 'clientMiddleware',
       _queryResultType: this._queryResultType ?? 'query',
-      _clientExtractActions: [
-        ...this._clientExtractActions,
+      _clientExecuteActions: [
+        ...this._clientExecuteActions,
         {
           type: 'loader',
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -2080,20 +2080,20 @@ export class Point0<
             ? this._serverInputSchema.extend(inputSchema.shape)
             : inputSchema
           : this._serverInputSchema,
-      _clientExtractActions:
+      _clientExecuteActions:
         this._pointType === 'clientMiddleware'
           ? [
-              ...this._clientExtractActions,
+              ...this._clientExecuteActions,
               { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
             ]
-          : this._clientExtractActions,
-      _serverExtractActions:
+          : this._clientExecuteActions,
+      _serverExecuteActions:
         this._pointType === 'middleware'
           ? [
-              ...this._serverExtractActions,
+              ...this._serverExecuteActions,
               { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
             ]
-          : this._serverExtractActions,
+          : this._serverExecuteActions,
     }) as never
   }
 
@@ -2539,8 +2539,8 @@ export class Point0<
       getQueryOptions: point.getQueryOptions.bind(point),
       prefetchQuery: point.prefetchQuery.bind(point),
       fetch: point.fetch.bind(point),
-      extract: point.extract.bind(point),
-      extractDetailed: point.extractDetailed.bind(point),
+      execute: point.execute.bind(point),
+      executeDetailed: point.executeDetailed.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
@@ -2590,8 +2590,8 @@ export class Point0<
       getQueryOptions: point.getQueryOptions.bind(point),
       prefetchQuery: point.prefetchQuery.bind(point),
       fetch: point.fetch.bind(point),
-      extract: point.extract.bind(point),
-      extractDetailed: point.extractDetailed.bind(point),
+      execute: point.execute.bind(point),
+      executeDetailed: point.executeDetailed.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
@@ -2651,8 +2651,8 @@ export class Point0<
       getQueryOptions: point.getQueryOptions.bind(point),
       prefetchQuery: point.prefetchQuery.bind(point),
       fetch: point.fetch.bind(point),
-      extract: point.extract.bind(point),
-      extractDetailed: point.extractDetailed.bind(point),
+      execute: point.execute.bind(point),
+      executeDetailed: point.executeDetailed.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
@@ -3087,17 +3087,17 @@ export class Point0<
   }
 
   _hasLoader(): boolean {
-    return this._serverExtractActions.some((fn) => fn.type === 'loader' || fn.type === 'ctxLoader')
+    return this._serverExecuteActions.some((fn) => fn.type === 'loader' || fn.type === 'ctxLoader')
   }
 
   _hasClientLoader(): boolean {
-    return this._clientExtractActions.length > 0 && this._clientExtractActions.some((fn) => fn.type === 'loader')
+    return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
   }
 
   private _hasClientAsyncLoader(): boolean {
     return (
-      this._clientExtractActions.length > 0 &&
-      this._clientExtractActions.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
+      this._clientExecuteActions.length > 0 &&
+      this._clientExecuteActions.some((fn) => fn.type === 'loader' && fn.fn.constructor.name === 'AsyncFunction')
     )
   }
 
@@ -3108,7 +3108,7 @@ export class Point0<
     return this._route as CallableRoute<NonNullable<TRouteDefinition>>
   }
 
-  private async _extractClientAsync({
+  private async _executeClientAsync({
     data,
     response,
     location,
@@ -3146,12 +3146,12 @@ export class Point0<
       this._pointType === 'page' || this._pointType === 'layout'
         ? this._getSelfLocationByAnotherLocationOrInput(location, input)
         : Point0._currentLocation.get()
-    for (const clientExtractAction of this._clientExtractActions) {
-      switch (clientExtractAction.type) {
+    for (const clientExecuteAction of this._clientExecuteActions) {
+      switch (clientExecuteAction.type) {
         case 'input': {
           currentInputSchema = currentInputSchema
-            ? currentInputSchema.extend(clientExtractAction.schema.shape)
-            : clientExtractAction.schema
+            ? currentInputSchema.extend(clientExecuteAction.schema.shape)
+            : clientExecuteAction.schema
           const safeParseResult = currentInputSchema.safeParse(input)
           if (safeParseResult.error) {
             throw new Error(`Input error: ${safeParseResult.error.message}`)
@@ -3160,7 +3160,7 @@ export class Point0<
           break
         }
         case 'loader': {
-          const result = await clientExtractAction.fn({
+          const result = await clientExecuteAction.fn({
             data: currentClientData ?? {},
             location,
             input: currentInputParsed,
@@ -3176,9 +3176,9 @@ export class Point0<
           }
           break
         }
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
         default: {
-          throw new Error(`Unknown client extend fn type: ${(clientExtractAction as any).type}`)
+          throw new Error(`Unknown client extend fn type: ${(clientExecuteAction as any).type}`)
         }
       }
     }
@@ -3189,8 +3189,8 @@ export class Point0<
     }
   }
 
-  // TODO: merge it with _extractClientAsync
-  private _extractClientSync({
+  // TODO: merge it with _executeClientAsync
+  private _executeClientSync({
     data,
     response,
     location,
@@ -3228,12 +3228,12 @@ export class Point0<
       this._pointType === 'page' || this._pointType === 'layout'
         ? this._getSelfLocationByAnotherLocationOrInput(location, input)
         : Point0._currentLocation.get()
-    for (const clientExtractAction of this._clientExtractActions) {
-      switch (clientExtractAction.type) {
+    for (const clientExecuteAction of this._clientExecuteActions) {
+      switch (clientExecuteAction.type) {
         case 'input': {
           currentInputSchema = currentInputSchema
-            ? currentInputSchema.extend(clientExtractAction.schema.shape)
-            : clientExtractAction.schema
+            ? currentInputSchema.extend(clientExecuteAction.schema.shape)
+            : clientExecuteAction.schema
           const safeParseResult = currentInputSchema.safeParse(input)
           if (safeParseResult.error) {
             throw new Error(`Input error: ${safeParseResult.error.message}`)
@@ -3242,7 +3242,7 @@ export class Point0<
           break
         }
         case 'loader': {
-          const result = clientExtractAction.fn({
+          const result = clientExecuteAction.fn({
             data: currentClientData ?? {},
             location,
             input: currentInputParsed,
@@ -3258,9 +3258,9 @@ export class Point0<
           }
           break
         }
-        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+
         default: {
-          throw new Error(`Unknown client extend fn type: ${(clientExtractAction as any).type}`)
+          throw new Error(`Unknown client extend fn type: ${(clientExecuteAction as any).type}`)
         }
       }
     }
@@ -3271,7 +3271,7 @@ export class Point0<
     }
   }
 
-  _extractHead(
+  _executeHead(
     unqueriedLoaderResult: AnyUnqueriedLoaderResult<
       any,
       TLastServerOutput,
@@ -3300,7 +3300,7 @@ export class Point0<
       AnyLocation
     >,
   ): void {
-    for (const headItem of this._extractHead(unqueriedLoaderResult)) {
+    for (const headItem of this._executeHead(unqueriedLoaderResult)) {
       useHead(headItem as never)
     }
   }
@@ -3666,7 +3666,7 @@ export class Point0<
     }
   }
 
-  async extractDetailed(
+  async executeDetailed(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? TData extends Data
         ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
@@ -3675,11 +3675,11 @@ export class Point0<
         ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<
-    ClientExtractDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
+    ClientExecuteDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
   > {
     if (Point0.isServer) {
       throw new Error0(
-        'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
+        'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx|ctxLoader options. point.execute is for client only and use fetch under the hood to retrieve server data',
       )
     }
     const [input = {}, fetchOptions] = args
@@ -3695,7 +3695,7 @@ export class Point0<
     })()
     if (this._hasClientLoader()) {
       if (this._hasClientAsyncLoader()) {
-        const { clientOutput, clientData, clientResponse } = await this._extractClientAsync({
+        const { clientOutput, clientData, clientResponse } = await this._executeClientAsync({
           data: serverData || {},
           response: serverResponse,
           input: input as never,
@@ -3708,7 +3708,7 @@ export class Point0<
           clientResponse,
           clientOutput,
           output: clientOutput ?? serverOutput,
-        } as ClientExtractDetailedResult<
+        } as ClientExecuteDetailedResult<
           TData,
           TResponse,
           TClientData,
@@ -3717,7 +3717,7 @@ export class Point0<
           TLastClientOutput
         >
       } else {
-        const { clientOutput, clientData, clientResponse } = this._extractClientSync({
+        const { clientOutput, clientData, clientResponse } = this._executeClientSync({
           data: serverData || {},
           response: serverResponse,
           input: input as never,
@@ -3730,7 +3730,7 @@ export class Point0<
           clientResponse,
           clientOutput,
           output: clientOutput ?? serverOutput,
-        } as ClientExtractDetailedResult<
+        } as ClientExecuteDetailedResult<
           TData,
           TResponse,
           TClientData,
@@ -3748,7 +3748,7 @@ export class Point0<
       clientResponse: undefined,
       clientOutput: undefined,
       output: serverOutput,
-    } as ClientExtractDetailedResult<
+    } as ClientExecuteDetailedResult<
       TData,
       TResponse,
       TClientData,
@@ -3758,7 +3758,7 @@ export class Point0<
     >
   }
 
-  async extract(
+  async execute(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? TData extends Data
         ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
@@ -3767,7 +3767,7 @@ export class Point0<
         ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<FinalLastOutput<TLastServerOutput, TLastClientOutput>> {
-    const detailedResult = await this.extractDetailed(...args)
+    const detailedResult = await this.executeDetailed(...args)
     return detailedResult.output
   }
 
@@ -3917,7 +3917,7 @@ export class Point0<
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
     const queryFn = this._hasClientAsyncLoader()
       ? async () => {
-          const { clientData } = await this._extractClientAsync({
+          const { clientData } = await this._executeClientAsync({
             data: data || {},
             location,
             input,
@@ -3926,7 +3926,7 @@ export class Point0<
           return clientData
         }
       : () => {
-          const { clientData } = this._extractClientSync({ data: data || {}, location, input, response: undefined })
+          const { clientData } = this._executeClientSync({ data: data || {}, location, input, response: undefined })
           return clientData
         }
     return {
@@ -4128,7 +4128,7 @@ export class Point0<
       ? async ({ pageParam }: { pageParam: unknown }) => {
           try {
             const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-            const { clientData } = await this._extractClientAsync({
+            const { clientData } = await this._executeClientAsync({
               data: data || {},
               location,
               response: undefined,
@@ -4142,7 +4142,7 @@ export class Point0<
       : ({ pageParam }: { pageParam: unknown }) => {
           try {
             const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
-            const { clientData } = this._extractClientSync({
+            const { clientData } = this._executeClientSync({
               data: data || {},
               location,
               response: undefined,
@@ -4487,7 +4487,7 @@ export class Point0<
       try {
         if (Point0.isServer) {
           throw new Error(
-            'If you want to extract data on server, use engine.extract, or ServerExtractor.extract, or get extract fn from loader|ctx|ctxLoader options. point.extract is for client only and use fetch under the hood to retrieve server data',
+            'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx|ctxLoader options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
         }
         const serverDataOrResponse = await (async () => {
@@ -4498,14 +4498,14 @@ export class Point0<
         })()
         if (this._hasClientLoader()) {
           if (this._hasClientAsyncLoader()) {
-            const { clientOutput } = await this._extractClientAsync({
+            const { clientOutput } = await this._executeClientAsync({
               data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
               response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
               input: input as never,
             })
             return clientOutput
           } else {
-            const { clientOutput } = this._extractClientSync({
+            const { clientOutput } = this._executeClientSync({
               data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
               response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
               input: input as never,
@@ -5291,7 +5291,7 @@ export class Point0<
   //   return null
   // }
 
-  // extractor store
+  // executor store
 
   static define = SuperStore.define.bind(SuperStore)
 

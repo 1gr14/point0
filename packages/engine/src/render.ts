@@ -7,7 +7,7 @@ import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from
 import { renderToReadableStream } from 'react-dom/server'
 import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
-import type { ServerExtractor } from './server-extractor.js'
+import type { Executor } from './executor.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
 export type ReadableStreamRenderer = (
@@ -115,7 +115,7 @@ export function addEnvToDocumentHtml({
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,
   content,
-  extractor,
+  executor,
   head,
   env,
   domRootElementId,
@@ -123,7 +123,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
 }: {
   originalIndexHtml: string
   content?: TContent
-  extractor: ServerExtractor
+  executor: Executor
   head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   domRootElementId?: string
@@ -175,23 +175,23 @@ export async function getReadableStreamWithWrapper({
   suffix,
   renderer = renderToReadableStream,
   clientBundlePath,
-  extractor,
+  executor,
 }: {
   App: AppComponent
   suffix?: string
   prefix?: string
   clientBundlePath?: string
   renderer?: ReadableStreamRenderer
-  extractor: ServerExtractor
+  executor: Executor
 }) {
   const encoder = new TextEncoder()
 
   // one scope for both render and pack ensures consistency
-  return await extractor.withServerGlobalState(async () => {
+  return await executor.withServerGlobalState(async () => {
     // Kick off the render first; any randoms used during render happen now
     const reactStream = await renderer(
       createElement(App, {
-        points: extractor.points,
+        points: executor.points,
       }),
       {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
@@ -232,7 +232,7 @@ export async function renderReadableStream({
   renderer = renderToReadableStream,
   originalIndexHtml,
   domRootElementId,
-  extractor,
+  executor,
 }: {
   App: AppComponent
   head: ResolvableHead[]
@@ -241,28 +241,28 @@ export async function renderReadableStream({
   clientBundlePath?: string
   originalIndexHtml: string
   domRootElementId?: string
-  extractor: ServerExtractor
+  executor: Executor
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
-    extractor,
+    executor,
     head,
     env,
     domRootElementId,
   })
-  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, extractor })
+  return await getReadableStreamWithWrapper({ App, prefix, suffix, renderer, clientBundlePath, executor })
 }
 
 export async function renderAppAsReadableStream({
   App,
-  extractor,
+  executor,
   pagePoint,
   pageLocation,
   input,
   ...props
 }: {
   App: AppComponent
-  extractor: ServerExtractor
+  executor: Executor
   pagePoint: AnyPoint | undefined
   pageLocation: AnyLocation
   input: InputRaw
@@ -273,7 +273,7 @@ export async function renderAppAsReadableStream({
   originalIndexHtml: string
   domRootElementId?: string
 }): Promise<ReadableStream> {
-  await extractor.prefetchAppPagePointDeep({
+  await executor.prefetchAppPagePointDeep({
     App,
     renderToReadableStream,
     pagePoint,
@@ -283,6 +283,6 @@ export async function renderAppAsReadableStream({
   return await renderReadableStream({
     ...props,
     App,
-    extractor,
+    executor,
   })
 }

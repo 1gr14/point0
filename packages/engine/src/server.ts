@@ -9,8 +9,8 @@ import type { EngineLogger, EngineOptionsPublicdirParsed } from './config.js'
 import { engineFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 import {
-  extractServerBunBuildConfig,
-  extractServerBunPlugins,
+  executeServerBunBuildConfig,
+  executeServerBunPlugins,
   getDirByPaths,
   loadBunPlugins,
   toJsExtension,
@@ -162,8 +162,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return null
   }
 
-  async extractBunPlugins(): Promise<BunPlugin[]> {
-    const extractedPlugins = await extractServerBunPlugins({
+  async executeBunPlugins(): Promise<BunPlugin[]> {
+    const executeedPlugins = await executeServerBunPlugins({
       nodeEnv: process.env.NODE_ENV,
       command: 'serve',
       bunPlugins: this.bunPlugins,
@@ -176,13 +176,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         scope: null,
       }),
     )
-    const extractedBunPlugins = [...extractedPlugins, prunePlugin]
-    return extractedBunPlugins
+    const executeedBunPlugins = [...executeedPlugins, prunePlugin]
+    return executeedBunPlugins
   }
 
   async loadBunPlugins(): Promise<void> {
-    const extractedBunPlugins = await this.extractBunPlugins()
-    await loadBunPlugins({ extractedBunPlugins })
+    const executeedBunPlugins = await this.executeBunPlugins()
+    await loadBunPlugins({ executeedBunPlugins })
   }
 
   async serve({
@@ -310,12 +310,12 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
     const NODE_ENV = process.env.NODE_ENV
 
-    const thisBunBuildConfig = await extractServerBunBuildConfig({
+    const thisBunBuildConfig = await executeServerBunBuildConfig({
       nodeEnv: NODE_ENV,
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
-    const providedBunBuildConfig = await extractServerBunBuildConfig({
+    const providedBunBuildConfig = await executeServerBunBuildConfig({
       nodeEnv: NODE_ENV,
       bunBuildConfig,
       bunPlugins: [],
@@ -379,7 +379,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       plugins: [
         ...(thisBunBuildConfig.plugins ?? []),
         ...(providedBunBuildConfig.plugins ?? []),
-        ...(await this.extractBunPlugins()),
+        ...(await this.executeBunPlugins()),
       ],
       banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
       entrypoints: validateEntrypoints([
