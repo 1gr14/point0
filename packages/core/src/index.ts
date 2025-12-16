@@ -30,6 +30,8 @@ import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
+import type { SuperJSONResult } from 'superjson'
+import SuperJSON from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
@@ -155,8 +157,6 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import SuperJSON from 'superjson'
-import type { SuperJSONResult } from 'superjson'
 
 export class Point0<
   TPointType extends PointType,
@@ -3609,7 +3609,7 @@ export class Point0<
         return { inputParsed: result.data, inputParseError: null }
       })()
       return { inputRaw, ...parsed }
-    }, [Point0.stringifyBySuperjson(args[0])])
+    }, [stringify(Point0.serializeBySuperjson(args[0]))])
 
     if (!this._hasLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
@@ -3835,7 +3835,7 @@ export class Point0<
       this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      Point0.stringifyBySuperjson(input),
+      stringify(Point0.serializeBySuperjson(input)),
       outputType,
     ]
   }
@@ -3854,7 +3854,7 @@ export class Point0<
       this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
-      Point0.stringifyBySuperjson(input),
+      stringify(Point0.serializeBySuperjson(input)),
       'data',
     ]
   }
@@ -3875,7 +3875,7 @@ export class Point0<
       this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      Point0.stringifyBySuperjson(input),
+      stringify(Point0.serializeBySuperjson(input)),
       outputType,
     ]
   }
@@ -4947,7 +4947,9 @@ export class Point0<
       }
       const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) => p.name === this.name && stringify(p.input) === stringify(inputRaw),
+        (p) =>
+          p.name === this.name &&
+          stringify(Point0.serializeBySuperjson(p.input)) === stringify(Point0.serializeBySuperjson(inputRaw)),
       )
       if (scrollPositionRestorePolicy !== false) {
         if (scrollPositionRestorePolicy === null) {
@@ -5192,7 +5194,7 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TLastServerOutput, TLastClientOutput> {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.stringifyBySuperjson(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(Point0.serializeBySuperjson(input || {}))}`,
     )
     if (!value) {
       throw new Error(
@@ -5206,7 +5208,7 @@ export class Point0<
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalClientData<TLastServerOutput, TLastClientOutput> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.stringifyBySuperjson(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(Point0.serializeBySuperjson(input || {}))}`,
     )
     return value
   }
@@ -5267,7 +5269,7 @@ export class Point0<
     }
     const value = this._providerValueSetter(result)
     SuperStore.setWeak(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.stringifyBySuperjson(inputRaw)}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(Point0.serializeBySuperjson(inputRaw))}`,
       value,
     )
     return this._withWrappers({
