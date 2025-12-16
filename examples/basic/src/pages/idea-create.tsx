@@ -16,10 +16,11 @@ export const createIdeaMutation = client
   .input(
     z.object({
       title: z.string().min(1).max(10),
+      date: z.date(),
     }),
   )
   .loader(async ({ input, data, inputRaw }) => {
-    return { ...data }
+    return { ...data, ...input }
   })
   .input(
     z.object({
@@ -41,11 +42,11 @@ export const createIdeaMutation = client
     }
     return { ...data, ...result.data }
   })
-  .loader(async ({ input, ctx, inputRaw }) => {
+  .loader(async ({ input, ctx, inputRaw, data }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
-    return { idea }
+    return { idea, ...data }
   })
   .clientLoader(async (o) => {
     return { ...o.data, x: 1 }
@@ -165,7 +166,7 @@ const Page = () => {
         <button
           onClick={() => {
             mutation
-              .mutateAsync({ title, description, content })
+              .mutateAsync({ title, description, content, date: new Date() })
               .then((res) => {
                 console.info('res', res)
               })
