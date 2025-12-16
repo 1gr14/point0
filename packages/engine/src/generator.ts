@@ -1,4 +1,4 @@
-import type { Routes, RoutesPretty } from '@devp0nt/route0'
+import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
 import type { PointsModuleType } from '@point0/core'
 import fg from 'fast-glob'

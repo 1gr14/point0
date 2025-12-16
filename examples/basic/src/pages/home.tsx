@@ -115,7 +115,7 @@ export default generalLayout
               .then((result) => {
                 console.info(result)
               })
-              .catch((error) => {
+              .catch((error: unknown) => {
                 console.error(error)
               })
             clientFnMutation
@@ -123,7 +123,7 @@ export default generalLayout
               .then((result) => {
                 console.info(1, result)
               })
-              .catch((error) => {
+              .catch((error: unknown) => {
                 console.error(error)
               })
           }}

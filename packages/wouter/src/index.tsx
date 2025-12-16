@@ -61,7 +61,7 @@ export const createNavigate0 = <
     const [routeName, input, ...rest] = args
     const route = routes[routeName]
     if (!route) {
-      throw new Error0(`Route "${String(routeName)}" not found`)
+      throw new Error0(`Route "${routeName}" not found`)
     }
     const to = route.flat(input || {}) as string
     return await wrappedNavigate(...([to, ...rest] as unknown as Parameters<TNavigate>))
