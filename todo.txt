@@ -7,8 +7,6 @@ check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson)
 Стрингифай всегда делать через суперджейсон
 
-_pointType → type and expose it in nice points
-
 add point self to loader and to ctx and to loadrCtx options
 
 .ssr(), and remove ssr option from engine
@@ -181,7 +179,7 @@ methods: .headers(({reqOnly}) => {}); helpers inslide loaders: setHeaders((prevH
 .lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
 TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
 if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
-_slug ← _name
+_slug ← name
 
 engine server onFetch hook, onAfterPublicdirFetch hook
 

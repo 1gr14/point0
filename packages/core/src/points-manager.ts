@@ -246,7 +246,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return (
       !Array.isArray(points) &&
       // Object.keys(points).length > 0 &&
-      Object.values(points).every((p: any) => typeof p.name === 'string')
+      Object.values(points).every((p: any) => typeof p.type === 'string')
     )
   }
 
@@ -254,7 +254,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return (
       !Array.isArray(points) &&
       // Object.keys(points).length > 0 &&
-      Object.values(points).every((p: any) => typeof p.point?._name === 'string')
+      Object.values(points).every((p: any) => typeof p.point?.type === 'string')
     )
   }
 
@@ -271,11 +271,11 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
     return points.map((point) => {
       return {
-        type: point._pointType,
-        name: point._name || '__POINT0_UNNAMED__',
+        type: point.type,
+        name: point.name || '__POINT0_UNNAMED__',
         point,
         shouldBePrefetchedOnLinkHover: point.shouldBePrefetchedOnLinkHover,
-        layouts: point._layouts.map((l) => l._name || '__POINT0_UNNAMED__'),
+        layouts: point._layouts.map((l) => l.name || '__POINT0_UNNAMED__'),
         route: point._route,
         root: point._isRoot(),
       }
@@ -288,7 +288,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 
   private static moduleToLazyPointsCollection(points: LazyPointsModule): LazyPointsCollection {
-    return Object.values(points).flatMap((p) => ('_pointType' in p ? [] : p))
+    return Object.values(points).flatMap((p) => ('type' in p ? [] : p))
   }
 
   private static toPointsCollection(
@@ -406,7 +406,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
         const point = await pointPromise
         const route = point._route
-        if (point._pointType === 'page' && !route) {
+        if (point.type === 'page' && !route) {
           throw new Error(`No client route provided for page point. Index: ${index}.`)
         }
         const routeDefinition = route?.definition
@@ -417,8 +417,8 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           // )
         }
         const recordType = record.type
-        const pointType = point._pointType
-        const pointName = point._name
+        const pointType = point.type
+        const pointName = point.name
         const recordName = record.name
         if (pointName !== recordName) {
           // console.warn(

@@ -138,12 +138,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       throw new Error('Point root not found')
     }
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
-    const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout._name}`, layout]))
+    const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
     executor ??= await Executor.create({
       points: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
       currentLocation: location,
       requiredCtx,
-      pageLocation: point._pointType === 'page' ? location : undefined,
+      pageLocation: point.type === 'page' ? location : undefined,
     })
     return await executor.execute({ point, input, withLayouts })
   }
@@ -178,7 +178,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })()
 
     return await this.withServerGlobalState(async () => {
-      if (point?._pointType === 'page' && withLayouts) {
+      if (point?.type === 'page' && withLayouts) {
         for (const layout of point._layouts) {
           if (!layout._hasLoader()) {
             continue
@@ -382,7 +382,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
 
         // const response = await (async () => {
-        //   if (point?._pointType === 'response') {
+        //   if (point?.type === 'response') {
         //     if (!point._responseFn) {
         //       throw new Error('Response function not found')
         //     }
@@ -575,12 +575,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     await this.withServerGlobalState(async () => {
       if (
         point &&
-        (point._pointType === 'query' ||
-          point._pointType === 'infiniteQuery' ||
-          point._pointType === 'page' ||
-          point._pointType === 'layout' ||
-          point._pointType === 'provider' ||
-          point._pointType === 'component')
+        (point.type === 'query' ||
+          point.type === 'infiniteQuery' ||
+          point.type === 'page' ||
+          point.type === 'layout' ||
+          point.type === 'provider' ||
+          point.type === 'component')
       ) {
         const queryKey = point._getServerQueryKey({
           input,

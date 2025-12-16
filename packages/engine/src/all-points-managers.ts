@@ -274,9 +274,9 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }> {
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const suitable = this.getSuitable({
-      pointType: point._pointType,
+      pointType: point.type,
       scope: point._scope,
-      pointName: point._name,
+      pointName: point.name,
       input,
       fallbackScope: point._scope,
     })

@@ -28,6 +28,7 @@ export const ideaPage = ideaLayout
       zxc: 333,
     }
   })
+  .clientLoader(false)
   .page(
     ({ data: { idea } }) => ({
       title: idea.title,

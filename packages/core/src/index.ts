@@ -202,7 +202,7 @@ export class Point0<
   readonly _root: RootPoint | undefined
   private readonly _serverurl: string | undefined
   readonly _baseurl: string | null | undefined
-  readonly _pointType: TPointType
+  readonly type: TPointType
   private readonly _letsEndPointType: TLetsEndPointType
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
@@ -247,7 +247,7 @@ export class Point0<
     | LayoutComponent<TQueryResultType, TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema, TProps>
     | UndefinedLayoutComponent
   readonly _layouts: LayoutPoint[]
-  readonly _name: PointName
+  readonly name: PointName
   private readonly _unstableId: number
   private readonly _fetchOptions: FetchOptionsFn | undefined
   private readonly _scrollPositionGetter: ScrollPositionGetter
@@ -335,7 +335,7 @@ export class Point0<
   >
 
   private constructor(options: {
-    _pointType: TPointType
+    type: TPointType
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
@@ -385,7 +385,7 @@ export class Point0<
       | LayoutComponent<TQueryResultType, TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema, TProps>
       | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
-    _name: PointName
+    name: PointName
     _fetchOptions?: FetchOptionsFn
     _scrollPositionGetter?: ScrollPositionGetter
     _scrollPositionSetter?: ScrollPositionSetter
@@ -476,7 +476,7 @@ export class Point0<
     this._serverInputSchema = options._serverInputSchema
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
-    this._pointType = options._pointType
+    this.type = options.type
     this._letsEndPointType = options._letsEndPointType
     this._wrappers = options._wrappers ?? []
     this._headFns = options._headFns ?? []
@@ -507,7 +507,7 @@ export class Point0<
     this._component = options._component ?? undefined
     this._layout = options._layout ?? undefined
     this._layouts = options._layouts ?? []
-    this._name = options._name
+    this.name = options.name
     this._fetchOptions = options._fetchOptions ?? (() => ({}))
     this._scrollPositionGetter = options._scrollPositionGetter ?? windowScrollPositionGetter
     this._scrollPositionSetter = options._scrollPositionSetter ?? windowScrollPositionSetter
@@ -633,7 +633,7 @@ export class Point0<
     TLastServerOutput extends LastOutput | UndefinedLastOutput,
     TLastClientOutput extends LastOutput | UndefinedLastOutput,
   >(overrides: {
-    _pointType?: TPointType
+    type?: TPointType
     _scope?: PointsScope
     _attachedTo?: PointsScope[]
     _letsEndPointType?: TLetsEndPointType
@@ -689,7 +689,7 @@ export class Point0<
       | LayoutComponent<TQueryResultType, TLastServerOutput, TLastClientOutput, TRouteDefinition, TInputSchema, TProps>
       | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
-    _name?: PointName
+    name?: PointName
     _fetchOptions?: FetchOptionsFn
     _scrollPositionGetter?: ScrollPositionGetter
     _scrollPositionSetter?: ScrollPositionSetter
@@ -807,7 +807,7 @@ export class Point0<
       _attachedTo: overrides._attachedTo ?? this._attachedTo,
       _base: overrides._base ?? this._base,
       _root: overrides._root ?? this._root,
-      _pointType: (overrides._pointType ?? this._pointType) as TPointType,
+      type: (overrides.type ?? this.type) as TPointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
@@ -851,7 +851,7 @@ export class Point0<
       _component: (overrides._component ?? this._component) as never,
       _layout: (overrides._layout ?? this._layout) as never,
       _layouts: overrides._layouts ?? this._layouts,
-      _name: overrides._name ?? this._name,
+      name: overrides.name ?? this.name,
       _fetchOptions: overrides._fetchOptions ?? this._fetchOptions,
       _scrollPositionGetter: overrides._scrollPositionGetter ?? this._scrollPositionGetter,
       _scrollPositionSetter: overrides._scrollPositionSetter ?? this._scrollPositionSetter,
@@ -929,12 +929,12 @@ export class Point0<
   >
   static create(scope: string, attachedTo?: PointsScope[]) {
     return new Point0({
-      _pointType: 'middleware',
+      type: 'middleware',
       _scope: scope,
       _attachedTo: attachedTo ?? [],
       _letsEndPointType: 'root',
       _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
-      _name: scope,
+      name: scope,
     }) as never
   }
 
@@ -1985,7 +1985,7 @@ export class Point0<
       }) as never
     }
     return this._continue({
-      _pointType: 'clientMiddleware',
+      type: 'clientMiddleware',
       _queryResultType: this._queryResultType ?? 'query',
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -2077,20 +2077,20 @@ export class Point0<
     return this._continue({
       inputSchema: this.inputSchema ? this.inputSchema.extend(inputSchema.shape) : inputSchema,
       _serverInputSchema:
-        this._pointType === 'middleware'
+        this.type === 'middleware'
           ? this._serverInputSchema
             ? this._serverInputSchema.extend(inputSchema.shape)
             : inputSchema
           : this._serverInputSchema,
       _clientExecuteActions:
-        this._pointType === 'clientMiddleware'
+        this.type === 'clientMiddleware'
           ? [
               ...this._clientExecuteActions,
               { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
             ]
           : this._clientExecuteActions,
       _serverExecuteActions:
-        this._pointType === 'middleware'
+        this.type === 'middleware'
           ? [
               ...this._serverExecuteActions,
               { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
@@ -2298,9 +2298,9 @@ export class Point0<
       return prevRoute
     })()
     return this._continue({
-      _pointType: 'middleware',
+      type: 'middleware',
       _letsEndPointType: letsEndPointType,
-      _name: pointName,
+      name: pointName,
       _route: newRoute as never,
       _prevRoute: this._route as never,
       _page: undefined,
@@ -2309,7 +2309,7 @@ export class Point0<
       _ProviderReactContext: undefined,
       _providerValueSetter: undefined,
       _useValue: undefined,
-      _layouts: this._pointType === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
+      _layouts: this.type === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
       _serverurl: this._base?._serverurl,
       _baseurl: this._base?._baseurl,
       _headFns: this._base?._headFns,
@@ -2360,10 +2360,10 @@ export class Point0<
     TLastClientOutput
   > {
     return this._continue({
-      _pointType: 'root',
+      type: 'root',
       _base: this as never as BasePoint,
       _root: this as never as RootPoint,
-      _name: this._scope,
+      name: this._scope,
       _letsEndPointType: undefined,
     })
   }
@@ -2386,7 +2386,7 @@ export class Point0<
     TLastClientOutput
   > {
     return this._continue({
-      _pointType: 'base',
+      type: 'base',
       _base: this as never as BasePoint,
       _letsEndPointType: undefined,
     }) as never
@@ -2499,7 +2499,7 @@ export class Point0<
       : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         (options) => (!options.data || options.loading || options.error ? {} : headFn(options as never))
     const point = this._continue({
-      _pointType: 'page',
+      type: 'page',
       _page: page,
       _letsEndPointType: undefined,
       _headFns: !successHeadFn ? this._headFns : [...this._headFns, successHeadFn],
@@ -2551,7 +2551,7 @@ export class Point0<
   > {
     const [component = () => null] = args as [TComponent | undefined]
     const point = this._continue({
-      _pointType: 'component',
+      type: 'component',
       _component: component,
       _letsEndPointType: undefined,
     })
@@ -2611,7 +2611,7 @@ export class Point0<
       TLayout | undefined,
     ]
     const point = this._continue({
-      _pointType: 'layout',
+      type: 'layout',
       _layout: layout as never,
       _letsEndPointType: undefined,
       _base: this as never as BasePoint,
@@ -2692,7 +2692,7 @@ export class Point0<
     >,
   ) {
     const point = this._continue({
-      _pointType: 'provider',
+      type: 'provider',
       _letsEndPointType: undefined,
       _providerValueSetter: valueSetter || (({ data }) => data),
       _ProviderReactContext: createContext<FinalClientData<TLastServerOutput, TLastClientOutput>>(
@@ -2700,7 +2700,7 @@ export class Point0<
       ) as never,
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
         if (!point._ProviderReactContext) {
-          throw new Error('ProviderReactContext 2 not found on point: ' + point._name)
+          throw new Error('ProviderReactContext 2 not found on point: ' + point.name)
         }
 
         if (keys == null) {
@@ -2763,7 +2763,7 @@ export class Point0<
   //   TLastClientOutput
   // > {
   //   return this._continue({
-  //     // _pointType: this._letsEndPointType === 'query' ? 'query' : this._pointType,
+  //     // type: this._letsEndPointType === 'query' ? 'query' : this.type,
   //     // _letsEndPointType: (this._letsEndPointType === 'query'
   //     //   ? undefined
   //     //   : this._letsEndPointType) as TLetsEndPointType extends 'query' ? undefined : TLetsEndPointType,
@@ -2774,14 +2774,14 @@ export class Point0<
   //     //   FinalClientData<TLastServerOutput, TLastClientOutput>,
   //     //   QueryKey
   //     // >,
-  //     _pointType: 'provider',
+  //     type: 'provider',
   //     _letsEndPointType: undefined,
   //     _ProviderReactContext: createContext<FinalClientData<TLastServerOutput, TLastClientOutput>>(
   //       null as never,
   //     ) as never,
   //     _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
   //       if (!point._ProviderReactContext) {
-  //         throw new Error('ProviderReactContext 2 not found on point: ' + point._name)
+  //         throw new Error('ProviderReactContext 2 not found on point: ' + point.name)
   //       }
 
   //       if (keys == null) {
@@ -2879,7 +2879,7 @@ export class Point0<
     const [queryOptions = {}] = args as [ExtraUseQueryOptions]
     if (this._letsEndPointType === 'query') {
       return this._continue({
-        _pointType: 'query',
+        type: 'query',
         _letsEndPointType: undefined,
         _queryResultType: 'query',
         _queryOptions: queryOptions,
@@ -2948,7 +2948,7 @@ export class Point0<
       > {
     const [infiniteQueryOptions = {}] = args
     return this._continue({
-      _pointType: this._letsEndPointType === 'infiniteQuery' ? 'infiniteQuery' : this._pointType,
+      type: this._letsEndPointType === 'infiniteQuery' ? 'infiniteQuery' : this.type,
       _letsEndPointType: (this._letsEndPointType === 'infiniteQuery'
         ? undefined
         : this._letsEndPointType) as TLetsEndPointType extends 'infiniteQuery' ? undefined : TLetsEndPointType,
@@ -2995,7 +2995,7 @@ export class Point0<
   > {
     const [mutationOptions = {}] = args
     return this._continue({
-      _pointType: 'mutation',
+      type: 'mutation',
       _mutationOptions: mutationOptions as UseMutationOptions,
       _letsEndPointType: undefined,
     }) as never
@@ -3018,11 +3018,11 @@ export class Point0<
     )
   }
   private _isEndPoint(): boolean {
-    return Point0._isEndPointType(this._pointType)
+    return Point0._isEndPointType(this.type)
   }
 
   _isRoot(): boolean {
-    return this._name === this._scope && this._pointType === 'root'
+    return this.name === this._scope && this.type === 'root'
   }
 
   private _getErrorComponent<TType extends DestinationComponentType>({
@@ -3109,7 +3109,7 @@ export class Point0<
 
   private _getRouteForce(): CallableRoute<NonNullable<TRouteDefinition>> {
     if (!this._route) {
-      throw new Error(`No client route provided for this point. Name: ${this._name}.`)
+      throw new Error(`No client route provided for this point. Name: ${this.name}.`)
     }
     return this._route as CallableRoute<NonNullable<TRouteDefinition>>
   }
@@ -3193,7 +3193,7 @@ export class Point0<
     let currentInputParsed: InputParsed = this._route ? this._route.parseFlatInput(input) : {}
     let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??=
-      this._pointType === 'page' || this._pointType === 'layout'
+      this.type === 'page' || this.type === 'layout'
         ? this._getSelfLocationByAnotherLocationOrInput(location, input)
         : Point0._currentLocation.get()
     for (const clientExecuteAction of this._clientExecuteActions) {
@@ -3272,7 +3272,7 @@ export class Point0<
     let currentInputParsed: InputParsed = this._route ? this._route.parseFlatInput(input) : {}
     let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??=
-      this._pointType === 'page' || this._pointType === 'layout'
+      this.type === 'page' || this.type === 'layout'
         ? this._getSelfLocationByAnotherLocationOrInput(location, input)
         : Point0._currentLocation.get()
     for (const clientExecuteAction of this._clientExecuteActions) {
@@ -3404,7 +3404,7 @@ export class Point0<
     const serverQueryEnabled = this._hasLoader()
     const clientQueryEnabled = this._hasClientLoader()
     if (this._queryResultType === 'infiniteQuery') {
-      throw new Error(`Point ${this._name} is not a finite query`)
+      throw new Error(`Point ${this.name} is not a finite query`)
     }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
@@ -3477,7 +3477,7 @@ export class Point0<
     const serverQueryEnabled = this._hasLoader()
     const clientQueryEnabled = this._hasClientLoader()
     if (this._queryResultType !== 'infiniteQuery') {
-      throw new Error(`Point ${this._name} is not an infinite query`)
+      throw new Error(`Point ${this.name} is not an infinite query`)
     }
     if (!serverQueryEnabled && !clientQueryEnabled) {
       return { data: {}, query: undefined, clientQuery: undefined } as never
@@ -3636,7 +3636,7 @@ export class Point0<
     const url = new URL('/_point0', this._serverurl)
     const method = 'post'
 
-    const outputType = args[2] ?? (this._pointType === 'response' ? 'response' : 'data')
+    const outputType = args[2] ?? (this.type === 'response' ? 'response' : 'data')
     const scope = this._attachedTo.length === 0 ? this._scope : Point0.getPointsManager().scope
 
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
@@ -3645,8 +3645,8 @@ export class Point0<
     const bodySrc = {
       outputType,
       scope,
-      pointType: this._pointType,
-      pointName: this._name,
+      pointType: this.type,
+      pointName: this.name,
       pointInput: input,
     }
     const body = (() => {
@@ -3797,21 +3797,21 @@ export class Point0<
 
   _getServerQueryKey({
     input,
-    outputType = this._pointType === 'response' ? 'response' : 'data',
+    outputType = this.type === 'response' ? 'response' : 'data',
     isInfiniteQuery,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    if (!this._name) {
+    if (!this.name) {
       throw new Error('Point name is not provided')
     }
     return [
       'point0',
       'server',
-      this._pointType,
-      this._name,
+      this.type,
+      this.name,
       outputType,
       isInfiniteQuery ? 'infinite' : 'finite',
       stringify(input),
@@ -3825,37 +3825,29 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
     isInfiniteQuery: boolean
   }): QueryKey {
-    if (!this._name) {
+    if (!this.name) {
       throw new Error('Point name is not provided')
     }
-    return [
-      'point0',
-      'client',
-      this._pointType,
-      this._name,
-      'data',
-      isInfiniteQuery ? 'infinite' : 'finite',
-      stringify(input),
-    ]
+    return ['point0', 'client', this.type, this.name, 'data', isInfiniteQuery ? 'infinite' : 'finite', stringify(input)]
   }
 
   private _getCombinedQueryKey({
     input = {} as never,
-    outputType = this._pointType === 'response' ? 'response' : 'data',
+    outputType = this.type === 'response' ? 'response' : 'data',
     isInfiniteQuery,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    if (!this._name) {
+    if (!this.name) {
       throw new Error('Point name is not provided')
     }
     return [
       'point0',
       'combined',
-      this._pointType,
-      this._name,
+      this.type,
+      this.name,
       outputType,
       isInfiniteQuery ? 'infinite' : 'finite',
       stringify(input),
@@ -3867,7 +3859,7 @@ export class Point0<
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
   ): QueryKey {
-    if (!this._name) {
+    if (!this.name) {
       throw new Error('Point name is not provided')
     }
     const [input, outputType] = args
@@ -4631,7 +4623,7 @@ export class Point0<
       return
     }
     const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
-    if (!suitablePointTypes.includes(this._pointType)) {
+    if (!suitablePointTypes.includes(this.type)) {
       return
     }
     const queryClient = providedQueryClient ?? Point0.getQueryClient()
@@ -4718,7 +4710,7 @@ export class Point0<
       return
     }
     const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
-    if (!suitablePointTypes.includes(this._pointType)) {
+    if (!suitablePointTypes.includes(this.type)) {
       return
     }
     const queryClient = providedQueryClient ?? Point0.getQueryClient()
@@ -4754,7 +4746,7 @@ export class Point0<
     fetchOptions?: FetchOptions
     force?: boolean
   }): Promise<void> {
-    if (this._pointType !== 'page') {
+    if (this.type !== 'page') {
       throw new Error('Point type is not page')
     }
     queryClient ??= Point0.getQueryClient()
@@ -4932,7 +4924,7 @@ export class Point0<
       }
       const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) => p.name === this._name && stringify(p.input) === stringify(inputRaw),
+        (p) => p.name === this.name && stringify(p.input) === stringify(inputRaw),
       )
       if (scrollPositionRestorePolicy !== false) {
         if (scrollPositionRestorePolicy === null) {
@@ -4953,14 +4945,14 @@ export class Point0<
           prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
         } else {
           Point0._prevPageScrollPositions.push({
-            name: this._name,
+            name: this.name,
             input: inputRaw,
             x: currentPageScrollPosition?.x ?? 0,
             y: currentPageScrollPosition?.y ?? 0,
           })
         }
       }
-    }, [this._name, inputRaw, prevLocation, status])
+    }, [this.name, inputRaw, prevLocation, status])
 
     const result = this._useLoader(inputRaw, this._defaultPageQueryOptions)
 
@@ -5177,11 +5169,11 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TLastServerOutput, TLastClientOutput> {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this._scope}_${this.name}_${stringify(input || {})}`,
     )
     if (!value) {
       throw new Error(
-        `Provider value not found on point: provider.${this._name}. You should call getValue only after Provider component is mounted and loaded.`,
+        `Provider value not found on point: provider.${this.name}. You should call getValue only after Provider component is mounted and loaded.`,
       )
     }
     return value
@@ -5191,7 +5183,7 @@ export class Point0<
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalClientData<TLastServerOutput, TLastClientOutput> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this._scope}_${this.name}_${stringify(input || {})}`,
     )
     return value
   }
@@ -5201,10 +5193,10 @@ export class Point0<
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
     if (!this._ProviderReactContext) {
-      throw new Error('ProviderReactContext not found on point: ' + this._name)
+      throw new Error('ProviderReactContext not found on point: ' + this.name)
     }
     if (!this._providerValueSetter) {
-      throw new Error('providerValueSetter not found on point: ' + this._name)
+      throw new Error('providerValueSetter not found on point: ' + this.name)
     }
 
     const { inputRaw, children } = React.useMemo<{
@@ -5251,7 +5243,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this._name}_${stringify(inputRaw)}`, value)
+    SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this.name}_${stringify(inputRaw)}`, value)
     return this._withWrappers({
       component: React.createElement(this._ProviderReactContext.Provider, {
         value,
@@ -5275,7 +5267,7 @@ export class Point0<
       | Array<keyof FinalClientData<TLastServerOutput, TLastClientOutput>>,
   ) {
     if (!this._useValue) {
-      throw new Error('useValue not found on point: ' + this._name)
+      throw new Error('useValue not found on point: ' + this.name)
     }
     return (this as any)._useValue(this, keys)
   }
@@ -5288,7 +5280,7 @@ export class Point0<
   // useValue(): FinalClientData<TLastServerOutput, TLastClientOutput>
   // useValue(keys?: keyof FinalClientData<TLastServerOutput, TLastClientOutput> | Array<keyof FinalClientData<TLastServerOutput, TLastClientOutput>>) {
   //   if (!this._ProviderReactContext) {
-  //     throw new Error('ProviderReactContext not found on point: ' + this._name)
+  //     throw new Error('ProviderReactContext not found on point: ' + this.name)
   //   }
 
   //   if (keys == null) {
