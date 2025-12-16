@@ -144,7 +144,7 @@ oxc lint
 
 remove location from mountable components, becouse in expo for example it is very strange property
 ? remove ctxLoader, and allow drop loaders ? I think it is possible when we have no loaders in root
-
+transformer instance per scope, not global
 
 --------------------------
 ------ after start0 ------

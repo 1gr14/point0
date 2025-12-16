@@ -4373,6 +4373,58 @@ export class Point0<
     throw new Error('No loader found')
   }
 
+  // private _usePresetCacheQuery({
+  //   queryClient,
+  //   queryOptions,
+  //   input,
+  // }: {
+  //   queryClient?: QueryClient
+  //   queryOptions: UseQueryOptions<any, any, any, any>
+  //   input: InputRaw<TRouteDefinition, TInputSchema>
+  // }): void {
+  //   const queryFn = queryOptions.queryFn
+  //   if (typeof queryFn !== 'function') {
+  //     return
+  //   }
+  //   const isAsyncQueryFn = queryFn.constructor.name === 'AsyncFunction'
+  //   if (isAsyncQueryFn) {
+  //     return
+  //   }
+  //   queryClient ??= Point0.getQueryClient()
+  //   const cache = queryClient.getQueryCache()
+  //   const exQuery = cache.find({ queryKey: queryOptions.queryKey as never, stale: false })
+  //   if (exQuery) {
+  //     return
+  //   }
+  //   const query = cache.build(queryClient, {
+  //     queryKey: queryOptions.queryKey,
+  //     queryHash: hashKey(queryOptions.queryKey),
+  //   })
+  //   try {
+  //     const data = (queryFn as any)()
+  //     const fixedData =
+  //       this._queryResultType === 'infiniteQuery'
+  //         ? {
+  //             pages: [data],
+  //             pageParams: [undefined],
+  //           }
+  //         : data
+  //     query.setState({
+  //       data,
+  //       error: null,
+  //       status: 'success',
+  //       fetchStatus: 'idle',
+  //     })
+  //   } catch (error) {
+  //     query.setState({
+  //       data: undefined,
+  //       error: { ...Error0.toJSON(error), name: 'Error0' },
+  //       status: 'error',
+  //       fetchStatus: 'idle',
+  //     })
+  //   }
+  // }
+
   private _useServerQuery({
     input,
     queryOptions,
