@@ -275,10 +275,10 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const suitable = this.getSuitable({
       pointType: point.type,
-      scope: point._scope,
+      scope: point.scope,
       pointName: point.name,
       input,
-      fallbackScope: point._scope,
+      fallbackScope: point.scope,
     })
     const executor = await Executor.create({
       points: suitable.pointsManager,

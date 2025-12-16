@@ -70,7 +70,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.pagesTreeSource = pagesTreeSource
     this.pagesTree = pagesTree
     this.root = root
-    this.scope = this.root._scope
+    this.scope = this.root.scope
     this.baseurl = this.root._baseurl
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
@@ -95,7 +95,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
     return new PointsManager<true, TReadyPointsModule['_root_ready']['point']['Infer']['RequiredCtx']>({
       root: _root_ready.point,
-      scope: _root_ready.point._scope,
+      scope: _root_ready.point.scope,
       collection: routedPoints,
       routes,
       ready: true,
@@ -120,7 +120,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
     return new PointsManager<false, TLazyPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']>({
       root: _root_lazy.point,
-      scope: _root_lazy.point._scope,
+      scope: _root_lazy.point.scope,
       collection: routedPoints,
       routes,
       ready: false,
@@ -208,7 +208,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     const pagesTree = PointsManager.toPagesTree({ points: readyPoints, pagesTreeSource })
     return new PointsManager<true, TRequiredCtx>({
       root: this.root,
-      scope: this.root._scope,
+      scope: this.root.scope,
       collection: readyPoints,
       routes,
       ready: true,

@@ -174,7 +174,7 @@
 //     })
 
 //     this.logger.info(
-//       `Vite dev server for client${this.index > 0 ? ` "${this.points.root._scope}"` : ''} is ready on http://localhost:${this.port}`,
+//       `Vite dev server for client${this.index > 0 ? ` "${this.points.root.scope}"` : ''} is ready on http://localhost:${this.port}`,
 //     )
 //   }
 
@@ -194,8 +194,8 @@
 //       eversion: this.eversion,
 //       request,
 //       parsedUrl,
-//       fallbackScope: this.points.root._scope,
-//       scope: this.points.root._scope,
+//       fallbackScope: this.points.root.scope,
+//       scope: this.points.root.scope,
 //       requiredCtx,
 //       staticDirs: [this.outdir, this.publicdir].flatMap((dir) => (dir !== undefined ? [dir] : [])),
 //       logger: this.logger,

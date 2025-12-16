@@ -194,7 +194,7 @@ export class Point0<
   point: typeof this // this, needed for generator to collect points
 
   toString() {
-    return `${this._scope}.${this.type}.${this.name}`
+    return `${this.scope}.${this.type}.${this.name}`
   }
   toJSON() {
     return this.toString()
@@ -219,7 +219,7 @@ export class Point0<
   private readonly _letsEndPointType: TLetsEndPointType
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
-  readonly _scope: PointsScope
+  readonly scope: PointsScope
   private readonly _attachedTo: PointsScope[]
   private readonly _headFns: MiddlewareHeadFn[]
   private readonly _defaultMutationOptions: UseMutationOptions | undefined
@@ -356,7 +356,7 @@ export class Point0<
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
-    _scope: PointsScope
+    scope: PointsScope
     _attachedTo: PointsScope[]
     _wrappers?: WrapperComponentType[]
     _headFns?: MiddlewareHeadFn[]
@@ -481,7 +481,7 @@ export class Point0<
     _unstableId?: number
   }) {
     this.point = this
-    this._scope = options._scope
+    this.scope = options.scope
     this._attachedTo = options._attachedTo
     this._base = options._base ?? undefined
     this._root = options._root ?? undefined
@@ -647,7 +647,7 @@ export class Point0<
     TLastClientOutput extends LastOutput | UndefinedLastOutput,
   >(overrides: {
     type?: TPointType
-    _scope?: PointsScope
+    scope?: PointsScope
     _attachedTo?: PointsScope[]
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint | LayoutPoint | undefined
@@ -816,7 +816,7 @@ export class Point0<
       TLastServerOutput,
       TLastClientOutput
     >({
-      _scope: overrides._scope ?? this._scope,
+      scope: overrides.scope ?? this.scope,
       _attachedTo: overrides._attachedTo ?? this._attachedTo,
       _base: overrides._base ?? this._base,
       _root: overrides._root ?? this._root,
@@ -891,7 +891,7 @@ export class Point0<
       _headFns: [...this._headFns, ...point.point._headFns],
       _serverExecuteActions: [...this._serverExecuteActions, ...point.point._serverExecuteActions],
       _clientExecuteActions: [...this._clientExecuteActions, ...point.point._clientExecuteActions],
-      _scope: this._scope,
+      scope: this.scope,
       _root: this._root,
       _attachedTo: [],
     }) as never
@@ -943,7 +943,7 @@ export class Point0<
   static create(scope: string, attachedTo?: PointsScope[]) {
     return new Point0({
       type: 'middleware',
-      _scope: scope,
+      scope,
       _attachedTo: attachedTo ?? [],
       _letsEndPointType: 'root',
       _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
@@ -2376,7 +2376,7 @@ export class Point0<
       type: 'root',
       _base: this as never as BasePoint,
       _root: this as never as RootPoint,
-      name: this._scope,
+      name: this.scope,
       _letsEndPointType: undefined,
     })
   }
@@ -3043,7 +3043,7 @@ export class Point0<
   }
 
   _isRoot(): boolean {
-    return this.name === this._scope && this.type === 'root'
+    return this.name === this.scope && this.type === 'root'
   }
 
   private _getErrorComponent<TType extends DestinationComponentType>({
@@ -3658,7 +3658,7 @@ export class Point0<
     const method = 'post'
 
     const outputType = args[2] ?? (this.type === 'response' ? 'response' : 'data')
-    const scope = this._attachedTo.length === 0 ? this._scope : Point0.getPointsManager().scope
+    const scope = this._attachedTo.length === 0 ? this.scope : Point0.getPointsManager().scope
 
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
     const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
@@ -5190,7 +5190,7 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TLastServerOutput, TLastClientOutput> {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this._scope}_${this.name}_${stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(input || {})}`,
     )
     if (!value) {
       throw new Error(
@@ -5204,7 +5204,7 @@ export class Point0<
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalClientData<TLastServerOutput, TLastClientOutput> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this._scope}_${this.name}_${stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(input || {})}`,
     )
     return value
   }
@@ -5264,7 +5264,7 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this._scope}_${this.name}_${stringify(inputRaw)}`, value)
+    SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(inputRaw)}`, value)
     return this._withWrappers({
       component: React.createElement(this._ProviderReactContext.Provider, {
         value,
