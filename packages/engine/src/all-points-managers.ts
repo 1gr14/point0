@@ -133,7 +133,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     executor: Executor
   }> {
     parsedUrl ??= parseUrl(request.url)
-    const task: FetchTask | undefined = await (async () => {
+    const task: FetchTaskNotTransformed | undefined = await (async () => {
       if (parsedUrl.urlObj.pathname !== '/_point0') {
         return undefined
       }
@@ -175,7 +175,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         const {
           type: pointType,
           output: outputType,
-          input: pointInputTransformed,
+          input: pointInputNotTransformed,
           scope,
           name: pointName,
         } = bodyRaw as Record<string, unknown>
@@ -192,18 +192,17 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
         }
         if (
-          !pointInputTransformed ||
-          typeof pointInputTransformed !== 'object' ||
-          Array.isArray(pointInputTransformed)
+          !pointInputNotTransformed ||
+          typeof pointInputNotTransformed !== 'object' ||
+          Array.isArray(pointInputNotTransformed)
         ) {
-          throw new Error(`Invalid pointInput: must be an object, got ${typeof pointInputTransformed}`)
+          throw new Error(`Invalid pointInput: must be an object, got ${typeof pointInputNotTransformed}`)
         }
         try {
-          const pointInput = Point0.transformer.deserialize<InputRaw>(pointInputTransformed)
           return {
             pointType: pointType as (typeof validPointTypes)[number],
             outputType: outputType as (typeof validOutputTypes)[number],
-            pointInput,
+            pointInputNotTransformed,
             scope,
             pointName,
           }
@@ -224,7 +223,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       scope: task?.scope || scope,
       pointName: task?.pointName,
       pageLocation: !task ? location : undefined,
-      input: task?.pointInput,
+      input: task?.pointInputNotTransformed,
       fallbackScope,
     })
     const executor = await Executor.create({
@@ -343,6 +342,9 @@ export type FetchTask = {
   pointInput: InputRaw
   scope: PointsScope
   pointName: PointName
+}
+export type FetchTaskNotTransformed = Omit<FetchTask, 'pointInput'> & {
+  pointInputNotTransformed: object
 }
 
 export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {

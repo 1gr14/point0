@@ -153,7 +153,7 @@ export const engineFetch = async ({
           input,
         })
         const dehydratedState = await executor.getQueryClientDehydratedState()
-        return new Response(Point0.transformer.stringify({ dehydratedState }), {
+        return new Response(executor.transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
         })
@@ -184,7 +184,7 @@ export const engineFetch = async ({
     }
 
     // else we try to get endpoint json
-    return new Response(Point0.transformer.stringify(executeResult.output), {
+    return new Response(executor.transformer.stringify(executeResult.output), {
       headers: { 'Content-Type': 'application/json' },
       status: executeResult.status,
     })

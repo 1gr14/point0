@@ -221,6 +221,7 @@ export class Point0<
   private readonly _letsEndPointType: TLetsEndPointType
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
+  readonly _tranformer: DataTransformerExtended
   readonly scope: PointsScope
   private readonly _attachedTo: PointsScope[]
   private readonly _headFns: MiddlewareHeadFn[]
@@ -358,6 +359,7 @@ export class Point0<
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
+    _tranformer?: DataTransformerExtended | undefined
     scope: PointsScope
     _attachedTo: PointsScope[]
     _wrappers?: WrapperComponentType[]
@@ -489,6 +491,12 @@ export class Point0<
     this._root = options._root ?? undefined
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
+    this._tranformer =
+      options._tranformer ??
+      Point0._toExtendedTransformer({
+        serialize: (data) => data,
+        deserialize: (data) => data,
+      })
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
     this.type = options.type
@@ -658,6 +666,7 @@ export class Point0<
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
+    _tranformer?: DataTransformerExtended | null
     _headFns?: MiddlewareHeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
@@ -828,6 +837,7 @@ export class Point0<
       _baseurl: overrides._baseurl ?? this._baseurl,
       inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
       _serverInputSchema: overrides._serverInputSchema ?? this._serverInputSchema,
+      _tranformer: overrides._tranformer ?? this._tranformer,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _headFns: overrides._headFns ?? this._headFns,
       _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
@@ -3609,7 +3619,7 @@ export class Point0<
         return { inputParsed: result.data, inputParseError: null }
       })()
       return { inputRaw, ...parsed }
-    }, [Point0.transformer.stringify(args[0])])
+    }, [this._tranformer.stringify(args[0])])
 
     if (!this._hasLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
@@ -3670,7 +3680,7 @@ export class Point0<
       scope,
       type: this.type,
       name: this.name,
-      input: Point0.transformer.serialize(input),
+      input: this._tranformer.serialize(input),
     }
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
@@ -3702,7 +3712,7 @@ export class Point0<
     }
     try {
       const json = await res.json()
-      const data = Point0.transformer.deserialize(json)
+      const data = this._tranformer.deserialize(json)
       if (res.ok) {
         return data as FetchOutput<TLastServerOutput>
       }
@@ -3835,7 +3845,7 @@ export class Point0<
       this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      Point0.transformer.stringify(input) as string,
+      this._tranformer.stringify(input) as string,
       outputType,
     ]
   }
@@ -3854,7 +3864,7 @@ export class Point0<
       this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
-      Point0.transformer.stringify(input) as string,
+      this._tranformer.stringify(input) as string,
       'data',
     ]
   }
@@ -3875,7 +3885,7 @@ export class Point0<
       this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      Point0.transformer.stringify(input) as string,
+      this._tranformer.stringify(input) as string,
       outputType,
     ]
   }
@@ -4999,7 +5009,7 @@ export class Point0<
       }
       const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) => p.name === this.name && Point0.transformer.stringify(p.input) === Point0.transformer.stringify(inputRaw),
+        (p) => p.name === this.name && this._tranformer.stringify(p.input) === this._tranformer.stringify(inputRaw),
       )
       if (scrollPositionRestorePolicy !== false) {
         if (scrollPositionRestorePolicy === null) {
@@ -5244,7 +5254,7 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TLastServerOutput, TLastClientOutput> {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.transformer.stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
     )
     if (!value) {
       throw new Error(
@@ -5258,7 +5268,7 @@ export class Point0<
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalClientData<TLastServerOutput, TLastClientOutput> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.transformer.stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
     )
     return value
   }
@@ -5319,7 +5329,7 @@ export class Point0<
     }
     const value = this._providerValueSetter(result)
     SuperStore.setWeak(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.transformer.stringify(inputRaw)}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
       value,
     )
     return this._withWrappers({
@@ -5450,12 +5460,7 @@ export class Point0<
 
   static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
 
-  // superjson helpers
-
-  static transformer: DataTransformerExtended = Point0._toExtendedTransformer({
-    serialize: (data) => data,
-    deserialize: (data) => data,
-  })
+  // transformer
 
   private static _toExtendedTransformer(transformer: DataTransformer): DataTransformerExtended {
     return {
@@ -5464,11 +5469,6 @@ export class Point0<
       stringify: (data) => stringify(transformer.serialize(data)),
       parse: <TData>(stringified: string): TData => transformer.deserialize(JSON.parse(stringified)) as TData,
     }
-  }
-
-  static setTransformer(transformer: DataTransformer): DataTransformerExtended {
-    Point0.transformer = Point0._toExtendedTransformer(transformer)
-    return Point0.transformer
   }
 
   transformer(
@@ -5490,8 +5490,9 @@ export class Point0<
     TLastServerOutput,
     TLastClientOutput
   > {
-    Point0.setTransformer(transformer)
-    return this._continue({}) as never
+    return this._continue({
+      _tranformer: Point0._toExtendedTransformer(transformer),
+    }) as never
   }
 
   // client-server helpers

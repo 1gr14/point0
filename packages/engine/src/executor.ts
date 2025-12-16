@@ -20,6 +20,7 @@ import type {
   ServerExecuteAction,
   ServerExecuteResult,
   WithMaybeOptionalReqiredCtx,
+  DataTransformerExtended,
 } from '@point0/core'
 import { Point0, PointsManager, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
@@ -33,6 +34,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
+  transformer: DataTransformerExtended
   serverGlobalState: {
     __POINT0_SCOPE__: PointsScope
     __POINT0_QUERY_CLIENT__: QueryClient
@@ -59,6 +61,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
   }) {
     this.points = points
+    this.transformer = points.root._tranformer
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
@@ -446,7 +449,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  static parseQueryKey(queryKey: OriginalQueryKey | QueryKey):
+  static parseQueryKey(
+    queryKey: OriginalQueryKey | QueryKey,
+    transformer: DataTransformerExtended,
+  ):
     | {
         isServer: boolean
         isClient: boolean
@@ -480,7 +486,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pointName,
       outputType,
       isInfiniteQuery: finiteOrInfinite === 'infinite',
-      input: Point0.transformer.parse<InputRaw>(inputStringified),
+      input: transformer.parse<InputRaw>(inputStringified),
     }
   }
 
@@ -518,7 +524,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (seenQueryHashes.has(hash)) {
           return []
         }
-        const parsedQueryKey = Executor.parseQueryKey(query.queryKey)
+        const parsedQueryKey = Executor.parseQueryKey(query.queryKey, this.transformer)
         if (!parsedQueryKey) {
           return []
         }

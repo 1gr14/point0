@@ -1,5 +1,5 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import type { IfAnyThenElse } from './types.js'
+import type { DataTransformerExtended, IfAnyThenElse } from './types.js'
 import { ClientServerHelpers } from './client-server.js'
 import { Point0 } from './index.js'
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
@@ -294,22 +294,22 @@ export class SuperStore {
     return dehydrated
   }
 
-  static dehydrateToString(): string {
-    return Point0.transformer.stringify(SuperStore.dehydrate()) as string
+  static dehydrateToString(transformer: DataTransformerExtended): string {
+    return transformer.stringify(SuperStore.dehydrate()) as string
   }
 
   static hydrate(dehydrated: Record<string, unknown>): void {
     SuperStore.dehydrated = dehydrated
   }
 
-  static hydrateFromString(dehydratedString: string): void {
-    const dehydrated = Point0.transformer.parse<Record<string, unknown>>(dehydratedString)
+  static hydrateFromString(dehydratedString: string, transformer: DataTransformerExtended): void {
+    const dehydrated = transformer.parse<Record<string, unknown>>(dehydratedString)
     SuperStore.dehydrated = dehydrated
   }
 
-  static hydrateFromWindow(): void {
+  static hydrateFromWindow(transformer: DataTransformerExtended): void {
     if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-      SuperStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_SUPER_STORE__)
+      SuperStore.hydrateFromString((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, transformer)
     }
   }
 
