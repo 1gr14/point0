@@ -74,7 +74,7 @@ export const BestIdeaComponent = client
         <p>CLD: {data.clD}</p>
         <p>CLDD: {data.clDD}</p>
         <p>SLDATE: {typeof data.slDate}</p>
-        <p>CLLLL: {typeof data.cllll}</p>
+        {/* <p>CLLLL: {typeof data.cllll}</p> */}
         <p>
           <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
         </p>

@@ -447,10 +447,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  static parseQueryKey(
-    queryKey: OriginalQueryKey | QueryKey,
-    transformer: DataTransformerExtended,
-  ):
+  static parseQueryKey({
+    queryKey,
+    transformer,
+  }: {
+    queryKey: OriginalQueryKey | QueryKey
+    transformer: DataTransformerExtended
+  }):
     | {
         isServer: boolean
         isClient: boolean
@@ -522,7 +525,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (seenQueryHashes.has(hash)) {
           return []
         }
-        const parsedQueryKey = Executor.parseQueryKey(query.queryKey, this.pointsManager.transformer)
+        const parsedQueryKey = Executor.parseQueryKey({
+          queryKey: query.queryKey,
+          transformer: this.pointsManager.transformer,
+        })
         if (!parsedQueryKey) {
           return []
         }
