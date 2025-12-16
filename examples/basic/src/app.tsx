@@ -2,7 +2,7 @@ import { Unhead } from '@point0/core'
 import { Router, RouterRoutes } from '@point0/wouter'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { clientCtx1, clientCtx2 } from './lib/client-ctx'
-import { queryClient } from './lib/query-client'
+import { queryClient } from './lib/client'
 
 export default function App() {
   return (

@@ -2,11 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-Скоуп в квери кей, и упорядочить кверикей
-check if superjson works correctly with query and mutation and eversion store
-.superjson(superjson)
-Стрингифай всегда делать через суперджейсон
-
 Так если клиентлоадер сунк, то вот и всё, то чего он лоадинг там выдумывает, пусть прямо статично свой кэш меняет, а изначально его дата в юз Стейт положим
 
 .ssr(), and remove ssr option from engine

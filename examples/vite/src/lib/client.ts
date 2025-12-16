@@ -1,7 +1,9 @@
 import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
+import superjson from 'superjson'
 
 export const client = Point0.create('client')
+  .transformer(superjson)
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   .serverurl(process.env.SOURCE_BASE_URL!)
   .ctx({

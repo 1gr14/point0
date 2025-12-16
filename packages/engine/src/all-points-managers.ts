@@ -199,7 +199,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           throw new Error(`Invalid pointInput: must be an object, got ${typeof pointInputTransformed}`)
         }
         try {
-          const pointInput: InputRaw = Point0.deserializeBySuperjson(pointInputTransformed as any)
+          const pointInput = Point0.transformer.deserialize<InputRaw>(pointInputTransformed)
           return {
             pointType: pointType as (typeof validPointTypes)[number],
             outputType: outputType as (typeof validOutputTypes)[number],

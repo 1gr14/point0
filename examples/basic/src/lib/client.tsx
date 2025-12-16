@@ -1,7 +1,12 @@
 import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
+import { QueryClient } from '@tanstack/react-query'
+import superjson from 'superjson'
+
+export const queryClient = Point0.defineQueryClient(() => new QueryClient())
 
 export const client = Point0.create('client')
+  .transformer(superjson)
   .requireCtx<{ request: Request }>()
   .ctx({
     prisma,

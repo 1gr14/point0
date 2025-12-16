@@ -480,7 +480,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pointName,
       outputType,
       isInfiniteQuery: finiteOrInfinite === 'infinite',
-      input: Point0.parseBySuperjson(inputStringified),
+      input: Point0.transformer.parse<InputRaw>(inputStringified),
     }
   }
 

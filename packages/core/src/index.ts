@@ -30,8 +30,6 @@ import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
 import { stringify } from 'safe-stable-stringify'
-import type { SuperJSONResult } from 'superjson'
-import SuperJSON from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
@@ -55,6 +53,8 @@ import type {
   CtxLoaderFn,
   CurrentRouteDefinition,
   Data,
+  DataTransformer,
+  DataTransformerExtended,
   DestinationComponentType,
   EmptyCtx,
   EmptyData,
@@ -3609,7 +3609,7 @@ export class Point0<
         return { inputParsed: result.data, inputParseError: null }
       })()
       return { inputRaw, ...parsed }
-    }, [stringify(Point0.serializeBySuperjson(args[0]))])
+    }, [Point0.transformer.stringify(args[0])])
 
     if (!this._hasLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
@@ -3670,7 +3670,7 @@ export class Point0<
       scope,
       type: this.type,
       name: this.name,
-      input: Point0.serializeBySuperjson(input),
+      input: Point0.transformer.serialize(input),
     }
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
@@ -3702,7 +3702,7 @@ export class Point0<
     }
     try {
       const json = await res.json()
-      const data = Point0.deserializeBySuperjson(json)
+      const data = Point0.transformer.deserialize(json)
       if (res.ok) {
         return data as FetchOutput<TLastServerOutput>
       }
@@ -3835,7 +3835,7 @@ export class Point0<
       this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      stringify(Point0.serializeBySuperjson(input)),
+      Point0.transformer.stringify(input) as string,
       outputType,
     ]
   }
@@ -3854,7 +3854,7 @@ export class Point0<
       this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
-      stringify(Point0.serializeBySuperjson(input)),
+      Point0.transformer.stringify(input) as string,
       'data',
     ]
   }
@@ -3875,7 +3875,7 @@ export class Point0<
       this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      stringify(Point0.serializeBySuperjson(input)),
+      Point0.transformer.stringify(input) as string,
       outputType,
     ]
   }
@@ -4947,9 +4947,7 @@ export class Point0<
       }
       const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) =>
-          p.name === this.name &&
-          stringify(Point0.serializeBySuperjson(p.input)) === stringify(Point0.serializeBySuperjson(inputRaw)),
+        (p) => p.name === this.name && Point0.transformer.stringify(p.input) === Point0.transformer.stringify(inputRaw),
       )
       if (scrollPositionRestorePolicy !== false) {
         if (scrollPositionRestorePolicy === null) {
@@ -5194,7 +5192,7 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TLastServerOutput, TLastClientOutput> {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(Point0.serializeBySuperjson(input || {}))}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.transformer.stringify(input || {})}`,
     )
     if (!value) {
       throw new Error(
@@ -5208,7 +5206,7 @@ export class Point0<
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalClientData<TLastServerOutput, TLastClientOutput> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(Point0.serializeBySuperjson(input || {}))}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.transformer.stringify(input || {})}`,
     )
     return value
   }
@@ -5269,7 +5267,7 @@ export class Point0<
     }
     const value = this._providerValueSetter(result)
     SuperStore.setWeak(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(Point0.serializeBySuperjson(inputRaw))}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.transformer.stringify(inputRaw)}`,
       value,
     )
     return this._withWrappers({
@@ -5402,29 +5400,46 @@ export class Point0<
 
   // superjson helpers
 
-  private static _superjson: Omit<
-    SuperJSON,
-    'dedupe' | 'classRegistry' | 'symbolRegistry' | 'customTransformerRegistry' | 'allowedErrorProps'
-  > = SuperJSON
+  static transformer: DataTransformerExtended = Point0._toExtendedTransformer({
+    serialize: (data) => data,
+    deserialize: (data) => data,
+  })
 
-  static defineSuperjson(superjson: SuperJSON): void {
-    Point0._superjson = superjson
+  private static _toExtendedTransformer(transformer: DataTransformer): DataTransformerExtended {
+    return {
+      serialize: transformer.serialize.bind(transformer),
+      deserialize: transformer.deserialize.bind(transformer) as <TData>(data: unknown) => TData,
+      stringify: (data) => stringify(transformer.serialize(data)),
+      parse: <TData>(stringified: string): TData => transformer.deserialize(JSON.parse(stringified)) as TData,
+    }
   }
 
-  static serializeBySuperjson(data: unknown): SuperJSONResult {
-    return Point0._superjson.serialize(data)
+  static setTransformer(transformer: DataTransformer): DataTransformerExtended {
+    Point0.transformer = Point0._toExtendedTransformer(transformer)
+    return Point0.transformer
   }
 
-  static deserializeBySuperjson<TData>(serialized: SuperJSONResult): TData {
-    return Point0._superjson.deserialize(serialized)
-  }
-
-  static parseBySuperjson<TData>(stringified: string): TData {
-    return Point0._superjson.parse(stringified)
-  }
-
-  static stringifyBySuperjson(data: unknown): string {
-    return Point0._superjson.stringify(data)
+  transformer(
+    transformer: DataTransformer,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    TClientResponse,
+    TQueryResultType,
+    TProps,
+    TLastServerOutput,
+    TLastClientOutput
+  > {
+    Point0.setTransformer(transformer)
+    return this._continue({}) as never
   }
 
   // client-server helpers

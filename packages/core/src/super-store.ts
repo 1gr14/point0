@@ -295,7 +295,7 @@ export class SuperStore {
   }
 
   static dehydrateToString(): string {
-    return Point0.stringifyBySuperjson(SuperStore.dehydrate())
+    return Point0.transformer.stringify(SuperStore.dehydrate()) as string
   }
 
   static hydrate(dehydrated: Record<string, unknown>): void {
@@ -303,7 +303,7 @@ export class SuperStore {
   }
 
   static hydrateFromString(dehydratedString: string): void {
-    const dehydrated = Point0.parseBySuperjson<Record<string, unknown>>(dehydratedString)
+    const dehydrated = Point0.transformer.parse<Record<string, unknown>>(dehydratedString)
     SuperStore.dehydrated = dehydrated
   }
 

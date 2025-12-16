@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { AnyPoint, AppComponent, InputRaw } from '@point0/core'
-import { Point0, SuperStore } from '@point0/core'
+import { SuperStore } from '@point0/core'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'

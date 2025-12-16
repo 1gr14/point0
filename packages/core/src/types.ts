@@ -1333,6 +1333,19 @@ export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
 export type AppProps = { points: PointsManager }
 export type AppComponent = (props: AppProps) => React.ReactElement
 
+// transformer
+
+export type DataTransformer = {
+  serialize: (data: any) => any
+  deserialize: (data: any) => any
+}
+export type DataTransformerExtended = {
+  serialize: (data: unknown) => unknown
+  deserialize: <TData = unknown>(data: unknown) => TData
+  stringify: (data: unknown) => string | undefined
+  parse: <TData = unknown>(stringified: string) => TData
+}
+
 // nice middle point
 
 export type CutServerLoadersIfClientMiddleware<
@@ -1377,6 +1390,7 @@ export type NiceRootMiddlePoint<
   CutServerLoadersIfClientMiddleware<
     TPointType,
     | 'root'
+    | 'transformer'
     | 'requireCtx'
     | 'serverurl'
     | 'baseurl'
