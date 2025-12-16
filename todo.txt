@@ -7,7 +7,9 @@ check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson)
 Стрингифай всегда делать через суперджейсон
 
-add point self to loader and to ctx and to loadrCtx options
+add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
+
+.onError, .onClientError
 
 .ssr(), and remove ssr option from engine
 
@@ -67,10 +69,10 @@ make clientserver import helpers without class, like just fns, and allow pruner 
 START0
 start0 without mono0
 refactor Error0; check ConvexError style; base has only cause recursion, everything else is plugins like isFetchError
-refactor Meta0; Мета0 это просто асунк стор, который позволяет прокинуть мету в глобальщину, и тогда никакое трио не нужно
-refactor Ctx0
-refactor Env0
-refactor Logger0
+refactor Meta0; Мета0 это просто асунк стор, который позволяет прокинуть мету в глобальщину, и тогда никакое трио не нужно; Meta0 and meta0 with poor data exists, but we can createMeta0 → MyMeta0, and do const myMeta0 = MyMeta0.extract() and MyMeta0.provide(() => {})
+? refactor Ctx0 → init point enough
+refactor Env0 → just cool validation helpers
+? refactor Logger0 → just use as is Logger with global Meta0 provided
 
 drizzle
 unwind and tailwind
@@ -103,7 +105,6 @@ pruner: P0.ifClientServer({client: , server: })
 pruner: P0.ifEnv({browser: , mobile: , electronRenderer: , electronMain: })
 check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
 normzliae all errors texts everyhere
-.onServerError, .onClientError, .onServerExecute, .onClientExecute, 
 ? expose point in NicePoint
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
@@ -144,6 +145,7 @@ oxc lint
 
 remove location from mountable components, becouse in expo for example it is very strange property
 
+
 --------------------------
 ------ after start0 ------
 --------------------------
@@ -157,10 +159,12 @@ cli extract point by type and name, so agent can see errors right in terminal
 .doc(string) в любой поинт можно добавить
 В мдкс для мсп пути к файлам указывать через импорт с макросом, который заменяет их на просто строку полного пути, чтобы не сбивались пути при рефакторе
 
-settings object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
+config object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
 И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
 И даже можно дианмически, принимая на вход в функцию поинт, реквест, инпут, просто запускаем сбор настроек перед прогонкой поинта, то есть все лоадеры и контексты идут после определения сеттингов
-settings({} | ()=>{}), clientSettings({} | ()=>{})
+config({}), clientConfig({})
+.before((config) => {config.x = 'newX'}), if you want dynamically change config, and also .clientBefore()
+and in loader settings is immutable
 
 ! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn

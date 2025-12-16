@@ -193,6 +193,19 @@ export class Point0<
 
   point: typeof this // this, needed for generator to collect points
 
+  toString() {
+    return `${this._scope}.${this.type}.${this.name}`
+  }
+  toJSON() {
+    return this.toString()
+  }
+  [Symbol.toPrimitive](hint: 'string' | 'number' | 'default') {
+    if (hint === 'string') {
+      return this.toString()
+    }
+    return null
+  }
+
   private static _prevUnstableId = 0
   private static _getNextUnstableId(): number {
     return Point0._prevUnstableId++
@@ -2506,6 +2519,9 @@ export class Point0<
     })
     const pageWithPoint = point._Page.bind(point)
     Object.assign(pageWithPoint, {
+      toString: point.toString.bind(point),
+      toJSON: point.toJSON.bind(point),
+      [Symbol.toPrimitive]: point[Symbol.toPrimitive].bind(point),
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
@@ -2557,6 +2573,9 @@ export class Point0<
     })
     const componentWithPoint = point._Component
     Object.assign(componentWithPoint, {
+      toString: point.toString.bind(point),
+      [Symbol.toPrimitive]: point[Symbol.toPrimitive].bind(point),
+      toJSON: point.toJSON.bind(point),
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
@@ -2618,6 +2637,8 @@ export class Point0<
     })
     const layoutWithPoint = point._Layout
     Object.assign(layoutWithPoint, {
+      toString: point.toString.bind(point),
+      toJSON: point.toJSON.bind(point),
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
