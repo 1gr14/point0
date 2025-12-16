@@ -64,12 +64,13 @@ export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends U
 // export type QueryKey = readonly [string, ...string[]]
 export type QueryKey = readonly [
   point0: 'point0',
+  scope: PointsScope,
+  type: PointType,
+  name: PointName,
   serverOrClient: 'server' | 'client' | 'combined',
-  pointType: PointType,
-  pointName: PointName,
-  outputType: FetchOutputType,
   finiteOrInfinite: 'finite' | 'infinite',
-  input: string,
+  inputStringified: string,
+  outputType: FetchOutputType,
 ]
 
 export type Infer<
@@ -1635,6 +1636,7 @@ export type NiceQueryMiddlePoint<
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
+    | 'query'
     | 'fetchOptions'
     | 'input'
     | 'ctx'
@@ -1644,7 +1646,6 @@ export type NiceQueryMiddlePoint<
     | 'onPrefetch'
     | 'point'
     | 'Infer'
-    | 'query'
   >
 >
 
@@ -1684,6 +1685,7 @@ export type NiceInfiniteQueryMiddlePoint<
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
+    | 'infiniteQuery'
     | 'fetchOptions'
     | 'input'
     | 'ctx'
@@ -1693,7 +1695,6 @@ export type NiceInfiniteQueryMiddlePoint<
     | 'onPrefetch'
     | 'point'
     | 'Infer'
-    | 'infiniteQuery'
   >
 >
 

@@ -1,11 +1,10 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { AnyPoint, AppComponent, InputRaw } from '@point0/core'
-import { SuperStore } from '@point0/core'
+import { Point0, SuperStore } from '@point0/core'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream } from 'react-dom/server'
-import superjson from 'superjson'
 import type { ResolvableHead } from 'unhead/types'
 import type { Executor } from './executor.js'
 
@@ -199,8 +198,7 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const dehydrated = SuperStore.dehydrate()
-    const escapedJS = escapeForInlineJSON(superjson.stringify(dehydrated))
+    const escapedJS = escapeForInlineJSON(SuperStore.dehydrateToString())
     const compiledPrefix = (prefix ?? '').replace(
       '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
       `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">

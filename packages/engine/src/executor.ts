@@ -450,6 +450,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     | {
         isServer: boolean
         isClient: boolean
+        scope: PointsScope
         pointType: EndPointType
         pointName: PointName
         outputType: string
@@ -457,7 +458,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         input: InputRaw
       }
     | undefined {
-    const [check, serverOrClient, pointType, pointName, outputType, finiteOrInfinite, input] = queryKey
+    const [check, scope, pointType, pointName, serverOrClient, finiteOrInfinite, inputStringified, outputType] =
+      queryKey
     if (
       check !== 'point0' ||
       typeof serverOrClient !== 'string' ||
@@ -465,18 +467,20 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       typeof pointName !== 'string' ||
       typeof outputType !== 'string' ||
       typeof finiteOrInfinite !== 'string' ||
-      typeof input !== 'string'
+      typeof inputStringified !== 'string' ||
+      typeof scope !== 'string'
     ) {
       return undefined
     }
     return {
       isServer: serverOrClient === 'server' || serverOrClient === 'combined',
       isClient: serverOrClient === 'client' || serverOrClient === 'combined',
+      scope,
       pointType: pointType as EndPointType,
       pointName,
       outputType,
       isInfiniteQuery: finiteOrInfinite === 'infinite',
-      input: JSON.parse(input) as InputRaw,
+      input: Point0.parseBySuperjson(inputStringified),
     }
   }
 
@@ -537,6 +541,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       for (const suitableMarker of suitableMarkers) {
         const suitable = this.points.getSuitablePoint({
+          scope: suitableMarker.scope,
           pointType: suitableMarker.pointType,
           pointName: suitableMarker.pointName,
           input: suitableMarker.input,

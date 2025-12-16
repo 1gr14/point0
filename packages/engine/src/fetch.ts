@@ -1,5 +1,5 @@
 import type { ParsedUrl, PointsScope, RequiredCtx } from '@point0/core'
-import { parseUrl } from '@point0/core'
+import { parseUrl, Point0 } from '@point0/core'
 import type { AllPointsManagers } from './all-points-managers.js'
 import type { ClientBun } from './client.js'
 import type { EngineLogger } from './config.js'
@@ -153,7 +153,7 @@ export const engineFetch = async ({
           input,
         })
         const dehydratedState = await executor.getQueryClientDehydratedState()
-        return new Response(JSON.stringify({ dehydratedState }), {
+        return new Response(Point0.stringifyBySuperjson({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
         })
@@ -184,7 +184,7 @@ export const engineFetch = async ({
     }
 
     // else we try to get endpoint json
-    return new Response(JSON.stringify(executeResult.output), {
+    return new Response(Point0.stringifyBySuperjson(executeResult.output), {
       headers: { 'Content-Type': 'application/json' },
       status: executeResult.status,
     })

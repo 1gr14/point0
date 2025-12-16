@@ -1,7 +1,7 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import superjson from 'superjson'
 import type { IfAnyThenElse } from './types.js'
 import { ClientServerHelpers } from './client-server.js'
+import { Point0 } from './index.js'
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
   (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||
   (ClientServerHelpers.isClient
@@ -294,13 +294,17 @@ export class SuperStore {
     return dehydrated
   }
 
+  static dehydrateToString(): string {
+    return Point0.stringifyBySuperjson(SuperStore.dehydrate())
+  }
+
   static hydrate(dehydrated: Record<string, unknown>): void {
     SuperStore.dehydrated = dehydrated
   }
 
   static hydrateFromString(dehydratedString: string): void {
-    const dehydrated = superjson.parse(dehydratedString)
-    SuperStore.dehydrated = dehydrated as Record<string, unknown>
+    const dehydrated = Point0.parseBySuperjson<Record<string, unknown>>(dehydratedString)
+    SuperStore.dehydrated = dehydrated
   }
 
   static hydrateFromWindow(): void {

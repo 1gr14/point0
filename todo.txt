@@ -7,11 +7,11 @@ check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson)
 Стрингифай всегда делать через суперджейсон
 
-add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
-
-.onError, .onClientError
+Так если клиентлоадер сунк, то вот и всё, то чего он лоадинг там выдумывает, пусть прямо статично свой кэш меняет, а изначально его дата в юз Стейт положим
 
 .ssr(), and remove ssr option from engine
+
+.lazy()
 
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not.
 
@@ -134,6 +134,10 @@ fetchWithCancel
 cancel by input, or cancel all
 on fetch error maybe no json, then if it is thore, do res.text()
 
+(after Error0 plugin, which allows add point to error, like we can add status)
+add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
+.onError, .onClientError
+
 Move type errors to its own types, so we can reuse them
 
 bunup
@@ -144,6 +148,7 @@ oxc lint
 -------------------------
 
 remove location from mountable components, becouse in expo for example it is very strange property
+? remove ctxLoader, and allow drop loaders ? I think it is possible when we have no loaders in root
 
 
 --------------------------

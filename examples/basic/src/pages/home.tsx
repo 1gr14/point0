@@ -49,7 +49,7 @@ export const BestIdeaComponent = client
   }))
   .props<{ cta: string }>()
   .clientLoader(async (o) => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 1))
     return {
       ...o.data,
       cllll: new Date(),

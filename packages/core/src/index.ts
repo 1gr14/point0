@@ -155,6 +155,8 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import SuperJSON from 'superjson'
+import type { SuperJSONResult } from 'superjson'
 
 export class Point0<
   TPointType extends PointType,
@@ -3607,7 +3609,7 @@ export class Point0<
         return { inputParsed: result.data, inputParseError: null }
       })()
       return { inputRaw, ...parsed }
-    }, [stringify(args[0])])
+    }, [Point0.stringifyBySuperjson(args[0])])
 
     if (!this._hasLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
@@ -3664,11 +3666,11 @@ export class Point0<
     const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
 
     const bodySrc = {
-      outputType,
+      output: outputType,
       scope,
-      pointType: this.type,
-      pointName: this.name,
-      pointInput: input,
+      type: this.type,
+      name: this.name,
+      input: Point0.serializeBySuperjson(input),
     }
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
@@ -3678,13 +3680,13 @@ export class Point0<
           if (value instanceof File || value instanceof Blob) {
             formData.append(key, value)
           } else if (value !== undefined) {
-            formData.append(key, stringify(value))
+            formData.append(key, JSON.stringify(value))
           }
         }
         return formData
       } else {
         headers.set('Content-Type', 'application/json')
-        return stringify(bodySrc)
+        return JSON.stringify(bodySrc)
       }
     })()
 
@@ -3700,10 +3702,11 @@ export class Point0<
     }
     try {
       const json = await res.json()
+      const data = Point0.deserializeBySuperjson(json)
       if (res.ok) {
-        return json
+        return data as FetchOutput<TLastServerOutput>
       }
-      throw Error0.from(json, {
+      throw Error0.from(data, {
         httpStatus: res.status,
       })
     } catch (error) {
@@ -3825,17 +3828,15 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    if (!this.name) {
-      throw new Error('Point name is not provided')
-    }
     return [
       'point0',
-      'server',
+      this.scope,
       this.type,
       this.name,
-      outputType,
+      'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      stringify(input),
+      Point0.stringifyBySuperjson(input),
+      outputType,
     ]
   }
 
@@ -3846,10 +3847,16 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
     isInfiniteQuery: boolean
   }): QueryKey {
-    if (!this.name) {
-      throw new Error('Point name is not provided')
-    }
-    return ['point0', 'client', this.type, this.name, 'data', isInfiniteQuery ? 'infinite' : 'finite', stringify(input)]
+    return [
+      'point0',
+      this.scope,
+      this.type,
+      this.name,
+      'client',
+      isInfiniteQuery ? 'infinite' : 'finite',
+      Point0.stringifyBySuperjson(input),
+      'data',
+    ]
   }
 
   private _getCombinedQueryKey({
@@ -3861,17 +3868,15 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    if (!this.name) {
-      throw new Error('Point name is not provided')
-    }
     return [
       'point0',
-      'combined',
+      this.scope,
       this.type,
       this.name,
-      outputType,
+      'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      stringify(input),
+      Point0.stringifyBySuperjson(input),
+      outputType,
     ]
   }
 
@@ -3880,9 +3885,6 @@ export class Point0<
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, _outputType?: FetchOutputType]
   ): QueryKey {
-    if (!this.name) {
-      throw new Error('Point name is not provided')
-    }
     const [input, outputType] = args
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasLoader()
@@ -4029,7 +4031,7 @@ export class Point0<
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
@@ -4040,7 +4042,7 @@ export class Point0<
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
@@ -4056,8 +4058,8 @@ export class Point0<
   > {
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasLoader()
-    const [input, queryOptions, settings = {}] = args
-    const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = settings
+    const [input, queryOptions, options = {}] = args
+    const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedQueryOptions({
         input: input as never,
@@ -4305,7 +4307,7 @@ export class Point0<
                 unknown
               >
             | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
@@ -4325,7 +4327,7 @@ export class Point0<
                 unknown
               >
             | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions | undefined
@@ -4340,8 +4342,8 @@ export class Point0<
     InfiniteData<FinalClientData<TLastServerOutput, TLastClientOutput>>,
     QueryKey
   > {
-    const [input, infiniteQueryOptions, settings = {}] = args
-    const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = settings
+    const [input, infiniteQueryOptions, options = {}] = args
+    const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     const hasClientLoader = this._hasClientLoader()
     const hasServerLoader = this._hasLoader()
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
@@ -4529,7 +4531,7 @@ export class Point0<
         }
         const serverDataOrResponse = await (async () => {
           if (this._hasLoader()) {
-            return await this.fetch(input as never, fetchOptions)
+            return await this.fetch(input as never, fetchOptions, undefined)
           }
           return {}
         })()
@@ -4600,7 +4602,7 @@ export class Point0<
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
@@ -4613,7 +4615,7 @@ export class Point0<
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
           queryOptions?: ExtraUseQueryOptions | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
@@ -4624,7 +4626,7 @@ export class Point0<
           },
         ]
   ): Promise<undefined | QueryKey> {
-    const [input, providedQueryOptions, settings = {}] = args
+    const [input, providedQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -4633,7 +4635,7 @@ export class Point0<
       force,
       mode = 'serverAndClient',
       preventPrefetchFns,
-    } = settings
+    } = options
     if (!this._hasLoader() && !this._hasClientLoader()) {
       return
     }
@@ -4678,7 +4680,7 @@ export class Point0<
                 unknown
               >
             | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
@@ -4700,7 +4702,7 @@ export class Point0<
                 unknown
               >
             | undefined,
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
@@ -4711,7 +4713,7 @@ export class Point0<
           },
         ]
   ): Promise<undefined | QueryKey> {
-    const [input, infiniteQueryOptions, settings = {}] = args
+    const [input, infiniteQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -4720,7 +4722,7 @@ export class Point0<
       force,
       mode = 'serverAndClient',
       preventPrefetchFns,
-    } = settings
+    } = options
     if (!this._hasLoader() && !this._hasClientLoader()) {
       return
     }
@@ -4809,7 +4811,7 @@ export class Point0<
                     >
                   >
                 : Partial<ExtraUseQueryOptions>),
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
@@ -4833,7 +4835,7 @@ export class Point0<
                     >
                   >
                 : Partial<ExtraUseQueryOptions>),
-          settings?: {
+          options?: {
             location?: AnyLocation
             queryClient?: QueryClient
             fetchOptions?: FetchOptions
@@ -4842,8 +4844,8 @@ export class Point0<
           },
         ]
   ): Promise<void> {
-    const [input = {}, queryOptions, settings = {}] = args
-    const { location: providedLocation, queryClient, fetchOptions, force, policy = this._prefetchPolicy } = settings
+    const [input = {}, queryOptions, options = {}] = args
+    const { location: providedLocation, queryClient, fetchOptions, force, policy = this._prefetchPolicy } = options
     if (policy === 'none') {
       return
     }
@@ -5190,7 +5192,7 @@ export class Point0<
 
   getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalClientData<TLastServerOutput, TLastClientOutput> {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.stringifyBySuperjson(input || {})}`,
     )
     if (!value) {
       throw new Error(
@@ -5204,7 +5206,7 @@ export class Point0<
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalClientData<TLastServerOutput, TLastClientOutput> | undefined {
     const value = SuperStore.getWeak<FinalClientData<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(input || {})}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.stringifyBySuperjson(input || {})}`,
     )
     return value
   }
@@ -5264,7 +5266,10 @@ export class Point0<
       })
     }
     const value = this._providerValueSetter(result)
-    SuperStore.setWeak(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${stringify(inputRaw)}`, value)
+    SuperStore.setWeak(
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${Point0.stringifyBySuperjson(inputRaw)}`,
+      value,
+    )
     return this._withWrappers({
       component: React.createElement(this._ProviderReactContext.Provider, {
         value,
@@ -5335,7 +5340,7 @@ export class Point0<
   //   return null
   // }
 
-  // executor store
+  // super store
 
   static define = SuperStore.define.bind(SuperStore)
 
@@ -5392,6 +5397,33 @@ export class Point0<
   )
 
   static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
+
+  // superjson helpers
+
+  private static _superjson: Omit<
+    SuperJSON,
+    'dedupe' | 'classRegistry' | 'symbolRegistry' | 'customTransformerRegistry' | 'allowedErrorProps'
+  > = SuperJSON
+
+  static defineSuperjson(superjson: SuperJSON): void {
+    Point0._superjson = superjson
+  }
+
+  static serializeBySuperjson(data: unknown): SuperJSONResult {
+    return Point0._superjson.serialize(data)
+  }
+
+  static deserializeBySuperjson<TData>(serialized: SuperJSONResult): TData {
+    return Point0._superjson.deserialize(serialized)
+  }
+
+  static parseBySuperjson<TData>(stringified: string): TData {
+    return Point0._superjson.parse(stringified)
+  }
+
+  static stringifyBySuperjson(data: unknown): string {
+    return Point0._superjson.stringify(data)
+  }
 
   // client-server helpers
 

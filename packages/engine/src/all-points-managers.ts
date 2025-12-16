@@ -13,7 +13,7 @@ import type {
   RequiredCtx,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { parseUrl } from '@point0/core'
+import { parseUrl, Point0 } from '@point0/core'
 import { unflatten } from 'flat'
 import { Executor } from './executor.js'
 
@@ -133,7 +133,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     executor: Executor
   }> {
     parsedUrl ??= parseUrl(request.url)
-    const task = await (async () => {
+    const task: FetchTask | undefined = await (async () => {
       if (parsedUrl.urlObj.pathname !== '/_point0') {
         return undefined
       }
@@ -172,38 +172,45 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (!bodyRaw || typeof bodyRaw !== 'object') {
           throw new Error('Invalid request body: must be an object')
         }
-        const { pointType, outputType, pointInput, scope, pointName } = bodyRaw as Record<string, unknown>
-        if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
-          throw new Error(
-            `Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${JSON.stringify(pointType ?? 'undefined').slice(0, 100)}`,
-          )
-        }
-        if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
-          throw new Error(
-            `Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${JSON.stringify(outputType ?? 'undefined').slice(0, 100)}`,
-          )
-        }
-        if (!pointInput || typeof pointInput !== 'object' || Array.isArray(pointInput)) {
-          throw new Error(
-            `Invalid pointInput: must be an object, got ${JSON.stringify(pointInput ?? 'undefined').slice(0, 100)}`,
-          )
-        }
+        const {
+          type: pointType,
+          output: outputType,
+          input: pointInputTransformed,
+          scope,
+          name: pointName,
+        } = bodyRaw as Record<string, unknown>
         if (typeof scope !== 'string' || scope.length === 0) {
-          throw new Error(
-            `Invalid scope: must be a non-empty string, got ${JSON.stringify(scope ?? 'undefined').slice(0, 100)}`,
-          )
+          throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
+        }
+        if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+          throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
         }
         if (typeof pointName !== 'string' || pointName.length === 0) {
-          throw new Error(
-            `Invalid pointName: must be a non-empty string, got ${JSON.stringify(pointName ?? 'undefined').slice(0, 100)}`,
-          )
+          throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
         }
-        return {
-          pointType: pointType as (typeof validPointTypes)[number],
-          outputType: outputType as (typeof validOutputTypes)[number],
-          pointInput: pointInput as Record<string, unknown>,
-          scope,
-          pointName,
+        if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+          throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
+        }
+        if (
+          !pointInputTransformed ||
+          typeof pointInputTransformed !== 'object' ||
+          Array.isArray(pointInputTransformed)
+        ) {
+          throw new Error(`Invalid pointInput: must be an object, got ${typeof pointInputTransformed}`)
+        }
+        try {
+          const pointInput: InputRaw = Point0.deserializeBySuperjson(pointInputTransformed as any)
+          return {
+            pointType: pointType as (typeof validPointTypes)[number],
+            outputType: outputType as (typeof validOutputTypes)[number],
+            pointInput,
+            scope,
+            pointName,
+          }
+        } catch (error) {
+          throw new Error0(`Invalid pointInput: ${error instanceof Error ? error.message : String(error)}`, {
+            cause: error,
+          })
         }
       })()
       if (scope && parsed.scope !== scope) {
@@ -333,7 +340,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 export type FetchTask = {
   pointType: EndPointType
   outputType: 'data' | 'response' | 'queryClientDehydratedState'
-  pointInput: InputParsed
+  pointInput: InputRaw
   scope: PointsScope
   pointName: PointName
 }
