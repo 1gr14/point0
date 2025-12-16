@@ -4,7 +4,12 @@
 
 Скоуп в квери кей, и упорядочить кверикей
 check if superjson works correctly with query and mutation and eversion store
-.superjson(superjson) + .superjson(boolean)
+.superjson(superjson)
+Стрингифай всегда делать через суперджейсон
+
+_pointType → type and expose it in nice points
+
+add point self to loader and to ctx and to loadrCtx options
 
 .ssr(), and remove ssr option from engine
 
@@ -102,7 +107,6 @@ check why so slow server restart, check wht we can cache on start, like glob res
 normzliae all errors texts everyhere
 .onServerError, .onClientError, .onServerExecute, .onClientExecute, 
 ? expose point in NicePoint
-.info()
 make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
@@ -113,6 +117,7 @@ analyze if there same id points or route points, and throw error
 ? Point0 → P0, cli p0
 rest important TODO in code
 Пририписки unsafe заменить на safe в клиент сервере и поправить прунер, да вообще не нужен сейф
+serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 ? on request to server for query or mutation which has no serverLoader throw error
 ? Юзкомбайнедквери заменить на юзелиентэндсерверквери
 В сервер экстрактор добавить флаг для пропуска добавления квери в дегидрейтед стейт, заодно убедиться что при экстракте то что квери попадает, а что не квери не попадает
@@ -135,6 +140,12 @@ Move type errors to its own types, so we can reuse them
 bunup
 oxc lint
 
+-------------------------
+------ refactoring ------
+-------------------------
+
+remove location from mountable components, becouse in expo for example it is very strange property
+
 --------------------------
 ------ after start0 ------
 --------------------------
@@ -147,6 +158,11 @@ mcp server .lets('batchMcp').mcp([{name,description,input,loader?}]) for extrnal
 cli extract point by type and name, so agent can see errors right in terminal
 .doc(string) в любой поинт можно добавить
 В мдкс для мсп пути к файлам указывать через импорт с макросом, который заменяет их на просто строку полного пути, чтобы не сбивались пути при рефакторе
+
+settings object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
+И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
+И даже можно дианмически, принимая на вход в функцию поинт, реквест, инпут, просто запускаем сбор настроек перед прогонкой поинта, то есть все лоадеры и контексты идут после определения сеттингов
+settings({} | ()=>{}), clientSettings({} | ()=>{})
 
 ! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
@@ -261,10 +277,6 @@ LETS NOT DO IT
 ? Если в летс опциях уже названа конечная точка типо пейдж, то это финальный поинт
 ? И логично сразу с тестами волкера сделать
 
-meta object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
-
-И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
-
 ? .openapi(), why? we can just use engine.extract inside elysia enpoints and it is enough
 
 ! we just need own Messanger based on usual websocketsm it is enough
@@ -289,16 +301,9 @@ prefetch type not only prefetchPageDehydratedState, but also prefetchPageSuperSt
 
 convex example
 
-try fix hmr again
-prefetch on Link hover
-serverOnly, clientOnly, serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
-.disable()
-.preventSsr()
-.openapi({method, body, search, headers, output})
 zustand
 node bun polyfill
 ? .output(z.object({}))
-websocket, messanger
 pageParamFromInput as fn or path
 ? allow .reponse() to return undefined, in this case it can be found multiple suitable points and they will looped, or mayebe .middleware() idk
 batch query
@@ -310,7 +315,6 @@ optional params in routes
 rethink SuperStore, when we understand if it is needed at all
 super store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
 
-Static site generation as well. In the Static method, using async, we just need to get an array of known input parameters, and add a command that will generate the HTML files after the build.
-
 Х для маунтаблов
 Лэйоут всегда в том числе и провайдером является
+Провайдеру нужен метод криэйт прокси

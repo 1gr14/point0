@@ -3554,7 +3554,7 @@ export class Point0<
     TInputSchema,
     TRouteDefinition,
     AnyLocation
-  > & { lastPageOrData: FinalClientData<TLastServerOutput, TLastClientOutput> } {
+  > & { dataOrLastInfiteData: FinalClientData<TLastServerOutput, TLastClientOutput> } {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, inputParsed, inputParseError } = React.useMemo<
@@ -3598,7 +3598,7 @@ export class Point0<
           location,
           input: inputParsed,
           inputRaw,
-          lastPageOrData: {},
+          dataOrLastInfiteData: {},
         }
       }, [inputParseError, inputRaw, inputParsed, location])
       return result as never
@@ -3606,7 +3606,7 @@ export class Point0<
     const query =
       this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery(...(args as never)) : this.useQuery(...args)
     const result = React.useMemo(() => {
-      const lastPageOrData =
+      const dataOrLastInfiteData =
         this._queryResultType === 'infiniteQuery' ? (query?.data?.pages as any)?.at(-1) : query?.data
       return {
         data: query?.data,
@@ -3616,7 +3616,7 @@ export class Point0<
         location,
         input: inputParsed,
         inputRaw,
-        lastPageOrData,
+        dataOrLastInfiteData,
       }
     }, [query, query?.data, query?.error, query?.isLoading, inputRaw, inputParsed, location])
     return result as never
@@ -4964,7 +4964,14 @@ export class Point0<
 
     const result = this._useLoader(inputRaw, this._defaultPageQueryOptions)
 
-    this._useHead({ ...result, data: result.lastPageOrData } as AnyUnqueriedLoaderResult<any, any, any, any, any, any>)
+    this._useHead({ ...result, data: result.dataOrLastInfiteData } as AnyUnqueriedLoaderResult<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >)
 
     if (!this._page) {
       // impossible error
