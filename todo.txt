@@ -20,6 +20,7 @@ prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in e
 parseViteMode()
 stop pruning for serverSsr
 in engine options: point: string | module; pointsLazy?: string; pointsReady?: string it is where to save points files
+cofig → pointsLazy(string), pointsReady(string), points(module)
 
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
 .lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
@@ -142,7 +143,6 @@ oxc lint
 
 remove location from mountable components, becouse in expo for example it is very strange property
 ? remove ctxLoader, and allow drop loaders ? I think it is possible when we have no loaders in root
-transformer instance per scope, not global
 
 --------------------------
 ------ after start0 ------

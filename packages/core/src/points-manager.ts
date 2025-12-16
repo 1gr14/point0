@@ -5,6 +5,7 @@ import * as React from 'react'
 import { ClientServerHelpers } from './client-server.js'
 import { SuperStore } from './super-store.js'
 import type {
+  DataTransformerExtended,
   EndPoint,
   EndPointType,
   InputRaw,
@@ -23,6 +24,7 @@ import { appendSlash, getBasepathOrNull, getHostnameOrNull } from './utils.js'
 // TODO: maybe do not use modules, use just points collection. I think modules can help later with hmr or something else, so we can remove it later
 
 export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
+  transformer: DataTransformerExtended
   absPath: string | null
   readFn: PointsReadFn | null
   scope: PointsScope
@@ -74,6 +76,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.baseurl = this.root._baseurl
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
+    this.transformer = this.root._tranformer
     PointsManager.setPointsManager(this)
     if (ClientServerHelpers.isClient) {
       SuperStore.setWeak('__POINT0_SCOPE__', this.scope)

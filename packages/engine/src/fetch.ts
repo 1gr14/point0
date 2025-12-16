@@ -1,11 +1,11 @@
+import { Error0 } from '@devp0nt/error0'
 import type { ParsedUrl, PointsScope, RequiredCtx } from '@point0/core'
-import { parseUrl, Point0 } from '@point0/core'
+import { parseUrl } from '@point0/core'
 import type { AllPointsManagers } from './all-points-managers.js'
 import type { ClientBun } from './client.js'
 import type { EngineLogger } from './config.js'
 import { toJsonErrorResponse } from './error.js'
 import type { ServerBun } from './server.js'
-import { Error0 } from '@devp0nt/error0'
 
 export const engineFetch = async ({
   bunServer,
@@ -153,7 +153,7 @@ export const engineFetch = async ({
           input,
         })
         const dehydratedState = await executor.getQueryClientDehydratedState()
-        return new Response(executor.transformer.stringify({ dehydratedState }), {
+        return new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
           headers: { 'Content-Type': 'application/json' },
           status: 200,
         })
@@ -184,7 +184,7 @@ export const engineFetch = async ({
     }
 
     // else we try to get endpoint json
-    return new Response(executor.transformer.stringify(executeResult.output), {
+    return new Response(executor.pointsManager.transformer.stringify(executeResult.output), {
       headers: { 'Content-Type': 'application/json' },
       status: executeResult.status,
     })

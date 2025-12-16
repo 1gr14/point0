@@ -30,11 +30,10 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  points: PointsManager<true, TRequiredCtx>
+  pointsManager: PointsManager<true, TRequiredCtx>
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
-  transformer: DataTransformerExtended
   serverGlobalState: {
     __POINT0_SCOPE__: PointsScope
     __POINT0_QUERY_CLIENT__: QueryClient
@@ -60,8 +59,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_CURRENT_LOCATION__: AnyLocation
     }
   }) {
-    this.points = points
-    this.transformer = points.root._tranformer
+    this.pointsManager = points
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
@@ -234,7 +232,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             ctx: currentCtx,
             data: currentData,
             head: this.getCurrentPageHead({
-              point: this.points.root,
+              point: this.pointsManager.root,
               input: currentInputParsed,
               inputRaw: input,
               data: currentData,
@@ -421,7 +419,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             ctx: currentCtx,
             data: currentData,
             head: this.getCurrentPageHead({
-              point: point ?? this.points.root,
+              point: point ?? this.pointsManager.root,
               input: currentInputParsed,
               inputRaw: input,
               data: currentData,
@@ -514,7 +512,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(
         React.createElement(App, {
-          points: this.points,
+          points: this.pointsManager,
         }),
       )
       await stream.allReady
@@ -524,7 +522,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (seenQueryHashes.has(hash)) {
           return []
         }
-        const parsedQueryKey = Executor.parseQueryKey(query.queryKey, this.transformer)
+        const parsedQueryKey = Executor.parseQueryKey(query.queryKey, this.pointsManager.transformer)
         if (!parsedQueryKey) {
           return []
         }
@@ -546,7 +544,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       }
 
       for (const suitableMarker of suitableMarkers) {
-        const suitable = this.points.getSuitablePoint({
+        const suitable = this.pointsManager.getSuitablePoint({
           scope: suitableMarker.scope,
           pointType: suitableMarker.pointType,
           pointName: suitableMarker.pointName,

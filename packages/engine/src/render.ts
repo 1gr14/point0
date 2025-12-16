@@ -190,7 +190,7 @@ export async function getReadableStreamWithWrapper({
     // Kick off the render first; any randoms used during render happen now
     const reactStream = await renderer(
       createElement(App, {
-        points: executor.points,
+        points: executor.pointsManager,
       }),
       {
         ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
@@ -198,7 +198,9 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const escapedJS = escapeForInlineJSON(SuperStore.dehydrateToString())
+    const escapedJS = escapeForInlineJSON(
+      SuperStore.dehydrateToString({ transformer: executor.pointsManager.transformer }),
+    )
     const compiledPrefix = (prefix ?? '').replace(
       '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
       `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
