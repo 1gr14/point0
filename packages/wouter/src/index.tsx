@@ -173,11 +173,11 @@ export const SimpleLink = (props: LinkProps) => {
       return undefined
     }
     if (finalTo.startsWith('#')) {
-      const hashSuffix = routerCtx.preventLocationHash ? '' : finalTo
+      const hashSuffix = !routerCtx.addHashToLocation ? '' : finalTo
       return Point0.getPointsManager()._getPagePointByHref(location.pathname + hashSuffix)
     }
     return Point0.getPointsManager()._getPagePointByHref(finalTo)
-  }, [finalTo, location, routerCtx.preventLocationHash])
+  }, [finalTo, location, routerCtx.addHashToLocation])
   return (
     <WouterLink
       {...rest}
@@ -196,7 +196,7 @@ export const SimpleLink = (props: LinkProps) => {
                   .prefetchSuitablePagePoint({
                     location: pointWithLocation.location,
                   })
-                  .catch((e) => {
+                  .catch((e: unknown) => {
                     // TODO: replace with onClientError handler
                     console.error('Failed to prefetch page on hover', e)
                   })
@@ -287,16 +287,16 @@ export const createLink0 = <
 
 export const Router = ({
   ssrLocation = Point0._ssrLocation.get(),
+  addHashToLocation,
   routes = Point0.getPointsManager().routes,
   status,
   children,
   Page404,
   pagesTree,
   hook,
-  preventLocationHash,
 }: {
   ssrLocation?: AnyLocation | undefined
-  preventLocationHash?: boolean
+  addHashToLocation?: boolean
   routes?: RoutesPretty
   status?: RouterStatus
   children?: React.ReactNode
@@ -327,7 +327,7 @@ export const Router = ({
         useAdapterLocation={useAdapterLocation}
         ssrLocation={ssrLocation}
         status={status}
-        preventLocationHash={preventLocationHash}
+        addHashToLocation={addHashToLocation}
       >
         {children ?? <RouterRoutes Page404={Page404} pagesTree={pagesTree} />}
       </RouterContextProvider>

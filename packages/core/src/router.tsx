@@ -34,7 +34,7 @@ type RouterContextValue = {
   status: RouterStatus
   error: Error | null
   useAdapterLocation: UseAdapterLocationFn
-  preventLocationHash: boolean
+  addHashToLocation: boolean
 
   // setters
   setPrevLocation: React.Dispatch<React.SetStateAction<AnyLocation | null>>
@@ -50,7 +50,7 @@ export type RouterContextProviderProps = {
   status?: RouterStatus
   useAdapterLocation: UseAdapterLocationFn
   ssrLocation?: AnyLocation | null
-  preventLocationHash?: boolean
+  addHashToLocation?: boolean
 }
 
 export function RouterContextProvider({
@@ -58,7 +58,7 @@ export function RouterContextProvider({
   status = 'idle',
   useAdapterLocation,
   ssrLocation,
-  preventLocationHash = false,
+  addHashToLocation = false,
 }: RouterContextProviderProps) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
@@ -90,7 +90,7 @@ export function RouterContextProvider({
       setError,
       useAdapterLocation,
       // isSsr,
-      preventLocationHash,
+      addHashToLocation,
     }),
     [ssrLocation, currentLocation, prevLocation, nextLocation, routerStatus, error, useAdapterLocation],
   )
@@ -111,29 +111,59 @@ export const getRouterContext = (): RouterContextValue => {
 
 /** Hooks **/
 
-export function useLocation(): AnyLocation
+export function useLocation(addHashToLocation?: boolean): AnyLocation
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
-  location?: AnyLocation,
+  addHashToLocation?: boolean,
 ): KnownLocation<TRoute>
 export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   route?: TRoute,
   location?: AnyLocation,
+  addHashToLocation?: boolean,
+): KnownLocation<TRoute>
+export function useLocation<TRoute extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
+  ...args: [(TRoute | boolean)?, (AnyLocation | boolean)?, boolean?]
 ) {
   const routerCtx = React.useContext(RouterContext)
   if (!routerCtx) throw new Error('useLocation must be used within RouterContextProvider')
   const locationByAdapter = routerCtx.useAdapterLocation()
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- try remove usage of routerCtx.currentLocation
-  location ??= locationByAdapter ?? routerCtx.currentLocation
+  const { route, location, addHashToLocation } = ((): {
+    route: TRoute | undefined
+    location: AnyLocation
+    addHashToLocation: boolean
+  } => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const fallbackLocation = locationByAdapter ?? routerCtx.currentLocation
+    if (args.length === 0) {
+      return { route: undefined, location: fallbackLocation, addHashToLocation: routerCtx.addHashToLocation }
+    }
+    if (args.length === 1) {
+      if (typeof args[0] === 'boolean') {
+        return { route: undefined, location: fallbackLocation, addHashToLocation: args[0] }
+      }
+      return { route: args[0], location: fallbackLocation, addHashToLocation: routerCtx.addHashToLocation }
+    }
+    if (args.length === 2) {
+      if (typeof args[1] === 'boolean') {
+        return { route: args[0] as TRoute, location: fallbackLocation, addHashToLocation: args[1] }
+      }
+      return {
+        route: args[0] as TRoute,
+        location: args[1] as AnyLocation,
+        addHashToLocation: routerCtx.addHashToLocation,
+      }
+    }
+    return { route: args[0] as TRoute, location: args[1] as AnyLocation, addHashToLocation: !!args[2] }
+  })()
   return useMemo(() => {
     // const hashSuffix = routerCtx.isSsr ? '' : typeof window !== 'undefined' ? window.location.hash : ''
-    const hashSuffix = routerCtx.preventLocationHash ? '' : typeof window !== 'undefined' ? window.location.hash : ''
+    const hashSuffix = !addHashToLocation ? '' : typeof window !== 'undefined' ? window.location.hash : ''
     if (!route) {
       return { ...(PointsManager.getPointsManager().routes._.getLocation(location) as AnyLocation), hash: hashSuffix }
     }
     return { ...(Route0.from(route).getLocation(location) as KnownLocation<TRoute>), hash: hashSuffix }
     // }, [route, location, PointsManager.getPointsManager().routesHash, routerCtx.isSsr])
-  }, [route, location, PointsManager.getPointsManager().routesHash])
+  }, [route, location, addHashToLocation ? PointsManager.getPointsManager().routesHash : '', addHashToLocation])
 }
 
 // export const useIsInitalSsrLocation: UseIsInitalSsrLocationFn = () => {
@@ -253,7 +283,7 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
 
     return async (...args: Parameters<ReturnType<T>>) => {
       const to = (() => {
-        if (args[0].startsWith('#') && !routerContext.preventLocationHash) {
+        if (args[0].startsWith('#') && routerContext.addHashToLocation) {
           return routerContext.currentLocation.pathname + args[0]
         }
         return args[0]
@@ -292,7 +322,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
   return async (...args: Parameters<T>) => {
     const routerContext = getRouterContext()
     const to = (() => {
-      if (args[0].startsWith('#') && !routerContext.preventLocationHash) {
+      if (args[0].startsWith('#') && routerContext.addHashToLocation) {
         return routerContext.currentLocation.pathname + args[0]
       }
       return args[0]
