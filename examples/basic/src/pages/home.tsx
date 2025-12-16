@@ -55,6 +55,7 @@ export const BestIdeaComponent = client
       cllll: new Date(),
     }
   })
+  .clientLoader(false)
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
