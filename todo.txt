@@ -2,23 +2,7 @@
 ------ before start0 -----
 --------------------------
 
-Сделать по-умолчанию, чтобы хэш в локацию не попадал, а useLocation хук добавить отдельно свойство чтобы переопределять
-Добавить пустой амперсанд в роут, чтобы он и определял стрикт парс у нас роут или не стрикт с возможностью переопределения
-Стрикт в роутах заменить на луз, и буленан в парсе инвертнуть, и при флэте вторым аргументом можно передавать луз
-Парс и сейф парс, а не парс сейф
-Из Сейм и прочее добавить приписку роут, а то не понятно роут или путь
-
-Провайдер сеттер фн получает квериед дата убедиться
-Х для маунтаблов, и провайдер может не иметь чайлда
-Лэйоут всегда в том числе и провайдером является
-
-В серверные лоадеры добавить локацию
-
-Скоуп в квери кей
-
-.clientLoader(false) а не null
-Походу нужно убрать из кткс доступ к дата, и убрать ктксЛоадер, и сделать возможным сброс лоадеров без потери контекста, и в прунере учесть, что сервер лоадер фалс отрезать не надо
-
+Скоуп в квери кей, и упорядочить кверикей
 check if superjson works correctly with query and mutation and eversion store
 .superjson(superjson) + .superjson(boolean)
 
@@ -327,3 +311,6 @@ rethink SuperStore, when we understand if it is needed at all
 super store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
 
 Static site generation as well. In the Static method, using async, we just need to get an array of known input parameters, and add a command that will generate the HTML files after the build.
+
+Х для маунтаблов
+Лэйоут всегда в том числе и провайдером является

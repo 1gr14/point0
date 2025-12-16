@@ -16,7 +16,7 @@
     "@point0/engine": "workspace:*",
     "@point0/wouter": "workspace:*",
     "@point0/react-dom": "workspace:*",
-    "@devp0nt/route0": "^1.0.0-next.49",
+    "@devp0nt/route0": "^1.0.0-next.52",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1"

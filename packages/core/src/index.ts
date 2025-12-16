@@ -231,7 +231,7 @@ export class Point0<
   private readonly _wrappers: WrapperComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
-  private readonly _providerValueSetter: ProviderValueSetterFn<any, any, any, any, any> | undefined
+  private readonly _providerValueSetter: ProviderValueSetterFn<any, any, any, any, any, any> | undefined
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly _route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _prevRoute: TPrevRouteDefinition extends RouteDefinition
@@ -370,7 +370,7 @@ export class Point0<
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
-    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any>
+    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any, any>
     _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TLastClientOutput>> | undefined
     _useValue?: any
     _route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
@@ -668,7 +668,7 @@ export class Point0<
     _wrappers?: WrapperComponentType[]
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
-    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any> | undefined
+    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any, any> | undefined
     _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TLastClientOutput>> | undefined
     _useValue?: any
     _route?: IfAnyThenElse<
@@ -1960,7 +1960,7 @@ export class Point0<
     TNewClientLastOutput
   >
   clientLoader(
-    dropClientLoaders: null,
+    keepClientLoaders: false,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -1978,8 +1978,8 @@ export class Point0<
     TLastServerOutput,
     UndefinedLastOutput
   >
-  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | null) {
-    if (clientLoaderFn === null) {
+  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | false) {
+    if (clientLoaderFn === false) {
       return this._continue({
         _clientExecuteActions: [],
       }) as never
@@ -2639,6 +2639,7 @@ export class Point0<
   provider<TNewClientData extends Data = Data>(
     valueSetter: ProviderValueSetterFn<
       TLetsEndPointType,
+      TQueryResultType,
       TRouteDefinition,
       TLastServerOutput,
       TLastClientOutput,
@@ -2681,7 +2682,14 @@ export class Point0<
     TLastClientOutput
   >
   provider(
-    valueSetter?: ProviderValueSetterFn<TLetsEndPointType, TRouteDefinition, TLastServerOutput, TLastClientOutput, any>,
+    valueSetter?: ProviderValueSetterFn<
+      TLetsEndPointType,
+      TQueryResultType,
+      TRouteDefinition,
+      TLastServerOutput,
+      TLastClientOutput,
+      any
+    >,
   ) {
     const point = this._continue({
       _pointType: 'provider',
@@ -3124,7 +3132,7 @@ export class Point0<
       return { success: false, data: undefined, error: Error0.from(parseResult.error) }
     }
     if (this._route) {
-      const parseResult = this._route.parseFlatInputSafe(input)
+      const parseResult = this._route.safeParseFlatInput(input)
       if (parseResult.success) {
         return {
           success: true,
@@ -5181,7 +5189,7 @@ export class Point0<
     return value
   }
 
-  Provider = (props: MountableComponentProps<TInputSchema, TProps, true>): React.ReactNode => {
+  Provider = (props: MountableComponentProps<TInputSchema, TProps, null>): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
@@ -5194,7 +5202,7 @@ export class Point0<
 
     const { inputRaw, children } = React.useMemo<{
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-      children: React.ReactNode
+      children: React.ReactNode | undefined
     }>(() => {
       const { input: providedInput = {}, children } = props as any
       const inputRaw = { ...providedInput }

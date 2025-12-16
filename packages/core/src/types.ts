@@ -15,15 +15,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
-import type {
-  ZodDefault,
-  input as ZodInput,
-  ZodObject,
-  ZodOptional,
-  output as ZodOutput,
-  ZodSafeParseResult,
-  util as ZodUtil,
-} from 'zod'
+import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput, util as ZodUtil } from 'zod'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 
@@ -1253,21 +1245,29 @@ export type ClientLoaderFn<
 
 export type ProviderValueSetterFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > = {
-  data: FinalClientData<TLastServerOutput, TLastClientOutput>
+  data: FinalClientQueriedData<TQueryResultType, TLastServerOutput, TLastClientOutput>
   location: ClientExecuteActionLocation<TLetsEndPointType, TRouteDefinition>
 }
 export type ProviderValueSetterFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput,
   TNewClientData extends Data,
 > = (
-  options: ProviderValueSetterFnOptions<TLetsEndPointType, TRouteDefinition, TLastServerOutput, TLastClientOutput>,
+  options: ProviderValueSetterFnOptions<
+    TLetsEndPointType,
+    TQueryResultType,
+    TRouteDefinition,
+    TLastServerOutput,
+    TLastClientOutput
+  >,
 ) => TNewClientData
 
 // head
