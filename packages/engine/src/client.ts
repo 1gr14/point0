@@ -46,7 +46,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   pointsFile: string | null
   // pointsDistFile: string | null
   pointsManager: TInitialized extends true ? PointsManager : PointsManager | null
-  ssr: boolean
+  ssr: TInitialized extends true ? boolean : undefined = undefined as TInitialized extends true ? boolean : undefined
   providedAppComponent: AppComponent | null
   appFile: string | null
   // appDistFile: string | null
@@ -86,7 +86,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     pointsFile: string | null
     // pointsDistFile: string | null
     pointsManager: PointsManager | null
-    ssr: boolean
     providedAppComponent: AppComponent | null
     appFile: string | null
     // appDistFile: string | null
@@ -124,7 +123,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.pointsFile = input.pointsFile
     // this.pointsDistFile = input.pointsDistFile
     this.pointsManager = input.pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
-    this.ssr = input.ssr
     this.providedAppComponent = input.providedAppComponent
     this.appFile = input.appFile
     // this.appDistFile = input.appDistFile
@@ -163,7 +161,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     cwd: string
     points: PointsManager | string
     // pointsDistFile: string | null
-    ssr: boolean
     app: AppComponent | string | null
     // appDistFile: string | null
     baseurl: string
@@ -255,6 +252,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.clientBunNativeDevServer = clientBunNativeDevServer
 
     this.pointsManager = await this.createPointsManager()
+    this.ssr = this.pointsManager.ssr as TInitialized extends true ? boolean : undefined
 
     await this.publicdir.init()
 

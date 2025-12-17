@@ -66,7 +66,6 @@ export type EngineClientOptions = {
   points: string | ReadyPointsModule | LazyPointsModule
   pointsLazy?: string | null
   pointsReady?: string | null
-  ssr?: boolean | null
   app?: string | AppComponent | null
   baseurl?: string | null
   publicdir?: EngineOptionsPublicdir | null
@@ -112,7 +111,6 @@ export type EngineClientOptionsParsed = {
   points: PointsManager | string
   pointsLazy: string | null
   pointsReady: string | null
-  ssr: boolean
   // pointsDistFile: string | null
   app: string | AppComponent | null
   // appDistFile: string | null
@@ -498,9 +496,6 @@ const parseEngineClientOptions = ({
   serverOptionsParsed: EngineServerOptionsParsed
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineClientOptionsParsed => {
-  if (clientOptions.ssr && !clientOptions.app) {
-    throw new Error('You should provide app module, to enable SSR')
-  }
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
   const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
@@ -610,7 +605,6 @@ const parseEngineClientOptions = ({
     routes: clientOptions.routes ?? null,
     pointsLazy: clientOptions.pointsLazy ?? null,
     pointsReady: clientOptions.pointsReady ?? null,
-    ssr: clientOptions.ssr ?? !!clientOptions.app,
     banner: clientOptions.banner ?? null,
     prune: clientOptions.prune ?? true,
     pruneServer: clientOptions.pruneServer ?? true,

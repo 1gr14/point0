@@ -38,6 +38,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   routesHash: string
   pagesTreeSource: PagesTreeSource
   pagesTree: PagesTree
+  ssr: boolean
 
   Infer: {
     RequiredCtx: TRequiredCtx
@@ -77,6 +78,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
     this.transformer = this.root._tranformer
+    this.ssr = this.root._ssr
     PointsManager.setPointsManager(this)
     if (ClientServerHelpers.isClient) {
       SuperStore.setWeak('__POINT0_SCOPE__', this.scope)

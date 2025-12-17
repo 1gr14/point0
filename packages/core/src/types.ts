@@ -1390,6 +1390,7 @@ export type NiceRootMiddlePoint<
   CutServerLoadersIfClientMiddleware<
     TPointType,
     | 'root'
+    | 'ssr'
     | 'transformer'
     | 'requireCtx'
     | 'serverurl'

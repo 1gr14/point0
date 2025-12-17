@@ -15,7 +15,6 @@ export const engine = Engine.create(import.meta.url, {
   clients: [
     {
       scope: 'client',
-      ssr: true,
       app: './app.js',
       points: './lib/points.ts',
       pointsLazy: './lib/points.ts',

@@ -15,7 +15,6 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
   clients: [
     {
       scope: 'client',
-      ssr: true,
       app: './app.js',
       points: await import('./lib/points'),
       pointsLazy: './lib/points.ts',

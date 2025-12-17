@@ -222,6 +222,7 @@ export class Point0<
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
   readonly _tranformer: DataTransformerExtended
+  readonly _ssr: boolean
   readonly scope: PointsScope
   private readonly _attachedTo: PointsScope[]
   private readonly _headFns: MiddlewareHeadFn[]
@@ -360,6 +361,7 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | undefined
+    _ssr?: boolean
     scope: PointsScope
     _attachedTo: PointsScope[]
     _wrappers?: WrapperComponentType[]
@@ -497,6 +499,7 @@ export class Point0<
         serialize: (data) => data,
         deserialize: (data) => data,
       })
+    this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
     this.type = options.type
@@ -667,6 +670,7 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | null
+    _ssr?: boolean
     _headFns?: MiddlewareHeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
@@ -838,6 +842,7 @@ export class Point0<
       inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
       _serverInputSchema: overrides._serverInputSchema ?? this._serverInputSchema,
       _tranformer: overrides._tranformer ?? this._tranformer,
+      _ssr: overrides._ssr ?? this._ssr,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _headFns: overrides._headFns ?? this._headFns,
       _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
@@ -1105,30 +1110,29 @@ export class Point0<
   //   }) as never
   // }
 
-  // not needed, just add .clientLoader(true) and done
-  // ssr(
-  //   shouldSsr: boolean,
-  // ): NiceMiddlePoint<
-  //   TPointType,
-  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TData,
-  //   TClientData,
-  //   TRouteDefinition,
-  //   TPrevRouteDefinition,
-  //   TInputSchema,
-  //   TResponse,
-  //   TClientResponse,
-  //   TQueryResultType,
-  //   TProps,
-  //   TLastServerOutput,
-  //   TLastClientOutput
-  // > {
-  //   return this._continue({
-  //     _shouldSsr: shouldSsr,
-  //   }) as never
-  // }
+  ssr(
+    ssr: boolean,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    TClientResponse,
+    TQueryResultType,
+    TProps,
+    TLastServerOutput,
+    TLastClientOutput
+  > {
+    return this._continue({
+      _ssr: ssr,
+    }) as never
+  }
 
   mutationOptions(
     mutationOptions: UseMutationOptions,
@@ -4973,17 +4977,28 @@ export class Point0<
     }
     const location = providedLocation ?? this._route.getLocation(this._route.flat(input))
 
-    if (policy === 'queryClientDehydratedState' || policy === 'everything') {
-      await this._prefetchPageQueryClientDehydratedState({
-        queryClient,
-        input: input as never,
-        queryOptions,
-        fetchOptions,
-        force,
-      })
-      if (policy === 'queryClientDehydratedState') {
-        return
+    const queryClientDehydratedStateWasPrefetched = await (async () => {
+      if (policy === 'queryClientDehydratedState' || policy === 'everything') {
+        if (!this._root?._ssr) {
+          if (policy === 'queryClientDehydratedState') {
+            throw new Error('Query client dehydrated state can be prefetched only when ssr is enabled')
+          }
+          return false
+        }
+        await this._prefetchPageQueryClientDehydratedState({
+          queryClient,
+          input: input as never,
+          queryOptions,
+          fetchOptions,
+          force,
+        })
+        return true
       }
+      return false
+    })()
+
+    if (policy === 'queryClientDehydratedState') {
+      return
     }
 
     const pageWithLayouts = [this, ...this._layouts]
@@ -5011,7 +5026,9 @@ export class Point0<
         const mode =
           policy === 'everything'
             ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
-              'client'
+              queryClientDehydratedStateWasPrefetched
+              ? 'client'
+              : 'serverAndClient'
             : {
                 serverQuery: 'server' as const,
                 clientQuery: 'client' as const,
