@@ -1,5 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import type { AppComponent, LazyPointsModule, PointsModuleType, PointsScope, ReadyPointsModule } from '@point0/core'
+import type { AppComponent, LazyPointsModule, PointsScope, ReadyPointsModule } from '@point0/core'
 import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
@@ -49,6 +49,8 @@ export type EngineGeneralOptions = {
 export type EngineServerOptions = {
   scope: PointsScope
   points?: string | ReadyPointsModule | LazyPointsModule | null
+  pointsLazy?: string | null
+  pointsReady?: string | null
   publicdir?: EngineOptionsPublicdir
   port?: number | string | null
   outdir?: string | null
@@ -57,13 +59,14 @@ export type EngineServerOptions = {
   bunBuildConfig?: ServerBunBuildConfigDefinition
   bunPlugins?: ServerBunPluginsDefinition
   routes?: RoutesPretty<any> | string | null
-  pointsModuleType?: PointsModuleType
   banner?: string | null
 }
 export type EngineClientOptions = {
   scope: PointsScope
   points: string | ReadyPointsModule | LazyPointsModule
-  ssr?: boolean
+  pointsLazy?: string | null
+  pointsReady?: string | null
+  ssr?: boolean | null
   app?: string | AppComponent | null
   baseurl?: string | null
   publicdir?: EngineOptionsPublicdir | null
@@ -79,7 +82,6 @@ export type EngineClientOptions = {
   serverOutdir?: string | null
   publicdirOutdir?: string | null
   routes?: RoutesPretty<any> | string | null
-  pointsModuleType?: PointsModuleType
   banner?: string | null
   prune?: boolean
   pruneServer?: boolean
@@ -108,8 +110,10 @@ export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string | null
   points: PointsManager | string
-  // pointsDistFile: string | null
+  pointsLazy: string | null
+  pointsReady: string | null
   ssr: boolean
+  // pointsDistFile: string | null
   app: string | AppComponent | null
   // appDistFile: string | null
   baseurl: string
@@ -128,7 +132,6 @@ export type EngineClientOptionsParsed = {
   serverOutdir: string | null
   publicdirOutdir: string | null
   routes: RoutesPretty<any> | string | null
-  pointsModuleType: PointsModuleType
   banner: string | null
   prune: boolean
   pruneServer: boolean
@@ -136,6 +139,8 @@ export type EngineClientOptionsParsed = {
 export type EngineServerOptionsParsed = {
   scope: PointsScope
   points: PointsManager | string | null
+  pointsLazy: string | null
+  pointsReady: string | null
   publicdir: EngineOptionsPublicdirParsed
   port: number
   entry: Record<string, string> | null
@@ -148,7 +153,6 @@ export type EngineServerOptionsParsed = {
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
   routes: RoutesPretty<any> | string | null
-  pointsModuleType: PointsModuleType
   banner: string | null
 }
 export type EngineOptionsParsed = {
@@ -478,7 +482,8 @@ export const parseEngineServerOptions = ({
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     routes: serverOptions.routes ?? null,
-    pointsModuleType: serverOptions.pointsModuleType ?? 'ready',
+    pointsLazy: serverOptions.pointsLazy ?? null,
+    pointsReady: serverOptions.pointsReady ?? null,
     banner: serverOptions.banner ?? null,
   }
 }
@@ -493,6 +498,9 @@ const parseEngineClientOptions = ({
   serverOptionsParsed: EngineServerOptionsParsed
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineClientOptionsParsed => {
+  if (clientOptions.ssr && !clientOptions.app) {
+    throw new Error('You should provide app module, to enable SSR')
+  }
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
   const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
@@ -541,7 +549,6 @@ const parseEngineClientOptions = ({
     //         omitDirAfterBuild: true,
     //       })
     //     : null,
-    ssr: clientOptions.ssr ?? false,
     app:
       typeof clientOptions.app === 'string'
         ? toFinalPath({
@@ -601,7 +608,9 @@ const parseEngineClientOptions = ({
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
     routes: clientOptions.routes ?? null,
-    pointsModuleType: clientOptions.pointsModuleType ?? 'lazy',
+    pointsLazy: clientOptions.pointsLazy ?? null,
+    pointsReady: clientOptions.pointsReady ?? null,
+    ssr: clientOptions.ssr ?? !!clientOptions.app,
     banner: clientOptions.banner ?? null,
     prune: clientOptions.prune ?? true,
     pruneServer: clientOptions.pruneServer ?? true,

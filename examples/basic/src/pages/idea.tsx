@@ -22,13 +22,14 @@ export const ideaPage = ideaLayout
     })
     return [202, { idea }]
   })
-  .clientLoader(async ({ data, location }) => {
-    return {
-      ...data,
-      zxc: 333,
-    }
-  })
+  // .clientLoader(async ({ data, location }) => {
+  //   return {
+  //     ...data,
+  //     zxc: 333,
+  //   }
+  // })
   .clientLoader(false)
+  .clientLoader(true)
   .page(
     ({ data: { idea } }) => ({
       title: idea.title,

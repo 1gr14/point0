@@ -88,8 +88,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         {
           scope: parsedOptions.server.scope,
           routes: parsedOptions.server.routes,
-          points: typeof parsedOptions.server.points === 'string' ? parsedOptions.server.points : null,
-          pointsModuleType: parsedOptions.server.pointsModuleType,
+          pointsLazy: parsedOptions.server.pointsLazy,
+          pointsReady: parsedOptions.server.pointsReady,
           banner: parsedOptions.server.banner,
         },
         ...parsedOptions.clients.map(
@@ -97,8 +97,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
             ({
               scope: client.scope,
               routes: client.routes,
-              points: typeof client.points === 'string' ? client.points : null,
-              pointsModuleType: client.pointsModuleType,
+              pointsLazy: client.pointsLazy,
+              pointsReady: client.pointsReady,
               banner: client.banner,
             }) satisfies FilesGeneratorTargetOptions,
         ),

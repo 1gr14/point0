@@ -1083,6 +1083,7 @@ export class Point0<
 
   // general settings
 
+  // not needed, we check File or Blob in input, and then use FormData instead of JSON
   // asFormData(
   //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
   // ): NiceMiddlePoint<
@@ -1101,6 +1102,31 @@ export class Point0<
   // > {
   //   return this._continue({
   //     _asFormData: shouldAddMultipartFormDataHeaderToFetchOptions,
+  //   }) as never
+  // }
+
+  // not needed, just add .clientLoader(true) and done
+  // ssr(
+  //   shouldSsr: boolean,
+  // ): NiceMiddlePoint<
+  //   TPointType,
+  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TData,
+  //   TClientData,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TResponse,
+  //   TClientResponse,
+  //   TQueryResultType,
+  //   TProps,
+  //   TLastServerOutput,
+  //   TLastClientOutput
+  // > {
+  //   return this._continue({
+  //     _shouldSsr: shouldSsr,
   //   }) as never
   // }
 
@@ -1985,7 +2011,7 @@ export class Point0<
     TNewClientLastOutput
   >
   clientLoader(
-    keepClientLoaders: false,
+    enableClientLoader: false,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
@@ -2003,11 +2029,41 @@ export class Point0<
     TLastServerOutput,
     UndefinedLastOutput
   >
-  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | false) {
+  clientLoader(
+    enableClientLoader: true,
+  ): NiceMiddlePoint<
+    TPointType,
+    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TLastClientOutput extends LastOutput ? TClientData : TLastServerOutput extends Data ? TLastServerOutput : EmptyData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    TLastClientOutput extends LastOutput
+      ? TClientResponse
+      : TLastServerOutput extends Response
+        ? TLastServerOutput
+        : UndefinedResponse,
+    TQueryResultType,
+    TProps,
+    TLastServerOutput,
+    TLastClientOutput extends LastOutput
+      ? TLastClientOutput
+      : TLastServerOutput extends LastOutput
+        ? TLastServerOutput
+        : EmptyData
+  >
+  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
       return this._continue({
         _clientExecuteActions: [],
       }) as never
+    }
+    if (clientLoaderFn === true) {
+      clientLoaderFn = (o) => o.data
     }
     return this._continue({
       type: 'clientMiddleware',

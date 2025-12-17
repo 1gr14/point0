@@ -1,6 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { AsyncSubscription } from '@parcel/watcher'
-import type { PointsModuleType } from '@point0/core'
 import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -26,8 +25,8 @@ export type FilesGeneratorOptions = {
 export type FilesGeneratorTargetOptions = {
   scope: string
   routes?: RoutesPretty | string | null
-  points?: string | null
-  pointsModuleType?: PointsModuleType
+  pointsLazy?: string | null
+  pointsReady?: string | null
   banner?: string | null
 }
 
@@ -35,8 +34,8 @@ type FilesGeneratorTarget = {
   scope: string
   routes: RoutesPretty | null
   banner: string | null
-  pointsModuleType: PointsModuleType
-  outputPointsAbs: string | null
+  outputPointsLazyAbs: string | null
+  outputPointsReadyAbs: string | null
   outputRoutesAbs: string | null
 }
 
@@ -73,8 +72,8 @@ export class FilesGenerator {
           scope: t.scope,
           routes: typeof t.routes === 'string' ? null : (t.routes ?? null),
           banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
-          pointsModuleType: t.pointsModuleType ?? 'ready',
-          outputPointsAbs: t.points ? nodePath.resolve(this.cwd, t.points) : null,
+          outputPointsLazyAbs: t.pointsLazy ? nodePath.resolve(this.cwd, t.pointsLazy) : null,
+          outputPointsReadyAbs: t.pointsReady ? nodePath.resolve(this.cwd, t.pointsReady) : null,
           outputRoutesAbs: typeof t.routes === 'string' ? nodePath.resolve(this.cwd, t.routes) : null,
         }) satisfies FilesGeneratorTarget,
     )
@@ -88,7 +87,7 @@ export class FilesGenerator {
     this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
     this.watchIgnore = [
       ...this.globExclude,
-      ...this.targets.flatMap((t) => [t.outputPointsAbs, t.outputRoutesAbs]),
+      ...this.targets.flatMap((t) => [t.outputPointsLazyAbs, t.outputPointsReadyAbs, t.outputRoutesAbs]),
     ].flatMap((p) => p || [])
     this.watchPatterns = [...this.globInclude]
   }
@@ -220,17 +219,17 @@ export class FilesGenerator {
 
   private async writeTargetOutput(target: FilesGeneratorTarget): Promise<{ written: boolean }> {
     const tasks = []
-    if (target.outputPointsAbs && target.pointsModuleType === 'lazy') {
+    if (target.outputPointsLazyAbs) {
       tasks.push({
         content: this.emitLazyPointsFile(target),
-        outputAbs: target.outputPointsAbs,
+        outputAbs: target.outputPointsLazyAbs,
         tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.lazy.ts`),
       })
     }
-    if (target.outputPointsAbs && target.pointsModuleType === 'ready') {
+    if (target.outputPointsReadyAbs) {
       tasks.push({
         content: this.emitReadyPointsFile(target),
-        outputAbs: target.outputPointsAbs,
+        outputAbs: target.outputPointsReadyAbs,
         tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.ready.ts`),
       })
     }
@@ -308,14 +307,22 @@ export class FilesGenerator {
   }
 
   async isTargetOutputFilesExists(target: FilesGeneratorTarget): Promise<boolean> {
-    if (!target.outputPointsAbs && !target.outputRoutesAbs) {
+    if (!target.outputPointsLazyAbs && !target.outputPointsReadyAbs && !target.outputRoutesAbs) {
       return true
     }
     const promises: Array<Promise<boolean>> = []
-    if (target.outputPointsAbs) {
+    if (target.outputPointsLazyAbs) {
       promises.push(
         nodeFs
-          .access(target.outputPointsAbs)
+          .access(target.outputPointsLazyAbs)
+          .then(() => true)
+          .catch(() => false),
+      )
+    }
+    if (target.outputPointsReadyAbs) {
+      promises.push(
+        nodeFs
+          .access(target.outputPointsReadyAbs)
           .then(() => true)
           .catch(() => false),
       )
@@ -412,11 +419,8 @@ export class FilesGenerator {
   }
 
   private emitLazyPointsFile(target: FilesGeneratorTarget): string {
-    if (!target.outputPointsAbs) {
-      throw new Error('outputPointsAbs is not set')
-    }
-    if (target.pointsModuleType !== 'lazy') {
-      throw new Error('pointsModuleType is not lazy')
+    if (!target.outputPointsLazyAbs) {
+      throw new Error('outputPointsLazyAbs is not set')
     }
     const points = this.points.filter(
       (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
@@ -435,7 +439,7 @@ export class FilesGenerator {
 
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
-      outputAbs: target.outputPointsAbs,
+      outputAbs: target.outputPointsLazyAbs,
       target,
     })
 
@@ -499,12 +503,12 @@ export class FilesGenerator {
           // }
           if (point.scope === target.scope) {
             lines.push(
-              `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
+              `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
             )
           } else {
             // it is attached
             lines.push(
-              `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix}),`,
+              `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix}),`,
             )
           }
           lines.push(`} as LazyPointsCollectionRecord`)
@@ -518,11 +522,8 @@ export class FilesGenerator {
   }
 
   private emitReadyPointsFile(target: FilesGeneratorTarget): string {
-    if (!target.outputPointsAbs) {
+    if (!target.outputPointsReadyAbs) {
       throw new Error('outputReadyAbs is not set')
-    }
-    if (target.pointsModuleType !== 'ready') {
-      throw new Error('pointsModuleType is not ready')
     }
 
     const points = this.points.filter(
@@ -543,7 +544,7 @@ export class FilesGenerator {
 
     const { importLines, importedPoints } = this.emitNamedImports({
       points,
-      outputAbs: target.outputPointsAbs,
+      outputAbs: target.outputPointsReadyAbs,
       target,
     })
     lines.push(...importLines)

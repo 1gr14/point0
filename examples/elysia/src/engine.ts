@@ -18,6 +18,7 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
       ssr: true,
       app: './app.js',
       points: './lib/points.ts',
+      pointsLazy: './lib/points.ts',
       routes,
       indexHtml: './index.html',
       port: 3001,

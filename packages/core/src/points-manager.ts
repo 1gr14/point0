@@ -86,9 +86,12 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   // TODO: add readyByModule and readyByCollection
   static readonly ready = <TReadyPointsModule extends ReadyPointsModule>(
     readyPoints: TReadyPointsModule,
-    absPath?: string,
-    readFn?: PointsReadFn,
+    options?: {
+      absPath?: string
+      readFn?: PointsReadFn
+    },
   ): PointsManager<true, TReadyPointsModule['_root_ready']['point']['Infer']['RequiredCtx']> => {
+    const { absPath, readFn } = options ?? {}
     const { _root_ready, ...rest } = readyPoints
     const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
     const rawPoints = PointsManager.rawToReadyPointsCollection(readyPointsWithoutRoot)
@@ -112,9 +115,12 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   // TODO: add lazyByModule and lazyByCollection
   static readonly lazy = <TLazyPointsModule extends LazyPointsModule>(
     lazyPoints: TLazyPointsModule,
-    absPath?: string,
-    readFn?: PointsReadFn,
+    options?: {
+      absPath?: string
+      readFn?: PointsReadFn
+    },
   ): PointsManager<false, TLazyPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']> => {
+    const { absPath, readFn } = options ?? {}
     const { _root_lazy, ...rest } = lazyPoints
     const lazyPointsWithoutRoot = Object.values(rest) as LazyRoutedPointsCollection
     const routedPoints = PointsManager.toRoutedPointsCollection(lazyPointsWithoutRoot)
@@ -134,18 +140,23 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     })
   }
 
-  static readonly read = async <TReady extends boolean>(
-    absPath: string,
-    readFn: PointsReadFn,
-  ): Promise<PointsManager<TReady>> => {
+  static readonly read = async <TReady extends boolean>({
+    absPath,
+    readFn,
+  }: {
+    absPath: string
+    readFn: PointsReadFn
+  }): Promise<PointsManager<TReady>> => {
     const pointsModule = await readFn(absPath)
-    return PointsManager.create(pointsModule, absPath, readFn) as PointsManager<TReady>
+    return PointsManager.create(pointsModule, { absPath, readFn }) as PointsManager<TReady>
   }
 
   static readonly create = <TPoints extends ReadyPointsModule | LazyPointsModule | PointsManager>(
     points: TPoints,
-    absPath?: string,
-    readFn?: PointsReadFn,
+    options?: {
+      absPath?: string
+      readFn?: PointsReadFn
+    },
   ): PointsManager<
     boolean,
     TPoints extends PointsManager
@@ -156,16 +167,17 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           ? TPoints['_root_lazy']['point']['Infer']['RequiredCtx']
           : RequiredCtx
   > => {
+    const { absPath, readFn } = options ?? {}
     if (points instanceof PointsManager) {
       points.readFn = readFn ?? points.readFn
       points.absPath = absPath ?? points.absPath
       return points as never
     }
     if (PointsManager.isReadyPointsModule(points)) {
-      return PointsManager.ready(points, absPath, readFn)
+      return PointsManager.ready(points, { absPath, readFn })
     }
     if (PointsManager.isLazyPointsModule(points)) {
-      return PointsManager.lazy(points, absPath, readFn)
+      return PointsManager.lazy(points, { absPath, readFn })
     }
     throw new Error('Invalid points input')
   }
@@ -191,7 +203,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   async read(): Promise<void> {
     if (this.readFn && this.absPath) {
       const freshPointsModule = await this.readFn(this.absPath)
-      const freshPoints = PointsManager.create(freshPointsModule, this.absPath, this.readFn)
+      const freshPoints = PointsManager.create(freshPointsModule, { absPath: this.absPath, readFn: this.readFn })
       await this.replace(freshPoints)
     }
   }

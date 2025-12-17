@@ -503,8 +503,8 @@ export class Walker {
             node.arguments[0] = makeArrowFnReturnNull()
           }
         } else if (method === 'clientLoader') {
-          if (node.arguments[0]?.type === 'BooleanLiteral' && !node.arguments[0]?.value) {
-            // Keep as is - argument[0] is false (disables clientLoader)
+          if (node.arguments[0]?.type === 'BooleanLiteral') {
+            // Keep as is - argument[0] is false/true (disables/enables clientLoader)
           } else {
             node.arguments = []
           }

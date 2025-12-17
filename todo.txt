@@ -2,10 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-.ssr(), and remove ssr option from engine
-
-.lazy()
-
 prefetchPolicy auto ignores prefetchDehydratedState if App was not provided in engine, so we should store in Point0 globals info about App was provided or not.
 
 И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
@@ -27,11 +23,14 @@ HMR
 Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
 if hmr not allow export not component from file, then make them all components, just assign what we need
 
+Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
+
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
 .lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
 So we also need <my.Init>{children}</my.Init> and <Init />, bet
 So we need be able to auto init or not, lets add .auto(true | false) by default true
 and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
+Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
 
 .enabled()
 
@@ -141,8 +140,17 @@ oxc lint
 ------ refactoring ------
 -------------------------
 
+Закомментить экстракт клиент сунк / а лучше использовать
+
+При лоаде поинта в поинтс менеджер глобальном в клиенте помечать его как лоадед с верными типами, и добавить в поинтс менеджере геттер верный
+Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед
+
+Ну и добавить тогда уж тасунк чтобы знать есть ли асунк лоадеры
 remove location from mountable components, becouse in expo for example it is very strange property
 ? remove ctxLoader, and allow drop loaders ? I think it is possible when we have no loaders in root
+? .lazy(), а зачем это нужно, можно просто импортнуть нужные страницы на нужные страницы, и они сами сбандлятся как надо
+
+Можно для инита, опенапи, реалтайма, использовать генерик спешила, и туда засовывать уже более подробный тип
 
 --------------------------
 ------ after start0 ------

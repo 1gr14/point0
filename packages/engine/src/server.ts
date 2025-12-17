@@ -91,6 +91,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     cwd: string
     scope: PointsScope
     points: PointsManager | string | null
+    pointsLazy: string | null
+    pointsReady: string | null
     allPointsManagers: AllPointsManagers
     engineFile: string | null
     cwdBeforeBuild: string

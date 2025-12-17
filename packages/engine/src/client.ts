@@ -285,11 +285,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const pointsFile = this.pointsFile
     if (pointsFile) {
       if (serverViteDevServer) {
-        return await PointsManager.read(
-          toJsExtension(pointsFile),
-          async (absPath) =>
+        return await PointsManager.read({
+          absPath: toJsExtension(pointsFile),
+          readFn: async (absPath) =>
             (await serverViteDevServer.ssrLoadModule(toJsExtension(absPath))) as LazyPointsModule | ReadyPointsModule,
-        )
+        })
       } else {
         return PointsManager.create(
           await withError(
