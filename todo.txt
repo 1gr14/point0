@@ -12,6 +12,9 @@ HMR
 Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
 if hmr not allow export not component from file, then make them all components, just assign what we need
 
+Проверить расширяемость инпута на юниты
+Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
+
 И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
 Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
 Вторым аргументом в юз нужно передавать инпут, с которым всё будет делаться, или функцию возвращающую инпут
@@ -25,8 +28,6 @@ So we also need <my.Init>{children}</my.Init> and <Init />, bet
 So we need be able to auto init or not, lets add .auto(true | false) by default true
 and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
 Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
-
-Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
 
 .enabled()
 
