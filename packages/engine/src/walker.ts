@@ -318,29 +318,29 @@ export class Walker {
       const methods = {
         none: [],
         client: ['loader', 'ctx', 'ctxLoader', 'response'],
-        serverSsr: ['scrollPosition', 'clientLoader'],
-        serverNoSsr: [
-          'scrollPosition',
-          'clientLoader',
-          'page',
-          'component',
-          'layout',
-          'wrapper',
-          'error',
-          'loading',
-          'layoutError',
-          'pageError',
-          'componentError',
-          'layoutLoading',
-          'pageLoading',
-          'provider',
-          'componentLoading',
-          'query',
-          'infiniteQuery',
-          'mutation',
-        ],
+        // serverSsr: ['scrollPosition', 'clientLoader'],
+        // serverNoSsr: [
+        //   'scrollPosition',
+        //   'clientLoader',
+        //   'page',
+        //   'component',
+        //   'layout',
+        //   'wrapper',
+        //   'error',
+        //   'loading',
+        //   'layoutError',
+        //   'pageError',
+        //   'componentError',
+        //   'layoutLoading',
+        //   'pageLoading',
+        //   'provider',
+        //   'componentLoading',
+        //   'query',
+        //   'infiniteQuery',
+        //   'mutation',
+        // ],
+        server: [],
       }[customer]
-
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!methods) {
         throw new Error(`Invalid customer: ${customer}`)
@@ -2180,6 +2180,6 @@ export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fro
 )
 export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
 
-export type PruneCustomerFlat = 'client' | 'serverSsr' | 'serverNoSsr' | 'none'
+export type PruneCustomerFlat = 'client' | 'server' | 'none'
 export type PruneCustomerByScope = Record<PointsScope, PruneCustomerFlat>
 export type PruneCustomer = PruneCustomerFlat | PruneCustomerByScope

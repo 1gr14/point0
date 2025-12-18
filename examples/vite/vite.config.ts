@@ -7,6 +7,6 @@ import { analyzer } from 'vite-bundle-analyzer'
 
 export default defineConfig((options) => {
   return {
-    plugins: [react(), svgr(), tsconfigPaths(), options.mode.includes('client') ? analyzer() : null] as PluginOption[],
+    plugins: [react(), svgr(), tsconfigPaths(), options.mode.includes('clientx') ? analyzer() : null] as PluginOption[],
   }
 })

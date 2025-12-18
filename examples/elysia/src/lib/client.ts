@@ -3,6 +3,7 @@ import { prisma } from './prisma.js'
 import superjson from 'superjson'
 
 export const client = Point0.create('client')
+  .ssr(true)
   .transformer(superjson)
   .requireCtx<{ x: number; y: number }>()
   .ctx({

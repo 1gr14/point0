@@ -6,6 +6,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker, type CollectedPoint } from './walker.js'
+import type { EngineOptionsRoutes } from './config.js'
 
 type ChangeCollectedPointsEvent = {
   deleted: CollectedPoint[]
@@ -24,7 +25,8 @@ export type FilesGeneratorOptions = {
 
 export type FilesGeneratorTargetOptions = {
   scope: string
-  routes?: RoutesPretty | string | null
+  routesInstance?: RoutesPretty | null | EngineOptionsRoutes
+  routesFile?: string | null
   pointsLazy?: string | null
   pointsReady?: string | null
   banner?: string | null
@@ -32,12 +34,19 @@ export type FilesGeneratorTargetOptions = {
 
 type FilesGeneratorTarget = {
   scope: string
-  routes: RoutesPretty | null
+  routesInstanceGetter: EngineOptionsRoutes | null
+  routesInstance: RoutesPretty | null
   banner: string | null
   outputPointsLazyAbs: string | null
   outputPointsReadyAbs: string | null
   outputRoutesAbs: string | null
 }
+
+export type FilesGeneratorPointsFilesChangeWatcher = (
+  event: 'update' | 'delete',
+  path: string,
+  points: CollectedPoint[],
+) => Promise<void> | void
 
 export class FilesGenerator {
   readonly banner: string | undefined
@@ -47,14 +56,19 @@ export class FilesGenerator {
   readonly tempDir: string
   readonly targets: FilesGeneratorTarget[]
   readonly routes: Record<string, RoutesPretty>
+  private isRoutesInitialized = false
 
   readonly watchDir: string
   readonly watchIgnore: string[]
   readonly watchPatterns: string[]
   watchSubscription: AsyncSubscription | undefined
+  pointsFilesChangeWatchersSubscription: AsyncSubscription | undefined
+
+  readonly pointsFilesChangeWatchers: FilesGeneratorPointsFilesChangeWatcher[] = []
 
   private readonly files = new Set<string>()
   private readonly points: CollectedPoint[] = []
+  private readonly pointsByPaths = new Map<string, CollectedPoint>()
 
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
@@ -70,19 +84,15 @@ export class FilesGenerator {
       (t) =>
         ({
           scope: t.scope,
-          routes: typeof t.routes === 'string' ? null : (t.routes ?? null),
+          routesInstanceGetter: typeof t.routesInstance === 'function' ? t.routesInstance : null,
+          routesInstance: typeof t.routesInstance === 'function' ? null : (t.routesInstance ?? null),
           banner: [this.banner, t.banner].filter(Boolean).join('\n') || null,
           outputPointsLazyAbs: t.pointsLazy ? nodePath.resolve(this.cwd, t.pointsLazy) : null,
           outputPointsReadyAbs: t.pointsReady ? nodePath.resolve(this.cwd, t.pointsReady) : null,
-          outputRoutesAbs: typeof t.routes === 'string' ? nodePath.resolve(this.cwd, t.routes) : null,
+          outputRoutesAbs: t.routesFile ? nodePath.resolve(this.cwd, t.routesFile) : null,
         }) satisfies FilesGeneratorTarget,
     )
     this.routes = {}
-    for (const target of this.targets) {
-      if (typeof target.routes === 'object' && target.routes !== null) {
-        this.routes[target.scope] = target.routes
-      }
-    }
 
     this.watchDir = this.globInclude.length > 0 ? getDirByPaths({ paths: this.globInclude }) : process.cwd()
     this.watchIgnore = [
@@ -151,6 +161,13 @@ export class FilesGenerator {
     return [...this.files].some((f) => f.startsWith(fileOrDirAbs))
   }
 
+  actualizePointsByPaths(): void {
+    this.pointsByPaths.clear()
+    for (const point of this.points) {
+      this.pointsByPaths.set(point.fileAbs, point)
+    }
+  }
+
   // mutations
 
   private sortPoints(): void {
@@ -177,6 +194,7 @@ export class FilesGenerator {
 
   // TODO: not chunk size, but max in same time processing files
   async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent & { written: boolean }> {
+    await this.initRoutesInstances()
     const files = [...this.files]
     const chunks = FilesGenerator.chunk(files, chunkSize)
     const walker = new Walker({ cwd: this.cwd, routes: this.routes })
@@ -200,6 +218,7 @@ export class FilesGenerator {
     for (const error of errors) {
       console.error(error instanceof Error ? error.message : String(error))
     }
+    this.actualizePointsByPaths()
     return {
       points: newPoints,
       deleted: diff.deleted,
@@ -208,6 +227,19 @@ export class FilesGenerator {
       errors,
       written,
     }
+  }
+
+  private async initRoutesInstances(): Promise<void> {
+    if (this.isRoutesInitialized) {
+      return
+    }
+    for (const target of this.targets) {
+      if (target.routesInstanceGetter) {
+        target.routesInstance = await target.routesInstanceGetter()
+        this.routes[target.scope] = target.routesInstance
+      }
+    }
+    this.isRoutesInitialized = true
   }
 
   private async writeOutputs(): Promise<{ written: boolean }> {
@@ -813,6 +845,24 @@ export class FilesGenerator {
 
   // wathcer
 
+  getCollectedPointsRelatedToPath(path: string): CollectedPoint[] {
+    const exactPoint = this.pointsByPaths.get(path)
+    if (exactPoint) {
+      return [exactPoint]
+    }
+    const pointsPaths = Array.from(this.pointsByPaths.keys())
+    const result: CollectedPoint[] = []
+    for (const pointPath of pointsPaths) {
+      if (pointPath.startsWith(path)) {
+        const point = this.pointsByPaths.get(pointPath)
+        if (point) {
+          result.push(point)
+        }
+      }
+    }
+    return result
+  }
+
   async watch() {
     const { subscribe } = await import('@parcel/watcher')
     const subscription = await subscribe(
@@ -864,6 +914,7 @@ export class FilesGenerator {
               this.addOrUpdateFile(targetAbs)
             }
             const evt = await this.process()
+            this.notifyCustomWatchersIfSuitable(isDelete ? 'delete' : 'update', targetAbs)
             if (evt.changed) {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
@@ -888,5 +939,19 @@ export class FilesGenerator {
 
     // Store subscription for potential cleanup
     this.watchSubscription = subscription
+  }
+
+  onPointFileChange(callback: FilesGeneratorPointsFilesChangeWatcher) {
+    this.pointsFilesChangeWatchers.push(callback)
+  }
+
+  private notifyCustomWatchersIfSuitable(event: 'update' | 'delete', path: string): void {
+    const points = this.getCollectedPointsRelatedToPath(path)
+    if (points.length === 0) {
+      return
+    }
+    for (const watcher of this.pointsFilesChangeWatchers) {
+      void watcher(event, path, points)
+    }
   }
 }

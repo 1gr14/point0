@@ -3,11 +3,11 @@ import { routes } from '../lib/routes'
 
 export const empty = client
   .lets('page', 'empty', routes.empty)
-  // .loader(({ input }) => {
-  //   return {
-  //     title: 'Empty',
-  //   }
-  // })
+  .loader(({ input }) => {
+    return {
+      title: 'Empty',
+    }
+  })
   .clientLoader(({ data }) => {
     return {
       ...data,

@@ -2,18 +2,25 @@
 ------ before start0 -----
 --------------------------
 
-- check that when I import point, it is not duplicated on server, and gets from client dist dir, else lets not build clients for servers, and on build engine just replace literal apyh with await import so it comes to build. But in fact we maybe do not need import points to somewhere not to another points files, so maybe everything will be ok. Or maybe allow prebuild server with vite also
-! stop build clients for server, just build server, even with vite if needed. ? But preserve ability to build clients for server, but maybe not documented yet
-parseViteMode()
-stop pruning for serverSsr
+? Разрешить прокидывать без функци и модуль (что?)
+
+why call 2 times dist server
+remove prune option from engine
+Коммит
+nodeEnv строго есть всегда при билде и при серве
+
+Разрешить мопрт модуля роутов, через дефаулт или через routes
+Убедиться, что поинтсы больше не энтри ни для сервера ни для клиента
+Вынести dev в отдельную функции энжины
+Сделать красиво
+
+Определение реквайред кткс энжины по запровайженым поинтам
+Провайдер пусть имеет разную тдату и тласоутпут, и квери отдают дату, а экзекют ласт дату
 
 HMR
 Вероятно хмру поможет если я буду возвращать просто внутренний компонент, а на местах, где рендерю оборачивал бы в Компонент и передавал в него сам поинт. Или может даже достаточно возвращать сам компонент, а на местах использотвать point.Component, а накрайняк если нельзя на него даже ничгео ассайнить, тогда из displayName возьмём название поинта и подтянем его из глобала когда будем делать <Mount point={point} /> <point.Page /> <point.Component /> <point.Layout />
 Иннеркомпонент тоже нужно сделать доступным снаружи, и типы его пропсов тоже дать знать через инфер
 if hmr not allow export not component from file, then make them all components, just assign what we need
-
-Проверить расширяемость инпута на юниты
-Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
 
 И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
 Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
@@ -28,6 +35,9 @@ So we also need <my.Init>{children}</my.Init> and <Init />, bet
 So we need be able to auto init or not, lets add .auto(true | false) by default true
 and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
 Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
+
+Проверить расширяемость инпута на юниты
+Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
 
 .enabled()
 
@@ -58,11 +68,12 @@ make clientserver import helpers without class, like just fns, and allow pruner 
 
 START0
 start0 without mono0
-refactor Error0; check ConvexError style; base has only cause recursion, everything else is plugins like isFetchError
-refactor Meta0; Мета0 это просто асунк стор, который позволяет прокинуть мету в глобальщину, и тогда никакое трио не нужно; Meta0 and meta0 with poor data exists, but we can createMeta0 → MyMeta0, and do const myMeta0 = MyMeta0.extract() and MyMeta0.provide(() => {})
+refactor Error0: check ConvexError style; base has only cause recursion, everything else is plugins like isFetchError
+refactor Meta0: Мета0 это просто асунк стор, который позволяет прокинуть мету в глобальщину, и тогда никакое трио не нужно; Meta0 and meta0 with poor data exists, but we can createMeta0 → MyMeta0, and do const myMeta0 = MyMeta0.extract() and MyMeta0.provide(() => {})
+refactor Meta0: Мета всегда с маленькой буквы и есть только методы инит, клон(эти с колбеком создают стор), ассайн, гет (эти меняют стор. И есть отдельная функция криэйтМета0, которая создаст такую же штучку но со своим стором
 ? refactor Ctx0 → init point enough
-refactor Env0 → just cool validation helpers
-? refactor Logger0 → just use as is Logger with global Meta0 provided
+refactor Env0: just cool validation helpers
+? refactor Logger0: just use as is Logger with global Meta0 provided
 
 drizzle
 unwind and tailwind
@@ -105,7 +116,7 @@ analyze if there same id points or route points, and throw error
 ? get base/root specific things right from base, do not continue it after .base()
 ? Point0 → P0, cli p0
 rest important TODO in code
-Пририписки unsafe заменить на safe в клиент сервере и поправить прунер, да вообще не нужен сейф
+? Пририписки unsafe заменить на safe в клиент сервере и поправить прунер, да вообще не нужен сейф (да нужны они, а вдруг код иполняется в месте где реально клиент и сервер исполняют)
 serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
 ? on request to server for query or mutation which has no serverLoader throw error
 ? Юзкомбайнедквери заменить на юзелиентэндсерверквери
@@ -130,9 +141,6 @@ add point self to loader and to ctx and to loadrCtx options, and everywhere wher
 
 Move type errors to its own types, so we can reuse them
 
-bunup
-oxc lint
-
 -------------------------
 ------ refactoring ------
 -------------------------
@@ -146,8 +154,14 @@ oxc lint
 remove location from mountable components, becouse in expo for example it is very strange property
 ? remove ctxLoader, and allow drop loaders ? I think it is possible when we have no loaders in root
 ? .lazy(), а зачем это нужно, можно просто импортнуть нужные страницы на нужные страницы, и они сами сбандлятся как надо
+Если нет плагинов для клиента и клиент всего один, тогда и запускать его будем на месте. Но когда мы захотим прунить по скоупу, окажется, что так не получается, и надо юзеру руками плагины вписывать
 
 Можно для инита, опенапи, реалтайма, использовать генерик спешила, и туда засовывать уже более подробный тип
+? Вайт тру автопоиск конфига
+parseViteMode()
+
+bunup
+oxc lint
 
 --------------------------
 ------ after start0 ------
@@ -170,6 +184,8 @@ config({}), clientConfig({})
 and in loader settings is immutable
 
 ! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
+Мдкс если видит в своей папке или выше файл тчк роут то он файловый роут
+Мдкс может в бэйзе просто написать скоуп тчк тайп тчк нэйм
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
@@ -224,6 +240,31 @@ launch
 -------------------------- 
 ------ launch-notes ------
 --------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

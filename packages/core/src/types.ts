@@ -1332,6 +1332,7 @@ export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
 
 export type AppProps = { points: PointsManager }
 export type AppComponent = (props: AppProps) => React.ReactElement
+export type AppComponentModule = { default: AppComponent }
 
 // transformer
 

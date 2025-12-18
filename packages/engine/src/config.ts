@@ -1,6 +1,6 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import type { AppComponent, LazyPointsModule, PointsScope, ReadyPointsModule } from '@point0/core'
-import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
+import type { AppComponent, AppComponentModule, LazyPointsModule, PointsScope, ReadyPointsModule } from '@point0/core'
+import { appendSlash, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import type {
@@ -32,6 +32,10 @@ export type EngineOptionsEnvParsed = Record<string, any>
 export type ExtractedViteConfig = import('vite').UserConfig
 export type EngineOptionsViteConfig = ExtractedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
 
+export type EngineOptionsAppComponent = () => Promise<AppComponent | AppComponentModule>
+export type EngineOptionsPoints = () => Promise<ReadyPointsModule | LazyPointsModule>
+export type EngineOptionsRoutes = () => Promise<RoutesPretty<any>>
+
 export type EngineGeneralOptions = {
   fallbackScope?: PointsScope
   logger?: EngineLogger
@@ -40,17 +44,16 @@ export type EngineGeneralOptions = {
   cwdBeforeBuild?: string
   engineFile?: string
   autoFixBuiltPaths?: boolean
-  clientsServerOutdir?: string | null
-  clientsSelfOutdir?: string | null
+  clientsOutdir?: string | null
   pointsGlob?: string | string[]
   buildWatchGlob?: string | string[]
   banner?: string | null
 }
 export type EngineServerOptions = {
   scope: PointsScope
-  points?: string | ReadyPointsModule | LazyPointsModule | null
-  pointsLazy?: string | null
-  pointsReady?: string | null
+  points?: EngineOptionsPoints
+  generatePointsLazy?: string | null
+  generatePointsReady?: string | null
   publicdir?: EngineOptionsPublicdir
   port?: number | string | null
   outdir?: string | null
@@ -58,15 +61,20 @@ export type EngineServerOptions = {
   publicdirOutdir?: string | null
   bunBuildConfig?: ServerBunBuildConfigDefinition
   bunPlugins?: ServerBunPluginsDefinition
-  routes?: RoutesPretty<any> | string | null
+  routes?: EngineOptionsRoutes | null
+  generateRoutes?: string | null
   banner?: string | null
+  viteConfig?: EngineOptionsViteConfig | null
+  hmrPort?: number | string | null
 }
 export type EngineClientOptions = {
   scope: PointsScope
-  points: string | ReadyPointsModule | LazyPointsModule
-  pointsLazy?: string | null
-  pointsReady?: string | null
-  app?: string | AppComponent | null
+  // TODO: allow empty points
+  // TODO: allow points collection
+  points: EngineOptionsPoints
+  generatePointsLazy?: string | null
+  generatePointsReady?: string | null
+  app?: EngineOptionsAppComponent | null
   baseurl?: string | null
   publicdir?: EngineOptionsPublicdir | null
   indexHtml?: string | null
@@ -78,12 +86,11 @@ export type EngineClientOptions = {
   bunBuildConfig?: ClientBunBuildConfigDefinition
   bunPlugins?: ClientBunPluginsDefinition
   outdir?: string | null
-  serverOutdir?: string | null
   publicdirOutdir?: string | null
-  routes?: RoutesPretty<any> | string | null
+  routes?: EngineOptionsRoutes | null
+  generateRoutes?: string | null
   banner?: string | null
   prune?: boolean
-  pruneServer?: boolean
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -99,8 +106,7 @@ export type EngineGeneralOptionsParsed = {
   engineFile: string | null
   cwd: string
   autoFixBuiltPaths: boolean
-  clientsServerOutdir: string | null
-  clientsSelfOutdir: string | null
+  clientsOutdir: string | null
   pointsGlob: string[]
   buildWatchGlob: string[]
   banner: string | null
@@ -108,11 +114,11 @@ export type EngineGeneralOptionsParsed = {
 export type EngineClientOptionsParsed = {
   scope: PointsScope
   engineFile: string | null
-  points: PointsManager | string
-  pointsLazy: string | null
-  pointsReady: string | null
+  pointsProvided: EngineOptionsPoints
+  generatePointsLazy: string | null
+  generatePointsReady: string | null
   // pointsDistFile: string | null
-  app: string | AppComponent | null
+  appProvided: EngineOptionsAppComponent | null
   // appDistFile: string | null
   baseurl: string
   publicdir: EngineOptionsPublicdirParsed
@@ -127,18 +133,17 @@ export type EngineClientOptionsParsed = {
   outdir: string | null
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
-  serverOutdir: string | null
   publicdirOutdir: string | null
-  routes: RoutesPretty<any> | string | null
+  routesInstance: EngineOptionsRoutes | null
+  routesFile: string | null
   banner: string | null
   prune: boolean
-  pruneServer: boolean
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
-  points: PointsManager | string | null
-  pointsLazy: string | null
-  pointsReady: string | null
+  pointsProvided: EngineOptionsPoints | null
+  generatePointsLazy: string | null
+  generatePointsReady: string | null
   publicdir: EngineOptionsPublicdirParsed
   port: number
   entry: Record<string, string> | null
@@ -150,8 +155,11 @@ export type EngineServerOptionsParsed = {
   fallbackScope: PointsScope
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
-  routes: RoutesPretty<any> | string | null
+  routesInstance: EngineOptionsRoutes | null
+  routesFile: string | null
   banner: string | null
+  viteConfig: EngineOptionsViteConfig | null
+  hmrPort: number | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -216,9 +224,9 @@ const parseEngineGeneralOptions = ({
   serverOptions: EngineServerOptions
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
-  const itWasBuilt = generalOptions.itWasBuilt ?? process.env.ENGINE_WAS_BUILT === 'true'
+  const itWasBuilt = generalOptions.itWasBuilt ?? process.env.POINT0_ENGINE_WAS_BUILT === 'true'
   const { cwdAfterBuild, cwdBeforeBuild, cwd } = (() => {
-    generalOptions.itWasBuilt ??= process.env.ENGINE_WAS_BUILT === 'true'
+    generalOptions.itWasBuilt ??= process.env.POINT0_ENGINE_WAS_BUILT === 'true'
 
     if (!itWasBuilt) {
       if (generalOptions.engineFile) {
@@ -234,22 +242,26 @@ const parseEngineGeneralOptions = ({
       }
     } else {
       if (!generalOptions.cwdBeforeBuild || !generalOptions.cwdAfterBuild) {
-        const ENGINE_CWD_BEFORE_BUILD_CUTTED = process.env.ENGINE_CWD_BEFORE_BUILD ?? null
-        const ENGINE_CWD_AFTER_BUILD_CUTTED = process.env.ENGINE_CWD_AFTER_BUILD ?? null
-        if (!ENGINE_CWD_BEFORE_BUILD_CUTTED || !ENGINE_CWD_AFTER_BUILD_CUTTED || !generalOptions.engineFile) {
+        const POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? null
+        const POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED = process.env.POINT0_ENGINE_CWD_AFTER_BUILD ?? null
+        if (
+          !POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED ||
+          !POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED ||
+          !generalOptions.engineFile
+        ) {
           throw new Error(
-            `You should provide ENGINE_CWD_BEFORE_BUILD and ENGINE_CWD_AFTER_BUILD and engineFile if itWasBuilt is true and cwdBeforeBuild and cwdAfterBuild are not provided`,
+            `You should provide POINT0_ENGINE_CWD_BEFORE_BUILD and POINT0_ENGINE_CWD_AFTER_BUILD and engineFile if itWasBuilt is true and cwdBeforeBuild and cwdAfterBuild are not provided`,
           )
         }
         const CWD_AFTER_BUILD_CURRENT = nodePath.dirname(generalOptions.engineFile)
-        if (!CWD_AFTER_BUILD_CURRENT.endsWith(ENGINE_CWD_AFTER_BUILD_CUTTED)) {
+        if (!CWD_AFTER_BUILD_CURRENT.endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)) {
           throw new Error(
-            `ENGINE_CWD_AFTER_BUILD_CUTTED "${ENGINE_CWD_AFTER_BUILD_CUTTED}" is not a subdirectory of CWD_AFTER_BUILD_CURRENT "${CWD_AFTER_BUILD_CURRENT}"`,
+            `POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED "${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}" is not a subdirectory of CWD_AFTER_BUILD_CURRENT "${CWD_AFTER_BUILD_CURRENT}"`,
           )
         }
-        const localDir = CWD_AFTER_BUILD_CURRENT.replace(new RegExp(`${ENGINE_CWD_AFTER_BUILD_CUTTED}$`), '')
-        generalOptions.cwdBeforeBuild = nodePath.join(localDir, ENGINE_CWD_BEFORE_BUILD_CUTTED)
-        generalOptions.cwdAfterBuild = nodePath.join(localDir, ENGINE_CWD_AFTER_BUILD_CUTTED)
+        const localDir = CWD_AFTER_BUILD_CURRENT.replace(new RegExp(`${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}$`), '')
+        generalOptions.cwdBeforeBuild = nodePath.join(localDir, POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED)
+        generalOptions.cwdAfterBuild = nodePath.join(localDir, POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)
       }
     }
 
@@ -296,15 +308,10 @@ const parseEngineGeneralOptions = ({
   }
   return {
     ...result,
-    clientsServerOutdir: toFinalPath({
+    clientsOutdir: toFinalPath({
       ...result,
       cwdIfWasBuilt: null,
-      path: generalOptions.clientsServerOutdir,
-    }),
-    clientsSelfOutdir: toFinalPath({
-      ...result,
-      cwdIfWasBuilt: null,
-      path: generalOptions.clientsSelfOutdir,
+      path: generalOptions.clientsOutdir,
     }),
     pointsGlob: !generalOptions.pointsGlob
       ? []
@@ -430,6 +437,7 @@ export const parseEngineServerOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
+  const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
   const entriesRecordInput =
     typeof serverOptions.entry === 'string' ? { main: serverOptions.entry } : serverOptions.entry
   const outdir = toFinalPath({
@@ -452,18 +460,9 @@ export const parseEngineServerOptions = ({
     : null
   return {
     scope: serverOptions.scope,
-    points:
-      typeof serverOptions.points === 'string'
-        ? toFinalPath({
-            ...generalOptionsParsed,
-            cwdIfWasBuilt: outdir,
-            path: serverOptions.points,
-            omitDirAfterBuild: true,
-          })
-        : !serverOptions.points
-          ? null
-          : PointsManager.create(serverOptions.points),
+    pointsProvided: serverOptions.points ?? null,
     port,
+    hmrPort,
     outdir,
     entry: entriesRecord,
     publicdir:
@@ -479,10 +478,20 @@ export const parseEngineServerOptions = ({
     fallbackScope: generalOptionsParsed.fallbackScope,
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
-    routes: serverOptions.routes ?? null,
-    pointsLazy: serverOptions.pointsLazy ?? null,
-    pointsReady: serverOptions.pointsReady ?? null,
+    routesInstance: serverOptions.routes ?? null,
+    routesFile: serverOptions.generateRoutes ?? null,
+    generatePointsLazy: serverOptions.generatePointsLazy ?? null,
+    generatePointsReady: serverOptions.generatePointsReady ?? null,
     banner: serverOptions.banner ?? null,
+    viteConfig:
+      typeof serverOptions.viteConfig === 'string'
+        ? toFinalPath({
+            ...generalOptionsParsed,
+            relPathAfterBuild: null,
+            cwdIfWasBuilt: null,
+            path: serverOptions.viteConfig,
+          })
+        : (serverOptions.viteConfig ?? null),
   }
 }
 const parseEngineClientOptions = ({
@@ -499,23 +508,10 @@ const parseEngineClientOptions = ({
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
   const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
-  const serverOutdir = toFinalPath({
-    ...generalOptionsParsed,
-    cwdIfWasBuilt: null,
-    path:
-      clientOptions.serverOutdir ??
-      (generalOptionsParsed.clientsServerOutdir
-        ? nodePath.resolve(generalOptionsParsed.clientsServerOutdir, clientOptions.scope)
-        : null),
-  })
   const outdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,
-    path:
-      clientOptions.outdir ??
-      (generalOptionsParsed.clientsSelfOutdir
-        ? nodePath.resolve(generalOptionsParsed.clientsSelfOutdir, clientOptions.scope)
-        : null),
+    path: clientOptions.outdir ?? null,
   })
   const publicdirOutdir = toFinalPath({
     ...generalOptionsParsed,
@@ -524,16 +520,7 @@ const parseEngineClientOptions = ({
   })
   return {
     scope: clientOptions.scope,
-    points:
-      typeof clientOptions.points === 'string'
-        ? toFinalPath({
-            ...generalOptionsParsed,
-            cwdIfWasBuilt: serverOutdir,
-            relPathAfterBuild: clientOptions.viteConfig ? './points.js' : undefined,
-            path: clientOptions.points,
-            omitDirAfterBuild: true,
-          })
-        : PointsManager.create(clientOptions.points),
+    pointsProvided: clientOptions.points,
     // pointsDistFile:
     //   typeof clientOptions.points === 'string'
     //     ? toFinalDistPath({
@@ -544,16 +531,7 @@ const parseEngineClientOptions = ({
     //         omitDirAfterBuild: true,
     //       })
     //     : null,
-    app:
-      typeof clientOptions.app === 'string'
-        ? toFinalPath({
-            ...generalOptionsParsed,
-            cwdIfWasBuilt: serverOutdir,
-            relPathAfterBuild: clientOptions.viteConfig ? './app.js' : undefined,
-            path: clientOptions.app,
-            omitDirAfterBuild: true,
-          })
-        : (clientOptions.app ?? null),
+    appProvided: clientOptions.app ?? null,
     // appDistFile:
     //   typeof clientOptions.app === 'string'
     //     ? toFinalDistPath({
@@ -598,16 +576,15 @@ const parseEngineClientOptions = ({
         : publicdirOutdir && clientOptions.publicdir
           ? [['/', publicdirOutdir]]
           : [],
-    serverOutdir,
     publicdirOutdir,
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
-    routes: clientOptions.routes ?? null,
-    pointsLazy: clientOptions.pointsLazy ?? null,
-    pointsReady: clientOptions.pointsReady ?? null,
+    routesInstance: clientOptions.routes ?? null,
+    routesFile: clientOptions.generateRoutes ?? null,
+    generatePointsLazy: clientOptions.generatePointsLazy ?? null,
+    generatePointsReady: clientOptions.generatePointsReady ?? null,
     banner: clientOptions.banner ?? null,
     prune: clientOptions.prune ?? true,
-    pruneServer: clientOptions.pruneServer ?? true,
     engineFile: generalOptionsParsed.engineFile,
   }
 }

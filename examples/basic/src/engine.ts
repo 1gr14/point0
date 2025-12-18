@@ -1,6 +1,8 @@
-import { Engine } from '@point0/engine'
 import type { client } from '@/lib/client'
-import { routes } from '@/lib/routes'
+import { Engine } from '@point0/engine'
+import nodePath from 'node:path'
+// import * as points from './lib/points.ready.js'
+// import './lib/points.js'
 
 export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
   // clientsServerOutdir: '../dist/server',
@@ -10,23 +12,31 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
     scope: 'server',
     port: 3000,
     entry: { main: './index.server.ts' },
-    outdir: '../dist/server/self',
+    outdir: '../dist/server',
+    bunBuildConfig: ({ customer, nodeEnv }) => ({
+      sourcemap: false,
+      minify: false,
+      tsconfig: nodePath.resolve(import.meta.dirname, '../tsconfig.json'),
+    }),
   },
   clients: [
     {
       scope: 'client',
-      app: './app.js',
-      points: await import('./lib/points'),
-      pointsLazy: './lib/points.ts',
+      // plugins of bun we can have where we want
+      // TODO: allow provide app itself and points itself (so alway just app should be provided)
+      app: async () => await import('./app.js').then((m) => m.default),
+      points: async () => await import('./lib/points.ready.js'),
+      // points: async () => points,
+      generatePointsLazy: './lib/points.lazy.ts',
+      generatePointsReady: './lib/points.ready.ts',
       // pointsModuleType: 'ready',
       // points: await import('./lib/points'),
       // routes: './lib/routes.generated.ts',
-      routes,
+      routes: async () => await import('./lib/routes').then((m) => m.routes),
       indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],
       outdir: '../dist/client',
-      serverOutdir: '../dist/server/client',
       publicdir: [
         '../public',
         {
@@ -38,3 +48,20 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
     },
   ],
 })
+// require('./lib/points.ready.js')
+// console.log(engine.clients[0].pointsProvided)
+// const pointsPath = getDevPathInsideImportFn(engine.clients[0].pointsProvided, import.meta.file)
+// console.log('pointsPath', pointsPath)
+// await import(pointsPath)
+// await engine.clients[0].initPointsManager()
+
+// const y = async () => await import('./lib/points.ready.js')
+// function getStringInsideFn(fn: Function): string | null {
+//   const src = fn.toString()
+//   const match = /import\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/.exec(src)
+//   return match?.[1] ?? null
+// }
+// const x = getStringInsideFn(y)
+// console.log(x)
+// await import(x)
+// // await y()

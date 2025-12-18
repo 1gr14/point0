@@ -3,6 +3,7 @@ import { prisma } from './prisma.js'
 import superjson from 'superjson'
 
 export const client = Point0.create('client')
+  .ssr(true)
   .transformer(superjson)
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   .serverurl(process.env.SOURCE_BASE_URL!)
@@ -19,6 +20,7 @@ export const client = Point0.create('client')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
+  .prefetchOnHover(true)
   .head({
     title: 'Loading...',
     titleTemplate: '%s | IdeaNick',

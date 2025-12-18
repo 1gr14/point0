@@ -65,7 +65,7 @@ export const generateIdeaMutation = client
   .loader(async ({ input, ctx }) => {
     const stream = new ReadableStream({
       async start(controller) {
-        const text = 'o'.repeat(100) // 100 symbols
+        const text = 'x'.repeat(100) // 100 symbols
         for (const char of text) {
           controller.enqueue(char)
           await new Promise((resolve) => setTimeout(resolve, 10)) // 10 ms delay per symbol

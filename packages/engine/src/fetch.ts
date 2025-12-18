@@ -43,11 +43,11 @@ export const engineFetch = async ({
           return bunDevServerUpgradeWebSocketResult.result as never // it is just for hmr on dev
         }
       }
-      const clientViteDevServerResponse = await client.fetchClientViteDevServerMiddleware({ request, parsedUrl })
+      const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request, parsedUrl })
       if (clientViteDevServerResponse) {
         return clientViteDevServerResponse
       }
-      const clientBunDevServerResponse = await client.fetchClientBunDevServerMiddleware({ request, parsedUrl })
+      const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request, parsedUrl })
       if (clientBunDevServerResponse) {
         return clientBunDevServerResponse
       }
@@ -73,6 +73,13 @@ export const engineFetch = async ({
 
     // TODO: lets provide here wrapResponse and wrapRequest and call it
     // TODO: also there on error fo input not throw it but return as error
+
+    if (request.method === 'OPTIONS') {
+      // TODO: when we will have headers midlewares, remove this
+      return new Response(null, {
+        status: 204,
+      })
+    }
     const { task, input, suitable, executor } = await allPointsManagers.prepareExecutorByRequest({
       request,
       parsedUrl,

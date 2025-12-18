@@ -22,13 +22,14 @@ program
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-S, --no-server', 'Do not serve server, serve only clients dev servers')
   .option('-H, --no-hot', 'Prevent --hot flag for bun run command')
+  // TODO: allow pick specific entry points
   .option('-e, --engine <path>', dictionary.enginePath)
   .action(async (options) => {
     const hot = options.hot !== false
     const dashDashIndex = process.argv.indexOf('--')
     const extraArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
     process.env.NODE_ENV ??= 'development'
-    const engine = await Engine.findAndImportSelf(options.engine)
+    const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
     const generatorProcess = options.generate !== false ? engine.generateWatch() : null
     const withServer = options.server !== false && !!engine.server.entry
     if (withServer) {
@@ -39,9 +40,42 @@ program
       //   await Promise.all([generatorProcess, serverEntryHotRunWithClientDevServers])
       // } else {
       // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
-      const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(async (entry) => {
-        return await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run ${hot ? '--hot' : ''} ${extraArgs.join(' ')} ${entry}`
-      })
+      // const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(async (entry) => {
+      //   return await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run ${hot ? '--hot' : ''} ${extraArgs.join(' ')} ${entry}`
+      // })
+      const serverEntryHotRuns: Array<Promise<any>> = await (async () => {
+        if (engine.server.viteConfig) {
+          process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
+          // await engine.server.startViteDevServer()
+          // return engine.server.loadViteDevEntries({ hot })
+          const viteDevServer = await engine.server.startViteDevServer()
+          const engineVitedModule = await viteDevServer.ssrLoadModule(engineFile)
+          const engineVited: typeof engine = engineVitedModule.engine ?? engineVitedModule.default
+          return [engineVited.server.loadViteDevEntries({ hot, viteDevServer })] // ??? how dispose ???
+        } else {
+          const start = () =>
+            Object.values(engine.server.entry || []).map((entry) => {
+              // return await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run ${hot ? '--watch' : ''} ${extraArgs.join(' ')} ${entry}`
+              return Bun.spawn({
+                cmd: ['bun', 'run', ...(hot ? ['--watch'] : []), ...extraArgs, entry],
+                env: {
+                  ...process.env,
+                  POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
+                },
+                stdout: 'inherit',
+                stderr: 'inherit',
+              })
+            })
+          let processes = start()
+          engine.onPointFileChange((event, path, points) => {
+            processes.forEach((p) => {
+              p.kill('SIGKILL')
+            })
+            processes = start()
+          })
+          return []
+        }
+      })()
       // and here we rung one instance of client dev servers per each client
       const clientsDevSevers = engine.serveClientDevServers()
       await Promise.all([generatorProcess, ...serverEntryHotRuns, clientsDevSevers])
@@ -55,17 +89,15 @@ program
   .command('build')
   .description('Build server and clients')
   .option('-e, --engine <path>', dictionary.enginePath)
-  .option('-t, --target <target>', 'Target to build')
   .option('-s, --scope <scope>', 'Scope to build')
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-C, --no-clean', 'Do not clean build')
   .option('-P, --no-publicdir', 'Do not build publicdir')
   .action(async (options) => {
     process.env.NODE_ENV ??= 'production'
-    const engine = await Engine.findAndImportSelf(options.engine)
+    const { engine } = await Engine.findAndImportSelf(options.engine)
     await engine.build({
       generate: options.generate !== false,
-      target: options.target as 'client' | 'server',
       scope: options.scope as PointsScope,
       clean: options.clean !== false,
       publicdir: options.publicdir !== false,
@@ -78,7 +110,7 @@ program
   .option('-w, --watch', 'Watch for changes and regenerate')
   .option('-e, --engine <path>', dictionary.enginePath)
   .action(async (options) => {
-    const engine = await Engine.findAndImportSelf(options.engine)
+    const { engine } = await Engine.findAndImportSelf(options.engine)
     if (options.watch) {
       await engine.generateWatch()
     } else {

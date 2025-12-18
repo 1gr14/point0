@@ -14,7 +14,7 @@ export const hmr = (engine: Engine, options: { enabled?: boolean } = {}) => {
   }
 
   // TODO: somehow allow multiple clients to have hmr enabled
-  const firstClientWithClientBunNativeDevServer = engine.clients.find((client) => client.clientBunNativeDevServer)
+  const firstClientWithClientBunNativeDevServer = engine.clients.find((client) => client.bunNativeDevServer)
 
   if (!firstClientWithClientBunNativeDevServer) {
     return plugin

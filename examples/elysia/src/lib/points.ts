@@ -1,6 +1,15 @@
 import type { LazyPointsCollectionRecord } from '@point0/core'
 import { client as root } from './client.js'
 
+export const _unnamed_1ou1x35w0ni_lazy = {
+  type: 'page',
+  name: 'home',
+  route: '/',
+  shouldBePrefetchedOnLinkHover: false,
+  layouts: ['generalLayout'],
+  point: async () => (await import('../pages/home.js')).default.point,
+} as LazyPointsCollectionRecord
+
 export const _empty_1hkfpsw8bf8_lazy = {
   type: 'page',
   name: 'empty',
@@ -15,15 +24,6 @@ export const _sharedEmptyPage_2fpm0morg6d_lazy = {
   route: '/empty/shared',
   shouldBePrefetchedOnLinkHover: false,
   point: async () => (await import('../pages/empty.js')).sharedEmptyPage.point,
-} as LazyPointsCollectionRecord
-
-export const _unnamed_1ou1x35w0ni_lazy = {
-  type: 'page',
-  name: 'home',
-  route: '/home',
-  shouldBePrefetchedOnLinkHover: false,
-  layouts: ['generalLayout'],
-  point: async () => (await import('../pages/home.js')).default.point,
 } as LazyPointsCollectionRecord
 
 export const _ideasPage_1ph5cjq2lcy_lazy = {

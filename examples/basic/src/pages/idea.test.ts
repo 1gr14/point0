@@ -22,6 +22,7 @@ describe('idea page', () => {
   it.concurrent('should work with engine.execute', async () => {
     await engine.init({ preventClientDevServers: true })
     const result = await engine.execute({
+      // TODO: allow guess request by point and input
       point: ideaPage.point,
       input: { id: '1' },
       requiredCtx: { request: new Request('/') },

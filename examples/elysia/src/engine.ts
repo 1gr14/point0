@@ -1,6 +1,5 @@
 import { Engine } from '@point0/engine'
 import type { client } from './lib/client'
-import { routes } from './lib/routes'
 
 export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
   // clientsServerOutdir: '../dist/server',
@@ -10,20 +9,19 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
     scope: 'server',
     port: 3000,
     entry: { main: './index.server.ts' },
-    outdir: '../dist/server/self',
+    outdir: '../dist/server',
   },
   clients: [
     {
       scope: 'client',
-      app: './app.js',
-      points: './lib/points.ts',
-      pointsLazy: './lib/points.ts',
-      routes,
+      app: async () => await import('./app.js'),
+      points: async () => await import('./lib/points.js'),
+      generatePointsLazy: './lib/points.ts',
+      routes: async () => await import('./lib/routes').then((m) => m.routes),
       indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],
       outdir: '../dist/client',
-      serverOutdir: '../dist/server/client',
       publicdir: [
         '../public',
         {

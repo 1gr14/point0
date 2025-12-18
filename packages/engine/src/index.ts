@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
 import { parseEngineOptions, type EngineLogger, type EngineOptions } from './config.js'
-import type { FilesGeneratorTargetOptions } from './generator.js'
+import type { FilesGeneratorPointsFilesChangeWatcher, FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import { ServerBun } from './server.js'
 
@@ -87,18 +87,20 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       targets: [
         {
           scope: parsedOptions.server.scope,
-          routes: parsedOptions.server.routes,
-          pointsLazy: parsedOptions.server.pointsLazy,
-          pointsReady: parsedOptions.server.pointsReady,
+          routesInstance: parsedOptions.server.routesInstance,
+          routesFile: parsedOptions.server.routesFile,
+          pointsLazy: parsedOptions.server.generatePointsLazy,
+          pointsReady: parsedOptions.server.generatePointsReady,
           banner: parsedOptions.server.banner,
         },
         ...parsedOptions.clients.map(
           (client) =>
             ({
               scope: client.scope,
-              routes: client.routes,
-              pointsLazy: client.pointsLazy,
-              pointsReady: client.pointsReady,
+              routesInstance: client.routesInstance,
+              routesFile: client.routesFile,
+              pointsLazy: client.generatePointsLazy,
+              pointsReady: client.generatePointsReady,
               banner: client.banner,
             }) satisfies FilesGeneratorTargetOptions,
         ),
@@ -117,6 +119,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
   // async init(): Promise<Engine<true>> {
   async init(options?: { preventClientDevServers?: boolean }): Promise<Engine<TRequiredCtx, true>> {
+    const { preventClientDevServers } = options ?? {}
     if (this.isInitialized()) {
       return this as Engine<TRequiredCtx, true>
     }
@@ -125,7 +128,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     const intializedClients = await Promise.all(
       this.clients.map(async (client) => {
         return await client.init({
-          preventClientDevServers: options?.preventClientDevServers,
+          preventDevServer: preventClientDevServers,
         })
       }),
     )
@@ -141,7 +144,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   async serveClientDevServers(): Promise<void> {
     await Promise.all(
       this.clients.map(async (client) => {
-        await client.serveClientDevServer()
+        await client.startDevServer()
       }),
     )
   }
@@ -152,12 +155,33 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
   async serve(
     ...args: UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx> extends UndefinedCtx
-      ? [options?: { requiredCtx?: OmitRequiredCtxRequestProp<TRequiredCtx>; preventClientDevServers?: boolean }]
-      : [options: { requiredCtx: OmitRequiredCtxRequestProp<TRequiredCtx>; preventClientDevServers?: boolean }]
+      ? [
+          options?: {
+            requiredCtx?: OmitRequiredCtxRequestProp<TRequiredCtx>
+          },
+        ]
+      : [
+          options: {
+            requiredCtx: OmitRequiredCtxRequestProp<TRequiredCtx>
+          },
+        ]
   ): Promise<void> {
-    const { requiredCtx, preventClientDevServers } = args[0] ?? {}
-    const intializedEngine = await this.init({ preventClientDevServers })
-    await intializedEngine.server.serve({ requiredCtx })
+    const { requiredCtx } = args[0] ?? {}
+    if (!this.isInitialized()) {
+      throw new Error(
+        'Engine is not initialized. Please call await engine.init() first. And do it in each server entrypoint file, strongly before any other import',
+      )
+    }
+    this.server.serve({ requiredCtx })
+  }
+
+  async dispose(): Promise<void> {
+    await Promise.all([
+      ...this.clients.map(async (client) => {
+        await client.dispose()
+      }),
+      this.server.dispose(),
+    ])
   }
 
   async fetch(
@@ -204,23 +228,15 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])
   }
 
-  async build(options?: {
-    generate?: boolean
-    target?: 'client' | 'server'
-    scope?: PointsScope
-    clean?: boolean
-    publicdir?: boolean
-  }): Promise<{
+  async build(options?: { generate?: boolean; scope?: PointsScope; clean?: boolean; publicdir?: boolean }): Promise<{
     clients: Array<{
       client: string[] | null
-      server: string[] | null
       publicdir: string[] | null
       scope: PointsScope
-      index: number
     }>
-    server: { self: string[] | null; publicdir: string[] | null }
+    server: { server: string[] | null; publicdir: string[] | null }
   }> {
-    const { generate = true, target, scope, clean, publicdir } = options ?? {}
+    const { generate = true, scope, clean, publicdir } = options ?? {}
 
     if (generate) {
       await this.generator.sync({ logOnNotWritten: false })
@@ -228,32 +244,27 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
     // const intializedEngine = await this.init()
 
-    const clients = await Promise.all(
+    const clientsPromise = Promise.all(
       this.clients.map(async (client) => {
         if (scope && client.scope !== scope) {
           return {
             client: null,
-            server: null,
             publicdir: null,
             scope: client.scope,
-            index: client.index,
           }
         }
         const buildOutput = await client.build({
-          target,
           publicdir,
           clean,
         })
         return {
           client: buildOutput.client,
-          server: buildOutput.server,
           publicdir: buildOutput.publicdir,
           scope: client.scope,
-          index: client.index,
         }
       }),
     )
-    const server = await (async () => {
+    const serverPromise = (async () => {
       if (scope) {
         if (scope === this.server.scope) {
           return await this.server.build({
@@ -261,14 +272,16 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
             publicdir,
           })
         } else {
-          return { self: null, publicdir: null }
+          return { server: null, publicdir: null }
         }
       } else {
         return await this.server.build({
           clean,
+          publicdir,
         })
       }
     })()
+    const [clients, server] = await Promise.all([clientsPromise, serverPromise])
     return { clients, server }
   }
 
@@ -281,6 +294,10 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       console.error(error)
     })
     await this.generator.watch()
+  }
+
+  onPointFileChange(callback: FilesGeneratorPointsFilesChangeWatcher): void {
+    this.generator.onPointFileChange(callback)
   }
 
   static findSelfFile(cwd: string = process.cwd()): string | undefined {
@@ -300,7 +317,10 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     return undefined
   }
 
-  static async findAndImportSelf(enginePath?: string | null, cwd: string = process.cwd()): Promise<Engine> {
+  static async findAndImportSelf(
+    enginePath?: string | null,
+    cwd: string = process.cwd(),
+  ): Promise<{ engine: Engine; engineFile: string }> {
     let engineFile: string | undefined
 
     if (enginePath) {
@@ -321,7 +341,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
     try {
       const engineUrl = pathToFileURL(engineFile).href
-      const module = await import(engineUrl)
+      const module = await import(/* @vite-ignore */ engineUrl)
 
       // Try named export first, then default
       const engine = module.engine ?? module.default
@@ -347,7 +367,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         throw new Error('Exported engine must be an instance of Engine')
       }
 
-      return engine
+      return { engine, engineFile }
     } catch (error) {
       throw new Error(`Error importing engine: ${error instanceof Error ? error.message : String(error)}`, {
         cause: error,
