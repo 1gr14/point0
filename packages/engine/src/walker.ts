@@ -715,6 +715,93 @@ export class Walker {
     return out
   }
 
+  async pruneForBuildInProgress({
+    content,
+    fileAbs,
+    customer,
+  }: {
+    content: string
+    fileAbs: string
+    customer: PruneCustomer
+  }): Promise<string> {
+    if (process.env.POINT0_SERVER_BUILD_IN_PROGRESS !== 'true') {
+      return content
+    }
+
+    const code = content
+
+    let ast: babel.ParseResult<any>
+    try {
+      ast = babel.parse(code, {
+        sourceType: 'module',
+        errorRecovery: true,
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'classPrivateProperties',
+          'classPrivateMethods',
+        ],
+      })
+      this.astCache.set(fileAbs, ast)
+    } catch (e) {
+      console.warn(`🔴 pruneForBuildInProgress: parse failed for ${fileAbs}: ${(e as Error).message}`)
+      return code
+    }
+
+    let changed = false
+
+    const makeThrow = () => ({
+      type: 'ArrowFunctionExpression',
+      id: null,
+      generator: false,
+      async: false,
+      expression: false,
+      params: [],
+      body: {
+        type: 'BlockStatement',
+        body: [
+          {
+            type: 'ThrowStatement',
+            argument: {
+              type: 'NewExpression',
+              callee: { type: 'Identifier', name: 'Error' },
+              arguments: [{ type: 'StringLiteral', value: 'Not available after build' }],
+            },
+          },
+        ],
+      },
+    })
+
+    traverse(ast, {
+      CallExpression: (p) => {
+        const node = p.node
+        const callee = node.callee
+
+        // Check if callee is an Identifier named 'pruneItWhenPoint0ServerBuildInProgress'
+        if (callee.type === 'Identifier' && callee.name === 'pruneItWhenPoint0ServerBuildInProgress') {
+          const args = node.arguments as any[]
+          // Replace the first argument (callback) with the throw function
+          if (args.length > 0) {
+            args[0] = makeThrow()
+            changed = true
+          }
+        }
+      },
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!changed) return code
+
+    const generatorModule = await import('@babel/generator')
+    const generate = (generatorModule as any).default ?? generatorModule
+    const { code: out } = generate(ast, { retainLines: true })
+    this.filesContentCache.set(fileAbs, out)
+
+    return out
+  }
+
   private detectPointTypeAndNameFromInit({
     fileAbs,
     node,

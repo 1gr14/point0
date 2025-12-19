@@ -13,11 +13,6 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
     port: 3000,
     entry: { main: './index.server.ts' },
     outdir: '../dist/server',
-    bunBuildConfig: ({ customer, nodeEnv }) => ({
-      sourcemap: false,
-      minify: false,
-      tsconfig: nodePath.resolve(import.meta.dirname, '../tsconfig.json'),
-    }),
   },
   clients: [
     {

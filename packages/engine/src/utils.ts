@@ -462,50 +462,52 @@ export const createViteDevServer = async ({
   // TODO:ASAP or respect prune enabling everywhere or remove it from everywhere
   prune: boolean
 }): Promise<ViteDevServer> => {
-  if (!viteConfig) {
-    throw new Error(`Vite config not found for client "${scope}"`)
-  }
-  const createServer = await import('vite').then((module) => module.createServer)
-  const loadedViteConfig: ExtractedViteConfig = await extractViteConfig({
-    viteConfig,
-    command: 'serve',
-    customer,
-  })
+  return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+    if (!viteConfig) {
+      throw new Error(`Vite config not found for client "${scope}"`)
+    }
+    const createServer = await import('vite').then((module) => module.createServer)
+    const loadedViteConfig: ExtractedViteConfig = await extractViteConfig({
+      viteConfig,
+      command: 'serve',
+      customer,
+    })
 
-  const prunePlugin = prune
-    ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
-    : null
+    const prunePlugin = prune
+      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
+      : null
 
-  const hmr =
-    loadedViteConfig.server?.hmr === false
-      ? false
-      : hmrPort === null
+    const hmr =
+      loadedViteConfig.server?.hmr === false
         ? false
-        : {
-            ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
-            port: hmrPort,
-          }
-  return await createServer({
-    ...loadedViteConfig,
-    plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
-    configFile: false,
-    clearScreen: loadedViteConfig.clearScreen ?? false,
-    appType: 'custom',
-    server: {
-      ...loadedViteConfig.server,
-      middlewareMode: true,
-      ws: !hmr ? false : loadedViteConfig.server?.ws,
-      hmr,
-    },
-    define: {
-      ...loadedViteConfig.define,
-      ...Object.fromEntries(
-        Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-      ),
-      ...Object.fromEntries(
-        Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-      ),
-    },
+        : hmrPort === null
+          ? false
+          : {
+              ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),
+              port: hmrPort,
+            }
+    return await createServer({
+      ...loadedViteConfig,
+      plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
+      configFile: false,
+      clearScreen: loadedViteConfig.clearScreen ?? false,
+      appType: 'custom',
+      server: {
+        ...loadedViteConfig.server,
+        middlewareMode: true,
+        ws: !hmr ? false : loadedViteConfig.server?.ws,
+        hmr,
+      },
+      define: {
+        ...loadedViteConfig.define,
+        ...Object.fromEntries(
+          Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+        ),
+      },
+    })
   })
 }
 
@@ -528,3 +530,9 @@ export const createViteDevServer = async ({
 //   }
 //   return nodePath.resolve(nodePath.dirname(engineFile), path)
 // }
+
+// build helpers
+
+export const pruneItWhenPoint0ServerBuildInProgress = <T>(callback: () => T): T => {
+  return callback()
+}

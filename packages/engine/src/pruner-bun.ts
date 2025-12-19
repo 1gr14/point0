@@ -38,6 +38,11 @@ export function prunerBunPlugin({
             fileAbs: filepath,
             customer,
           })
+          transformed = await walker.pruneForBuildInProgress({
+            content: transformed,
+            fileAbs: filepath,
+            customer,
+          })
 
           if (transformed === original) {
             return {

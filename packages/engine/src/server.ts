@@ -23,6 +23,7 @@ import {
   extractViteConfig,
   getDirByPaths,
   loadBunPlugins,
+  pruneItWhenPoint0ServerBuildInProgress,
   removeLikeJsExtension,
   validateEntrypoints,
 } from './utils.js'
@@ -532,9 +533,10 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     console.log('thisBunBuildConfig', thisBunBuildConfig.tsconfig)
     console.log('providedBunBuildConfig', providedBunBuildConfig.tsconfig)
 
+    process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'true'
     const buildOutput = await Bun.build({
       target: 'bun',
-      packages: 'external',
+      // packages: 'external',
       sourcemap: 'linked',
       minify: true,
       splitting: true,
@@ -565,111 +567,117 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
       },
     })
+    process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'false'
     return buildOutput.outputs.map((output) => output.path)
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (!this.viteConfig) {
-      throw new Error(`viteConfig not provided for server`)
-    }
-    const { build: viteBuild } = await import('vite')
+    return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+      if (!this.viteConfig) {
+        throw new Error(`viteConfig not provided for server`)
+      }
+      const { build: viteBuild } = await import('vite')
 
-    const buildPaths = this.getBuildPaths()
-    if (!buildPaths.entrypointsExists) {
-      return null
-    }
-    if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for server`)
-    }
+      const buildPaths = this.getBuildPaths()
+      if (!buildPaths.entrypointsExists) {
+        return null
+      }
+      if (!buildPaths.outdir) {
+        throw new Error(`outdir not provided for server`)
+      }
 
-    const { clean = false } = options ?? {}
-    if (clean) {
-      await this.cleanServer()
-    }
+      const { clean = false } = options ?? {}
+      if (clean) {
+        await this.cleanServer()
+      }
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
+      const NODE_ENV = process.env.NODE_ENV || 'production'
 
-    const loadedViteConfig = await extractViteConfig({
-      viteConfig: this.viteConfig,
-      command: 'build',
-      customer: 'server',
-    })
+      const loadedViteConfig = await extractViteConfig({
+        viteConfig: this.viteConfig,
+        command: 'build',
+        customer: 'server',
+      })
 
-    const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
+      const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
 
-    const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
-    const normalizedExistsingRollupOptionsOutput =
-      (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
+      const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
+      const normalizedExistsingRollupOptionsOutput =
+        (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) ||
+        {}
 
-    const rollupOptionsOutput: Extract<
-      NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
-      object
-    > = {
-      ...normalizedExistsingRollupOptionsOutput,
-      banner: [injectEnvsScript, normalizedExistsingRollupOptionsOutput.banner].filter(Boolean).join('\n'),
-    }
-    const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
-      ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
-      : rollupOptionsOutput
+      const rollupOptionsOutput: Extract<
+        NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
+        object
+      > = {
+        ...normalizedExistsingRollupOptionsOutput,
+        banner: [injectEnvsScript, normalizedExistsingRollupOptionsOutput.banner].filter(Boolean).join('\n'),
+      }
+      const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
+        ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
+        : rollupOptionsOutput
 
-    const viteRoot =
-      loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
+      const viteRoot =
+        loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-    const prunePlugin = await import('./pruner-vite.js').then((module) =>
-      module.prunerVitePlugin({ customer: 'server', scope: this.scope }),
-    )
+      const prunePlugin = await import('./pruner-vite.js').then((module) =>
+        module.prunerVitePlugin({ customer: 'server', scope: this.scope }),
+      )
 
-    const config: ExtractedViteConfig = {
-      ...loadedViteConfig,
-      plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
-      root: viteRoot,
-      build: {
-        ...loadedViteConfig.build,
-        outDir: buildPaths.outdir,
-        minify: loadedViteConfig.build?.minify ?? true,
-        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
-        ssr: true,
-        rollupOptions: {
-          ...loadedViteConfig.build?.rollupOptions,
-          input: {
-            // ...Object.fromEntries(
-            //   validateEntrypoints([...buildPaths.entryFiles, buildPaths.engineFile]).map((entryFile) => [
-            //     removeLikeJsExtension(nodePath.basename(entryFile)),
-            //     entryFile,
-            //   ]),
-            // ),
-            ...this.entry,
-            ...(this.engineFile ? { engine: this.engineFile } : {}),
+      const config: ExtractedViteConfig = {
+        ...loadedViteConfig,
+        plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
+        root: viteRoot,
+        build: {
+          ...loadedViteConfig.build,
+          outDir: buildPaths.outdir,
+          minify: loadedViteConfig.build?.minify ?? true,
+          sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+          ssr: true,
+          rollupOptions: {
+            ...loadedViteConfig.build?.rollupOptions,
+            input: {
+              // ...Object.fromEntries(
+              //   validateEntrypoints([...buildPaths.entryFiles, buildPaths.engineFile]).map((entryFile) => [
+              //     removeLikeJsExtension(nodePath.basename(entryFile)),
+              //     entryFile,
+              //   ]),
+              // ),
+              ...this.entry,
+              ...(this.engineFile ? { engine: this.engineFile } : {}),
+            },
+            // external: createRollupOptionsExternalFunction(),
+            output: fixedExistingRollupOptionsOutput,
           },
-          // external: createRollupOptionsExternalFunction(),
-          output: fixedExistingRollupOptionsOutput,
+          copyPublicDir: false,
+          emptyOutDir: false,
         },
-        copyPublicDir: false,
-        emptyOutDir: false,
-      },
-      define: {
-        ...loadedViteConfig.define,
-        ...injectedEnvs,
-        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        'process.env.POINT0_CUSTOMER': JSON.stringify('server'),
-        'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
-      },
-    }
-    const buildResult = await viteBuild(config)
+        define: {
+          ...loadedViteConfig.define,
+          ...injectedEnvs,
+          'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+          'process.env.POINT0_CUSTOMER': JSON.stringify('server'),
+          'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+        },
+      }
+      process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'true'
+      const buildResult = await viteBuild(config)
+      process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'false'
 
-    const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
-    const outputFiles: string[] = []
-    for (const rollupOutput of rollupOutputs) {
-      if ('output' in rollupOutput) {
-        const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
-        for (const chunk of chunks) {
-          if ('fileName' in chunk && typeof chunk.fileName === 'string') {
-            outputFiles.push(nodePath.resolve(buildPaths.outdir, chunk.fileName))
+      const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
+      const outputFiles: string[] = []
+      for (const rollupOutput of rollupOutputs) {
+        if ('output' in rollupOutput) {
+          const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
+          for (const chunk of chunks) {
+            if ('fileName' in chunk && typeof chunk.fileName === 'string') {
+              outputFiles.push(nodePath.resolve(buildPaths.outdir, chunk.fileName))
+            }
           }
         }
       }
-    }
-    return outputFiles
+      return outputFiles
+    })
   }
 
   async buildServer(options?: {

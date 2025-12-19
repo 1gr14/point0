@@ -29,6 +29,12 @@ export function prunerVitePlugin({
       const walker = new Walker()
       let transformed = await walker.prunePoint0Methods({ content: code, fileAbs: filepath, customer })
       transformed = await walker.prunePoint0ClientServer({ content: transformed, fileAbs: filepath, customer })
+      transformed = await walker.pruneForBuildInProgress({
+        content: transformed,
+        fileAbs: filepath,
+        customer,
+      })
+
       if (transformed === code) return null
 
       const ms = new MagicString(code)

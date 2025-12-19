@@ -26,6 +26,7 @@ import {
   extractClientBunBuildConfig,
   extractClientBunDevPluginsStrings,
   extractViteConfig,
+  pruneItWhenPoint0ServerBuildInProgress,
   resolveTempDirPath,
 } from './utils.js'
 
@@ -759,106 +760,105 @@ Bun.serve({
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    // if (!this.isInitialized()) {
-    //   throw new Error('Client is not initialized')
-    // }
+    return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+      if (!this.viteConfig) {
+        throw new Error(`viteConfig not provided for client "${this.scope}"`)
+      }
+      const { build: viteBuild } = await import('vite')
+      const buildPaths = this.getBuildPaths()
+      if (!buildPaths.indexHtml) {
+        return null
+      }
+      if (!buildPaths.outdir) {
+        throw new Error(`outdir not provided for client "${this.scope}"`)
+      }
 
-    if (!this.viteConfig) {
-      throw new Error(`viteConfig not provided for client "${this.scope}"`)
-    }
-    const { build: viteBuild } = await import('vite')
-    const buildPaths = this.getBuildPaths()
-    if (!buildPaths.indexHtml) {
-      return null
-    }
-    if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for client "${this.scope}"`)
-    }
+      const { clean = false } = options ?? {}
+      if (clean) {
+        await this.cleanClient()
+      }
 
-    const { clean = false } = options ?? {}
-    if (clean) {
-      await this.cleanClient()
-    }
+      const NODE_ENV = process.env.NODE_ENV || 'production'
+      const loadedViteConfig = await extractViteConfig({
+        viteConfig: this.viteConfig,
+        command: 'build',
+        customer: 'client',
+      })
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
-    const loadedViteConfig = await extractViteConfig({
-      viteConfig: this.viteConfig,
-      command: 'build',
-      customer: 'client',
-    })
+      if (!(await Bun.file(buildPaths.indexHtml).exists())) {
+        throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.scope}"`)
+      }
 
-    if (!(await Bun.file(buildPaths.indexHtml).exists())) {
-      throw new Error(`Input file does not exist: ${buildPaths.indexHtml} for client "${this.scope}"`)
-    }
+      const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
+      const normalizedExistsingRollupOptionsOutput =
+        (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) ||
+        {}
+      const rollupOptionsOutput: Extract<
+        NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
+        object
+      > = {
+        ...normalizedExistsingRollupOptionsOutput,
+        // may be we will later add something here
+      }
+      const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
+        ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
+        : rollupOptionsOutput
 
-    const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
-    const normalizedExistsingRollupOptionsOutput =
-      (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
-    const rollupOptionsOutput: Extract<
-      NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
-      object
-    > = {
-      ...normalizedExistsingRollupOptionsOutput,
-      // may be we will later add something here
-    }
-    const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
-      ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
-      : rollupOptionsOutput
+      const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-    const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
+      const prunePlugin = this.prune
+        ? await import('./pruner-vite.js').then((module) =>
+            module.prunerVitePlugin({ customer: 'client', scope: this.scope }),
+          )
+        : null
 
-    const prunePlugin = this.prune
-      ? await import('./pruner-vite.js').then((module) =>
-          module.prunerVitePlugin({ customer: 'client', scope: this.scope }),
-        )
-      : null
-
-    const config: ExtractedViteConfig = {
-      ...loadedViteConfig,
-      plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
-      root: viteRoot,
-      build: {
-        ...loadedViteConfig.build,
-        outDir: buildPaths.outdir,
-        minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
-        sourcemap: loadedViteConfig.build?.sourcemap ?? true,
-        rollupOptions: {
-          ...loadedViteConfig.build?.rollupOptions,
-          input: buildPaths.indexHtml,
-          output: fixedExistingRollupOptionsOutput,
+      const config: ExtractedViteConfig = {
+        ...loadedViteConfig,
+        plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
+        root: viteRoot,
+        build: {
+          ...loadedViteConfig.build,
+          outDir: buildPaths.outdir,
+          minify: NODE_ENV === 'production' ? (loadedViteConfig.build?.minify ?? 'esbuild') : false,
+          sourcemap: loadedViteConfig.build?.sourcemap ?? true,
+          rollupOptions: {
+            ...loadedViteConfig.build?.rollupOptions,
+            input: buildPaths.indexHtml,
+            output: fixedExistingRollupOptionsOutput,
+          },
+          copyPublicDir: false,
+          emptyOutDir: false,
         },
-        copyPublicDir: false,
-        emptyOutDir: false,
-      },
-      define: {
-        ...loadedViteConfig.define,
-        ...Object.fromEntries(
-          Object.entries(this.env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-        ),
-        ...Object.fromEntries(
-          Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-        ),
-        'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        'process.env.POINT0_CUSTOMER': JSON.stringify('client'),
-        'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
-      },
-    }
+        define: {
+          ...loadedViteConfig.define,
+          ...Object.fromEntries(
+            Object.entries(this.env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+          ),
+          ...Object.fromEntries(
+            Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+          ),
+          'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+          'process.env.POINT0_CUSTOMER': JSON.stringify('client'),
+          'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+        },
+      }
 
-    const buildResult = await viteBuild(config)
+      const buildResult = await viteBuild(config)
 
-    const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
-    const outputFiles: string[] = []
-    for (const rollupOutput of rollupOutputs) {
-      if ('output' in rollupOutput) {
-        const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
-        for (const chunk of chunks) {
-          if ('fileName' in chunk && typeof chunk.fileName === 'string') {
-            outputFiles.push(nodePath.resolve(buildPaths.outdir, chunk.fileName))
+      const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
+      const outputFiles: string[] = []
+      for (const rollupOutput of rollupOutputs) {
+        if ('output' in rollupOutput) {
+          const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
+          for (const chunk of chunks) {
+            if ('fileName' in chunk && typeof chunk.fileName === 'string') {
+              outputFiles.push(nodePath.resolve(buildPaths.outdir, chunk.fileName))
+            }
           }
         }
       }
-    }
-    return outputFiles
+      return outputFiles
+    })
   }
 
   async cleanClient(): Promise<boolean> {
@@ -996,7 +996,7 @@ Bun.serve({
   //   if (!this.viteConfig) {
   //     throw new Error(`viteConfig not provided for client "${this.scope}"`)
   //   }
-  //   const { build: viteBuild } = await import('vite')
+  //   const { build: viteBuild } = await import('vi'+'te')
   //   const buildPaths = this.getBuildPaths()
   //   if (!buildPaths.appFile && this.appProvided) {
   //     throw new Error(
