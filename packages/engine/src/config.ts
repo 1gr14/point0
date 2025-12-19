@@ -1,5 +1,13 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import type { AppComponent, AppComponentModule, LazyPointsModule, PointsScope, ReadyPointsModule } from '@point0/core'
+import type {
+  AnyPointsModule,
+  AppComponent,
+  AppComponentModule,
+  LazyPointsModule,
+  PointsScope,
+  ReadyPointsModule,
+  RequiredCtxByPointsModules,
+} from '@point0/core'
 import { appendSlash, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
@@ -33,7 +41,7 @@ export type ExtractedViteConfig = import('vite').UserConfig
 export type EngineOptionsViteConfig = ExtractedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
 
 export type EngineOptionsAppComponent = () => Promise<AppComponent | AppComponentModule>
-export type EngineOptionsPoints = () => Promise<ReadyPointsModule | LazyPointsModule>
+export type EngineOptionsPoints<TPointsModule extends AnyPointsModule = AnyPointsModule> = () => Promise<TPointsModule>
 export type EngineOptionsRoutes = () => Promise<
   RoutesPretty<any> | { routes: RoutesPretty<any> } | { default: RoutesPretty<any> }
 >
@@ -51,9 +59,9 @@ export type EngineGeneralOptions = {
   buildWatchGlob?: string | string[]
   banner?: string | null
 }
-export type EngineServerOptions = {
+export type EngineServerOptions<TPointsModule extends AnyPointsModule = AnyPointsModule> = {
   scope: PointsScope
-  points?: EngineOptionsPoints
+  points?: EngineOptionsPoints<TPointsModule>
   generatePointsLazy?: string | null
   generatePointsReady?: string | null
   publicdir?: EngineOptionsPublicdir
@@ -69,11 +77,11 @@ export type EngineServerOptions = {
   viteConfig?: EngineOptionsViteConfig | null
   hmrPort?: number | string | null
 }
-export type EngineClientOptions = {
+export type EngineClientOptions<TPointsModule extends AnyPointsModule = AnyPointsModule> = {
   scope: PointsScope
   // TODO: allow empty points
   // TODO: allow points collection
-  points: EngineOptionsPoints
+  points: EngineOptionsPoints<TPointsModule>
   generatePointsLazy?: string | null
   generatePointsReady?: string | null
   app?: EngineOptionsAppComponent | null
@@ -93,10 +101,54 @@ export type EngineClientOptions = {
   generateRoutes?: string | null
   banner?: string | null
 }
-export type EngineOptions = EngineGeneralOptions & {
-  server: EngineServerOptions
-  clients: EngineClientOptions[]
+export type EngineOptions<
+  TServerPointsModule extends AnyPointsModule = AnyPointsModule,
+  TClient1PointsModule extends AnyPointsModule = AnyPointsModule,
+  TClient2PointsModule extends AnyPointsModule = AnyPointsModule,
+  TClient3PointsModule extends AnyPointsModule = AnyPointsModule,
+> = EngineGeneralOptions & {
+  server: EngineServerOptions<TServerPointsModule>
+  clients?:
+    | []
+    | [EngineClientOptions<TClient1PointsModule>]
+    | [EngineClientOptions<TClient1PointsModule>, EngineClientOptions<TClient2PointsModule>]
+    | [
+        EngineClientOptions<TClient1PointsModule>,
+        EngineClientOptions<TClient2PointsModule>,
+        EngineClientOptions<TClient3PointsModule>,
+      ]
 }
+
+export type RequiredCtxByEngineOptions<TOptions extends EngineOptions> = TOptions extends {
+  server: EngineServerOptions<infer TServerPointsModule>
+  clients: []
+}
+  ? RequiredCtxByPointsModules<TServerPointsModule>
+  : TOptions extends {
+        server: EngineServerOptions<infer TServerPointsModule>
+        clients: [EngineClientOptions<infer TClient1PointsModule>]
+      }
+    ? RequiredCtxByPointsModules<TServerPointsModule, TClient1PointsModule>
+    : TOptions extends {
+          server: EngineServerOptions<infer TServerPointsModule>
+          clients: [EngineClientOptions<infer TClient1PointsModule>, EngineClientOptions<infer TClient2PointsModule>]
+        }
+      ? RequiredCtxByPointsModules<TServerPointsModule, TClient1PointsModule, TClient2PointsModule>
+      : TOptions extends {
+            server: EngineServerOptions<infer TServerPointsModule>
+            clients: [
+              EngineClientOptions<infer TClient1PointsModule>,
+              EngineClientOptions<infer TClient2PointsModule>,
+              EngineClientOptions<infer TClient3PointsModule>,
+            ]
+          }
+        ? RequiredCtxByPointsModules<
+            TServerPointsModule,
+            TClient1PointsModule,
+            TClient2PointsModule,
+            TClient3PointsModule
+          >
+        : never
 
 export type EngineGeneralOptionsParsed = {
   fallbackScope: PointsScope
@@ -588,7 +640,8 @@ const parseEngineClientOptions = ({
   }
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
-  const { server: serverOptions, clients: clientsOptions, ...generalOptions } = options
+  const { server: serverOptions, clients: clientsOptionsRaw, ...generalOptions } = options
+  const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
   const generalOptionsParsed = parseEngineGeneralOptions({
     generalOptions,
     serverOptions,

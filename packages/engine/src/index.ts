@@ -13,7 +13,8 @@ import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
-import { parseEngineOptions, type EngineLogger, type EngineOptions } from './config.js'
+import type { RequiredCtxByEngineOptions, EngineLogger, EngineOptions } from './config.js'
+import { parseEngineOptions } from './config.js'
 import type { FilesGeneratorPointsFilesChangeWatcher, FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import { ServerBun } from './server.js'
@@ -42,14 +43,18 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.generator = input.generator
   }
 
-  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+  // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+  //   fileUrl: string,
+  //   options: EngineOptions,
+  // ): Engine<TRequiredCtx, false>
+  // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
+  // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+  static create<TOptions extends EngineOptions>(
     fileUrl: string,
-    options: EngineOptions,
-  ): Engine<TRequiredCtx, false>
-  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
-  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-    ...args: [string, EngineOptions] | [EngineOptions]
-  ): Engine<TRequiredCtx, false> {
+    options: TOptions,
+  ): Engine<RequiredCtxByEngineOptions<TOptions>, false>
+  static create<TOptions extends EngineOptions>(options: TOptions): Engine<RequiredCtxByEngineOptions<TOptions>, false>
+  static create(...args: [string, EngineOptions] | [EngineOptions]): Engine {
     const options = args.length === 2 ? args[1] : args[0]
     const fileUrl = args.length === 2 ? args[0] : undefined
     if (fileUrl) {
@@ -185,7 +190,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   }
 
   async fetch(
-    ...args: TRequiredCtx extends UndefinedCtx
+    ...args: UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx> extends UndefinedCtx
       ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
       : [request: Request, options: { requiredCtx: TRequiredCtx }]
   ): Promise<Response> {

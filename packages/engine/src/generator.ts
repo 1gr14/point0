@@ -413,6 +413,7 @@ export class FilesGenerator {
     importedPoints: Array<CollectedPoint & { hash: string; renamedExportName: string }>
     // rootSingleReexportLine: string // for lazy points file
     rootSingleImportLine: string | null // for lazy points file
+    hasNotRootPoints: boolean
   } {
     points = points.filter(
       (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
@@ -470,7 +471,8 @@ export class FilesGenerator {
         rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
       }
     }
-    return { importLines, importedPoints, rootSingleImportLine }
+    const hasNotRootPoints = importedPoints.some((p) => p.type !== 'root')
+    return { importLines, importedPoints, rootSingleImportLine, hasNotRootPoints }
   }
 
   private emitLazyPointsFile(target: FilesGeneratorTarget): string {
@@ -593,15 +595,17 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
-    lines.push(`import type { EndPoint } from '@point0/core'`)
 
     // lines.push(...this.emitSuperStoreInitialization())
 
-    const { importLines, importedPoints } = this.emitNamedImports({
+    const { importLines, importedPoints, hasNotRootPoints } = this.emitNamedImports({
       points,
       outputAbs: target.outputPointsReadyAbs,
       target,
     })
+    if (hasNotRootPoints) {
+      lines.push(`import type { EndPoint } from '@point0/core'`)
+    }
     lines.push(...importLines)
 
     if (points.length === 0) {

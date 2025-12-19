@@ -8,7 +8,9 @@ import type {
   DataTransformerExtended,
   EndPoint,
   EndPointType,
+  IfAnyThenElse,
   InputRaw,
+  IsEmptyObject,
   LayoutPoint,
   PagePoint,
   PagePrefetchPolicy,
@@ -881,10 +883,15 @@ export type ReadyRoutedPointsCollectionRecord = {
 export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
 export type RawPointsCollection = EndPoint[]
 
-export type LazyPointsModule = {
-  _root_lazy: { point: RootPoint; type: 'root'; name: string }
+export type LazyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  _root_lazy: { point: RootPoint<TRequiredCtx>; type: 'root'; name: string }
 } & Record<string, LazyPointsCollectionRecord>
-export type ReadyPointsModule = { _root_ready: { point: RootPoint } } & Record<string, { point: EndPoint }>
+export type ReadyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  _root_ready: { point: RootPoint<TRequiredCtx> }
+} & Record<string, { point: EndPoint }>
+export type AnyPointsModule<TRequiredCtx extends RequiredCtx = any> =
+  | LazyPointsModule<TRequiredCtx>
+  | ReadyPointsModule<TRequiredCtx>
 
 export type PointsModuleType = 'ready' | 'lazy'
 
@@ -916,3 +923,48 @@ export type PagesTreeRecord = {
 export type PagesTree = PagesTreeRecord[]
 
 export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
+
+export type RequiredCtxByPointsModule<TPointsModule extends ReadyPointsModule | LazyPointsModule> =
+  TPointsModule extends ReadyPointsModule
+    ? TPointsModule['_root_ready']['point']['Infer']['RequiredCtx']
+    : TPointsModule extends LazyPointsModule
+      ? TPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']
+      : RequiredCtx
+
+export type RequiredCtxByPointsModules<
+  T1 extends AnyPointsModule = AnyPointsModule,
+  T2 extends AnyPointsModule = AnyPointsModule,
+  T3 extends AnyPointsModule = AnyPointsModule,
+  T4 extends AnyPointsModule = AnyPointsModule,
+> = Prettify<
+  MergeOmitAnyMany<
+    RequiredCtxByPointsModule<T1>,
+    RequiredCtxByPointsModule<T2>,
+    RequiredCtxByPointsModule<T3>,
+    RequiredCtxByPointsModule<T4>
+  >
+>
+
+type Prettify<T> = T extends undefined
+  ? undefined
+  : {
+      [K in keyof T]: T[K]
+    }
+type UndefinedToAny<T extends object | undefined> = T extends undefined ? any : T
+type MergeOmitAny<T1 extends object | undefined, T2 extends object | undefined> = IfAnyThenElse<
+  UndefinedToAny<T1>,
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  {},
+  T1
+> &
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  IfAnyThenElse<UndefinedToAny<T2>, {}, T2>
+type EmptyObjectToUndefined<T extends object | undefined> = IsEmptyObject<T> extends true ? undefined : T
+type MergeOmitAnyMany<
+  T1 extends object | undefined,
+  T2 extends object | undefined,
+  T3 extends object | undefined,
+  T4 extends object | undefined,
+> = EmptyObjectToUndefined<MergeOmitAny<MergeOmitAny<MergeOmitAny<T1, T2>, T3>, T4>>
+
+// type X = MergeOmitAnyMany<undefined, {}, any, {x: 1}>

@@ -1,7 +1,6 @@
 import { Engine } from '@point0/engine'
-import type { client } from './lib/client'
 
-export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
+export const engine = Engine.create(import.meta.url, {
   // clientsServerOutdir: '../dist/server',
   // clientsSelfOutdir: '../dist',
   pointsGlob: ['**/*.{ts,tsx}'],
@@ -9,7 +8,9 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
     scope: 'server',
     port: 3000,
     entry: { main: './index.server.ts' },
+    points: async () => await import('./lib/points.server.js'),
     outdir: '../dist/server',
+    generatePointsReady: './lib/points.server.ts',
   },
   clients: [
     {

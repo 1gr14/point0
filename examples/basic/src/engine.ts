@@ -1,4 +1,3 @@
-import type { client } from '@/lib/client'
 import { Engine } from '@point0/engine'
 // import * as points from './lib/points.ready.js'
 // import './lib/points.js'
@@ -6,7 +5,8 @@ import { Engine } from '@point0/engine'
 // bun build --compile ./dist/server/index.server.js ./dist/client/**/* --outfile x
 // bun build --compile ./x.ts --outfile x
 
-export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
+// export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
+export const engine = Engine.create(import.meta.url, {
   // clientsServerOutdir: '../dist/server',
   // clientsSelfOutdir: '../dist',
   pointsGlob: ['**/*.{ts,tsx}'],

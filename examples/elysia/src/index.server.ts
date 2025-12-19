@@ -8,6 +8,7 @@ new Elysia()
   .get('/check', () => 'Hello Elysia')
   .state('x', 3)
   .state('y', 4)
+  .state('z', '4')
   .use(hmr(engine)) // hmr for clients that serves via native bun servers, if you use vite this plugin does not needed
   // just mount if requiredCtx has nothing except request
   // .mount('*', engine.fetch.bind(engine))
