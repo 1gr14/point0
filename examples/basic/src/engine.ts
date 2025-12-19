@@ -1,14 +1,5 @@
 import { Engine } from '@point0/engine'
-// import * as points from './lib/points.ready.js'
-// import './lib/points.js'
-
-// bun build --compile ./dist/server/index.server.js ./dist/client/**/* --outfile x
-// bun build --compile ./x.ts --outfile x
-
-// export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
 export const engine = Engine.create(import.meta.url, {
-  // clientsServerOutdir: '../dist/server',
-  // clientsSelfOutdir: '../dist',
   pointsGlob: ['**/*.{ts,tsx}'],
   server: {
     scope: 'server',
@@ -19,8 +10,6 @@ export const engine = Engine.create(import.meta.url, {
   clients: [
     {
       scope: 'client',
-      // plugins of bun we can have where we want
-      // TODO: allow provide app itself and points itself (so alway just app should be provided)
       app: async () => await import('./app'),
       points: async () => await import('./lib/points.ready'),
       // points: async () => points,
@@ -28,7 +17,6 @@ export const engine = Engine.create(import.meta.url, {
       generatePointsReady: './lib/points.ready.ts',
       // pointsModuleType: 'ready',
       // points: await import('./lib/points'),
-      // routes: './lib/routes.generated.ts',
       routes: async () => await import('./lib/routes'),
       indexHtml: './index.html',
       port: 3001,
@@ -45,20 +33,3 @@ export const engine = Engine.create(import.meta.url, {
     },
   ],
 })
-// require('./lib/points.ready.js')
-// console.log(engine.clients[0].pointsProvided)
-// const pointsPath = getDevPathInsideImportFn(engine.clients[0].pointsProvided, import.meta.file)
-// console.log('pointsPath', pointsPath)
-// await import(pointsPath)
-// await engine.clients[0].initPointsManager()
-
-// const y = async () => await import('./lib/points.ready.js')
-// function getStringInsideFn(fn: Function): string | null {
-//   const src = fn.toString()
-//   const match = /import\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/.exec(src)
-//   return match?.[1] ?? null
-// }
-// const x = getStringInsideFn(y)
-// console.log(x)
-// await import(x)
-// // await y()

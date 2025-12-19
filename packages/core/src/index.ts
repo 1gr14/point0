@@ -350,6 +350,15 @@ export class Point0<
     TRouteDefinition,
     TProps
   >
+  X: TPointType extends 'layout'
+    ? MountableComponent<TInputSchema, TProps, true>
+    : TPointType extends 'page'
+      ? MountableComponent<TInputSchema, TProps, false>
+      : TPointType extends 'component'
+        ? MountableComponent<TInputSchema, TProps, false>
+        : TPointType extends 'provider'
+          ? MountableComponent<TInputSchema, TProps, null>
+          : null
 
   private constructor(options: {
     type: TPointType
@@ -484,6 +493,7 @@ export class Point0<
       TRouteDefinition,
       TProps
     >
+    X?: MountableComponent<any, any, any> | null
     _unstableId?: number
   }) {
     this.point = this
@@ -639,6 +649,7 @@ export class Point0<
         TRouteDefinition,
         TProps
       >)
+    this.X = (options.X ?? null) as never
     this._unstableId = options._unstableId ?? Point0._getNextUnstableId()
   }
 
@@ -799,6 +810,7 @@ export class Point0<
       TRouteDefinition,
       TProps
     >
+    X?: MountableComponent<any, any, any> | null
   }): Point0<
     TPointType,
     TLetsEndPointType,
@@ -899,6 +911,7 @@ export class Point0<
       _layoutLoadingComponent: (overrides._layoutLoadingComponent ?? this._layoutLoadingComponent) as never,
       _pageLoadingComponent: (overrides._pageLoadingComponent ?? this._pageLoadingComponent) as never,
       _componentLoadingComponent: (overrides._componentLoadingComponent ?? this._componentLoadingComponent) as never,
+      X: (overrides.X ?? this.X) as never,
     })
   }
 
@@ -2412,6 +2425,7 @@ export class Point0<
       _layoutLoadingComponent: this._base?._layoutLoadingComponent as never,
       _pageLoadingComponent: this._base?._pageLoadingComponent as never,
       _componentLoadingComponent: this._base?._componentLoadingComponent as never,
+      X: null as never,
     }) as never
   }
 
@@ -2487,19 +2501,10 @@ export class Point0<
       TLastServerOutput,
       TLastClientOutput
     >
-  page<
-    TPage extends PageComponent<
-      TQueryResultType,
-      TLastServerOutput,
-      TClientData,
-      TRouteDefinition,
-      TInputSchema,
-      TProps
-    >,
-  >(
+  page(
     ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
       ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
-      : [page: TPage]
+      : [page: PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>]
   ): MountableComponent<TInputSchema, TProps, false> &
     NicePageEndPoint<
       'page',
@@ -2518,16 +2523,7 @@ export class Point0<
       TLastServerOutput,
       TLastClientOutput
     >
-  page<
-    TPage extends PageComponent<
-      TQueryResultType,
-      TLastServerOutput,
-      TClientData,
-      TRouteDefinition,
-      TInputSchema,
-      TProps
-    >,
-  >(
+  page(
     ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
       ? [
           ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>,
@@ -2535,7 +2531,7 @@ export class Point0<
         ]
       : [
           head: SuccessHeadFn<TLastServerOutput, TClientData, TRouteDefinition, TInputSchema> | ResolvableHead | string,
-          page: TPage,
+          page: PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>,
         ]
   ): MountableComponent<TInputSchema, TProps, false> &
     NicePageEndPoint<
@@ -2574,11 +2570,8 @@ export class Point0<
       _letsEndPointType: undefined,
       _headFns: !successHeadFn ? this._headFns : [...this._headFns, successHeadFn],
     })
-    const pageWithPoint = point._Page.bind(point)
-    Object.assign(pageWithPoint, {
-      toString: point.toString.bind(point),
-      toJSON: point.toJSON.bind(point),
-      [Symbol.toPrimitive]: point[Symbol.toPrimitive].bind(point),
+    point.X = point.Page.bind(point) as never
+    Object.assign(page, {
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
@@ -2593,18 +2586,16 @@ export class Point0<
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+      Page: point.Page.bind(point),
+      X: (point as any).X.bind(point),
     })
-    return pageWithPoint as never
-    // Point0.setGlobalPoint(point)
-    // return point._Page
+    return page as never
   }
 
-  component<
-    TComponent extends ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps>,
-  >(
+  component(
     ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
       ? [ShowError<`Component can not accept response. Last loader should provide plain object data, not response.`>]
-      : [component?: TComponent]
+      : [component?: ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps>]
   ): NiceComponentEndPoint<
     'component',
     UndefinedEndPointType,
@@ -2622,17 +2613,16 @@ export class Point0<
     TLastServerOutput,
     TLastClientOutput
   > {
-    const [component = () => null] = args as [TComponent | undefined]
+    const [component = () => null] = args as [
+      ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps> | undefined,
+    ]
     const point = this._continue({
       type: 'component',
       _component: component,
       _letsEndPointType: undefined,
     })
-    const componentWithPoint = point._Component
-    Object.assign(componentWithPoint, {
-      toString: point.toString.bind(point),
-      [Symbol.toPrimitive]: point[Symbol.toPrimitive].bind(point),
-      toJSON: point.toJSON.bind(point),
+    point.X = point.Component.bind(point) as never
+    Object.assign(component, {
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
@@ -2647,25 +2637,25 @@ export class Point0<
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+      Component: point.Component.bind(point),
+      X: (point as any).X.bind(point),
     })
-    return componentWithPoint as never
-    // Point0.setGlobalPoint(point)
-    // return point._Component
+    return component as never
   }
 
-  layout<
-    TLayout extends LayoutComponent<
-      TQueryResultType,
-      TLastServerOutput,
-      TClientData,
-      TRouteDefinition,
-      TInputSchema,
-      TProps
-    >,
-  >(
+  layout(
     ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
       ? [ShowError<`Layout can not accept response. Last loader should provide plain object data, not response.`>]
-      : [layout?: TLayout]
+      : [
+          layout?: LayoutComponent<
+            TQueryResultType,
+            TLastServerOutput,
+            TClientData,
+            TRouteDefinition,
+            TInputSchema,
+            TProps
+          >,
+        ]
   ): NiceLayoutEndPoint<
     'layout',
     UndefinedEndPointType,
@@ -2684,7 +2674,8 @@ export class Point0<
     TLastClientOutput
   > {
     const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
-      TLayout | undefined,
+      | LayoutComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+      | undefined,
     ]
     const point = this._continue({
       type: 'layout',
@@ -2692,10 +2683,8 @@ export class Point0<
       _letsEndPointType: undefined,
       _base: this as never as BasePoint,
     })
-    const layoutWithPoint = point._Layout
-    Object.assign(layoutWithPoint, {
-      toString: point.toString.bind(point),
-      toJSON: point.toJSON.bind(point),
+    point.X = point.Layout.bind(point) as never
+    Object.assign(layout, {
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),
@@ -2710,8 +2699,10 @@ export class Point0<
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+      Layout: point.Layout.bind(point),
+      X: (point as any).X.bind(point),
     })
-    return layoutWithPoint as never
+    return layout as never
   }
 
   provider<TNewLastClientOutput extends Data = Data>(
@@ -2808,6 +2799,7 @@ export class Point0<
         })
       },
     })
+    point.X = point.Provider.bind(point) as never
     return point as never
   }
 
@@ -3072,11 +3064,36 @@ export class Point0<
     TLastClientOutput
   > {
     const [mutationOptions = {}] = args
-    return this._continue({
+    const point = this._continue({
       type: 'mutation',
       _mutationOptions: mutationOptions as UseMutationOptions,
       _letsEndPointType: undefined,
-    }) as never
+    })
+    return point as never
+  }
+
+  _hmr(component: React.Component): typeof this {
+    const point = this._continue({})
+    Object.assign(component, {
+      Infer: point.Infer,
+      point,
+      scope: point.scope,
+      lets: point.lets.bind(point),
+      inputSchema: point.inputSchema,
+      useQuery: point.useQuery.bind(point),
+      getQueryOptions: point.getQueryOptions.bind(point),
+      prefetchQuery: point.prefetchQuery.bind(point),
+      useInfiniteQuery: point.useInfiniteQuery.bind(point),
+      getQueryKey: point.getQueryKey.bind(point),
+      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
+      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
+      execute: point.execute.bind(point),
+      executeDetailed: point.executeDetailed.bind(point),
+      getMutationOptions: point.getMutationOptions.bind(point),
+      useMutation: point.useMutation.bind(point),
+      _hmr: point._hmr.bind(point),
+    })
+    return component as never
   }
 
   // internal utils
@@ -3884,7 +3901,7 @@ export class Point0<
   }
 
   _getServerQueryKey({
-    input,
+    input = {} as never,
     outputType = this.type === 'response' ? 'response' : 'data',
     isInfiniteQuery,
   }: {
@@ -5060,7 +5077,7 @@ export class Point0<
 
   // mountable components
 
-  _Page = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
+  Page = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
@@ -5181,7 +5198,7 @@ export class Point0<
     })
   }
 
-  _Component = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
+  Component = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
@@ -5250,7 +5267,7 @@ export class Point0<
     })
   }
 
-  _Layout = (props: MountableComponentProps<TInputSchema, TProps, true>): React.ReactNode => {
+  Layout = (props: MountableComponentProps<TInputSchema, TProps, true>): React.ReactNode => {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })

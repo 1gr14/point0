@@ -161,7 +161,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   }
 
   toEntryPath({ entry, cwd = process.cwd() }: { entry: string; cwd?: string }): string {
-    console.log({ entry, cwd })
     if (entry.startsWith('.') || entry.startsWith('/')) {
       return nodePath.resolve(cwd, entry)
     } else {
@@ -199,7 +198,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       entries && entries.length > 0
         ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
         : Object.values(this.server.entry || {})
-    console.log({ entriesFiles })
     if (withServer) {
       // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
       const serverEntryProcesses: Array<Promise<any>> = await (async () => {

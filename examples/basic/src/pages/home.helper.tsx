@@ -13,7 +13,7 @@ export const ExternalHelperComponent = () => {
   }, [])
   return (
     <div>
-      <p>External Helper: {state}</p>
+      <p>External Helperoooo: {state}</p>
       <button
         onClick={() => {
           setState(0)
@@ -27,7 +27,7 @@ export const ExternalHelperComponent = () => {
 
 // export const ExternalHelperComponent2 = () => null
 
-export const ExternalHelperComponent2 = client.lets('component', 'externalHelper2').component(() => {
+export const ExternalHelperComponent2 = client.lets('component', 'externalHelper2').component(function X() {
   const [state, setState] = useState(0)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -39,7 +39,7 @@ export const ExternalHelperComponent2 = client.lets('component', 'externalHelper
   }, [])
   return (
     <div>
-      <p>External Helper 2: {state}</p>
+      <p>External Helperxxxxx: {state}</p>
       <button
         onClick={() => {
           setState(0)
@@ -50,3 +50,5 @@ export const ExternalHelperComponent2 = client.lets('component', 'externalHelper
     </div>
   )
 })
+
+export const ExternalHelperComponent3 = client.lets('component', 'externalHelper2').component(ExternalHelperComponent)

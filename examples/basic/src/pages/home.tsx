@@ -6,7 +6,7 @@ import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
-import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
+import { ExternalHelperComponent, ExternalHelperComponent2, ExternalHelperComponent3 } from './home.helper.js'
 // import icon from '../assets/icon.svg'
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
@@ -65,7 +65,7 @@ export const BestIdeaComponent = client
   .loading(({ input, props }) => {
     return <div>Loading...</div>
   })
-  .component(({ data, props, location }) => {
+  .component(function X({ data, props, location }) {
     return (
       <div>
         <h1>Best Idea {data.mult}</h1>
@@ -102,7 +102,6 @@ export default generalLayout
     }, [])
     const ctx1 = clientCtx1.useValue()
     const ctx2 = clientCtx2.useValue()
-    console.info(ctx2.sayHello())
     const x = clientCtx1.useValue('shmest')
     const y = clientCtx1.useValue(['test', 'shmest'])
     someStable.set(456)
@@ -137,7 +136,8 @@ export default generalLayout
         <HelperComponent />
         <hr />
         <ExternalHelperComponent />
-        <ExternalHelperComponent2 />
+        <ExternalHelperComponent2.Component />
+        <ExternalHelperComponent3.X />
         <hr />
         <p>Something random: {someRandom.get()}</p>
         <p>Something date: {someDate.get().getTime()}</p>
@@ -162,7 +162,7 @@ export default generalLayout
           <Svg src={iconRaw} width={24} height={24} />
           {/* <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span> */}
         </div>
-        <BestIdeaComponent cta="It is awesome!" input={{ x: 10, y: 20 }} />
+        <BestIdeaComponent.Component cta="It is awesome!" input={{ x: 10, y: 20 }} />
         <nav>
           <Link to="/ideas">Browse Ideas</Link>
         </nav>

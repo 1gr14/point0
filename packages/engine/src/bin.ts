@@ -25,7 +25,6 @@ program
     '-e, --entry <name|path>',
     'Server entry points, names or paths (-e <entry1>,<entry2>,...) or (-e <entry1> -e <entry2>,...)',
     (value, previous: string[] = []) => {
-      console.log({ value, previous })
       previous.push(...value.split(','))
       return previous
     },
@@ -43,14 +42,6 @@ program
       const generateFiles = options.generate !== false
       const watch = options.watch !== false
       const entries = options.entry
-      console.log({
-        generateFiles,
-        clientDevServersOnly,
-        watch,
-        bunRunArgs,
-        cwd,
-        entries,
-      })
       await engine.dev({
         // engineFile,
         generateFiles,

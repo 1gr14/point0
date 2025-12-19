@@ -104,14 +104,14 @@ export class Walker {
           return { collectedPoints: [], errors: [e] }
         }
       }
-      return await this.executeCollectedPointsFromContent({ content, fileAbs })
+      return await this.extractCollectedPointsFromContent({ content, fileAbs })
     } catch (e) {
       console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)}: parse failed: ${(e as Error).message}`)
       return { collectedPoints: [], errors: [e] }
     }
   }
 
-  private async executeCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): Promise<{
+  private async extractCollectedPointsFromContent({ content, fileAbs }: { content: string; fileAbs: string }): Promise<{
     collectedPoints: CollectedPoint[]
     errors: unknown[]
   }> {
@@ -295,8 +295,12 @@ export class Walker {
 
     const results = await Promise.allSettled(promises)
     const collectedPoints = results.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value || [])
+    // TODO:ASAP
     const promiseRejectedErrors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
-    return { collectedPoints, errors: [...errors, ...promiseRejectedErrors] }
+    return {
+      collectedPoints: Walker.toUniqueCollectedPoints(collectedPoints),
+      errors: [...errors, ...promiseRejectedErrors],
+    }
   }
 
   async prunePoint0Methods({
@@ -1901,7 +1905,7 @@ export class Walker {
     }
 
     //
-    // 1) find the export for baseIdentifier and execute its init expression
+    // 1) find the export for baseIdentifier and extract its init expression
     //
     let initNode: Expression | Declaration | null | undefined = undefined
 
@@ -1966,7 +1970,7 @@ export class Walker {
     //
     // 2) walk through the chain to find Point0.create
     //
-    const scopeFormChain = this.executeScopeFromChain({ fileAbs, node: initNode })
+    const scopeFormChain = this.extractScopeFromChain({ fileAbs, node: initNode })
     if (scopeFormChain) {
       return { scope: scopeFormChain.scope, attachedTo: scopeFormChain.attachedTo, errors }
     }
@@ -2015,7 +2019,7 @@ export class Walker {
   /**
    * Executes scope from a chain by walking left to find Point0.create('scope')
    */
-  private executeScopeFromChain({
+  private extractScopeFromChain({
     fileAbs,
     node,
   }: {
@@ -2073,7 +2077,7 @@ export class Walker {
       return { scope, attachedTo: [] }
     }
 
-    // fallback – try to execute from template literal or other string types
+    // fallback – try to extract from template literal or other string types
     console.warn(`🔴 ${nodePath.relative(this.cwd, fileAbs)} scope not found as string literal in ${method} call`)
     return undefined
   }
@@ -2235,6 +2239,27 @@ export class Walker {
       return null
     }
     return POINT_METHOD_TO_TYPE_MAP[method] ?? null
+  }
+
+  static isSameCollectedPoint(a: CollectedPoint, b: CollectedPoint): boolean {
+    return (
+      a.scope === b.scope &&
+      a.fileAbs === b.fileAbs &&
+      a.name === b.name &&
+      a.type === b.type &&
+      a.exportName === b.exportName &&
+      a.shouldBePrefetchedOnLinkHover === b.shouldBePrefetchedOnLinkHover &&
+      a.route?.definition === b.route?.definition &&
+      (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
+    )
+  }
+
+  static isSameNameAndTypeAndScopeCollectedPoint(a: CollectedPoint, b: CollectedPoint): boolean {
+    return a.scope === b.scope && a.name === b.name && a.type === b.type
+  }
+
+  static toUniqueCollectedPoints(points: CollectedPoint[]): CollectedPoint[] {
+    return points.filter((p, index, self) => index === self.findIndex((t) => Walker.isSameCollectedPoint(t, p)))
   }
 }
 

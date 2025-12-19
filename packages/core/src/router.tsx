@@ -276,43 +276,43 @@ export function _wrapUseNavigate<T extends () => (to: string, ...args: any[]) =>
   useAdapterNavigate: T,
 ): () => (...args: Parameters<ReturnType<T>>) => Promise<{ location: AnyLocation; error: Error0 | null }> {
   return () => {
-    // return _wrapNavigate(useAdapterNavigate())
-    const routerContext = React.useContext(RouterContext)
-    if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
+    // const routerContext = React.useContext(RouterContext)
+    // if (!routerContext) throw new Error('useNavigate must be used within RouterContextProvider')
     const adapterNavigate = useAdapterNavigate()
+    return _wrapNavigate(adapterNavigate)
 
-    return async (...args: Parameters<ReturnType<T>>) => {
-      const to = (() => {
-        if (args[0].startsWith('#') && routerContext.addHashToLocation) {
-          return routerContext.currentLocation.pathname + args[0]
-        }
-        return args[0]
-      })()
-      const prevLocation = routerContext.currentLocation
-      const location = PointsManager.getPointsManager().routes._.getLocation(to)
-      routerContext.setPrevLocation(prevLocation)
-      routerContext.setError(null)
-      routerContext.setNextLocation(location)
-      routerContext.setStatus('prefetching')
-      try {
-        await PointsManager.getPointsManager().prefetchSuitablePagePoint({
-          location,
-        })
-        routerContext.setStatus('transitioning')
-        await adapterNavigate(...(args as [string, ...any[]]))
-        routerContext.setStatus('idle')
-        routerContext.setNextLocation(null)
-        return { location, error: null }
-      } catch (error) {
-        const error0 = Error0.from(error)
-        routerContext.setError(error0)
-        routerContext.setStatus('transitioning')
-        await adapterNavigate(...(args as [string, ...any[]]))
-        routerContext.setStatus('idle')
-        routerContext.setNextLocation(null)
-        return { location, error: error0 }
-      }
-    }
+    // return async (...args: Parameters<ReturnType<T>>) => {
+    //   const to = (() => {
+    //     // if (args[0].startsWith('#') && routerContext.addHashToLocation) {
+    //     return routerContext.currentLocation.pathname + args[0]
+    //     // }
+    //     // return args[0]
+    //   })()
+    //   const prevLocation = routerContext.currentLocation
+    //   const location = PointsManager.getPointsManager().routes._.getLocation(to)
+    //   routerContext.setPrevLocation(prevLocation)
+    //   routerContext.setError(null)
+    //   routerContext.setNextLocation(location)
+    //   routerContext.setStatus('prefetching')
+    //   try {
+    //     await PointsManager.getPointsManager().prefetchSuitablePagePoint({
+    //       location,
+    //     })
+    //     routerContext.setStatus('transitioning')
+    //     await adapterNavigate(...(args as [string, ...any[]]))
+    //     routerContext.setStatus('idle')
+    //     routerContext.setNextLocation(null)
+    //     return { location, error: null }
+    //   } catch (error) {
+    //     const error0 = Error0.from(error)
+    //     routerContext.setError(error0)
+    //     routerContext.setStatus('transitioning')
+    //     await adapterNavigate(...(args as [string, ...any[]]))
+    //     routerContext.setStatus('idle')
+    //     routerContext.setNextLocation(null)
+    //     return { location, error: error0 }
+    //   }
+    // }
   }
 }
 
@@ -322,10 +322,7 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
   return async (...args: Parameters<T>) => {
     const routerContext = getRouterContext()
     const to = (() => {
-      if (args[0].startsWith('#') && routerContext.addHashToLocation) {
-        return routerContext.currentLocation.pathname + args[0]
-      }
-      return args[0]
+      return routerContext.currentLocation.pathname + args[0]
     })()
     const prevLocation = routerContext.currentLocation
     const location = PointsManager.getPointsManager().routes._.getLocation(to)

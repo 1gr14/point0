@@ -96,6 +96,12 @@ export const _ExternalHelperComponent2_n1xbrdietv_lazy = {
   point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent2.point,
 } as LazyPointsCollectionRecord
 
+export const _ExternalHelperComponent3_zzfd1v06eh_lazy = {
+  type: 'component',
+  name: 'externalHelper2',
+  point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent3.point,
+} as LazyPointsCollectionRecord
+
 export const _clientFn2Mutation_13ogi387skq_lazy = {
   type: 'mutation',
   name: 'clientFn2Mutation',

@@ -6,7 +6,7 @@ import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
-import { ExternalHelperComponent } from './home.helper.js'
+import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
 // import icon from '../assets/icon.svg'
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
@@ -88,6 +88,7 @@ export default generalLayout
         <HelperComponent />
         <hr />
         <ExternalHelperComponent />
+        <ExternalHelperComponent2.Component />
         <hr />
         <p>Something random: {someRandom.get()}</p>
         <p>Something date: {someDate.get().getTime()}</p>
@@ -112,7 +113,7 @@ export default generalLayout
           <Svg src={iconRaw} />
           {/* <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span> */}
         </div>
-        <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />
+        <BestIdeaComponent.Component cta="It is awesome!" input={{ x: 10 }} />
         <nav>
           <Link to="/ideas">Browse Ideas</Link>
         </nav>

@@ -284,7 +284,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (points.length === 0) {
       return true
     }
-    return points.every((p: any) => 'Component' in p)
+    return points.every((p: any) => 'FC' in p)
   }
 
   private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
@@ -365,25 +365,25 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         shouldBePrefetchedOnLinkHover: record.shouldBePrefetchedOnLinkHover,
         point: record.point,
         layouts: record.layouts ?? [],
-        Component:
+        FC:
           record.type === 'layout'
             ? typeof point === 'function'
               ? React.lazy(async () => ({
-                  default: await point().then((p) => p._Layout),
+                  default: await point().then((p) => p.Layout),
                 }))
-              : point._Layout
+              : point.Layout
             : record.type === 'page'
               ? typeof point === 'function'
                 ? React.lazy(async () => ({
-                    default: await point().then((p) => p._Page),
+                    default: await point().then((p) => p.Page),
                   }))
-                : point._Page
+                : point.Page
               : record.type === 'component'
                 ? typeof point === 'function'
                   ? React.lazy(async () => ({
-                      default: await point().then((p) => p._Component),
+                      default: await point().then((p) => p.Component),
                     }))
-                  : point._Component
+                  : point.Component
                 : record.type === 'provider'
                   ? typeof point === 'function'
                     ? React.lazy(async () => ({
@@ -458,7 +458,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           name: pointName || record.name,
           type: pointType,
           layouts: recordLayouts,
-          Component: record.Component,
+          FC: record.FC,
         }
       }),
     )
@@ -559,11 +559,11 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         (p) => p.type === 'page' && pagesTreeSourceRecord.pages.includes(p.name),
       )
       const pagesTreeRecord: PagesTreeRecord = {
-        Layout: layoutRecord?.Component as React.ComponentType<{ children: React.ReactNode }> | undefined,
+        Layout: layoutRecord?.FC as React.ComponentType<{ children: React.ReactNode }> | undefined,
         layoutName: layoutRecord?.name,
         layoutPoint: layoutRecord?.point as LayoutPoint | (() => Promise<LayoutPoint>) | undefined,
         pages: pagesRecords.map((p) => ({
-          Page: p.Component as React.ComponentType | React.LazyExoticComponent<React.ComponentType>,
+          Page: p.FC as React.ComponentType | React.LazyExoticComponent<React.ComponentType>,
           pageName: p.name,
           pageRoute: p.route as AnyRoute,
           pagePoint: p.point as PagePoint | (() => Promise<PagePoint>),
@@ -626,16 +626,16 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     const page = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
-    if (suitable.Component) {
-      await PointsManager.prefetchLazyComponent(suitable.Component)
+    if (suitable.FC) {
+      await PointsManager.prefetchLazyComponent(suitable.FC)
     }
 
     const layouts = await Promise.all(
       this.collection
         .filter((p) => p.type === 'layout' && suitable.layouts?.includes(p.name))
         .map(async (layout) => {
-          if (layout.Component) {
-            await PointsManager.prefetchLazyComponent(layout.Component)
+          if (layout.FC) {
+            await PointsManager.prefetchLazyComponent(layout.FC)
           }
           return typeof layout.point === 'function' ? await layout.point() : layout.point
         }),
@@ -727,7 +727,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         point: TReady extends true ? EndPoint : () => Promise<EndPoint>
         name: PointName
         type: PointType
-        Component: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>> | undefined
+        FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>> | undefined
         pageLocation: ExactLocation | undefined
         layouts: string[] | undefined
       }
@@ -741,7 +741,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (pageLocation && pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
       return undefined
     }
-    for (const { route, point, type, name, Component, layouts } of this.collection as ReadyRoutedPointsCollection) {
+    for (const { route, point, type, name, FC, layouts } of this.collection as ReadyRoutedPointsCollection) {
       if (pointType && type !== pointType) {
         continue
       }
@@ -753,7 +753,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
               name,
               type,
               pageLocation: undefined,
-              Component,
+              FC,
               layouts,
             }
           }
@@ -763,7 +763,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
               name,
               type,
               pageLocation: undefined,
-              Component,
+              FC,
               layouts,
             }
           }
@@ -774,7 +774,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
             name,
             type,
             pageLocation: match.exact ? match : undefined,
-            Component,
+            FC,
             layouts,
           }
         }
@@ -792,7 +792,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           name,
           type,
           pageLocation: match,
-          Component,
+          FC,
           layouts,
         }
       }
@@ -857,7 +857,7 @@ export type ReadyPointsCollectionRecord = {
   route?: string | undefined
   shouldBePrefetchedOnLinkHover: boolean | number
   point: EndPoint
-  Component?: React.ComponentType
+  FC?: React.ComponentType
   layouts?: string[]
 }
 export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
@@ -867,7 +867,7 @@ export type LazyRoutedPointsCollectionRecord = {
   route: AnyRoute | UndefinedRoute
   point: () => Promise<EndPoint>
   shouldBePrefetchedOnLinkHover: boolean | number
-  Component?: React.LazyExoticComponent<React.ComponentType>
+  FC?: React.LazyExoticComponent<React.ComponentType>
   layouts: string[]
 }
 export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
@@ -877,7 +877,7 @@ export type ReadyRoutedPointsCollectionRecord = {
   route: AnyRoute | UndefinedRoute
   point: EndPoint
   shouldBePrefetchedOnLinkHover: boolean | number
-  Component?: React.ComponentType
+  FC?: React.ComponentType
   layouts: string[]
 }
 export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
@@ -967,4 +967,4 @@ type MergeOmitAnyMany<
   T4 extends object | undefined,
 > = EmptyObjectToUndefined<MergeOmitAny<MergeOmitAny<MergeOmitAny<T1, T2>, T3>, T4>>
 
-// type X = MergeOmitAnyMany<undefined, {}, any, {x: 1}>
+// type FC = MergeOmitAnyMany<undefined, {}, any, {x: 1}>

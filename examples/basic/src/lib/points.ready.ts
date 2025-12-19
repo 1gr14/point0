@@ -8,7 +8,7 @@ import { ideaPage as ideaPage_1lbwy4x6i7a } from '../pages/idea.js'
 import { ideaNewsPage as ideaNewsPage_swg9xetjej } from '../pages/idea-news.js'
 import { generalLayout as generalLayout_2a89rn3ysgd } from '../layouts/general.js'
 import { ideaLayout as ideaLayout_109ae95y9wr } from '../layouts/idea.js'
-import { ExternalHelperComponent2 as ExternalHelperComponent2_n1xbrdietv } from '../pages/home.helper.js'
+import { ExternalHelperComponent2 as ExternalHelperComponent2_n1xbrdietv, ExternalHelperComponent3 as ExternalHelperComponent3_zzfd1v06eh } from '../pages/home.helper.js'
 import { sharedQuery as sharedQuery_ehd68url3u } from './shared.js'
 import { clientCtx1 as clientCtx1_2aazoua7zcl, clientCtx2 as clientCtx2_1vl423rboa8, clientCtx3 as clientCtx3_1rlhk9hehay } from './client-ctx.js'
 import { client as root } from './client.js'
@@ -36,6 +36,8 @@ export const _ideaLayout_109ae95y9wr_ready = ideaLayout_109ae95y9wr.point as End
 export const _BestIdeaComponent_242jb1jm1kp_ready = BestIdeaComponent_242jb1jm1kp.point as EndPoint
 
 export const _ExternalHelperComponent2_n1xbrdietv_ready = ExternalHelperComponent2_n1xbrdietv.point as EndPoint
+
+export const _ExternalHelperComponent3_zzfd1v06eh_ready = ExternalHelperComponent3_zzfd1v06eh.point as EndPoint
 
 export const _clientFn2Mutation_13ogi387skq_ready = clientFn2Mutation_13ogi387skq.point as EndPoint
 

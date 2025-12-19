@@ -669,7 +669,7 @@ export class FilesGenerator {
   //     if (p.type !== 'page' && p.type !== 'layout') continue
   //     const relImportPath = FileGenerator.toRelativeJsImportPath(this.outputWouterRoutesAbs, p.fileAbs)
   //     const componentVar = toComponentVar(p)
-  //     const suffix = p.type === 'page' ? '.point._Page' : '.point._Layout'
+  //     const suffix = p.type === 'page' ? '.point.Page' : '.point.Layout'
   //     // TODO: use when we will have preloaded pages and layouts
   //     // lines.push(
   //     //   `const ${componentVar} = (await import('${relImportPath}')).${
@@ -785,8 +785,8 @@ export class FilesGenerator {
     added: CollectedPoint[]
     changed: boolean
   } {
-    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => FilesGenerator.isSameCollectedPoint(p, cp)))
-    const added = newPoints.filter((p) => !prevPoints.some((cp) => FilesGenerator.isSameCollectedPoint(p, cp)))
+    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => Walker.isSameCollectedPoint(p, cp)))
+    const added = newPoints.filter((p) => !prevPoints.some((cp) => Walker.isSameCollectedPoint(p, cp)))
     const changed = added.length > 0 || deleted.length > 0
     return { deleted, added, changed }
   }
@@ -796,19 +796,19 @@ export class FilesGenerator {
     const result = [...prevPoints]
     for (const newPoint of newPoints) {
       const prevConflictedPointIndex = result.findIndex((p) =>
-        FilesGenerator.isSameNameAndTypeAndScopeCollectedPoint(p, newPoint),
+        Walker.isSameNameAndTypeAndScopeCollectedPoint(p, newPoint),
       )
       if (prevConflictedPointIndex !== -1) {
         result[prevConflictedPointIndex] = newPoint
         continue
       }
-      const prevPointIndex = result.findIndex((p) => FilesGenerator.isSameCollectedPoint(p, newPoint))
+      const prevPointIndex = result.findIndex((p) => Walker.isSameCollectedPoint(p, newPoint))
       if (prevPointIndex === -1) {
         result.push(newPoint)
         continue
       }
     }
-    return result
+    return Walker.toUniqueCollectedPoints(result)
   }
 
   // 53-bit non-crypto hash (by bryc). Crazy fast in JS.
@@ -839,23 +839,6 @@ export class FilesGenerator {
       result.push(array.slice(i, i + size))
     }
     return result
-  }
-
-  private static isSameCollectedPoint(a: CollectedPoint, b: CollectedPoint): boolean {
-    return (
-      a.scope === b.scope &&
-      a.fileAbs === b.fileAbs &&
-      a.name === b.name &&
-      a.type === b.type &&
-      a.exportName === b.exportName &&
-      a.shouldBePrefetchedOnLinkHover === b.shouldBePrefetchedOnLinkHover &&
-      a.route?.definition === b.route?.definition &&
-      (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
-    )
-  }
-
-  private static isSameNameAndTypeAndScopeCollectedPoint(a: CollectedPoint, b: CollectedPoint): boolean {
-    return a.scope === b.scope && a.name === b.name && a.type === b.type
   }
 
   private static toRelativeJsImportPath(fromAbs: string, toAbs: string): string {

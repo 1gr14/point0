@@ -6,7 +6,7 @@ import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
-import { ExternalHelperComponent } from './home.helper.js'
+import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
 import Icon from '../assets/icon.svg?react'
 
 // const something = SuperStore.define('something', () => {
@@ -81,6 +81,8 @@ export default generalLayout
         <HelperComponent />
         <hr />
         <ExternalHelperComponent />
+        {/* <ExternalHelperComponent2.Component /> */}
+        <ExternalHelperComponent2.Component />
         <hr />
         <p>Something random: {someRandom.get()}</p>
         <p>Something date: {someDate.get().getTime()}</p>
@@ -96,7 +98,7 @@ export default generalLayout
           <Icon style={{ width: '24px', height: '24px', color: '#007bff' }} />
           <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span>
         </div>
-        <BestIdeaComponent cta="It is awesome!" input={{ x: 10 }} />
+        {/* <BestIdeaComponent.Component cta="It is awesome!" input={{ x: 10 }} /> */}
         <nav>
           <Link to="/ideas">Browse Ideas</Link>
         </nav>

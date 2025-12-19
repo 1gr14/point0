@@ -2080,7 +2080,7 @@ export type NiceRootEndPoint<
     TLastServerOutput,
     TLastClientOutput
   >,
-  'attach' | 'lets' | 'point' | 'Infer' | 'scope' | 'type' | 'name'
+  'attach' | 'lets' | 'point' | 'Infer'
 >
 
 export type NiceBaseEndPoint<
@@ -2117,7 +2117,7 @@ export type NiceBaseEndPoint<
     TLastServerOutput,
     TLastClientOutput
   >,
-  'lets' | 'point' | 'Infer' | 'scope' | 'type' | 'name'
+  'lets' | 'point' | 'Infer'
 >
 
 export type WithFetchIfHasServerLoader<
@@ -2188,11 +2188,7 @@ export type NicePageEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<
-        TLastServerOutput,
-        TQueryResultType,
-        'point' | 'lets' | 'Infer' | 'scope' | 'type' | 'name'
-      >
+      WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer' | 'Page' | 'X'>
     >
   >
 
@@ -2212,34 +2208,29 @@ export type NiceComponentEndPoint<
   TProps extends Props | UndefinedProps,
   TLastServerOutput extends LastOutput | UndefinedLastOutput,
   TLastClientOutput extends LastOutput | UndefinedLastOutput,
-> = MountableComponent<TInputSchema, TProps, false> &
-  Pick<
-    Point0<
-      TPointType,
-      TLetsEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TData,
-      TClientData,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TResponse,
-      TClientResponse,
-      TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
-    >,
-    WithInputSchemaLiteralIfExists<
-      TInputSchema,
-      WithQueryEndLiteralsIfSuitable<
-        TLastServerOutput,
-        TQueryResultType,
-        'point' | 'lets' | 'Infer' | 'scope' | 'type' | 'name'
-      >
-    >
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TData,
+    TClientData,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TResponse,
+    TClientResponse,
+    TQueryResultType,
+    TProps,
+    TLastServerOutput,
+    TLastClientOutput
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer' | 'Component' | 'X'>
   >
+>
 
 export type NiceLayoutEndPoint<
   TPointType extends 'layout',
@@ -2278,11 +2269,7 @@ export type NiceLayoutEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<
-        TLastServerOutput,
-        TQueryResultType,
-        'point' | 'lets' | 'Infer' | 'scope' | 'type' | 'name'
-      >
+      WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer' | 'Layout' | 'X'>
     >
   >
 
@@ -2322,11 +2309,7 @@ export type NiceQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<
-      TLastServerOutput,
-      TQueryResultType,
-      'point' | 'lets' | 'Infer' | 'scope' | 'type' | 'name'
-    >
+    WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
   >
 >
 
@@ -2366,11 +2349,7 @@ export type NiceInfiniteQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<
-      TLastServerOutput,
-      TQueryResultType,
-      'point' | 'lets' | 'Infer' | 'scope' | 'type' | 'name'
-    >
+    WithQueryEndLiteralsIfSuitable<TLastServerOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
   >
 >
 
@@ -2412,16 +2391,7 @@ export type NiceMutationEndPoint<
     TInputSchema,
     WithFetchIfHasServerLoader<
       TLastServerOutput,
-      | 'point'
-      | 'lets'
-      | 'getMutationOptions'
-      | 'useMutation'
-      | 'Infer'
-      | 'execute'
-      | 'executeDetailed'
-      | 'scope'
-      | 'type'
-      | 'name'
+      'point' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
     >
   >
 >
@@ -2465,7 +2435,7 @@ export type NiceProviderEndPoint<
     WithQueryEndLiteralsIfSuitable<
       TLastServerOutput,
       TQueryResultType,
-      'point' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'Provider' | 'Infer' | 'scope' | 'type' | 'name'
+      'point' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'Provider' | 'X' | 'Infer'
     >
   >
 >
