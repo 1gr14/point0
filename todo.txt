@@ -3,7 +3,7 @@
 --------------------------
 
 
-.query and .loader allow pass last loader right in mutation and query methods as firs argument, and fix compiler to work with it
+.query and .mutation allow pass last loader right in mutation and query methods as first argument, and fix compiler to work with it
 rename current middleware to somthing else, like builder processing stage
 
 binary, just replace .. with _dot__dot_ in paths
