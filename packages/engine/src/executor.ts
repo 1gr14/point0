@@ -382,19 +382,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
-        // const response = await (async () => {
-        //   if (point?.type === 'response') {
-        //     if (!point._responseFn) {
-        //       throw new Error('Response function not found')
-        //     }
-        //     return await point._responseFn({
-        //       ctx: currentCtx,
-        //       data: currentData,
-        //       input: currentInputParsed,
-        //     })
-        //   }
-        //   return undefined
-        // })()
         await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
         return {
           ctx: currentCtx,
@@ -746,7 +733,7 @@ export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxL
 
 export type FetchTask = {
   pointType: EndPointType
-  outputType: 'data' | 'response' | 'queryClientDehydratedState'
+  outputType: 'data' | 'queryClientDehydratedState'
   pointInput: InputParsed
   scope: PointsScope
   pointName: PointName

@@ -179,13 +179,12 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           'page',
           'layout',
           'component',
-          'response',
           'query',
           'infiniteQuery',
           'mutation',
           'provider',
         ] as const
-        const validOutputTypes = ['data', 'response', 'queryClientDehydratedState'] as const
+        const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
         if (!bodyRaw || typeof bodyRaw !== 'object') {
           throw new Error('Invalid request body: must be an object')
         }
@@ -357,7 +356,7 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
 export type FetchTask = {
   pointType: EndPointType
-  outputType: 'data' | 'response' | 'queryClientDehydratedState'
+  outputType: 'data' | 'queryClientDehydratedState'
   pointInput: InputRaw
   scope: PointsScope
   pointName: PointName

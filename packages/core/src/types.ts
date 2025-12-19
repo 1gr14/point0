@@ -128,7 +128,6 @@ export type PointType =
   | 'middleware'
   | 'page'
   | 'component'
-  | 'response'
   | 'query'
   | 'infiniteQuery'
   | 'mutation'
@@ -1304,7 +1303,7 @@ export type MiddlewareHeadFn<
 
 export type FetchOutput<TLastServerOutput extends LastOutput | UndefinedLastOutput> = TLastServerOutput
 
-export type FetchOutputType = 'data' | 'response' | 'queryClientDehydratedState'
+export type FetchOutputType = 'data' | 'queryClientDehydratedState'
 
 // mountable app
 

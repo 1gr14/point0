@@ -321,7 +321,7 @@ export class Walker {
     const customerToMethods = (customer: PruneCustomerFlat): string[] => {
       const methods = {
         none: [],
-        client: ['loader', 'ctx', 'ctxLoader', 'response'],
+        client: ['loader', 'ctx', 'ctxLoader'],
         // serverSsr: ['scrollPosition', 'clientLoader'],
         // serverNoSsr: [
         //   'scrollPosition',
@@ -367,7 +367,6 @@ export class Walker {
             'loader',
             'ctx',
             'ctxLoader',
-            'response',
             'clientLoader',
             'page',
             'component',
@@ -2421,7 +2420,6 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   mutation: 'mutation',
   query: 'query',
   infiniteQuery: 'infiniteQuery',
-  response: 'response',
   provider: 'provider',
   base: 'base',
   root: 'root',

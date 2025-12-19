@@ -3076,7 +3076,6 @@ export class Point0<
       pointType === 'base' ||
       pointType === 'page' ||
       pointType === 'layout' ||
-      pointType === 'response' ||
       pointType === 'query' ||
       pointType === 'infiniteQuery' ||
       pointType === 'mutation' ||
@@ -3711,7 +3710,7 @@ export class Point0<
     const url = new URL('/_point0', this._serverurl)
     const method = 'post'
 
-    const outputType = args[2] ?? (this.type === 'response' ? 'response' : 'data')
+    const outputType = args[2] ?? 'data'
     const scope = this._attachedTo.length === 0 ? this.scope : Point0.getPointsManager().scope
 
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
@@ -3874,7 +3873,7 @@ export class Point0<
 
   _getServerQueryKey({
     input = {} as never,
-    outputType = this.type === 'response' ? 'response' : 'data',
+    outputType = 'data',
     isInfiniteQuery,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
@@ -3914,7 +3913,7 @@ export class Point0<
 
   private _getCombinedQueryKey({
     input = {} as never,
-    outputType = this.type === 'response' ? 'response' : 'data',
+    outputType = 'data',
     isInfiniteQuery,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
