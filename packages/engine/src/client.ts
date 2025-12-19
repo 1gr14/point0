@@ -279,7 +279,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const scriptPath = nodePath.join(tempDir, 'serve.js')
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const bunfigTomlContent = `[serve.static]
-plugins = ["@point0/engine/pruner-bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
+plugins = ["@point0/engine/compiler-bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
@@ -319,7 +319,7 @@ Bun.serve({
       env: {
         ...process.env,
         // FORCE_COLOR: '1',
-        POINT0_PRUNER_OPTIONS: JSON.stringify({ customer: 'client', scope: this.scope }),
+        POINT0_COMPILER_OPTIONS: JSON.stringify({ customer: 'client', scope: this.scope }),
         NODE_ENV: process.env.NODE_ENV,
       },
     })
@@ -665,8 +665,8 @@ Bun.serve({
           })
         : {}
 
-      const prunePlugin = await import('./pruner-bun.js').then((module) =>
-        module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
+      const prunePlugin = await import('./compiler-bun.js').then((module) =>
+        module.compilerBunPlugin({ customer: 'client', scope: this.scope }),
       )
 
       const buildOutput = await Bun.build({
@@ -744,8 +744,8 @@ Bun.serve({
 
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-      const prunePlugin = await import('./pruner-vite.js').then((module) =>
-        module.prunerVitePlugin({ customer: 'client', scope: this.scope }),
+      const prunePlugin = await import('./compiler-vite.js').then((module) =>
+        module.compilerVitePlugin({ customer: 'client', scope: this.scope }),
       )
 
       const config: ExtractedViteConfig = {

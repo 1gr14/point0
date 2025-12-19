@@ -315,7 +315,7 @@ export class Walker {
     customer?: PruneCustomer
   }): Promise<string> {
     if (!methodsProvided && !customer) {
-      throw new Error('methods or customer is required in point0-pruner plugin')
+      throw new Error('methods or customer is required in point0-compiler plugin')
     }
 
     const customerToMethods = (customer: PruneCustomerFlat): string[] => {
@@ -867,7 +867,7 @@ export class Walker {
         // Skip if .lets() type is component, layout, or page
         if (lets.typeArg === 'component' || lets.typeArg === 'layout' || lets.typeArg === 'page') return
 
-        // TODO: check if it is really point0 thing
+        // TODO: check if it is really Point0 thing
         // Check if the root is Point0.create()
         // const scopeResult = this.extractScopeFromChain({ fileAbs, node })
         // if (!scopeResult) return
@@ -875,7 +875,6 @@ export class Walker {
         // Must be a top-level assignment (not inside a function)
         const baseIdentifier = this.findTopLevelAssignedIdentifier(p as unknown as NodePath<Node>)
         if (!baseIdentifier) return
-        console.log(13589, !!baseIdentifier)
 
         // This is a valid non-component point that needs HMR
         nodesToModify.push({ path: p })

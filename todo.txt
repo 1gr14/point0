@@ -2,12 +2,8 @@
 ------ before start0 -----
 --------------------------
 
-HMR
-on vite pruner add to end of any point ._hmr(Function X {return null})
-check assign things to component
-on hmr assig everything needed
 
-.query and .loader allow pass last loader right in mutation and query methods as firs argument, and fix pruner to work with it
+.query and .loader allow pass last loader right in mutation and query methods as firs argument, and fix compiler to work with it
 
 binary, just replace .. with _dot__dot_ in paths
 
@@ -62,7 +58,7 @@ refactor types names and order
 TData → TServerData, etc
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
-make clientserver import helpers without class, like just fns, and allow pruner understand if it is imported fro, '@point0/core' then respect them
+make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
 
 ---
 
@@ -89,7 +85,7 @@ Replace all node methods with native bun methods, including watcher
 on fetch and prefetch if extractor exists in SuperStore, then do not do fetch, but do extractor.extract
 analyze why client bundle so big in examples
 wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
-check bun pruner, and vite pruner creates correct sourcemaps
+check bun compiler, and vite compiler creates correct sourcemaps
 ? router export function getCurrentLocation()
 after build validate if dist paths exists, like engine.validate()
 input of page component omit it, by params and search params, make it strict
@@ -100,11 +96,11 @@ watch glob optional for build watch, and builwatch itself
 ? __POINT0_QUERY_KEY_PREFIX__, adn find all other point0 from small "p" and fix it
 ? use arrays in points files
 ? extract required ctx type from root points
-pruner: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
-pruner: point0PruneScopePoints, totally remove points not related to the scope
-pruner: P0.ifClientServer({client: , server: })
-pruner: P0.ifEnv({browser: , mobile: , electronRenderer: , electronMain: })
-check why so slow server restart, check wht we can cache on start, like glob results, or pruner results
+compiler: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
+compiler: point0PruneScopePoints, totally remove points not related to the scope
+compiler: P0.ifClientServer({client: , server: })
+compiler: P0.ifEnv({browser: , mobile: , electronRenderer: , electronMain: })
+check why so slow server restart, check wht we can cache on start, like glob results, or compiler results
 normzliae all errors texts everyhere
 ? expose point in NicePoint
 make components and pages named in react dev tools
@@ -148,6 +144,8 @@ Move type errors to its own types, so we can reuse them
 
 При лоаде поинта в поинтс менеджер глобальном в клиенте помечать его как лоадед с верными типами, и добавить в поинтс менеджере геттер верный
 Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед
+
+Вайт конфиг авто, дефаулт, или путь, или импорт, и при билде пруном из энжины это вырезать
 
 Ну и добавить тогда уж тасунк чтобы знать есть ли асунк лоадеры
 remove location from mountable components, becouse in expo for example it is very strange property

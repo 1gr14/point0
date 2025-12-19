@@ -4,7 +4,7 @@ import type { PointsScope } from '@point0/core'
 import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
 
-export function prunerBunPlugin({
+export function compilerBunPlugin({
   customer,
   scope,
   includedNodeModulesPrefixes: providedIncludedNodeModulesPrefixes = [],
@@ -14,7 +14,7 @@ export function prunerBunPlugin({
   includedNodeModulesPrefixes?: string[]
 }): BunPlugin {
   return {
-    name: 'point0-pruner',
+    name: 'point0-compiler',
     setup(build) {
       function escapeRegExp(str: string) {
         return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

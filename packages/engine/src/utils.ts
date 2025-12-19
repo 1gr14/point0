@@ -471,7 +471,9 @@ export const createViteDevServer = async ({
       customer,
     })
 
-    const prunePlugin = await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
+    const prunePlugin = await import('./compiler-vite.js').then((module) =>
+      module.compilerVitePlugin({ customer, scope }),
+    )
 
     const hmr =
       loadedViteConfig.server?.hmr === false

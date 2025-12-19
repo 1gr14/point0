@@ -174,8 +174,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const prunePlugin = this.viteConfig // we inject vite prune plugin in vite config
       ? []
       : [
-          await import('./pruner-bun.js').then((module) =>
-            module.prunerBunPlugin({
+          await import('./compiler-bun.js').then((module) =>
+            module.compilerBunPlugin({
               customer: 'server',
               scope: null,
             }),
@@ -606,8 +606,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const viteRoot =
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-      const prunePlugin = await import('./pruner-vite.js').then((module) =>
-        module.prunerVitePlugin({ customer: 'server', scope: this.scope }),
+      const prunePlugin = await import('./compiler-vite.js').then((module) =>
+        module.compilerVitePlugin({ customer: 'server', scope: this.scope }),
       )
 
       const config: ExtractedViteConfig = {

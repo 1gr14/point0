@@ -322,7 +322,10 @@ export function _wrapNavigate<T extends (to: string, ...args: any[]) => any>(
   return async (...args: Parameters<T>) => {
     const routerContext = getRouterContext()
     const to = (() => {
-      return routerContext.currentLocation.pathname + args[0]
+      if (args[0].startsWith('#')) {
+        return routerContext.currentLocation.pathname + args[0]
+      }
+      return args[0]
     })()
     const prevLocation = routerContext.currentLocation
     const location = PointsManager.getPointsManager().routes._.getLocation(to)

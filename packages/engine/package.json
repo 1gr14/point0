@@ -50,21 +50,21 @@
       "types": "./dist/render.d.ts",
       "import": "./dist/render.js"
     },
-    "./pruner": {
-      "types": "./dist/pruner.d.ts",
-      "import": "./dist/pruner.js"
+    "./compiler": {
+      "types": "./dist/compiler.d.ts",
+      "import": "./dist/compiler.js"
     },
-    "./pruner-bun-static": {
-      "types": "./dist/pruner-bun-static.d.ts",
-      "import": "./dist/pruner-bun-static.js"
+    "./compiler-bun-static": {
+      "types": "./dist/compiler-bun-static.d.ts",
+      "import": "./dist/compiler-bun-static.js"
     },
-    "./pruner-bun": {
-      "types": "./dist/pruner-bun.d.ts",
-      "import": "./dist/pruner-bun.js"
+    "./compiler-bun": {
+      "types": "./dist/compiler-bun.d.ts",
+      "import": "./dist/compiler-bun.js"
     },
-    "./pruner-vite": {
-      "types": "./dist/pruner-vite.d.ts",
-      "import": "./dist/pruner-vite.js"
+    "./compiler-vite": {
+      "types": "./dist/compiler-vite.d.ts",
+      "import": "./dist/compiler-vite.js"
     },
     "./publicdir": {
       "types": "./dist/publicdir.d.ts",

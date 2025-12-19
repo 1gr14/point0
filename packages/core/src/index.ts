@@ -2571,24 +2571,7 @@ export class Point0<
       _headFns: !successHeadFn ? this._headFns : [...this._headFns, successHeadFn],
     })
     point.X = point.Page.bind(point) as never
-    Object.assign(page, {
-      Infer: point.Infer,
-      point,
-      lets: point.lets.bind(point),
-      inputSchema: point.inputSchema,
-      useQuery: point.useQuery.bind(point),
-      getQueryKey: point.getQueryKey.bind(point),
-      getQueryOptions: point.getQueryOptions.bind(point),
-      prefetchQuery: point.prefetchQuery.bind(point),
-      fetch: point.fetch.bind(point),
-      execute: point.execute.bind(point),
-      executeDetailed: point.executeDetailed.bind(point),
-      useInfiniteQuery: point.useInfiniteQuery.bind(point),
-      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
-      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
-      Page: point.Page.bind(point),
-      X: (point as any).X.bind(point),
-    })
+    Point0._assignNicePointMethodsToComponent({ component: page, point, extra: { X: point.X } })
     return page as never
   }
 
@@ -2622,24 +2605,7 @@ export class Point0<
       _letsEndPointType: undefined,
     })
     point.X = point.Component.bind(point) as never
-    Object.assign(component, {
-      Infer: point.Infer,
-      point,
-      lets: point.lets.bind(point),
-      inputSchema: point.inputSchema,
-      useQuery: point.useQuery.bind(point),
-      getQueryKey: point.getQueryKey.bind(point),
-      getQueryOptions: point.getQueryOptions.bind(point),
-      prefetchQuery: point.prefetchQuery.bind(point),
-      fetch: point.fetch.bind(point),
-      execute: point.execute.bind(point),
-      executeDetailed: point.executeDetailed.bind(point),
-      useInfiniteQuery: point.useInfiniteQuery.bind(point),
-      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
-      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
-      Component: point.Component.bind(point),
-      X: (point as any).X.bind(point),
-    })
+    Point0._assignNicePointMethodsToComponent({ component, point, extra: { X: point.X } })
     return component as never
   }
 
@@ -2684,24 +2650,7 @@ export class Point0<
       _base: this as never as BasePoint,
     })
     point.X = point.Layout.bind(point) as never
-    Object.assign(layout, {
-      Infer: point.Infer,
-      point,
-      lets: point.lets.bind(point),
-      inputSchema: point.inputSchema,
-      useQuery: point.useQuery.bind(point),
-      getQueryKey: point.getQueryKey.bind(point),
-      getQueryOptions: point.getQueryOptions.bind(point),
-      prefetchQuery: point.prefetchQuery.bind(point),
-      fetch: point.fetch.bind(point),
-      execute: point.execute.bind(point),
-      executeDetailed: point.executeDetailed.bind(point),
-      useInfiniteQuery: point.useInfiniteQuery.bind(point),
-      getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
-      prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
-      Layout: point.Layout.bind(point),
-      X: (point as any).X.bind(point),
-    })
+    Point0._assignNicePointMethodsToComponent({ component: layout, point, extra: { X: point.X } })
     return layout as never
   }
 
@@ -3074,10 +3023,24 @@ export class Point0<
 
   _hmr(component: React.Component): typeof this {
     const point = this._continue({})
+    Point0._assignNicePointMethodsToComponent({ component, point, extra: {} })
+    return component as never
+  }
+
+  // internal utils
+
+  private static _assignNicePointMethodsToComponent({
+    component,
+    point,
+    extra,
+  }: {
+    component: React.Component | React.ComponentType<any> | (() => null)
+    point: AnyPoint<any, any, any, any, any, any, any, any, any, any, any, any>
+    extra: Record<string, any>
+  }): void {
     Object.assign(component, {
       Infer: point.Infer,
       point,
-      scope: point.scope,
       lets: point.lets.bind(point),
       inputSchema: point.inputSchema,
       attach: point.attach.bind(point),
@@ -3103,11 +3066,9 @@ export class Point0<
       getValue: point.getValue.bind(point),
       getValueSafe: point.getValueSafe.bind(point),
       _hmr: point._hmr.bind(point),
+      ...extra,
     })
-    return component as never
   }
-
-  // internal utils
 
   private static _isEndPointType(pointType: PointType): boolean {
     return (

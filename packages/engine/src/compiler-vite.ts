@@ -4,7 +4,7 @@ import type { Plugin } from 'vite'
 import type { PruneCustomer } from './walker.js'
 import { Walker } from './walker.js'
 
-export function prunerVitePlugin({
+export function compilerVitePlugin({
   customer,
   scope,
   includedNodeModulesPrefixes: providedIncludedNodeModulesPrefixes = [],
@@ -20,7 +20,7 @@ export function prunerVitePlugin({
   const prefixPattern = includedNodeModulesPrefixes.map((p) => escapeRegExp(p)).join('|')
   const filter = new RegExp(`^(?!.*node_modules/(?!(${prefixPattern}))).*\\.[cm]?[tj]sx?$`)
   return {
-    name: 'point0-pruner',
+    name: 'point0-compiler',
     enforce: 'pre',
     async transform(code, id, options) {
       const [filepath] = id.split('?', 1)
