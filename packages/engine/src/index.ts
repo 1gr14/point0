@@ -27,6 +27,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   allPointsManagers: AllPointsManagers
   initialized: TInitialized
 
+  private readonly __POINT0_ENGINE__ = true as const
+
   private constructor(input: {
     clients: ClientBun[]
     server: ServerBun
@@ -156,6 +158,91 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
   isInitialized(): this is Engine<TRequiredCtx, true> {
     return !!this.initialized
+  }
+
+  toEntryPath({ entry, cwd = process.cwd() }: { entry: string; cwd?: string }): string {
+    console.log({ entry, cwd })
+    if (entry.startsWith('.') || entry.startsWith('/')) {
+      return nodePath.resolve(cwd, entry)
+    } else {
+      const entryPath = this.server.entry?.[entry]
+      if (!entryPath) {
+        throw new Error(`Entry point not found for server by name "${entry}"`)
+      }
+      return entryPath
+    }
+  }
+
+  async dev(options: {
+    // engineFile: string
+    generateFiles?: boolean
+    clientDevServersOnly?: boolean
+    entries?: string[] // paths or names
+    bunRunArgs?: string[]
+    watch?: boolean
+    cwd?: string
+  }): Promise<void> {
+    // const hot = options.hot !== false
+    const {
+      // engineFile,
+      generateFiles = true,
+      clientDevServersOnly,
+      entries,
+      bunRunArgs = [],
+      watch = true,
+      cwd = process.cwd(),
+    } = options
+    process.env.NODE_ENV ??= 'development'
+    const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
+    const withServer = clientDevServersOnly !== true && !!this.server.entry
+    const entriesFiles =
+      entries && entries.length > 0
+        ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
+        : Object.values(this.server.entry || {})
+    console.log({ entriesFiles })
+    if (withServer) {
+      // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
+      const serverEntryProcesses: Array<Promise<any>> = await (async () => {
+        if (this.server.viteConfig) {
+          process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
+          // const viteDevServer = await this.server.startViteDevServer()
+          // const engineVitedModule = await viteDevServer.ssrLoadModule(engineFile)
+          // const engineVited: typeof this = engineVitedModule.engine ?? engineVitedModule.default
+          // return [engineVited.server.loadViteDevEntries({ watch, viteDevServer })]
+          await this.server.startViteDevServer()
+          return [this.server.loadViteDevEntries({ watch, entriesFiles })]
+        } else {
+          const start = () =>
+            Object.values(this.server.entry || [])
+              .filter((entryFile) => entriesFiles.includes(entryFile))
+              .map((entryFile) => {
+                return Bun.spawn({
+                  cmd: ['bun', 'run', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
+                  env: {
+                    ...process.env,
+                    POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
+                  },
+                  stdout: 'inherit',
+                  stderr: 'inherit',
+                })
+              })
+          let processes = start()
+          this.onPointFileChange((event, path, points) => {
+            processes.forEach((p) => {
+              p.kill('SIGKILL')
+            })
+            processes = start()
+          })
+          return []
+        }
+      })()
+      // and here we rung one instance of client dev servers per each client
+      const clientsDevSevers = this.serveClientDevServers()
+      await Promise.all([generatorProcess, ...serverEntryProcesses, clientsDevSevers])
+    } else {
+      // when we init, we create also start clientDevServers
+      await Promise.all([generatorProcess, this.init()])
+    }
   }
 
   async serve(
@@ -317,10 +404,13 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.generator.onPointFileChange(callback)
   }
 
-  static findSelfFile(cwd: string = process.cwd()): string | undefined {
+  static findSelfFile(options?: { cwd: string }): string | undefined {
+    const { cwd: providedCwd = process.cwd() } = options ?? {}
+    let cwd = providedCwd
     if (!nodePath.isAbsolute(cwd)) {
-      cwd = nodePath.resolve(process.cwd(), cwd)
+      cwd = nodePath.resolve(process.cwd(), providedCwd)
     }
+    // TODO: add more places to look for engine file
     const subdirs = ['.', './src']
     const basenames = ['engine.ts', 'engine.js']
     for (const subdir of subdirs) {
@@ -334,21 +424,22 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     return undefined
   }
 
-  static async findAndImportSelf(
-    enginePath?: string | null,
-    cwd: string = process.cwd(),
-  ): Promise<{ engine: Engine; engineFile: string }> {
+  static async findAndImportSelf(options?: {
+    engineFile?: string | undefined
+    cwd?: string
+  }): Promise<{ engine: Engine; engineFile: string }> {
+    const { engineFile: providedEngineFile = process.env.POINT0_ENGINE_FILE, cwd = process.cwd() } = options ?? {}
     let engineFile: string | undefined
 
-    if (enginePath) {
+    if (providedEngineFile) {
       // Resolve the path (handles both absolute and relative paths)
-      engineFile = nodePath.resolve(cwd, enginePath)
+      engineFile = nodePath.resolve(cwd, providedEngineFile)
       if (!nodeFs.existsSync(engineFile)) {
         throw new Error(`Engine file not found: ${engineFile}`)
       }
     } else {
       // Auto-find engine file
-      engineFile = Engine.findSelfFile(cwd)
+      engineFile = Engine.findSelfFile({ cwd })
       if (!engineFile) {
         throw new Error(
           'Could not find engine.ts or engine.js file. Searched in: ./, ./src/. Use --engine <path> to specify the engine file location',
@@ -367,18 +458,14 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         throw new Error('engine.ts must export "engine" or have a default export')
       }
 
-      // Check if it's an Engine instance - use duck typing as fallback for module resolution edge cases
+      // Check if it's an Engine instance
       if (
         !(engine instanceof Engine) &&
         !(
           typeof engine === 'object' &&
           engine !== null &&
-          'init' in engine &&
-          'build' in engine &&
-          'dev' in engine &&
-          'serve' in engine &&
-          typeof engine.init === 'function' &&
-          typeof engine.build === 'function'
+          '__POINT0_ENGINE__' in engine &&
+          engine.__POINT0_ENGINE__ === true
         )
       ) {
         throw new Error('Exported engine must be an instance of Engine')

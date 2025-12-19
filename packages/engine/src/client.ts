@@ -233,29 +233,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async initPointsManager(): Promise<PointsManager> {
-    // const importPath = getDevPathInsideImportFn(this.pointsProvided, this.engineFile)
-    // console.log('initPointsManager', importPath)
-    // if (!importPath && process.env.NODE_ENV !== 'production') {
-    //   console.warn(
-    //     `While preoviding points in fn, you should use () => await import('yor/path/to/points.ts') strictly like this, or you will not get HRM in bun, becouse of bun bug`,
-    //   )
-    // }
-    // const pointsModule = await (async () => {
-    //   if (!importPath) {
-    //     return await this.pointsProvided()
-    //   }
-    //   try {
-    //     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    //     return require(importPath)
-    //   } catch (error) {
-    //     console.error(error)
-    //     return await import(importPath)
-    //   }
-    // })()
-    // const pointsManager = PointsManager.create(importPath ? await import(importPath) : await this.pointsProvided())
-    // await pointsManager.load()
-    // this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
-    // return pointsManager
     const pointsManager = PointsManager.create(await this.pointsProvided())
     this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
     return pointsManager
@@ -266,19 +243,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       this.App = null
       return null
     }
-    // const importPath = getDevPathInsideImportFn(this.appProvided, this.engineFile)
-    // if (!importPath && process.env.NODE_ENV !== 'production') {
-    //   console.warn(
-    //     `While preoviding app in fn, you should use () => await import('yor/path/to/app.ts') strictly like this, or you will not get HRM in bun, becouse of bun bug`,
-    //   )
-    // }
-    // const result = importPath ? await import(importPath) : await this.appProvided()
-    // if ('default' in result && typeof result.default === 'function') {
-    //   this.App = result.default as TInitialized extends true ? AppComponent : null
-    //   return result.default
-    // }
-    // this.App = result as TInitialized extends true ? AppComponent : null
-    // return result as TInitialized extends true ? AppComponent : null
     const result = await this.appProvided()
     if ('default' in result && typeof result.default === 'function') {
       this.App = result.default as TInitialized extends true ? AppComponent : null
@@ -402,22 +366,6 @@ Bun.serve({
     this.bunNativeDevServer = childProcess
     return childProcess
   }
-
-  // async createServerViteDevServer(): Promise<ViteDevServer> {
-  //   if (!this.viteConfig) {
-  //     throw new Error(`Vite config not found for server "${this.scope}"`)
-  //   }
-  //   const serverViteDevServer = await ClientBun.createViteDevServer({
-  //     viteConfig: this.viteConfig,
-  //     scope: this.scope,
-  //     customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
-  //     hmrPort: null,
-  //     env: process.env,
-  //     prune: this.pruneServer,
-  //   })
-  //   this.serverViteDevServer = serverViteDevServer
-  //   return serverViteDevServer
-  // }
 
   async startBunViteDevServer(): Promise<{
     bunViteDevServer: Bun.Server<unknown>
@@ -671,7 +619,6 @@ Bun.serve({
   getBuildPaths(): {
     indexHtml: string | null
     outdir: string | null
-    // serverOutdir: string | null
     entrypointsExists: boolean
   } {
     const indexHtml = this.indexHtml
@@ -679,7 +626,6 @@ Bun.serve({
     return {
       indexHtml,
       outdir: this.outdir,
-      // serverOutdir: this.serverOutdir,
       entrypointsExists,
     }
   }
@@ -689,10 +635,6 @@ Bun.serve({
     clean?: boolean
   }): Promise<string[] | null> {
     return await pruneItWhenPoint0ServerBuildInProgress(async () => {
-      // if (!this.isInitialized()) {
-      //   throw new Error('Client is not initialized')
-      // }
-
       const { bunBuildConfig, clean = false } = options ?? {}
 
       const buildPaths = this.getBuildPaths()
@@ -896,244 +838,6 @@ Bun.serve({
     const client = await this.buildClient({ bunBuildConfig, clean: false }) // we clean already before
     return { client, publicdir: publicdirBuildOutput }
   }
-
-  // async buildByBunForServer(options?: {
-  //   bunBuildConfig?: ClientBunBuildConfigDefinition
-  //   clean?: boolean
-  // }): Promise<string[] | null> {
-  //   // if (!this.isInitialized()) {
-  //   //   throw new Error('Client is not initialized')
-  //   // }
-
-  //   const buildPaths = this.getBuildPaths()
-  //   if (!buildPaths.appFile && this.appProvided) {
-  //     throw new Error(
-  //       `To build client "${this.scope}" for server, you should provide app path, not app component itself in "app" option`,
-  //     )
-  //   }
-  //   if (!buildPaths.pointsFile && this.providedPointsManager) {
-  //     throw new Error(
-  //       `To build client "${this.scope}" for server, you should provide points path, not points itself in "points" option`,
-  //     )
-  //   }
-  //   if (!buildPaths.appFile && !buildPaths.pointsFile) {
-  //     return null
-  //   }
-  //   if (!buildPaths.serverOutdir) {
-  //     throw new Error(`serverOutdir not provided for client "${this.scope}"`)
-  //   }
-
-  //   const { bunBuildConfig = this.bunBuildConfig, clean = false } = options ?? {}
-
-  //   if (clean) {
-  //     await this.cleanServer()
-  //   }
-
-  //   const NODE_ENV = process.env.NODE_ENV
-
-  //   const thisBunBuildConfig = await extractClientBunBuildConfig({
-  //     nodeEnv: NODE_ENV,
-  //     target: this.ssr ? 'serverSsr' : 'serverNoSsr',
-  //     bunBuildConfig: this.bunBuildConfig,
-  //     bunPlugins: this.bunPlugins,
-  //   })
-  //   const providedBunBuildConfig = await extractClientBunBuildConfig({
-  //     nodeEnv: NODE_ENV,
-  //     target: this.ssr ? 'serverSsr' : 'serverNoSsr',
-  //     bunBuildConfig,
-  //     bunPlugins: [],
-  //   })
-
-  //   const prunePlugin = this.pruneServer
-  //     ? await import('./pruner-bun.js').then((module) =>
-  //         module.prunerBunPlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr', scope: this.scope }),
-  //       )
-  //     : null
-
-  //   const buildOutput = await Bun.build({
-  //     target: 'bun',
-  //     packages: 'external',
-  //     sourcemap: NODE_ENV === 'production' ? 'linked' : 'inline',
-  //     minify: true,
-  //     splitting: true,
-  //     format: 'esm',
-  //     ...thisBunBuildConfig,
-  //     ...providedBunBuildConfig,
-  //     plugins: [...(thisBunBuildConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
-  //     naming: {
-  //       ...(typeof thisBunBuildConfig.naming === 'object' ? thisBunBuildConfig.naming : {}),
-  //       ...(typeof providedBunBuildConfig.naming === 'object' ? providedBunBuildConfig.naming : {}),
-  //       entry: '[name].js',
-  //     },
-  //     entrypoints: validateEntrypoints([
-  //       buildPaths.appFile,
-  //       buildPaths.pointsFile,
-  //       ...(thisBunBuildConfig.entrypoints ?? []),
-  //       ...(providedBunBuildConfig.entrypoints ?? []),
-  //     ]),
-  //     outdir: buildPaths.serverOutdir,
-  //     define: {
-  //       ...thisBunBuildConfig.define,
-  //       ...providedBunBuildConfig.define,
-  //       'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-  //       'process.env.BUILD_TARGET': 'server',
-  //     },
-  //   })
-  //   return buildOutput.outputs.map((output) => output.path)
-  // }
-
-  // async buildByViteForServer(options?: { clean?: boolean }): Promise<string[] | null> {
-  //   // if (!this.isInitialized()) {
-  //   //   throw new Error('Client is not initialized')
-  //   // }
-
-  //   if (!this.viteConfig) {
-  //     throw new Error(`viteConfig not provided for client "${this.scope}"`)
-  //   }
-  //   const { build: viteBuild } = await import('vi'+'te')
-  //   const buildPaths = this.getBuildPaths()
-  //   if (!buildPaths.appFile && this.appProvided) {
-  //     throw new Error(
-  //       `To build client "${this.scope}" for server, you should provide app path, not app component itself in "app" option`,
-  //     )
-  //   }
-  //   if (!buildPaths.pointsFile && this.providedPointsManager) {
-  //     throw new Error(
-  //       `To build client "${this.scope}" for server, you should provide points path, not points itself in "points" option`,
-  //     )
-  //   }
-  //   if (!buildPaths.appFile && !buildPaths.pointsFile) {
-  //     return null
-  //   }
-  //   if (!buildPaths.serverOutdir) {
-  //     throw new Error(`serverOutdir not provided for client "${this.scope}"`)
-  //   }
-
-  //   const { clean = false } = options ?? {}
-  //   if (clean) {
-  //     await this.cleanServer()
-  //   }
-
-  //   const NODE_ENV = process.env.NODE_ENV || 'production'
-  //   const loadedViteConfig = await ClientBun.extractViteConfig({
-  //     viteConfig: this.viteConfig,
-  //     command: 'build',
-  //     customer: this.ssr ? 'serverSsr' : 'serverNoSsr',
-  //   })
-
-  //   const existingRollupOptionsOutput = loadedViteConfig.build?.rollupOptions?.output
-  //   const normalizedExistsingRollupOptionsOutput =
-  //     (Array.isArray(existingRollupOptionsOutput) ? existingRollupOptionsOutput[0] : existingRollupOptionsOutput) || {}
-
-  //   const rollupOptionsOutput: Extract<
-  //     NonNullable<NonNullable<ExtractedViteConfig['build']>['rollupOptions']>['output'],
-  //     object
-  //   > = {
-  //     ...normalizedExistsingRollupOptionsOutput,
-  //     // may be we will later add something here
-  //   }
-  //   const fixedExistingRollupOptionsOutput = Array.isArray(existingRollupOptionsOutput)
-  //     ? [rollupOptionsOutput, ...existingRollupOptionsOutput.slice(1)]
-  //     : rollupOptionsOutput
-
-  //   const viteRoot =
-  //     loadedViteConfig.root ||
-  //     (this.indexHtml && nodePath.dirname(this.indexHtml)) ||
-  //     (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) ||
-  //     this.cwd
-
-  //   const prunePlugin = this.pruneServer
-  //     ? await import('./pruner-vite.js').then((module) =>
-  //         module.prunerVitePlugin({ customer: this.ssr ? 'serverSsr' : 'serverNoSsr', scope: this.scope }),
-  //       )
-  //     : null
-
-  //   const config: ExtractedViteConfig = {
-  //     ...loadedViteConfig,
-  //     plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
-  //     root: viteRoot,
-  //     build: {
-  //       ...loadedViteConfig.build,
-  //       outDir: buildPaths.serverOutdir,
-  //       minify: loadedViteConfig.build?.minify ?? true,
-  //       sourcemap: loadedViteConfig.build?.sourcemap ?? true,
-  //       ssr: true,
-  //       rollupOptions: {
-  //         ...loadedViteConfig.build?.rollupOptions,
-  //         input: {
-  //           ...(buildPaths.appFile ? { app: buildPaths.appFile } : {}),
-  //           ...(buildPaths.pointsFile ? { points: buildPaths.pointsFile } : {}),
-  //         },
-  //         // external: createRollupOptionsExternalFunction(),
-  //         output: fixedExistingRollupOptionsOutput,
-  //       },
-  //     },
-  //     define: {
-  //       ...loadedViteConfig.define,
-  //       'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-  //       'process.env.BUILD_TARGET': JSON.stringify('server'),
-  //       ...Object.fromEntries(
-  //         Object.entries(this.env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
-  //       ),
-  //       ...Object.fromEntries(
-  //         Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
-  //       ),
-  //     },
-  //   }
-  //   const buildResult = await viteBuild(config)
-
-  //   const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
-  //   const outputFiles: string[] = []
-  //   for (const rollupOutput of rollupOutputs) {
-  //     if ('output' in rollupOutput) {
-  //       const chunks = Array.isArray(rollupOutput.output) ? rollupOutput.output : []
-  //       for (const chunk of chunks) {
-  //         if ('fileName' in chunk && typeof chunk.fileName === 'string') {
-  //           outputFiles.push(nodePath.resolve(buildPaths.serverOutdir, chunk.fileName))
-  //         }
-  //       }
-  //     }
-  //   }
-  //   return outputFiles
-  // }
-
-  // async buildClientAndServer(options?: {
-  //   bunBuildConfig?: ClientBunBuildConfigDefinition
-  //   clean?: boolean
-  //   target?: 'client' | 'server'
-  // }): Promise<{ client: string[] | null; server: string[] | null }> {
-  //   const { bunBuildConfig, clean, target } = options ?? {}
-  //   const shouldBuilClient = !target || target === 'client'
-  //   const shouldBuilServer = !target || target === 'server'
-  //   if (this.viteConfig) {
-  //     const [client, server] = await Promise.all([
-  //       shouldBuilClient ? this.buildByViteForClient({ clean }) : null,
-  //       shouldBuilServer ? this.buildByViteForServer({ clean }) : null,
-  //     ])
-  //     return { client, server }
-  //   } else {
-  //     const [client, server] = await Promise.all([
-  //       shouldBuilClient ? this.buildByBunForClient({ bunBuildConfig, clean }) : null,
-  //       shouldBuilServer ? this.buildByBunForServer({ bunBuildConfig, clean }) : null,
-  //     ])
-  //     return { client, server }
-  //   }
-  // }
-
-  // async build(options?: {
-  //   bunBuildConfig?: ClientBunBuildConfigDefinition
-  //   clean?: boolean
-  //   target?: 'client' | 'server'
-  //   publicdir?: boolean
-  // }): Promise<{ client: string[] | null; server: string[] | null; publicdir: string[] | null }> {
-  //   const { bunBuildConfig = this.bunBuildConfig, clean = false, target, publicdir = true } = options ?? {}
-  //   if (clean) {
-  //     await this.clean()
-  //   }
-  //   const publicdirBuildOutput = publicdir ? await this.publicdir.build() : null // we do not do it in Promise.all, becouse we want dist files override publicdir files, in case if they are the same directory
-  //   const { client, server } = await this.buildClientAndServer({ bunBuildConfig, target })
-  //   return { client, server, publicdir: publicdirBuildOutput }
-  // }
 
   async renderAsReadableStream({
     executor,

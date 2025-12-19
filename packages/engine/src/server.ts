@@ -24,7 +24,6 @@ import {
   getDirByPaths,
   loadBunPlugins,
   pruneItWhenPoint0ServerBuildInProgress,
-  removeLikeJsExtension,
   validateEntrypoints,
 } from './utils.js'
 
@@ -161,16 +160,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (!this.pointsProvided) {
       return null
     }
-    // const importPath = getDevPathInsideImportFn(this.pointsProvided, this.engineFile)
-    // if (!importPath && process.env.NODE_ENV !== 'production') {
-    //   console.warn(
-    //     `While preoviding points in fn, you should use () => await import('yor/path/to/points.ts') strictly like this, or you will not get HRM in bun, becouse of bun bug`,
-    //   )
-    // }
-    // const pointsManager = PointsManager.create(importPath ? await import(importPath) : await this.pointsProvided())
-    // await pointsManager.load()
-    // this.pointsManager = pointsManager
-    // return pointsManager
     const pointsManager = PointsManager.create(await this.pointsProvided())
     this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
     return pointsManager
@@ -219,22 +208,17 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return viteDevServer
   }
 
-  async loadViteDevEntry(options: { hot?: boolean; entry: string; viteDevServer: ViteDevServer }): Promise<any> {
-    const { hot = true, entry, viteDevServer } = options
+  async loadViteDevEntry(options: { watch?: boolean; entryFile: string; viteDevServer?: ViteDevServer }): Promise<any> {
+    const { watch, entryFile, viteDevServer = this.viteDevServer } = options
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for server`)
     }
-    // const viteDevServer = this.viteDevServer
-    // if (!viteDevServer) {
-    //   throw new Error(`Vite dev server not started for server`)
-    // }
-    const entryPath = this.entry?.[entry]
-    if (!entryPath) {
-      throw new Error(`Entry point not found for server by name "${entry}"`)
+    if (!viteDevServer) {
+      throw new Error(`Vite dev server not started for server`)
     }
     // const loadedModule = await this.viteDevServer.ssrLoadModule(entryPath)
-    if (!hot) {
-      await viteDevServer.ssrLoadModule(entryPath)
+    if (!watch) {
+      await viteDevServer.ssrLoadModule(entryFile)
       return
     }
 
@@ -247,13 +231,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           await dispose()
           dispose = undefined
         }
-        serverModule = await viteDevServer.ssrLoadModule(entryPath)
+        serverModule = await viteDevServer.ssrLoadModule(entryFile)
         dispose = serverModule.dispose
         if (!dispose) {
-          throw new Error(`Dispose function not exported from server entry point "${entry}": ${entryPath}`)
+          throw new Error(`Dispose function not exported from server entry point "${entryFile}": ${entryFile}`)
         }
       } catch (error) {
-        console.error(`Error loading entry point "${entry}"`, error)
+        console.error(`Error loading entry point "${entryFile}"`, error)
       }
     }
     await load()
@@ -264,16 +248,21 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     })
   }
 
-  async loadViteDevEntries(options: {
-    hot?: boolean
-    entries?: string[]
-    viteDevServer: ViteDevServer
+  async loadViteDevEntries(options?: {
+    watch?: boolean
+    entriesFiles?: string[]
+    viteDevServer?: ViteDevServer
   }): Promise<void> {
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for server`)
     }
-    const { hot, entries = Object.keys(this.entry || {}), viteDevServer } = options
-    await Promise.all(entries.map(async (entry) => await this.loadViteDevEntry({ hot, entry, viteDevServer })))
+    const { watch, entriesFiles = Object.values(this.entry || {}), viteDevServer = this.viteDevServer } = options ?? {}
+    if (!viteDevServer) {
+      throw new Error(`Vite dev server not started for server`)
+    }
+    await Promise.all(
+      entriesFiles.map(async (entryFile) => await this.loadViteDevEntry({ watch, entryFile, viteDevServer })),
+    )
   }
 
   serve({ requiredCtx }: { requiredCtx: RequiredCtx }): void {
@@ -391,17 +380,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     })
   }
 
-  async dispose(): Promise<void> {
+  async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
+    const { closeViteDevServer = false } = options ?? {}
     if (!this.isInitialized()) {
       throw new Error('Server is not initialized')
     }
     if (this.bunServer) {
       await this.bunServer.stop()
     }
-    // it is always running in separate process, so we can not close it here
-    // if (this.viteDevServer) {
-    //   await this.viteDevServer.close()
-    // }
+    if (closeViteDevServer && this.viteDevServer) {
+      // we do not close it by default, becouse it should alway persist for hot reloads
+      await this.viteDevServer.close()
+    }
   }
 
   getBuildPaths(): {
@@ -533,7 +523,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'true'
     const buildOutput = await Bun.build({
       target: 'bun',
-      // packages: 'external',
       sourcemap: 'linked',
       minify: true,
       splitting: true,
@@ -634,16 +623,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           rollupOptions: {
             ...loadedViteConfig.build?.rollupOptions,
             input: {
-              // ...Object.fromEntries(
-              //   validateEntrypoints([...buildPaths.entryFiles, buildPaths.engineFile]).map((entryFile) => [
-              //     removeLikeJsExtension(nodePath.basename(entryFile)),
-              //     entryFile,
-              //   ]),
-              // ),
               ...this.entry,
               ...(this.engineFile ? { engine: this.engineFile } : {}),
             },
-            // external: createRollupOptionsExternalFunction(),
             output: fixedExistingRollupOptionsOutput,
           },
           copyPublicDir: false,

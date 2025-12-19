@@ -4,10 +4,9 @@ import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
+import type { EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker, type CollectedPoint } from './walker.js'
-import type { EngineOptionsRoutes } from './config.js'
-import { Routes } from '@devp0nt/route0'
 
 type ChangeCollectedPointsEvent = {
   deleted: CollectedPoint[]
@@ -595,8 +594,6 @@ export class FilesGenerator {
     if (target.banner) {
       lines.push(target.banner)
     }
-
-    // lines.push(...this.emitSuperStoreInitialization())
 
     const { importLines, importedPoints, hasNotRootPoints } = this.emitNamedImports({
       points,

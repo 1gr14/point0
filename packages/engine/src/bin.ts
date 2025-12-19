@@ -18,77 +18,55 @@ program
   .description('Start development server and clients')
   .passThroughOptions() // forward anything after --
   .allowExcessArguments() // allow args after --
-  // do NOT call allowUnknownOption()
   .option('-G, --no-generate', dictionary.noGenerate)
-  .option('-S, --no-server', 'Do not serve server, serve only clients dev servers')
-  .option('-H, --no-hot', 'Prevent --hot flag for bun run command')
-  // TODO: allow pick specific entry points
-  .option('-e, --engine <path>', dictionary.enginePath)
-  .action(async (options) => {
-    const hot = options.hot !== false
-    const dashDashIndex = process.argv.indexOf('--')
-    const extraArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
-    process.env.NODE_ENV ??= 'development'
-    const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
-    const generatorProcess = options.generate !== false ? engine.generateWatch() : null
-    const withServer = options.server !== false && !!engine.server.entry
-    if (withServer) {
-      // cancel. we still want separate client dev servers, to prevent hmr conflicts
-      // const entriesPaths = Object.values(engine.server.entry || [])
-      // if (entriesPaths.length === 1) {
-      //   const serverEntryHotRunWithClientDevServers = Bun.$`${['bun', 'run', hot ? '--hot' : '', ...extraArgs, entriesPaths[0]]}`
-      //   await Promise.all([generatorProcess, serverEntryHotRunWithClientDevServers])
-      // } else {
-      // here we run server entries which already serving server, but prevent multiple client dev servers, so we do not run it here
-      // const serverEntryHotRuns: Array<Promise<any>> = Object.values(engine.server.entry || []).map(async (entry) => {
-      //   return await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run ${hot ? '--hot' : ''} ${extraArgs.join(' ')} ${entry}`
-      // })
-      const serverEntryHotRuns: Array<Promise<any>> = await (async () => {
-        if (engine.server.viteConfig) {
-          process.env.POINT0_PREVENT_CLIENT_DEV_SERVER = 'true'
-          // await engine.server.startViteDevServer()
-          // return engine.server.loadViteDevEntries({ hot })
-          const viteDevServer = await engine.server.startViteDevServer()
-          const engineVitedModule = await viteDevServer.ssrLoadModule(engineFile)
-          const engineVited: typeof engine = engineVitedModule.engine ?? engineVitedModule.default
-          return [engineVited.server.loadViteDevEntries({ hot, viteDevServer })] // ??? how dispose ???
-        } else {
-          const start = () =>
-            Object.values(engine.server.entry || []).map((entry) => {
-              // return await Bun.$`POINT0_PREVENT_CLIENT_DEV_SERVER=true bun run ${hot ? '--watch' : ''} ${extraArgs.join(' ')} ${entry}`
-              return Bun.spawn({
-                cmd: ['bun', 'run', ...(hot ? ['--watch'] : []), ...extraArgs, entry],
-                env: {
-                  ...process.env,
-                  POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
-                },
-                stdout: 'inherit',
-                stderr: 'inherit',
-              })
-            })
-          let processes = start()
-          engine.onPointFileChange((event, path, points) => {
-            processes.forEach((p) => {
-              p.kill('SIGKILL')
-            })
-            processes = start()
-          })
-          return []
-        }
-      })()
-      // and here we rung one instance of client dev servers per each client
-      const clientsDevSevers = engine.serveClientDevServers()
-      await Promise.all([generatorProcess, ...serverEntryHotRuns, clientsDevSevers])
-      // }
-    } else {
-      await Promise.all([generatorProcess, engine.init()])
-    }
-  })
+  .option('-S, --no-server', 'Do not serve server, so serve only clients dev servers')
+  .option('-W, --no-watch', 'Prevent watch file changes, restrat server, regenrate files')
+  .option(
+    '-e, --entry <name|path>',
+    'Server entry points, names or paths (-e <entry1>,<entry2>,...) or (-e <entry1> -e <entry2>,...)',
+    (value, previous: string[] = []) => {
+      console.log({ value, previous })
+      previous.push(...value.split(','))
+      return previous
+    },
+    [],
+  )
+  .option('--engine <path>', dictionary.enginePath)
+  .action(
+    async (options: { engine?: string; entry?: string[]; server?: boolean; generate?: boolean; watch?: boolean }) => {
+      // const { engine, engineFile } = await Engine.findAndImportSelf(options.engine)
+      const cwd = process.cwd()
+      const { engine } = await Engine.findAndImportSelf({ engineFile: options.engine, cwd })
+      const dashDashIndex = process.argv.indexOf('--')
+      const bunRunArgs = dashDashIndex === -1 ? [] : process.argv.slice(dashDashIndex + 1)
+      const clientDevServersOnly = options.server === false
+      const generateFiles = options.generate !== false
+      const watch = options.watch !== false
+      const entries = options.entry
+      console.log({
+        generateFiles,
+        clientDevServersOnly,
+        watch,
+        bunRunArgs,
+        cwd,
+        entries,
+      })
+      await engine.dev({
+        // engineFile,
+        generateFiles,
+        clientDevServersOnly,
+        watch,
+        bunRunArgs,
+        cwd,
+        entries,
+      })
+    },
+  )
 
 program
   .command('build')
   .description('Build server and clients')
-  .option('-e, --engine <path>', dictionary.enginePath)
+  .option('--engine <path>', dictionary.enginePath)
   .option('-s, --scope <scope>', 'Scope to build')
   .option('-G, --no-generate', dictionary.noGenerate)
   .option('-C, --no-clean', 'Do not clean build')
@@ -108,7 +86,7 @@ program
   .command('generate')
   .description('Generate points and routes files')
   .option('-w, --watch', 'Watch for changes and regenerate')
-  .option('-e, --engine <path>', dictionary.enginePath)
+  .option('--engine <path>', dictionary.enginePath)
   .action(async (options) => {
     const { engine } = await Engine.findAndImportSelf(options.engine)
     if (options.watch) {

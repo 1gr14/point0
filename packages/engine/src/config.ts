@@ -3,9 +3,7 @@ import type {
   AnyPointsModule,
   AppComponent,
   AppComponentModule,
-  LazyPointsModule,
   PointsScope,
-  ReadyPointsModule,
   RequiredCtxByPointsModules,
 } from '@point0/core'
 import { appendSlash, prependAndDeappendSlash } from '@point0/core'
@@ -641,6 +639,7 @@ const parseEngineClientOptions = ({
 }
 export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
   const { server: serverOptions, clients: clientsOptionsRaw, ...generalOptions } = options
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
   const generalOptionsParsed = parseEngineGeneralOptions({
     generalOptions,
