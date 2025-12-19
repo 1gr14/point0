@@ -6,9 +6,10 @@
 .query and .mutation allow pass last loader right in mutation and query methods as first argument, and fix compiler to work with it
 rename current middleware to somthing else, like builder processing stage
 
-binary, just replace .. with _dot__dot_ in paths
-
-loader((o) => o.headers.set()) // response headers
+remove TResponse and TClientResponse types, they do nothing, LastOutput is enough
+in loaders options should never be usual response
+there always should be our special response with all helpers (cookies, status, headers, etc) https://chatgpt.com/c/69451dc4-a828-8332-b5c5-82011bfca0d2
+afer return from loader response you can not create more .loader or .ctxLoader, but in client loader you can as many as you want
 
 MIDDLEWARE
 middleware(general|publicdir|point, () => {})
@@ -23,6 +24,8 @@ PLUGIN
 Лоадеру и ктксу уже дать опцию для некэширования {cache: null | string}
 Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
 nice type for Plugin
+
+binary, just replace .. with _dot__dot_ in paths
 
 INIT
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
