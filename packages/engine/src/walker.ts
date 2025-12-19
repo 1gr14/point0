@@ -806,6 +806,146 @@ export class Walker {
     return out
   }
 
+  async addHmrToNonComponentPoints({
+    content,
+    fileAbs,
+    customer,
+  }: {
+    content: string
+    fileAbs: string
+    customer: PruneCustomer
+  }): Promise<string> {
+    // example
+    // ...lets('mutation', 'getNews').page() → ...lets('page', 'news').page()._hmr(Function X {return null})
+    // ...lets('query', 'getNews').query() → ...lets('query', 'news').query()._hmr(Function X {return null})
+    // but if .lets('component' | 'layout' | 'page') then do not add _hmr
+
+    let ast: babel.ParseResult<any>
+    try {
+      const cachedAst = this.astCache.get(fileAbs)
+      if (cachedAst) {
+        ast = cachedAst
+      } else {
+        ast = babel.parse(content, {
+          sourceType: 'module',
+          errorRecovery: true,
+          plugins: [
+            'typescript',
+            'jsx',
+            'decorators-legacy',
+            'classProperties',
+            'classPrivateProperties',
+            'classPrivateMethods',
+          ],
+        })
+        this.astCache.set(fileAbs, ast)
+      }
+    } catch (e) {
+      console.warn(`🔴 addHmrToNonComponentPoints: parse failed for ${fileAbs}: ${(e as Error).message}`)
+      return content
+    }
+
+    const nodesToModify: Array<{ path: NodePath<CallExpression> }> = []
+
+    traverse(ast, {
+      CallExpression: (p) => {
+        const node = p.node
+        // Must be a member expression call (e.g., .query(), .mutation(), etc.)
+        if (node.callee.type !== 'MemberExpression') return
+
+        const prop = node.callee.property
+        if (prop.type !== 'Identifier') return
+
+        const lastMethod = prop.name
+        const pointType = Walker.pointMethodToPointType(lastMethod)
+        if (!pointType) return
+
+        // Check if this chain starts with .lets()
+        const lets = this.findLetsArgsInChain(node)
+        if (!lets) return
+
+        // Skip if .lets() type is component, layout, or page
+        if (lets.typeArg === 'component' || lets.typeArg === 'layout' || lets.typeArg === 'page') return
+
+        // TODO: check if it is really point0 thing
+        // Check if the root is Point0.create()
+        // const scopeResult = this.extractScopeFromChain({ fileAbs, node })
+        // if (!scopeResult) return
+
+        // Must be a top-level assignment (not inside a function)
+        const baseIdentifier = this.findTopLevelAssignedIdentifier(p as unknown as NodePath<Node>)
+        if (!baseIdentifier) return
+        console.log(13589, !!baseIdentifier)
+
+        // This is a valid non-component point that needs HMR
+        nodesToModify.push({ path: p })
+      },
+    })
+
+    if (nodesToModify.length === 0) {
+      return content
+    }
+
+    // Create the function: function X() { return null }
+    const makeFunctionReturnNull = () => ({
+      type: 'FunctionExpression' as const,
+      id: {
+        type: 'Identifier' as const,
+        name: 'X',
+      },
+      generator: false,
+      async: false,
+      params: [],
+      body: {
+        type: 'BlockStatement' as const,
+        body: [
+          {
+            type: 'ReturnStatement' as const,
+            argument: { type: 'NullLiteral' as const },
+          },
+        ],
+      },
+    })
+
+    // Mutate AST: add ._hmr(() => null) to each node
+    for (const { path } of nodesToModify) {
+      const node = path.node
+
+      // Create MemberExpression: node._hmr
+      const hmrMemberExpression = {
+        type: 'MemberExpression' as const,
+        object: node,
+        property: {
+          type: 'Identifier' as const,
+          name: '_hmr',
+        },
+        computed: false,
+        optional: false,
+      }
+
+      // Create CallExpression: node._hmr(function X() { return null })
+      const hmrCallExpression = {
+        type: 'CallExpression' as const,
+        callee: hmrMemberExpression,
+        arguments: [makeFunctionReturnNull()],
+        optional: false,
+      }
+
+      // Replace the original node with the new one
+      path.replaceWith(hmrCallExpression as any)
+    }
+
+    // Generate code back
+    const generatorModule = await import('@babel/generator')
+    const generate = (generatorModule as any).default ?? generatorModule
+    const { code: out } = generate(ast, { retainLines: true })
+
+    // Update the content cache so that your Walker works in a consistent state
+    this.filesContentCache.set(fileAbs, out)
+
+    return out
+  }
+
   private detectPointTypeAndNameFromInit({
     fileAbs,
     node,

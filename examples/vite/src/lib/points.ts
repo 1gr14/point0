@@ -92,6 +92,12 @@ export const _generateIdeaMutation_msnv38cpgt_lazy = {
   point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation.point,
 } as LazyPointsCollectionRecord
 
+export const _myMut_1frdd0falw5_lazy = {
+  type: 'mutation',
+  name: 'myMut',
+  point: async () => (await import('../pages/home.helper.js')).myMut.point,
+} as LazyPointsCollectionRecord
+
 export const _clientCtx1_9jgh9cnuwr_lazy = {
   type: 'provider',
   name: 'testClientCtx1',

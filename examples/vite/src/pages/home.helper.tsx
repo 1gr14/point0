@@ -36,9 +36,6 @@ export const myMut = client
     }
   })
   .mutation()
-  ._hmr(function X() {
-    return null
-  })
 
 // export const ExternalHelperComponent2 = client.lets('component', 'externalHelper2').component(() => {
 export const ExternalHelperComponent2 = client
@@ -61,7 +58,7 @@ export const ExternalHelperComponent2 = client
     return (
       <div>
         <p>
-          External Helperxxx: {state},,x,,{o.data.x}
+          External Helperxxx: {state},xx,xx,,{o.data.x}
         </p>
         <button
           onClick={() => {

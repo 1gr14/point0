@@ -34,6 +34,9 @@ export function prunerVitePlugin({
         fileAbs: filepath,
         customer,
       })
+      if (process.env.NODE_ENV !== 'production' && customer === 'client') {
+        transformed = await walker.addHmrToNonComponentPoints({ content: transformed, fileAbs: filepath, customer })
+      }
 
       if (transformed === code) return null
 
