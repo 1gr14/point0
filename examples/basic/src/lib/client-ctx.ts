@@ -1,7 +1,5 @@
 import { client } from './client'
 
-console.log('Hello from client ctx')
-
 export const clientCtx1 = client.lets('provider', 'testClientCtx1').provider(({ data }) => {
   return {
     test: 123,

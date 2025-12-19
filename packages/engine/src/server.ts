@@ -178,7 +178,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
   async extractBunPlugins(): Promise<BunPlugin[]> {
     const extractedPlugins = await extractServerBunPlugins({
-      nodeEnv: process.env.NODE_ENV,
+      nodeEnv: process.env.NODE_ENV ?? 'development',
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
@@ -214,7 +214,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       scope: this.scope,
       customer: 'server',
       hmrPort: this.hmrPort,
-      prune: true,
     })
     this.viteDevServer = viteDevServer
     return viteDevServer
@@ -514,6 +513,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     }
 
     const NODE_ENV = process.env.NODE_ENV || 'production'
+    process.env.NODE_ENV = NODE_ENV
 
     const thisBunBuildConfig = await executeServerBunBuildConfig({
       nodeEnv: NODE_ENV,
@@ -529,9 +529,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       : {}
 
     const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
-
-    console.log('thisBunBuildConfig', thisBunBuildConfig.tsconfig)
-    console.log('providedBunBuildConfig', providedBunBuildConfig.tsconfig)
 
     process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'true'
     const buildOutput = await Bun.build({

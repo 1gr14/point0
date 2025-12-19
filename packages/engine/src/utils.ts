@@ -192,7 +192,7 @@ export const removeLikeJsExtension = (path: string) => {
 
 // TODO:ASAP make any config suitable
 export type ServerBunBuildConfigDefinitionFnOptions = {
-  nodeEnv: string | undefined
+  nodeEnv: string
   customer: 'server'
 }
 export type ServerBunBuildConfigDefinitionFn = (
@@ -201,7 +201,7 @@ export type ServerBunBuildConfigDefinitionFn = (
 export type ServerBunBuildConfigDefinition = ServerBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type ClientBunBuildConfigDefinitionFnOptions = {
-  nodeEnv: string | undefined
+  nodeEnv: string
   customer: 'client'
 }
 export type ClientBunBuildConfigDefinitionFn = (
@@ -210,7 +210,7 @@ export type ClientBunBuildConfigDefinitionFn = (
 export type ClientBunBuildConfigDefinition = ClientBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type BunBuildConfigDefinitionFnOptions = {
-  nodeEnv: string | undefined
+  nodeEnv: string
   customer: 'client' | 'server'
 }
 export type BunBuildConfigDefinitionFn = (options: BunBuildConfigDefinitionFnOptions) => Partial<BuildConfig>
@@ -221,7 +221,7 @@ export const executeServerBunBuildConfig = async ({
   bunBuildConfig,
   bunPlugins,
 }: {
-  nodeEnv: string | undefined
+  nodeEnv: string
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
@@ -238,7 +238,7 @@ export const extractClientBunBuildConfig = async ({
   bunBuildConfig,
   bunPlugins,
 }: {
-  nodeEnv: string | undefined
+  nodeEnv: string
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
@@ -256,7 +256,7 @@ export const extractBunBuildConfig = async ({
   bunBuildConfig,
   bunPlugins,
 }: {
-  nodeEnv: string | undefined
+  nodeEnv: string
   customer: 'client' | 'server'
   bunBuildConfig: BunBuildConfigDefinition
   bunPlugins: BunPluginsDefinition
@@ -273,7 +273,7 @@ export const extractBunBuildConfig = async ({
 // plugins
 
 export type ServerBunPluginsDefinitionFnOptions = {
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   customer: 'server'
 }
@@ -283,7 +283,7 @@ export type ServerBunPluginsDefinitionFn = (
 export type ServerBunPluginsDefinition = ServerBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type ClientBunPluginsDefinitionFnOptions = {
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   customer: 'client'
 }
@@ -293,7 +293,7 @@ export type ClientBunPluginsDefinitionFn = (
 export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type BunPluginsDefinitionFnOptions = {
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   customer: 'client' | 'server'
 }
@@ -307,7 +307,7 @@ export const extractServerBunPlugins = async ({
   command,
   bunPlugins,
 }: {
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   bunPlugins: ServerBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
@@ -324,7 +324,7 @@ export const extractClientBunPlugins = async ({
   command,
   bunPlugins,
 }: {
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
@@ -342,7 +342,7 @@ export const extractBunPlugins = async ({
   bunPlugins,
   customer,
 }: {
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   bunPlugins: BunPluginsDefinition
   customer: 'client' | 'server'
@@ -367,7 +367,7 @@ export const extractClientBunDevPluginsStrings = async ({
   errorOnNotString,
 }: {
   cwd: string
-  nodeEnv: string | undefined
+  nodeEnv: string
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
   errorOnNotString: string
@@ -452,7 +452,6 @@ export const createViteDevServer = async ({
   customer,
   hmrPort,
   env,
-  prune,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
@@ -460,7 +459,6 @@ export const createViteDevServer = async ({
   hmrPort: number | null
   env?: EngineOptionsEnvParsed
   // TODO:ASAP or respect prune enabling everywhere or remove it from everywhere
-  prune: boolean
 }): Promise<ViteDevServer> => {
   return await pruneItWhenPoint0ServerBuildInProgress(async () => {
     if (!viteConfig) {
@@ -473,9 +471,7 @@ export const createViteDevServer = async ({
       customer,
     })
 
-    const prunePlugin = prune
-      ? await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
-      : null
+    const prunePlugin = await import('./pruner-vite.js').then((module) => module.prunerVitePlugin({ customer, scope }))
 
     const hmr =
       loadedViteConfig.server?.hmr === false
@@ -488,7 +484,7 @@ export const createViteDevServer = async ({
             }
     return await createServer({
       ...loadedViteConfig,
-      plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
+      plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
       configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',

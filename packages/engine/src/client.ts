@@ -66,7 +66,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   bunNativeDevServer: Bun.Subprocess | true | null // true in case if it was run in separate process
   bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
   initialized: TInitialized
-  prune: boolean
 
   private constructor(input: {
     scope: PointsScope
@@ -98,7 +97,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
     server: ServerBun
-    prune: boolean
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -131,7 +129,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.bunViteDevServer = input.bunViteDevServer
     this.server = input.server
     this.initialized = input.initialized
-    this.prune = input.prune
     this.engineFile = input.engineFile
     this.ssr = null as TInitialized extends true ? boolean : null
     this.App = null as TInitialized extends true ? AppComponent : null
@@ -162,7 +159,6 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     server: ServerBun
-    prune: boolean
   }): ClientBun<false> {
     const viteDevServer = null
     const bunNativeDevServer = null
@@ -311,7 +307,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const tempDir = resolveTempDirPath(['client-bun-dev-server', this.scope])
     const pluginsStrings = await extractClientBunDevPluginsStrings({
       cwd: this.cwd,
-      nodeEnv: process.env.NODE_ENV,
+      nodeEnv: process.env.NODE_ENV ?? 'development',
       command: 'serve',
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
@@ -436,7 +432,6 @@ Bun.serve({
       customer: 'client',
       hmrPort: this.hmrPort,
       env: this.env,
-      prune: this.prune,
     })
     this.viteDevServer = viteDevServer
     if (!this.indexHtml) {
@@ -693,70 +688,71 @@ Bun.serve({
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    // if (!this.isInitialized()) {
-    //   throw new Error('Client is not initialized')
-    // }
+    return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+      // if (!this.isInitialized()) {
+      //   throw new Error('Client is not initialized')
+      // }
 
-    const { bunBuildConfig, clean = false } = options ?? {}
+      const { bunBuildConfig, clean = false } = options ?? {}
 
-    const buildPaths = this.getBuildPaths()
-    if (!buildPaths.indexHtml) {
-      return null
-    }
-    if (!buildPaths.outdir) {
-      throw new Error(`outdir not provided for client "${this.scope}"`)
-    }
+      const buildPaths = this.getBuildPaths()
+      if (!buildPaths.indexHtml) {
+        return null
+      }
+      if (!buildPaths.outdir) {
+        throw new Error(`outdir not provided for client "${this.scope}"`)
+      }
 
-    if (clean) {
-      await this.cleanClient()
-    }
+      if (clean) {
+        await this.cleanClient()
+      }
 
-    const thisBunBuildConfig = await extractClientBunBuildConfig({
-      nodeEnv: process.env.NODE_ENV,
-      bunBuildConfig: this.bunBuildConfig,
-      bunPlugins: this.bunPlugins,
+      const NODE_ENV = process.env.NODE_ENV ?? 'production'
+      process.env.NODE_ENV = NODE_ENV
+
+      const thisBunBuildConfig = await extractClientBunBuildConfig({
+        nodeEnv: NODE_ENV,
+        bunBuildConfig: this.bunBuildConfig,
+        bunPlugins: this.bunPlugins,
+      })
+      const providedBunBuildConfig = bunBuildConfig
+        ? await extractClientBunBuildConfig({
+            nodeEnv: NODE_ENV,
+            bunBuildConfig,
+            bunPlugins: [],
+          })
+        : {}
+
+      const prunePlugin = await import('./pruner-bun.js').then((module) =>
+        module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
+      )
+
+      const buildOutput = await Bun.build({
+        target: 'browser',
+        format: 'esm',
+        splitting: true,
+        sourcemap: NODE_ENV === 'production' ? 'external' : 'inline',
+        publicPath: '/',
+        minify: NODE_ENV === 'production',
+        ...thisBunBuildConfig,
+        ...providedBunBuildConfig,
+        plugins: [...(thisBunBuildConfig.plugins ?? []), prunePlugin],
+        entrypoints: [
+          buildPaths.indexHtml,
+          ...(thisBunBuildConfig.entrypoints ?? []),
+          ...(providedBunBuildConfig.entrypoints ?? []),
+        ],
+        outdir: buildPaths.outdir,
+        define: {
+          ...thisBunBuildConfig.define,
+          ...providedBunBuildConfig.define,
+          ...(NODE_ENV ? { 'process.env.NODE_ENV': JSON.stringify(NODE_ENV) } : {}),
+          'process.env.POINT0_CUSTOMER': JSON.stringify('client'),
+          'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
+        },
+      })
+      return buildOutput.outputs.map((output) => output.path)
     })
-    const providedBunBuildConfig = bunBuildConfig
-      ? await extractClientBunBuildConfig({
-          nodeEnv: process.env.NODE_ENV,
-          bunBuildConfig,
-          bunPlugins: [],
-        })
-      : {}
-
-    const NODE_ENV = process.env.NODE_ENV
-
-    const prunePlugin = this.prune
-      ? await import('./pruner-bun.js').then((module) =>
-          module.prunerBunPlugin({ customer: 'client', scope: this.scope }),
-        )
-      : null
-
-    const buildOutput = await Bun.build({
-      target: 'browser',
-      format: 'esm',
-      splitting: true,
-      sourcemap: NODE_ENV === 'production' ? 'external' : 'inline',
-      publicPath: '/',
-      minify: NODE_ENV === 'production',
-      ...thisBunBuildConfig,
-      ...providedBunBuildConfig,
-      plugins: [...(thisBunBuildConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
-      entrypoints: [
-        buildPaths.indexHtml,
-        ...(thisBunBuildConfig.entrypoints ?? []),
-        ...(providedBunBuildConfig.entrypoints ?? []),
-      ],
-      outdir: buildPaths.outdir,
-      define: {
-        ...thisBunBuildConfig.define,
-        ...providedBunBuildConfig.define,
-        ...(NODE_ENV ? { 'process.env.NODE_ENV': JSON.stringify(NODE_ENV) } : {}),
-        'process.env.POINT0_CUSTOMER': JSON.stringify('client'),
-        'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
-      },
-    })
-    return buildOutput.outputs.map((output) => output.path)
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
@@ -806,15 +802,13 @@ Bun.serve({
 
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-      const prunePlugin = this.prune
-        ? await import('./pruner-vite.js').then((module) =>
-            module.prunerVitePlugin({ customer: 'client', scope: this.scope }),
-          )
-        : null
+      const prunePlugin = await import('./pruner-vite.js').then((module) =>
+        module.prunerVitePlugin({ customer: 'client', scope: this.scope }),
+      )
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...(loadedViteConfig.plugins ?? []), ...(prunePlugin ? [prunePlugin] : [])],
+        plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

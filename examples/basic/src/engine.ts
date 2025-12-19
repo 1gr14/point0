@@ -1,8 +1,10 @@
 import type { client } from '@/lib/client'
 import { Engine } from '@point0/engine'
-import nodePath from 'node:path'
 // import * as points from './lib/points.ready.js'
 // import './lib/points.js'
+
+// bun build --compile ./dist/server/index.server.js ./dist/client/**/* --outfile x
+// bun build --compile ./x.ts --outfile x
 
 export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(import.meta.url, {
   // clientsServerOutdir: '../dist/server',
@@ -19,15 +21,15 @@ export const engine = Engine.create<(typeof client)['Infer']['RequiredCtx']>(imp
       scope: 'client',
       // plugins of bun we can have where we want
       // TODO: allow provide app itself and points itself (so alway just app should be provided)
-      app: async () => await import('./app.js').then((m) => m.default),
-      points: async () => await import('./lib/points.ready.js'),
+      app: async () => await import('./app'),
+      points: async () => await import('./lib/points.ready'),
       // points: async () => points,
       generatePointsLazy: './lib/points.lazy.ts',
       generatePointsReady: './lib/points.ready.ts',
       // pointsModuleType: 'ready',
       // points: await import('./lib/points'),
       // routes: './lib/routes.generated.ts',
-      routes: async () => await import('./lib/routes').then((m) => m.routes),
+      routes: async () => await import('./lib/routes'),
       indexHtml: './index.html',
       port: 3001,
       env: ['SOURCE_BASE_URL'],

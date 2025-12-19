@@ -7,6 +7,7 @@ import * as nodePath from 'node:path'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker, type CollectedPoint } from './walker.js'
 import type { EngineOptionsRoutes } from './config.js'
+import { Routes } from '@devp0nt/route0'
 
 type ChangeCollectedPointsEvent = {
   deleted: CollectedPoint[]
@@ -233,9 +234,31 @@ export class FilesGenerator {
     if (this.isRoutesInitialized) {
       return
     }
+    // TODO: add helper to route0 to recognize object
+    const isRoutesObject = (result: unknown): result is RoutesPretty => {
+      return (
+        typeof result === 'object' &&
+        result !== null &&
+        '_' in result &&
+        typeof result._ === 'object' &&
+        result._ !== null &&
+        'routes' in result._ &&
+        typeof result._.routes === 'object' &&
+        result._.routes !== null
+      )
+    }
     for (const target of this.targets) {
       if (target.routesInstanceGetter) {
-        target.routesInstance = await target.routesInstanceGetter()
+        const result = await target.routesInstanceGetter()
+        if (isRoutesObject(result)) {
+          target.routesInstance = result
+        } else if ('default' in result && isRoutesObject(result.default)) {
+          target.routesInstance = result.default
+        } else if ('routes' in result && isRoutesObject(result.routes)) {
+          target.routesInstance = result.routes
+        } else {
+          throw new Error(`Invalid routes instance for target ${target.scope}`)
+        }
         this.routes[target.scope] = target.routesInstance
       }
     }

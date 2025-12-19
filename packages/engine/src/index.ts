@@ -236,7 +236,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     }>
     server: { server: string[] | null; publicdir: string[] | null }
   }> {
-    const { generate = true, scope, clean, publicdir } = options ?? {}
+    const { generate = true, scope, clean = true, publicdir } = options ?? {}
 
     if (generate) {
       await this.generator.sync({ logOnNotWritten: false })
@@ -244,7 +244,19 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
     // const intializedEngine = await this.init()
 
-    const clientsPromise = Promise.all(
+    if (clean) {
+      await Promise.all([
+        ...this.clients.map(async (client) => {
+          if (scope && client.scope !== scope) {
+            return
+          }
+          await client.clean()
+        }),
+        ...((scope && scope === this.server.scope) || !scope ? [this.server.clean()] : []),
+      ])
+    }
+
+    const buildClientsPromise = Promise.all(
       this.clients.map(async (client) => {
         if (scope && client.scope !== scope) {
           return {
@@ -255,7 +267,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         }
         const buildOutput = await client.build({
           publicdir,
-          clean,
+          clean: false,
         })
         return {
           client: buildOutput.client,
@@ -264,11 +276,11 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         }
       }),
     )
-    const serverPromise = (async () => {
+    const buildServerPromise = (async () => {
       if (scope) {
         if (scope === this.server.scope) {
           return await this.server.build({
-            clean,
+            clean: false,
             publicdir,
           })
         } else {
@@ -276,12 +288,12 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
         }
       } else {
         return await this.server.build({
-          clean,
+          clean: false,
           publicdir,
         })
       }
     })()
-    const [clients, server] = await Promise.all([clientsPromise, serverPromise])
+    const [clients, server] = await Promise.all([buildClientsPromise, buildServerPromise])
     return { clients, server }
   }
 

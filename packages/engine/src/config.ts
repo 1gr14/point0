@@ -34,7 +34,9 @@ export type EngineOptionsViteConfig = ExtractedViteConfig | ReturnType<typeof im
 
 export type EngineOptionsAppComponent = () => Promise<AppComponent | AppComponentModule>
 export type EngineOptionsPoints = () => Promise<ReadyPointsModule | LazyPointsModule>
-export type EngineOptionsRoutes = () => Promise<RoutesPretty<any>>
+export type EngineOptionsRoutes = () => Promise<
+  RoutesPretty<any> | { routes: RoutesPretty<any> } | { default: RoutesPretty<any> }
+>
 
 export type EngineGeneralOptions = {
   fallbackScope?: PointsScope
@@ -90,7 +92,6 @@ export type EngineClientOptions = {
   routes?: EngineOptionsRoutes | null
   generateRoutes?: string | null
   banner?: string | null
-  prune?: boolean
 }
 export type EngineOptions = EngineGeneralOptions & {
   server: EngineServerOptions
@@ -137,7 +138,6 @@ export type EngineClientOptionsParsed = {
   routesInstance: EngineOptionsRoutes | null
   routesFile: string | null
   banner: string | null
-  prune: boolean
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -584,7 +584,6 @@ const parseEngineClientOptions = ({
     generatePointsLazy: clientOptions.generatePointsLazy ?? null,
     generatePointsReady: clientOptions.generatePointsReady ?? null,
     banner: clientOptions.banner ?? null,
-    prune: clientOptions.prune ?? true,
     engineFile: generalOptionsParsed.engineFile,
   }
 }

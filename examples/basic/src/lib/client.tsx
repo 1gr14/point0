@@ -3,14 +3,6 @@ import { prisma } from './prisma.js'
 import { QueryClient } from '@tanstack/react-query'
 import superjson from 'superjson'
 
-Point0.callClient(() => {
-  console.log('Hello from client')
-})
-Point0.callServer(() => {
-  console.log('Hello from server')
-})
-console.log('Hello everyone', new Error().stack)
-
 export const queryClient = Point0.defineQueryClient(() => new QueryClient())
 
 export const client = Point0.create('client')
