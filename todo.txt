@@ -2,30 +2,73 @@
 ------ before start0 -----
 --------------------------
 
+REQUEST/RESPONSE/CTX
+remove ctxLoader
+remove data option from .ctx()
+request wrapper: {original, scope, headers:{name:value}, cookies:{name:options}, input, location, method}
+set wrapper: {cookies, headers, status, inspect: {cookies, headers, status}} https://chatgpt.com/c/69456768-4cb8-832e-8a41-2a9c66dc2fbb
+rmove inputRaw from loader/ctx options
+remove TLastResponse, just TServerOutput, TClientOuput, TProviderOutput, becouse if loader provides response, then we switch to next stage
+.ctx(() => {x}) or .ctx({x}) will append x to ctx
+.ctx(() => [{x}]) or .ctx([{x}]) will append x to ctx and loader/ctx options (by providing TCtxFlatKeys)
+.ctx$ do same but totally override ctx
+.loader(false)
+? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
 
-.query and .mutation allow pass last loader right in mutation and query methods as first argument, and fix compiler to work with it
-rename current middleware to somthing else, like builder processing stage
+NICE
+X-Point0-Json-Data: 'false'
+Поинт скоуп, нейм, тайп всё это вшить в квери параметры тогда сьютабол сможем получать даже на опшинсах
+В фетч и серв назвать аргумент просто кткс
+return back type property to NicePoint
+in Nice point.point also lets store nice type, so hide everything from user except required for us
+on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware
+fix what can be .lets from each point type
+Укоротить до линкпрефетч
 
-remove TResponse and TClientResponse types, they do nothing, LastOutput is enough
-in loaders options should never be usual response
-there always should be our special response with all helpers (cookies, status, headers, etc) https://chatgpt.com/c/69451dc4-a828-8332-b5c5-82011bfca0d2
-afer return from loader response you can not create more .loader or .ctxLoader, but in client loader you can as many as you want
+ROOT
+.lets('root')
+scopes is array
+but scope is still just string
+provide scope initiator to all loaders via X-Point0-Scope-Initiator: string
+walker add to lazy points root {scope}, and self scope is still _root_lazy, other roots just points
+remove .attach things
+Не поинтс менеджер, а скоуп поинтс. Не алл поинтс менеджер, а комбайнед скоупс поинтс. И вообще нам алл не нужен, ведь в сервере по сути и так вообще все поинты будут
 
-MIDDLEWARE
-middleware(general|publicdir|point, () => {})
-or maybe use? Chatgpt how better name pair plugin-apply, and middleware or use
-nice type for Middleware
+MIDDLEARE
+low level server available on root points only
+.middleware(({request,point,publicdir,next}) => {})
+remove auto cors for localhost from engine server, and made it via middleware
 
-PLUGIN
-И всё же экстрактабл нужен, то есть мы его можем взывать, а клиент его не может дёрнуть
-Прямо вот этот экстрактабл можно передать в юз, и тогда он просто зассайнит полученную дату и контекст на существующие дату и контекст, и вообще он не экстрактабл а плагин и есть
-Вторым аргументом в юз нужно передавать инпут, с которым всё будет делаться, или функцию возвращающую инпут
-Конечно плагин можно завернуть в функцию и накидать туда генериков
-Лоадеру и ктксу уже дать опцию для некэширования {cache: null | string}
-Но если инпут и так сходится то не надо ничего вторым аргументом в плагин прокидывать, мы туда сырой инпут просто перенаправим
-nice type for Plugin
+LISTENER
+.lets('listener', 'mylistener', scopes).client(eventName, {type,set,input,request,point,publicdir}).server(eventName, options).listener()
+on startof request check if publicdir or suitable
+all root middlewares call on start
+all point middlewares call only on points
+{onFinish?,onSuccess?,onError?}
+.onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
 
-binary, just replace .. with _dot__dot_ in paths
+USE/POINT
+.use(point)
+applies everything that previously was not applied to point that call .use()
+but ctx and data just append. like const x = execute(plugin), and the Object.assing(ctx, x.ctx)
+so we do not need define if target point data suitable to injectable data/ctx
+
+USE/PLUGIN
+Point0.plugin('root|point', 'pluginName').ctx().loader().clientLoader()... any methods
+.use(plugin)
+.use([plugin]) to make returned ctx flat
+here in plugine we may have .requireCtx(), becouse plugin may be related to some ctx data
+cors plugin
+Плагин может запровайдить в том числе и рендер штучки, ему ничто не мешает быть внутри функции, которая использует запровайженные штучки (это позволит например целую форму регистрации замутить)
+
+ENGINE
+Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
+В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
+Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
+baseurl get from root point, and remove from engine config
+? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
+binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
+Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
 
 INIT
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
@@ -34,37 +77,22 @@ So we also need <my.Init>{children}</my.Init> and <Init />, bet
 So we need be able to auto init or not, lets add .auto(true | false) by default true
 and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
 Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
-
-INPUT (or on refactor)
-Проверить расширяемость инпута на юниты
-Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
-
 .enabled()
-
----
 
 EXPO
 expo example
 expo router
-??? const sharedQuery = Point0.attachment('client').query(); engine({scope: 'site', attachments: ['shared']}); in eversion points marked as attachemtns add base fns in run, or in points do root.attach(sharedQuery)
-??? expo; shared = Point0.shared<typeof site | typeof expo>('shared'); const sharedQuery = shared.query(); const page = sharedQuery.page(); points module: export const clientSharedQuery = client.use(sharedQuery); ... or may be it is chain thing
-??? expo example, just define all queries and mutations as plugins and use them in site and expo
+respect null on baseurl for client, so page like requests to server will be not recpected
+? remove location from mountable components, becouse in expo for example it is very strange property
 
-example monorepo
-
-fix attach and shared: shared = P0.create({}); query = share.subquery(); site = shared.root(only scope, nothing else); so when geenrate points. query.setRoot(site)
-remove root from lets
-Руту запретить все лоадеры иначе как аттачить, и вообще будто бы логично и для mcp и для init
-или аттач разрешить только туда где типы рута одинаковые, и соответственно рут поинт хранить генериком
-Короче разобраться с этим вонючим аттачем, что-то с ним не так
-
+REFACTROING 1
+bin → cli
+Разрешить лэйоут передавать через метод, и сделать его автоматически провайдером (просто добавить проверку на инмут лэйоута, если сходится, то и норм)
+Квериклиент добавить в методы рута, и сделать его скоуп зависимым
 refactor types names and order
-TData → TServerData, etc
+В оутпут тайп добавить хтмл
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
-make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
-
----
 
 START0
 start0 without mono0
@@ -74,103 +102,63 @@ refactor Meta0: Мета всегда с маленькой буквы и ест
 ? refactor Ctx0 → init point enough
 refactor Env0: just cool validation helpers
 ? refactor Logger0: just use as is Logger with global Meta0 provided
-
-drizzle
 unwind and tailwind
 https://oxc.rs/docs/guide/usage/linter/config
 
---------------------------
------- while start0 ------
---------------------------
-
-throw error on Points.create() on cleint with different scope that was before
-? simplify renderer
-Replace all node methods with native bun methods, including watcher
-on fetch and prefetch if extractor exists in SuperStore, then do not do fetch, but do extractor.extract
-analyze why client bundle so big in examples
-wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
-check bun compiler, and vite compiler creates correct sourcemaps
-? router export function getCurrentLocation()
-after build validate if dist paths exists, like engine.validate()
-input of page component omit it, by params and search params, make it strict
-check if mutation can be client only
-? location to server loaders and ctx as any location, for renderable it will be requested page location, and we on call can pass locaton itself so no needed to recognize it on server
-? on navigate on unknown location do window location change
-watch glob optional for build watch, and builwatch itself
-? __POINT0_QUERY_KEY_PREFIX__, adn find all other point0 from small "p" and fix it
-? use arrays in points files
-? extract required ctx type from root points
-compiler: point0PruneScope, P0.ifScope({site: x, expo: y}), also remove points at all if it is not from this scope and not attached scope
-compiler: point0PruneScopePoints, totally remove points not related to the scope
-compiler: P0.ifClientServer({client: , server: })
-compiler: P0.ifEnv({browser: , mobile: , electronRenderer: , electronMain: })
-check why so slow server restart, check wht we can cache on start, like glob results, or compiler results
+REFACTROING 2
+Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед (и вообще отрефачить там всё проверить что там нужно)
+Вайт конфиг авто, дефаулт, или путь, или импорт, и при билде пруном из энжины это вырезать, в отм числе и бан плагины вырезать из конфига энжины прунером при билде
+find TODO in code
+add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
+on fetch error maybe no json, then if it is thore, do res.text()
 normzliae all errors texts everyhere
-? expose point in NicePoint
-make components and pages named in react dev tools
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
-analyze if there same id points or route points, and throw error
-Пропсы пусть дополнительно генериком прикидывается перед вызовом функции компонента/loading/error с проверкой не стали ли они уже предыдущих
-? someThing.attachment()..., and then somethingElse.attach()
-? get base/root specific things right from base, do not continue it after .base()
-? Point0 → P0, cli p0
-rest important TODO in code
-? Пририписки unsafe заменить на safe в клиент сервере и поправить прунер, да вообще не нужен сейф (да нужны они, а вдруг код иполняется в месте где реально клиент и сервер исполняют)
-serverOnlyPackages, clientOnlyPackages, throw error if imported from wrong place
-? on request to server for query or mutation which has no serverLoader throw error
-? Юзкомбайнедквери заменить на юзелиентэндсерверквери
-В сервер экстрактор добавить флаг для пропуска добавления квери в дегидрейтед стейт, заодно убедиться что при экстракте то что квери попадает, а что не квери не попадает
-loader(() => {}, {cache: false | string})
-Проверка инпута на клиенте при юзлоадере должна быть опционально отключена, и тогда останется только на клиенте проверка инпута
-батч квери, батчпрефетч, батч екзкьют
-baseurl get from root point, and remove from config
-
-Если какие-то квери были заэкстенджены и не были изменены, то при их фетче закладывать в кэш и то, что они фетяанулись, и наоборот. 
-? Главное сср перед дегидрацией удалить дубли, а во время гидрации восстановить.
-? При генерации поинтов записывать их лоадерс хэш и по нему сравнивать, и такой же должен быть в рантайме (или из лэзи поинтов надо устанавливать этот хэш дополнительно вручную)
-! Да просто хранить сэйм клиент квери, сэйм сервер квери, сэйм комбайнед квери, и фетчить именно по сэйм квери, а не по себе
-
-fetchWithCancel
+Проверить хмр компонентов лоадинга и врапера
+Провайдер (вреоятно назовум его как-то иначе, возможно clientBeforeLoader и clientAfterLoader) можно добавить и к странице и к компоненту и к лэйоуту, тогда там мы можем на клиенте сровнуть ошибку например чтобы попасть на компонент ошибки, и в тоже время не иметь состояния загрузки. Установив провайдер его больше нельзя установить, и в то же время мы переходим в рендер стейдж
+throw error on Points.create() on cleint with different scope that was before
+throw if same name and type in current scope
+wouter add to Link match result, so we can use current, active, aprent, exact, etc (location => className)
+check bun compiler, and vite compiler creates correct sourcemaps
+make components and pages named in react dev tools
+fetch/query cancellation, maybe fetchWithCancel()
 .getFetchOptions()
-cancel by input, or cancel all
-on fetch error maybe no json, then if it is thore, do res.text()
+loader(() => {}, {cache: false | string})
 
-(after Error0 plugin, which allows add point to error, like we can add status)
-add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
-.onError, .onClientError
+TEST
+test for units
+test for engine
+test for e2e (maybe lightpanda)
 
+INPUT
+Проверить расширяемость инпута на юниты
+Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
+standard schema
+Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
+
+REFACTORING 3
 Move type errors to its own types, so we can reuse them
+Replace all node methods with native bun methods, including watcher
+analyze why client bundle so big in examples
+on request to server for query or mutation which has no serverLoader throw error
 
--------------------------
------- refactoring ------
--------------------------
+ENVIRONMENT
+not client-server.ts, but environment.ts
+make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
+process.env.POINT0_SCOPE defined and can be used to remove deadcode
+process.env.POINT0_ENV (browser, mobile, server, electronRenderer, electronMain) defined and can be used to remove deadcode
+Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
+Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
 
-При лоаде поинта в поинтс менеджер глобальном в клиенте помечать его как лоадед с верными типами, и добавить в поинтс менеджере геттер верный
-Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед
+CREATE POINT0 APP
+cli to create app
+Опция криэйт апп поинт0 сразу предлагает купить старт0
 
-Вайт конфиг авто, дефаулт, или путь, или импорт, и при билде пруном из энжины это вырезать
+REDIRECT
+redirect (as option in loader and clientLoader for page)
+redirect as point method which will be applied to both client and server
 
-Ну и добавить тогда уж тасунк чтобы знать есть ли асунк лоадеры
-remove location from mountable components, becouse in expo for example it is very strange property
-? remove ctxLoader, and allow drop loaders ? I think it is possible when we have no loaders in root
-? .lazy(), а зачем это нужно, можно просто импортнуть нужные страницы на нужные страницы, и они сами сбандлятся как надо
-Если нет плагинов для клиента и клиент всего один, тогда и запускать его будем на месте. Но когда мы захотим прунить по скоупу, окажется, что так не получается, и надо юзеру руками плагины вписывать
-
-Можно для инита, опенапи, реалтайма, использовать генерик спешила, и туда засовывать уже более подробный тип
-? Вайт тру автопоиск конфига
-? parseViteMode()
-? Оутпут разрешить отдавать и его же передавать в лоадеры, зачем?
-
-bunup
-oxc lint
-
---------------------------
------- after start0 ------
---------------------------
-
-Волкер генератор прунер кеш прямо контент файла, если он не менялся, можно инпут хешировать и с таким именем файлик и создавать, и подчищать после генерации
-
+MCP
 .inspect() с положением каждого отдельного компонента
 cli list page, cli get page pageName
 mcp server for point0, so when it is in dev mode it provides info about all points
@@ -180,102 +168,33 @@ cli extract point by type and name, so agent can see errors right in terminal
 .doc(string) в любой поинт можно добавить
 В мдкс для мсп пути к файлам указывать через импорт с макросом, который заменяет их на просто строку полного пути, чтобы не сбивались пути при рефакторе
 
-config object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
-И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
-И даже можно дианмически, принимая на вход в функцию поинт, реквест, инпут, просто запускаем сбор настроек перед прогонкой поинта, то есть все лоадеры и контексты идут после определения сеттингов
-config({}), clientConfig({})
-.before((config) => {config.x = 'newX'}), if you want dynamically change config, and also .clientBefore()
-and in loader settings is immutable
-
+MDX
 ! mdx as page point output if meta contains: lets: 'doc' | 'page', route: string, base: import layout or root, loader: ()=>{}, clientLoader: ()=>{}
 Мдкс если видит в своей папке или выше файл тчк роут то он файловый роут
 Мдкс может в бэйзе просто написать скоуп тчк тайп тчк нэйм
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
-static site generator; .navigationPolicy('hard' | 'soft') or somehow or maybe not needed; .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
+STATIC
+static site generator; 
+.navigationPolicy('hard' | 'soft') or somehow or maybe not needed;
+.static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
+or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
+also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
-https://github.com/porsager/postgres?tab=readme-ov-file#realtime-subscribe example postgres reactive table
-
-.robotsTxt(take, skip)
-
-methods: .headers(({reqOnly}) => {}); helpers inslide loaders: setHeaders((prevHeaders) => {override}) or setHeaders({extends}); .fetchHeaders((prevHeaders) => {override}) or .fetchHeaders({extends})
-.headersInput(z.object())
+OPENAPI
+Я могу те же самые йиэлд, возврат текста, и возврат форм даты просто опираясь на возвращаемый тип, когда буду делать опенапи поинт, ничего там такого нет
 Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
 .lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
+return type of loaders to response type, yield, etc
 TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
 if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
 _slug ← name
 
-engine server onFetch hook, onAfterPublicdirFetch hook
+PRUNER
+check if real third-part packages not rhow on client or server
+serverOnlyPackages, clientOnlyPackages, throw on build and on runtime
 
-standard schema
-Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
-
-.axios(provide axios instance) .axios(false), .axios(true)
-onUploadProgress, onDownloadProgress
-
---------------------
------- launch ------
---------------------
-
-hide todo.txt
-
-find unused code
-example refactor
-example auth
-
-test for units
-test for engine
-test for e2e (maybe lightpanda)
-
-? logo heart 0
-site
-docs (all docs in my site)
-license
-sematic release + protected branches (main, next)
-npm
-
-social pages
-video
-article
-
-launch
-
--------------------------- 
------- launch-notes ------
---------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
----------------------- 
------- realtime ------
-----------------------
-
+REALTIME
 mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
 mySub = root.lets('subscription')
 .subscribeInput(z.object({chatId: z.string()}))
@@ -313,28 +232,26 @@ elysia and uWebSocket separate realizations
 Лоадер лайв квери должен просто вернуть билдер дризла или объект с роу и информацией о подписках (айдиФилдНейм)
 Для дкса просто фильтр пусть будет в мессенджере и он может быть зод схемой, а может быть функцией которую мы застрингифаем и будем использовать при рассылке
 Обёртка над дризлом для реальайма на бэке запоминает что надо отправлять, а возвращая на фронт кроме роусов ещё метк, тем самым фронт как раз и заставляет на это подписаться
+!!! Когда будем делать провайдер надо учесть, что он будет вызываться внутри юзстейта синхронно, и далее перевязываться, при изменении полученной дата или инпута, но в опшинсы ему мы прокинем сетВэлью, которое должно полностью соответствовать тому, что он же возвращает. Это позволит в этот же провайдер впихнуть любой реалтайм листенер, и менять данные
+!!! Лайв метод для обычных кверей. Просто определяет что должно быть от сервера на входе, а внутрифункции как просто этот посыл применить к данным. И допустим вторым аргументом определяем идентификатор комнаты, который и при отправке должен передать сервер, по умолчанию это всегда просто айди, а поведение это всегда просто замена данных 
 
--------------------
------- later ------
--------------------
+EXAMPLES
+example refactor
+example auth
+example zustand (usual/persistent)
 
-buildBinary: true;
-
-Так если клиентлоадер сунк, то вот и всё, то чего он лоадинг там выдумывает, пусть прямо статично свой кэш меняет, а изначально его дата в юз Стейт положим
-
-Проверить что можно и нужно ли делать для юзБатчКвери
-
-
-
-
-
-
-
-
-
-
-
-
+LAUNCH
+hide todo.txt
+find unused code
+docs
+license
+sematic release + protected branches (main, next)
+npm
+social pages
+video
+article
+launch
+❤️❤️❤️
 
 
 
@@ -345,16 +262,119 @@ buildBinary: true;
 
 
 
------------------------------
------- very very later ------
------------------------------
+
+
+
+
+ROUTES/NOT FOUND
+we already have in router option to provide 404
+allow * in routes so we can define special 404 for specific paths
+optional params in routes
+
+REFACTORING 4
+build watch
+check why so slow server restart, check wht we can cache on start, like glob results, or compiler results
+optimize client input parsing
+allow skip client input parsing
+Если какие-то квери были заэкстенджены и не были изменены, то при их фетче закладывать в кэш и то, что они фетяанулись, и наоборот. (Да просто хранить сэйм клиент квери, сэйм сервер квери, сэйм комбайнед квери, и фетчить именно по сэйм квери, а не по себе)
+При лоаде поинта в поинтс менеджер глобальном в клиенте помечать его как лоадед с верными типами, и добавить в поинтс менеджере геттер верный
+bunup
+oxc lint
+? pageParamFromInput as fn or path
+? on fetch and prefetch if extractor exists in SuperStore, then do not do fetch, but do extractor.extract
+? after build validate if dist paths exists, like engine.validate()
+? TScope, TType, TName (зачем это надо?)
+? И синхронная какая-то клиентская штука, которая будет вызвана до отправки запроса или показа компонента (это уже врапер у нас есть, там можно что угодно в любом стиле проверить)
+? simplify renderer
+? router export function getCurrentLocation
+? use arrays in points files (will be harder to type it, do not do it)
+? Пропсы пусть дополнительно генериком прикидывается перед вызовом функции компонента/loading/error с проверкой не стали ли они уже предыдущих
+? Пририписки unsafe заменить на safe в клиент сервере и поправить прунер, да вообще не нужен сейф (да нужны они, а вдруг код иполняется в месте где реально клиент и сервер исполняют)
+? В сервер экстрактор добавить флаг для пропуска добавления квери в дегидрейтед стейт, заодно убедиться что при экстракте то что квери попадает, а что не квери не попадает 
+? Ну и добавить тогда уж тасунк чтобы знать есть ли асунк лоадеры
+? .lazy(), а зачем это нужно, можно просто импортнуть нужные страницы на нужные страницы, и они сами сбандлятся как надо
+
+SUPERSTORE
+rethink SuperStore, when we understand if it is needed at all
+? super store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
+
+AXIOS
+.axios(provide axios instance) .axios(false), .axios(true)
+onUploadProgress, onDownloadProgress
+
+.robotsTxt(take, skip)
+
+.output(z.object({}))
+
+example monorepo
+
+batchQuery, batchPrefetch, batchExecute
+
+WALKER/COMPILER
+Отрефачить Волкер, пусть просто при коллекционировании поинтов, записывает всё что знает статически, а когда придёт компилер, он просто обращается к Волкеру за уже имеющейся информацией о поинтах и сможет прунить мгновенно
+Генератор может и должен хранить кеш в бд, чтобы когда в деве компилер пытался понять как прунить, то он бы сверялся с этим кешем
+Волкер генератор прунер кеш прямо контент файла, если он не менялся, можно инпут хешировать и с таким именем файлик и создавать, и подчищать после генерации
+
+CONFIG
+config object for point, it should be even mutatable, but type defined only at root point, and it is accessible in any point method
+И тогда уж в рут можно добавить сеттингс дефенишен, который можно читать внутри любых лоадеров, и переопределять статически в любых поинтах
+И даже можно дианмически, принимая на вход в функцию поинт, реквест, инпут, просто запускаем сбор настроек перед прогонкой поинта, то есть все лоадеры и контексты идут после определения сеттингов
+config({}), clientConfig({})
+and in loader settings is immutable
+
+EXTENSIONS
+И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
+
+NODE.JS
+polyfill
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------------
+------ ??? ------
+-----------------
 
 LETS NOT DO IT
 ? То что не имеет смысла чейнить, пусть будет третьим аргументом летс, там просто объект со всеми настройками, даже инпут логично иметь там, а вот лоадеры и ктксеры пусть будут на месте
 ? Если в летс опциях уже названа конечная точка типо пейдж, то это финальный поинт
 ? И логично сразу с тестами волкера сделать
-
-? .openapi(), why? we can just use engine.extract inside elysia enpoints and it is enough
 
 ! we just need own Messanger based on usual websocketsm it is enough
 (convex is just real-time helper (.lets('subscribe')), nothing special. And it is big combiner, which is bad)
@@ -374,24 +394,51 @@ LETS NOT DO IT
 ? add engine client options serveByServer: boolean default true
 prefetch type not only prefetchPageDehydratedState, but also prefetchPageSuperStore becouse there can be zustand or what else
 
-И добавить экстеншены, они дадутся последним генериком и могут добавлять методы реди поинтам, методы мидл поинтам, добавлять экстракт фн ситуации
-
 convex example
 
-zustand
-node bun polyfill
-? .output(z.object({}))
-pageParamFromInput as fn or path
-? allow .reponse() to return undefined, in this case it can be found multiple suitable points and they will looped, or mayebe .middleware() idk
-batch query
-? layout can provide its own 404 page, but it can do it already (not exactl, but can by jsut creating page) (but we not have * on layouts, so how?)
-optional params in routes
 ? interstallar
-? split index.ts code
 
-rethink SuperStore, when we understand if it is needed at all
-super store if calling .set() or .get() outside of eversion run, then store this values to queue of pendingSets: [], and in start of eversion run call all this pending sets with warnings
+? Можно для инита, опенапи, реалтайма, использовать генерик спешила, и туда засовывать уже более подробный тип
+? Реквайред кткс надо вынести просто в криэйт и не выделываться
+? × Если нет плагинов для клиента и клиент всего один, тогда и запускать его будем на месте. Но когда мы захотим прунить по скоупу, окажется, что так не получается, и надо юзеру руками плагины вписывать
 
-Х для маунтаблов
-Лэйоут всегда в том числе и провайдером является
-Провайдеру нужен метод криэйт прокси
+Клиенту по сути принадлежат только поинты страниц и лэйоутов, все остальные (квери, провайдеры) могут принадлежать иксу который как бы нейтрален. Если кверя нужна для страницы пусть используют юз перед созданием страницы. Это касается только моментов с двумя клиентами. Короче пусть будет просто поинт криэйт, не надо сервер не сервер
+
+? Добитьсябы того, чтобы энжина сводилось к тому, что весь сервер определяется тем что он импортируется в свойство сервер, а клиенты импортируются в свойство клиентс, и даже пабликдиры
+
+? Так если клиентлоадер сунк, то вот и всё, то чего он лоадинг там выдумывает, пусть прямо статично свой кэш меняет, а изначально его дата в юз Стейт положим
+
+? engine server onFetch hook, onAfterPublicdirFetch hook
+
+? .query and .mutation allow pass last loader right in mutation and query methods as first argument, and fix compiler to work with it
+
+NOT ELYSIA, BUT FULLSTACK FRAMEWORK
+??? remove TResponse and TClientResponse should have our special response type with generics
+??? in loaders options should never be usual response
+??? there always should be our special response with all helpers (cookies, status, headers, etc) https://chatgpt.com/c/69451dc4-a828-8332-b5c5-82011bfca0d2
+??? reponse.clone(overrides kind, body) should be returned but may be returned a usal response also
+??? afer return from loader response you can not create more .loader or .ctxLoader, but in client loader you can as many as you want
+??? куки вынести в лоадер отдельно и сделать схему для их типизации, которая будет пруниться на клиенте
+??? и тоже самое для хедеров, просто .headers(z.object({})) и .cookies(z.object({}))
+??? И полюбому хедеры и куки будут наложены на новый респонс
+...we do not fight with elysia, ay of it route or routes can be defined, lets just later make extensions and add .elysiaLoader, or maybe made it core functionality
+
+× .reqHeaders<T>(z.object({})) // request headers // prune on client → just .header()
+× .resHeaders<T>(z.object({})) // response headers // prune on client → why? we just return it from loaders
+× .cookies<T>(z...) // request cookies // prune on client → why do we ever need it, just parse it in loader and add needed to ctx (it is optional, but possible)
+× .headers(z.object({})) // request headers → we do not need it, jsut parse in loader and add to ctx (it is optional, but possible)
+× Own req and res wrapper around original request → when openapi, we will have additional "openapi" option in loaders with all stuff
+× in loader return [status, data, res.headers.set()] → not needed in final response header may be any becouse of any connection problem
+× return res.build(body, {headers, status, statusText}), return res.build(data, {headers, status, statusText}) → no, becouse it is same as new Response()
+
+? request is not part of required ctx, it is part of loader options always, it is requred on fetch, and not needed on serve
+? cookies are shared and part of loader options always. How to sync: https://chatgpt.com/c/69456768-4cb8-832e-8a41-2a9c66dc2fbb
+? response.headers.set() → PendingResponse (we just need it for header in fact, all of them will be applied to Response, if loader return Response, then its header will override previous ones)
+? request is still usual request
+? cookies.set().clear().get() and some spicific
+? there is no previously returned response in server loader options, becouse if on return response, then it is clientMiddleware
+? there is response in client loader if server loader exists in all steps, after return response from client it is renderMiddleware
+? redirect as something that should be returned and provides there in loader options only for pages and layouts
+? Реквест тоже свой врапер, айпи добавим, оригинал, инпут рау, кукисы
+? В реквесте нашем пусть будет обычный рекорд хедеров, кук без всяких вспомогаек, а когда опенапи будет, тогда оно ещё и типизированное окажется
+? А респонс стрёмный, реально может лучше сет (статус, хедер, куки)

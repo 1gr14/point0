@@ -4,9 +4,6 @@
 // const wait = async (ms = 300) => await new Promise((resolve) => setTimeout(resolve, ms))
 const wait = async (ms = 100) => await new Promise((resolve) => setTimeout(resolve, ms))
 
-const headers = new Headers()
-headers.
-
 export const prisma = {
   idea: {
     count: async (): Promise<number> => {

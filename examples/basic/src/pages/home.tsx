@@ -34,10 +34,12 @@ export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
   .input(z.object({ x: z.number() }))
   .input(z.object({ y: z.number() }))
-  .loader(async ({ ctx, input }) => ({
-    bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-    mult: input.x * input.y,
-  }))
+  .loader(async ({ ctx, input }) => {
+    return {
+      bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
+      mult: input.x * input.y,
+    }
+  })
   .ctxLoader(async ({ ctx, input, data }) => ({
     ctx: { ...ctx, clC: 'clcOk' },
     data: { ...data, clD: 'cldOk' },

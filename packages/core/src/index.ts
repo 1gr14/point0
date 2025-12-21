@@ -1833,13 +1833,13 @@ export class Point0<
     TLastServerOutput,
     TLastClientOutput
   >
-  ctx<TNewCtx extends Ctx = Ctx>(
-    ctx: TNewCtx,
+  ctx<TAppendCtx extends Ctx = Ctx>(
+    ctx: TAppendCtx,
   ): NiceMiddlePoint<
     TPointType,
     TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
     TRequiredCtx,
-    TNewCtx,
+    AppendCtx<TCtx, TAppendCtx>,
     TData,
     TClientData,
     TRouteDefinition,
