@@ -345,37 +345,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               }
               break
             }
-            case 'ctxLoader': {
-              const ex = this.serverExecuteActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctxLoader',
-              ) as ServerExecuteActionWithOutput<'ctxLoader'> | undefined
-              if (ex) {
-                currentResponse = ex.output.response ?? currentResponse
-                currentData = { ...ex.output.data }
-                currentCtx = { ...ex.output.ctx }
-                currentStatus = ex.output.status ?? currentStatus
-              } else {
-                const result = await serverExecuteAction.fn({
-                  ctx: { ...currentCtx },
-                  data: { ...currentData },
-                  input: currentInputParsed,
-                  execute: this.execute.bind(this),
-                  inputRaw: input,
-                  response: currentResponse,
-                  output: currentLastOutput,
-                })
-                currentCtx = result?.ctx ?? currentCtx
-                currentData = result?.data ?? currentData
-                currentResponse = result?.response ?? currentResponse
-                currentStatus = result?.status ?? currentStatus
-                currentLastOutput = result?.data ?? currentLastOutput
-                this.serverExecuteActionsWithOutput.push({
-                  output: { ctx: currentCtx, data: currentData, response: currentResponse, output: currentLastOutput },
-                  record: serverExecuteAction,
-                })
-              }
-              break
-            }
             // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
             default:
               throw new Error(`Unknown extend function type: ${(serverExecuteAction as any).type}`)
@@ -714,7 +683,7 @@ export type ExecuteOptions = {
   input: InputRaw
   withLayouts?: boolean
 }
-export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxLoader'> = TType extends 'ctx'
+export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
   ? {
       output: Ctx
       record: ServerExecuteAction<'ctx'>
@@ -724,12 +693,7 @@ export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader' | 'ctxL
         output: Data | Response | [number, Data | Response]
         record: ServerExecuteAction<'loader'>
       }
-    : TType extends 'ctxLoader'
-      ? {
-          output: { ctx: Ctx; data: Data; response: Response | undefined; status?: number }
-          record: ServerExecuteAction<'ctxLoader'>
-        }
-      : never
+    : never
 
 export type FetchTask = {
   pointType: EndPointType

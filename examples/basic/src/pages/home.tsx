@@ -40,13 +40,9 @@ export const BestIdeaComponent = client
       mult: input.x * input.y,
     }
   })
-  .ctxLoader(async ({ ctx, input, data }) => ({
-    ctx: { ...ctx, clC: 'clcOk' },
-    data: { ...data, clD: 'cldOk' },
-  }))
   .loader(async ({ ctx, input, data }) => ({
     ...data,
-    clDD: ctx.clC,
+    // clDD: ctx.clC,
     slDate: new Date(),
   }))
   .props<{ cta: string }>()
@@ -73,8 +69,8 @@ export const BestIdeaComponent = client
         <h1>Best Idea {data.mult}</h1>
         <p>CTA: {props.cta}</p>
         <p>TITLE: {data.bestIdea.title}</p>
-        <p>CLD: {data.clD}</p>
-        <p>CLDD: {data.clDD}</p>
+        {/* <p>CLD: {data.clD}</p> */}
+        {/* <p>CLDD: {data.clDD}</p> */}
         <p>SLDATE: {typeof data.slDate}</p>
         {/* <p>CLLLL: {typeof data.cllll}</p> */}
         <p>

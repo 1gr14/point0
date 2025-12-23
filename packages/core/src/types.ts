@@ -1091,60 +1091,17 @@ export type LoaderFn<
   | Promise<TNewServerLastOutput>
   | TNewServerLastOutput
 
-export type CtxLoaderFnOptions<
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = {
-  ctx: TCtx
-  data: DataOrEmptyData<TData>
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  inputRaw: InputRawUnknown
-  execute: ServerExecuteFn
-  response: TResponse
-  output: TLastServerOutput
-}
-export type CtxLoaderFn<
-  TCtx extends Ctx = Ctx,
-  TData extends Data | UndefinedData = Data | UndefinedData,
-  TResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TLastServerOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TNewCtx extends Ctx | UndefinedCtx = Ctx | UndefinedCtx,
-  TNewData extends Data | UndefinedData = Data | UndefinedData,
-  TNewResponse extends Response | UndefinedResponse = Response | UndefinedResponse,
-  TNewLastOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
-> = (
-  options: CtxLoaderFnOptions<TCtx, TData, TResponse, TLastServerOutput, TRouteDefinition, TInputSchema>,
-) =>
-  | Promise<
-      { ctx?: TNewCtx; data?: TNewData; status?: number; response?: TNewResponse; output?: TNewLastOutput } | undefined
-    >
-  | { ctx?: TNewCtx; data?: TNewData; status?: number; response?: TNewResponse; output?: TNewLastOutput }
-  | undefined
-
-export type ServerExecuteAction<
-  TType extends 'ctx' | 'loader' | 'ctxLoader' | 'input' = 'ctx' | 'loader' | 'ctxLoader' | 'input',
-> = TType extends 'ctx'
-  ? {
-      type: 'ctx'
-      fn: CtxFn
-      unstableId: number
-    }
-  : TType extends 'loader'
+export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx' | 'loader' | 'input'> =
+  TType extends 'ctx'
     ? {
-        type: 'loader'
-        fn: LoaderFn
+        type: 'ctx'
+        fn: CtxFn
         unstableId: number
       }
-    : TType extends 'ctxLoader'
+    : TType extends 'loader'
       ? {
-          type: 'ctxLoader'
-          fn: CtxLoaderFn
+          type: 'loader'
+          fn: LoaderFn
           unstableId: number
         }
       : TType extends 'input'
@@ -1329,7 +1286,7 @@ export type DataTransformerExtended = {
 export type CutServerLoadersIfClientMiddleware<
   TPointType extends PointType,
   TLiteral extends string,
-> = TPointType extends 'clientMiddleware' ? Exclude<TLiteral, 'ctx' | 'loader' | 'ctxLoader'> : TLiteral
+> = TPointType extends 'clientMiddleware' ? Exclude<TLiteral, 'ctx' | 'loader'> : TLiteral
 
 export type NiceRootMiddlePoint<
   TPointType extends PointType,
@@ -1392,7 +1349,6 @@ export type NiceRootMiddlePoint<
     | 'input'
     | 'ctx'
     | 'loader'
-    | 'ctxLoader'
     | 'clientLoader'
     | 'head'
     | 'scrollPosition'
@@ -1461,7 +1417,6 @@ export type NiceBaseMiddlePoint<
     | 'input'
     | 'ctx'
     | 'loader'
-    | 'ctxLoader'
     | 'clientLoader'
     | 'head'
     | 'scrollPosition'
@@ -1519,7 +1474,6 @@ export type NicePageMiddlePoint<
         | 'input'
         | 'ctx'
         | 'loader'
-        | 'ctxLoader'
         | 'clientLoader'
         | 'head'
         | 'props'
@@ -1581,7 +1535,6 @@ export type NiceComponentMiddlePoint<
         | 'input'
         | 'ctx'
         | 'loader'
-        | 'ctxLoader'
         | 'clientLoader'
         | 'props'
         | 'onPrefetch'
@@ -1629,16 +1582,7 @@ export type NiceQueryMiddlePoint<
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
-    | 'query'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'ctxLoader'
-    | 'clientLoader'
-    | 'onPrefetch'
-    | 'point'
-    | 'Infer'
+    'query' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'clientLoader' | 'onPrefetch' | 'point' | 'Infer'
   >
 >
 
@@ -1678,16 +1622,7 @@ export type NiceInfiniteQueryMiddlePoint<
   >,
   CutServerLoadersIfClientMiddleware<
     TPointType,
-    | 'infiniteQuery'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'ctxLoader'
-    | 'clientLoader'
-    | 'onPrefetch'
-    | 'point'
-    | 'Infer'
+    'infiniteQuery' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'clientLoader' | 'onPrefetch' | 'point' | 'Infer'
   >
 >
 
@@ -1733,7 +1668,6 @@ export type NiceMutationMiddlePoint<
     | 'input'
     | 'ctx'
     | 'loader'
-    | 'ctxLoader'
     | 'clientLoader'
     | 'point'
     | 'Infer'
@@ -1790,7 +1724,6 @@ export type NiceLayoutMiddlePoint<
         | 'input'
         | 'ctx'
         | 'loader'
-        | 'ctxLoader'
         | 'clientLoader'
         | 'head'
         | 'props'
@@ -1849,7 +1782,6 @@ export type NiceProviderMiddlePoint<
         | 'input'
         | 'ctx'
         | 'loader'
-        | 'ctxLoader'
         | 'clientLoader'
         | 'onPrefetch'
         | 'point'

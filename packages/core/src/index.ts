@@ -50,7 +50,6 @@ import type {
   ComponentComponent,
   Ctx,
   CtxFn,
-  CtxLoaderFn,
   CurrentRouteDefinition,
   Data,
   DataTransformer,
@@ -1914,72 +1913,6 @@ export class Point0<
     }) as never
   }
 
-  ctxLoader<
-    TNewCtx extends Ctx | UndefinedCtx = UndefinedCtx,
-    TNewData extends Data | UndefinedData = UndefinedData,
-    TNewResponse extends Response | UndefinedResponse = UndefinedResponse,
-    TNewLastOutput extends LastOutput | UndefinedLastOutput = LastOutput | UndefinedLastOutput,
-  >(
-    ctxLoaderFn: CtxLoaderFn<
-      TCtx,
-      TData,
-      TResponse,
-      TLastServerOutput,
-      TRouteDefinition,
-      TInputSchema,
-      TNewCtx,
-      TNewData,
-      TNewResponse,
-      TNewLastOutput
-    >,
-  ): NiceMiddlePoint<
-    TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
-    TRequiredCtx,
-    TNewCtx extends Ctx ? TNewCtx : TCtx,
-    // CtxLoader can returns nothing. We should mark that loader exists, so we add here empty data if nothing else exists
-    TNewData extends Data
-      ? TNewData
-      : TData extends Data
-        ? TData
-        : TNewResponse extends Response
-          ? TData
-          : TResponse extends Response
-            ? TData
-            : EmptyData,
-    TClientData,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TNewResponse extends Response ? TNewResponse : TResponse,
-    TClientResponse,
-    TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
-    TProps,
-    TNewLastOutput extends LastOutput
-      ? TNewLastOutput
-      : TNewResponse extends Response
-        ? TNewResponse
-        : TNewData extends Data
-          ? TNewData
-          : TLastServerOutput extends LastOutput
-            ? TLastServerOutput
-            : EmptyData,
-    TLastClientOutput
-  > {
-    return this._continue({
-      _queryResultType: this._queryResultType ?? 'query',
-      _serverExecuteActions: [
-        ...this._serverExecuteActions,
-        {
-          type: 'ctxLoader',
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune ctxLoader for client
-          fn: ctxLoaderFn ?? ((c: any) => ({})),
-          unstableId: Point0._getNextUnstableId(),
-        },
-      ] as never,
-    }) as never
-  }
-
   clientLoader<TNewClientLastOutput extends LastOutput = LastOutput>(
     clientLoaderFn: ClientLoaderFn<
       TLetsEndPointType,
@@ -2762,7 +2695,7 @@ export class Point0<
   //     : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
   //       ? [ShowError<`Provider can not return response. Last loader should provide plain object data, not response.`>]
   //       : [
-  //           ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .provider()`>,
+  //           ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .provider()`>,
   //         ]
   // ): NiceProviderEndPoint<
   //   'provider',
@@ -2845,9 +2778,7 @@ export class Point0<
           ]
         : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
           ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-          : [
-              ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .query()`>,
-            ]
+          : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
       : never
   ): NiceQueryEndPoint<
     'query',
@@ -2927,9 +2858,7 @@ export class Point0<
         ? [
             ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
           ]
-        : [
-            ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .infiniteQuery()`>,
-          ]
+        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>]
   ): TLetsEndPointType extends 'infiniteQuery'
     ? NiceInfiniteQueryEndPoint<
         'infiniteQuery',
@@ -2992,9 +2921,7 @@ export class Point0<
             InputRawMaybeOptional<TRouteDefinition, TInputSchema>
           >,
         ]
-      : [
-          ShowError<`Point has no loaders. Please add .loader() or .clientLoader() or.ctxLoader() before calling .mutation()`>,
-        ]
+      : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>]
   ): NiceMutationEndPoint<
     'mutation',
     UndefinedEndPointType,
@@ -3159,7 +3086,7 @@ export class Point0<
   }
 
   _hasLoader(): boolean {
-    return this._serverExecuteActions.some((fn) => fn.type === 'loader' || fn.type === 'ctxLoader')
+    return this._serverExecuteActions.some((fn) => fn.type === 'loader')
   }
 
   _hasClientLoader(): boolean {
@@ -3778,7 +3705,7 @@ export class Point0<
   > {
     if (Point0.isServer) {
       throw new Error0(
-        'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx|ctxLoader options. point.execute is for client only and use fetch under the hood to retrieve server data',
+        'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
       )
     }
     const [input = {}, fetchOptions] = args
@@ -4634,7 +4561,7 @@ export class Point0<
       try {
         if (Point0.isServer) {
           throw new Error(
-            'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx|ctxLoader options. point.execute is for client only and use fetch under the hood to retrieve server data',
+            'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
         }
         const serverDataOrResponse = await (async () => {
