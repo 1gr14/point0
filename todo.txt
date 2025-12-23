@@ -6,12 +6,14 @@ REQUEST/RESPONSE/CTX
 remove ctxLoader
 remove data option from .ctx()
 request wrapper: {original, scope, headers:{name:value}, cookies:{name:options}, input, location, method}
+Добавить реквест реферера и там указать какому скоупа принадлежал реферер
 set wrapper: {cookies, headers, status, inspect: {cookies, headers, status}} https://chatgpt.com/c/69456768-4cb8-832e-8a41-2a9c66dc2fbb
 rmove inputRaw from loader/ctx options
 remove TLastResponse, just TServerOutput, TClientOuput, TProviderOutput, becouse if loader provides response, then we switch to next stage
+AppendCtx with Prettify
 .ctx(() => {x}) or .ctx({x}) will append x to ctx
-.ctx(() => [{x}]) or .ctx([{x}]) will append x to ctx and loader/ctx options (by providing TCtxFlatKeys)
-.ctx$ do same but totally override ctx
+.ctx(() => [{x}]) or .ctx([{x}]) will append x to ctx and loader/ctx options (by providing TCtxExposedKeys)
+.ctx(() => [{x}, 'key1', 'key2']) or .ctx([{x}, 'key1', 'key2']) will append x to ctx, and key1 and key2 to loader/ctx options (by providing TCtxExposedKeys)
 .loader(false)
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
 
@@ -35,7 +37,8 @@ remove .attach things
 Не поинтс менеджер, а скоуп поинтс. Не алл поинтс менеджер, а комбайнед скоупс поинтс. И вообще нам алл не нужен, ведь в сервере по сути и так вообще все поинты будут
 
 MIDDLEARE
-low level server available on root points only
+? low level server available on root points only
+available everywhere, but can break anything, work only with final response, do not have access to ctx or data
 .middleware(({request,point,publicdir,next}) => {})
 remove auto cors for localhost from engine server, and made it via middleware
 
@@ -69,6 +72,8 @@ baseurl get from root point, and remove from engine config
 ? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
 binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
 Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
+compiler options to engine, via ({customer,scope,nodeEnv}) => options
+fix compiler option name for node_modules prefixes
 
 INIT
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
@@ -272,6 +277,7 @@ allow * in routes so we can define special 404 for specific paths
 optional params in routes
 
 REFACTORING 4
+.ctx$ do same but totally override ctx
 build watch
 check why so slow server restart, check wht we can cache on start, like glob results, or compiler results
 optimize client input parsing
@@ -370,6 +376,8 @@ polyfill
 -----------------
 ------ ??? ------
 -----------------
+
+? При использовании икс квери а другом скоупе мы всё рут икс квери можем заменить на рут нашего скоупа, главное при летсе от Рута не Рута не передавать экстенд ФНС, а брать их в момент экзекьбта из рута запрашивающего скоупа, и тогда уж ну точно у Рута не должно быть дата лоадеров и кткс сеттеров... (да у нас есть разруливатель кода исходя из запускаемого скоупа, хватит всем и того, что они что надо прокинут в х рут)
 
 LETS NOT DO IT
 ? То что не имеет смысла чейнить, пусть будет третьим аргументом летс, там просто объект со всеми настройками, даже инпут логично иметь там, а вот лоадеры и ктксеры пусть будут на месте
