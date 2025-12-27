@@ -299,7 +299,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     point: TPoint
     input: TPoint['Infer']['InputRaw']
     withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExecuteResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
+    ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
+  > {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }

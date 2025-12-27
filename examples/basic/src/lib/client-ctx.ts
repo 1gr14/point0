@@ -10,6 +10,9 @@ export const clientCtx1 = client.lets('provider', 'testClientCtx1').provider(({ 
 
 export const clientCtx2 = client
   .lets('provider', 'testClientCtx2')
+  .loader(() => ({
+    o: 'o',
+  }))
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
     return { ...data, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
@@ -26,6 +29,6 @@ export const clientCtx3 = client
   .lets('provider', 'testClientCtx3')
   .loader(async ({ ctx, data }) => {
     const ideas = await ctx.prisma.idea.findMany()
-    return { ...data, ideasCount: ideas.length, env: ctx.env.NODE_ENV }
+    return { ideasCount: ideas.length, env: ctx.env.NODE_ENV }
   })
   .provider()

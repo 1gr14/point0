@@ -847,7 +847,7 @@ Bun.serve({
     input,
   }: {
     executor: Executor
-    executeResult: ServerExecuteResult
+    executeResult: ServerExecuteResult<any, any>
     pagePoint: AnyPoint | undefined
     pageLocation: AnyLocation
     input: InputParsed

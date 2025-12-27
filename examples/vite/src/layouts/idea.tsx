@@ -8,7 +8,7 @@ export const ideaLayout = generalLayout
     const idea = await ctx.prisma.idea.findUniqueOrThrow({
       where: { id: parseInt(id) },
     })
-    return { ...data, idea }
+    return { idea }
   })
   .layout(({ children, data: { idea } }) => {
     return (

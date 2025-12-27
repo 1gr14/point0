@@ -3,7 +3,6 @@
 --------------------------
 
 REQUEST/RESPONSE/CTX
-remove ctxLoader
 remove data option from .ctx()
 request wrapper: {original, scope, headers:{name:value}, cookies:{name:options}, input, location, method}
 Добавить реквест реферера и там указать какому скоупа принадлежал реферер
@@ -11,21 +10,41 @@ set wrapper: {cookies, headers, status, inspect: {cookies, headers, status}} htt
 rmove inputRaw from loader/ctx options
 remove TLastResponse, just TServerOutput, TClientOuput, TProviderOutput, becouse if loader provides response, then we switch to next stage
 AppendCtx with Prettify
+InputRaw → InputOriginal
+Do not omit, in exposedCtx, but if try to expose then error
+useLoader and fetchDetailed to nice endpoints
+response should be always last aloader, after it finish
 .ctx(() => {x}) or .ctx({x}) will append x to ctx
 .ctx(() => [{x}]) or .ctx([{x}]) will append x to ctx and loader/ctx options (by providing TCtxExposedKeys)
 .ctx(() => [{x}, 'key1', 'key2']) or .ctx([{x}, 'key1', 'key2']) will append x to ctx, and key1 and key2 to loader/ctx options (by providing TCtxExposedKeys)
 .loader(false)
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
 
+MAPPER
+also add mapperMiddleware(stage)
+just reflect on queried data and return new data
+Для Инфинити кверей добавить метод флет куда прикидывается название ключа оутпута, чтобы вызвать флэтмэп по нему
+
+OUTER
+появляется оутер у которого есть рендерЕррор и рендерЛоадинг и чилдерн
+
+
+
 NICE
 X-Point0-Json-Data: 'false'
 Поинт скоуп, нейм, тайп всё это вшить в квери параметры тогда сьютабол сможем получать даже на опшинсах
 В фетч и серв назвать аргумент просто кткс
 return back type property to NicePoint
+make useLoader public fn, becouse useQuery not enough
 in Nice point.point also lets store nice type, so hide everything from user except required for us
 on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware
 fix what can be .lets from each point type
+do not bundle core package, just expose in package json only index.js
+Пусть первый поинт0 будет не криэйт а тоже летс рут
+restrict where lets can be used, like no lets on mountables I think. but can be on queries
+? if server loader has response then we can not use it to continue server loaders, so notice in lets restrictions
 Укоротить до линкпрефетч
+Методы надо не скрывать, а показывать разъяснительную ошибку
 
 ROOT
 .lets('root')
@@ -41,6 +60,7 @@ MIDDLEARE
 available everywhere, but can break anything, work only with final response, do not have access to ctx or data
 .middleware(({request,point,publicdir,next}) => {})
 remove auto cors for localhost from engine server, and made it via middleware
+allow Executor with or without middlewares
 
 LISTENER
 .lets('listener', 'mylistener', scopes).client(eventName, {type,set,input,request,point,publicdir}).server(eventName, options).listener()
@@ -48,16 +68,19 @@ on startof request check if publicdir or suitable
 all root middlewares call on start
 all point middlewares call only on points
 {onFinish?,onSuccess?,onError?}
-.onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
+? .onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
 
 USE/POINT
 .use(point)
 applies everything that previously was not applied to point that call .use()
 but ctx and data just append. like const x = execute(plugin), and the Object.assing(ctx, x.ctx)
 so we do not need define if target point data suitable to injectable data/ctx
+when we use plugin with loaders we override all previous loaders with its loaders
+× ??? we store everything previouse (like extract fns) in root, so we should have getExtractFns() etc, so when we use(point) we only accept it things without it root things, and we shpuld have TScope for all it scopes so we can not use point from diffinetly another scope
+!!! Не надо на юз сбрасывать лоадеры, они просто расширят и дата и кткс
 
 USE/PLUGIN
-Point0.plugin('root|point', 'pluginName').ctx().loader().clientLoader()... any methods
+Point0.lets('plugin', 'myPlugin').requireCtx().requireType('root').ctx().loader().clientLoader()... any methods
 .use(plugin)
 .use([plugin]) to make returned ctx flat
 here in plugine we may have .requireCtx(), becouse plugin may be related to some ctx data
@@ -93,11 +116,19 @@ respect null on baseurl for client, so page like requests to server will be not 
 REFACTROING 1
 bin → cli
 Разрешить лэйоут передавать через метод, и сделать его автоматически провайдером (просто добавить проверку на инмут лэйоута, если сходится, то и норм)
-Квериклиент добавить в методы рута, и сделать его скоуп зависимым
+? Квериклиент добавить в методы рута, и сделать его скоуп зависимым (да норм же иметь глобальный)
 refactor types names and order
 В оутпут тайп добавить хтмл
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
+Отрефачить коллекцию поинтов, чтобы там мог быть хоть лэзи, хоть реди рекорд, и они могли как угодно комбинироваться
+Вынести из сервер и из клиент в отдельный пакет чтобы мочь применять его в других библиотеках
+
+CookiesStore/SsrStore
+SuperStore → SsrStore и посмотреть везде ли он логично используется
+Сделать удобным на фронте получение сср кук например для установки языка. Можно совершенно аналогичный КукисСтор
+Главное как-то во время рендера при сср чтобы кукисы нормальные доходили в сервере при использовании внутри компонентов
+
 
 START0
 start0 without mono0
@@ -111,6 +142,7 @@ unwind and tailwind
 https://oxc.rs/docs/guide/usage/linter/config
 
 REFACTROING 2
+Названия не хешировать, а просто нумеровать в экспорте поинтов
 Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед (и вообще отрефачить там всё проверить что там нужно)
 Вайт конфиг авто, дефаулт, или путь, или импорт, и при билде пруном из энжины это вырезать, в отм числе и бан плагины вырезать из конфига энжины прунером при билде
 find TODO in code
@@ -146,6 +178,7 @@ Move type errors to its own types, so we can reuse them
 Replace all node methods with native bun methods, including watcher
 analyze why client bundle so big in examples
 on request to server for query or mutation which has no serverLoader throw error
+? ЮзЛоадерРезулт а там уже и куки и дата последняя полученная
 
 ENVIRONMENT
 not client-server.ts, but environment.ts
@@ -181,6 +214,7 @@ MDX
 
 STATIC
 static site generator; 
+Префетч мод хтмл, просто тупо грузит новую страницу и открывает
 .navigationPolicy('hard' | 'soft') or somehow or maybe not needed;
 .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
 or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
@@ -194,6 +228,7 @@ return type of loaders to response type, yield, etc
 TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
 if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
 _slug ← name
+Под опенапи сделать Парсинг каеристринг через ту штуку чтобы массивы и объекты дали
 
 PRUNER
 check if real third-part packages not rhow on client or server
@@ -286,6 +321,7 @@ allow skip client input parsing
 При лоаде поинта в поинтс менеджер глобальном в клиенте помечать его как лоадед с верными типами, и добавить в поинтс менеджере геттер верный
 bunup
 oxc lint
+? Избавиться вообще от летс, и пусть если летс поинта нет, то сама же функция пейдж работает как инициатор. То есть логично что рут и бэйз возвращают на самом деле билдер и из него торчит изначальный поинт и все изначальные фуночки
 ? pageParamFromInput as fn or path
 ? on fetch and prefetch if extractor exists in SuperStore, then do not do fetch, but do extractor.extract
 ? after build validate if dist paths exists, like engine.validate()

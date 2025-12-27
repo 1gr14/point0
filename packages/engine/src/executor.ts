@@ -6,12 +6,14 @@ import type {
   AppComponent,
   Ctx,
   Data,
+  DataTransformerExtended,
   EndPoint,
   EndPointType,
   InputParsed,
   InputRaw,
   InputSchema,
-  LastOutput,
+  IsInputOptional,
+  LoaderOutput,
   NiceEndPoint,
   PointName,
   PointsScope,
@@ -19,10 +21,13 @@ import type {
   RequiredCtx,
   ServerExecuteAction,
   ServerExecuteResult,
+  UnknownCtx,
+  UnknownData,
   WithMaybeOptionalReqiredCtx,
-  DataTransformerExtended,
+  UndefinedData,
+  UndefinedLoaderOutput,
 } from '@point0/core'
-import { Point0, PointsManager, SuperStore } from '@point0/core'
+import { Point0, PointRequest, PointsManager, ResponseEffectsManager, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -30,6 +35,8 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+  pointRequest: PointRequest
+  responseEffectsManager: ResponseEffectsManager
   pointsManager: PointsManager<true, TRequiredCtx>
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
@@ -42,12 +49,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   private constructor({
+    request,
     points,
     pageLocation,
     requiredCtx,
     serverExecuteActionsWithOutput,
     serverGlobalState,
   }: {
+    request: Request | PointRequest
     points: PointsManager<true, TRequiredCtx>
     serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
@@ -59,6 +68,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_CURRENT_LOCATION__: AnyLocation
     }
   }) {
+    this.pointRequest = PointRequest.create(request)
+    this.responseEffectsManager = ResponseEffectsManager.create()
     this.pointsManager = points
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
@@ -67,12 +78,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
+    request,
     points,
     pageLocation,
     currentLocation,
     requiredCtx,
   }: {
+    request: Request | PointRequest
     points: PointsManager<true, TRequiredCtx>
+    // TODO: remove currentLoacton from here, use it from request
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
@@ -80,6 +94,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const serverGlobalState = {}
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new Executor<TRequiredCtx>({
+        request,
         points,
         pageLocation,
         requiredCtx,
@@ -123,6 +138,32 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await SuperStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
+  static createRequestByPointAndInput<TPoint extends EndPoint | AnyPoint>({
+    point,
+    input,
+  }: {
+    point: TPoint
+    input: TPoint['Infer']['InputRaw']
+  }): Request {
+    // TODO: generate real request by point and input
+    return new Request(`/TODO:FIXME`)
+  }
+
+  static createRequestByPointScopeTypeNameInput({
+    scope,
+    pointType,
+    pointName,
+    input,
+  }: {
+    scope: PointsScope
+    pointType: EndPointType
+    pointName: PointName
+    input: InputRaw
+  }): Request {
+    // TODO: generate real request by point scope type name and input
+    return new Request(`/TODO:FIXME`)
+  }
+
   static async execute<TPoint extends EndPoint>({
     executor,
     point,
@@ -134,13 +175,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: TPoint['Infer']['InputRaw']
     executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
     withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<ServerExecuteResult> {
+  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
+    ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
+  > {
     if (!point._root) {
       throw new Error('Point root not found')
     }
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
     executor ??= await Executor.create({
+      request: Executor.createRequestByPointAndInput({ point, input }),
       points: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
       currentLocation: location,
       requiredCtx,
@@ -149,33 +193,51 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await executor.execute({ point, input, withLayouts })
   }
 
-  async execute(
-    point: NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
-    input?: InputRaw,
-  ): Promise<ServerExecuteResult>
-  async execute({ point, input, withLayouts }: ExecuteOptions): Promise<ServerExecuteResult>
+  async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+    point: TPoint,
+    ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
+      ? [input?: TPoint['Infer']['InputRaw']]
+      : [input: TPoint['Infer']['InputRaw']]
+  ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
+  async execute<
+    TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | EndPoint | undefined,
+  >({
+    point,
+    input,
+    withLayouts,
+  }: ExecuteOptions<TPoint>): Promise<
+    ServerExecuteResult<
+      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+        ? TPoint['Infer']['Ctx']
+        : UnknownCtx,
+      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+        ? TPoint['Infer']['ServerLoaderOutput']
+        : UnknownData
+    >
+  >
   async execute(
     ...args:
-      | [options: ExecuteOptions]
+      | [options: ExecuteOptions<any>]
       | [
-          point:
-            | AnyPoint
-            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
-            | undefined,
+          point: AnyPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
           input?: InputRaw,
         ]
-  ): Promise<ServerExecuteResult> {
+  ): Promise<ServerExecuteResult<any, any>> {
     const {
       point,
       input = {},
       withLayouts = false,
-    } = (() => {
+    } = ((): {
+      point: AnyPoint | undefined
+      input: InputRaw
+      withLayouts: boolean
+    } => {
       if (args[0] === undefined || 'Infer' in args[0]) {
         // so it is NiceEndPoint provided like first argument
-        return { point: args[0]?.point, input: args[1], withLayouts: false }
+        return { point: args[0]?.point, input: args[1] as InputRaw, withLayouts: false }
       }
       // so it is AnyPoint provided in object
-      return { point: args[0].point, input: args[0].input, withLayouts: args[0].withLayouts }
+      return { point: args[0].point, input: args[0].input, withLayouts: !!args[0].withLayouts }
     })()
 
     return await this.withServerGlobalState(async () => {
@@ -212,13 +274,17 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 422,
           response: undefined,
           output: {},
+          // TODO:ASAP fix it
+          effects: {} as never,
         }
       }
 
       let currentCtx: Ctx = this.requiredCtx ?? {}
-      let currentData: Data = {}
+      let currentCtxExposedKeys: string[] = []
+      let currentCtxExposed: Ctx = {}
+      let currentData: Data | UndefinedData = undefined
       let currentResponse: Response | undefined = undefined
-      let currentLastOutput: LastOutput = currentData
+      let currentOutput: LoaderOutput | UndefinedLoaderOutput = currentData
       let currentStatus = 200
       let currentInputParsed: InputParsed = {}
       let currentInputSchema: InputSchema | undefined = undefined
@@ -241,17 +307,20 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             error,
             status: 404,
             response: currentResponse,
-            output: currentLastOutput,
+            output: currentOutput,
+            // TODO:ASAP fix it
+            effects: {} as never,
           }
         }
 
         for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
             case 'input': {
-              currentInputSchema = currentInputSchema
+              const newCurrentInputSchema: InputSchema = currentInputSchema
                 ? currentInputSchema.extend(serverExecuteAction.schema.shape)
                 : serverExecuteAction.schema
-              const safeParseResult = currentInputSchema.safeParse(input)
+              currentInputSchema = newCurrentInputSchema
+              const safeParseResult = newCurrentInputSchema.safeParse(input)
               if (safeParseResult.error) {
                 return {
                   ctx: this.requiredCtx ?? {},
@@ -260,7 +329,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   error: Error0.from(safeParseResult.error),
                   status: 422,
                   response: currentResponse,
-                  output: currentLastOutput,
+                  output: currentOutput,
+                  // TODO:ASAP fix it
+                  effects: {} as never,
                 }
               }
               currentInputParsed = safeParseResult.data
@@ -271,18 +342,42 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
               ) as ServerExecuteActionWithOutput<'ctx'> | undefined
               if (ex) {
-                currentCtx = { ...ex.output }
+                if (Array.isArray(ex.output)) {
+                  const appendCtxExposedKeys =
+                    ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
+                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+                  currentCtx = { ...currentCtx, ...ex.output[0] }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                } else {
+                  currentCtx = { ...currentCtx, ...ex.output }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                }
               } else {
-                currentCtx = await serverExecuteAction.fn({
+                const result = await serverExecuteAction.fn({
+                  ...currentCtxExposed,
                   ctx: { ...currentCtx },
-                  data: { ...currentData },
                   input: currentInputParsed,
                   execute: this.execute.bind(this),
                   inputRaw: input,
-                  response: currentResponse,
+                  request: this.pointRequest,
+                  set: this.responseEffectsManager.set,
                 })
+                if (Array.isArray(result)) {
+                  const appendCtxExposedKeys =
+                    result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
+                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+                  currentCtx = { ...currentCtx, ...result[0] }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                } else {
+                  currentCtx = { ...currentCtx, ...result }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                }
                 this.serverExecuteActionsWithOutput.push({
-                  output: currentCtx,
+                  output: result,
                   record: serverExecuteAction,
                 })
               }
@@ -297,45 +392,47 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   currentStatus = ex.output[0]
                   if (ex.output[1] instanceof Response) {
                     currentResponse = ex.output[1]
-                    currentLastOutput = ex.output[1]
+                    currentOutput = ex.output[1]
                   } else {
                     currentData = ex.output[1]
-                    currentLastOutput = ex.output[1]
+                    currentOutput = ex.output[1]
                   }
                 } else {
                   if (ex.output instanceof Response) {
                     currentResponse = ex.output
-                    currentLastOutput = ex.output
+                    currentOutput = ex.output
                   } else {
                     currentData = ex.output
-                    currentLastOutput = ex.output
+                    currentOutput = ex.output
                   }
                 }
               } else {
                 const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
+                  ...currentCtxExposed,
                   ctx: { ...currentCtx },
                   data: { ...currentData },
                   input: currentInputParsed,
                   execute: this.execute.bind(this),
                   inputRaw: input,
-                  response: currentResponse,
+                  request: this.pointRequest,
+                  set: this.responseEffectsManager.set,
                 })
                 if (Array.isArray(result)) {
                   currentStatus = result[0]
                   if (result[1] instanceof Response) {
                     currentResponse = result[1]
-                    currentLastOutput = result[1]
+                    currentOutput = result[1]
                   } else {
                     currentData = result[1]
-                    currentLastOutput = result[1]
+                    currentOutput = result[1]
                   }
                 } else {
                   if (result instanceof Response) {
                     currentResponse = result
-                    currentLastOutput = result
+                    currentOutput = result
                   } else {
                     currentData = result
-                    currentLastOutput = result
+                    currentOutput = result
                   }
                 }
                 this.serverExecuteActionsWithOutput.push({
@@ -351,7 +448,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           }
         }
 
-        await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
+        if (currentResponse) {
+          // if we have response, then we can not have data by design
+          currentData = undefined
+        }
+
+        if (currentData) {
+          await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
+        }
         return {
           ctx: currentCtx,
           data: currentData,
@@ -365,11 +469,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           response: currentResponse,
           error: null,
           status: currentStatus,
-          output: currentLastOutput,
+          output: currentOutput,
+          // TODO:ASAP fix it
+          effects: {} as never,
         }
       } catch (error) {
         try {
-          await this.appendQueryClientCache({ data: currentData, point, error, input })
+          if (currentData) {
+            await this.appendQueryClientCache({ data: currentData, point, error, input })
+          }
           const error0 = Error0.from(error)
           return {
             ctx: currentCtx,
@@ -384,7 +492,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             error: error0,
             status: error0.httpStatus ?? 500,
             response: currentResponse,
-            output: currentLastOutput,
+            output: currentOutput,
+            // TODO:ASAP fix it
+            effects: {} as never,
           }
         } catch (error2) {
           // in case if we have error in head resolver
@@ -396,7 +506,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             error: error0,
             status: error0.httpStatus ?? 500,
             response: currentResponse,
-            output: currentLastOutput,
+            output: currentOutput,
+            // TODO:ASAP fix it
+            effects: {} as never,
           }
         }
       }
@@ -607,7 +719,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     point: AnyPoint
     input: InputParsed
     inputRaw: InputRaw
-    data: Data
+    data: Data | UndefinedData
     error: unknown
   }): ResolvableHead[] {
     if (!this.pageLocation) {
@@ -619,7 +731,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input,
       inputRaw,
       location: this.pageLocation,
-      loading: point._hasClientLoader() && !error,
+      loading: point._hasClientLoader() && !error, // TODO:ASAP here check not hasClientLoader, but has clientOnlyData
     } as AnyUnqueriedLoaderResult<any, any, any, any, any, any>
     return point._executeHead(unqueriedLoaderResult)
   }
@@ -678,14 +790,18 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 }
 
-export type ExecuteOptions = {
-  point?: AnyPoint | undefined
-  input: InputRaw
+export type ExecuteOptions<
+  TPoint extends EndPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+> = {
+  point?: TPoint | undefined
+  input: TPoint extends EndPoint
+    ? InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>
+    : InputRaw
   withLayouts?: boolean
 }
 export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
   ? {
-      output: Ctx
+      output: Ctx | [Ctx, ...string[]]
       record: ServerExecuteAction<'ctx'>
     }
   : TType extends 'loader'

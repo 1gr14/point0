@@ -19,8 +19,11 @@ export const createIdeaMutation = client
       date: z.date(),
     }),
   )
-  .loader(async ({ input, data, inputRaw }) => {
-    return { ...data, ...input }
+  .ctx([{ zz: 'ZZ' }])
+  .ctx([{ ooo: 'OOO' }])
+  .ctx([{ yy: 'YY', xx: 'XX' }, 'xx'])
+  .loader(async (o) => {
+    return { ...o.input, xx: o.xx }
   })
   .input(
     z.object({
@@ -49,6 +52,7 @@ export const createIdeaMutation = client
     return { idea, ...data }
   })
   .clientLoader(async (o) => {
+    console.info('o', o.data.xx)
     return { ...o.data, x: 1 }
   })
   .mutation({
@@ -83,7 +87,7 @@ export const generateIdeaMutation = client
 
 export const clientFnMutation = client
   .lets('mutation', 'clientFnMutation')
-  .clientLoader(async ({ input, data, response }) => {
+  .clientLoader(async ({ input, data }) => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
@@ -92,7 +96,7 @@ export const clientFnMutation = client
 
 export const clientFnMutationX = client
   .lets('mutation', 'clientFnMutation')
-  .loader(async ({ input, data, response }) => {
+  .loader(async ({ input, data }) => {
     return new Response('HELLO!', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
@@ -118,11 +122,13 @@ export const clientFn2Mutation = client
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
   })
-  .clientLoader(async ({ input, data, response }) => {
+  .clientLoader(async ({ input, data }) => {
     return { x: 123 }
   })
-  .clientLoader(async ({ input, data, response }) => {
-    return response
+  .clientLoader(async ({ input, data }) => {
+    return new Response('HELLO!', {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
   })
   .mutation()
 

@@ -11,7 +11,6 @@ export const empty = client
   // })
   .clientLoader(({ data }) => {
     return {
-      ...data,
       ideasCountX3: 27,
     }
   })

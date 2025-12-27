@@ -29,6 +29,7 @@ import {
 import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
+import { useMemo } from 'react'
 import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
@@ -43,12 +44,15 @@ import type {
   AnyUnqueriedLoaderResult,
   AnyUseLoaderResult,
   AppendCtx,
+  AppendCtxExposedKeys,
   BasePoint,
   ClientExecuteAction,
   ClientExecuteDetailedResult,
   ClientLoaderFn,
+  ClientMapperFn,
   ComponentComponent,
   Ctx,
+  CtxExposedKeys,
   CtxFn,
   CurrentRouteDefinition,
   Data,
@@ -59,32 +63,37 @@ import type {
   EmptyData,
   EmptyStringIfStandaloneSlash,
   EndPointType,
+  EndPointTypeOrNever,
   ErrorComponentType,
   ErrorHeadFn,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
+  FetchDetailedOutput,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
   FetchOutput,
   FetchOutputType,
-  FinalClientData,
-  FinalLastOutput,
+  FinalLoaderData,
+  FinalLoaderMappedOutput,
   FinalProps,
   IfAnyThenElse,
   Infer,
+  InferCtxFnOutputCtxAppend,
+  InferCtxFnOutputCtxExposedKeys,
   InputParsed,
   InputRaw,
   InputRawMaybeOptional,
   InputSchema,
   InputSchemaZod,
   IsInputOptional,
-  LastOutput,
   LayoutComponent,
   LayoutPoint,
   LoaderFn,
+  LoaderOutput,
   LoadingComponentType,
   LoadingHeadFn,
+  MapperOutput,
   MergeInputSchemas,
   MiddlewareHeadFn,
   MountableComponent,
@@ -111,7 +120,6 @@ import type {
   PointsScope,
   PrependCtx,
   Props,
-  ProviderValueSetterFn,
   QueryKey,
   QueryMode,
   QueryResultType,
@@ -126,18 +134,18 @@ import type {
   ShowError,
   StandaloneSlashIfUndefined,
   SuccessHeadFn,
-  UndefinedClientResponse,
   UndefinedComponentComponent,
   UndefinedCtx,
+  UndefinedCtxExposedKeys,
   UndefinedData,
   UndefinedEndPointType,
   UndefinedInputSchema,
-  UndefinedLastOutput,
   UndefinedLayoutComponent,
+  UndefinedLoaderOutput,
+  UndefinedMapperOutput,
   UndefinedPageComponent,
   UndefinedProps,
   UndefinedQueryResultType,
-  UndefinedResponse,
   UndefinedRoute,
   UndefinedRouteDefinition,
   UseInfiniteQueryOptions,
@@ -162,35 +170,31 @@ export class Point0<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
-  TData extends Data | UndefinedData,
-  TClientData extends Data | UndefinedData,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema,
-  TResponse extends Response | UndefinedResponse,
-  TClientResponse extends Response | UndefinedResponse,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-  TLastServerOutput extends LastOutput | UndefinedLastOutput,
-  TLastClientOutput extends LastOutput | UndefinedLastOutput,
 > {
   Infer: Infer<
     TPointType,
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
-  > = '__I_AM_POINT0__' as never
+    TProps
+  > = null as never
 
   point: typeof this // this, needed for generator to collect points
 
@@ -236,9 +240,9 @@ export class Point0<
   private readonly _queryOptions: ExtraUseQueryOptions
   readonly _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
     InputRaw<TRouteDefinition, TInputSchema>,
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
-    InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey,
     unknown
   >
@@ -247,20 +251,43 @@ export class Point0<
   private readonly _wrappers: WrapperComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
-  private readonly _providerValueSetter: ProviderValueSetterFn<any, any, any, any, any, any> | undefined
+  private readonly _clientMapperFns: Array<ClientMapperFn<any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly _route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _prevRoute: TPrevRouteDefinition extends RouteDefinition
     ? CallableRoute<TPrevRouteDefinition>
     : UndefinedRoute
   private readonly _page:
-    | PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+    | PageComponent<
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TRouteDefinition,
+        TInputSchema,
+        TProps
+      >
     | UndefinedPageComponent
   private readonly _component:
-    | ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps>
+    | ComponentComponent<
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TInputSchema,
+        TProps
+      >
     | UndefinedComponentComponent
   private readonly _layout:
-    | LayoutComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+    | LayoutComponent<
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TRouteDefinition,
+        TInputSchema,
+        TProps
+      >
     | UndefinedLayoutComponent
   readonly _layouts: LayoutPoint[]
   readonly name: PointName
@@ -272,13 +299,16 @@ export class Point0<
   private readonly _prefetchPolicy: PagePrefetchPolicy
   private readonly _onPrefetchFns: OnPrefetchFn[]
   readonly shouldBePrefetchedOnLinkHover: boolean | number
-  private readonly _ProviderReactContext: Context<FinalClientData<TLastServerOutput, TClientData>> | undefined
+  private readonly _ProviderReactContext:
+    | Context<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>>
+    | undefined
   private readonly _errorComponent:
     | ErrorComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -287,8 +317,9 @@ export class Point0<
   private readonly _layoutErrorComponent: ErrorComponentType<
     DestinationComponentType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -296,8 +327,9 @@ export class Point0<
   private readonly _pageErrorComponent: ErrorComponentType<
     DestinationComponentType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -305,8 +337,9 @@ export class Point0<
   private readonly _componentErrorComponent: ErrorComponentType<
     DestinationComponentType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -314,8 +347,9 @@ export class Point0<
   private readonly _layoutLoadingComponent: LoadingComponentType<
     DestinationComponentType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -324,8 +358,9 @@ export class Point0<
     | LoadingComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -334,8 +369,9 @@ export class Point0<
   private readonly _pageLoadingComponent: LoadingComponentType<
     DestinationComponentType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -343,8 +379,9 @@ export class Point0<
   private readonly _componentLoadingComponent: LoadingComponentType<
     DestinationComponentType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -386,9 +423,9 @@ export class Point0<
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
@@ -397,19 +434,46 @@ export class Point0<
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
-    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any, any>
-    _ProviderReactContext?: Context<FinalClientData<TLastServerOutput, TClientData>> | undefined
+    _clientMapperFns?: ClientMapperFn[]
+    _ProviderReactContext?:
+      | Context<
+          FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        >
+      | undefined
     _useValue?: any
     _route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
     _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallableRoute<TPrevRouteDefinition> : UndefinedRoute
     _page?:
-      | PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+      | PageComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TRouteDefinition,
+          TInputSchema,
+          TProps
+        >
       | UndefinedPageComponent
     _component?:
-      | ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps>
+      | ComponentComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TInputSchema,
+          TProps
+        >
       | UndefinedComponentComponent
     _layout?:
-      | LayoutComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+      | LayoutComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TRouteDefinition,
+          TInputSchema,
+          TProps
+        >
       | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
     name: PointName
@@ -423,8 +487,9 @@ export class Point0<
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -432,8 +497,9 @@ export class Point0<
     _layoutErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -441,8 +507,9 @@ export class Point0<
     _pageErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -450,8 +517,9 @@ export class Point0<
     _componentErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -459,8 +527,9 @@ export class Point0<
     _loadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -468,8 +537,9 @@ export class Point0<
     _layoutLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -477,8 +547,9 @@ export class Point0<
     _pageLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -486,8 +557,9 @@ export class Point0<
     _componentLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -529,7 +601,7 @@ export class Point0<
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
-    this._providerValueSetter = options._providerValueSetter ?? undefined
+    this._clientMapperFns = options._clientMapperFns ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
     this._route =
@@ -565,8 +637,9 @@ export class Point0<
       }) as ErrorComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -586,8 +659,9 @@ export class Point0<
       }) as ErrorComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -608,8 +682,9 @@ export class Point0<
       }) as ErrorComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -620,8 +695,9 @@ export class Point0<
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -631,8 +707,9 @@ export class Point0<
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -642,8 +719,9 @@ export class Point0<
       ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
         DestinationComponentType,
         TQueryResultType,
-        TLastServerOutput,
-        TClientData,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TInputSchema,
         TRouteDefinition,
         TProps
@@ -657,17 +735,15 @@ export class Point0<
     TLetsEndPointType extends EndPointType | UndefinedEndPointType,
     TRequiredCtx extends RequiredCtx,
     TCtx extends Ctx,
-    TData extends Data | UndefinedData,
-    TClientData extends Data | UndefinedData,
+    TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
+    TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+    TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+    TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
     TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
     TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
     TInputSchema extends InputSchema | UndefinedInputSchema,
-    TResponse extends Response | UndefinedResponse,
-    TClientResponse extends Response | UndefinedResponse,
     TQueryResultType extends QueryResultType | UndefinedQueryResultType,
     TProps extends Props | UndefinedProps,
-    TLastServerOutput extends LastOutput | UndefinedLastOutput,
-    TLastClientOutput extends LastOutput | UndefinedLastOutput,
   >(overrides: {
     type?: TPointType
     scope?: PointsScope
@@ -694,9 +770,9 @@ export class Point0<
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
@@ -706,9 +782,11 @@ export class Point0<
     _wrappers?: WrapperComponentType[]
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
-    _providerValueSetter?: ProviderValueSetterFn<any, any, any, any, any, any> | undefined
+    _clientMapperFns?: ClientMapperFn[]
     _ProviderReactContext?:
-      | Context<FinalClientData<TLastServerOutput, TLastClientOutput extends Data ? TLastClientOutput : never>>
+      | Context<
+          FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        >
       | undefined
     _useValue?: any
     _route?: IfAnyThenElse<
@@ -720,13 +798,36 @@ export class Point0<
       AnyRoute
     >
     _page?:
-      | PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+      | PageComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TRouteDefinition,
+          TInputSchema,
+          TProps
+        >
       | UndefinedPageComponent
     _component?:
-      | ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps>
+      | ComponentComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TInputSchema,
+          TProps
+        >
       | UndefinedComponentComponent
     _layout?:
-      | LayoutComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+      | LayoutComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TRouteDefinition,
+          TInputSchema,
+          TProps
+        >
       | UndefinedLayoutComponent
     _layouts?: LayoutPoint[]
     name?: PointName
@@ -740,8 +841,9 @@ export class Point0<
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -749,8 +851,9 @@ export class Point0<
     _layoutErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -758,8 +861,9 @@ export class Point0<
     _pageErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -767,8 +871,9 @@ export class Point0<
     _componentErrorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -776,8 +881,9 @@ export class Point0<
     _loadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -785,8 +891,9 @@ export class Point0<
     _layoutLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -794,8 +901,9 @@ export class Point0<
     _pageLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -803,8 +911,9 @@ export class Point0<
     _componentLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       TProps
@@ -815,34 +924,30 @@ export class Point0<
     TLetsEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return new Point0<
       TPointType,
       TLetsEndPointType,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       scope: overrides.scope ?? this.scope,
       _attachedTo: overrides._attachedTo ?? this._attachedTo,
@@ -875,9 +980,9 @@ export class Point0<
         ...this._infiniteQueryOptions,
       }) as ExtraUseInfiniteQueryOptions<
         InputRaw<TRouteDefinition, TInputSchema>,
-        FinalClientData<TLastServerOutput, TClientData>,
+        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
         Error0,
-        InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+        InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
         QueryKey,
         unknown
       >,
@@ -885,7 +990,7 @@ export class Point0<
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
-      _providerValueSetter: overrides._providerValueSetter ?? this._providerValueSetter,
+      _clientMapperFns: overrides._clientMapperFns ?? this._clientMapperFns,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
       _route: (overrides._route ?? this._route) as never,
@@ -914,7 +1019,8 @@ export class Point0<
     })
   }
 
-  attach<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  // TODO: remove it
+  attach<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     point: TPoint,
   ): TPoint {
     const result = this._continue({
@@ -936,21 +1042,17 @@ export class Point0<
     'root',
     UndefinedCtx,
     EmptyCtx,
-    UndefinedData,
-    UndefinedData,
+    UndefinedCtxExposedKeys,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
-    UndefinedResponse,
-    UndefinedClientResponse,
     UndefinedQueryResultType,
-    UndefinedProps,
-    UndefinedLastOutput,
-    UndefinedLastOutput
+    UndefinedProps
   >
-  static create<
-    TRootPoint extends NiceRootEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
-  >(
+  static create<TRootPoint extends NiceRootEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     scope: string,
     attachedTo: PointsScope[],
   ): NiceRootMiddlePoint<
@@ -959,17 +1061,15 @@ export class Point0<
     // TODO: check .d.ts files, is this approach heavy or not?
     TRootPoint['Infer']['RequiredCtx'],
     TRootPoint['Infer']['Ctx'],
-    TRootPoint['Infer']['Data'],
-    TRootPoint['Infer']['ClientData'],
+    TRootPoint['Infer']['CtxExposedKeys'],
+    TRootPoint['Infer']['ServerLoaderOutput'],
+    TRootPoint['Infer']['ClientLoaderOutput'],
+    TRootPoint['Infer']['ClientMapperOutput'],
     UndefinedRoute,
     UndefinedRoute,
     UndefinedInputSchema,
-    UndefinedResponse,
-    UndefinedClientResponse,
     UndefinedQueryResultType,
-    UndefinedProps,
-    UndefinedLastOutput,
-    UndefinedLastOutput
+    UndefinedProps
   >
   static create(scope: string, attachedTo?: PointsScope[]) {
     return new Point0({
@@ -989,34 +1089,30 @@ export class Point0<
     'root',
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue<
       TPointType,
       'root',
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({})
   }
 
@@ -1027,34 +1123,30 @@ export class Point0<
     'root',
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue<
       TPointType,
       'root',
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       _serverurl: serverurl,
     })
@@ -1067,34 +1159,30 @@ export class Point0<
     'root',
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue<
       TPointType,
       'root',
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       _baseurl: baseurl,
     })
@@ -1107,7 +1195,7 @@ export class Point0<
   //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
   // ): NiceMiddlePoint<
   //   TPointType,
-  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -1128,20 +1216,18 @@ export class Point0<
     ssr: boolean,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _ssr: ssr,
@@ -1152,20 +1238,18 @@ export class Point0<
     mutationOptions: UseMutationOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultMutationOptions: mutationOptions,
@@ -1176,20 +1260,18 @@ export class Point0<
     queryOptions: ExtraUseQueryOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultQueryOptions: queryOptions,
@@ -1200,20 +1282,18 @@ export class Point0<
     infiniteQueryOptions: PartialUseInfiniteQueryOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultInfiniteQueryOptions: infiniteQueryOptions,
@@ -1224,20 +1304,18 @@ export class Point0<
     pageQueryOptions: UseQueryOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultPageQueryOptions: pageQueryOptions,
@@ -1248,20 +1326,18 @@ export class Point0<
     componentQueryOptions: UseQueryOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultComponentQueryOptions: componentQueryOptions,
@@ -1272,20 +1348,18 @@ export class Point0<
     providerQueryOptions: UseQueryOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultProviderQueryOptions: providerQueryOptions,
@@ -1296,20 +1370,18 @@ export class Point0<
     layoutQueryOptions: UseQueryOptions,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _defaultLayoutQueryOptions: layoutQueryOptions,
@@ -1320,20 +1392,18 @@ export class Point0<
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
@@ -1344,13 +1414,19 @@ export class Point0<
 
   error(
     errorComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
-      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+      ? FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        > extends Response
         ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
         : ErrorComponentType<
             DestinationComponentType,
             TQueryResultType,
-            TLastServerOutput,
-            TClientData,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
             TInputSchema,
             TRouteDefinition,
             TProps
@@ -1358,32 +1434,36 @@ export class Point0<
       : ErrorComponentType,
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   error(
     ...args: TLetsEndPointType extends 'page'
-      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+      ? FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        > extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: ErrorHeadFn<TLastServerOutput, TClientData, TInputSchema, TRouteDefinition>,
+            head: ErrorHeadFn<TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
             pageErrorComponent: ErrorComponentType<
               DestinationComponentType,
               TQueryResultType,
-              TLastServerOutput,
-              TClientData,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TClientMapperOutput,
               TInputSchema,
               TRouteDefinition,
               TProps
@@ -1392,20 +1472,18 @@ export class Point0<
       : never
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   error(...args: [head: any, errorComponent: any] | [errorComponent: any]) {
     const [head, errorComponent] = (args.length === 2 ? args : [undefined, args[0]]) as [
@@ -1447,20 +1525,18 @@ export class Point0<
     layoutErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -1473,58 +1549,52 @@ export class Point0<
     pageErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   pageError(
     pageErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   pageError(
     ...args: [head: ErrorHeadFn, pageErrorComponent: ErrorComponentType] | [pageErrorComponent: ErrorComponentType]
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     const [head, pageErrorComponent] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
@@ -1542,20 +1612,18 @@ export class Point0<
     componentErrorComponent: ErrorComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -1567,20 +1635,18 @@ export class Point0<
     layoutLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -1593,39 +1659,35 @@ export class Point0<
     pageLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   pageLoading(
     pageLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   pageLoading(
     ...args:
@@ -1633,20 +1695,18 @@ export class Point0<
       | [pageLoadingComponent: LoadingComponentType]
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     const [head, pageLoadingComponent] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
@@ -1664,20 +1724,18 @@ export class Point0<
     componentLoadingComponent: LoadingComponentType,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -1687,13 +1745,19 @@ export class Point0<
 
   loading(
     pageLoadingComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
-      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+      ? FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        > extends Response
         ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
         : LoadingComponentType<
             DestinationComponentType,
             TQueryResultType,
-            TLastServerOutput,
-            TClientData,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
             TInputSchema,
             TRouteDefinition,
             TProps
@@ -1701,32 +1765,36 @@ export class Point0<
       : LoadingComponentType,
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   loading(
     ...args: TLetsEndPointType extends 'page'
-      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+      ? FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        > extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: LoadingHeadFn<TLastServerOutput, TClientData, TInputSchema, TRouteDefinition>,
+            head: LoadingHeadFn<TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
             pageLoadingComponent: LoadingComponentType<
               DestinationComponentType,
               TQueryResultType,
-              TLastServerOutput,
-              TClientData,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TClientMapperOutput,
               TInputSchema,
               TRouteDefinition,
               TProps
@@ -1735,20 +1803,18 @@ export class Point0<
       : never
   ): NiceMiddlePoint<
     TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   loading(...args: [head: any, pageLoadingComponent: any] | [pageLoadingComponent: any]) {
     const [head, ladingComponent] = args.length === 2 ? args : [undefined, args[0]]
@@ -1785,26 +1851,45 @@ export class Point0<
 
   wrapper(
     wrapperComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
-      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+      ? FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        > extends Response
         ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
-        : WrapperComponentType<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TRouteDefinition, TProps>
-      : WrapperComponentType<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TRouteDefinition, TProps>,
+        : WrapperComponentType<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
+            TInputSchema,
+            TRouteDefinition,
+            TProps
+          >
+      : WrapperComponentType<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TInputSchema,
+          TRouteDefinition,
+          TProps
+        >,
   ): NiceMiddlePoint<
     'renderMiddleware',
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _wrappers: [...this._wrappers, wrapperComponent as never],
@@ -1813,69 +1898,81 @@ export class Point0<
 
   // middlewares
 
-  ctx<TNewCtx extends Ctx = Ctx>(
-    ctxFn: CtxFn<TCtx, TData, TResponse, TRouteDefinition, TInputSchema, TNewCtx>,
+  ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TRouteDefinition, TInputSchema, Ctx>>(
+    ctxFn: TCtxFn,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
-    TNewCtx,
-    TData,
-    TClientData,
+    AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
+    AppendCtxExposedKeys<TCtxExposedKeys, InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
-  ctx<TAppendCtx extends Ctx = Ctx>(
+  ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
-  ctx<TNewCtx extends Ctx = Ctx>(
-    ctxOrFn: TNewCtx,
+  ctx<TAppendCtx extends Ctx>(
+    ctx: [TAppendCtx],
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
-    TNewCtx,
-    TData,
-    TClientData,
+    AppendCtx<TCtx, TAppendCtx>,
+    AppendCtxExposedKeys<TCtxExposedKeys, Extract<keyof TAppendCtx, string>>,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
-  > {
+    TProps
+  >
+  ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
+    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]],
+  ): NiceMiddlePoint<
+    TPointType,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    AppendCtx<TCtx, TAppendCtx>,
+    AppendCtxExposedKeys<TCtxExposedKeys, TAppendCtxExposedKeys>,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
     const ctxFn =
       typeof ctxOrFn === 'undefined' // in case if we prune ctx for client customer
-        ? ({ ctx }: { ctx: TCtx }) => ({ ...ctx })
+        ? () => ({})
         : typeof ctxOrFn === 'function'
           ? ctxOrFn
-          : ({ ctx }: { ctx: TCtx }) => ({ ...ctx, ...ctxOrFn })
+          : () => ctxOrFn
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
@@ -1884,24 +1981,29 @@ export class Point0<
     }) as never
   }
 
-  loader<TNewLastServerOutput extends Data | Response = Data | Response>(
-    loaderFn: LoaderFn<TCtx, TData, TResponse, TRouteDefinition, TInputSchema, TNewLastServerOutput>,
+  loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
+    loaderFn: LoaderFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TRouteDefinition,
+      TInputSchema,
+      TNewServerLoaderOutput
+    >,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TNewLastServerOutput extends Data ? TNewLastServerOutput : TData,
-    TClientData,
+    TCtxExposedKeys,
+    TNewServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TNewLastServerOutput extends Response ? TNewLastServerOutput : TResponse,
-    TClientResponse,
     TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
-    TProps,
-    TNewLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _queryResultType: this._queryResultType ?? 'query',
@@ -1913,88 +2015,64 @@ export class Point0<
     }) as never
   }
 
-  clientLoader<TNewClientLastOutput extends LastOutput = LastOutput>(
+  clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
     clientLoaderFn: ClientLoaderFn<
       TLetsEndPointType,
       TRouteDefinition,
       TInputSchema,
-      TClientData,
-      TClientResponse,
-      TLastServerOutput,
-      TLastClientOutput,
-      TNewClientLastOutput
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TNewClientLoaderOutput
     >,
   ): NiceMiddlePoint<
     'clientMiddleware',
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TNewClientLastOutput extends Data ? TNewClientLastOutput : TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TNewClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    // server can return only data or only response. so on first client loader, if client loader not provide response, we store there server response to access it later
-    TNewClientLastOutput extends Response
-      ? TNewClientLastOutput
-      : TLastClientOutput extends UndefinedLastOutput
-        ? TLastServerOutput extends Response
-          ? TLastServerOutput
-          : TClientResponse
-        : TClientResponse,
     TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TNewClientLastOutput
+    TProps
   >
   clientLoader(
     enableClientLoader: false,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
     UndefinedData,
+    UndefinedMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    UndefinedResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    UndefinedLastOutput
+    TProps
   >
-  clientLoader(
-    enableClientLoader: true,
-  ): NiceMiddlePoint<
+  // client loader true means that we do not want server do ssr here
+  clientLoader(enableClientLoader: true): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TLastClientOutput extends LastOutput ? TClientData : TLastServerOutput extends Data ? TLastServerOutput : EmptyData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TServerLoaderOutput extends UndefinedLoaderOutput ? EmptyData : TServerLoaderOutput, // if response or data exists in server, now it is client output, else empty data
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TLastClientOutput extends LastOutput
-      ? TClientResponse
-      : TLastServerOutput extends Response
-        ? TLastServerOutput
-        : UndefinedResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput extends LastOutput
-      ? TLastClientOutput
-      : TLastServerOutput extends LastOutput
-        ? TLastServerOutput
-        : EmptyData
+    TProps
   >
-  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any, any> | boolean) {
+  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
       return this._continue({
         _clientExecuteActions: [],
@@ -2022,20 +2100,18 @@ export class Point0<
     head: MiddlewareHeadFn | ResolvableHead | string,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     if (typeof head === 'function') {
       return this._continue({
@@ -2050,20 +2126,18 @@ export class Point0<
 
   props<TNewProps extends Props>(): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TNewProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TNewProps
   > {
     return this._continue({}) as never
   }
@@ -2077,20 +2151,18 @@ export class Point0<
       : ShowError<`Provided schema is not assignable to previous input schema`> & TNewInputSchema,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     MergeInputSchemas<TInputSchema, TNewInputSchema>,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   input(inputSchema: InputSchemaZod) {
     return this._continue({
@@ -2127,7 +2199,7 @@ export class Point0<
   //     : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
   // ): NiceMiddlePoint<
   //   TPointType,
-  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -2143,7 +2215,7 @@ export class Point0<
   //   routeDefinition: TNewRouteDefinition,
   // ): NiceMiddlePoint<
   //   TPointType,
-  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -2159,7 +2231,7 @@ export class Point0<
   //   relativeRouteDefinition: TNewRouteDefinition,
   // ): NiceMiddlePoint<
   //   TPointType,
-  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -2175,7 +2247,7 @@ export class Point0<
   // >
   // route(): NiceMiddlePoint<
   //   TPointType,
-  //   TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+  //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
   //   TCtx,
   //   TData,
@@ -2218,8 +2290,10 @@ export class Point0<
     'page',
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TProvidedRoute extends AnyRoute
       ? FlatInputStringOnly<TProvidedRoute> extends InputRaw<TRouteDefinition, TInputSchema>
         ? TProvidedRoute['definition']
@@ -2233,12 +2307,8 @@ export class Point0<
         : never,
     TRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    UndefinedProps,
-    TLastServerOutput,
-    TLastClientOutput
+    UndefinedProps
   >
   lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = '/'>(
     letsEndPointType: 'layout',
@@ -2249,8 +2319,10 @@ export class Point0<
     'layout',
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TProvidedRoute extends AnyRoute
       ? FlatInputStringOnly<TProvidedRoute> extends InputRaw<TRouteDefinition, TInputSchema>
         ? TProvidedRoute['definition']
@@ -2264,32 +2336,26 @@ export class Point0<
         : never,
     TRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    UndefinedProps,
-    TLastServerOutput,
-    TLastClientOutput
+    UndefinedProps
   >
   lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'root'>, TPointName extends PointName>(
     letsEndPointType: TNewLetsEndPointType,
     pointName: TPointName,
   ): NiceMiddlePoint<
     'middleware',
-    TNewLetsEndPointType extends EndPointType ? TNewLetsEndPointType : never,
+    TNewLetsEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TRouteDefinition,
     TInputSchema,
-    TClientResponse,
-    TResponse,
     TQueryResultType,
-    UndefinedProps,
-    TLastServerOutput,
-    TLastClientOutput
+    UndefinedProps
   >
   lets(letsEndPointType: EndPointType, pointName: PointName, route?: AnyRoute | string) {
     const prevRoute = this._route
@@ -2326,7 +2392,6 @@ export class Point0<
       _component: undefined,
       _layout: undefined,
       _ProviderReactContext: undefined,
-      _providerValueSetter: undefined,
       _useValue: undefined,
       _layouts: this.type === 'layout' ? [...this._layouts, this as LayoutPoint] : [...this._layouts],
       _serverurl: this._base?._serverurl,
@@ -2367,17 +2432,15 @@ export class Point0<
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       type: 'root',
@@ -2393,17 +2456,15 @@ export class Point0<
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       type: 'base',
@@ -2413,7 +2474,12 @@ export class Point0<
   }
 
   page(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Response
       ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
       : never[]
   ): MountableComponent<TInputSchema, TProps, false> &
@@ -2422,49 +2488,76 @@ export class Point0<
       UndefinedEndPointType,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >
   page(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Response
       ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
-      : [page: PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>]
+      : [
+          page: PageComponent<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
+            TRouteDefinition,
+            TInputSchema,
+            TProps
+          >,
+        ]
   ): MountableComponent<TInputSchema, TProps, false> &
     NicePageEndPoint<
       'page',
       UndefinedEndPointType,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >
   page(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Response
       ? [
           ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>,
           ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>,
         ]
       : [
-          head: SuccessHeadFn<TLastServerOutput, TClientData, TRouteDefinition, TInputSchema> | ResolvableHead | string,
-          page: PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>,
+          head:
+            | SuccessHeadFn<TServerLoaderOutput, TClientLoaderOutput, TRouteDefinition, TInputSchema>
+            | ResolvableHead
+            | string,
+          page: PageComponent<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
+            TRouteDefinition,
+            TInputSchema,
+            TProps
+          >,
         ]
   ): MountableComponent<TInputSchema, TProps, false> &
     NicePageEndPoint<
@@ -2472,23 +2565,29 @@ export class Point0<
       UndefinedEndPointType,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >
   page(...args: any[]) {
     const [head, page = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
       SuccessHeadFn | undefined,
       (
-        | PageComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+        | PageComponent<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
+            TRouteDefinition,
+            TInputSchema,
+            TProps
+          >
         | undefined
       ),
     ]
@@ -2509,28 +2608,48 @@ export class Point0<
   }
 
   component(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Response
       ? [ShowError<`Component can not accept response. Last loader should provide plain object data, not response.`>]
-      : [component?: ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps>]
+      : [
+          component?: ComponentComponent<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
+            TInputSchema,
+            TProps
+          >,
+        ]
   ): NiceComponentEndPoint<
     'component',
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     const [component = () => null] = args as [
-      ComponentComponent<TQueryResultType, TLastServerOutput, TClientData, TInputSchema, TProps> | undefined,
+      | ComponentComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TInputSchema,
+          TProps
+        >
+      | undefined,
     ]
     const point = this._continue({
       type: 'component',
@@ -2543,13 +2662,19 @@ export class Point0<
   }
 
   layout(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Response
       ? [ShowError<`Layout can not accept response. Last loader should provide plain object data, not response.`>]
       : [
           layout?: LayoutComponent<
             TQueryResultType,
-            TLastServerOutput,
-            TClientData,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput,
             TRouteDefinition,
             TInputSchema,
             TProps
@@ -2560,20 +2685,26 @@ export class Point0<
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
-      | LayoutComponent<TQueryResultType, TLastServerOutput, TClientData, TRouteDefinition, TInputSchema, TProps>
+      | LayoutComponent<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TRouteDefinition,
+          TInputSchema,
+          TProps
+        >
       | undefined,
     ]
     const point = this._continue({
@@ -2587,71 +2718,72 @@ export class Point0<
     return layout as never
   }
 
-  provider<TNewLastClientOutput extends Data = Data>(
-    valueSetter: ProviderValueSetterFn<
-      TLetsEndPointType,
+  provider<TNewClientMapperOutput extends MapperOutput = MapperOutput>(
+    mapperFn: ClientMapperFn<
       TQueryResultType,
-      TRouteDefinition,
-      TLastServerOutput,
-      TClientData,
-      TNewLastClientOutput
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TNewClientMapperOutput
     >,
   ): NiceProviderEndPoint<
     'provider',
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TNewClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TNewLastClientOutput
+    TProps
   >
   provider(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data ? [] : never
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Data
+      ? []
+      : never
   ): NiceProviderEndPoint<
     'provider',
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   provider(
-    valueSetter?: ProviderValueSetterFn<
-      TLetsEndPointType,
+    mapperFn?: ClientMapperFn<
       TQueryResultType,
-      TRouteDefinition,
-      TLastServerOutput,
-      TClientData,
-      any
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      MapperOutput
     >,
   ) {
     const point = this._continue({
       type: 'provider',
       _letsEndPointType: undefined,
-      _providerValueSetter: valueSetter || (({ data }) => data),
+      _clientMapperFns: mapperFn ? [...this._clientMapperFns, mapperFn as never] : this._clientMapperFns,
       _ProviderReactContext: createContext<
-        FinalClientData<TLastServerOutput, TLastClientOutput extends Data ? TLastClientOutput : never>
+        FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
       >(null as never) as never,
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
         if (!point._ProviderReactContext) {
-          throw new Error('ProviderReactContext 2 not found on point: ' + point.name)
+          throw new Error('ProviderReactContext not found on point: ' + point.name)
         }
 
         if (keys == null) {
@@ -2767,16 +2899,26 @@ export class Point0<
 
   query(
     ...args: TLetsEndPointType extends 'query'
-      ? FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data
+      ? FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        > extends Data
         ? [
             queryOptions?: ExtraUseQueryOptions<
-              FinalClientData<TLastServerOutput, TClientData>,
+              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
               Error0,
-              FinalClientData<TLastServerOutput, TClientData>,
+              FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
               QueryKey
             >,
           ]
-        : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+        : FinalLoaderMappedOutput<
+              TQueryResultType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TClientMapperOutput
+            > extends Response
           ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
           : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
       : never
@@ -2785,45 +2927,41 @@ export class Point0<
     undefined,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     'query',
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   query(
     ...args: TLetsEndPointType extends 'query'
       ? never
       : [
           queryOptions?: ExtraUseQueryOptions<
-            FinalClientData<TLastServerOutput, TClientData>,
+            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
             Error0,
-            FinalClientData<TLastServerOutput, TClientData>,
+            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
             QueryKey
           >,
         ]
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     'query',
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   query(...args: any) {
     const [queryOptions = {}] = args as [ExtraUseQueryOptions]
@@ -2843,18 +2981,28 @@ export class Point0<
   }
 
   infiniteQuery(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Data
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends Data
       ? [
           infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
             InputRaw<TRouteDefinition, TInputSchema>,
-            FinalClientData<TLastServerOutput, TClientData>,
+            FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
             Error0,
-            InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+            InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
             QueryKey,
             unknown
           >,
         ]
-      : FinalLastOutput<TLastServerOutput, TLastClientOutput> extends Response
+      : FinalLoaderMappedOutput<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput
+          > extends Response
         ? [
             ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
           ]
@@ -2865,34 +3013,30 @@ export class Point0<
         undefined,
         TRequiredCtx,
         TCtx,
-        TData,
-        TClientData,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TRouteDefinition,
         TPrevRouteDefinition,
         TInputSchema,
-        TResponse,
-        TClientResponse,
         'infiniteQuery',
-        TProps,
-        TLastServerOutput,
-        TLastClientOutput
+        TProps
       >
     : NiceMiddlePoint<
         TPointType,
-        TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+        EndPointTypeOrNever<TLetsEndPointType>,
         TRequiredCtx,
         TCtx,
-        TData,
-        TClientData,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
         TRouteDefinition,
         TPrevRouteDefinition,
         TInputSchema,
-        TResponse,
-        TClientResponse,
         'infiniteQuery',
-        TProps,
-        TLastServerOutput,
-        TLastClientOutput
+        TProps
       > {
     const [infiniteQueryOptions = {}] = args
     return this._continue({
@@ -2903,9 +3047,9 @@ export class Point0<
       _queryResultType: 'infiniteQuery',
       _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<
         InputRaw<TRouteDefinition, TInputSchema>,
-        FinalClientData<TLastServerOutput, TClientData>,
+        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
         Error0,
-        InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+        InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
         QueryKey,
         unknown
       >,
@@ -2913,10 +3057,15 @@ export class Point0<
   }
 
   mutation(
-    ...args: FinalLastOutput<TLastServerOutput, TLastClientOutput> extends LastOutput
+    ...args: FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends LoaderOutput
       ? [
           mutationOptions?: UseMutationOptions<
-            FinalClientData<TLastServerOutput, TClientData>,
+            FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
             Error0,
             InputRawMaybeOptional<TRouteDefinition, TInputSchema>
           >,
@@ -2927,17 +3076,15 @@ export class Point0<
     UndefinedEndPointType,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     const [mutationOptions = {}] = args
     const point = this._continue({
@@ -2949,6 +3096,7 @@ export class Point0<
   }
 
   _hmr(component: React.Component): typeof this {
+    // TODO: do not clone here, just assign to existing
     const point = this._continue({})
     Point0._assignNicePointMethodsToComponent({ component, point, extra: {} })
     return component as never
@@ -3025,8 +3173,9 @@ export class Point0<
   }): ErrorComponentType<
     TType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -3046,8 +3195,9 @@ export class Point0<
   }): LoadingComponentType<
     TType,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     TProps
@@ -3070,8 +3220,9 @@ export class Point0<
     useLoaderResult: AnyUseLoaderResult<
       any,
       TQueryResultType,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       AnyLocation
@@ -3091,6 +3242,10 @@ export class Point0<
 
   _hasClientLoader(): boolean {
     return this._clientExecuteActions.length > 0 && this._clientExecuteActions.some((fn) => fn.type === 'loader')
+  }
+
+  _hasMapperFns(): boolean {
+    return this._clientMapperFns.length > 0
   }
 
   private _hasClientAsyncLoader(): boolean {
@@ -3155,25 +3310,27 @@ export class Point0<
   }
 
   private async _executeClientAsync({
-    data,
-    response,
+    serverData,
+    serverResponse,
     location,
     input,
-    skipProviderValueSetter,
+    skipClientMapperFns,
   }: {
-    data: Data | undefined
-    response: Response | undefined
+    serverData: Data | undefined
+    serverResponse: Response | undefined
     location?: AnyLocation
     input: InputRaw<TRouteDefinition, TInputSchema>
-    skipProviderValueSetter: boolean
+    skipClientMapperFns: boolean
   }): Promise<{
     clientData: Data | undefined
+    clientMappedData: Data | undefined
     clientResponse: Response | undefined
     clientOutput: Data | Response | undefined
   }> {
-    let currentClientData: Data | undefined = data
-    let currentClientResponse: Response | undefined = response
-    let currentClientOutput: Data | Response | undefined = response ?? data
+    let currentClientData: Data | undefined = serverData
+    let currentClientMappedData: Data | undefined = serverData
+    let currentClientResponse: Response | undefined = serverResponse
+    let currentClientOutput: Data | Response | undefined = serverResponse ?? serverData
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
     const { parsedInput, inputError } = (() => {
       const result = this.parseInputSafe(input)
@@ -3208,15 +3365,17 @@ export class Point0<
           const result = await clientExecuteAction.fn({
             data: currentClientData ?? {},
             location,
+            response: serverResponse,
             input: currentInputParsed,
             inputRaw: input,
-            response: currentClientResponse,
           })
           if (result instanceof Response) {
             currentClientResponse = result
             currentClientOutput = result
           } else {
+            currentClientResponse = undefined
             currentClientData = result
+            currentClientMappedData = result
             currentClientOutput = result
           }
           break
@@ -3227,20 +3386,22 @@ export class Point0<
         }
       }
     }
-    if (this._providerValueSetter && !skipProviderValueSetter) {
-      currentClientOutput = this._providerValueSetter({
-        data: currentClientData,
-        location,
-      })
+    if (!skipClientMapperFns) {
+      for (const clientMapperFn of this._clientMapperFns) {
+        // here we always send data only, becouse if last loader return response, then mapper can not exists by design
+        currentClientMappedData = clientMapperFn({ data: currentClientMappedData })
+        currentClientOutput = currentClientMappedData
+      }
     }
     return {
       clientData: currentClientData,
+      clientMappedData: currentClientMappedData,
       clientResponse: currentClientResponse,
       clientOutput: currentClientOutput,
     }
   }
 
-  // TODO: merge it with _executeClientAsync
+  // TODO: maybe remove it?
   // private _executeClientSync({
   //   data,
   //   response,
@@ -3322,8 +3483,8 @@ export class Point0<
   _executeHead(
     unqueriedLoaderResult: AnyUnqueriedLoaderResult<
       any,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
       TInputSchema,
       TRouteDefinition,
       AnyLocation
@@ -3341,8 +3502,8 @@ export class Point0<
   private _useHead(
     unqueriedLoaderResult: AnyUnqueriedLoaderResult<
       any,
-      TLastServerOutput,
-      TClientData,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
       TInputSchema,
       TRouteDefinition,
       AnyLocation
@@ -3399,7 +3560,7 @@ export class Point0<
           queryOptions?: ExtraUseQueryOptions | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
-  ): UsePointQueryResult<TQueryResultType, TLastServerOutput, TClientData, any> {
+  ): UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, queryOptions, fetchOptions] = args
     const location = useLocation()
     const serverQueryEnabled = this._hasLoader()
@@ -3449,9 +3610,9 @@ export class Point0<
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -3463,16 +3624,16 @@ export class Point0<
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
             | undefined,
           fetchOptions?: FetchOptions | undefined,
         ]
-  ): UsePointQueryResult<TQueryResultType, TLastServerOutput, TClientData, any> {
+  ): UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, infiniteQueryOptions, fetchOptions] = args
     const location = useLocation()
     const serverQueryEnabled = this._hasLoader()
@@ -3515,7 +3676,7 @@ export class Point0<
     return query as never
   }
 
-  private _useLoader(
+  useLoader(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [
           input?: InputRaw<TRouteDefinition, TInputSchema>,
@@ -3523,9 +3684,9 @@ export class Point0<
             | ExtraUseQueryOptions
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -3538,9 +3699,9 @@ export class Point0<
             | ExtraUseQueryOptions
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -3550,12 +3711,13 @@ export class Point0<
   ): AnyUseLoaderResult<
     any,
     TQueryResultType,
-    TLastServerOutput,
-    TClientData,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TInputSchema,
     TRouteDefinition,
     AnyLocation
-  > & { dataOrLastInfiteData: FinalClientData<TLastServerOutput, TClientData> } {
+  > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, inputParsed, inputParseError } = React.useMemo<
@@ -3592,47 +3754,60 @@ export class Point0<
     if (!this._hasLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
         return {
-          data: {},
+          data: this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), undefined as never),
           loading: false,
           error: inputParseError ?? null,
           query: null,
           location,
           input: inputParsed,
           inputRaw,
-          dataOrLastInfiteData: {},
+          dataOrLastInfiteData: undefined,
         }
       }, [inputParseError, inputRaw, inputParsed, location])
       return result as never
     }
     const query =
       this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery(...(args as never)) : this.useQuery(...args)
+    const mappedData = useMemo(() => {
+      if (!query.data) {
+        return undefined
+      }
+      if (!this._clientMapperFns.length) {
+        return query.data
+      }
+      return this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), query.data)
+    }, [query.data])
+    // const mappedData = query.data
+    //   ? this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), query.data)
+    //   : undefined
+    console.log('useLoader name mappedData query.data', this.name, mappedData, query.data)
     const result = React.useMemo(() => {
       const dataOrLastInfiteData =
-        this._queryResultType === 'infiniteQuery' ? (query?.data?.pages as any)?.at(-1) : query?.data
+        this._queryResultType === 'infiniteQuery' ? (query.data?.pages as any)?.at(-1) : query.data
       return {
-        data: query?.data,
-        loading: query?.isLoading,
-        error: query?.error ? Error0.from(query.error) : null,
+        data: mappedData,
+        loading: query.isLoading,
+        error: query.error ? Error0.from(query.error) : null,
         query: query as never,
         location,
         input: inputParsed,
         inputRaw,
         dataOrLastInfiteData,
       }
-    }, [query, query?.data, query?.error, query?.isLoading, inputRaw, inputParsed, location])
+    }, [query, query.data, query.error, query.isLoading, inputRaw, inputParsed, location, mappedData])
     return result as never
   }
 
-  async fetch(
+  async fetchDetailed(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
-  ): Promise<FetchOutput<TLastServerOutput>> {
+  ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
     if (!this._serverurl) {
-      throw new Error('Server URL is not set')
+      return { error: new Error0('Server URL is not set'), response: undefined, data: undefined, output: undefined }
     }
     const url = new URL('/_point0', this._serverurl)
     const method = 'post'
@@ -3676,32 +3851,54 @@ export class Point0<
       body,
     })
     if (res.headers.get('X-Point0-Response') === 'true') {
-      return res as FetchOutput<TLastServerOutput>
+      return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
     }
     try {
       const json = await res.json()
       const data = this._tranformer.deserialize(json)
       if (res.ok) {
-        return data as FetchOutput<TLastServerOutput>
+        return { response: res, data, error: null, output: data } as FetchDetailedOutput<TServerLoaderOutput>
       }
-      throw Error0.from(data, {
-        httpStatus: res.status,
-      })
+      return {
+        response: res,
+        output: undefined,
+        data: undefined,
+        error: Error0.from(data, {
+          httpStatus: res.status,
+        }),
+      }
     } catch (error) {
-      throw Error0.from(error)
+      return {
+        response: res,
+        data: undefined,
+        error: Error0.from(error),
+        output: undefined,
+      } as FetchDetailedOutput<TServerLoaderOutput>
     }
+  }
+
+  async fetch(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
+  ): Promise<FetchOutput<TServerLoaderOutput>> {
+    const detailedResult = await this.fetchDetailed(...args)
+    if (detailedResult.error) {
+      throw detailedResult.error
+    }
+    return detailedResult.data as FetchOutput<TServerLoaderOutput>
   }
 
   async executeDetailed(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? TData extends Data
+      ? TServerLoaderOutput extends LoaderOutput
         ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input?: InputRaw<TRouteDefinition, TInputSchema>]
-      : TData extends Data
+      : TServerLoaderOutput extends LoaderOutput
         ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): Promise<
-    ClientExecuteDetailedResult<TData, TResponse, TClientData, TClientResponse, TLastServerOutput, TLastClientOutput>
+    ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   > {
     if (Point0.isServer) {
       throw new Error0(
@@ -3722,10 +3919,10 @@ export class Point0<
     if (this._hasClientLoader()) {
       //   if (this._hasClientAsyncLoader()) {
       const { clientOutput, clientData, clientResponse } = await this._executeClientAsync({
-        data: serverData || {},
-        response: serverResponse,
+        serverData,
+        serverResponse,
         input: input as never,
-        skipProviderValueSetter: false,
+        skipClientMapperFns: false,
       })
       return {
         serverData,
@@ -3735,14 +3932,7 @@ export class Point0<
         clientResponse,
         clientOutput,
         output: clientOutput ?? serverOutput,
-      } as ClientExecuteDetailedResult<
-        TData,
-        TResponse,
-        TClientData,
-        TClientResponse,
-        TLastServerOutput,
-        TLastClientOutput
-      >
+      } as ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
       //   } else {
       //     const { clientOutput, clientData, clientResponse } = this._executeClientSync({
       //       data: serverData || {},
@@ -3775,25 +3965,18 @@ export class Point0<
       clientResponse: undefined,
       clientOutput: undefined,
       output: serverOutput,
-    } as ClientExecuteDetailedResult<
-      TData,
-      TResponse,
-      TClientData,
-      TClientResponse,
-      TLastServerOutput,
-      TLastClientOutput
-    >
+    } as ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   }
 
   async execute(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
-      ? TData extends Data
+      ? TServerLoaderOutput extends LoaderOutput
         ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input?: InputRaw<TRouteDefinition, TInputSchema>]
-      : TData extends Data
+      : TServerLoaderOutput extends LoaderOutput
         ? [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputRaw<TRouteDefinition, TInputSchema>]
-  ): Promise<FinalLastOutput<TLastServerOutput, TLastClientOutput>> {
+  ): Promise<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>> {
     const detailedResult = await this.executeDetailed(...args)
     return detailedResult.output
   }
@@ -3900,7 +4083,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-  }): UseQueryOptions<FetchOutput<TLastServerOutput>, Error0, FetchOutput<TLastServerOutput>, QueryKey> {
+  }): UseQueryOptions<FetchOutput<TServerLoaderOutput>, Error0, FetchOutput<TServerLoaderOutput>, QueryKey> {
     const queryKey = this._getServerQueryKey({ input, outputType, isInfiniteQuery: false })
     const queryFn = async () => {
       const data = await this.fetch(input as never, fetchOptions, outputType)
@@ -3920,16 +4103,16 @@ export class Point0<
     input,
     queryOptions,
     location,
-    data,
+    serverData,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
-    data?: Data
+    serverData?: Data
   }): UseQueryOptions<
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
@@ -3937,11 +4120,11 @@ export class Point0<
       // this._hasClientAsyncLoader() ?
       async () => {
         const { clientData } = await this._executeClientAsync({
-          data: data || {},
+          serverData,
           location,
           input,
-          response: undefined,
-          skipProviderValueSetter: true,
+          serverResponse: undefined,
+          skipClientMapperFns: true,
         })
         return clientData
       }
@@ -3971,9 +4154,9 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
   }): UseQueryOptions<
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
     queryClient ??= Point0.getQueryClient()
@@ -3993,7 +4176,7 @@ export class Point0<
         input: input as never,
         queryOptions,
         location,
-        data: serverData as never,
+        serverData: serverData as never,
       })
       return await queryClient.fetchQuery(clientOpts as any)
     }
@@ -4032,9 +4215,9 @@ export class Point0<
           },
         ]
   ): UseQueryOptions<
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
     const hasClientLoader = this._hasClientLoader()
@@ -4078,9 +4261,9 @@ export class Point0<
     infiniteQueryOptions:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
@@ -4088,9 +4271,9 @@ export class Point0<
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
   }): UseInfiniteQueryOptions<
-    InfiniteData<FetchOutput<TLastServerOutput>>,
+    InfiniteData<FetchOutput<TServerLoaderOutput>>,
     Error0,
-    FetchOutput<TLastServerOutput>,
+    FetchOutput<TServerLoaderOutput>,
     QueryKey
   > {
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
@@ -4121,26 +4304,28 @@ export class Point0<
   private _getClientInfiniteQueryOptions({
     input,
     infiniteQueryOptions,
-    data,
+    serverData,
     location,
   }: {
     input: InputRaw<TRouteDefinition, TInputSchema>
-    data?: Data
+    serverData?: Data
     location?: AnyLocation
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
   }): UseInfiniteQueryOptions<
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> extends Data
+      ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
+      : never,
     Error0,
-    InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: true })
@@ -4150,11 +4335,11 @@ export class Point0<
         try {
           const pageParamFromInput = this._infiniteQueryOptions.pageParamFromInput
           const { clientData } = await this._executeClientAsync({
-            data: data || {},
+            serverData,
             location,
-            response: undefined,
+            serverResponse: undefined,
             input: { ...input, [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam },
-            skipProviderValueSetter: true,
+            skipClientMapperFns: true,
           })
           return clientData
         } catch (error) {
@@ -4198,18 +4383,20 @@ export class Point0<
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
     queryClient?: QueryClient
   }): UseInfiniteQueryOptions<
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> extends Data
+      ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
+      : never,
     Error0,
-    InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
@@ -4256,7 +4443,7 @@ export class Point0<
 
         const clientOpts = this._getClientInfiniteQueryOptions({
           input: input as never,
-          data: serverData as never,
+          serverData: serverData as never,
           infiniteQueryOptions,
           location,
         })
@@ -4283,9 +4470,9 @@ export class Point0<
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -4303,9 +4490,9 @@ export class Point0<
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -4320,9 +4507,9 @@ export class Point0<
         ]
   ): UseInfiniteQueryOptions<
     InputRaw<TRouteDefinition, TInputSchema>,
-    FinalClientData<TLastServerOutput, TClientData>,
+    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     Error0,
-    InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
     QueryKey
   > {
     const [input, infiniteQueryOptions, options = {}] = args
@@ -4418,7 +4605,7 @@ export class Point0<
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-  }): UseQueryResult<FetchOutput<TLastServerOutput>, Error0> {
+  }): UseQueryResult<FetchOutput<TServerLoaderOutput>, Error0> {
     return useQuery(this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType }))
   }
 
@@ -4430,7 +4617,7 @@ export class Point0<
     input: InputRaw<TRouteDefinition, TInputSchema>
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
-  }): UseQueryResult<FinalClientData<TLastServerOutput, TClientData>, Error0> {
+  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, Error0> {
     return useQuery(
       this._getClientQueryOptions({
         input,
@@ -4450,7 +4637,7 @@ export class Point0<
     location?: AnyLocation
     queryOptions?: ExtraUseQueryOptions | undefined
     fetchOptions?: FetchOptions | undefined
-  }): UseQueryResult<FinalClientData<TLastServerOutput, TClientData>, Error0> {
+  }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, Error0> {
     const queryClient = useQueryClient()
     return useQuery(
       this._getCombinedQueryOptions({
@@ -4473,16 +4660,16 @@ export class Point0<
     infiniteQueryOptions:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchOutputType
-  }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TLastServerOutput>>, Error0> {
+  }): UseInfiniteQueryResult<InfiniteData<FetchOutput<TServerLoaderOutput>>, Error0> {
     const infiniteQueryOptions = this._getServerInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -4502,14 +4689,14 @@ export class Point0<
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TLastServerOutput, TClientData>>, Error0> {
+  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, Error0> {
     const infiniteQueryOptions = this._getClientInfiniteQueryOptions({
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
@@ -4529,15 +4716,15 @@ export class Point0<
     infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           InputRaw<TRouteDefinition, TInputSchema>,
-          FinalClientData<TLastServerOutput, TClientData>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           Error0,
-          InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
           QueryKey,
           unknown
         >
       | undefined
     fetchOptions?: FetchOptions | undefined
-  }): UseInfiniteQueryResult<InfiniteData<FinalClientData<TLastServerOutput, TClientData>>, Error0> {
+  }): UseInfiniteQueryResult<InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>, Error0> {
     const queryClient = useQueryClient()
     const infiniteQueryOptions = this._getCombinedInfiniteQueryOptions({
       input,
@@ -4553,7 +4740,7 @@ export class Point0<
     mutationOptions?: MutationOptions,
     fetchOptions?: FetchOptions,
   ): MutationOptions<
-    FinalLastOutput<TLastServerOutput, TLastClientOutput>,
+    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
     Error0,
     InputRawMaybeOptional<TRouteDefinition, TInputSchema>
   > {
@@ -4564,19 +4751,22 @@ export class Point0<
             'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
         }
-        const serverDataOrResponse = await (async () => {
+        const serverFetchResult = await (async () => {
           if (this._hasLoader()) {
-            return await this.fetch(input as never, fetchOptions, undefined)
+            return await this.fetchDetailed(input as never, fetchOptions, undefined)
           }
-          return {}
+          return undefined
         })()
+        if (serverFetchResult?.error) {
+          throw serverFetchResult.error
+        }
         if (this._hasClientLoader()) {
           // if (this._hasClientAsyncLoader()) {
           const { clientOutput } = await this._executeClientAsync({
-            data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
-            response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
+            serverData: serverFetchResult?.data,
+            serverResponse: serverFetchResult?.response,
             input: input as never,
-            skipProviderValueSetter: true,
+            skipClientMapperFns: false,
           })
           return clientOutput
           //   } else {
@@ -4588,7 +4778,21 @@ export class Point0<
           //     return clientOutput
           //   }
         }
-        return serverDataOrResponse as FinalLastOutput<TLastServerOutput, TLastClientOutput>
+        if (this._hasMapperFns()) {
+          return this._clientMapperFns.reduce(
+            (data, mapperFn) => mapperFn({ data }),
+            serverFetchResult?.output,
+          ) as FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        }
+        if (!serverFetchResult?.output) {
+          throw new Error('Server output is not set')
+        }
+        return serverFetchResult.output as FinalLoaderMappedOutput<
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput
+        >
       } catch (error) {
         throw Error0.from(error)
       }
@@ -4599,7 +4803,7 @@ export class Point0<
       ...mutationOptions,
       mutationFn,
     } as MutationOptions<
-      FinalLastOutput<TLastServerOutput, TLastClientOutput>,
+      FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
       Error0,
       InputRawMaybeOptional<TRouteDefinition, TInputSchema>
     >
@@ -4609,7 +4813,7 @@ export class Point0<
     mutationOptions?: MutationOptions | undefined,
     fetchOptions?: FetchOptions | undefined,
   ): UseMutationResult<
-    FinalLastOutput<TLastServerOutput, TLastClientOutput>,
+    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
     Error0,
     InputRawMaybeOptional<TRouteDefinition, TInputSchema>
   > => {
@@ -4709,9 +4913,9 @@ export class Point0<
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -4731,9 +4935,9 @@ export class Point0<
           infiniteQueryOptions?:
             | ExtraUseInfiniteQueryOptions<
                 InputRaw<TRouteDefinition, TInputSchema>,
-                FinalClientData<TLastServerOutput, TClientData>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                 Error0,
-                InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                 QueryKey,
                 unknown
               >
@@ -4839,9 +5043,9 @@ export class Point0<
                 ? Partial<
                     ExtraUseInfiniteQueryOptions<
                       InputRaw<TRouteDefinition, TInputSchema>,
-                      FinalClientData<TLastServerOutput, TClientData>,
+                      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                       Error0,
-                      InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                       QueryKey,
                       unknown
                     >
@@ -4863,9 +5067,9 @@ export class Point0<
                 ? Partial<
                     ExtraUseInfiniteQueryOptions<
                       InputRaw<TRouteDefinition, TInputSchema>,
-                      FinalClientData<TLastServerOutput, TClientData>,
+                      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
                       Error0,
-                      InfiniteData<FinalClientData<TLastServerOutput, TClientData>>,
+                      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
                       QueryKey,
                       unknown
                     >
@@ -5026,7 +5230,7 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    const result = this._useLoader(inputRaw, this._defaultPageQueryOptions)
+    const result = this.useLoader(inputRaw, this._defaultPageQueryOptions)
 
     this._useHead({ ...result, data: result.dataOrLastInfiteData } as AnyUnqueriedLoaderResult<
       any,
@@ -5042,7 +5246,9 @@ export class Point0<
       return this._withWrappers({
         component: React.createElement(errorComponent, {
           type: 'page',
-          data: undefined as FinalClientData<TLastServerOutput, TClientData> | undefined,
+          data: undefined as
+            | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+            | undefined,
           error: new Error0('No page component'),
           loading: false,
           location,
@@ -5074,18 +5280,18 @@ export class Point0<
         props,
       })
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!result.data) {
-      return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-          error: new Error0('No data'),
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
+
+    // if (!result.data) {
+    //   return this._withWrappers({
+    //     component: React.createElement(errorComponent, {
+    //       ...(result as any),
+    //       type: 'page',
+    //       error: new Error0('No data'),
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
     return this._withWrappers({
       component: React.createElement(this._page, {
         ...(result as any),
@@ -5109,7 +5315,7 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props])
 
-    const result = this._useLoader(inputRaw, this._defaultComponentQueryOptions)
+    const result = this.useLoader(inputRaw, this._defaultComponentQueryOptions)
 
     if (!this._component) {
       // impossible error
@@ -5143,18 +5349,18 @@ export class Point0<
         props,
       })
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!result.data) {
-      return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'component',
-          error: new Error0('No data'),
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
+
+    // if (!result.data) {
+    //   return this._withWrappers({
+    //     component: React.createElement(errorComponent, {
+    //       ...(result as any),
+    //       type: 'component',
+    //       error: new Error0('No data'),
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
     return this._withWrappers({
       component: React.createElement(this._component, {
         ...(result as any),
@@ -5180,7 +5386,7 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props, location])
 
-    const result = this._useLoader(inputRaw, this._defaultLayoutQueryOptions)
+    const result = this.useLoader(inputRaw, this._defaultLayoutQueryOptions)
 
     if (!this._layout) {
       // impossible error
@@ -5214,18 +5420,18 @@ export class Point0<
         props,
       })
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!result.data) {
-      return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'layout',
-          error: new Error0('No data'),
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
+
+    // if (!result.data) {
+    //   return this._withWrappers({
+    //     component: React.createElement(errorComponent, {
+    //       ...(result as any),
+    //       type: 'layout',
+    //       error: new Error0('No data'),
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
     return this._withWrappers({
       component: React.createElement(this._layout, {
         ...result,
@@ -5239,10 +5445,12 @@ export class Point0<
 
   // provider
 
-  getValue(input?: InputRaw<TRouteDefinition, TInputSchema>): FinalLastOutput<TLastServerOutput, TLastClientOutput> {
-    const value = SuperStore.getWeak<FinalLastOutput<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
-    )
+  getValue(
+    input?: InputRaw<TRouteDefinition, TInputSchema>,
+  ): FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> {
+    const value = SuperStore.getWeak<
+      FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+    >(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`)
     if (!value) {
       throw new Error(
         `Provider value not found on point: provider.${this.name}. You should call getValue only after Provider component is mounted and loaded.`,
@@ -5253,10 +5461,12 @@ export class Point0<
 
   getValueSafe(
     input?: InputRaw<TRouteDefinition, TInputSchema>,
-  ): FinalLastOutput<TLastServerOutput, TLastClientOutput> | undefined {
-    const value = SuperStore.getWeak<FinalLastOutput<TLastServerOutput, TLastClientOutput>>(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
-    )
+  ):
+    | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+    | undefined {
+    const value = SuperStore.getWeak<
+      FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+    >(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`)
     return value
   }
 
@@ -5266,9 +5476,6 @@ export class Point0<
 
     if (!this._ProviderReactContext) {
       throw new Error('ProviderReactContext not found on point: ' + this.name)
-    }
-    if (!this._providerValueSetter) {
-      throw new Error('providerValueSetter not found on point: ' + this.name)
     }
 
     const { inputRaw, children } = React.useMemo<{
@@ -5280,7 +5487,7 @@ export class Point0<
       return { inputRaw, children }
     }, [props])
 
-    const result = this._useLoader(inputRaw, this._defaultProviderQueryOptions)
+    const result = this.useLoader(inputRaw, this._defaultProviderQueryOptions)
 
     if (result.error) {
       return this._withWrappers({
@@ -5302,23 +5509,24 @@ export class Point0<
         props,
       })
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!result.data) {
-      return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
-          type: 'page',
-          error: new Error0('No data'),
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
-    const value = this._providerValueSetter(result)
+
+    // if (!result.data) {
+    //   return this._withWrappers({
+    //     component: React.createElement(errorComponent, {
+    //       ...(result as any),
+    //       type: 'page',
+    //       error: new Error0('No data'),
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
+    const value = result.data
     SuperStore.setWeak(
       `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
       value,
     )
+    console.log('Provider name value', this.name, value)
     return this._withWrappers({
       component: React.createElement(this._ProviderReactContext.Provider, {
         value,
@@ -5329,17 +5537,31 @@ export class Point0<
     })
   }
 
-  useValue<K extends keyof FinalLastOutput<TLastServerOutput, TLastClientOutput>>(
-    key: K,
-  ): FinalLastOutput<TLastServerOutput, TLastClientOutput>[K]
-  useValue<K extends keyof FinalLastOutput<TLastServerOutput, TLastClientOutput>>(
+  useValue<
+    K extends keyof FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    >,
+  >(key: K): FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>[K]
+  useValue<
+    K extends keyof FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    >,
+  >(
     keys: K[],
-  ): Pick<FinalLastOutput<TLastServerOutput, TLastClientOutput>, K>
-  useValue(): FinalLastOutput<TLastServerOutput, TLastClientOutput>
+  ): Pick<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>, K>
+  useValue(): FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   useValue(
     keys?:
-      | keyof FinalLastOutput<TLastServerOutput, TLastClientOutput>
-      | Array<keyof FinalLastOutput<TLastServerOutput, TLastClientOutput>>,
+      | keyof FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+      | Array<
+          keyof FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        >,
   ) {
     if (!this._useValue) {
       throw new Error('useValue not found on point: ' + this.name)
@@ -5462,20 +5684,18 @@ export class Point0<
     transformer: DataTransformer,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       _tranformer: Point0._toExtendedTransformer(transformer),
@@ -5501,59 +5721,53 @@ export class Point0<
     documentElementGetter: () => HTMLElement | null,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   scrollPosition(
     selector: string,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   scrollPosition(
     getter: ScrollPositionGetter,
     setter: ScrollPositionSetter,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   >
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter]) {
     const { getter, setter } = (() => {
@@ -5576,20 +5790,18 @@ export class Point0<
     })()
     return this._continue<
       TPointType,
-      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+      EndPointTypeOrNever<TLetsEndPointType>,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
       _scrollPositionGetter: getter ?? this._scrollPositionGetter,
@@ -5603,37 +5815,33 @@ export class Point0<
     policy: ScrollPositionRestorePolicy | boolean | null,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+      EndPointTypeOrNever<TLetsEndPointType>,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy,
     }) as never
@@ -5648,37 +5856,33 @@ export class Point0<
     policy: PagePrefetchPolicy,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+      EndPointTypeOrNever<TLetsEndPointType>,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       _prefetchPolicy: policy,
     }) as never
@@ -5688,37 +5892,33 @@ export class Point0<
     fn: OnPrefetchFn,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue<
       TPointType,
-      TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+      EndPointTypeOrNever<TLetsEndPointType>,
       TRequiredCtx,
       TCtx,
-      TData,
-      TClientData,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
       TRouteDefinition,
       TPrevRouteDefinition,
       TInputSchema,
-      TResponse,
-      TClientResponse,
       TQueryResultType,
-      TProps,
-      TLastServerOutput,
-      TLastClientOutput
+      TProps
     >({
       _onPrefetchFns: [...this._onPrefetchFns, fn],
     }) as never
@@ -5728,20 +5928,18 @@ export class Point0<
     shouldBePrefetchedOnLinkHover: boolean | number,
   ): NiceMiddlePoint<
     TPointType,
-    TLetsEndPointType extends EndPointType ? TLetsEndPointType : never,
+    EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
-    TData,
-    TClientData,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TResponse,
-    TClientResponse,
     TQueryResultType,
-    TProps,
-    TLastServerOutput,
-    TLastClientOutput
+    TProps
   > {
     return this._continue({
       shouldBePrefetchedOnLinkHover,
@@ -5749,7 +5947,10 @@ export class Point0<
   }
 }
 
+export type * from './cookies-store.js'
 export * from './points-manager.js'
+export * from './request.js'
+export * from './response-effects.js'
 export * from './router.js'
 export * from './super-store.js'
 export type * from './types.js'
