@@ -243,7 +243,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await this.withServerGlobalState(async () => {
       if (point?.type === 'page' && withLayouts) {
         for (const layout of point._layouts) {
-          if (!layout._hasLoader()) {
+          if (!layout._hasServerLoader()) {
             continue
           }
           await this.execute({

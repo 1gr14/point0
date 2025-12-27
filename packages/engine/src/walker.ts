@@ -510,6 +510,12 @@ export class Walker {
           } else {
             node.arguments = []
           }
+        } else if (method === 'loader') {
+          if (node.arguments[0]?.type === 'BooleanLiteral') {
+            // Keep as is - argument[0] is false/true (disables/enables loader)
+          } else {
+            node.arguments = []
+          }
         } else {
           node.arguments = []
         }

@@ -2004,7 +2004,56 @@ export class Point0<
     TInputSchema,
     TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
     TProps
-  > {
+  >
+  loader(
+    enableServerLoader: false,
+  ): NiceMiddlePoint<
+    TPointType,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    UndefinedQueryResultType,
+    TProps
+  >
+  loader(enableServerLoader: true): NiceMiddlePoint<
+    TPointType,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : EmptyData, // if response or data exists in server, now it is server output, else empty data
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    UndefinedQueryResultType,
+    TProps
+  >
+  loader(loaderFn: LoaderFn<any, any, any, any, any, any> | boolean) {
+    if (loaderFn === false) {
+      return this._continue({
+        _serverExecuteActions: this._serverExecuteActions.filter((fn) => fn.type !== 'loader'),
+        _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
+        _clientMapperFns: [],
+        _queryResultType:
+          this._letsEndPointType === 'query'
+            ? 'query'
+            : this._letsEndPointType === 'infiniteQuery'
+              ? 'infiniteQuery'
+              : undefined,
+      }) as never
+    }
+    if (loaderFn === true) {
+      loaderFn = (o) => o.data
+    }
     return this._continue({
       _queryResultType: this._queryResultType ?? 'query',
       _serverExecuteActions: [
@@ -2053,7 +2102,13 @@ export class Point0<
     TRouteDefinition,
     TPrevRouteDefinition,
     TInputSchema,
-    TQueryResultType,
+    TServerLoaderOutput extends LoaderOutput
+      ? TQueryResultType
+      : TLetsEndPointType extends 'query'
+        ? 'query'
+        : TLetsEndPointType extends 'infiniteQuery'
+          ? 'infiniteQuery'
+          : UndefinedQueryResultType,
     TProps
   >
   // client loader true means that we do not want server do ssr here
@@ -2064,7 +2119,11 @@ export class Point0<
     TCtx,
     TCtxExposedKeys,
     TServerLoaderOutput,
-    TServerLoaderOutput extends UndefinedLoaderOutput ? EmptyData : TServerLoaderOutput, // if response or data exists in server, now it is client output, else empty data
+    TClientLoaderOutput extends LoaderOutput
+      ? TClientLoaderOutput
+      : TServerLoaderOutput extends UndefinedLoaderOutput
+        ? EmptyData
+        : TServerLoaderOutput, // if response or data exists in server, now it is client output, else empty data
     TClientMapperOutput,
     TRouteDefinition,
     TPrevRouteDefinition,
@@ -2075,7 +2134,15 @@ export class Point0<
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
       return this._continue({
-        _clientExecuteActions: [],
+        _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
+        _clientMapperFns: [],
+        _queryResultType: this._hasServerLoader()
+          ? this._queryResultType
+          : this._letsEndPointType === 'query'
+            ? 'query'
+            : this._letsEndPointType === 'infiniteQuery'
+              ? 'infiniteQuery'
+              : undefined,
       }) as never
     }
     if (clientLoaderFn === true) {
@@ -3236,7 +3303,7 @@ export class Point0<
     }, component) as Exclude<React.ReactNode, Promise<any>>
   }
 
-  _hasLoader(): boolean {
+  _hasServerLoader(): boolean {
     return this._serverExecuteActions.some((fn) => fn.type === 'loader')
   }
 
@@ -3563,7 +3630,7 @@ export class Point0<
   ): UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, queryOptions, fetchOptions] = args
     const location = useLocation()
-    const serverQueryEnabled = this._hasLoader()
+    const serverQueryEnabled = this._hasServerLoader()
     const clientQueryEnabled = this._hasClientLoader()
     if (this._queryResultType === 'infiniteQuery') {
       throw new Error(`Point ${this.name} is not a finite query`)
@@ -3636,7 +3703,7 @@ export class Point0<
   ): UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any> {
     const [input = {}, infiniteQueryOptions, fetchOptions] = args
     const location = useLocation()
-    const serverQueryEnabled = this._hasLoader()
+    const serverQueryEnabled = this._hasServerLoader()
     const clientQueryEnabled = this._hasClientLoader()
     if (this._queryResultType !== 'infiniteQuery') {
       throw new Error(`Point ${this.name} is not an infinite query`)
@@ -3751,7 +3818,7 @@ export class Point0<
       return { inputRaw, ...parsed }
     }, [this._tranformer.stringify(args[0])])
 
-    if (!this._hasLoader() && !this._hasClientLoader()) {
+    if (!this._hasServerLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
         return {
           data: this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), undefined as never),
@@ -3777,10 +3844,6 @@ export class Point0<
       }
       return this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), query.data)
     }, [query.data])
-    // const mappedData = query.data
-    //   ? this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), query.data)
-    //   : undefined
-    console.log('useLoader name mappedData query.data', this.name, mappedData, query.data)
     const result = React.useMemo(() => {
       const dataOrLastInfiteData =
         this._queryResultType === 'infiniteQuery' ? (query.data?.pages as any)?.at(-1) : query.data
@@ -3907,7 +3970,7 @@ export class Point0<
     }
     const [input = {}, fetchOptions] = args
     const { serverData, serverResponse, serverOutput } = await (async () => {
-      if (this._hasLoader()) {
+      if (this._hasServerLoader()) {
         const serverDataOrResponse = await this.fetch(input as never, fetchOptions)
         if (serverDataOrResponse instanceof Response) {
           return { serverData: undefined, serverResponse: serverDataOrResponse, serverOutput: serverDataOrResponse }
@@ -4049,7 +4112,7 @@ export class Point0<
   ): QueryKey {
     const [input, outputType] = args
     const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasLoader()
+    const hasServerLoader = this._hasServerLoader()
     if (hasClientLoader && hasServerLoader) {
       return this._getCombinedQueryKey({
         input: input as never,
@@ -4221,7 +4284,7 @@ export class Point0<
     QueryKey
   > {
     const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasLoader()
+    const hasServerLoader = this._hasServerLoader()
     const [input, queryOptions, options = {}] = args
     const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
@@ -4515,7 +4578,7 @@ export class Point0<
     const [input, infiniteQueryOptions, options = {}] = args
     const { location, queryClient, fetchOptions, outputType, mode = 'serverAndClient' } = options
     const hasClientLoader = this._hasClientLoader()
-    const hasServerLoader = this._hasLoader()
+    const hasServerLoader = this._hasServerLoader()
     if (hasClientLoader && hasServerLoader && (mode === 'client' || mode === 'serverAndClient')) {
       return this._getCombinedInfiniteQueryOptions({
         input: input as never,
@@ -4752,7 +4815,7 @@ export class Point0<
           )
         }
         const serverFetchResult = await (async () => {
-          if (this._hasLoader()) {
+          if (this._hasServerLoader()) {
             return await this.fetchDetailed(input as never, fetchOptions, undefined)
           }
           return undefined
@@ -4876,13 +4939,13 @@ export class Point0<
       mode = 'serverAndClient',
       preventPrefetchFns,
     } = options
-    if (!this._hasLoader() && !this._hasClientLoader()) {
+    if (!this._hasServerLoader() && !this._hasClientLoader()) {
       return
     }
     if (!this._hasClientLoader() && mode === 'client') {
       return
     }
-    if (!this._hasLoader() && mode === 'server') {
+    if (!this._hasServerLoader() && mode === 'server') {
       return
     }
     const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
@@ -4963,13 +5026,13 @@ export class Point0<
       mode = 'serverAndClient',
       preventPrefetchFns,
     } = options
-    if (!this._hasLoader() && !this._hasClientLoader()) {
+    if (!this._hasServerLoader() && !this._hasClientLoader()) {
       return
     }
     if (!this._hasClientLoader() && mode === 'client') {
       return
     }
-    if (!this._hasLoader() && mode === 'server') {
+    if (!this._hasServerLoader() && mode === 'server') {
       return
     }
     const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
@@ -5526,7 +5589,6 @@ export class Point0<
       `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
       value,
     )
-    console.log('Provider name value', this.name, value)
     return this._withWrappers({
       component: React.createElement(this._ProviderReactContext.Provider, {
         value,

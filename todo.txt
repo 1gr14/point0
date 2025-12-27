@@ -3,21 +3,9 @@
 --------------------------
 
 REQUEST/RESPONSE/CTX
-remove data option from .ctx()
 request wrapper: {original, scope, headers:{name:value}, cookies:{name:options}, input, location, method}
 Добавить реквест реферера и там указать какому скоупа принадлежал реферер
 set wrapper: {cookies, headers, status, inspect: {cookies, headers, status}} https://chatgpt.com/c/69456768-4cb8-832e-8a41-2a9c66dc2fbb
-rmove inputRaw from loader/ctx options
-remove TLastResponse, just TServerOutput, TClientOuput, TProviderOutput, becouse if loader provides response, then we switch to next stage
-AppendCtx with Prettify
-InputRaw → InputOriginal
-Do not omit, in exposedCtx, but if try to expose then error
-useLoader and fetchDetailed to nice endpoints
-response should be always last aloader, after it finish
-.ctx(() => {x}) or .ctx({x}) will append x to ctx
-.ctx(() => [{x}]) or .ctx([{x}]) will append x to ctx and loader/ctx options (by providing TCtxExposedKeys)
-.ctx(() => [{x}, 'key1', 'key2']) or .ctx([{x}, 'key1', 'key2']) will append x to ctx, and key1 and key2 to loader/ctx options (by providing TCtxExposedKeys)
-.loader(false)
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
 
 MAPPER
@@ -28,12 +16,15 @@ just reflect on queried data and return new data
 OUTER
 появляется оутер у которого есть рендерЕррор и рендерЛоадинг и чилдерн
 
-
-
 NICE
+AppendCtx with Prettify
+InputRaw → InputOriginal
+Do not omit, in exposedCtx, but if try to expose then error
 X-Point0-Json-Data: 'false'
 Поинт скоуп, нейм, тайп всё это вшить в квери параметры тогда сьютабол сможем получать даже на опшинсах
 В фетч и серв назвать аргумент просто кткс
+useLoader and fetchDetailed to nice endpoints
+response should switch to next stage if provided
 return back type property to NicePoint
 make useLoader public fn, becouse useQuery not enough
 in Nice point.point also lets store nice type, so hide everything from user except required for us
