@@ -397,6 +397,42 @@ export class Fetcher {
       return toJsonErrorResponse(error)
     }
   }
+
+  async fetch({
+    request,
+    requiredCtx,
+    scope,
+    bunServer,
+  }: {
+    request: Request
+    requiredCtx: RequiredCtx
+    scope?: PointsScope
+    bunServer?: Bun.Server<unknown>
+  }): Promise<Response | undefined> {
+    const prepareFetchResult = await this.prepareFetch({
+      originalRequest: request,
+      scope,
+      bunServer,
+    })
+
+    if (prepareFetchResult.devClientsProxyResult) {
+      return prepareFetchResult.devClientsProxyResult.response
+    }
+
+    if (prepareFetchResult.publicdirResult) {
+      return prepareFetchResult.publicdirResult.response
+    }
+
+    const fetchPointResponse = await this.fetchPoint({
+      request: prepareFetchResult.request,
+      suitable: prepareFetchResult.pointResult.suitable,
+      task: prepareFetchResult.pointResult.task,
+      requiredCtx,
+      scope,
+    })
+
+    return fetchPointResponse
+  }
 }
 
 export type PrepareFetchResult =

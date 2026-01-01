@@ -711,29 +711,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (!this.isInitialized()) {
       throw new Error('Server is not initialized')
     }
-
-    const prepareFetchResult = await this.fetcher.prepareFetch({
-      originalRequest: request,
-      scope,
-      bunServer,
-    })
-
-    if (prepareFetchResult.devClientsProxyResult) {
-      return prepareFetchResult.devClientsProxyResult.response
-    }
-
-    if (prepareFetchResult.publicdirResult) {
-      return prepareFetchResult.publicdirResult.response
-    }
-
-    const fetchPointResponse = await this.fetcher.fetchPoint({
-      request: prepareFetchResult.request,
-      suitable: prepareFetchResult.pointResult.suitable,
-      task: prepareFetchResult.pointResult.task,
-      requiredCtx,
-      scope,
-    })
-
-    return fetchPointResponse
+    return await this.fetcher.fetch({ request, requiredCtx, scope, bunServer })
   }
 }
