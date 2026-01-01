@@ -3868,9 +3868,13 @@ export class Point0<
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
+    const fromScope = SuperStore.getWeak('__POINT0_SCOPE__')
+    if (!fromScope || typeof fromScope !== 'string') {
+      throw new Error('Scope is not set. You forget to call PointsManager.create()?')
+    }
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
-      'X-Point0-From-Scope': this.scope,
+      'X-Point0-From-Scope': fromScope,
     })
     if (!this._serverurl) {
       return { error: new Error0('Server URL is not set'), response: undefined, data: undefined, output: undefined }

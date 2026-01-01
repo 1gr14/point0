@@ -67,7 +67,7 @@ export const createIdeaMutation = client
 export const generateIdeaMutation = client
   .lets('mutation', 'generateIdea')
   .loader(async ({ input, ctx, set, request }) => {
-    console.info('request', request.from.ip)
+    console.info('request from ip', request.from.ip)
     set.headers('X-Y', 'zxczxc')
     set.cookies('X-Y', 'kjhkj')
     const stream = new ReadableStream({

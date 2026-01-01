@@ -93,7 +93,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
-    responseEffectsManager: ResponseEffectsManager
+    responseEffectsManager?: ResponseEffectsManager
   }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
@@ -103,7 +103,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pageLocation,
         requiredCtx,
         serverExecuteActionsWithOutput: [],
-        responseEffectsManager,
+        responseEffectsManager: responseEffectsManager ?? ResponseEffectsManager.create(),
         serverGlobalState: {
           __POINT0_SCOPE__: points.scope,
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
@@ -125,6 +125,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   setSsrLocation(ssrLocation: AnyLocation): void {
     if (Point0.isClient) {
+      // TODO: figure out, is Executor really can be called in client? I think, no
       SuperStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
     }
@@ -194,7 +195,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       currentLocation: location,
       requiredCtx,
       pageLocation: point.type === 'page' ? location : undefined,
-      responseEffectsManager: ResponseEffectsManager.create(),
     })
     return await executor.execute({ point, input, withLayouts })
   }
