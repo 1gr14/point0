@@ -1,101 +1,206 @@
 import { Error0 } from '@devp0nt/error0'
-import type { ParsedUrl, PointsScope, RequiredCtx } from '@point0/core'
-import { parseUrl } from '@point0/core'
-import type { AllPointsManagers } from './all-points-managers.js'
+import { Route0 } from '@devp0nt/route0'
+import type { PointsScope, RequiredCtx, EndPointType, InputRawUnknown, PointName } from '@point0/core'
+import { PointRequest } from '@point0/core'
+import type { AllPointsManagers, GetSuitableResult } from './all-points-managers.js'
 import type { ClientBun } from './client.js'
 import type { EngineLogger } from './config.js'
 import { toJsonErrorResponse } from './error.js'
-import type { ServerBun } from './server.js'
+import { Executor } from './executor.js'
+import type { Publicdir } from './publicdir.js'
 
-export const engineFetch = async ({
+export const engineGetTaskFromRequest = ({ request }: { request: PointRequest }): FetchTask | undefined => {
+  if (request.location.pathname !== '/_point0') {
+    return undefined
+  }
+  const searchParams = request.location.searchParams
+  const validPointTypes = ['page', 'layout', 'component', 'query', 'infiniteQuery', 'mutation', 'provider'] as const
+  const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
+  const { type: pointType, output: outputType, scope, name: pointName } = searchParams as Record<string, unknown>
+  if (typeof scope !== 'string' || scope.length === 0) {
+    throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
+  }
+  if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+    throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
+  }
+  if (typeof pointName !== 'string' || pointName.length === 0) {
+    throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
+  }
+  if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+    throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
+  }
+  return {
+    pointType: pointType as (typeof validPointTypes)[number],
+    outputType: outputType as (typeof validOutputTypes)[number],
+    scope,
+    pointName,
+  }
+}
+
+export const enginePrepareFetch = async ({
+  originalRequest,
+  clients,
+  publicdirs,
   bunServer,
-  server,
+  scope,
+  fallbackScope,
+  allPointsManagers,
+}: {
+  originalRequest: Request
+  clients: Array<ClientBun<true>>
+  publicdirs: Array<Publicdir<true>>
+  bunServer?: Bun.Server<unknown>
+  scope?: PointsScope
+  fallbackScope: PointsScope
+  allPointsManagers: AllPointsManagers
+}): Promise<PrepareFetchResult> => {
+  const request = PointRequest.create(originalRequest)
+
+  const devClientsProxyResponse = await engineDevClientsProxyFetch({
+    request,
+    bunServer,
+    clients,
+  })
+  if (devClientsProxyResponse) {
+    return {
+      publicdir: undefined,
+      publicdirResponse: undefined,
+      suitable: undefined,
+      request,
+      devClientsProxyResponse,
+      task: undefined,
+    }
+  }
+
+  for (const publicdir of publicdirs) {
+    const staticResponse = await publicdir.fetch({ request })
+    if (staticResponse) {
+      return {
+        publicdir,
+        publicdirResponse: staticResponse,
+        suitable: undefined,
+        request,
+        devClientsProxyResponse: undefined,
+        task: undefined,
+      }
+    }
+  }
+
+  const task = engineGetTaskFromRequest({ request })
+
+  if (!task) {
+    const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ request })
+    if (responseFromAbsFilePath) {
+      return {
+        publicdir: undefined,
+        publicdirResponse: responseFromAbsFilePath,
+        suitable: undefined,
+        request,
+        devClientsProxyResponse: undefined,
+        task: undefined,
+      }
+    }
+  }
+
+  const suitable = allPointsManagers.getSuitable({
+    pointType: task?.pointType ?? 'page',
+    scope: task?.scope || scope,
+    pointName: task?.pointName,
+    pageLocation: !task ? request.location : undefined,
+    fallbackScope,
+  })
+
+  return {
+    publicdir: undefined,
+    publicdirResponse: undefined,
+    suitable,
+    request,
+    devClientsProxyResponse: undefined,
+    task,
+  }
+}
+
+export const engineDevClientsProxyFetch = async ({
+  request,
+  bunServer,
+  clients,
+}: {
+  request: PointRequest
+  bunServer?: Bun.Server<unknown>
+  clients: Array<ClientBun<true>>
+}): Promise<Response | undefined> => {
+  if (process.env.NODE_ENV === 'production') {
+    return undefined
+  }
+  for (const client of clients) {
+    // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
+    if (bunServer) {
+      const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
+        request,
+        bunServer,
+      })
+      if (bunDevServerUpgradeWebSocketResult) {
+        return bunDevServerUpgradeWebSocketResult.result as never // it is just for hmr on dev
+      }
+    }
+    const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request })
+    if (clientViteDevServerResponse) {
+      return clientViteDevServerResponse
+    }
+    const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request })
+    if (clientBunDevServerResponse) {
+      return clientBunDevServerResponse
+    }
+  }
+  return undefined
+}
+
+export const engineFetchPoint = async ({
+  prepareFetchResult,
   clients,
   allPointsManagers,
-  request,
-  parsedUrl,
   scope,
   fallbackScope,
   requiredCtx,
   logger,
 }: {
-  bunServer?: Bun.Server<unknown>
-  server: ServerBun<true>
+  prepareFetchResult: Extract<PrepareFetchResult, { suitable: GetSuitableResult }>
   clients: Array<ClientBun<true>>
   allPointsManagers: AllPointsManagers
-  request: Request
-  parsedUrl?: ParsedUrl
   scope?: PointsScope
   fallbackScope: PointsScope
   requiredCtx: RequiredCtx
   logger: EngineLogger
 }): Promise<Response> => {
-  if (process.env.NODE_ENV !== 'production') {
-    for (const client of clients) {
-      // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
-      if (bunServer) {
-        const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
-          request,
-          bunServer,
-          parsedUrl,
-        })
-        if (bunDevServerUpgradeWebSocketResult) {
-          return bunDevServerUpgradeWebSocketResult.result as never // it is just for hmr on dev
-        }
-      }
-      const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request, parsedUrl })
-      if (clientViteDevServerResponse) {
-        return clientViteDevServerResponse
-      }
-      const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request, parsedUrl })
-      if (clientBunDevServerResponse) {
-        return clientBunDevServerResponse
-      }
-    }
+  const request = prepareFetchResult.request
 
-    // in case if some points was loaded via vite, we should refetch them
-    await allPointsManagers.readPoints()
-  }
-  parsedUrl ??= parseUrl(request.url)
   const meta: Record<string, any> = {
-    url: request.url,
+    url: request.original.url,
     scope,
   }
 
   try {
-    const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)]
-    for (const publicdir of publicdirs) {
-      const staticResponse = await publicdir.fetch({ parsedUrl, request })
-      if (staticResponse) {
-        return staticResponse
-      }
-    }
-
     // TODO: lets provide here wrapResponse and wrapRequest and call it
     // TODO: also there on error fo input not throw it but return as error
 
-    if (request.method === 'OPTIONS') {
+    if (request.original.method === 'OPTIONS') {
       // TODO: when we will have headers midlewares, remove this
       return new Response(null, {
         status: 204,
       })
     }
-    const { task, input, suitable, executor } = await allPointsManagers.prepareExecutorByRequest({
+
+    const suitable = prepareFetchResult.suitable
+    const executor = await Executor.create({
       request,
-      parsedUrl,
-      fallbackScope,
-      scope,
+      points: suitable.pointsManager,
+      pageLocation: suitable.pageLocation,
+      currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
       requiredCtx,
     })
     meta.scope = suitable.pointsManager.scope
 
-    if (!suitable.point && process.env.NODE_ENV !== 'production') {
-      const responseFromAbsFilePath = await fetchAbsFilePathOnDevServer({ parsedUrl, request })
-      if (responseFromAbsFilePath) {
-        return responseFromAbsFilePath
-      }
-    }
-
+    const task = prepareFetchResult.task
     const pointType = task?.pointType ?? 'page'
     const outputType = task?.outputType ?? 'html'
     meta.pointType = pointType
@@ -105,6 +210,17 @@ export const engineFetch = async ({
 
     const relatedClient = clients.find((client) => client.pointsManager.scope === suitable.pointsManager.scope)
 
+    const getInput = async () => {
+      // we do not call it immediatelly, becouse for openapi points we do not want parse input, so developer can read body when it needed
+      return (
+        (await allPointsManagers.getTaskInputFromRequest({
+          request,
+          fallbackScope,
+          scope: suitable.pointsManager.scope || scope || fallbackScope,
+        })) || {}
+      )
+    }
+
     if (relatedClient) {
       if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
         try {
@@ -112,6 +228,7 @@ export const engineFetch = async ({
             // I think it will never throw, but who knows
             throw new Error('Page Critical Error: Not Found')
           }
+          const input = await getInput()
           const executeResult = await executor.execute({
             point: suitable.point,
             input,
@@ -134,7 +251,7 @@ export const engineFetch = async ({
         } catch (error) {
           // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
           if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
-            const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
+            const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
             return new Response(indexHtml, {
               headers: { 'Content-Type': 'text/html' },
               status: 500,
@@ -143,7 +260,7 @@ export const engineFetch = async ({
           throw error
         }
       } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
-        const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.url)
+        const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
         return new Response(indexHtml, {
           headers: { 'Content-Type': 'text/html' },
           status: 200,
@@ -157,7 +274,7 @@ export const engineFetch = async ({
           executor,
           pagePoint: suitable.point,
           pageLocation: suitable.pageLocation,
-          input,
+          input: await getInput(),
         })
         const dehydratedState = await executor.getQueryClientDehydratedState()
         return new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
@@ -171,7 +288,8 @@ export const engineFetch = async ({
 
     const executeResult = await executor.execute({
       point: suitable.point,
-      input,
+      // TODO: wehn openapi will be ready, do not send here parsed input for this type of points
+      input: await getInput(),
     })
     if (executeResult.error) {
       logger.error(executeResult.error, meta)
@@ -201,22 +319,52 @@ export const engineFetch = async ({
   }
 }
 
-async function fetchAbsFilePathOnDevServer({
-  parsedUrl,
-  request,
-}: {
-  parsedUrl?: ParsedUrl
-  request: Request
-}): Promise<Response | undefined> {
+async function fetchAbsFilePathOnDevServer({ request }: { request: PointRequest }): Promise<Response | undefined> {
   // if it is client bun dev server and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
   if (process.env.NODE_ENV === 'production') {
     return undefined
   }
-  parsedUrl ??= parseUrl(request.url)
-  const absPath = parsedUrl.urlObj.pathname
+  const absPath = request.location.pathname
   const bunFile = Bun.file(absPath)
   if (await bunFile.exists()) {
     return new Response(Bun.file(absPath))
   }
   return undefined
+}
+
+export type PrepareFetchResult =
+  | {
+      publicdir: undefined
+      publicdirResponse: undefined
+      request: PointRequest
+      devClientsProxyResponse: Response
+      suitable: undefined
+      task: undefined
+    }
+  | {
+      publicdir: Publicdir<true> | undefined // in case if it is bun dev server try to fetch abs path
+      publicdirResponse: Response
+      request: PointRequest
+      devClientsProxyResponse: undefined
+      suitable: undefined
+      task: undefined
+    }
+  | {
+      publicdir: undefined
+      publicdirResponse: undefined
+      request: PointRequest
+      devClientsProxyResponse: undefined
+      suitable: GetSuitableResult
+      task: FetchTask | undefined
+    }
+
+export type FetchTask = {
+  pointType: EndPointType
+  outputType: 'data' | 'queryClientDehydratedState'
+  scope: PointsScope
+  pointName: PointName
+}
+
+export type FetchTaskWithInput = FetchTask & {
+  pointInput: InputRawUnknown
 }

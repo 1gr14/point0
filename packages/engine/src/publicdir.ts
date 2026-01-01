@@ -1,5 +1,5 @@
-import type { ParsedUrl, PointsScope } from '@point0/core'
-import { parseUrl, prependAndDeappendSlash } from '@point0/core'
+import type { PointRequest, PointsScope } from '@point0/core'
+import { prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { withError } from './utils.js'
@@ -95,16 +95,15 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     await this.loadFiles()
   }
 
-  async fetch({ parsedUrl, request }: { parsedUrl?: ParsedUrl; request: Request }): Promise<Response | undefined> {
+  async fetch({ request }: { request: PointRequest }): Promise<Response | undefined> {
     if (!this.isInitialized()) {
       throw new Error('Publicdir is not initialized')
     }
 
-    parsedUrl ??= parseUrl(request.url)
-    if (this.hostname && parsedUrl.urlObj.hostname !== this.hostname) {
+    if (this.hostname && request.location.hostname !== this.hostname) {
       return undefined
     }
-    const fileAbsPathOrResponseOrFn = this.files.get(parsedUrl.urlObj.pathname)
+    const fileAbsPathOrResponseOrFn = this.files.get(request.location.pathname)
     if (!fileAbsPathOrResponseOrFn) {
       return undefined
     }

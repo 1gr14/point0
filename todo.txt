@@ -3,10 +3,17 @@
 --------------------------
 
 REQUEST/RESPONSE/CTX
-request wrapper: {original, scope, headers:{name:value}, cookies:{name:options}, input, location, method}
-Добавить реквест реферера и там указать какому скоупа принадлежал реферер
+Поинт скоуп, нейм, тайп всё это вшить в квери параметры тогда сьютабол сможем получать даже на опшинсах
+request wrapper: {original, headers:{name:value}, cookies:{name:value}, location, method, from: {}}
 set wrapper: {cookies, headers, status, inspect: {cookies, headers, status}} https://chatgpt.com/c/69456768-4cb8-832e-8a41-2a9c66dc2fbb
-? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
+
+В реквест добавить в поинт всю информацию о нём как в оригинальном запросе, и оут тайп, и тайп, и нейм, а сам поинт уже пусть будет в опшинсах
+Фром скоуп тоже нужен он просто в хедерах передастся
+
+CookiesStore/SuperStore
+? SuperStore → SsrStore и посмотреть везде ли он логично используется
+Сделать удобным на фронте получение сср кук например для установки языка. Можно совершенно аналогичный КукисСтор
+Главное как-то во время рендера при сср чтобы кукисы нормальные доходили в сервере при использовании внутри компонентов
 
 MAPPER
 also add mapperMiddleware(stage)
@@ -17,11 +24,17 @@ OUTER
 появляется оутер у которого есть рендерЕррор и рендерЛоадинг и чилдерн
 
 NICE
+remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
+rename fetch to EngineFetcher
+Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
+Убрать из Рута лоадеры иначе опенапи энды сломаются, при попытке читать инпут из боди. А также из кткс надо убрать инпут, ну и вообще будто смысл в лоадерах есть только в конечных эндпоинтах
+Поинт не часть реквеста, а часть просто мидлвары опшинсов & {point, root, scope, outputType} | {publicfile, publicdir}
 AppendCtx with Prettify
 InputRaw → InputOriginal
 Do not omit, in exposedCtx, but if try to expose then error
 X-Point0-Json-Data: 'false'
-Поинт скоуп, нейм, тайп всё это вшить в квери параметры тогда сьютабол сможем получать даже на опшинсах
+Не кастомер а энвиронмент
+Не ансейф а форс
 В фетч и серв назвать аргумент просто кткс
 useLoader and fetchDetailed to nice endpoints
 response should switch to next stage if provided
@@ -38,7 +51,7 @@ restrict where lets can be used, like no lets on mountables I think. but can be 
 Методы надо не скрывать, а показывать разъяснительную ошибку
 
 ROOT
-.lets('root')
+root.lets('root') & Point0.lets('root', 'x')
 scopes is array
 but scope is still just string
 provide scope initiator to all loaders via X-Point0-Scope-Initiator: string
@@ -78,6 +91,11 @@ here in plugine we may have .requireCtx(), becouse plugin may be related to some
 cors plugin
 Плагин может запровайдить в том числе и рендер штучки, ему ничто не мешает быть внутри функции, которая использует запровайженные штучки (это позволит например целую форму регистрации замутить)
 
+WALKER
+refactoring
+tests
+Прунить всё просто проверять регексом основные конструкции, иначе скипать
+
 ENGINE
 Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
 В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
@@ -92,11 +110,14 @@ fix compiler option name for node_modules prefixes
 INIT
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
 .lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
+Депенденсы инита перед словом сервер или клиент
+.client .server .engine (so server and cient will be in <App><Initializer>, and engine will be only in engine.init())
 So we also need <my.Init>{children}</my.Init> and <Init />, bet
 So we need be able to auto init or not, lets add .auto(true | false) by default true
 and how cool it be to set init points just in usual ctx of points. Incredible cool! But when we assign it to ctx it gets only server value, I think use should manage it by hmself, just set {...ctx, ...my.server}
 Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
 .enabled()
+? Поинтсы провайдить не в моунт, а в инитиалайзер апа (вероятно)
 
 EXPO
 expo example
@@ -115,11 +136,13 @@ remove default generic values it is unsafe, better add AnySomethingType for it
 Отрефачить коллекцию поинтов, чтобы там мог быть хоть лэзи, хоть реди рекорд, и они могли как угодно комбинироваться
 Вынести из сервер и из клиент в отдельный пакет чтобы мочь применять его в других библиотеках
 
-CookiesStore/SsrStore
-SuperStore → SsrStore и посмотреть везде ли он логично используется
-Сделать удобным на фронте получение сср кук например для установки языка. Можно совершенно аналогичный КукисСтор
-Главное как-то во время рендера при сср чтобы кукисы нормальные доходили в сервере при использовании внутри компонентов
-
+ENVIRONMENT
+not client-server.ts, but environment.ts
+make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
+process.env.POINT0_SCOPE defined and can be used to remove deadcode
+process.env.POINT0_ENV (browser, mobile, server, electronRenderer, electronMain) defined and can be used to remove deadcode
+Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
+Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
 
 START0
 start0 without mono0
@@ -152,6 +175,10 @@ make components and pages named in react dev tools
 fetch/query cancellation, maybe fetchWithCancel()
 .getFetchOptions()
 loader(() => {}, {cache: false | string})
+ССР опцию можно добавлять в квери, чтобы при серверном рендеринге если квери находится, то она все равно не префетчится
+? Юз лоадер респонс должен быть сервер респонсом если там такой есть
+? Добавить реквест реферера и там указать какому скоупа принадлежал реферер
+? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
 
 TEST
 test for units
@@ -169,15 +196,8 @@ Move type errors to its own types, so we can reuse them
 Replace all node methods with native bun methods, including watcher
 analyze why client bundle so big in examples
 on request to server for query or mutation which has no serverLoader throw error
+? possibility to subscribe to body chunks read
 ? ЮзЛоадерРезулт а там уже и куки и дата последняя полученная
-
-ENVIRONMENT
-not client-server.ts, but environment.ts
-make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
-process.env.POINT0_SCOPE defined and can be used to remove deadcode
-process.env.POINT0_ENV (browser, mobile, server, electronRenderer, electronMain) defined and can be used to remove deadcode
-Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
-Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
 
 CREATE POINT0 APP
 cli to create app
@@ -212,6 +232,7 @@ or .static(false, [input1, input2, ...]) then loader work like usual loader and 
 also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
 
 OPENAPI
+if it is openapi request, then we do not manually parse body for input, else we just provide helpers in loader to get and parse input (search, body, params) from request
 Я могу те же самые йиэлд, возврат текста, и возврат форм даты просто опираясь на возвращаемый тип, когда буду делать опенапи поинт, ничего там такого нет
 Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
 .lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
@@ -361,11 +382,9 @@ EXTENSIONS
 NODE.JS
 polyfill
 
+Добавить юзМутейшен и фетч и юзКвери прямо внутрь компонента
 
-
-
-
-
+Позже сделать летс тчк пейдж и прочие с объектным стилем и еслинт биом плагином для валидации порядка ключей
 
 
 

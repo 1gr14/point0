@@ -1,4 +1,4 @@
-import type { ParsedUrl, PointsScope, RequiredCtx } from '@point0/core'
+import type { PointsScope, RequiredCtx } from '@point0/core'
 import { PointsManager, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
@@ -13,7 +13,7 @@ import type {
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
-import { engineFetch } from './fetch.js'
+import { engineFetchPoint, enginePrepareFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBunBuildConfigDefinition, ServerBunPluginsDefinition } from './utils.js'
 import {
@@ -41,6 +41,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   logger: EngineLogger
   entry: Record<string, string> | null
   publicdir: TInitialized extends true ? Publicdir<true> : Publicdir<false>
+  publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   outdir: string | null
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
@@ -93,6 +94,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.logger = input.logger
     this.entry = input.entry
     this.publicdir = input.publicdir as TInitialized extends true ? Publicdir<true> : Publicdir<false>
+    this.publicdirs = [] as unknown as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
     this.outdir = input.outdir
     this.bunBuildConfig = input.bunBuildConfig
     this.bunPlugins = input.bunPlugins
@@ -272,7 +274,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.bunServer = Bun.serve({
       port: this.port,
       fetch: async (request, bunServer) => {
-        const response = await this.fetch({ request, requiredCtx, bunServer })
+        const response = await this.fetch({ request, requiredCtx })
 
         // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
         if (process.env.NODE_ENV !== 'production') {
@@ -688,14 +690,10 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async fetch({
-    bunServer,
-    parsedUrl,
     request,
     requiredCtx,
     scope,
   }: {
-    bunServer?: Bun.Server<unknown>
-    parsedUrl?: ParsedUrl
     request: Request
     requiredCtx: RequiredCtx
     scope?: PointsScope
@@ -704,17 +702,34 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       throw new Error('Server is not initialized')
     }
 
-    return await engineFetch({
-      bunServer,
-      server: this,
+    const prepareFetchResult = await enginePrepareFetch({
+      originalRequest: request,
+      clients: this.clients,
+      publicdirs: this.publicdirs,
+      bunServer: this.bunServer,
+      scope,
+      fallbackScope: scope ?? this.fallbackScope,
+      allPointsManagers: this.allPointsManagers,
+    })
+
+    if (prepareFetchResult.devClientsProxyResponse) {
+      return prepareFetchResult.devClientsProxyResponse
+    }
+
+    if (prepareFetchResult.publicdirResponse) {
+      return prepareFetchResult.publicdirResponse
+    }
+
+    const fetchPointResponse = await engineFetchPoint({
+      prepareFetchResult,
       clients: this.clients,
       allPointsManagers: this.allPointsManagers,
-      request,
-      parsedUrl,
       fallbackScope: scope ?? this.fallbackScope,
       scope,
       requiredCtx,
       logger: this.logger,
     })
+
+    return fetchPointResponse
   }
 }

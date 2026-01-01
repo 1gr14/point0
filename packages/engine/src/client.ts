@@ -1,6 +1,6 @@
-import type { AnyLocation } from '@devp0nt/route0'
-import type { AnyPoint, AppComponent, InputParsed, ParsedUrl, PointsScope, ServerExecuteResult } from '@point0/core'
-import { PointsManager, getHostnameOrNull, parseUrl } from '@point0/core'
+import { Route0, type AnyLocation } from '@devp0nt/route0'
+import type { AnyPoint, AppComponent, InputParsed, PointRequest, PointsScope, ServerExecuteResult } from '@point0/core'
+import { PointsManager, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -8,13 +8,13 @@ import { renderToReadableStream } from 'react-dom/server'
 import type { ViteDevServer } from 'vite'
 import type { AllPointsManagers } from './all-points-managers.js'
 import type {
-  EngineOptionsAppComponent,
   EngineLogger,
+  EngineOptionsAppComponent,
   EngineOptionsEnvParsed,
+  EngineOptionsPoints,
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
-  EngineOptionsPoints,
 } from './config.js'
 import type { Executor } from './executor.js'
 import { Publicdir } from './publicdir.js'
@@ -392,21 +392,23 @@ Bun.serve({
         console: false,
         hmr: false,
       },
-      fetch: async (request) => {
-        const parsedUrl = parseUrl(request.url)
-        if (parsedUrl.urlObj.pathname === '/index.html') {
-          const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
+      fetch: async (originalRequest) => {
+        const location = Route0.getLocation(originalRequest.url)
+        if (location.pathname === '/index.html') {
+          const originalIndexHtml = await viteDevServer.transformIndexHtml(originalRequest.url, srcIndexHtmlContent)
           return new Response(originalIndexHtml, {
             headers: {
               'Content-Type': 'text/html',
             },
           })
         }
-        const middlewareResponse = await this.fetchViteDevServerMiddleware({ request, parsedUrl })
+        const middlewareResponse = await this.fetchViteDevServerMiddleware({
+          request: { original: originalRequest, location },
+        })
         if (middlewareResponse) {
           return middlewareResponse
         }
-        if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+        if (originalRequest.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
           return new Response('__NO_RESPONSE__', {
             headers: {
               'Content-Type': 'text/plain',
@@ -414,14 +416,11 @@ Bun.serve({
             status: 404,
           })
         }
-        return await fetch(
-          `http://localhost:${this.server.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`,
-          {
-            method: request.method,
-            headers: request.headers,
-            body: request.body,
-          },
-        )
+        return await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
+          method: originalRequest.method,
+          headers: originalRequest.headers,
+          body: originalRequest.body,
+        })
       },
     })
     this.logger.info(`${this.scope} dev server started`)
@@ -446,26 +445,23 @@ Bun.serve({
   async upgradeProxyBunDevServerWebSocket({
     request,
     bunServer,
-    parsedUrl,
   }: {
-    request: Request
+    request: PointRequest
     bunServer: Bun.Server<unknown>
-    parsedUrl?: ParsedUrl
   }): Promise<{ result: Response | undefined } | undefined> {
     if (!this.bunNativeDevServer) {
       return undefined
     }
-    if (request.headers.get('upgrade') !== 'websocket') {
+    if (request.original.headers.get('upgrade') !== 'websocket') {
       return undefined
     }
-    parsedUrl ??= parseUrl(request.url)
-    if (!parsedUrl.urlObj.pathname.startsWith('/_bun/')) {
+    if (!request.location.pathname.startsWith('/_bun/')) {
       return undefined
     }
-    const bunNativeDevServerWsUrl = `ws://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`
+    const bunNativeDevServerWsUrl = `ws://localhost:${this.port}${request.location.pathname}${request.location.search}`
 
     // Upgrade the connection and store upstream URL in data
-    const upgraded = bunServer.upgrade(request, {
+    const upgraded = bunServer.upgrade(request.original, {
       data: { wsUrl: bunNativeDevServerWsUrl },
     })
 
@@ -477,27 +473,20 @@ Bun.serve({
     return { result: undefined }
   }
 
-  async fetchBunDevServerMiddleware({
-    request,
-    parsedUrl,
-  }: {
-    request: Request
-    parsedUrl?: ParsedUrl
-  }): Promise<Response | undefined> {
+  async fetchBunDevServerMiddleware({ request }: { request: PointRequest }): Promise<Response | undefined> {
     const bunNativeDevServer = this.bunNativeDevServer
     if (!bunNativeDevServer) {
       return undefined
     }
-    parsedUrl ??= parseUrl(request.url)
-    const pathname = parsedUrl.urlObj.pathname
+    const pathname = request.location.pathname
     if (pathname.startsWith('/_bun/')) {
-      const bunDevServerUrl = `http://localhost:${this.port}${pathname}${parsedUrl.urlObj.search}`
-      const middlewareRequestHeaders = new Headers(request.headers)
+      const bunDevServerUrl = `http://localhost:${this.port}${pathname}${request.location.search}`
+      const middlewareRequestHeaders = new Headers(request.original.headers)
       middlewareRequestHeaders.set('X-Point0-Middleware-Check-From-Server', 'true')
       return await fetch(bunDevServerUrl, {
-        method: request.method,
+        method: request.original.method,
         headers: middlewareRequestHeaders,
-        body: request.body,
+        body: request.original.body,
       })
     }
     return undefined
@@ -505,23 +494,20 @@ Bun.serve({
 
   async fetchViteDevServerMiddleware({
     request,
-    parsedUrl,
   }: {
-    request: Request
-    parsedUrl?: ParsedUrl
+    request: Pick<PointRequest, 'original' | 'location'>
   }): Promise<Response | undefined> {
     const viteDevServer = this.viteDevServer
     if (!viteDevServer) {
       return undefined
     }
-    parsedUrl ??= parseUrl(request.url)
     if (viteDevServer === true) {
-      const middlewareRequestHeaders = new Headers(request.headers)
+      const middlewareRequestHeaders = new Headers(request.original.headers)
       middlewareRequestHeaders.set('X-Point0-Middleware-Check-From-Server', 'true')
       const middlewareResponse = await fetch(
-        `http://localhost:${this.port}${parsedUrl.urlObj.pathname}${parsedUrl.urlObj.search}`,
+        `http://localhost:${this.port}${request.location.pathname}${request.location.search}`,
         {
-          method: request.method,
+          method: request.original.method,
           headers: middlewareRequestHeaders,
           // body: request.body, do not send body to middleware, becouse vite middle ware do not need, it and we ant it will be not read if we will pass it later out main middleware
         },
@@ -531,7 +517,7 @@ Bun.serve({
       }
       return middlewareResponse
     }
-    const { req, res } = toReqRes(request)
+    const { req, res } = toReqRes(request.original)
     let nextCalled = false
     let nextError: any = undefined
     let nextResolve: (() => void) | undefined = undefined

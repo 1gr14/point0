@@ -810,11 +810,3 @@ export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TTyp
         record: ServerExecuteAction<'loader'>
       }
     : never
-
-export type FetchTask = {
-  pointType: EndPointType
-  outputType: 'data' | 'queryClientDehydratedState'
-  pointInput: InputParsed
-  scope: PointsScope
-  pointName: PointName
-}

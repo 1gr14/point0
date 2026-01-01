@@ -1,22 +1,18 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
-import { Route0 } from '@devp0nt/route0'
 import type {
   DataTransformerExtended,
   EndPoint,
   EndPointType,
-  InputParsed,
   InputRaw,
-  ParsedUrl,
+  InputRawUnknown,
   PointName,
+  PointRequest,
   PointsManager,
   PointsScope,
   RequiredCtx,
-  WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { parseUrl } from '@point0/core'
 import { unflatten } from 'flat'
-import { Executor } from './executor.js'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pointsManagers: Array<PointsManager<true>>
@@ -57,7 +53,8 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation?: AnyLocation | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
-    input?: InputParsed | undefined
+    // TODO: InputRaw here
+    input?: InputRawUnknown | undefined
   }): GetSuitableResult {
     // find exact match
     for (const points of this.pointsManagers) {
@@ -116,6 +113,50 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
+  async getTaskInputFromRequest({
+    request,
+    fallbackScope,
+    scope,
+  }: {
+    request: PointRequest
+    fallbackScope: PointsScope
+    scope?: PointsScope
+  }): Promise<InputRawUnknown | undefined> {
+    if (request.location.pathname !== '/_point0') {
+      return undefined
+    }
+    const inputRawNotTransformed = await (async () => {
+      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+        const formData = await request.original.formData()
+        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+          if (typeof value === 'string') {
+            acc[key] = JSON.parse(value)
+          } else {
+            acc[key] = value
+          }
+          return acc
+        }, {})
+        const unflattened = unflatten(parsed)
+        return unflattened
+      }
+      try {
+        return await request.original.json()
+      } catch (error) {
+        return {}
+      }
+    })()
+    if (
+      !inputRawNotTransformed ||
+      typeof inputRawNotTransformed !== 'object' ||
+      Array.isArray(inputRawNotTransformed)
+    ) {
+      throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
+    }
+    const transformer = this.getTransformerByScope({ scope, fallbackScope: scope || fallbackScope })
+    const inputRaw = transformer.deserialize<InputRaw>(inputRawNotTransformed)
+    return inputRaw
+  }
+
   getTransformerByScope({
     scope,
     fallbackScope,
@@ -132,238 +173,230 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return result
   }
 
-  async prepareExecutorByRequest({
-    request,
-    parsedUrl,
-    fallbackScope,
-    scope,
-    requiredCtx,
-  }: {
-    request: Request
-    parsedUrl?: ParsedUrl
-    fallbackScope: PointsScope
-    scope?: PointsScope
-  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
-    task: FetchTask | undefined
-    input: InputRaw
-    suitable: GetSuitableResult
-    executor: Executor
-  }> {
-    parsedUrl ??= parseUrl(request.url)
-    const task: FetchTask | undefined = await (async () => {
-      if (parsedUrl.urlObj.pathname !== '/_point0') {
-        return undefined
-      }
-      const bodyRaw = await (async () => {
-        if (request.headers.get('Content-Type')?.includes('multipart/form-data')) {
-          const formData = await request.formData()
-          const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-            if (typeof value === 'string') {
-              acc[key] = JSON.parse(value)
-            } else {
-              acc[key] = value
-            }
-            return acc
-          }, {})
-          const unflattened = unflatten(parsed)
-          return unflattened
-        }
-        try {
-          return await request.json()
-        } catch (error) {
-          return {}
-        }
-      })()
-      const parsed = (() => {
-        const validPointTypes = [
-          'page',
-          'layout',
-          'component',
-          'query',
-          'infiniteQuery',
-          'mutation',
-          'provider',
-        ] as const
-        const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
-        if (!bodyRaw || typeof bodyRaw !== 'object') {
-          throw new Error('Invalid request body: must be an object')
-        }
-        const {
-          type: pointType,
-          output: outputType,
-          input: pointInputNotTransformed,
-          scope,
-          name: pointName,
-        } = bodyRaw as Record<string, unknown>
-        if (typeof scope !== 'string' || scope.length === 0) {
-          throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
-        }
-        if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
-          throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
-        }
-        if (typeof pointName !== 'string' || pointName.length === 0) {
-          throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
-        }
-        if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
-          throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
-        }
-        if (
-          !pointInputNotTransformed ||
-          typeof pointInputNotTransformed !== 'object' ||
-          Array.isArray(pointInputNotTransformed)
-        ) {
-          throw new Error(`Invalid pointInput: must be an object, got ${typeof pointInputNotTransformed}`)
-        }
-        const transformer = this.getTransformerByScope({ scope, fallbackScope: scope || fallbackScope })
-        const pointInput = transformer.deserialize<InputRaw>(pointInputNotTransformed)
-        try {
-          return {
-            pointType: pointType as (typeof validPointTypes)[number],
-            outputType: outputType as (typeof validOutputTypes)[number],
-            pointInput,
-            scope,
-            pointName,
-          }
-        } catch (error) {
-          throw new Error0(`Invalid pointInput: ${error instanceof Error ? error.message : String(error)}`, {
-            cause: error,
-          })
-        }
-      })()
-      if (scope && parsed.scope !== scope) {
-        throw new Error(`Parsed scope "${parsed.scope}" does not match provided scope "${scope}"`)
-      }
-      return parsed
-    })()
-    const location = Route0.getLocation(parsedUrl.urlStr)
-    const suitable = this.getSuitable({
-      pointType: task?.pointType ?? 'page',
-      scope: task?.scope || scope,
-      pointName: task?.pointName,
-      pageLocation: !task ? location : undefined,
-      input: task?.pointInput,
-      fallbackScope,
-    })
-    const executor = await Executor.create({
-      request,
-      points: suitable.pointsManager,
-      pageLocation: suitable.pageLocation,
-      currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
-      requiredCtx,
-    })
-    const input = task?.pointInput ?? { ...location.searchParams, ...suitable.pageLocation?.params }
-    return {
-      task,
-      input,
-      suitable,
-      executor,
-    }
-  }
+  // async prepareExecutorByRequest({
+  //   request,
+  //   parsedUrl,
+  //   fallbackScope,
+  //   scope,
+  //   requiredCtx,
+  // }: {
+  //   request: Request
+  //   parsedUrl?: ParsedUrl
+  //   fallbackScope: PointsScope
+  //   scope?: PointsScope
+  // } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
+  //   task: FetchTask | undefined
+  //   input: InputRaw
+  //   suitable: GetSuitableResult
+  //   executor: Executor
+  // }> {
+  //   parsedUrl ??= parseUrl(request.url)
+  //   const task: FetchTask | undefined = await (async () => {
+  //     if (parsedUrl.urlObj.pathname !== '/_point0') {
+  //       return undefined
+  //     }
+  //     const bodyRaw = await (async () => {
+  //       if (request.headers.get('Content-Type')?.includes('multipart/form-data')) {
+  //         const formData = await request.formData()
+  //         const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+  //           if (typeof value === 'string') {
+  //             acc[key] = JSON.parse(value)
+  //           } else {
+  //             acc[key] = value
+  //           }
+  //           return acc
+  //         }, {})
+  //         const unflattened = unflatten(parsed)
+  //         return unflattened
+  //       }
+  //       try {
+  //         return await request.json()
+  //       } catch (error) {
+  //         return {}
+  //       }
+  //     })()
+  //     const parsed = (() => {
+  //       const validPointTypes = [
+  //         'page',
+  //         'layout',
+  //         'component',
+  //         'query',
+  //         'infiniteQuery',
+  //         'mutation',
+  //         'provider',
+  //       ] as const
+  //       const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
+  //       if (!bodyRaw || typeof bodyRaw !== 'object') {
+  //         throw new Error('Invalid request body: must be an object')
+  //       }
+  //       const {
+  //         type: pointType,
+  //         output: outputType,
+  //         input: pointInputNotTransformed,
+  //         scope,
+  //         name: pointName,
+  //       } = bodyRaw as Record<string, unknown>
+  //       if (typeof scope !== 'string' || scope.length === 0) {
+  //         throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
+  //       }
+  //       if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+  //         throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
+  //       }
+  //       if (typeof pointName !== 'string' || pointName.length === 0) {
+  //         throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
+  //       }
+  //       if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+  //         throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
+  //       }
+  //       if (
+  //         !pointInputNotTransformed ||
+  //         typeof pointInputNotTransformed !== 'object' ||
+  //         Array.isArray(pointInputNotTransformed)
+  //       ) {
+  //         throw new Error(`Invalid pointInput: must be an object, got ${typeof pointInputNotTransformed}`)
+  //       }
+  //       const transformer = this.getTransformerByScope({ scope, fallbackScope: scope || fallbackScope })
+  //       const pointInput = transformer.deserialize<InputRaw>(pointInputNotTransformed)
+  //       try {
+  //         return {
+  //           pointType: pointType as (typeof validPointTypes)[number],
+  //           outputType: outputType as (typeof validOutputTypes)[number],
+  //           pointInput,
+  //           scope,
+  //           pointName,
+  //         }
+  //       } catch (error) {
+  //         throw new Error0(`Invalid pointInput: ${error instanceof Error ? error.message : String(error)}`, {
+  //           cause: error,
+  //         })
+  //       }
+  //     })()
+  //     if (scope && parsed.scope !== scope) {
+  //       throw new Error(`Parsed scope "${parsed.scope}" does not match provided scope "${scope}"`)
+  //     }
+  //     return parsed
+  //   })()
+  //   const location = Route0.getLocation(parsedUrl.urlStr)
+  //   const suitable = this.getSuitable({
+  //     pointType: task?.pointType ?? 'page',
+  //     scope: task?.scope || scope,
+  //     pointName: task?.pointName,
+  //     pageLocation: !task ? location : undefined,
+  //     input: task?.pointInput,
+  //     fallbackScope,
+  //   })
+  //   const executor = await Executor.create({
+  //     request,
+  //     points: suitable.pointsManager,
+  //     pageLocation: suitable.pageLocation,
+  //     currentLocation: suitable.pageLocation ?? Route0.toRelLocation(location),
+  //     requiredCtx,
+  //   })
+  //   const input = task?.pointInput ?? { ...location.searchParams, ...suitable.pageLocation?.params }
+  //   return {
+  //     task,
+  //     input,
+  //     suitable,
+  //     executor,
+  //   }
+  // }
 
-  async prepareExecutorByUrl({
-    url,
-    fallbackScope,
-    scope,
-    requiredCtx,
-  }: {
-    url: string
-    fallbackScope: PointsScope
-    scope?: PointsScope
-  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
-    task: FetchTask | undefined
-    input: InputRaw
-    suitable: GetSuitableResult
-    executor: Executor
-  }> {
-    const parsedUrl = parseUrl(url)
-    return await this.prepareExecutorByRequest({
-      request: new Request(url),
-      parsedUrl,
-      fallbackScope,
-      scope,
-      ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
-    })
-  }
+  // async prepareExecutorByUrl({
+  //   url,
+  //   fallbackScope,
+  //   scope,
+  //   requiredCtx,
+  // }: {
+  //   url: string
+  //   fallbackScope: PointsScope
+  //   scope?: PointsScope
+  // } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
+  //   task: FetchTask | undefined
+  //   input: InputRaw
+  //   suitable: GetSuitableResult
+  //   executor: Executor
+  // }> {
+  //   const parsedUrl = parseUrl(url)
+  //   return await this.prepareExecutorByRequest({
+  //     request: new Request(url),
+  //     parsedUrl,
+  //     fallbackScope,
+  //     scope,
+  //     ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TRequiredCtx>),
+  //   })
+  // }
 
-  async prepareExecutorByPointAndInput<TPoint extends EndPoint>({
-    point,
-    input,
-    requiredCtx,
-  }: {
-    point: TPoint
-    input: TPoint['Infer']['InputRaw']
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<{
-    input: TPoint['Infer']['InputRaw']
-    suitable: GetSuitableResult
-    executor: Executor
-  }> {
-    // TODO: fix autogenerated request
-    const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
-    const suitable = this.getSuitable({
-      pointType: point.type,
-      scope: point.scope,
-      pointName: point.name,
-      input,
-      fallbackScope: point.scope,
-    })
-    const executor = await Executor.create({
-      request: Executor.createRequestByPointAndInput({ point, input }),
-      points: suitable.pointsManager,
-      pageLocation: suitable.pageLocation,
-      currentLocation: location,
-      requiredCtx,
-    })
-    return {
-      input,
-      suitable,
-      executor,
-    }
-  }
+  // async prepareExecutorByPointAndInput<TPoint extends EndPoint>({
+  //   point,
+  //   input,
+  //   requiredCtx,
+  // }: {
+  //   point: TPoint
+  //   input: TPoint['Infer']['InputRaw']
+  // } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<{
+  //   input: TPoint['Infer']['InputRaw']
+  //   suitable: GetSuitableResult
+  //   executor: Executor
+  // }> {
+  //   // TODO: fix autogenerated request
+  //   const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
+  //   const suitable = this.getSuitable({
+  //     pointType: point.type,
+  //     scope: point.scope,
+  //     pointName: point.name,
+  //     input,
+  //     fallbackScope: point.scope,
+  //   })
+  //   const executor = await Executor.create({
+  //     request: Executor.createRequestByPointAndInput({ point, input }),
+  //     points: suitable.pointsManager,
+  //     pageLocation: suitable.pageLocation,
+  //     currentLocation: location,
+  //     requiredCtx,
+  //   })
+  //   return {
+  //     input,
+  //     suitable,
+  //     executor,
+  //   }
+  // }
 
-  async prepareExecutorByPointScopeTypeNameInput<TPoint extends EndPoint>({
-    scope,
-    pointType,
-    pointName,
-    input,
-    requiredCtx,
-  }: {
-    scope: PointsScope
-    pointType: EndPointType
-    pointName: PointName
-    input: TPoint['Infer']['InputRaw']
-  } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
-    input: TPoint['Infer']['InputRaw']
-    suitable: GetSuitableResult
-    executor: Executor
-  }> {
-    const suitable = this.getSuitable({
-      pointType,
-      scope,
-      pointName,
-      input,
-      fallbackScope: scope,
-    })
-    const executor = await Executor.create({
-      request: Executor.createRequestByPointScopeTypeNameInput({ scope, pointType, pointName, input }),
-      points: suitable.pointsManager,
-      pageLocation: suitable.pageLocation,
-      currentLocation: suitable.pageLocation || Route0.getLocation('/'),
-      requiredCtx,
-    })
-    return {
-      input,
-      suitable,
-      executor,
-    }
-  }
-}
-
-export type FetchTask = {
-  pointType: EndPointType
-  outputType: 'data' | 'queryClientDehydratedState'
-  pointInput: InputRaw
-  scope: PointsScope
-  pointName: PointName
+  // async prepareExecutorByPointScopeTypeNameInput<TPoint extends EndPoint>({
+  //   scope,
+  //   pointType,
+  //   pointName,
+  //   input,
+  //   requiredCtx,
+  // }: {
+  //   scope: PointsScope
+  //   pointType: EndPointType
+  //   pointName: PointName
+  //   input: TPoint['Infer']['InputRaw']
+  // } & WithMaybeOptionalReqiredCtx<TRequiredCtx>): Promise<{
+  //   input: TPoint['Infer']['InputRaw']
+  //   suitable: GetSuitableResult
+  //   executor: Executor
+  // }> {
+  //   const suitable = this.getSuitable({
+  //     pointType,
+  //     scope,
+  //     pointName,
+  //     input,
+  //     fallbackScope: scope,
+  //   })
+  //   const executor = await Executor.create({
+  //     request: Executor.createRequestByPointScopeTypeNameInput({ scope, pointType, pointName, input }),
+  //     points: suitable.pointsManager,
+  //     pageLocation: suitable.pageLocation,
+  //     currentLocation: suitable.pageLocation || Route0.getLocation('/'),
+  //     requiredCtx,
+  //   })
+  //   return {
+  //     input,
+  //     suitable,
+  //     executor,
+  //   }
+  // }
 }
 
 export type GetSuitableResult<TRequiredCtx extends RequiredCtx = RequiredCtx> = {

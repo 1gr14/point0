@@ -10,6 +10,7 @@ import type {
   EndPointType,
   IfAnyThenElse,
   InputRaw,
+  InputRawUnknown,
   IsEmptyObject,
   LayoutPoint,
   PagePoint,
@@ -718,7 +719,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     scope,
   }: {
     pageLocation?: AnyLocation | undefined
-    input?: InputRaw
+    input?: InputRawUnknown | undefined
     pointType?: EndPointType | undefined
     pointName?: PointName | undefined
     scope?: PointsScope | undefined

@@ -18,10 +18,14 @@ import { parseEngineOptions } from './config.js'
 import type { FilesGeneratorPointsFilesChangeWatcher, FilesGeneratorTargetOptions } from './generator.js'
 import { FilesGenerator } from './generator.js'
 import { ServerBun } from './server.js'
+import type { Publicdir } from './publicdir.js'
+import { Route0 } from '@devp0nt/route0'
+import { Executor } from './executor.js'
 
 export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
   server: TInitialized extends true ? ServerBun<true> : ServerBun<false>
+  publicdirs: TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   logger: EngineLogger
   generator: FilesGenerator
   allPointsManagers: AllPointsManagers
@@ -36,6 +40,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     allPointsManagers: AllPointsManagers
     initialized: TInitialized
     generator: FilesGenerator
+    publicdirs: Array<Publicdir<false>>
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
@@ -43,6 +48,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.allPointsManagers = input.allPointsManagers
     this.initialized = input.initialized
     this.generator = input.generator
+    this.publicdirs = input.publicdirs as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -114,6 +120,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       ],
     })
 
+    const publicdirs = [server.publicdir, ...clients.map((client) => client.publicdir)]
+    server.publicdirs = publicdirs
+
     return new Engine({
       clients,
       server,
@@ -121,6 +130,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       allPointsManagers,
       initialized: false,
       generator,
+      publicdirs,
     })
   }
 
@@ -308,10 +318,20 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     if (!point._root) {
       throw new Error('Point root not found')
     }
-    const { executor, suitable } = await this.allPointsManagers.prepareExecutorByPointAndInput({
+    const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
+    const suitable = this.allPointsManagers.getSuitable({
+      pointType: point.type,
+      scope: point.scope,
+      pointName: point.name,
       input,
-      point,
-      ...((requiredCtx ? { requiredCtx } : {}) as WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>),
+      fallbackScope: point.scope,
+    })
+    const executor = await Executor.create({
+      request: Executor.createRequestByPointAndInput({ point, input }),
+      points: suitable.pointsManager,
+      pageLocation: suitable.pageLocation,
+      currentLocation: location,
+      requiredCtx,
     })
     return await executor.execute({ point: suitable.point, input, withLayouts })
   }
