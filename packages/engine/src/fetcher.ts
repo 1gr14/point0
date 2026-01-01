@@ -37,7 +37,7 @@ export class Fetcher {
     return undefined
   }
 
-  static getTaskFromRequest = ({ request }: { request: PointRequest }): FetchTask | undefined => {
+  getTaskFromRequest = async ({ request }: { request: PointRequest }): Promise<FetchTask | undefined> => {
     if (request.location.pathname !== '/_point0') {
       return undefined
     }
@@ -57,15 +57,26 @@ export class Fetcher {
     if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
       throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
     }
+    const pointInput = await (async () => {
+      if (pointType === 'page' || pointType === 'layout') {
+        return await this.getPointInputFromTaskRequest({ request })
+      }
+      return undefined
+    })()
     return {
       pointType: pointType as (typeof validPointTypes)[number],
       outputType: outputType as (typeof validOutputTypes)[number],
       scope,
       pointName,
+      pointInput,
     }
   }
 
-  getTaskInputFromRequest = async ({ request }: { request: PointRequest }): Promise<InputRawUnknown | undefined> => {
+  getPointInputFromTaskRequest = async ({
+    request,
+  }: {
+    request: PointRequest
+  }): Promise<InputRawUnknown | undefined> => {
     if (request.location.pathname !== '/_point0') {
       return undefined
     }
@@ -104,6 +115,41 @@ export class Fetcher {
     return inputRaw
   }
 
+  getPointInputFormSuitablePageOrLayout = ({
+    suitable,
+  }: {
+    suitable: GetSuitableResult
+  }): InputRawUnknown | undefined => {
+    if ((suitable.point?.type === 'page' || suitable.point?.type === 'layout') && suitable.pageLocation) {
+      return { ...suitable.pageLocation.searchParams, ...suitable.pageLocation.params }
+    }
+    return undefined
+  }
+
+  getPointInput = async ({
+    suitable,
+    task,
+    request,
+  }: {
+    suitable: GetSuitableResult
+    task: FetchTask | undefined
+    request: PointRequest
+  }): Promise<InputRawUnknown> => {
+    // we do not call it immediatelly, becouse for openapi points we do not want parse input, so developer can read body when it needed
+    if (task?.pointInput) {
+      return task.pointInput
+    }
+    const inputFromTaskRequest = await this.getPointInputFromTaskRequest({ request })
+    if (inputFromTaskRequest) {
+      return inputFromTaskRequest
+    }
+    const inputFromSuitablePageOrLayout = this.getPointInputFormSuitablePageOrLayout({ suitable })
+    if (inputFromSuitablePageOrLayout) {
+      return inputFromSuitablePageOrLayout
+    }
+    return {}
+  }
+
   prepareFetch = async ({
     originalRequest,
     scope,
@@ -140,7 +186,7 @@ export class Fetcher {
       }
     }
 
-    const task = Fetcher.getTaskFromRequest({ request })
+    const task = await this.getTaskFromRequest({ request })
 
     if (!task) {
       const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
@@ -158,6 +204,7 @@ export class Fetcher {
       pointType: task?.pointType ?? 'page',
       scope: task?.scope || scope,
       pointName: task?.pointName,
+      input: task?.pointInput,
       pageLocation: !task ? request.location : undefined,
       fallbackScope: this.server.fallbackScope,
     })
@@ -253,15 +300,6 @@ export class Fetcher {
         (client) => client.pointsManager.scope === suitable.pointsManager.scope,
       )
 
-      const getInput = async () => {
-        // we do not call it immediatelly, becouse for openapi points we do not want parse input, so developer can read body when it needed
-        return (
-          (await this.getTaskInputFromRequest({
-            request,
-          })) || {}
-        )
-      }
-
       if (relatedClient) {
         if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
           try {
@@ -269,7 +307,7 @@ export class Fetcher {
               // I think it will never throw, but who knows
               throw new Error('Page Critical Error: Not Found')
             }
-            const input = await getInput()
+            const input = await this.getPointInput({ suitable, task, request })
             const executeResult = await executor.execute({
               point: suitable.point,
               input,
@@ -315,7 +353,7 @@ export class Fetcher {
             executor,
             pagePoint: suitable.point,
             pageLocation: suitable.pageLocation,
-            input: await getInput(),
+            input: await this.getPointInput({ suitable, task, request }),
           })
           const dehydratedState = await executor.getQueryClientDehydratedState()
           return new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
@@ -330,7 +368,7 @@ export class Fetcher {
       const executeResult = await executor.execute({
         point: suitable.point,
         // TODO: wehn openapi will be ready, do not send here parsed input for this type of points
-        input: await getInput(),
+        input: await this.getPointInput({ suitable, task, request }),
       })
       if (executeResult.error) {
         this.server.logger.error(executeResult.error, meta)
@@ -386,4 +424,5 @@ export type FetchTask = {
   outputType: 'data' | 'queryClientDehydratedState'
   scope: PointsScope
   pointName: PointName
+  pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
 }

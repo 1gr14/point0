@@ -769,7 +769,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
             }
           }
           // TODO: add helper for htis in route0, like route.getSelfLocation(input): ExactLocation
-          const match = route.getLocation(route.get(input)) // it is ok, that we do not parse here input with superjson, becouse if it is page input, it is always object with strings
+          const match = route.getLocation(route.get(input))
           return {
             point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
             name,
