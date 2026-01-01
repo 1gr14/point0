@@ -85,6 +85,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     PointsManager.setPointsManager(this)
     if (ClientServerHelpers.isClient) {
       SuperStore.setWeak('__POINT0_SCOPE__', this.scope)
+      SuperStore.setWeak('__POINT0_TRANSFORMER__', this.transformer)
     }
   }
 

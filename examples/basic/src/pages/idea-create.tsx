@@ -3,7 +3,13 @@ import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { BestIdeaComponent } from './home.js'
-import { testCookie, testServerCookie } from '@/lib/cookies.js'
+import {
+  testCookie,
+  testNumberCookie,
+  testNumberDefaultCookie,
+  testServerCookie,
+  testStringDefaultCookie,
+} from '@/lib/cookies.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
@@ -45,6 +51,10 @@ export const createIdeaMutation = client
     testCookie.set(Math.random().toString())
     console.info('testServerCookie', testServerCookie.get())
     testServerCookie.set(Math.random().toString())
+    console.info('testStringDefaultCookie', testStringDefaultCookie.get())
+    console.info('testNumberDefaultCookie', testNumberDefaultCookie.get())
+    console.info('testNumberCookie', testNumberCookie.get())
+    testNumberCookie.set(Math.random())
     if (result.error) {
       throw result.error
     }
@@ -152,11 +162,15 @@ const Page = () => {
   const [content, setContent] = useState('c')
   const [generated, setGenerated] = useState('')
   const testCookieValue = testCookie.use()
+  const testNumberCookieValue = testNumberCookie.use()
+  const testNumberDefaultCookieValue = testNumberDefaultCookie.use()
 
   return (
     <div>
       <div>
-        <label>Title1: {testCookieValue}</label>
+        <label>
+          Title1: {testCookieValue}, {testNumberCookieValue}, {testNumberDefaultCookieValue}
+        </label>
         <input
           type="text"
           value={title}

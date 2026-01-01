@@ -171,3 +171,5 @@ export const toExtendedTransformer = (transformer: DataTransformer): DataTransfo
     parse: <TData>(stringified: string): TData => transformer.deserialize(JSON.parse(stringified)) as TData,
   }
 }
+
+export const blankDataTransformerExtended: DataTransformerExtended = toExtendedTransformer(blankDataTransformer)

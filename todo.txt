@@ -18,6 +18,7 @@ rename fetch to EngineFetcher
 Поинт не часть реквеста, а часть просто мидлвары опшинсов & {point, root, scope, outputType} | {publicfile, publicdir}
 AppendCtx with Prettify
 InputRaw → InputOriginal
+SuperStore.predefined ← ssrLocation, etc
 check if parse input from request done via from scope transformer
 Do not omit, in exposedCtx, but if try to expose then error
 Не кастомер а энвиронмент

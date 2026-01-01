@@ -1,10 +1,10 @@
+import { useEffect, useRef, useState } from 'react'
 import { Point0 } from './index.js'
 import type { PointRequest } from './request.js'
 import type { ResponseEffectsManager } from './response-effects.js'
 import { SuperStore } from './super-store.js'
-import type { DataTransformer, DataTransformerExtended, ShowError } from './types.js'
-import { toExtendedTransformer } from './utils.js'
-import { useEffect, useRef, useState } from 'react'
+import type { DataTransformer, DataTransformerExtended } from './types.js'
+import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export type CookieSameSite = 'strict' | 'lax' | 'none'
 
@@ -38,119 +38,135 @@ export type CookieOptionsInput = {
   maxAge?: number
 }
 
-export type CookieOptionsInputWithDefaultValue<TValue = string> = Omit<CookieOptionsInput, 'value'> & { value?: TValue }
+export type CookieOptionsInputWithDefaultValue<TValue> = Omit<CookieOptionsInput, 'value'> & {
+  value: TValue
+}
+export type CookieOptionsInputWithoutDefaultValue = Omit<CookieOptionsInput, 'value'> & {
+  value?: undefined
+}
+type InferDefaultValue<
+  TCookieOptionsInputWithDefaultValue extends
+    | CookieOptionsInputWithDefaultValue<any>
+    | CookieOptionsInputWithoutDefaultValue,
+> =
+  TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValue<infer TValue>
+    ? TValue extends undefined
+      ? undefined
+      : TValue
+    : undefined
 
-export class CookiesStore<TTransformer extends DataTransformerExtended | null = null> {
-  private readonly transformer: DataTransformerExtended | null = null
-  private readonly clientCookieGetter: CookiesStoreGetter
-  private readonly clientCookieSetter: CookiesStoreSetter
-  private readonly items = new Set<CookiesStoreItem<any>>()
-
-  static stores = new Set<CookiesStore<any>>()
-
-  constructor(options: {
-    clientCookieGetter: CookiesStoreGetter
-    clientCookieSetter: CookiesStoreSetter
-    transformer: DataTransformerExtended | null
-  }) {
-    this.clientCookieGetter = options.clientCookieGetter
-    this.clientCookieSetter = options.clientCookieSetter
-    this.transformer = options.transformer
-    CookiesStore.stores.add(this)
+export class CookiesStore {
+  static clientDocumentCookieGetter: CookiesStoreGetter = (name) => {
+    if (typeof document !== 'undefined') {
+      return document.cookie
+        .split('; ')
+        .find((row) => row.startsWith(`${name}=`))
+        ?.split('=')[1]
+    }
+    return undefined
   }
 
-  static create<TTransformer extends DataTransformerExtended | null = null>(options?: {
+  static clientDocumentCookieSetter: CookiesStoreSetter = (options) => {
+    if (typeof document !== 'undefined') {
+      document.cookie = `${options.name}=${options.value}`
+      document.cookie += `; Path=${options.path ?? '/'}`
+      document.cookie += `; SameSite=${options.sameSite ?? 'lax'}`
+      if (options.domain) {
+        document.cookie += `; Domain=${options.domain}`
+      }
+      if (options.expires) {
+        const expiresDate =
+          typeof options.expires === 'string'
+            ? new Date(options.expires)
+            : options.expires instanceof Date
+              ? options.expires
+              : new Date(options.expires)
+        document.cookie += `; Expires=${expiresDate.toUTCString()}`
+      }
+    }
+  }
+
+  static transformer: DataTransformerExtended = blankDataTransformerExtended
+  static clientCookieGetter: CookiesStoreGetter = CookiesStore.clientDocumentCookieGetter
+  static clientCookieSetter: CookiesStoreSetter = CookiesStore.clientDocumentCookieSetter
+  static readonly items = new Set<CookiesStoreItem<any, any>>()
+
+  static configure(options?: {
     clientCookieGetter?: CookiesStoreGetter
     clientCookieSetter?: CookiesStoreSetter
-    transformer?: TTransformer
-  }): CookiesStore<TTransformer> {
-    const clientCookieGetter: CookiesStoreGetter =
-      options?.clientCookieGetter ??
-      ((name) => {
-        if (typeof document !== 'undefined') {
-          return document.cookie
-            .split('; ')
-            .find((row) => row.startsWith(`${name}=`))
-            ?.split('=')[1]
-        }
-        return undefined
-      })
-
-    const clientCookieSetter: CookiesStoreSetter =
-      options?.clientCookieSetter ??
-      ((options) => {
-        if (typeof document !== 'undefined') {
-          document.cookie = `${options.name}=${options.value}`
-          document.cookie += `; Path=${options.path ?? '/'}`
-          document.cookie += `; SameSite=${options.sameSite ?? 'lax'}`
-          if (options.domain) {
-            document.cookie += `; Domain=${options.domain}`
-          }
-          if (options.expires) {
-            const expiresDate =
-              typeof options.expires === 'string'
-                ? new Date(options.expires)
-                : options.expires instanceof Date
-                  ? options.expires
-                  : new Date(options.expires)
-            document.cookie += `; Expires=${expiresDate.toUTCString()}`
-          }
-        }
-      })
-
-    const transformer: DataTransformerExtended | null = options?.transformer ?? null
-
-    return new CookiesStore<TTransformer>({
-      clientCookieGetter,
-      clientCookieSetter,
-      transformer,
-    })
+    transformer?: DataTransformer | undefined
+  }): void {
+    CookiesStore.transformer = options?.transformer
+      ? toExtendedTransformer(options.transformer)
+      : CookiesStore.transformer
+    CookiesStore.clientCookieGetter = options?.clientCookieGetter ?? CookiesStore.clientCookieGetter
+    CookiesStore.clientCookieSetter = options?.clientCookieSetter ?? CookiesStore.clientCookieSetter
   }
 
-  define(
-    ...args: TTransformer extends null ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<string>] : never[]
-  ): CookiesStoreItem<string>
-  define<TValue>(
-    ...args: TTransformer extends null
-      ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>, transformer: DataTransformer]
-      : [ShowError<`Transformer is required for setting cookie with custom value type`>]
-  ): CookiesStoreItem<TValue>
-  define<TValue>(
-    ...args: TTransformer extends DataTransformerExtended
-      ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>]
-      : never[]
-  ): CookiesStoreItem<TValue>
-  define(
-    ...args: TTransformer extends DataTransformerExtended
-      ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<string>, transformer: null]
-      : never[]
-  ): CookiesStoreItem<string>
-  define(
-    ...args:
-      | [cookieOptionsInput: CookieOptionsInputWithDefaultValue<any>, transformer?: DataTransformer | null]
-      | never[]
-      | [ShowError<any>]
-  ): CookiesStoreItem<any> {
-    const cookieOptionsInput: CookieOptionsInputWithDefaultValue<any> =
-      args[0] as CookieOptionsInputWithDefaultValue<any>
-    const transformer: DataTransformerExtended | null = args[1] ? toExtendedTransformer(args[1]) : this.transformer
-    const item = new CookiesStoreItem<any>({
-      cookiesStore: this,
+  // define(
+  //   ...args: TTransformer extends null ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<string>] : never[]
+  // ): CookiesStoreItem<string>
+  // define<TValue>(
+  //   ...args: TTransformer extends null
+  //     ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>, transformer: DataTransformer]
+  //     : [ShowError<`Transformer is required for setting cookie with custom value type`>]
+  // ): CookiesStoreItem<TValue>
+  // define<TValue>(
+  //   ...args: TTransformer extends DataTransformerExtended
+  //     ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>]
+  //     : never[]
+  // ): CookiesStoreItem<TValue>
+  // define(
+  //   ...args: TTransformer extends DataTransformerExtended
+  //     ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<string>, transformer: null]
+  //     : never[]
+  // ): CookiesStoreItem<string>
+  // define(
+  //   ...args:
+  //     | [cookieOptionsInput: CookieOptionsInputWithDefaultValue<any>, transformer?: DataTransformer | null]
+  //     | never[]
+  //     | [ShowError<any>]
+  // ): CookiesStoreItem<any> {
+  //   const cookieOptionsInput: CookieOptionsInputWithDefaultValue<any> =
+  //     args[0] as CookieOptionsInputWithDefaultValue<any>
+  //   const transformer: DataTransformerExtended | null = args[1] ? toExtendedTransformer(args[1]) : this.transformer
+  //   const item = new CookiesStoreItem<any>({
+  //     cookiesStore: this,
+  //     cookieOptionsInput,
+  //     transformer,
+  //   })
+  //   CookiesStore.items.add(item)
+  //   return item
+  // }
+  static define<TValue = string>(
+    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>,
+    transformer?: DataTransformer | undefined,
+  ): CookiesStoreItem<TValue, TValue>
+  static define<TValue = string>(
+    cookieOptionsInput: CookieOptionsInputWithoutDefaultValue,
+    transformer?: DataTransformer | undefined,
+  ): CookiesStoreItem<TValue, undefined>
+  static define<TValue = string>(
+    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue> | CookieOptionsInputWithoutDefaultValue,
+    transformer?: DataTransformer | undefined,
+  ): CookiesStoreItem<TValue, InferDefaultValue<typeof cookieOptionsInput>> {
+    const transformerHere = transformer ? toExtendedTransformer(transformer) : CookiesStore.transformer
+    const item = new CookiesStoreItem<TValue, InferDefaultValue<typeof cookieOptionsInput>>({
       cookieOptionsInput,
-      transformer,
+      transformer: transformerHere,
     })
-    this.items.add(item)
+    CookiesStore.items.add(item)
     return item
   }
 
-  private readonly serverCookieGetter: CookiesStoreGetter = (name) => {
+  static readonly serverCookieGetter: CookiesStoreGetter = (name) => {
     const request = SuperStore.getWeak<PointRequest | undefined>('__POINT0_POINT_REQUEST__')
     if (!request) {
       throw new Error('Request is undefined while try to get cookie from server')
     }
     return request.cookies[name]
   }
-  private readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
+  static readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
     const responseEffectsManager = SuperStore.getWeak<ResponseEffectsManager | undefined>(
       '__POINT0_RESPONSE_EFFECTS_MANAGER__',
     )
@@ -160,32 +176,26 @@ export class CookiesStore<TTransformer extends DataTransformerExtended | null = 
     responseEffectsManager.set.cookies(cookieOptionsInput)
   }
 
-  set: CookiesStoreSetter = (cookieOptionsInput) => {
+  static set: CookiesStoreSetter = (cookieOptionsInput) => {
     if (!Point0.isServer && cookieOptionsInput.httpOnly) {
       throw new Error(`Cannot set cookie "${cookieOptionsInput.name}" from client: httpOnly cookies are server-only`)
     }
     if (Point0.isServer) {
-      this.serverCookieSetter(cookieOptionsInput)
+      CookiesStore.serverCookieSetter(cookieOptionsInput)
     } else {
-      this.clientCookieSetter(cookieOptionsInput)
+      CookiesStore.clientCookieSetter(cookieOptionsInput)
     }
   }
 
-  get: CookiesStoreGetter = (name) => {
+  static get: CookiesStoreGetter = (name) => {
     if (Point0.isServer) {
-      return this.serverCookieGetter(name)
+      return CookiesStore.serverCookieGetter(name)
     } else {
-      return this.clientCookieGetter(name)
+      return CookiesStore.clientCookieGetter(name)
     }
   }
 
-  /**
-   * Manually refresh all cookie items from client cookies.
-   * This will trigger all registered `use` hooks to update for all items.
-   * Only available on the client.
-   * httpOnly cookies are skipped (they are server-only).
-   */
-  refresh(): void {
+  static refresh(): void {
     if (Point0.isServer) {
       throw new Error('refresh() is only available on the client')
     }
@@ -196,34 +206,24 @@ export class CookiesStore<TTransformer extends DataTransformerExtended | null = 
       }
     })
   }
-
-  static refresh(): void {
-    CookiesStore.stores.forEach((store) => {
-      store.refresh()
-    })
-  }
 }
 
-export class CookiesStoreItem<TValue> {
-  private readonly cookiesStore: CookiesStore<any>
+class CookiesStoreItem<TValue, TDefaultValue> {
   private readonly cookieOptionsInput: Omit<CookieOptionsInput, 'value'>
-  private readonly defaultValue: TValue | undefined
+  private readonly defaultValue: TDefaultValue
   private readonly transformer: DataTransformerExtended | null
   private readonly refreshCallbacks = new Set<() => void>()
 
   constructor({
-    cookiesStore,
     cookieOptionsInput,
     transformer,
   }: {
-    cookiesStore: CookiesStore<any>
-    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>
+    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue> | CookieOptionsInputWithoutDefaultValue
     transformer: DataTransformerExtended | null
   }) {
-    this.cookiesStore = cookiesStore
     const { value: defaultValue, ...cookieOptionsInputWithoutValue } = cookieOptionsInput
     this.cookieOptionsInput = cookieOptionsInputWithoutValue
-    this.defaultValue = defaultValue ?? undefined
+    this.defaultValue = defaultValue as TDefaultValue
     this.transformer = transformer
   }
 
@@ -243,8 +243,12 @@ export class CookiesStoreItem<TValue> {
     if (value === undefined) {
       this.delete()
     }
-    const stringified = this.transformer ? (this.transformer.stringify(value) as string) : (value as string)
-    this.cookiesStore.set({ ...this.cookieOptionsInput, value: stringified })
+    const stringified = this.transformer
+      ? typeof value === 'string'
+        ? value
+        : (this.transformer.stringify(value) as string)
+      : (value as string)
+    CookiesStore.set({ ...this.cookieOptionsInput, value: stringified })
   }
 
   delete() {
@@ -253,20 +257,26 @@ export class CookiesStoreItem<TValue> {
         `Cannot delete cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
       )
     }
-    this.cookiesStore.set({ ...this.cookieOptionsInput, value: '', expires: new Date(0) })
+    CookiesStore.set({ ...this.cookieOptionsInput, value: '', expires: new Date(0) })
   }
 
-  get(): TValue | undefined {
+  get(): TValue | TDefaultValue {
     if (!Point0.isServer && this.cookieOptionsInput.httpOnly) {
       throw new Error(
         `Cannot get cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
       )
     }
-    const stringified = this.cookiesStore.get(this.cookieOptionsInput.name)
+    const stringified = CookiesStore.get(this.cookieOptionsInput.name)
     if (stringified === undefined) {
       return this.defaultValue
     }
-    return this.transformer ? this.transformer.parse(stringified) : (stringified as TValue)
+    try {
+      return this.transformer
+        ? ((this.transformer.parse(stringified) ?? stringified) as TValue)
+        : (stringified as TValue)
+    } catch {
+      return stringified as TValue
+    }
   }
 
   /**
@@ -304,7 +314,7 @@ export class CookiesStoreItem<TValue> {
    * @param onChange Optional callback that will be called when the cookie value changes (client only)
    * @returns The current cookie value
    */
-  use(onChange?: (value: TValue | undefined) => void): TValue | undefined {
+  use(onChange?: (value: TValue | TDefaultValue) => void): TValue | TDefaultValue {
     // On server, just return the current value
     if (Point0.isServer) {
       return this.get()
@@ -317,36 +327,36 @@ export class CookiesStoreItem<TValue> {
       )
     }
 
-    const cookiesStore = this.cookiesStore
-    const cookieOptionsInput = this.cookieOptionsInput
-    const defaultValue = this.defaultValue
-    const transformer = this.transformer
-    const refreshCallbacks = this.refreshCallbacks
-    const onChangeCallback = onChange
-
     const getStringifiedValue = (): string | undefined => {
-      return cookiesStore.get(cookieOptionsInput.name)
+      return CookiesStore.get(this.cookieOptionsInput.name)
     }
 
-    const getValue = (): TValue | undefined => {
+    const getValue = (): TValue | TDefaultValue => {
       const stringified = getStringifiedValue()
       if (stringified === undefined) {
-        return defaultValue
+        return this.defaultValue
       }
-      return transformer ? transformer.parse(stringified) : (stringified as TValue)
+      try {
+        return this.transformer
+          ? ((this.transformer.parse(stringified) ?? stringified) as TValue)
+          : (stringified as TValue)
+      } catch (error) {
+        console.error('Parsing cookie failed', this.cookieOptionsInput.name, stringified, error)
+        return stringified as TValue
+      }
     }
 
     const initialValue = getValue()
     const initialStringified = getStringifiedValue()
-    const [value, setValue] = useState<TValue | undefined>(initialValue)
-    const onChangeRef = useRef(onChangeCallback)
-    const prevValueRef = useRef<TValue | undefined>(initialValue)
+    const [value, setValue] = useState<TValue | TDefaultValue>(initialValue)
+    const onChangeRef = useRef(onChange)
+    const prevValueRef = useRef<TValue | TDefaultValue>(initialValue)
     const prevOriginalValueRef = useRef<string | undefined>(initialStringified)
 
     // Update the onChange ref when it changes
     useEffect(() => {
-      onChangeRef.current = onChangeCallback
-    }, [onChangeCallback])
+      onChangeRef.current = onChange
+    }, [onChange])
 
     // Set up the refresh callback
     useEffect(() => {
@@ -364,10 +374,10 @@ export class CookiesStoreItem<TValue> {
         }
       }
 
-      refreshCallbacks.add(refreshCallback)
+      this.refreshCallbacks.add(refreshCallback)
 
       return () => {
-        refreshCallbacks.delete(refreshCallback)
+        this.refreshCallbacks.delete(refreshCallback)
       }
     }, [])
 
