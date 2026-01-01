@@ -2,16 +2,11 @@
 ------ before start0 -----
 --------------------------
 
-REQUEST/RESPONSE/CTX
-Поинт скоуп, нейм, тайп всё это вшить в квери параметры тогда сьютабол сможем получать даже на опшинсах
-request wrapper: {original, headers:{name:value}, cookies:{name:value}, location, method, from: {}}
-set wrapper: {cookies, headers, status, inspect: {cookies, headers, status}} https://chatgpt.com/c/69456768-4cb8-832e-8a41-2a9c66dc2fbb
-
-В реквест добавить в поинт всю информацию о нём как в оригинальном запросе, и оут тайп, и тайп, и нейм, а сам поинт уже пусть будет в опшинсах
-Фром скоуп тоже нужен он просто в хедерах передастся
-
 CookiesStore/SuperStore
 ? SuperStore → SsrStore и посмотреть везде ли он логично используется
+.cookiesStore(CookiesStore.configure({clientCookiesGetter: () => {}, clientCookiesSetter: () => {}}))
+const x = CookiesStore.define({...cookiesOptions, value?: fallbackValue})
+x.set() x.get() x.use()
 Сделать удобным на фронте получение сср кук например для установки языка. Можно совершенно аналогичный КукисСтор
 Главное как-то во время рендера при сср чтобы кукисы нормальные доходили в сервере при использовании внутри компонентов
 
@@ -32,7 +27,6 @@ rename fetch to EngineFetcher
 AppendCtx with Prettify
 InputRaw → InputOriginal
 Do not omit, in exposedCtx, but if try to expose then error
-X-Point0-Json-Data: 'false'
 Не кастомер а энвиронмент
 Не ансейф а форс
 В фетч и серв назвать аргумент просто кткс
