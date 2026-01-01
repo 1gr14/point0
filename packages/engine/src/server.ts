@@ -134,6 +134,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       definition: input.publicdir,
       outdir: input.publicdirOutdir,
       scope: input.scope,
+      server: null,
+      client: null,
     })
 
     const viteDevServer = null
@@ -144,6 +146,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       initialized: false,
       viteDevServer,
     })
+    publicdir.server = server
     return server
   }
 

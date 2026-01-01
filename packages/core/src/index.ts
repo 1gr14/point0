@@ -30,7 +30,6 @@ import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { stringify } from 'safe-stable-stringify'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
@@ -154,6 +153,7 @@ import type {
   WrapperComponentType,
 } from './types.js'
 import {
+  blankDataTransformer,
   dedupeSlashes,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
@@ -161,6 +161,7 @@ import {
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   mergeHeaders,
+  toExtendedTransformer,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
@@ -574,12 +575,7 @@ export class Point0<
     this._root = options._root ?? undefined
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
-    this._tranformer =
-      options._tranformer ??
-      Point0._toExtendedTransformer({
-        serialize: (data) => data,
-        deserialize: (data) => data,
-      })
+    this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
     this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
@@ -5738,15 +5734,6 @@ export class Point0<
 
   // transformer
 
-  private static _toExtendedTransformer(transformer: DataTransformer): DataTransformerExtended {
-    return {
-      serialize: transformer.serialize.bind(transformer),
-      deserialize: transformer.deserialize.bind(transformer) as <TData>(data: unknown) => TData,
-      stringify: (data) => stringify(transformer.serialize(data)),
-      parse: <TData>(stringified: string): TData => transformer.deserialize(JSON.parse(stringified)) as TData,
-    }
-  }
-
   transformer(
     transformer: DataTransformer,
   ): NiceMiddlePoint<
@@ -5765,7 +5752,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      _tranformer: Point0._toExtendedTransformer(transformer),
+      _tranformer: toExtendedTransformer(transformer),
     }) as never
   }
 
@@ -6014,7 +6001,6 @@ export class Point0<
   }
 }
 
-export type * from './cookies-store.js'
 export * from './points-manager.js'
 export * from './request.js'
 export * from './response-effects.js'
@@ -6023,3 +6009,4 @@ export * from './super-store.js'
 export type * from './types.js'
 export * from './unhead.js'
 export * from './utils.js'
+export * from './cookies-store.js'

@@ -1,5 +1,6 @@
 import type { DehydratedState } from '@tanstack/react-query'
-import type { ScrollPositionGetter, ScrollPositionSetter } from './types.js'
+import type { DataTransformer, DataTransformerExtended, ScrollPositionGetter, ScrollPositionSetter } from './types.js'
+import { stringify } from 'safe-stable-stringify'
 
 export function mergeHeaders(
   base?: HeadersInit,
@@ -155,4 +156,18 @@ export const isContainsBinary = (value: unknown): boolean => {
     return Object.values(value).some(isContainsBinary)
   }
   return false
+}
+
+export const blankDataTransformer: DataTransformer = {
+  serialize: (data) => data,
+  deserialize: (data) => data,
+}
+
+export const toExtendedTransformer = (transformer: DataTransformer): DataTransformerExtended => {
+  return {
+    serialize: transformer.serialize.bind(transformer),
+    deserialize: transformer.deserialize.bind(transformer) as <TData>(data: unknown) => TData,
+    stringify: (data) => stringify(transformer.serialize(data)),
+    parse: <TData>(stringified: string): TData => transformer.deserialize(JSON.parse(stringified)) as TData,
+  }
 }

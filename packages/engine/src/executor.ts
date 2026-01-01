@@ -50,19 +50,21 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   private constructor({
     request,
-    points,
+    pointsManager,
     pageLocation,
     requiredCtx,
     serverExecuteActionsWithOutput,
     serverGlobalState,
     responseEffectsManager,
   }: {
-    request: Request | PointRequest
-    points: PointsManager<true, TRequiredCtx>
+    request: PointRequest
+    pointsManager: PointsManager<true, TRequiredCtx>
     serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverGlobalState: {
+      __POINT0_POINT_REQUEST__: PointRequest
+      __POINT0_RESPONSE_EFFECTS_MANAGER__: ResponseEffectsManager
       __POINT0_SCOPE__: PointsScope
       __POINT0_QUERY_CLIENT__: QueryClient
       __POINT0_SSR_LOCATION__: AnyLocation | undefined
@@ -70,9 +72,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     }
     responseEffectsManager: ResponseEffectsManager
   }) {
-    this.request = PointRequest.create(request)
+    this.request = request
     this.responseEffectsManager = responseEffectsManager
-    this.pointsManager = points
+    this.pointsManager = pointsManager
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
@@ -81,14 +83,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
     request,
-    points,
+    pointsManager,
     pageLocation,
     currentLocation,
     requiredCtx,
     responseEffectsManager,
   }: {
     request: Request | PointRequest
-    points: PointsManager<true, TRequiredCtx>
+    pointsManager: PointsManager<true, TRequiredCtx>
     // TODO: remove currentLoacton from here, use it from request
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
@@ -96,16 +98,20 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     responseEffectsManager?: ResponseEffectsManager
   }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
+    responseEffectsManager ??= ResponseEffectsManager.create()
+    const pointRequest = PointRequest.create(request)
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new Executor<TRequiredCtx>({
-        request,
-        points,
+        request: pointRequest,
+        pointsManager,
         pageLocation,
         requiredCtx,
         serverExecuteActionsWithOutput: [],
-        responseEffectsManager: responseEffectsManager ?? ResponseEffectsManager.create(),
+        responseEffectsManager,
         serverGlobalState: {
-          __POINT0_SCOPE__: points.scope,
+          __POINT0_POINT_REQUEST__: pointRequest,
+          __POINT0_RESPONSE_EFFECTS_MANAGER__: responseEffectsManager,
+          __POINT0_SCOPE__: pointsManager.scope,
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,
           __POINT0_CURRENT_LOCATION__: currentLocation,
@@ -191,7 +197,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
     executor ??= await Executor.create({
       request: Executor.createRequestByPointAndInput({ point, input }),
-      points: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
+      pointsManager: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
       currentLocation: location,
       requiredCtx,
       pageLocation: point.type === 'page' ? location : undefined,

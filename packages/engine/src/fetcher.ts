@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx } from '@point0/core'
-import { PointRequest, ResponseEffectsManager } from '@point0/core'
+import { PointRequest, ResponseEffectsManager, SuperStore } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import { toJsonErrorResponse } from './error.js'
@@ -284,7 +284,7 @@ export class Fetcher {
 
       const executor = await Executor.create({
         request,
-        points: suitable.pointsManager,
+        pointsManager: suitable.pointsManager,
         pageLocation: suitable.pageLocation,
         currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
         requiredCtx,
@@ -420,24 +420,32 @@ export class Fetcher {
       bunServer,
     })
 
-    if (prepareFetchResult.devClientsProxyResult) {
-      return prepareFetchResult.devClientsProxyResult.response
-    }
+    return await SuperStore.runWithServerStorageProvider(
+      {
+        __POINT0_POINT_REQUEST__: prepareFetchResult.request,
+        __POINT0_RESPONSE_EFFECTS_MANAGER__: responseEffectsManager,
+      },
+      async () => {
+        if (prepareFetchResult.devClientsProxyResult) {
+          return prepareFetchResult.devClientsProxyResult.response
+        }
 
-    if (prepareFetchResult.publicdirResult) {
-      return responseEffectsManager.applyToResponse(prepareFetchResult.publicdirResult.response)
-    }
+        if (prepareFetchResult.publicdirResult) {
+          return responseEffectsManager.applyToResponse(prepareFetchResult.publicdirResult.response)
+        }
 
-    const fetchPointResponse = await this.fetchPoint({
-      request: prepareFetchResult.request,
-      suitable: prepareFetchResult.pointResult.suitable,
-      task: prepareFetchResult.pointResult.task,
-      requiredCtx,
-      scope,
-      responseEffectsManager,
-    })
+        const fetchPointResponse = await this.fetchPoint({
+          request: prepareFetchResult.request,
+          suitable: prepareFetchResult.pointResult.suitable,
+          task: prepareFetchResult.pointResult.task,
+          requiredCtx,
+          scope,
+          responseEffectsManager,
+        })
 
-    return responseEffectsManager.applyToResponse(fetchPointResponse)
+        return responseEffectsManager.applyToResponse(fetchPointResponse)
+      },
+    )
   }
 }
 

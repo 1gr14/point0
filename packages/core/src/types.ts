@@ -1388,7 +1388,7 @@ export type AppProps = { points: PointsManager }
 export type AppComponent = (props: AppProps) => React.ReactElement
 export type AppComponentModule = { default: AppComponent }
 
-// transformer
+// data transformer
 
 export type DataTransformer = {
   serialize: (data: any) => any

@@ -169,6 +169,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       definition: input.publicdir,
       outdir: input.publicdirOutdir,
       scope: input.scope,
+      server: null,
+      client: null,
     })
 
     const distIndexHtmlContent = null
@@ -184,6 +186,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       // serverBunDevBuilder,
       initialized: false,
     })
+    publicdir.client = client
 
     return client
   }

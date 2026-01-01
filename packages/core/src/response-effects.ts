@@ -1,4 +1,4 @@
-import type { CookieOptions } from './cookies-store.js'
+import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 
 export type PointResponseHeaders = Record<string, string>
 export type PointResponseCookies = Record<string, CookieOptions>
@@ -11,8 +11,9 @@ export type PointSetHeaderFn = {
 }
 
 export type PointSetCookieFn = {
-  (cookies: Record<string, string | CookieOptions>): void
-  (cookieName: string, cookieValue: string, cookieOptions?: Omit<CookieOptions, 'name' | 'value'>): void
+  // (cookies: Record<string, string | CookieOptions>): void
+  (cookieOptions: CookieOptionsInput): void
+  (cookieName: string, cookieValue: string, cookieOptions?: Omit<CookieOptionsInput, 'name' | 'value'>): void
 }
 
 export type PointSetStatusFn = (status: number) => void
@@ -80,32 +81,21 @@ export class ResponseEffectsManager {
 
   private _setCookies(...args: any[]): void {
     if (args.length === 1) {
-      const cookies = args[0] as Record<string, string | CookieOptions>
-      for (const [name, valueOrOptions] of Object.entries(cookies)) {
-        if (typeof valueOrOptions === 'string') {
-          this.cookies[name] = {
-            name,
-            value: valueOrOptions,
-            path: '/',
-            sameSite: 'lax',
-          }
-        } else {
-          this.cookies[name] = {
-            name,
-            value: valueOrOptions.value,
-            path: valueOrOptions.path,
-            sameSite: valueOrOptions.sameSite,
-            domain: valueOrOptions.domain,
-            expires: valueOrOptions.expires,
-            secure: valueOrOptions.secure,
-            httpOnly: valueOrOptions.httpOnly,
-            partitioned: valueOrOptions.partitioned,
-            maxAge: valueOrOptions.maxAge,
-          }
-        }
+      const cookieOptions = args[0] as CookieOptionsInput
+      this.cookies[cookieOptions.name] = {
+        name: cookieOptions.name,
+        value: cookieOptions.value,
+        path: cookieOptions.path ?? '/',
+        sameSite: cookieOptions.sameSite ?? 'lax',
+        domain: cookieOptions.domain,
+        expires: cookieOptions.expires,
+        secure: cookieOptions.secure,
+        httpOnly: cookieOptions.httpOnly,
+        partitioned: cookieOptions.partitioned,
+        maxAge: cookieOptions.maxAge,
       }
     } else if (args.length >= 2) {
-      const [cookieName, cookieValue, cookieOptions] = args as [string, string, CookieOptions?]
+      const [cookieName, cookieValue, cookieOptions] = args as [string, string, CookieOptionsInput?]
       this.cookies[cookieName] = {
         name: cookieName,
         value: cookieValue,

@@ -453,7 +453,7 @@ describe('Point0', () => {
     // })
     const run1 = await Executor.create({
       request: new Request('http://localhost/'),
-      points: PointsManager.ready({
+      pointsManager: PointsManager.ready({
         _root_ready: server1.attach(clientPointBase01),
         page: server1.attach(clientPoint01.point),
       }),
@@ -502,7 +502,7 @@ describe('Point0', () => {
     // })
     const run2 = await Executor.create({
       request: new Request('http://localhost' + url),
-      points: PointsManager.ready({
+      pointsManager: PointsManager.ready({
         _root_ready: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
       }),
@@ -546,7 +546,7 @@ describe('Point0', () => {
     // })
     const run3 = await Executor.create({
       request: new Request('http://localhost' + url),
-      points: PointsManager.ready({
+      pointsManager: PointsManager.ready({
         _root_ready: server3.attach(clientPointBase03),
         page: server3.attach(clientPoint03.point),
       }),

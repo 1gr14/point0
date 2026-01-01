@@ -3,6 +3,8 @@ import { prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { withError } from './utils.js'
+import type { ServerBun } from './server.js'
+import type { ClientBun } from './client.js'
 
 async function* getAllFiles(dirPath: string): AsyncGenerator<string> {
   try {
@@ -26,6 +28,8 @@ export class Publicdir<TInitialized extends boolean = boolean> {
   // <fileRoutePath, fileAbsPath | fileResponseOrFn>
   files: Map<string, string | Response | (() => Response | Promise<Response>)>
   outdir: string | null
+  server: TInitialized extends true ? ServerBun<true> | null : ServerBun<false> | null
+  client: TInitialized extends true ? ClientBun<true> | null : ClientBun<false> | null
   initialized: TInitialized
 
   scope: PointsScope
@@ -36,6 +40,8 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
     scope: PointsScope
     outdir: string | null
+    server: TInitialized extends true ? ServerBun<true> | null : ServerBun<false> | null
+    client: TInitialized extends true ? ClientBun<true> | null : ClientBun<false> | null
   }) {
     this.hostname = input.hostname
     this.definition = input.definition
@@ -43,6 +49,8 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     this.scope = input.scope
     this.outdir = input.outdir
     this.initialized = input.initialized
+    this.server = input.server
+    this.client = input.client
   }
 
   static create(input: {
@@ -50,10 +58,14 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     definition: Array<[string, string | Response | (() => Response | Promise<Response>)]>
     scope: PointsScope
     outdir: string | null
+    server: ServerBun<false> | null
+    client: ClientBun<false> | null
   }): Publicdir<false> {
     return new Publicdir<false>({
       ...input,
       initialized: false,
+      server: input.server,
+      client: input.client,
     })
   }
 
