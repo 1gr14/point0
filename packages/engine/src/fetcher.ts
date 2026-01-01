@@ -1,13 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type {
-  DataTransformerExtended,
-  EndPointType,
-  InputRawUnknown,
-  PointName,
-  PointsScope,
-  RequiredCtx,
-} from '@point0/core'
+import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx } from '@point0/core'
 import { PointRequest } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
@@ -72,13 +65,7 @@ export class Fetcher {
     }
   }
 
-  static getTaskInputFromRequest = async ({
-    request,
-    transformer,
-  }: {
-    request: PointRequest
-    transformer: DataTransformerExtended
-  }): Promise<InputRawUnknown | undefined> => {
+  getTaskInputFromRequest = async ({ request }: { request: PointRequest }): Promise<InputRawUnknown | undefined> => {
     if (request.location.pathname !== '/_point0') {
       return undefined
     }
@@ -109,6 +96,10 @@ export class Fetcher {
     ) {
       throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
     }
+    const transformer = this.server.allPointsManagers.getTransformerByScope({
+      scope: request.from.scope,
+      fallbackScope: this.server.fallbackScope,
+    })
     const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
     return inputRaw
   }
@@ -116,23 +107,24 @@ export class Fetcher {
   prepareFetch = async ({
     originalRequest,
     scope,
+    bunServer,
   }: {
     originalRequest: Request
     scope?: PointsScope
+    bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
     const request = PointRequest.create(originalRequest)
 
     const devClientsProxyResponse = await this.fetchDevClientsProxy({
       request,
+      bunServer,
     })
     if (devClientsProxyResponse) {
       return {
-        publicdir: undefined,
-        publicdirResponse: undefined,
-        suitable: undefined,
         request,
-        devClientsProxyResponse,
-        task: undefined,
+        devClientsProxyResult: devClientsProxyResponse,
+        publicdirResult: undefined,
+        pointResult: undefined,
       }
     }
 
@@ -140,12 +132,10 @@ export class Fetcher {
       const staticResponse = await publicdir.fetch({ request })
       if (staticResponse) {
         return {
-          publicdir,
-          publicdirResponse: staticResponse,
-          suitable: undefined,
           request,
-          devClientsProxyResponse: undefined,
-          task: undefined,
+          devClientsProxyResult: undefined,
+          publicdirResult: { publicdir, response: staticResponse },
+          pointResult: undefined,
         }
       }
     }
@@ -156,12 +146,10 @@ export class Fetcher {
       const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
       if (responseFromAbsFilePath) {
         return {
-          publicdir: undefined,
-          publicdirResponse: responseFromAbsFilePath,
-          suitable: undefined,
           request,
-          devClientsProxyResponse: undefined,
-          task: undefined,
+          devClientsProxyResult: undefined,
+          publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
+          pointResult: undefined,
         }
       }
     }
@@ -175,53 +163,60 @@ export class Fetcher {
     })
 
     return {
-      publicdir: undefined,
-      publicdirResponse: undefined,
-      suitable,
       request,
-      devClientsProxyResponse: undefined,
-      task,
+      devClientsProxyResult: undefined,
+      publicdirResult: undefined,
+      pointResult: { suitable, task },
     }
   }
 
-  fetchDevClientsProxy = async ({ request }: { request: PointRequest }): Promise<Response | undefined> => {
+  fetchDevClientsProxy = async ({
+    request,
+    bunServer,
+  }: {
+    request: PointRequest
+    bunServer?: Bun.Server<unknown>
+  }): Promise<{ response: Response | undefined } | undefined> => {
     if (process.env.NODE_ENV === 'production') {
       return undefined
     }
+    bunServer ??= this.server.bunServer
     for (const client of this.server.clients) {
       // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
-      if (this.server.bunServer) {
+      if (bunServer) {
         const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
           request,
-          bunServer: this.server.bunServer,
+          bunServer,
         })
         if (bunDevServerUpgradeWebSocketResult) {
-          return bunDevServerUpgradeWebSocketResult.result as never // it is just for hmr on dev
+          return { response: bunDevServerUpgradeWebSocketResult.result } // in this case response really should be undefined
         }
       }
       const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request })
       if (clientViteDevServerResponse) {
-        return clientViteDevServerResponse
+        return { response: clientViteDevServerResponse }
       }
       const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request })
       if (clientBunDevServerResponse) {
-        return clientBunDevServerResponse
+        return { response: clientBunDevServerResponse }
       }
     }
-    return undefined
+    return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
   }
 
   fetchPoint = async ({
-    prepareFetchResult,
+    suitable,
+    task,
+    request,
     scope,
     requiredCtx,
   }: {
-    prepareFetchResult: Extract<PrepareFetchResult, { suitable: GetSuitableResult }>
+    suitable: GetSuitableResult
+    task: FetchTask | undefined
+    request: PointRequest
     scope?: PointsScope
     requiredCtx: RequiredCtx
   }): Promise<Response> => {
-    const request = prepareFetchResult.request
-
     const meta: Record<string, any> = {
       url: request.original.url,
       scope,
@@ -238,7 +233,6 @@ export class Fetcher {
         })
       }
 
-      const suitable = prepareFetchResult.suitable
       const executor = await Executor.create({
         request,
         points: suitable.pointsManager,
@@ -248,7 +242,6 @@ export class Fetcher {
       })
       meta.scope = suitable.pointsManager.scope
 
-      const task = prepareFetchResult.task
       const pointType = task?.pointType ?? 'page'
       const outputType = task?.outputType ?? 'html'
       meta.pointType = pointType
@@ -263,9 +256,8 @@ export class Fetcher {
       const getInput = async () => {
         // we do not call it immediatelly, becouse for openapi points we do not want parse input, so developer can read body when it needed
         return (
-          (await Fetcher.getTaskInputFromRequest({
+          (await this.getTaskInputFromRequest({
             request,
-            transformer: suitable.pointsManager.transformer,
           })) || {}
         )
       }
@@ -349,7 +341,7 @@ export class Fetcher {
       }
 
       if (executeResult.output instanceof Response) {
-        executeResult.output.headers.set('X-Point0-Response', 'true')
+        executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
         return executeResult.output
       }
 
@@ -371,28 +363,22 @@ export class Fetcher {
 
 export type PrepareFetchResult =
   | {
-      publicdir: undefined
-      publicdirResponse: undefined
+      publicdirResult: undefined
       request: PointRequest
-      devClientsProxyResponse: Response
-      suitable: undefined
-      task: undefined
+      devClientsProxyResult: { response: Response | undefined }
+      pointResult: undefined
     }
   | {
-      publicdir: Publicdir<true> | undefined // in case if it is bun dev server try to fetch abs path
-      publicdirResponse: Response
+      publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
       request: PointRequest
-      devClientsProxyResponse: undefined
-      suitable: undefined
-      task: undefined
+      devClientsProxyResult: undefined
+      pointResult: undefined
     }
   | {
-      publicdir: undefined
-      publicdirResponse: undefined
+      publicdirResult: undefined
       request: PointRequest
-      devClientsProxyResponse: undefined
-      suitable: GetSuitableResult
-      task: FetchTask | undefined
+      devClientsProxyResult: undefined
+      pointResult: { suitable: GetSuitableResult; task: FetchTask | undefined }
     }
 
 export type FetchTask = {

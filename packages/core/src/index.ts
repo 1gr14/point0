@@ -3868,7 +3868,10 @@ export class Point0<
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const headers = mergeHeaders(fetchOptions.headers, options?.headers, { Accept: 'application/json' })
+    const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
+      Accept: 'application/json',
+      'X-Point0-From-Scope': this.scope,
+    })
     if (!this._serverurl) {
       return { error: new Error0('Server URL is not set'), response: undefined, data: undefined, output: undefined }
     }
@@ -3877,17 +3880,15 @@ export class Point0<
 
     const outputType = args[2] ?? 'data'
     const scope = this._attachedTo.length === 0 ? this.scope : Point0.getPointsManager().scope
+    url.searchParams.set('type', this.type)
+    url.searchParams.set('name', this.name)
+    url.searchParams.set('scope', scope)
+    url.searchParams.set('output', outputType)
 
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
     const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
 
-    const bodySrc = {
-      output: outputType,
-      scope,
-      type: this.type,
-      name: this.name,
-      input: this._tranformer.serialize(input),
-    }
+    const bodySrc = this._tranformer.serialize(input)
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
         const formData = new FormData()
@@ -3913,7 +3914,7 @@ export class Point0<
       method,
       body,
     })
-    if (res.headers.get('X-Point0-Response') === 'true') {
+    if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
       return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
     }
     try {

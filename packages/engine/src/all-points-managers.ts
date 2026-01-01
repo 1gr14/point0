@@ -8,6 +8,7 @@ import type {
   PointsManager,
   PointsScope,
   RequiredCtx,
+  DataTransformerExtended,
 } from '@point0/core'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -109,21 +110,21 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
-  // getTransformerByScope({
-  //   scope,
-  //   fallbackScope,
-  // }: {
-  //   scope?: PointsScope
-  //   fallbackScope: PointsScope
-  // }): DataTransformerExtended {
-  //   const result = (this.pointsManagers.find(
-  //     (pointsManager) => pointsManager.scope === scope || pointsManager.scope === fallbackScope,
-  //   )?.transformer ?? this.pointsManagers[0].transformer) as DataTransformerExtended | undefined
-  //   if (!result) {
-  //     throw new Error(`No transformer found for scope "${scope}" or fallback scope "${fallbackScope}"`)
-  //   }
-  //   return result
-  // }
+  getTransformerByScope({
+    scope,
+    fallbackScope,
+  }: {
+    scope?: PointsScope | null
+    fallbackScope: PointsScope
+  }): DataTransformerExtended {
+    const result = (this.pointsManagers.find(
+      (pointsManager) => pointsManager.scope === scope || pointsManager.scope === fallbackScope,
+    )?.transformer ?? this.pointsManagers[0].transformer) as DataTransformerExtended | undefined
+    if (!result) {
+      throw new Error(`No transformer found for scope "${scope}" or fallback scope "${fallbackScope}"`)
+    }
+    return result
+  }
 
   // async prepareExecutorByRequest({
   //   request,

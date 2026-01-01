@@ -79,8 +79,8 @@ export class PointRequest {
     // Extract user agent
     const userAgent = original.headers.get('user-agent') || null
 
-    // Extract scope from headers (if available)
-    const scope = original.headers.get('x-point0-from-scope') || null
+    // Extract from scope from headers (if available)
+    const fromScope = original.headers.get('X-Point0-From-Scope') || null
 
     // Extract referrer location
     const referrerUrl = original.referrer || original.headers.get('referer')
@@ -91,7 +91,7 @@ export class PointRequest {
       ip: ips[0] || null,
       userAgent,
       location: referrerLocation,
-      scope,
+      scope: fromScope,
     }
 
     return new PointRequest({ original, headers, cookies, location, method, from })

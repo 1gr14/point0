@@ -7,7 +7,7 @@ const general = {
     'src/client.ts',
     'src/config.ts',
     'src/error.ts',
-    'src/fetch.ts',
+    'src/fetcher.ts',
     'src/generator.ts',
     'src/compiler.ts',
     'src/compiler-bun-static.ts',

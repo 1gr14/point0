@@ -288,7 +288,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     ...args: UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx> extends UndefinedCtx
       ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
       : [request: Request, options: { requiredCtx: TRequiredCtx }]
-  ): Promise<Response> {
+  ): Promise<Response | undefined> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }

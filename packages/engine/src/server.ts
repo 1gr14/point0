@@ -277,7 +277,12 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.bunServer = Bun.serve({
       port: this.port,
       fetch: async (request, bunServer) => {
-        const response = await this.fetch({ request, requiredCtx })
+        const response = await this.fetch({ request, requiredCtx, bunServer })
+
+        // in case of dev upgrade proxy websocket
+        if (!response) {
+          return response
+        }
 
         // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
         if (process.env.NODE_ENV !== 'production') {
@@ -696,11 +701,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     request,
     requiredCtx,
     scope,
+    bunServer,
   }: {
     request: Request
     requiredCtx: RequiredCtx
     scope?: PointsScope
-  }): Promise<Response> {
+    bunServer?: Bun.Server<unknown>
+  }): Promise<Response | undefined> {
     if (!this.isInitialized()) {
       throw new Error('Server is not initialized')
     }
@@ -708,18 +715,21 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const prepareFetchResult = await this.fetcher.prepareFetch({
       originalRequest: request,
       scope,
+      bunServer,
     })
 
-    if (prepareFetchResult.devClientsProxyResponse) {
-      return prepareFetchResult.devClientsProxyResponse
+    if (prepareFetchResult.devClientsProxyResult) {
+      return prepareFetchResult.devClientsProxyResult.response
     }
 
-    if (prepareFetchResult.publicdirResponse) {
-      return prepareFetchResult.publicdirResponse
+    if (prepareFetchResult.publicdirResult) {
+      return prepareFetchResult.publicdirResult.response
     }
 
     const fetchPointResponse = await this.fetcher.fetchPoint({
-      prepareFetchResult,
+      request: prepareFetchResult.request,
+      suitable: prepareFetchResult.pointResult.suitable,
+      task: prepareFetchResult.pointResult.task,
       requiredCtx,
       scope,
     })
