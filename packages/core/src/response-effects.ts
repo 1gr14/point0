@@ -28,6 +28,7 @@ export type ResponseEffectsSetHelper = {
   cookies: PointSetCookieFn
   status: PointSetStatusFn
   inspect: ResponseEffects
+  apply: (response: Response) => Response
 }
 
 export class ResponseEffectsManager {
@@ -45,8 +46,11 @@ export class ResponseEffectsManager {
       headers: this._setHeaders.bind(this) as PointSetHeaderFn,
       cookies: this._setCookies.bind(this) as PointSetCookieFn,
       status: this._setStatus.bind(this) as PointSetStatusFn,
+      apply: this.applyToResponse.bind(this) as (response: Response) => Response,
     } as ResponseEffectsSetHelper
 
+    // Use defineProperty to create a getter that returns a snapshot of current state
+    // This ensures inspect always reflects the current state and doesn't share references
     Object.defineProperty(this.set, 'inspect', {
       get: () => ({
         headers: { ...this.headers },

@@ -66,7 +66,10 @@ export const createIdeaMutation = client
 
 export const generateIdeaMutation = client
   .lets('mutation', 'generateIdea')
-  .loader(async ({ input, ctx }) => {
+  .loader(async ({ input, ctx, set, request }) => {
+    console.info('request', request.from.ip)
+    set.headers('X-Y', 'zxczxc')
+    set.cookies('X-Y', 'kjhkj')
     const stream = new ReadableStream({
       async start(controller) {
         const text = 'x'.repeat(100) // 100 symbols

@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx } from '@point0/core'
-import { PointRequest } from '@point0/core'
+import { PointRequest, ResponseEffectsManager } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import { toJsonErrorResponse } from './error.js'
@@ -159,7 +159,7 @@ export class Fetcher {
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
-    const request = PointRequest.create(originalRequest)
+    const request = PointRequest.create(originalRequest, bunServer || this.server.bunServer)
 
     const devClientsProxyResponse = await this.fetchDevClientsProxy({
       request,
@@ -257,12 +257,14 @@ export class Fetcher {
     request,
     scope,
     requiredCtx,
+    responseEffectsManager,
   }: {
     suitable: GetSuitableResult
     task: FetchTask | undefined
     request: PointRequest
     scope?: PointsScope
     requiredCtx: RequiredCtx
+    responseEffectsManager: ResponseEffectsManager
   }): Promise<Response> => {
     const meta: Record<string, any> = {
       url: request.original.url,
@@ -286,6 +288,7 @@ export class Fetcher {
         pageLocation: suitable.pageLocation,
         currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
         requiredCtx,
+        responseEffectsManager,
       })
       meta.scope = suitable.pointsManager.scope
 
@@ -409,6 +412,8 @@ export class Fetcher {
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<Response | undefined> {
+    const responseEffectsManager = ResponseEffectsManager.create()
+
     const prepareFetchResult = await this.prepareFetch({
       originalRequest: request,
       scope,
@@ -420,7 +425,7 @@ export class Fetcher {
     }
 
     if (prepareFetchResult.publicdirResult) {
-      return prepareFetchResult.publicdirResult.response
+      return responseEffectsManager.applyToResponse(prepareFetchResult.publicdirResult.response)
     }
 
     const fetchPointResponse = await this.fetchPoint({
@@ -429,9 +434,10 @@ export class Fetcher {
       task: prepareFetchResult.pointResult.task,
       requiredCtx,
       scope,
+      responseEffectsManager,
     })
 
-    return fetchPointResponse
+    return responseEffectsManager.applyToResponse(fetchPointResponse)
   }
 }
 

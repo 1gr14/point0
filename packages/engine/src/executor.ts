@@ -21,13 +21,13 @@ import type {
   RequiredCtx,
   ServerExecuteAction,
   ServerExecuteResult,
+  UndefinedData,
+  UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
   WithMaybeOptionalReqiredCtx,
-  UndefinedData,
-  UndefinedLoaderOutput,
 } from '@point0/core'
-import { Point0, PointRequest, PointsManager, ResponseEffectsManager, SuperStore } from '@point0/core'
+import { ResponseEffectsManager, Point0, PointRequest, PointsManager, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -35,7 +35,7 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  pointRequest: PointRequest
+  request: PointRequest
   responseEffectsManager: ResponseEffectsManager
   pointsManager: PointsManager<true, TRequiredCtx>
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
@@ -55,6 +55,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx,
     serverExecuteActionsWithOutput,
     serverGlobalState,
+    responseEffectsManager,
   }: {
     request: Request | PointRequest
     points: PointsManager<true, TRequiredCtx>
@@ -67,9 +68,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_SSR_LOCATION__: AnyLocation | undefined
       __POINT0_CURRENT_LOCATION__: AnyLocation
     }
+    responseEffectsManager: ResponseEffectsManager
   }) {
-    this.pointRequest = PointRequest.create(request)
-    this.responseEffectsManager = ResponseEffectsManager.create()
+    this.request = PointRequest.create(request)
+    this.responseEffectsManager = responseEffectsManager
     this.pointsManager = points
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
@@ -83,6 +85,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     currentLocation,
     requiredCtx,
+    responseEffectsManager,
   }: {
     request: Request | PointRequest
     points: PointsManager<true, TRequiredCtx>
@@ -90,6 +93,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
+    responseEffectsManager: ResponseEffectsManager
   }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
@@ -99,6 +103,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pageLocation,
         requiredCtx,
         serverExecuteActionsWithOutput: [],
+        responseEffectsManager,
         serverGlobalState: {
           __POINT0_SCOPE__: points.scope,
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
@@ -189,6 +194,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       currentLocation: location,
       requiredCtx,
       pageLocation: point.type === 'page' ? location : undefined,
+      responseEffectsManager: ResponseEffectsManager.create(),
     })
     return await executor.execute({ point, input, withLayouts })
   }
@@ -361,7 +367,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   input: currentInputParsed,
                   execute: this.execute.bind(this),
                   inputRaw: input,
-                  request: this.pointRequest,
+                  request: this.request,
                   set: this.responseEffectsManager.set,
                 })
                 if (Array.isArray(result)) {
@@ -414,7 +420,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   input: currentInputParsed,
                   execute: this.execute.bind(this),
                   inputRaw: input,
-                  request: this.pointRequest,
+                  request: this.request,
                   set: this.responseEffectsManager.set,
                 })
                 if (Array.isArray(result)) {

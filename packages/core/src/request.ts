@@ -32,7 +32,10 @@ export class PointRequest {
     this.from = from
   }
 
-  static create(original: Request | PointRequest): PointRequest {
+  static create(
+    original: Request | PointRequest,
+    bunServer?: { requestIP: (request: Request) => { address: string } | null },
+  ): PointRequest {
     if (original instanceof PointRequest) {
       return original
     }
@@ -74,6 +77,18 @@ export class PointRequest {
     const cfConnectingIp = original.headers.get('cf-connecting-ip')
     if (cfConnectingIp && !ips.includes(cfConnectingIp)) {
       ips.push(cfConnectingIp)
+    }
+
+    // Fallback to connection IP from Bun server if no IP headers found
+    if (ips.length === 0 && bunServer) {
+      try {
+        const requestIP = bunServer.requestIP(original)
+        if (requestIP?.address) {
+          ips.push(requestIP.address)
+        }
+      } catch {
+        // Ignore errors if requestIP is not available
+      }
     }
 
     // Extract user agent
