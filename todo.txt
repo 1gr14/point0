@@ -2,14 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-CookiesStore/SuperStore
-? SuperStore → SsrStore и посмотреть везде ли он логично используется
-.cookiesStore(CookiesStore.configure({clientCookiesGetter: () => {}, clientCookiesSetter: () => {}}))
-const x = CookiesStore.define({...cookiesOptions, value?: fallbackValue})
-x.set() x.get() x.use()
-Сделать удобным на фронте получение сср кук например для установки языка. Можно совершенно аналогичный КукисСтор
-Главное как-то во время рендера при сср чтобы кукисы нормальные доходили в сервере при использовании внутри компонентов
-
 MAPPER
 also add mapperMiddleware(stage)
 just reflect on queried data and return new data

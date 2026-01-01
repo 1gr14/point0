@@ -34,6 +34,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { ClientServerHelpers } from './client-server.js'
+import { CookiesStore } from './cookies-store.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
 import type { SuperStoreDefinedItem } from './super-store.js'
@@ -3914,6 +3915,8 @@ export class Point0<
       method,
       body,
     })
+    CookiesStore.refresh()
+    console.info('cookies refreshed')
     if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
       return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
     }
@@ -6001,6 +6004,7 @@ export class Point0<
   }
 }
 
+export * from './cookies-store.js'
 export * from './points-manager.js'
 export * from './request.js'
 export * from './response-effects.js'
@@ -6009,4 +6013,3 @@ export * from './super-store.js'
 export type * from './types.js'
 export * from './unhead.js'
 export * from './utils.js'
-export * from './cookies-store.js'

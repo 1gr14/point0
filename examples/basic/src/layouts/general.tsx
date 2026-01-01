@@ -2,6 +2,7 @@ import { useIsRouterPrefetching, useOnNavigate, useOnNavigateDetailed } from '@p
 import { Link } from '@/lib/navigate'
 import { client } from '../lib/client'
 import { routes } from '../lib/routes'
+import { testCookie } from '@/lib/cookies'
 
 export const generalLayout = client.lets('layout', 'generalLayout').layout(({ children }) => {
   const isRouterPrefetching = useIsRouterPrefetching()
@@ -14,9 +15,10 @@ export const generalLayout = client.lets('layout', 'generalLayout').layout(({ ch
   useOnNavigateDetailed(({ prevLocation, nextLocation, status, error }) => {
     // console.info('useOnNavigateDetailed', prevLocation.hrefRel, nextLocation.hrefRel, status, error)
   })
+  const testCookieValue = testCookie.use()
   return (
     <div style={{ opacity: isRouterPrefetching ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}>
-      <h1>IdeaNick</h1>
+      <h1>IdeaNick: {testCookieValue}</h1>
       <ul>
         <li>
           <Link to={routes.home()}>Home</Link>

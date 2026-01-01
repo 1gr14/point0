@@ -3,7 +3,7 @@ import { useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
 import { BestIdeaComponent } from './home.js'
-import { testCookie } from '@/lib/cookies.js'
+import { testCookie, testServerCookie } from '@/lib/cookies.js'
 
 export const createIdeaMutation = client
   .lets('mutation', 'createIdea')
@@ -41,6 +41,10 @@ export const createIdeaMutation = client
   )
   .loader(async ({ input, data, execute, inputRaw }) => {
     const result = await execute(BestIdeaComponent, { x: 22, y: 2 })
+    console.info('testCookie', testCookie.get())
+    testCookie.set(Math.random().toString())
+    console.info('testServerCookie', testServerCookie.get())
+    testServerCookie.set(Math.random().toString())
     if (result.error) {
       throw result.error
     }
@@ -147,11 +151,12 @@ const Page = () => {
   const [description, setDescription] = useState('b')
   const [content, setContent] = useState('c')
   const [generated, setGenerated] = useState('')
+  const testCookieValue = testCookie.use()
 
   return (
     <div>
       <div>
-        <label>Title1: {testCookie.get()}</label>
+        <label>Title1: {testCookieValue}</label>
         <input
           type="text"
           value={title}
