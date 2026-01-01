@@ -1,0 +1,403 @@
+import { Error0 } from '@devp0nt/error0'
+import { Route0 } from '@devp0nt/route0'
+import type {
+  DataTransformerExtended,
+  EndPointType,
+  InputRawUnknown,
+  PointName,
+  PointsScope,
+  RequiredCtx,
+} from '@point0/core'
+import { PointRequest } from '@point0/core'
+import { unflatten } from 'flat'
+import type { GetSuitableResult } from './all-points-managers.js'
+import { toJsonErrorResponse } from './error.js'
+import { Executor } from './executor.js'
+import type { Publicdir } from './publicdir.js'
+import type { ServerBun } from './server.js'
+
+export class Fetcher {
+  server: ServerBun<true>
+
+  private constructor({ server }: { server: ServerBun<true> }) {
+    this.server = server
+  }
+
+  static create({ server }: { server: ServerBun<true> }): Fetcher {
+    return new Fetcher({ server })
+  }
+
+  static fetchAbsFilePathOnDevServer = async ({
+    request,
+  }: {
+    request: PointRequest
+  }): Promise<Response | undefined> => {
+    // if it is client bun dev server and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
+    if (process.env.NODE_ENV === 'production') {
+      return undefined
+    }
+    const absPath = request.location.pathname
+    const bunFile = Bun.file(absPath)
+    if (await bunFile.exists()) {
+      return new Response(Bun.file(absPath))
+    }
+    return undefined
+  }
+
+  static getTaskFromRequest = ({ request }: { request: PointRequest }): FetchTask | undefined => {
+    if (request.location.pathname !== '/_point0') {
+      return undefined
+    }
+    const searchParams = request.location.searchParams
+    const validPointTypes = ['page', 'layout', 'component', 'query', 'infiniteQuery', 'mutation', 'provider'] as const
+    const validOutputTypes = ['data', 'queryClientDehydratedState'] as const
+    const { type: pointType, output: outputType, scope, name: pointName } = searchParams as Record<string, unknown>
+    if (typeof scope !== 'string' || scope.length === 0) {
+      throw new Error(`Invalid scope: must be a non-empty string, got ${typeof scope}`)
+    }
+    if (!validPointTypes.includes(pointType as (typeof validPointTypes)[number])) {
+      throw new Error(`Invalid pointType: must be one of ${validPointTypes.join(', ')}, got ${typeof pointType}`)
+    }
+    if (typeof pointName !== 'string' || pointName.length === 0) {
+      throw new Error(`Invalid pointName: must be a non-empty string, got ${typeof pointName}`)
+    }
+    if (!validOutputTypes.includes(outputType as (typeof validOutputTypes)[number])) {
+      throw new Error(`Invalid outputType: must be one of ${validOutputTypes.join(', ')}, got ${typeof outputType}`)
+    }
+    return {
+      pointType: pointType as (typeof validPointTypes)[number],
+      outputType: outputType as (typeof validOutputTypes)[number],
+      scope,
+      pointName,
+    }
+  }
+
+  static getTaskInputFromRequest = async ({
+    request,
+    transformer,
+  }: {
+    request: PointRequest
+    transformer: DataTransformerExtended
+  }): Promise<InputRawUnknown | undefined> => {
+    if (request.location.pathname !== '/_point0') {
+      return undefined
+    }
+    const inputRawNotTransformed = await (async () => {
+      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+        const formData = await request.original.formData()
+        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+          if (typeof value === 'string') {
+            acc[key] = JSON.parse(value)
+          } else {
+            acc[key] = value
+          }
+          return acc
+        }, {})
+        const unflattened = unflatten(parsed)
+        return unflattened
+      }
+      try {
+        return await request.original.json()
+      } catch (error) {
+        return {}
+      }
+    })()
+    if (
+      !inputRawNotTransformed ||
+      typeof inputRawNotTransformed !== 'object' ||
+      Array.isArray(inputRawNotTransformed)
+    ) {
+      throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
+    }
+    const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
+    return inputRaw
+  }
+
+  prepareFetch = async ({
+    originalRequest,
+    scope,
+  }: {
+    originalRequest: Request
+    scope?: PointsScope
+  }): Promise<PrepareFetchResult> => {
+    const request = PointRequest.create(originalRequest)
+
+    const devClientsProxyResponse = await this.fetchDevClientsProxy({
+      request,
+    })
+    if (devClientsProxyResponse) {
+      return {
+        publicdir: undefined,
+        publicdirResponse: undefined,
+        suitable: undefined,
+        request,
+        devClientsProxyResponse,
+        task: undefined,
+      }
+    }
+
+    for (const publicdir of this.server.publicdirs) {
+      const staticResponse = await publicdir.fetch({ request })
+      if (staticResponse) {
+        return {
+          publicdir,
+          publicdirResponse: staticResponse,
+          suitable: undefined,
+          request,
+          devClientsProxyResponse: undefined,
+          task: undefined,
+        }
+      }
+    }
+
+    const task = Fetcher.getTaskFromRequest({ request })
+
+    if (!task) {
+      const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
+      if (responseFromAbsFilePath) {
+        return {
+          publicdir: undefined,
+          publicdirResponse: responseFromAbsFilePath,
+          suitable: undefined,
+          request,
+          devClientsProxyResponse: undefined,
+          task: undefined,
+        }
+      }
+    }
+
+    const suitable = this.server.allPointsManagers.getSuitable({
+      pointType: task?.pointType ?? 'page',
+      scope: task?.scope || scope,
+      pointName: task?.pointName,
+      pageLocation: !task ? request.location : undefined,
+      fallbackScope: this.server.fallbackScope,
+    })
+
+    return {
+      publicdir: undefined,
+      publicdirResponse: undefined,
+      suitable,
+      request,
+      devClientsProxyResponse: undefined,
+      task,
+    }
+  }
+
+  fetchDevClientsProxy = async ({ request }: { request: PointRequest }): Promise<Response | undefined> => {
+    if (process.env.NODE_ENV === 'production') {
+      return undefined
+    }
+    for (const client of this.server.clients) {
+      // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
+      if (this.server.bunServer) {
+        const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
+          request,
+          bunServer: this.server.bunServer,
+        })
+        if (bunDevServerUpgradeWebSocketResult) {
+          return bunDevServerUpgradeWebSocketResult.result as never // it is just for hmr on dev
+        }
+      }
+      const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request })
+      if (clientViteDevServerResponse) {
+        return clientViteDevServerResponse
+      }
+      const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request })
+      if (clientBunDevServerResponse) {
+        return clientBunDevServerResponse
+      }
+    }
+    return undefined
+  }
+
+  fetchPoint = async ({
+    prepareFetchResult,
+    scope,
+    requiredCtx,
+  }: {
+    prepareFetchResult: Extract<PrepareFetchResult, { suitable: GetSuitableResult }>
+    scope?: PointsScope
+    requiredCtx: RequiredCtx
+  }): Promise<Response> => {
+    const request = prepareFetchResult.request
+
+    const meta: Record<string, any> = {
+      url: request.original.url,
+      scope,
+    }
+
+    try {
+      // TODO: lets provide here wrapResponse and wrapRequest and call it
+      // TODO: also there on error fo input not throw it but return as error
+
+      if (request.original.method === 'OPTIONS') {
+        // TODO: when we will have headers midlewares, remove this
+        return new Response(null, {
+          status: 204,
+        })
+      }
+
+      const suitable = prepareFetchResult.suitable
+      const executor = await Executor.create({
+        request,
+        points: suitable.pointsManager,
+        pageLocation: suitable.pageLocation,
+        currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
+        requiredCtx,
+      })
+      meta.scope = suitable.pointsManager.scope
+
+      const task = prepareFetchResult.task
+      const pointType = task?.pointType ?? 'page'
+      const outputType = task?.outputType ?? 'html'
+      meta.pointType = pointType
+      meta.outputType = outputType
+      meta.pointName = task?.pointName
+      meta.pointType = task?.pointType
+
+      const relatedClient = this.server.clients.find(
+        (client) => client.pointsManager.scope === suitable.pointsManager.scope,
+      )
+
+      const getInput = async () => {
+        // we do not call it immediatelly, becouse for openapi points we do not want parse input, so developer can read body when it needed
+        return (
+          (await Fetcher.getTaskInputFromRequest({
+            request,
+            transformer: suitable.pointsManager.transformer,
+          })) || {}
+        )
+      }
+
+      if (relatedClient) {
+        if (relatedClient.ssr && outputType === 'html' && pointType === 'page') {
+          try {
+            if (!suitable.pageLocation) {
+              // I think it will never throw, but who knows
+              throw new Error('Page Critical Error: Not Found')
+            }
+            const input = await getInput()
+            const executeResult = await executor.execute({
+              point: suitable.point,
+              input,
+              withLayouts: true,
+            })
+            if (executeResult.error) {
+              this.server.logger.error(executeResult.error, meta)
+            }
+            const readableStream = await relatedClient.renderAsReadableStream({
+              executor,
+              executeResult,
+              pagePoint: suitable.point,
+              pageLocation: suitable.pageLocation,
+              input,
+            })
+            return new Response(readableStream, {
+              headers: { 'Content-Type': 'text/html' },
+              status: executeResult.status,
+            })
+          } catch (error) {
+            // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
+            if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
+              const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
+              return new Response(indexHtml, {
+                headers: { 'Content-Type': 'text/html' },
+                status: 500,
+              })
+            }
+            throw error
+          }
+        } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
+          const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
+          return new Response(indexHtml, {
+            headers: { 'Content-Type': 'text/html' },
+            status: 200,
+          })
+        } else if (outputType === 'queryClientDehydratedState' && pointType === 'page') {
+          if (!suitable.pageLocation) {
+            // I think it will never throw, but who knows
+            throw new Error('Page Critical Error: Not Found')
+          }
+          await relatedClient.prefetchAppPagePointDeep({
+            executor,
+            pagePoint: suitable.point,
+            pageLocation: suitable.pageLocation,
+            input: await getInput(),
+          })
+          const dehydratedState = await executor.getQueryClientDehydratedState()
+          return new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          })
+        }
+      } else if (outputType === 'html' && pointType === 'page') {
+        throw new Error(`Client not found for point "${suitable.point?.name ?? 'unknown'}" while requested page html`)
+      }
+
+      const executeResult = await executor.execute({
+        point: suitable.point,
+        // TODO: wehn openapi will be ready, do not send here parsed input for this type of points
+        input: await getInput(),
+      })
+      if (executeResult.error) {
+        this.server.logger.error(executeResult.error, meta)
+      }
+
+      if (executeResult.error) {
+        return toJsonErrorResponse(executeResult.error, executeResult.status)
+      }
+
+      if (executeResult.output instanceof Response) {
+        executeResult.output.headers.set('X-Point0-Response', 'true')
+        return executeResult.output
+      }
+
+      if (!executeResult.output) {
+        return toJsonErrorResponse(new Error0('No output'), 404)
+      }
+
+      // else we try to get endpoint json
+      return new Response(executor.pointsManager.transformer.stringify(executeResult.output), {
+        headers: { 'Content-Type': 'application/json' },
+        status: executeResult.status,
+      })
+    } catch (error) {
+      this.server.logger.error(error, meta)
+      return toJsonErrorResponse(error)
+    }
+  }
+}
+
+export type PrepareFetchResult =
+  | {
+      publicdir: undefined
+      publicdirResponse: undefined
+      request: PointRequest
+      devClientsProxyResponse: Response
+      suitable: undefined
+      task: undefined
+    }
+  | {
+      publicdir: Publicdir<true> | undefined // in case if it is bun dev server try to fetch abs path
+      publicdirResponse: Response
+      request: PointRequest
+      devClientsProxyResponse: undefined
+      suitable: undefined
+      task: undefined
+    }
+  | {
+      publicdir: undefined
+      publicdirResponse: undefined
+      request: PointRequest
+      devClientsProxyResponse: undefined
+      suitable: GetSuitableResult
+      task: FetchTask | undefined
+    }
+
+export type FetchTask = {
+  pointType: EndPointType
+  outputType: 'data' | 'queryClientDehydratedState'
+  scope: PointsScope
+  pointName: PointName
+}

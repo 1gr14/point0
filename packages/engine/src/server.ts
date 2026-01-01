@@ -13,7 +13,6 @@ import type {
   EngineOptionsViteConfig,
   ExtractedViteConfig,
 } from './config.js'
-import { engineFetchPoint, enginePrepareFetch } from './fetch.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBunBuildConfigDefinition, ServerBunPluginsDefinition } from './utils.js'
 import {
@@ -26,6 +25,7 @@ import {
   pruneItWhenPoint0ServerBuildInProgress,
   validateEntrypoints,
 } from './utils.js'
+import { Fetcher } from './fetcher.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
@@ -53,6 +53,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
   hmrPort: number | null
+  fetcher: TInitialized extends true ? Fetcher : null
 
   private constructor(input: {
     initialized: TInitialized
@@ -104,6 +105,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
     this.hmrPort = input.hmrPort
+    this.fetcher = null as TInitialized extends true ? Fetcher : null
   }
 
   static create(input: {
@@ -155,6 +157,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     }
     await Promise.all([this.loadBunPlugins().then(async () => await this.initPointsManager()), this.publicdir.init()])
     this.initialized = true as never
+    this.fetcher = Fetcher.create({ server: this as ServerBun<true> }) as TInitialized extends true ? Fetcher : null
     return this as ServerBun<true>
   }
 
@@ -702,14 +705,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       throw new Error('Server is not initialized')
     }
 
-    const prepareFetchResult = await enginePrepareFetch({
+    const prepareFetchResult = await this.fetcher.prepareFetch({
       originalRequest: request,
-      clients: this.clients,
-      publicdirs: this.publicdirs,
-      bunServer: this.bunServer,
       scope,
-      fallbackScope: scope ?? this.fallbackScope,
-      allPointsManagers: this.allPointsManagers,
     })
 
     if (prepareFetchResult.devClientsProxyResponse) {
@@ -720,14 +718,10 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       return prepareFetchResult.publicdirResponse
     }
 
-    const fetchPointResponse = await engineFetchPoint({
+    const fetchPointResponse = await this.fetcher.fetchPoint({
       prepareFetchResult,
-      clients: this.clients,
-      allPointsManagers: this.allPointsManagers,
-      fallbackScope: scope ?? this.fallbackScope,
-      scope,
       requiredCtx,
-      logger: this.logger,
+      scope,
     })
 
     return fetchPointResponse

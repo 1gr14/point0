@@ -1,18 +1,14 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type {
-  DataTransformerExtended,
   EndPoint,
   EndPointType,
-  InputRaw,
   InputRawUnknown,
   PointName,
-  PointRequest,
   PointsManager,
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { unflatten } from 'flat'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pointsManagers: Array<PointsManager<true>>
@@ -113,65 +109,21 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
-  async getTaskInputFromRequest({
-    request,
-    fallbackScope,
-    scope,
-  }: {
-    request: PointRequest
-    fallbackScope: PointsScope
-    scope?: PointsScope
-  }): Promise<InputRawUnknown | undefined> {
-    if (request.location.pathname !== '/_point0') {
-      return undefined
-    }
-    const inputRawNotTransformed = await (async () => {
-      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
-        const formData = await request.original.formData()
-        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-          if (typeof value === 'string') {
-            acc[key] = JSON.parse(value)
-          } else {
-            acc[key] = value
-          }
-          return acc
-        }, {})
-        const unflattened = unflatten(parsed)
-        return unflattened
-      }
-      try {
-        return await request.original.json()
-      } catch (error) {
-        return {}
-      }
-    })()
-    if (
-      !inputRawNotTransformed ||
-      typeof inputRawNotTransformed !== 'object' ||
-      Array.isArray(inputRawNotTransformed)
-    ) {
-      throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
-    }
-    const transformer = this.getTransformerByScope({ scope, fallbackScope: scope || fallbackScope })
-    const inputRaw = transformer.deserialize<InputRaw>(inputRawNotTransformed)
-    return inputRaw
-  }
-
-  getTransformerByScope({
-    scope,
-    fallbackScope,
-  }: {
-    scope?: PointsScope
-    fallbackScope: PointsScope
-  }): DataTransformerExtended {
-    const result = (this.pointsManagers.find(
-      (pointsManager) => pointsManager.scope === scope || pointsManager.scope === fallbackScope,
-    )?.transformer ?? this.pointsManagers[0].transformer) as DataTransformerExtended | undefined
-    if (!result) {
-      throw new Error(`No transformer found for scope "${scope}" or fallback scope "${fallbackScope}"`)
-    }
-    return result
-  }
+  // getTransformerByScope({
+  //   scope,
+  //   fallbackScope,
+  // }: {
+  //   scope?: PointsScope
+  //   fallbackScope: PointsScope
+  // }): DataTransformerExtended {
+  //   const result = (this.pointsManagers.find(
+  //     (pointsManager) => pointsManager.scope === scope || pointsManager.scope === fallbackScope,
+  //   )?.transformer ?? this.pointsManagers[0].transformer) as DataTransformerExtended | undefined
+  //   if (!result) {
+  //     throw new Error(`No transformer found for scope "${scope}" or fallback scope "${fallbackScope}"`)
+  //   }
+  //   return result
+  // }
 
   // async prepareExecutorByRequest({
   //   request,
