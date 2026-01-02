@@ -13,11 +13,13 @@ OUTER
 NICE
 remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
 rename fetch to EngineFetcher
+Не поинт реквест а реквест0
 Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
 Убрать из Рута лоадеры иначе опенапи энды сломаются, при попытке читать инпут из боди. А также из кткс надо убрать инпут, ну и вообще будто смысл в лоадерах есть только в конечных эндпоинтах
 Поинт не часть реквеста, а часть просто мидлвары опшинсов & {point, root, scope, outputType} | {publicfile, publicdir}
 AppendCtx with Prettify
 InputRaw → InputOriginal
+Айпи брать сначала из бансервера и только потом по респонсам
 SuperStore.predefined ← ssrLocation, etc
 check if parse input from request done via from scope transformer
 Do not omit, in exposedCtx, but if try to expose then error
@@ -144,6 +146,8 @@ unwind and tailwind
 https://oxc.rs/docs/guide/usage/linter/config
 
 REFACTROING 2
+? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
+В суперстор добавить скоуп, чтобы оно не отдавалось в противном случае в сср
 Названия не хешировать, а просто нумеровать в экспорте поинтов
 Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед (и вообще отрефачить там всё проверить что там нужно)
 Вайт конфиг авто, дефаулт, или путь, или импорт, и при билде пруном из энжины это вырезать, в отм числе и бан плагины вырезать из конфига энжины прунером при билде

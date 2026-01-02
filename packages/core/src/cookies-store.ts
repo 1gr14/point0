@@ -38,22 +38,54 @@ export type CookieOptionsInput = {
   maxAge?: number
 }
 
-export type CookieOptionsInputWithDefaultValue<TValue> = Omit<CookieOptionsInput, 'value'> & {
+export type CookieOptionsInputWithDefaultValueAndHttpOnly<TValue> = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
   value: TValue
+  httpOnly: true
 }
-export type CookieOptionsInputWithoutDefaultValue = Omit<CookieOptionsInput, 'value'> & {
+export type CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue> = Omit<
+  CookieOptionsInput,
+  'value' | 'httpOnly'
+> & {
+  value: TValue
+  httpOnly?: false
+}
+export type CookieOptionsInputWithoutDefaultValueAndHttpOnly = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
   value?: undefined
+  httpOnly: true
 }
-type InferDefaultValue<
-  TCookieOptionsInputWithDefaultValue extends
-    | CookieOptionsInputWithDefaultValue<any>
-    | CookieOptionsInputWithoutDefaultValue,
-> =
-  TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValue<infer TValue>
-    ? TValue extends undefined
-      ? undefined
-      : TValue
-    : undefined
+export type CookieOptionsInputWithoutDefaultValueAndNotHttpOnly = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
+  value?: undefined
+  httpOnly?: false
+}
+
+// type InferDefaultValue<
+//   TCookieOptionsInputWithDefaultValue extends
+//     | CookieOptionsInputWithDefaultValueAndHttpOnly<any>
+//     | CookieOptionsInputWithDefaultValueAndNotHttpOnly<any>
+//     | CookieOptionsInputWithoutDefaultValueAndHttpOnly
+//     | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly,
+// > =
+//   TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValueAndHttpOnly<infer TValue>
+//     ? TValue extends undefined
+//       ? undefined
+//       : TValue
+//     : TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValueAndNotHttpOnly<infer TValue>
+//       ? TValue extends undefined
+//         ? undefined
+//         : TValue
+//       : undefined
+// type InferHttpOnly<
+//   TCookieOptionsInputWithDefaultValue extends
+//     | CookieOptionsInputWithDefaultValueAndHttpOnly<any>
+//     | CookieOptionsInputWithDefaultValueAndNotHttpOnly<any>
+//     | CookieOptionsInputWithoutDefaultValueAndHttpOnly
+//     | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly,
+// > =
+//   TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValueAndHttpOnly<any>
+//     ? true
+//     : TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithoutDefaultValueAndHttpOnly
+//       ? true
+//       : false
 
 export class CookiesStore {
   static clientDocumentCookieGetter: CookiesStoreGetter = (name) => {
@@ -89,7 +121,7 @@ export class CookiesStore {
   static transformer: DataTransformerExtended = blankDataTransformerExtended
   static clientCookieGetter: CookiesStoreGetter = CookiesStore.clientDocumentCookieGetter
   static clientCookieSetter: CookiesStoreSetter = CookiesStore.clientDocumentCookieSetter
-  static readonly items = new Set<CookiesStoreItem<any, any>>()
+  static readonly items = new Set<CookiesStoreItem<any, any, any>>()
 
   static configure(options?: {
     clientCookieGetter?: CookiesStoreGetter
@@ -139,19 +171,31 @@ export class CookiesStore {
   //   return item
   // }
   static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>,
+    cookieOptionsInput: CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue>,
     transformer?: DataTransformer | undefined,
-  ): CookiesStoreItem<TValue, TValue>
+  ): CookiesStoreItem<TValue, TValue, false>
   static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithoutDefaultValue,
+    cookieOptionsInput: CookieOptionsInputWithDefaultValueAndHttpOnly<TValue>,
     transformer?: DataTransformer | undefined,
-  ): CookiesStoreItem<TValue, undefined>
+  ): Omit<CookiesStoreItem<TValue, TValue, true>, 'use' | 'refresh'>
   static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue> | CookieOptionsInputWithoutDefaultValue,
+    cookieOptionsInput: CookieOptionsInputWithoutDefaultValueAndNotHttpOnly,
     transformer?: DataTransformer | undefined,
-  ): CookiesStoreItem<TValue, InferDefaultValue<typeof cookieOptionsInput>> {
+  ): CookiesStoreItem<TValue, undefined, false>
+  static define<TValue = string>(
+    cookieOptionsInput: CookieOptionsInputWithoutDefaultValueAndHttpOnly,
+    transformer?: DataTransformer | undefined,
+  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+  static define<TValue = string>(
+    cookieOptionsInput:
+      | CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue>
+      | CookieOptionsInputWithDefaultValueAndHttpOnly<TValue>
+      | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly
+      | CookieOptionsInputWithoutDefaultValueAndHttpOnly,
+    transformer?: DataTransformer | undefined,
+  ): CookiesStoreItem<any, any, any> {
     const transformerHere = transformer ? toExtendedTransformer(transformer) : CookiesStore.transformer
-    const item = new CookiesStoreItem<TValue, InferDefaultValue<typeof cookieOptionsInput>>({
+    const item = new CookiesStoreItem<any, any, any>({
       cookieOptionsInput,
       transformer: transformerHere,
     })
@@ -208,7 +252,7 @@ export class CookiesStore {
   }
 }
 
-class CookiesStoreItem<TValue, TDefaultValue> {
+class CookiesStoreItem<TValue, TDefaultValue, THttpOnly extends boolean> {
   private readonly cookieOptionsInput: Omit<CookieOptionsInput, 'value'>
   private readonly defaultValue: TDefaultValue
   private readonly transformer: DataTransformerExtended | null
@@ -218,7 +262,11 @@ class CookiesStoreItem<TValue, TDefaultValue> {
     cookieOptionsInput,
     transformer,
   }: {
-    cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue> | CookieOptionsInputWithoutDefaultValue
+    cookieOptionsInput:
+      | CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue>
+      | CookieOptionsInputWithDefaultValueAndHttpOnly<TValue>
+      | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly
+      | CookieOptionsInputWithoutDefaultValueAndHttpOnly
     transformer: DataTransformerExtended | null
   }) {
     const { value: defaultValue, ...cookieOptionsInputWithoutValue } = cookieOptionsInput
@@ -230,8 +278,8 @@ class CookiesStoreItem<TValue, TDefaultValue> {
   /**
    * Check if this cookie is httpOnly (server-only).
    */
-  isHttpOnly(): boolean {
-    return this.cookieOptionsInput.httpOnly === true
+  isHttpOnly(): THttpOnly {
+    return (this.cookieOptionsInput.httpOnly === true) as THttpOnly
   }
 
   set(value: TValue) {
