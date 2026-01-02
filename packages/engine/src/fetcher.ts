@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx } from '@point0/core'
-import { PointRequest, ResponseEffectsManager, SuperStore } from '@point0/core'
+import { Request0, ResponseEffectsManager, SuperStore } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import { toJsonErrorResponse } from './error.js'
@@ -20,11 +20,7 @@ export class Fetcher {
     return new Fetcher({ server })
   }
 
-  static fetchAbsFilePathOnDevServer = async ({
-    request,
-  }: {
-    request: PointRequest
-  }): Promise<Response | undefined> => {
+  static fetchAbsFilePathOnDevServer = async ({ request }: { request: Request0 }): Promise<Response | undefined> => {
     // if it is client bun dev server and assets was imported on ssr it returns abs file paths not bun assets, so just in dev we try to fetch them
     if (process.env.NODE_ENV === 'production') {
       return undefined
@@ -37,7 +33,7 @@ export class Fetcher {
     return undefined
   }
 
-  getTaskFromRequest = async ({ request }: { request: PointRequest }): Promise<FetchTask | undefined> => {
+  getTaskFromRequest = async ({ request }: { request: Request0 }): Promise<FetchTask | undefined> => {
     if (request.location.pathname !== '/_point0') {
       return undefined
     }
@@ -72,11 +68,7 @@ export class Fetcher {
     }
   }
 
-  getPointInputFromTaskRequest = async ({
-    request,
-  }: {
-    request: PointRequest
-  }): Promise<InputRawUnknown | undefined> => {
+  getPointInputFromTaskRequest = async ({ request }: { request: Request0 }): Promise<InputRawUnknown | undefined> => {
     if (request.location.pathname !== '/_point0') {
       return undefined
     }
@@ -133,7 +125,7 @@ export class Fetcher {
   }: {
     suitable: GetSuitableResult
     task: FetchTask | undefined
-    request: PointRequest
+    request: Request0
   }): Promise<InputRawUnknown> => {
     // we do not call it immediatelly, becouse for openapi points we do not want parse input, so developer can read body when it needed
     if (task?.pointInput) {
@@ -159,7 +151,7 @@ export class Fetcher {
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
-    const request = PointRequest.create(originalRequest, bunServer || this.server.bunServer)
+    const request = Request0.create(originalRequest, bunServer || this.server.bunServer)
 
     const devClientsProxyResponse = await this.fetchDevClientsProxy({
       request,
@@ -221,7 +213,7 @@ export class Fetcher {
     request,
     bunServer,
   }: {
-    request: PointRequest
+    request: Request0
     bunServer?: Bun.Server<unknown>
   }): Promise<{ response: Response | undefined } | undefined> => {
     if (process.env.NODE_ENV === 'production') {
@@ -264,7 +256,7 @@ export class Fetcher {
   }: {
     suitable: GetSuitableResult
     task: FetchTask | undefined
-    request: PointRequest
+    request: Request0
     scope?: PointsScope
     requiredCtx: RequiredCtx
     responseEffectsManager: ResponseEffectsManager
@@ -455,19 +447,19 @@ export class Fetcher {
 export type PrepareFetchResult =
   | {
       publicdirResult: undefined
-      request: PointRequest
+      request: Request0
       devClientsProxyResult: { response: Response | undefined }
       pointResult: undefined
     }
   | {
       publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
-      request: PointRequest
+      request: Request0
       devClientsProxyResult: undefined
       pointResult: undefined
     }
   | {
       publicdirResult: undefined
-      request: PointRequest
+      request: Request0
       devClientsProxyResult: undefined
       pointResult: { suitable: GetSuitableResult; task: FetchTask | undefined }
     }

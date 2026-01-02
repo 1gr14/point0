@@ -1,5 +1,5 @@
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import type { AnyPoint, AppComponent, InputParsed, PointRequest, PointsScope, ServerExecuteResult } from '@point0/core'
+import type { AnyPoint, AppComponent, InputParsed, Request0, PointsScope, ServerExecuteResult } from '@point0/core'
 import { PointsManager, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -454,7 +454,7 @@ Bun.serve({
     request,
     bunServer,
   }: {
-    request: PointRequest
+    request: Request0
     bunServer: Bun.Server<unknown>
   }): Promise<{ result: Response | undefined } | undefined> {
     if (!this.bunNativeDevServer) {
@@ -481,7 +481,7 @@ Bun.serve({
     return { result: undefined }
   }
 
-  async fetchBunDevServerMiddleware({ request }: { request: PointRequest }): Promise<Response | undefined> {
+  async fetchBunDevServerMiddleware({ request }: { request: Request0 }): Promise<Response | undefined> {
     const bunNativeDevServer = this.bunNativeDevServer
     if (!bunNativeDevServer) {
       return undefined
@@ -503,7 +503,7 @@ Bun.serve({
   async fetchViteDevServerMiddleware({
     request,
   }: {
-    request: Pick<PointRequest, 'original' | 'location'>
+    request: Pick<Request0, 'original' | 'location'>
   }): Promise<Response | undefined> {
     const viteDevServer = this.viteDevServer
     if (!viteDevServer) {

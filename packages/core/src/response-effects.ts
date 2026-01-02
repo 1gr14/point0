@@ -1,41 +1,41 @@
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 
-export type PointResponseHeaders = Record<string, string>
-export type PointResponseCookies = Record<string, CookieOptions>
-export type PointResponseStatus = number
+export type ResponseHeaders = Record<string, string>
+export type ResponseCookies = Record<string, CookieOptions>
+export type ResponseStatus = number
 
-export type PointSetHeaderFn = {
+export type SetResponseHeaderFn = {
   (headers: Headers): void
   (headers: Record<string, string>): void
   (headerName: string, headerValue: string): void
 }
 
-export type PointSetCookieFn = {
+export type SetResponseCookieFn = {
   // (cookies: Record<string, string | CookieOptions>): void
   (cookieOptions: CookieOptionsInput): void
   (cookieName: string, cookieValue: string, cookieOptions?: Omit<CookieOptionsInput, 'name' | 'value'>): void
 }
 
-export type PointSetStatusFn = (status: number) => void
+export type SetResponseStatusFn = (status: number) => void
 
 export type ResponseEffects = {
-  headers: PointResponseHeaders
-  cookies: PointResponseCookies
-  status: PointResponseStatus | undefined
+  headers: ResponseHeaders
+  cookies: ResponseCookies
+  status: ResponseStatus | undefined
 }
 
 export type ResponseEffectsSetHelper = {
-  headers: PointSetHeaderFn
-  cookies: PointSetCookieFn
-  status: PointSetStatusFn
+  headers: SetResponseHeaderFn
+  cookies: SetResponseCookieFn
+  status: SetResponseStatusFn
   inspect: ResponseEffects
   apply: (response: Response) => Response
 }
 
 export class ResponseEffectsManager {
-  headers: PointResponseHeaders
-  cookies: PointResponseCookies
-  status: PointResponseStatus | undefined
+  headers: ResponseHeaders
+  cookies: ResponseCookies
+  status: ResponseStatus | undefined
   set: ResponseEffectsSetHelper
 
   constructor() {
@@ -44,9 +44,9 @@ export class ResponseEffectsManager {
     this.status = undefined
 
     this.set = {
-      headers: this._setHeaders.bind(this) as PointSetHeaderFn,
-      cookies: this._setCookies.bind(this) as PointSetCookieFn,
-      status: this._setStatus.bind(this) as PointSetStatusFn,
+      headers: this._setHeaders.bind(this) as SetResponseHeaderFn,
+      cookies: this._setCookies.bind(this) as SetResponseCookieFn,
+      status: this._setStatus.bind(this) as SetResponseStatusFn,
       apply: this.applyToResponse.bind(this) as (response: Response) => Response,
     } as ResponseEffectsSetHelper
 

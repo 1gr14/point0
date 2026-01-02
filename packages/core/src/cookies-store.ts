@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Point0 } from './index.js'
-import type { PointRequest } from './request.js'
+import type { Request0 } from './request.js'
 import type { ResponseEffectsManager } from './response-effects.js'
 import { SuperStore } from './super-store.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
@@ -204,7 +204,7 @@ export class CookiesStore {
   }
 
   static readonly serverCookieGetter: CookiesStoreGetter = (name) => {
-    const request = SuperStore.getWeak<PointRequest | undefined>('__POINT0_POINT_REQUEST__')
+    const request = SuperStore.getWeak<Request0 | undefined>('__POINT0_POINT_REQUEST__')
     if (!request) {
       throw new Error('Request is undefined while try to get cookie from server')
     }

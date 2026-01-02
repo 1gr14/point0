@@ -17,6 +17,7 @@ Do not omit, in exposedCtx, but if try to expose then error
 Не кастомер а энвиронмент
 Не ансейф а форс
 useLoader and fetchDetailed to nice endpoints
+provide point itself to loaders and ctx fns
 response should switch to next stage if provided
 return back type property to NicePoint
 in Nice point.point also lets store nice type, so hide everything from user except required for us
@@ -25,7 +26,7 @@ do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 do not bundle core package, just expose in package json only index.js
 Укоротить до линкпрефетч
-when fetch on client 
+normalize points collection things, make it any style, with tests
 ? remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
 ? Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
 ? InputRaw → InputOriginal
@@ -43,10 +44,8 @@ ROOT
 root.lets('root') & Point0.lets('root', 'x')
 scopes is array
 but scope is still just string
-provide scope initiator to all loaders via X-Point0-Scope-Initiator: string
 walker add to lazy points root {scope}, and self scope is still _root_lazy, other roots just points
 remove .attach things
-Не поинтс менеджер, а скоуп поинтс. Не алл поинтс менеджер, а комбайнед скоупс поинтс. И вообще нам алл не нужен, ведь в сервере по сути и так вообще все поинты будут
 
 ENVIRONMENT
 not client-server.ts, but environment.ts
@@ -131,6 +130,7 @@ EXPO
 expo example
 expo router
 respect null on baseurl for client, so page like requests to server will be not recpected
+check if there is no client port defined if there is no App and indexhtml, so it should not be served
 ? remove location from mountable components, becouse in expo for example it is very strange property
 
 REFACTROING 1

@@ -2,13 +2,13 @@ import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 
 // TODO: add generics TRoute, THeaders, TCookies
-export class PointRequest {
+export class Request0 {
   original: Request
-  headers: PointRequestHeaders
-  cookies: PointRequestCookies
+  headers: RequestHeaders
+  cookies: RequestCookies
   location: AnyLocation
-  method: PointRequestMethod
-  from: PointRequestFrom
+  method: RequestMethod
+  from: RequestFrom
 
   constructor({
     original,
@@ -19,11 +19,11 @@ export class PointRequest {
     from,
   }: {
     original: Request
-    headers: PointRequestHeaders
-    cookies: PointRequestCookies
+    headers: RequestHeaders
+    cookies: RequestCookies
     location: AnyLocation
-    method: PointRequestMethod
-    from: PointRequestFrom
+    method: RequestMethod
+    from: RequestFrom
   }) {
     this.original = original
     this.headers = headers
@@ -34,21 +34,21 @@ export class PointRequest {
   }
 
   static create(
-    original: Request | PointRequest,
+    original: Request | Request0,
     bunServer?: { requestIP: (request: Request) => { address: string } | null },
-  ): PointRequest {
-    if (original instanceof PointRequest) {
+  ): Request0 {
+    if (original instanceof Request0) {
       return original
     }
 
     // Parse headers
-    const headers: PointRequestHeaders = {}
+    const headers: RequestHeaders = {}
     original.headers.forEach((value, key) => {
       headers[key] = value
     })
 
     // Parse cookies
-    const cookies: PointRequestCookies = {}
+    const cookies: RequestCookies = {}
     const cookieHeader = original.headers.get('cookie')
     if (cookieHeader) {
       cookieHeader.split(';').forEach((cookie) => {
@@ -63,7 +63,7 @@ export class PointRequest {
     const location = Route0.getLocation(original.url)
 
     // Extract method
-    const method = original.method.toLowerCase() as PointRequestMethod
+    const method = original.method.toLowerCase() as RequestMethod
 
     // Extract IP addresses
     const ips: string[] = []
@@ -102,7 +102,7 @@ export class PointRequest {
     const referrerUrl = original.referrer || original.headers.get('referer')
     const referrerLocation = referrerUrl ? Route0.getLocation(referrerUrl) : null
 
-    const from: PointRequestFrom = {
+    const from: RequestFrom = {
       ips,
       ip: ips[0] || null,
       userAgent,
@@ -110,13 +110,13 @@ export class PointRequest {
       scope: fromScope,
     }
 
-    return new PointRequest({ original, headers, cookies, location, method, from })
+    return new Request0({ original, headers, cookies, location, method, from })
   }
 }
 
-export type PointRequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
+export type RequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
 
-export interface PointRequestFrom {
+export interface RequestFrom {
   ips: string[]
   ip: string | null
   userAgent: string | null
@@ -124,5 +124,5 @@ export interface PointRequestFrom {
   scope: string | null
 }
 
-export type PointRequestHeaders = Record<string, string>
-export type PointRequestCookies = Record<string, string>
+export type RequestHeaders = Record<string, string>
+export type RequestCookies = Record<string, string>

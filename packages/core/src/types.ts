@@ -18,7 +18,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput, util as ZodUtil } from 'zod'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
-import type { PointRequest } from './request.js'
+import type { Request0 } from './request.js'
 import type { ResponseEffectsSetHelper } from './response-effects.js'
 
 // basic
@@ -1212,7 +1212,7 @@ export type CtxFnOptions<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = Omit<ExposedCtx<TCtxPrev, TCtxExposedKeys>, 'request' | 'input' | 'inputRaw' | 'set' | 'execute' | 'ctx'> & {
-  request: PointRequest
+  request: Request0
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   set: ResponseEffectsSetHelper
@@ -1252,7 +1252,7 @@ export type LoaderFnOptions<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = Omit<ExposedCtx<TCtx, TCtxExposedKeys>, 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'> & {
-  request: PointRequest
+  request: Request0
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   data: DataOrUndefinedData<TServerLoaderOutput>

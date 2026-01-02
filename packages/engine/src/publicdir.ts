@@ -1,4 +1,4 @@
-import type { PointRequest, PointsScope } from '@point0/core'
+import type { Request0, PointsScope } from '@point0/core'
 import { prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -107,7 +107,7 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     await this.loadFiles()
   }
 
-  async fetch({ request }: { request: PointRequest }): Promise<Response | undefined> {
+  async fetch({ request }: { request: Request0 }): Promise<Response | undefined> {
     if (!this.isInitialized()) {
       throw new Error('Publicdir is not initialized')
     }

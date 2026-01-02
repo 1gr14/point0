@@ -27,7 +27,7 @@ import type {
   UnknownData,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { ResponseEffectsManager, Point0, PointRequest, PointsManager, SuperStore } from '@point0/core'
+import { ResponseEffectsManager, Point0, Request0, PointsManager, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -35,7 +35,7 @@ import type { renderToReadableStream as RenderToReadableStream } from 'react-dom
 import type { ResolvableHead } from 'unhead/types'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
-  request: PointRequest
+  request: Request0
   responseEffectsManager: ResponseEffectsManager
   pointsManager: PointsManager<true, TRequiredCtx>
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
@@ -57,13 +57,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     serverGlobalState,
     responseEffectsManager,
   }: {
-    request: PointRequest
+    request: Request0
     pointsManager: PointsManager<true, TRequiredCtx>
     serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverGlobalState: {
-      __POINT0_POINT_REQUEST__: PointRequest
+      __POINT0_POINT_REQUEST__: Request0
       __POINT0_RESPONSE_EFFECTS_MANAGER__: ResponseEffectsManager
       __POINT0_SCOPE__: PointsScope
       __POINT0_QUERY_CLIENT__: QueryClient
@@ -89,7 +89,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx,
     responseEffectsManager,
   }: {
-    request: Request | PointRequest
+    request: Request | Request0
     pointsManager: PointsManager<true, TRequiredCtx>
     // TODO: remove currentLoacton from here, use it from request
     currentLocation: AnyLocation
@@ -99,7 +99,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
     responseEffectsManager ??= ResponseEffectsManager.create()
-    const pointRequest = PointRequest.create(request)
+    const pointRequest = Request0.create(request)
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new Executor<TRequiredCtx>({
         request: pointRequest,
