@@ -9,7 +9,6 @@ import type {
   EndPoint,
   EndPointType,
   IfAnyThenElse,
-  InputRaw,
   InputRawUnknown,
   IsEmptyObject,
   LayoutPoint,

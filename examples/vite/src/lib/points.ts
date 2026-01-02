@@ -68,12 +68,6 @@ export const _ideaLayout_nt15d99se5_lazy = {
   point: async () => (await import('../layouts/idea.js')).ideaLayout.point,
 } as LazyPointsCollectionRecord
 
-export const _BestIdeaComponent_1sqqm2reutm_lazy = {
-  type: 'component',
-  name: 'bestIdea',
-  point: async () => (await import('../pages/home.js')).BestIdeaComponent.point,
-} as LazyPointsCollectionRecord
-
 export const _ExternalHelperComponent2_jzuivdmkji_lazy = {
   type: 'component',
   name: 'externalHelper2',

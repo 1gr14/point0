@@ -452,6 +452,20 @@ export type InputRawMaybeOptional<
       InputRaw<TRouteDefinition, TInputSchema> | undefined | void
     : InputRaw<TRouteDefinition, TInputSchema>
 export type InputRawUnknown = Record<string, unknown>
+export type InputParseResult<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  | {
+      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+      inputParsed: InputParsed<TRouteDefinition, TInputSchema>
+      inputParseError: null
+    }
+  | {
+      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+      inputParsed: null // TODO: to undefined
+      inputParseError: Error0
+    }
 
 export type MergeInputSchemas<
   TInputSchema1 extends InputSchema | UndefinedInputSchema,
@@ -725,7 +739,7 @@ export type UseLoaderResult<
       error: null
       loading: false
       query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus>
+        ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> // TODO: to undefined
         : null
       input: InputParsed<TRouteDefinition, TInputSchema>
       inputRaw: InputRaw<TRouteDefinition, TInputSchema> // TODO: maybe remove it?
@@ -737,7 +751,7 @@ export type UseLoaderResult<
         error: null
         loading: true
         query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-          ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus>
+          ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
           : null
         input: InputParsed<TRouteDefinition, TInputSchema>
         inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -747,9 +761,9 @@ export type UseLoaderResult<
       ? {
           data: undefined
           error: Error0
-          loading: true
+          loading: false
           query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-            ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus>
+            ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
             : null
           input: InputParsed<TRouteDefinition, TInputSchema> | null
           inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -785,7 +799,7 @@ export type UnqueriedLoaderResult<
       ? {
           data: undefined
           error: Error0
-          loading: true
+          loading: false
           input: InputParsed<TRouteDefinition, TInputSchema> | null
           inputRaw: InputRaw<TRouteDefinition, TInputSchema>
           location: TLocation
@@ -839,7 +853,7 @@ export type PageComponentProps<
   TInputSchema,
   TRouteDefinition,
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-> & { props: FinalProps<TProps>; location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>> }
+> & { props: FinalProps<TProps> }
 export type PageComponent<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -942,8 +956,8 @@ export type MountableComponentProps<
   TWithChildren extends boolean | null,
 > = (TInputSchema extends InputSchemaZod
   ? IsInputOptional<UndefinedRouteDefinition, TInputSchema> extends true
-    ? { input?: ZodOutput<TInputSchema> } & FinalProps<TProps>
-    : { input: ZodOutput<TInputSchema> } & FinalProps<TProps>
+    ? { input?: ZodInput<TInputSchema> } & FinalProps<TProps>
+    : { input: ZodInput<TInputSchema> } & FinalProps<TProps>
   : FinalProps<TProps>) &
   (TWithChildren extends true
     ? { children: React.ReactNode }
@@ -1048,7 +1062,6 @@ export type ErrorComponentType<
   >
 >
 
-// export type WrapperComponentType = React.ComponentType<{ children: React.ReactNode }>
 export type WrapperComponentProps<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1089,6 +1102,46 @@ export type WrapperComponentType<
     TProps
   >
 >
+
+export type OuterComponentProps<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+  TLocation extends AnyLocation = AnyLocation,
+> = {
+  inputRaw: InputRawUnknown
+  input: InputParsed<TRouteDefinition, TInputSchema>
+  props: FinalProps<TProps>
+  location: TLocation
+  children: React.ReactNode
+  LoadingComponent: React.ComponentType
+  ErrorComponent: React.ComponentType<{ error: Error }>
+}
+export type OuterComponentType<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TProps extends Props | UndefinedProps = Props | UndefinedProps,
+  TLocation extends AnyLocation = AnyLocation,
+> = React.ComponentType<OuterComponentProps<TRouteDefinition, TInputSchema, TProps, TLocation>>
+
+// export type BeforeClientHookOptions<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+// > = {
+//   next: symbol
+//   loading: symbol
+// }
+// export type BeforeClientHook<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TNewClientMapperOutput extends MapperOutput = MapperOutput,
+// > = (
+//   options: ClientMapperFnOptions<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
+// ) => 'loading' | Error | undefined | 'next'
 
 // settings
 
@@ -1595,6 +1648,7 @@ export type NicePageMiddlePoint<
     | 'error'
     | 'loading'
     | 'wrapper'
+    | 'outer'
     | 'input'
     | 'ctx'
     | 'loader'
@@ -1652,6 +1706,7 @@ export type NiceComponentMiddlePoint<
     | 'error'
     | 'loading'
     | 'wrapper'
+    | 'outer'
     | 'input'
     | 'ctx'
     | 'loader'
@@ -1836,6 +1891,7 @@ export type NiceLayoutMiddlePoint<
     | 'pageLoading'
     | 'layoutLoading'
     | 'wrapper'
+    | 'outer'
     | 'input'
     | 'ctx'
     | 'loader'

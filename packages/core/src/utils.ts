@@ -173,3 +173,15 @@ export const toExtendedTransformer = (transformer: DataTransformer): DataTransfo
 }
 
 export const blankDataTransformerExtended: DataTransformerExtended = toExtendedTransformer(blankDataTransformer)
+
+export const toCapitalized = (str: string) => {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export const toCamelCase = (str: string) => {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()).replace(/_/g, '')
+}
+
+export const toCapitalizedCamelCase = (str: string) => {
+  return toCapitalized(toCamelCase(str))
+}

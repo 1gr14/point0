@@ -58,7 +58,7 @@ export const ExternalHelperComponent2 = client
     return (
       <div>
         <p>
-          External Helperxxx: {state},xxx,,{o.data.x}
+          External Helper: {state},xxx,,{o.data.x}
         </p>
         <button
           onClick={() => {

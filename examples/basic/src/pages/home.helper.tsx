@@ -39,7 +39,7 @@ export const ExternalHelperComponent2 = client.lets('component', 'externalHelper
   }, [])
   return (
     <div>
-      <p>External Helperxx: {state}</p>
+      <p>External Helper: {state}</p>
       <button
         onClick={() => {
           setState(0)

@@ -81,6 +81,7 @@ import type {
   Infer,
   InferCtxFnOutputCtxAppend,
   InferCtxFnOutputCtxExposedKeys,
+  InputParseResult,
   InputParsed,
   InputRaw,
   InputRawMaybeOptional,
@@ -112,6 +113,7 @@ import type {
   NiceRootMiddlePoint,
   OmitUnnamedKeys,
   OnPrefetchFn,
+  OuterComponentType,
   PageComponent,
   PagePrefetchPolicy,
   PartialUseInfiniteQueryOptions,
@@ -162,6 +164,7 @@ import {
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   mergeHeaders,
+  toCapitalizedCamelCase,
   toExtendedTransformer,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
@@ -251,6 +254,7 @@ export class Point0<
   readonly _queryResultType: TQueryResultType
   // readonly _asFormData: boolean | undefined
   private readonly _wrappers: WrapperComponentType[]
+  private readonly _outers: OuterComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _clientMapperFns: Array<ClientMapperFn<any, any, any, any, any>>
@@ -412,6 +416,7 @@ export class Point0<
     scope: PointsScope
     _attachedTo: PointsScope[]
     _wrappers?: WrapperComponentType[]
+    _outers?: OuterComponentType[]
     _headFns?: MiddlewareHeadFn[]
     _defaultMutationOptions?: UseMutationOptions
     _mutationOptions?: UseMutationOptions
@@ -583,6 +588,7 @@ export class Point0<
     this.type = options.type
     this._letsEndPointType = options._letsEndPointType
     this._wrappers = options._wrappers ?? []
+    this._outers = options._outers ?? []
     this._headFns = options._headFns ?? []
     this._defaultMutationOptions = options._defaultMutationOptions ?? {}
     this._mutationOptions = options._mutationOptions ?? {}
@@ -777,6 +783,7 @@ export class Point0<
     _queryResultType?: TQueryResultType
     // _asFormData?: boolean | undefined
     _wrappers?: WrapperComponentType[]
+    _outers?: OuterComponentType[]
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
     _clientMapperFns?: ClientMapperFn[]
@@ -959,6 +966,7 @@ export class Point0<
       _tranformer: overrides._tranformer ?? this._tranformer,
       _ssr: overrides._ssr ?? this._ssr,
       _wrappers: overrides._wrappers ?? this._wrappers,
+      _outers: overrides._outers ?? this._outers,
       _headFns: overrides._headFns ?? this._headFns,
       _defaultMutationOptions: overrides._defaultMutationOptions ?? { ...this._defaultMutationOptions },
       _mutationOptions: overrides._mutationOptions ?? { ...this._mutationOptions },
@@ -1483,10 +1491,14 @@ export class Point0<
     TProps
   >
   error(...args: [head: any, errorComponent: any] | [errorComponent: any]) {
-    const [head, errorComponent] = (args.length === 2 ? args : [undefined, args[0]]) as [
+    // in case if we prune pageError for serverNoSsr customer
+    const [head, errorComponent = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
       ErrorHeadFn | undefined,
       ErrorComponentType,
     ]
+    // this._applyComponentDisplayName(errorComponent, {
+    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Error',
+    // })
     if (this._letsEndPointType === 'page') {
       const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
       const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
@@ -1494,8 +1506,7 @@ export class Point0<
         : (options) => (!options.error ? {} : headFn(options as never))
       return this._continue({
         _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
-        _errorComponent: (errorComponent as never) || (() => null), // in case if we prune pageError for serverNoSsr customer
+        _errorComponent: errorComponent,
       }) as never
     } else if (
       this._letsEndPointType === 'layout' ||
@@ -1503,17 +1514,13 @@ export class Point0<
       this._letsEndPointType === 'provider'
     ) {
       return this._continue({
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _errorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+        _errorComponent: errorComponent,
       }) as never
     } else {
       return this._continue({
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _layoutErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _pageErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _componentErrorComponent: (errorComponent as never) || (() => null), // in case if we prune error for serverNoSsr customer
+        _layoutErrorComponent: errorComponent,
+        _pageErrorComponent: errorComponent,
+        _componentErrorComponent: errorComponent,
       }) as never
     }
   }
@@ -1536,8 +1543,11 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _layoutErrorComponent: (layoutErrorComponent as never) || (() => null), // in case if we prune layoutError for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune layoutError for serverNoSsr customer
+      _layoutErrorComponent: layoutErrorComponent || (() => null),
+      // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
+      //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'LayoutError',
+      // }),
     }) as never
   }
 
@@ -1593,15 +1603,18 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    const [head, pageErrorComponent] = args.length === 2 ? args : [undefined, args[0]]
+    // in case if we prune pageError for serverNoSsr customer, but as I know we replace it with () => null, but it is safer to keep it
+    const [head, pageErrorComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+    // this._applyComponentDisplayName(pageErrorComponent, {
+    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageError',
+    // })
     const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
       : (options) => (!options.error ? {} : headFn(options as never))
     return this._continue({
       _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
-      _pageErrorComponent: (pageErrorComponent as never) || (() => null), // in case if we prune pageError for serverNoSsr customer
+      _pageErrorComponent: pageErrorComponent,
     }) as never
   }
 
@@ -1623,8 +1636,11 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _componentErrorComponent: (componentErrorComponent as never) || (() => null), // in case if we prune componentError for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune componentError for serverNoSsr customer
+      _componentErrorComponent: componentErrorComponent || (() => null),
+      // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
+      //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'ComponentError',
+      // }),
     }) as never
   }
 
@@ -1646,8 +1662,11 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _layoutLoadingComponent: (layoutLoadingComponent as never) || (() => null), // in case if we prune layoutLoading for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune layoutLoading for serverNoSsr customer
+      _layoutLoadingComponent: layoutLoadingComponent || (() => null),
+      // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
+      //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'LayoutLoading',
+      // }),
     }) as never
   }
 
@@ -1705,15 +1724,18 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    const [head, pageLoadingComponent] = args.length === 2 ? args : [undefined, args[0]]
+    // in case if we prune pageLoading for serverNoSsr customer, but as I know we replace it with () => null, but it is safer to keep it
+    const [head, pageLoadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+    // this._applyComponentDisplayName(pageLoadingComponent, {
+    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageLoading',
+    // })
     const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
       ? undefined
       : (options) => (!options.loading ? {} : headFn(options as never))
     return this._continue({
       _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
-      _pageLoadingComponent: (pageLoadingComponent as never) || (() => null), // in case if we prune pageLoading for serverNoSsr customer
+      _pageLoadingComponent: pageLoadingComponent,
     }) as never
   }
 
@@ -1735,8 +1757,15 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      _componentLoadingComponent: (componentLoadingComponent as never) || (() => null), // in case if we prune componentLoading for serverNoSsr customer
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune componentLoading for serverNoSsr customer
+      _componentLoadingComponent: (componentLoadingComponent as never) || (() => null),
+      // _componentLoadingComponent: this._applyComponentDisplayName(
+      //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune componentLoading for serverNoSsr customer
+      //   (componentLoadingComponent as never) || (() => null),
+      //   {
+      //     suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'ComponentLoading',
+      //   },
+      // ),
     }) as never
   }
 
@@ -1814,7 +1843,11 @@ export class Point0<
     TProps
   >
   loading(...args: [head: any, pageLoadingComponent: any] | [pageLoadingComponent: any]) {
-    const [head, ladingComponent] = args.length === 2 ? args : [undefined, args[0]]
+    // in case if we prune pageLoading for serverNoSsr customer
+    const [head, loadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
+    // this._applyComponentDisplayName(loadingComponent, {
+    //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Loading',
+    // })
     if (this._letsEndPointType === 'page') {
       const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
       const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
@@ -1822,8 +1855,7 @@ export class Point0<
         : (options) => (!options.error ? {} : headFn(options as never))
       return this._continue({
         _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- but as I know we replace it with () => null, but it is safer to keep it
-        _loadingComponent: (ladingComponent as never) || (() => null), // in case if we prune pageLoading for serverNoSsr customer
+        _loadingComponent: loadingComponent,
       }) as never
     } else if (
       this._letsEndPointType === 'layout' ||
@@ -1831,17 +1863,13 @@ export class Point0<
       this._letsEndPointType === 'provider'
     ) {
       return this._continue({
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _loadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+        _loadingComponent: loadingComponent,
       }) as never
     } else {
       return this._continue({
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _layoutLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _pageLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        _componentLoadingComponent: (ladingComponent as never) || (() => null), // in case if we prune loading for serverNoSsr customer
+        _layoutLoadingComponent: loadingComponent,
+        _pageLoadingComponent: loadingComponent,
+        _componentLoadingComponent: loadingComponent,
       }) as never
     }
   }
@@ -1889,7 +1917,43 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      _wrappers: [...this._wrappers, wrapperComponent as never],
+      _wrappers: [
+        ...this._wrappers,
+        wrapperComponent as never,
+        // this._applyComponentDisplayName(wrapperComponent as React.ComponentType<any>, {
+        //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Wrapper',
+        //   index: this._wrappers.length,
+        // }) as never,
+      ],
+    }) as never
+  }
+
+  outer(
+    outerComponent: OuterComponentType<TRouteDefinition, TInputSchema, TProps, AnyLocation>,
+  ): NiceMiddlePoint<
+    'renderStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _outers: [
+        ...this._outers,
+        outerComponent as never,
+        // this._applyComponentDisplayName(outerComponent, {
+        //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Outer',
+        //   index: this._outers.length,
+        // }) as never,
+      ],
     }) as never
   }
 
@@ -2594,6 +2658,7 @@ export class Point0<
       _onPrefetchFns: this._base?._onPrefetchFns,
       shouldBePrefetchedOnLinkHover: this._base?.shouldBePrefetchedOnLinkHover ?? false,
       _wrappers: this._base?._wrappers ?? [],
+      _outers: this._base?._outers ?? [],
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
@@ -2775,13 +2840,18 @@ export class Point0<
       ? undefined
       : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         (options) => (!options.data || options.loading || options.error ? {} : headFn(options as never))
+    // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const point = this._continue({
       type: 'page',
       _page: page,
       _letsEndPointType: undefined,
       _headFns: !successHeadFn ? this._headFns : [...this._headFns, successHeadFn],
     })
-    point.X = point.Page.bind(point) as never
+    // point.X = point.Page.bind(point) as never
+    // this._applyComponentDisplayName(point.X, { suffix: 'Page' })
+    // this._applyComponentDisplayName(point.Page, { suffix: 'Page' })
+    // this._applyComponentDisplayName(point._PageLoader, { suffix: 'PageLoader' })
+    point.X = point.Page
     Point0._assignNicePointMethodsToComponent({ component: page, point, extra: { X: point.X } })
     return page as never
   }
@@ -2830,12 +2900,17 @@ export class Point0<
         >
       | undefined,
     ]
+    // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const point = this._continue({
       type: 'component',
       _component: component,
       _letsEndPointType: undefined,
     })
-    point.X = point.Component.bind(point) as never
+    // point.X = this._applyComponentDisplayName(point.Component.bind(point), { suffix: 'ComponentZ' }) as never
+    // this._applyComponentDisplayName(point.X, { suffix: 'ComponentL' })
+    // this._applyComponentDisplayName(point.Component, { suffix: 'Component' })
+    // this._applyComponentDisplayName(point._ComponentLoader, { suffix: 'ComponentLoader' })
+    point.X = point.Component
     Point0._assignNicePointMethodsToComponent({ component, point, extra: { X: point.X } })
     return component as never
   }
@@ -2886,13 +2961,18 @@ export class Point0<
         >
       | undefined,
     ]
+    // this._applyComponentDisplayName(layout as React.ComponentType<any>, { suffix: 'LayoutInner' })
     const point = this._continue({
       type: 'layout',
       _layout: layout as never,
       _letsEndPointType: undefined,
       _base: this as never as BasePoint,
     })
-    point.X = point.Layout.bind(point) as never
+    // point.X = point.Layout.bind(point) as never
+    // this._applyComponentDisplayName(point.X, { suffix: 'Layout' })
+    // this._applyComponentDisplayName(point.Layout, { suffix: 'Layout' })
+    // this._applyComponentDisplayName(point._LayoutLoader, { suffix: 'LayoutLoader' })
+    point.X = point.Layout
     Point0._assignNicePointMethodsToComponent({ component: layout, point, extra: { X: point.X } })
     return layout as never
   }
@@ -2992,7 +3072,10 @@ export class Point0<
         })
       },
     })
-    point.X = point.Provider.bind(point) as never
+    // point.X = point.Provider.bind(point) as never
+    // this._applyComponentDisplayName(point.X, { suffix: 'Provider' })
+    // this._applyComponentDisplayName(point.Provider, { suffix: 'Provider' })
+    point.X = point.Provider
     return point as never
   }
 
@@ -3310,6 +3393,11 @@ export class Point0<
       execute: point.execute.bind(point),
       executeDetailed: point.executeDetailed.bind(point),
       fetch: point.fetch.bind(point),
+      // Component: Object.assign(point.Component.bind(point), { displayName: (point.Component as any).displayName }),
+      // Page: Object.assign(point.Page.bind(point), { displayName: (point.Page as any).displayName }),
+      // Layout: Object.assign(point.Layout.bind(point), { displayName: (point.Layout as any).displayName }),
+      // Provider: Object.assign(point.Provider.bind(point), { displayName: (point.Provider as any).displayName }),
+      // X: Object.assign((point as any).X?.bind(point) || {}, { displayName: (point as any).X?.displayName }),
       Component: point.Component.bind(point),
       Page: point.Page.bind(point),
       Layout: point.Layout.bind(point),
@@ -3390,12 +3478,12 @@ export class Point0<
   }
 
   private _withWrappers({
-    component,
+    children,
     useLoaderResult,
     props,
   }: {
     props: FinalProps<TProps>
-    component: React.ReactNode
+    children: React.ReactNode
     useLoaderResult: AnyUseLoaderResult<
       any,
       TQueryResultType,
@@ -3408,11 +3496,48 @@ export class Point0<
     >
   }): Exclude<React.ReactNode, Promise<any>> {
     if (this._wrappers.length === 0) {
-      return component as Exclude<React.ReactNode, Promise<any>>
+      return children as Exclude<React.ReactNode, Promise<any>>
     }
     return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
-      return React.createElement(Wrapper, { key: index, children: acc, ...useLoaderResult, props } as never)
-    }, component) as Exclude<React.ReactNode, Promise<any>>
+      return React.createElement(Wrapper, {
+        children: acc,
+        ...useLoaderResult,
+        props,
+      } as never)
+    }, children) as Exclude<React.ReactNode, Promise<any>>
+  }
+
+  private _withOuters({
+    children,
+    inputRaw,
+    input,
+    props,
+    location,
+    LoadingComponent,
+    ErrorComponent,
+  }: {
+    children: React.ReactNode
+    inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+    input: InputParsed<TRouteDefinition, TInputSchema>
+    props: FinalProps<TProps>
+    location: AnyLocation
+    LoadingComponent: React.ComponentType
+    ErrorComponent: React.ComponentType<{ error: Error }>
+  }): Exclude<React.ReactNode, Promise<any>> {
+    if (this._outers.length === 0) {
+      return children as Exclude<React.ReactNode, Promise<any>>
+    }
+    return [...this._outers].reverse().reduce((acc, Outer, index) => {
+      return React.createElement(Outer, {
+        children: acc,
+        inputRaw,
+        input,
+        props,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }, children) as Exclude<React.ReactNode, Promise<any>>
   }
 
   _hasServerLoader(): boolean {
@@ -3440,6 +3565,49 @@ export class Point0<
     }
     return this._route as CallableRoute<NonNullable<TRouteDefinition>>
   }
+
+  private _generateComponentDisplayName(options?: {
+    index?: number | undefined
+    prefix?: string
+    suffix?: string
+  }): string {
+    const { index, prefix, suffix } = options ?? {}
+    return toCapitalizedCamelCase([prefix, this.name, suffix, index].filter(Boolean).join('_'))
+  }
+
+  // private _applyComponentDisplayName<TComponent extends React.ComponentType<any>>(
+  //   component: TComponent,
+  //   options?: { index?: number | undefined; prefix?: string; suffix?: string },
+  // ): TComponent {
+  //   // TODO: it breaks HMR, lets set function CompoentName via compiler
+  //   return component
+  //   // const { index, prefix, suffix } = options ?? {}
+  //   // const currentName = component.displayName || component.name || 'X'
+  //   // if (
+  //   //   currentName &&
+  //   //   ![
+  //   //     'X',
+  //   //     'X2',
+  //   //     '_ComponentLoader',
+  //   //     '_PageLoader',
+  //   //     '_LayoutLoader',
+  //   //     'Page',
+  //   //     'Layout',
+  //   //     'Component',
+  //   //     'Provider',
+  //   //     'bound Component',
+  //   //     'bound Page',
+  //   //     'bound Layout',
+  //   //     'bound Provider',
+  //   //   ].includes(currentName)
+  //   // ) {
+  //   //   return component
+  //   // }
+  //   // Object.assign(component, {
+  //   //   displayName: this._generateComponentDisplayName({ index, prefix, suffix }),
+  //   // })
+  //   // return component
+  // }
 
   parseInputSafe(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
@@ -3871,6 +4039,7 @@ export class Point0<
               >
             | undefined,
           fetchOptions?: FetchOptions | undefined,
+          _inputParseResult?: InputParseResult<TRouteDefinition, TInputSchema>,
         ]
       : [
           input: InputRaw<TRouteDefinition, TInputSchema>,
@@ -3886,6 +4055,7 @@ export class Point0<
               >
             | undefined,
           fetchOptions?: FetchOptions | undefined,
+          _inputParseResult?: InputParseResult<TRouteDefinition, TInputSchema>,
         ]
   ): AnyUseLoaderResult<
     any,
@@ -3898,37 +4068,24 @@ export class Point0<
     AnyLocation
   > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } {
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+    const [inputRaw = {}, queryOptions, fetchOptions, _inputParseResult] = args
 
-    const { inputRaw, inputParsed, inputParseError } = React.useMemo<
-      | {
-          inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-          inputParsed: InputParsed<TRouteDefinition, TInputSchema>
-          inputParseError: null
-        }
-      | {
-          inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-          inputParsed: null
-          inputParseError: Error0
-        }
-    >(() => {
-      const inputRaw = (args[0] || {}) as InputRaw<TRouteDefinition, TInputSchema>
-      const parsed = (():
-        | {
-            inputParsed: InputParsed<TRouteDefinition, TInputSchema>
-            inputParseError: null
-          }
-        | {
-            inputParsed: null
-            inputParseError: Error0
-          } => {
-        const result = this.parseInputSafe(inputRaw)
-        if (!result.success) {
-          return { inputParsed: null, inputParseError: result.error }
-        }
-        return { inputParsed: result.data, inputParseError: null }
-      })()
-      return { inputRaw, ...parsed }
-    }, [this._tranformer.stringify(args[0])])
+    const { inputParsed, inputParseError } = React.useMemo<InputParseResult<TRouteDefinition, TInputSchema>>(() => {
+      if (_inputParseResult) {
+        return _inputParseResult
+      }
+      const result = this.parseInputSafe(inputRaw as never)
+      if (!result.success) {
+        return { inputRaw, inputParsed: null, inputParseError: result.error } as InputParseResult<
+          TRouteDefinition,
+          TInputSchema
+        >
+      }
+      return { inputRaw, inputParsed: result.data, inputParseError: null } as InputParseResult<
+        TRouteDefinition,
+        TInputSchema
+      >
+    }, [this._tranformer.stringify(inputRaw), _inputParseResult])
 
     if (!this._hasServerLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
@@ -3946,7 +4103,9 @@ export class Point0<
       return result as never
     }
     const query =
-      this._queryResultType === 'infiniteQuery' ? this.useInfiniteQuery(...(args as never)) : this.useQuery(...args)
+      this._queryResultType === 'infiniteQuery'
+        ? this.useInfiniteQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
+        : this.useQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
     const mappedData = useMemo(() => {
       if (!query.data) {
         return undefined
@@ -4271,8 +4430,16 @@ export class Point0<
       const data = await this.fetch(input as never, fetchOptions, outputType)
       return data
     }
+    const mountableDefaultQueryOptions =
+      {
+        page: this._defaultPageQueryOptions,
+        component: this._defaultComponentQueryOptions,
+        layout: this._defaultLayoutQueryOptions,
+        provider: this._defaultProviderQueryOptions,
+      }[this.type as string] || {}
     const result = {
       ...this._defaultQueryOptions,
+      ...mountableDefaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
       queryKey,
@@ -4314,8 +4481,16 @@ export class Point0<
     //     const { clientData } = this._executeClientSync({ data: data || {}, location, input, response: undefined })
     //     return clientData
     //   }
+    const mountableDefaultQueryOptions =
+      {
+        page: this._defaultPageQueryOptions,
+        component: this._defaultComponentQueryOptions,
+        layout: this._defaultLayoutQueryOptions,
+        provider: this._defaultProviderQueryOptions,
+      }[this.type as string] || {}
     return {
       ...this._defaultQueryOptions,
+      ...mountableDefaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
       queryKey,
@@ -4362,8 +4537,16 @@ export class Point0<
       })
       return await queryClient.fetchQuery(clientOpts as any)
     }
+    const mountableDefaultQueryOptions =
+      {
+        page: this._defaultPageQueryOptions,
+        component: this._defaultComponentQueryOptions,
+        layout: this._defaultLayoutQueryOptions,
+        provider: this._defaultProviderQueryOptions,
+      }[this.type as string] || {}
     const result = {
       ...this._defaultQueryOptions,
+      ...mountableDefaultQueryOptions,
       ...this._queryOptions,
       ...queryOptions,
       queryKey,
@@ -5362,9 +5545,10 @@ export class Point0<
   // mountable components
 
   Page = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
     const { inputRaw, restProps } = React.useMemo<{
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -5374,6 +5558,20 @@ export class Point0<
       const inputRaw = { ...this._getUnsafeInputRawByLocation(location), ...providedInput }
       return { inputRaw, restProps }
     }, [props, location])
+
+    const inputParseResult = React.useMemo<InputParseResult<TRouteDefinition, TInputSchema>>(() => {
+      const result = this.parseInputSafe(inputRaw as never)
+      if (!result.success) {
+        return { inputRaw, inputParsed: null, inputParseError: result.error } as InputParseResult<
+          TRouteDefinition,
+          TInputSchema
+        >
+      }
+      return { inputRaw, inputParsed: result.data, inputParseError: null } as InputParseResult<
+        TRouteDefinition,
+        TInputSchema
+      >
+    }, [inputRaw])
 
     const { prevLocation, status } = useRouterContext()
     React.useEffect(() => {
@@ -5412,7 +5610,189 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    const result = this.useLoader(inputRaw, this._defaultPageQueryOptions)
+    if (inputParseResult.inputParseError) {
+      const result = {
+        data: undefined,
+        error: inputParseResult.inputParseError,
+        input: inputParseResult.inputParsed,
+        query: null,
+        inputRaw,
+        location,
+        loading: false,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      this._useHead(result)
+      return this._withWrappers({
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
+          type: 'page',
+        }),
+        useLoaderResult: result,
+        props,
+      })
+    }
+
+    const LoadingComponent = React.useMemo(
+      () => () => {
+        const result = {
+          data: undefined,
+          error: null,
+          input: inputParseResult.inputParsed,
+          inputRaw: inputParseResult.inputRaw,
+          location,
+          loading: true,
+          query: null,
+        } as AnyUseLoaderResult<'pending', any, any, any, any, any, any, any>
+        this._useHead(result)
+        return this._withWrappers({
+          children: React.createElement(loadingComponent, {
+            ...result,
+            props: restProps,
+            type: 'page',
+          }),
+          useLoaderResult: result,
+          props: restProps,
+        })
+      },
+      [loadingComponent, inputParseResult],
+    )
+
+    const ErrorComponent = React.useMemo(
+      () =>
+        ({ error }: { error: Error }) => {
+          const result = {
+            data: undefined,
+            error,
+            input: inputParseResult.inputParsed,
+            inputRaw: inputParseResult.inputRaw,
+            location,
+            loading: false,
+            query: null,
+          } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+          this._useHead(result)
+          return this._withWrappers({
+            children: React.createElement(errorComponent, {
+              ...result,
+              props: restProps,
+              type: 'page',
+            }),
+            props: restProps,
+            useLoaderResult: result,
+          })
+        },
+      [errorComponent, inputParseResult],
+    )
+
+    if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
+      return this._withOuters({
+        children: React.createElement(this._PageLoader, {
+          location,
+          inputParseResult,
+          restProps,
+        }),
+        inputRaw: inputParseResult.inputRaw,
+        input: inputParseResult.inputParsed,
+        props: restProps,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }
+
+    if (!this._page) {
+      // impossible error
+      const result = {
+        data: undefined,
+        error: new Error0('No page component'),
+        input: inputParseResult.inputParsed,
+        inputRaw: inputParseResult.inputRaw,
+        location,
+        loading: false,
+        query: null,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      this._useHead(result)
+      return this._withOuters({
+        children: this._withWrappers({
+          children: React.createElement(errorComponent, {
+            ...result,
+            props: restProps,
+            type: 'page',
+          }),
+          useLoaderResult: result,
+          props: restProps,
+        }),
+        inputRaw: inputParseResult.inputRaw,
+        input: inputParseResult.inputParsed,
+        props: restProps,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }
+
+    const result = {
+      data: undefined,
+      error: null,
+      input: inputParseResult.inputParsed,
+      inputRaw: inputParseResult.inputRaw,
+      location,
+      loading: false,
+      query: null,
+    } as AnyUseLoaderResult<'success', any, any, any, any, any, any, any>
+
+    this._useHead(result)
+
+    return this._withOuters({
+      children: this._withWrappers({
+        children: React.createElement(this._page, {
+          ...(result as any),
+          props: restProps,
+        }),
+        useLoaderResult: result as never,
+        props: restProps,
+      }),
+      inputRaw: inputParseResult.inputRaw,
+      input: inputParseResult.inputParsed,
+      props: restProps,
+      location,
+      LoadingComponent,
+      ErrorComponent,
+    })
+  }
+
+  _PageLoader = (props: {
+    location: AnyLocation
+    inputParseResult: InputParseResult<TRouteDefinition, TInputSchema>
+    restProps: FinalProps<TProps>
+  }): React.ReactNode => {
+    const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    const errorComponent = this._getErrorComponent({ type: 'page' })
+
+    const { location, inputParseResult, restProps } = props
+
+    const result = this.useLoader(inputParseResult.inputRaw, undefined, undefined, inputParseResult)
+
+    if (!this._page) {
+      const result = {
+        data: undefined,
+        error: new Error0('No page component'),
+        input: inputParseResult.inputParsed,
+        inputRaw: inputParseResult.inputRaw,
+        location,
+        loading: false,
+        query: null,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      this._useHead(result)
+      return this._withWrappers({
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
+          type: 'page',
+        }),
+        useLoaderResult: result,
+        props: restProps,
+      })
+    }
 
     this._useHead({ ...result, data: result.dataOrLastInfiteData } as AnyUnqueriedLoaderResult<
       any,
@@ -5423,70 +5803,44 @@ export class Point0<
       any
     >)
 
-    if (!this._page) {
-      // impossible error
-      return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          type: 'page',
-          data: undefined as
-            | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-            | undefined,
-          error: new Error0('No page component'),
-          loading: false,
-          location,
-          query: undefined as never,
-          input: {} as InputParsed<TRouteDefinition, TInputSchema>,
-        } as never),
-        useLoaderResult: result,
-        props,
-      })
-    }
-
     if (result.error) {
       return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
           type: 'page',
         }),
         useLoaderResult: result,
-        props,
+        props: restProps,
       })
     }
     if (result.loading) {
       return this._withWrappers({
-        component: React.createElement(loadingComponent, {
-          ...(result as any),
+        children: React.createElement(loadingComponent, {
+          ...result,
+          props: restProps,
           type: 'page',
         }),
         useLoaderResult: result,
-        props,
+        props: restProps,
       })
     }
 
-    // if (!result.data) {
-    //   return this._withWrappers({
-    //     component: React.createElement(errorComponent, {
-    //       ...(result as any),
-    //       type: 'page',
-    //       error: new Error0('No data'),
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
     return this._withWrappers({
-      component: React.createElement(this._page, {
+      children: React.createElement(this._page, {
         ...(result as any),
         props: restProps,
       }),
       useLoaderResult: result,
-      props,
+      props: restProps,
     })
   }
 
   Component = (props: MountableComponentProps<TInputSchema, TProps, false>): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
+    const loadingComponent = this._getLoadingComponent({ type: 'component' })
+    const errorComponent = this._getErrorComponent({ type: 'component' })
+
+    const location = useLocation()
 
     const { inputRaw, restProps } = React.useMemo<{
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -5497,66 +5851,235 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props])
 
-    const result = this.useLoader(inputRaw, this._defaultComponentQueryOptions)
+    const inputParseResult = React.useMemo<InputParseResult<TRouteDefinition, TInputSchema>>(() => {
+      const result = this.parseInputSafe(inputRaw as never)
+      if (!result.success) {
+        return { inputRaw, inputParsed: null, inputParseError: result.error } as InputParseResult<
+          TRouteDefinition,
+          TInputSchema
+        >
+      }
+      return { inputRaw, inputParsed: result.data, inputParseError: null } as InputParseResult<
+        TRouteDefinition,
+        TInputSchema
+      >
+    }, [inputRaw])
 
-    if (!this._component) {
-      // impossible error
+    if (inputParseResult.inputParseError) {
+      const result = {
+        data: undefined,
+        error: inputParseResult.inputParseError,
+        input: inputParseResult.inputParsed,
+        query: null,
+        inputRaw,
+        location,
+        loading: false,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
       return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
           type: 'component',
         }),
         useLoaderResult: result,
         props,
+      })
+    }
+
+    const LoadingComponent = React.useMemo(
+      () => () => {
+        const result = {
+          data: undefined,
+          error: null,
+          input: inputParseResult.inputParsed,
+          inputRaw: inputParseResult.inputRaw,
+          location,
+          loading: true,
+          query: null,
+        } as AnyUseLoaderResult<'pending', any, any, any, any, any, any, any>
+        return this._withWrappers({
+          children: React.createElement(loadingComponent, {
+            ...result,
+            props: restProps,
+            type: 'component',
+          }),
+          useLoaderResult: result,
+          props: restProps,
+        })
+      },
+      [loadingComponent, inputParseResult],
+    )
+
+    const ErrorComponent = React.useMemo(
+      () =>
+        ({ error }: { error: Error }) => {
+          const result = {
+            data: undefined,
+            error,
+            input: inputParseResult.inputParsed,
+            inputRaw: inputParseResult.inputRaw,
+            location,
+            loading: false,
+            query: null,
+          } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+          return this._withWrappers({
+            children: React.createElement(errorComponent, {
+              ...result,
+              props: restProps,
+              type: 'component',
+            }),
+            props: restProps,
+            useLoaderResult: result,
+          })
+        },
+      [errorComponent, inputParseResult],
+    )
+
+    if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
+      return this._withOuters({
+        children: React.createElement(this._ComponentLoader, {
+          location,
+          inputParseResult,
+          restProps,
+        }),
+        inputRaw: inputParseResult.inputRaw,
+        input: inputParseResult.inputParsed,
+        props: restProps,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }
+
+    if (!this._component) {
+      // impossible error
+      const result = {
+        data: undefined,
+        error: new Error0('No component component'),
+        input: inputParseResult.inputParsed,
+        inputRaw: inputParseResult.inputRaw,
+        location,
+        loading: false,
+        query: null,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      return this._withOuters({
+        children: this._withWrappers({
+          children: React.createElement(errorComponent, {
+            ...result,
+            props: restProps,
+            type: 'component',
+          }),
+          useLoaderResult: result,
+          props: restProps,
+        }),
+        inputRaw: inputParseResult.inputRaw,
+        input: inputParseResult.inputParsed,
+        props: restProps,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }
+
+    const result = {
+      data: undefined,
+      error: null,
+      input: inputParseResult.inputParsed,
+      inputRaw: inputParseResult.inputRaw,
+      location,
+      loading: false,
+      query: null,
+    } as AnyUseLoaderResult<'success', any, any, any, any, any, any, any>
+
+    return this._withOuters({
+      children: this._withWrappers({
+        children: React.createElement(this._component, {
+          ...(result as any),
+          props: restProps,
+        }),
+        useLoaderResult: result as never,
+        props: restProps,
+      }),
+      inputRaw: inputParseResult.inputRaw,
+      input: inputParseResult.inputParsed,
+      props: restProps,
+      location,
+      LoadingComponent,
+      ErrorComponent,
+    })
+  }
+
+  _ComponentLoader = (props: {
+    location: AnyLocation
+    inputParseResult: InputParseResult<TRouteDefinition, TInputSchema>
+    restProps: FinalProps<TProps>
+  }): React.ReactNode => {
+    const loadingComponent = this._getLoadingComponent({ type: 'component' })
+    const errorComponent = this._getErrorComponent({ type: 'component' })
+
+    const { location, inputParseResult, restProps } = props
+
+    const result = this.useLoader(inputParseResult.inputRaw, undefined, undefined, inputParseResult)
+
+    if (!this._component) {
+      const result = {
+        data: undefined,
+        error: new Error0('No component component'),
+        input: inputParseResult.inputParsed,
+        inputRaw: inputParseResult.inputRaw,
+        location,
+        loading: false,
+        query: null,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      return this._withWrappers({
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
+          type: 'component',
+        }),
+        useLoaderResult: result,
+        props: restProps,
       })
     }
 
     if (result.error) {
       return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
           type: 'component',
         }),
         useLoaderResult: result,
-        props,
+        props: restProps,
       })
     }
     if (result.loading) {
       return this._withWrappers({
-        component: React.createElement(loadingComponent, {
-          ...(result as any),
+        children: React.createElement(loadingComponent, {
+          ...result,
+          props: restProps,
           type: 'component',
         }),
         useLoaderResult: result,
-        props,
+        props: restProps,
       })
     }
 
-    // if (!result.data) {
-    //   return this._withWrappers({
-    //     component: React.createElement(errorComponent, {
-    //       ...(result as any),
-    //       type: 'component',
-    //       error: new Error0('No data'),
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
     return this._withWrappers({
-      component: React.createElement(this._component, {
+      children: React.createElement(this._component, {
         ...(result as any),
-        props: restProps as unknown as FinalProps<TProps>,
+        props: restProps as never,
       }),
       useLoaderResult: result,
-      props,
+      props: restProps,
     })
   }
 
   Layout = (props: MountableComponentProps<TInputSchema, TProps, true>): React.ReactNode => {
+    const loadingComponent = this._getLoadingComponent({ type: 'layout' })
+    const errorComponent = this._getErrorComponent({ type: 'layout' })
+
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
 
     const { inputRaw, children, restProps } = React.useMemo<{
       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
@@ -5568,60 +6091,238 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props, location])
 
-    const result = this.useLoader(inputRaw, this._defaultLayoutQueryOptions)
+    const inputParseResult = React.useMemo<InputParseResult<TRouteDefinition, TInputSchema>>(() => {
+      const result = this.parseInputSafe(inputRaw as never)
+      if (!result.success) {
+        return { inputRaw, inputParsed: null, inputParseError: result.error } as InputParseResult<
+          TRouteDefinition,
+          TInputSchema
+        >
+      }
+      return { inputRaw, inputParsed: result.data, inputParseError: null } as InputParseResult<
+        TRouteDefinition,
+        TInputSchema
+      >
+    }, [inputRaw])
 
-    if (!this._layout) {
-      // impossible error
+    if (inputParseResult.inputParseError) {
+      const result = {
+        data: undefined,
+        error: inputParseResult.inputParseError,
+        input: inputParseResult.inputParsed,
+        query: null,
+        inputRaw,
+        location,
+        loading: false,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      this._useHead(result)
       return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
           type: 'layout',
         }),
         useLoaderResult: result,
         props,
+      })
+    }
+
+    const LoadingComponent = React.useMemo(
+      () => () => {
+        const result = {
+          data: undefined,
+          error: null,
+          input: inputParseResult.inputParsed,
+          inputRaw: inputParseResult.inputRaw,
+          location,
+          loading: true,
+          query: null,
+        } as AnyUseLoaderResult<'pending', any, any, any, any, any, any, any>
+        this._useHead(result)
+        return this._withWrappers({
+          children: React.createElement(loadingComponent, {
+            ...result,
+            props: restProps,
+            type: 'layout',
+          }),
+          useLoaderResult: result,
+          props: restProps,
+        })
+      },
+      [loadingComponent, inputParseResult],
+    )
+
+    const ErrorComponent = React.useMemo(
+      () =>
+        ({ error }: { error: Error }) => {
+          const result = {
+            data: undefined,
+            error,
+            input: inputParseResult.inputParsed,
+            inputRaw: inputParseResult.inputRaw,
+            location,
+            loading: false,
+            query: null,
+          } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+          this._useHead(result)
+          return this._withWrappers({
+            children: React.createElement(errorComponent, {
+              ...result,
+              props: restProps,
+              type: 'layout',
+            }),
+            props: restProps,
+            useLoaderResult: result,
+          })
+        },
+      [errorComponent, inputParseResult],
+    )
+
+    if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
+      return this._withOuters({
+        children: React.createElement(this._LayoutLoader, {
+          location,
+          inputParseResult,
+          restProps,
+          children,
+        }),
+        inputRaw: inputParseResult.inputRaw,
+        input: inputParseResult.inputParsed,
+        props: restProps,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }
+
+    if (!this._layout) {
+      // impossible error
+      const result = {
+        data: undefined,
+        error: new Error0('No layout component'),
+        input: inputParseResult.inputParsed,
+        inputRaw: inputParseResult.inputRaw,
+        location,
+        loading: false,
+        query: null,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      this._useHead(result)
+      return this._withOuters({
+        children: this._withWrappers({
+          children: React.createElement(errorComponent, {
+            ...result,
+            props: restProps,
+            type: 'layout',
+          }),
+          useLoaderResult: result,
+          props: restProps,
+        }),
+        inputRaw: inputParseResult.inputRaw,
+        input: inputParseResult.inputParsed,
+        props: restProps,
+        location,
+        LoadingComponent,
+        ErrorComponent,
+      })
+    }
+
+    const result = {
+      data: undefined,
+      error: null,
+      input: inputParseResult.inputParsed,
+      inputRaw: inputParseResult.inputRaw,
+      location,
+      loading: false,
+      query: null,
+    } as AnyUseLoaderResult<'success', any, any, any, any, any, any, any>
+
+    return this._withOuters({
+      children: this._withWrappers({
+        children: React.createElement(this._layout, {
+          ...(result as any),
+          children,
+          props: restProps,
+        }),
+        useLoaderResult: result as never,
+        props: restProps,
+      }),
+      inputRaw: inputParseResult.inputRaw,
+      input: inputParseResult.inputParsed,
+      props: restProps,
+      location,
+      LoadingComponent,
+      ErrorComponent,
+    })
+  }
+
+  _LayoutLoader = (props: {
+    location: AnyLocation
+    inputParseResult: InputParseResult<TRouteDefinition, TInputSchema>
+    restProps: FinalProps<TProps>
+    children: React.ReactNode
+  }): React.ReactNode => {
+    const loadingComponent = this._getLoadingComponent({ type: 'layout' })
+    const errorComponent = this._getErrorComponent({ type: 'layout' })
+
+    const { location, inputParseResult, restProps, children } = props
+
+    const result = this.useLoader(inputParseResult.inputRaw, undefined, undefined, inputParseResult)
+
+    if (!this._layout) {
+      const result = {
+        data: undefined,
+        error: new Error0('No layout component'),
+        input: inputParseResult.inputParsed,
+        inputRaw: inputParseResult.inputRaw,
+        location,
+        loading: false,
+        query: null,
+      } as AnyUseLoaderResult<'error', any, any, any, any, any, any, any>
+      this._useHead(result)
+      return this._withWrappers({
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
+          type: 'layout',
+        }),
+        useLoaderResult: result,
+        props: restProps,
       })
     }
 
     if (result.error) {
+      this._useHead(result)
       return this._withWrappers({
-        component: React.createElement(errorComponent, {
-          ...(result as any),
+        children: React.createElement(errorComponent, {
+          ...result,
+          props: restProps,
           type: 'layout',
         }),
         useLoaderResult: result,
-        props,
+        props: restProps,
       })
     }
     if (result.loading) {
+      this._useHead(result)
       return this._withWrappers({
-        component: React.createElement(loadingComponent, {
-          ...(result as any),
+        children: React.createElement(loadingComponent, {
+          ...result,
+          props: restProps,
           type: 'layout',
         }),
         useLoaderResult: result,
-        props,
+        props: restProps,
       })
     }
 
-    // if (!result.data) {
-    //   return this._withWrappers({
-    //     component: React.createElement(errorComponent, {
-    //       ...(result as any),
-    //       type: 'layout',
-    //       error: new Error0('No data'),
-    //     }),
-    //     useLoaderResult: result,
-    //     props,
-    //   })
-    // }
     return this._withWrappers({
-      component: React.createElement(this._layout, {
-        ...result,
+      children: React.createElement(this._layout, {
+        ...(result as any),
         children,
         props: restProps,
-      } as never),
+      }),
       useLoaderResult: result,
-      props,
+      props: restProps,
     })
   }
 
@@ -5673,7 +6374,7 @@ export class Point0<
 
     if (result.error) {
       return this._withWrappers({
-        component: React.createElement(errorComponent, {
+        children: React.createElement(errorComponent, {
           ...(result as any),
           type: 'page',
         }),
@@ -5683,7 +6384,7 @@ export class Point0<
     }
     if (result.loading) {
       return this._withWrappers({
-        component: React.createElement(loadingComponent, {
+        children: React.createElement(loadingComponent, {
           ...(result as any),
           type: 'page',
         }),
@@ -5709,7 +6410,7 @@ export class Point0<
       value,
     )
     return this._withWrappers({
-      component: React.createElement(this._ProviderReactContext.Provider, {
+      children: React.createElement(this._ProviderReactContext.Provider, {
         value,
         children,
       }),

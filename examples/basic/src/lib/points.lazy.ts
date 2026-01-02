@@ -44,21 +44,21 @@ export const _unnamed_rblpffd78f_lazy = {
   point: async () => (await import('../pages/idea-create.js')).default.point,
 } as LazyPointsCollectionRecord
 
-export const _ideaPage_1lbwy4x6i7a_lazy = {
+export const _ideaPage_1h9zgk273a2_lazy = {
   type: 'page',
   name: 'idea',
   route: '/ideas/:id',
   shouldBePrefetchedOnLinkHover: true,
-  layouts: ['generalLayout', 'ideaLayout'],
+  layouts: ['generalLayout', 'idea'],
   point: async () => (await import('../pages/idea.js')).ideaPage.point,
 } as LazyPointsCollectionRecord
 
-export const _ideaNewsPage_swg9xetjej_lazy = {
+export const _ideaNewsPage_17oj6z76jfl_lazy = {
   type: 'page',
   name: 'ideaNews',
   route: '/ideas/:id/news',
   shouldBePrefetchedOnLinkHover: 2000,
-  layouts: ['generalLayout', 'ideaLayout'],
+  layouts: ['generalLayout', 'idea'],
   point: async () => (await import('../pages/idea-news.js')).ideaNewsPage.point,
 } as LazyPointsCollectionRecord
 
@@ -77,9 +77,9 @@ export const _generalLayout_2a89rn3ysgd_lazy = {
   point: async () => (await import('../layouts/general.js')).generalLayout.point,
 } as LazyPointsCollectionRecord
 
-export const _ideaLayout_109ae95y9wr_lazy = {
+export const _ideaLayout_29virt0uukc_lazy = {
   type: 'layout',
-  name: 'ideaLayout',
+  name: 'idea',
   route: '/ideas/:id',
   point: async () => (await import('../layouts/idea.js')).ideaLayout.point,
 } as LazyPointsCollectionRecord

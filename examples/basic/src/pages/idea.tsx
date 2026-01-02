@@ -1,5 +1,5 @@
 import { Link } from '@/lib/navigate'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
 
@@ -29,6 +29,18 @@ export const ideaPage = ideaLayout
     }
   })
   .clientLoader(false)
+  // .outer(({ children, ErrorComponent, LoadingComponent, input, props, location, inputRaw }) => {
+  //   const [loading, setLoading] = useState(true)
+  //   useEffect(() => {
+  //     setTimeout(() => {
+  //       setLoading(false)
+  //     }, 1000)
+  //   }, [])
+  //   if (loading) {
+  //     return <LoadingComponent />
+  //   }
+  //   return children
+  // })
   .page(
     ({ data: { idea } }) => ({
       title: idea.title,

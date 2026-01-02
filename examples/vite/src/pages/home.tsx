@@ -22,26 +22,26 @@ const someDate = Point0.define('someDate', () => new Date(), true)
 const someStable = Point0.define('someStable', () => 123, true)
 const someVar = Point0.define('someVar', () => 0, true)
 
-export const BestIdeaComponent = client
-  .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
-  .input(z.object({ x: z.coerce.number() }))
-  .loader(async ({ ctx, input }) => ({
-    bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-    y: input.x * 2,
-  }))
-  .props<{ cta: string }>()
-  .component(({ data, props }) => {
-    return (
-      <div>
-        <h1>Best Idea {data.y}</h1>
-        <p>{props.cta}</p>
-        <p>{data.bestIdea.title}</p>
-        <p>
-          <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
-        </p>
-      </div>
-    )
-  })
+// export const BestIdeaComponent = client
+//   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
+//   .input(z.object({ x: z.coerce.number() }))
+//   .loader(async ({ ctx, input }) => ({
+//     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
+//     y: input.x * 2,
+//   }))
+//   .props<{ cta: string }>()
+//   .component(({ data, props }) => {
+//     return (
+//       <div>
+//         <h1>Best Ideaxxxx {data.y}</h1>
+//         <p>{props.cta}</p>
+//         <p>{data.bestIdea.title}</p>
+//         <p>
+//           <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
+//         </p>
+//       </div>
+//     )
+//   })
 
 export default generalLayout
   .lets('page', 'home', '/')
@@ -84,7 +84,6 @@ export default generalLayout
         {/* <ExternalHelperComponent2.Component /> */}
         <ExternalHelperComponent2.Component />
         <hr />
-        <p>Something random: {someRandom.get()}</p>
         <p>Something date: {someDate.get().getTime()}</p>
         <p>Something stable: {someStable.get()}</p>
         <h1>Welcome to IdeaNick</h1>

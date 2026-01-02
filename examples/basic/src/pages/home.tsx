@@ -47,13 +47,14 @@ export const BestIdeaComponent = client
   }))
   .props<{ cta: string }>()
   .clientLoader(async (o) => {
+    console.log('clientLoaderxxx', o)
     await new Promise((resolve) => setTimeout(resolve, 1))
     return {
       ...o.data,
       cllll: new Date(),
     }
   })
-  .clientLoader(false)
+  // .clientLoader(false)
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
@@ -62,6 +63,9 @@ export const BestIdeaComponent = client
   })
   .loading(({ input, props }) => {
     return <div>Loading...</div>
+  })
+  .outer(({ children, ErrorComponent, LoadingComponent, input, props, location, inputRaw }) => {
+    return children
   })
   .component(function X({ data, props, location }) {
     return (

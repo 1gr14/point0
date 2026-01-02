@@ -6,6 +6,7 @@ OUTER
 появляется оутер у которого есть рендерЕррор и рендерЛоадинг и чилдерн
 
 REFACTORING 0
+after .outer() we come to 'outerStage' when props() can not be set any more
 remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
 rename fetch to EngineFetcher
 Не поинт реквест а реквест0
@@ -14,6 +15,10 @@ rename fetch to EngineFetcher
 Поинт не часть реквеста, а часть просто мидлвары опшинсов & {point, root, scope, outputType} | {publicfile, publicdir}
 AppendCtx with Prettify
 Request0<TRoute>
+we do not need execute on ssr, just lets follow queryKeys
+we should while useHead on server just store last run heads array and retrieve it from SuperStore
+Удалить флатер
+ClientMapper → Mapper
 InputRaw → InputOriginal
 Remove inputOriginal from options of loader and ctx
 Айпи брать сначала из бансервера и только потом по респонсам
@@ -160,6 +165,7 @@ https://oxc.rs/docs/guide/usage/linter/config
 
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
+В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
 В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}
 В суперстор добавить скоуп, чтобы оно не отдавалось в противном случае в сср
 Названия не хешировать, а просто нумеровать в экспорте поинтов
@@ -180,6 +186,7 @@ check bun compiler, and vite compiler creates correct sourcemaps
 make components and pages named in react dev tools
 fetch/query cancellation, maybe fetchWithCancel()
 .getFetchOptions()
+allow ssr different html for ErrorComponent stack
 loader(() => {}, {cache: false | string})
 ССР опцию можно добавлять в квери, чтобы при серверном рендеринге если квери находится, то она все равно не префетчится
 ? Юз лоадер респонс должен быть сервер респонсом если там такой есть
