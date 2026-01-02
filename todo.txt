@@ -4,10 +4,6 @@
 
 REFACTORING 0
 
-ClientMapper → Mapper
-Не ансейф а форс
-Укоротить до линкпрефетч
-Айпи брать сначала из бансервера и только потом по респонсам
 check if parse input from request done via from scope transformer
 Do not omit, in exposedCtx, but if try to expose then error
 do not bundle core package, just expose in package json only index.js
@@ -24,6 +20,7 @@ fix what can be .lets from each point type, restrict where lets can be used, lik
 after .outer() we come to 'outerStage' when props() can not be set any more
 
 normalize points collection things, make it any style, with tests
+Укоротить до линкпрефетч
 
 SuperStore.predefined ← ssrLocation, etc
 
@@ -64,6 +61,7 @@ walker add to lazy points root {scope}, and self scope is still _root_lazy, othe
 remove .attach things
 
 ENVIRONMENT
+callServer → callServerElseUndefined/callServerElseThrow, ectc just do it better, it is CSE base
 not client-server.ts, but environment.ts
 make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
 process.env.POINT0_SCOPE defined and can be used to remove deadcode

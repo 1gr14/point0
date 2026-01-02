@@ -66,30 +66,31 @@ export class Request0 {
     const method = original.method.toLowerCase() as RequestMethod
 
     // Extract IP addresses
-    const ips: string[] = []
-    const forwardedFor = original.headers.get('x-forwarded-for')
-    if (forwardedFor) {
-      ips.push(...forwardedFor.split(',').map((ip) => ip.trim()))
-    }
-    const realIp = original.headers.get('x-real-ip')
-    if (realIp && !ips.includes(realIp)) {
-      ips.push(realIp)
-    }
-    const cfConnectingIp = original.headers.get('cf-connecting-ip')
-    if (cfConnectingIp && !ips.includes(cfConnectingIp)) {
-      ips.push(cfConnectingIp)
-    }
-
-    // Fallback to connection IP from Bun server if no IP headers found
-    if (ips.length === 0 && bunServer) {
+    // Prioritize Bun's requestIP (more trusted, can't be spoofed)
+    const ipsSet = new Set<string>()
+    if (bunServer) {
       try {
         const requestIP = bunServer.requestIP(original)
         if (requestIP?.address) {
-          ips.push(requestIP.address)
+          ipsSet.add(requestIP.address)
         }
       } catch {
         // Ignore errors if requestIP is not available
       }
+    }
+
+    // Also collect IPs from headers (Bun's requestIP is prioritized as ips[0])
+    const forwardedFor = original.headers.get('x-forwarded-for')
+    if (forwardedFor) {
+      forwardedFor.split(',').forEach((ip) => ipsSet.add(ip.trim()))
+    }
+    const realIp = original.headers.get('x-real-ip')
+    if (realIp) {
+      ipsSet.add(realIp)
+    }
+    const cfConnectingIp = original.headers.get('cf-connecting-ip')
+    if (cfConnectingIp) {
+      ipsSet.add(cfConnectingIp)
     }
 
     // Extract user agent
@@ -102,6 +103,7 @@ export class Request0 {
     const referrerUrl = original.referrer || original.headers.get('referer')
     const referrerLocation = referrerUrl ? Route0.getLocation(referrerUrl) : null
 
+    const ips = Array.from(ipsSet)
     const from: RequestFrom = {
       ips,
       ip: ips[0] || null,
