@@ -1,6 +1,7 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 
+// TODO: add generics TRoute, THeaders, TCookies
 export class PointRequest {
   original: Request
   headers: PointRequestHeaders

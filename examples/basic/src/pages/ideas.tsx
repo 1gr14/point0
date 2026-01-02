@@ -23,6 +23,10 @@ export const ideasPage = generalLayout
     initialPageParam: 0,
     pageParamFromInput: 'page',
   })
+  .mapper(({ data }) => {
+    return { ...data, xxx: 'XxX' }
+  })
+  .flatter('ideas')
   .page(
     (o) => {
       return `${o.data.ideasCount} ideas x`
@@ -32,40 +36,39 @@ export const ideasPage = generalLayout
       return (
         <div>
           <h1>Ideas</h1>
-          <p>Environment: {data.pages[0].env}</p>
+          <p>Environment: {data.original.pages[0].env}</p>
+          <p>xxx: {data.original.xxx}</p>
           <p
             onClick={() => {
               setCount(count + 1)
             }}
           >
-            Here are all the amazing ideas shared by our community: {data.pages[0].ideasCount + count}
+            Here are all the amazing ideas shared by our community: {data.original.pages[0].ideasCount + count}
             <br />
-            Amazing: {data.pages[0].amazing}
+            Amazing: {data.original.pages[0].amazing}
           </p>
           <div>
-            {query.data.pages
-              .flatMap((p) => p.ideas)
-              .map((idea) => (
-                <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
-                  <h3>
-                    {/* <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link> */}
-                    <Link route="idea" input={{ id: idea.id, hash: 'xcv' }}>
-                      {idea.title}
-                    </Link>
-                  </h3>
-                  <p>
-                    {idea.description}
-                    <br />
-                    Amazing: {idea.amazing}
-                  </p>
-                  <p>
-                    {/* <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link> */}
-                    <Link route="ideaNews" input={{ id: idea.id, hash: 'zxc' }}>
-                      News
-                    </Link>
-                  </p>
-                </div>
-              ))}
+            {data.flattened.map((idea) => (
+              <div key={idea.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ccc' }}>
+                <h3>
+                  {/* <Link to={routes.idea.get({ id: idea.id })}>{idea.title}</Link> */}
+                  <Link route="idea" input={{ id: idea.id, hash: 'xcv' }}>
+                    {idea.title}
+                  </Link>
+                </h3>
+                <p>
+                  {idea.description}
+                  <br />
+                  Amazing: {idea.amazing}
+                </p>
+                <p>
+                  {/* <Link to={routes.ideaNews.get({ id: idea.id })}>News</Link> */}
+                  <Link route="ideaNews" input={{ id: idea.id, hash: 'zxc' }}>
+                    News
+                  </Link>
+                </p>
+              </div>
+            ))}
           </div>
           {query.isFetchingNextPage && <div>Loading more...</div>}
           {query.hasNextPage && (

@@ -65,7 +65,7 @@ describe('Point0', () => {
 
     expectTypeOf(server1).toEqualTypeOf<
       NiceRootMiddlePoint<
-        'middleware',
+        'coreStage',
         'root',
         UndefinedCtx,
         { a: number; b: number },
@@ -92,7 +92,7 @@ describe('Point0', () => {
 
     expectTypeOf(server2).toEqualTypeOf<
       NiceRootMiddlePoint<
-        'middleware',
+        'coreStage',
         'root',
         undefined,
         { a: number; b: number; c: number },
@@ -599,7 +599,7 @@ describe('Point0', () => {
     expect(clientPoint0).toBeInstanceOf(Point0)
     // expectTypeOf(clientPoint0).toEqualTypeOf<
     //   Point0<
-    //     'middleware',
+    //     'coreStage',
     //     'root',
     //     UndefinedCtx,
     //     EmptyCtx,

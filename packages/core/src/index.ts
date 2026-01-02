@@ -1035,7 +1035,7 @@ export class Point0<
   static create(
     scope: string,
   ): NiceRootMiddlePoint<
-    'middleware',
+    'coreStage',
     'root',
     UndefinedCtx,
     EmptyCtx,
@@ -1053,7 +1053,7 @@ export class Point0<
     scope: string,
     attachedTo: PointsScope[],
   ): NiceRootMiddlePoint<
-    'middleware',
+    'coreStage',
     'root',
     // TODO: check .d.ts files, is this approach heavy or not?
     TRootPoint['Infer']['RequiredCtx'],
@@ -1070,7 +1070,7 @@ export class Point0<
   >
   static create(scope: string, attachedTo?: PointsScope[]) {
     return new Point0({
-      type: 'middleware',
+      type: 'coreStage',
       scope,
       _attachedTo: attachedTo ?? [],
       _letsEndPointType: 'root',
@@ -1430,7 +1430,7 @@ export class Point0<
           >
       : ErrorComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1468,7 +1468,7 @@ export class Point0<
           ]
       : never
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends 'page' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1761,7 +1761,7 @@ export class Point0<
           >
       : LoadingComponentType,
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1799,7 +1799,7 @@ export class Point0<
           ]
       : never
   ): NiceMiddlePoint<
-    TLetsEndPointType extends 'page' ? 'renderMiddleware' : TPointType,
+    TLetsEndPointType extends 'page' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1874,7 +1874,7 @@ export class Point0<
           TProps
         >,
   ): NiceMiddlePoint<
-    'renderMiddleware',
+    'renderStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2071,7 +2071,7 @@ export class Point0<
       TNewClientLoaderOutput
     >,
   ): NiceMiddlePoint<
-    'clientMiddleware',
+    'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2146,7 +2146,7 @@ export class Point0<
       clientLoaderFn = (o) => o.data
     }
     return this._continue({
-      type: 'clientMiddleware',
+      type: 'clientStage',
       _queryResultType: this._queryResultType ?? 'query',
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -2155,6 +2155,121 @@ export class Point0<
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           fn: clientLoaderFn || ((o: any) => o.data), // in case if we prune clientLoader for server without ssr customer
           unstableId: Point0._getNextUnstableId(),
+        },
+      ] as never,
+    }) as never
+  }
+
+  mapper<TNewClientMapperOutput extends MapperOutput = MapperOutput>(
+    mapperFn: ClientMapperFn<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TNewClientMapperOutput
+    >,
+  ): NiceMiddlePoint<
+    'mapperStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TNewClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  mapper(
+    enableMapper: false,
+  ): NiceMiddlePoint<
+    TPointType,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    UndefinedMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  mapper(mapperFn: ClientMapperFn<any, any, any, any, any> | false) {
+    if (mapperFn === false) {
+      return this._continue({
+        _clientMapperFns: [],
+      }) as never
+    }
+    return this._continue({
+      type: 'mapperStage',
+      _clientMapperFns: [...this._clientMapperFns, mapperFn],
+    }) as never
+  }
+
+  flatter<
+    TDataKey extends FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    > extends { pages: Array<Record<infer TAnyDataKey, any>> }
+      ? Extract<TAnyDataKey, string>
+      : never,
+  >(
+    dataKey: TDataKey,
+  ): NiceMiddlePoint<
+    TPointType,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> extends {
+      pages: Array<Record<any, any>>
+    }
+      ? {
+          flattened: FinalLoaderMappedOutput<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput
+          >['pages'][number][TDataKey]
+          original: FinalLoaderMappedOutput<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput
+          >
+        }
+      : never,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _clientMapperFns: [
+        ...this._clientMapperFns,
+        ({
+          data,
+        }: {
+          data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        }) => {
+          if (typeof data !== 'object' || !('pages' in data) || !Array.isArray(data.pages)) {
+            throw new Error(`Flatter can be called only on infinite query data`)
+          }
+          return {
+            flattened: data.pages.flatMap((page) => page[dataKey]),
+            original: data,
+          }
         },
       ] as never,
     }) as never
@@ -2232,20 +2347,20 @@ export class Point0<
     return this._continue({
       inputSchema: this.inputSchema ? this.inputSchema.extend(inputSchema.shape) : inputSchema,
       _serverInputSchema:
-        this.type === 'middleware'
+        this.type === 'coreStage'
           ? this._serverInputSchema
             ? this._serverInputSchema.extend(inputSchema.shape)
             : inputSchema
           : this._serverInputSchema,
       _clientExecuteActions:
-        this.type === 'clientMiddleware'
+        this.type === 'clientStage'
           ? [
               ...this._clientExecuteActions,
               { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
             ]
           : this._clientExecuteActions,
       _serverExecuteActions:
-        this.type === 'middleware'
+        this.type === 'coreStage'
           ? [
               ...this._serverExecuteActions,
               { type: 'input', schema: inputSchema, unstableId: Point0._getNextUnstableId() },
@@ -2350,7 +2465,7 @@ export class Point0<
     pointName: TPointName,
     route?: TProvidedRoute,
   ): NiceMiddlePoint<
-    'middleware',
+    'coreStage',
     'page',
     TRequiredCtx,
     TCtx,
@@ -2379,7 +2494,7 @@ export class Point0<
     pointName: TPointName,
     route?: TProvidedRoute,
   ): NiceMiddlePoint<
-    'middleware',
+    'coreStage',
     'layout',
     TRequiredCtx,
     TCtx,
@@ -2407,7 +2522,7 @@ export class Point0<
     letsEndPointType: TNewLetsEndPointType,
     pointName: TPointName,
   ): NiceMiddlePoint<
-    'middleware',
+    'coreStage',
     TNewLetsEndPointType,
     TRequiredCtx,
     TCtx,
@@ -2447,7 +2562,7 @@ export class Point0<
       return prevRoute
     })()
     return this._continue({
-      type: 'middleware',
+      type: 'coreStage',
       _letsEndPointType: letsEndPointType,
       name: pointName,
       _route: newRoute as never,

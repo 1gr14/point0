@@ -114,7 +114,7 @@ export type Infer<
   QueriedData: FinalLoaderUnmappedOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
     ? FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
     : never
-  MapperOutput: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  FinalOutput: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   ClientExecuteResult: FinalLoaderMappedOutput<
     TQueryResultType,
     TServerLoaderOutput,
@@ -135,17 +135,18 @@ export type Infer<
 export type PointType =
   | 'root'
   | 'base'
-  | 'middleware'
+  | 'coreStage'
   | 'page'
   | 'component'
   | 'query'
   | 'infiniteQuery'
   | 'mutation'
   | 'layout'
-  | 'clientMiddleware'
-  | 'renderMiddleware'
+  | 'clientStage'
+  | 'mapperStage'
+  | 'renderStage'
   | 'provider'
-export type EndPointType = Exclude<PointType, 'middleware' | 'clientMiddleware' | 'renderMiddleware'>
+export type EndPointType = Exclude<PointType, 'coreStage' | 'clientStage' | 'renderStage' | 'mapperStage'>
 export type RenderablePointType = Extract<PointType, 'page' | 'component' | 'layout'>
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
@@ -327,7 +328,11 @@ export type EndPoint<
 >
 
 // utils
-
+export type Prettify<T> = T extends undefined
+  ? undefined
+  : {
+      [K in keyof T]: T[K]
+    }
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? Omit<TCtx, keyof TAppend> & TAppend
   : TAppend
@@ -1300,7 +1305,9 @@ export type ClientMapperFnOptions<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 > = {
-  data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  data: Prettify<
+    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  >
 }
 export type ClientMapperFn<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
@@ -1403,10 +1410,18 @@ export type DataTransformerExtended = {
 
 // nice middle point
 
-export type CutServerLoadersIfClientMiddleware<
+export type CutMethodsIfNotSuitableStage<
   TPointType extends PointType,
   TLiteral extends string,
-> = TPointType extends 'clientMiddleware' ? Exclude<TLiteral, 'ctx' | 'loader'> : TLiteral
+> = TPointType extends 'coreStage'
+  ? TLiteral
+  : TPointType extends 'clientStage'
+    ? Exclude<TLiteral, 'ctx' | 'loader'>
+    : TPointType extends 'mapperStage'
+      ? Exclude<TLiteral, 'ctx' | 'loader' | 'clientLoader'>
+      : TPointType extends 'renderStage'
+        ? Exclude<TLiteral, 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props'>
+        : never
 
 export type NiceRootMiddlePoint<
   TPointType extends PointType,
@@ -1438,7 +1453,7 @@ export type NiceRootMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  CutServerLoadersIfClientMiddleware<
+  CutMethodsIfNotSuitableStage<
     TPointType,
     | 'root'
     | 'ssr'
@@ -1466,6 +1481,7 @@ export type NiceRootMiddlePoint<
     | 'ctx'
     | 'loader'
     | 'clientLoader'
+    | 'mapper'
     | 'head'
     | 'scrollPosition'
     | 'scrollRestore'
@@ -1507,7 +1523,7 @@ export type NiceBaseMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  CutServerLoadersIfClientMiddleware<
+  CutMethodsIfNotSuitableStage<
     TPointType,
     | 'base'
     | 'mutationOptions'
@@ -1530,6 +1546,7 @@ export type NiceBaseMiddlePoint<
     | 'ctx'
     | 'loader'
     | 'clientLoader'
+    | 'mapper'
     | 'head'
     | 'scrollPosition'
     | 'scrollRestore'
@@ -1571,31 +1588,31 @@ export type NicePageMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  TPointType extends 'middleware' | 'clientMiddleware'
-    ? CutServerLoadersIfClientMiddleware<
-        TPointType,
-        | 'page'
-        | 'fetchOptions'
-        | 'error'
-        | 'loading'
-        | 'wrapper'
-        | 'input'
-        | 'ctx'
-        | 'loader'
-        | 'clientLoader'
-        | 'head'
-        | 'props'
-        | 'scrollPosition'
-        | 'scrollRestore'
-        | 'prefetchPolicy'
-        | 'onPrefetch'
-        | 'prefetchOnHover'
-        | 'point'
-        | 'Infer'
-        | 'query'
-        | 'infiniteQuery'
-      >
-    : 'page' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
+  CutMethodsIfNotSuitableStage<
+    TPointType,
+    | 'page'
+    | 'fetchOptions'
+    | 'error'
+    | 'loading'
+    | 'wrapper'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'clientLoader'
+    | 'mapper'
+    | 'flatter'
+    | 'head'
+    | 'props'
+    | 'scrollPosition'
+    | 'scrollRestore'
+    | 'prefetchPolicy'
+    | 'onPrefetch'
+    | 'prefetchOnHover'
+    | 'point'
+    | 'Infer'
+    | 'query'
+    | 'infiniteQuery'
+  >
 >
 
 export type NiceComponentMiddlePoint<
@@ -1628,26 +1645,26 @@ export type NiceComponentMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  TPointType extends 'middleware' | 'clientMiddleware'
-    ? CutServerLoadersIfClientMiddleware<
-        TPointType,
-        | 'component'
-        | 'fetchOptions'
-        | 'error'
-        | 'loading'
-        | 'wrapper'
-        | 'input'
-        | 'ctx'
-        | 'loader'
-        | 'clientLoader'
-        | 'props'
-        | 'onPrefetch'
-        | 'point'
-        | 'Infer'
-        | 'query'
-        | 'infiniteQuery'
-      >
-    : 'component' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
+  CutMethodsIfNotSuitableStage<
+    TPointType,
+    | 'component'
+    | 'fetchOptions'
+    | 'error'
+    | 'loading'
+    | 'wrapper'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'clientLoader'
+    | 'mapper'
+    | 'flatter'
+    | 'props'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
+    | 'query'
+    | 'infiniteQuery'
+  >
 >
 
 export type NiceQueryMiddlePoint<
@@ -1680,9 +1697,9 @@ export type NiceQueryMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  CutServerLoadersIfClientMiddleware<
+  CutMethodsIfNotSuitableStage<
     TPointType,
-    'query' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'clientLoader' | 'onPrefetch' | 'point' | 'Infer'
+    'query' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'onPrefetch' | 'point' | 'Infer'
   >
 >
 
@@ -1716,9 +1733,19 @@ export type NiceInfiniteQueryMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  CutServerLoadersIfClientMiddleware<
+  CutMethodsIfNotSuitableStage<
     TPointType,
-    'infiniteQuery' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'clientLoader' | 'onPrefetch' | 'point' | 'Infer'
+    | 'infiniteQuery'
+    | 'fetchOptions'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'clientLoader'
+    | 'mapper'
+    | 'flatter'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
   >
 >
 
@@ -1752,7 +1779,7 @@ export type NiceMutationMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  CutServerLoadersIfClientMiddleware<
+  CutMethodsIfNotSuitableStage<
     TPointType,
     | 'mutation'
     // | 'asFormData'
@@ -1761,6 +1788,7 @@ export type NiceMutationMiddlePoint<
     | 'ctx'
     | 'loader'
     | 'clientLoader'
+    | 'mapper'
     | 'point'
     | 'Infer'
   >
@@ -1796,36 +1824,36 @@ export type NiceLayoutMiddlePoint<
     TQueryResultType,
     TProps
   >,
-  TPointType extends 'middleware' | 'clientMiddleware'
-    ? CutServerLoadersIfClientMiddleware<
-        TPointType,
-        | 'layout'
-        | 'fetchOptions'
-        | 'pageQueryOptions'
-        | 'error'
-        | 'pageError'
-        | 'layoutError'
-        | 'loading'
-        | 'pageLoading'
-        | 'layoutLoading'
-        | 'wrapper'
-        | 'input'
-        | 'ctx'
-        | 'loader'
-        | 'clientLoader'
-        | 'head'
-        | 'props'
-        | 'scrollPosition'
-        | 'scrollRestore'
-        | 'prefetchPolicy'
-        | 'onPrefetch'
-        | 'prefetchOnHover'
-        | 'point'
-        | 'Infer'
-        | 'query'
-        | 'infiniteQuery'
-      >
-    : 'layout' | 'loading' | 'error' | 'wrapper' | 'point' | 'Infer'
+  CutMethodsIfNotSuitableStage<
+    TPointType,
+    | 'layout'
+    | 'fetchOptions'
+    | 'pageQueryOptions'
+    | 'error'
+    | 'pageError'
+    | 'layoutError'
+    | 'loading'
+    | 'pageLoading'
+    | 'layoutLoading'
+    | 'wrapper'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'clientLoader'
+    | 'mapper'
+    | 'flatter'
+    | 'head'
+    | 'props'
+    | 'scrollPosition'
+    | 'scrollRestore'
+    | 'prefetchPolicy'
+    | 'onPrefetch'
+    | 'prefetchOnHover'
+    | 'point'
+    | 'Infer'
+    | 'query'
+    | 'infiniteQuery'
+  >
 >
 
 export type NiceProviderMiddlePoint<
@@ -1842,42 +1870,42 @@ export type NiceProviderMiddlePoint<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = TPointType extends 'middleware' | 'clientMiddleware'
-  ? Pick<
-      Point0<
-        TPointType,
-        TLetsEndPointType,
-        TRequiredCtx,
-        TCtx,
-        TCtxExposedKeys,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
-        TQueryResultType,
-        TProps
-      >,
-      CutServerLoadersIfClientMiddleware<
-        TPointType,
-        | 'provider'
-        | 'fetchOptions'
-        | 'input'
-        | 'ctx'
-        | 'loader'
-        | 'clientLoader'
-        | 'onPrefetch'
-        | 'point'
-        | 'Infer'
-        | 'query'
-        | 'infiniteQuery'
-        | 'error'
-        | 'loading'
-        | 'wrapper'
-      >
-    >
-  : 'provider' | 'error' | 'loading' | 'wrapper' | 'point' | 'Infer'
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >,
+  CutMethodsIfNotSuitableStage<
+    TPointType,
+    | 'provider'
+    | 'fetchOptions'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'clientLoader'
+    | 'mapper'
+    | 'flatter'
+    | 'onPrefetch'
+    | 'point'
+    | 'Infer'
+    | 'query'
+    | 'infiniteQuery'
+    | 'error'
+    | 'loading'
+    | 'wrapper'
+  >
+>
 
 export type NiceMiddlePoint<
   TPointType extends PointType,

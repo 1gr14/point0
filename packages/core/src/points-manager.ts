@@ -18,6 +18,7 @@ import type {
   PointName,
   PointsScope,
   PointType,
+  Prettify,
   RequiredCtx,
   RootPoint,
   UndefinedRoute,
@@ -947,11 +948,6 @@ export type RequiredCtxByPointsModules<
   >
 >
 
-type Prettify<T> = T extends undefined
-  ? undefined
-  : {
-      [K in keyof T]: T[K]
-    }
 type UndefinedToAny<T extends object | undefined> = T extends undefined ? any : T
 type MergeOmitAny<T1 extends object | undefined, T2 extends object | undefined> = IfAnyThenElse<
   UndefinedToAny<T1>,

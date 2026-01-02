@@ -10,7 +10,7 @@ just reflect on queried data and return new data
 OUTER
 появляется оутер у которого есть рендерЕррор и рендерЛоадинг и чилдерн
 
-NICE
+REFACTORING 0
 remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
 rename fetch to EngineFetcher
 Не поинт реквест а реквест0
@@ -18,7 +18,9 @@ rename fetch to EngineFetcher
 Убрать из Рута лоадеры иначе опенапи энды сломаются, при попытке читать инпут из боди. А также из кткс надо убрать инпут, ну и вообще будто смысл в лоадерах есть только в конечных эндпоинтах
 Поинт не часть реквеста, а часть просто мидлвары опшинсов & {point, root, scope, outputType} | {publicfile, publicdir}
 AppendCtx with Prettify
+Request0<TRoute>
 InputRaw → InputOriginal
+Remove inputOriginal from options of loader and ctx
 Айпи брать сначала из бансервера и только потом по респонсам
 SuperStore.predefined ← ssrLocation, etc
 check if parse input from request done via from scope transformer
@@ -40,6 +42,11 @@ restrict where lets can be used, like no lets on mountables I think. but can be 
 Укоротить до линкпрефетч
 Методы надо не скрывать, а показывать разъяснительную ошибку
 
+WALKER
+refactoring
+tests
+Прунить всё просто проверять регексом основные конструкции, иначе скипать
+
 ROOT
 root.lets('root') & Point0.lets('root', 'x')
 scopes is array
@@ -49,20 +56,20 @@ walker add to lazy points root {scope}, and self scope is still _root_lazy, othe
 remove .attach things
 Не поинтс менеджер, а скоуп поинтс. Не алл поинтс менеджер, а комбайнед скоупс поинтс. И вообще нам алл не нужен, ведь в сервере по сути и так вообще все поинты будут
 
+ENVIRONMENT
+not client-server.ts, but environment.ts
+make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
+process.env.POINT0_SCOPE defined and can be used to remove deadcode
+process.env.POINT0_ENV (browser, mobile, server, electronRenderer, electronMain) defined and can be used to remove deadcode
+Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
+Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
+
 MIDDLEARE
 ? low level server available on root points only
 available everywhere, but can break anything, work only with final response, do not have access to ctx or data
 .middleware(({request,point,publicdir,next}) => {})
 remove auto cors for localhost from engine server, and made it via middleware
 allow Executor with or without middlewares
-
-LISTENER
-.lets('listener', 'mylistener', scopes).client(eventName, {type,set,input,request,point,publicdir}).server(eventName, options).listener()
-on startof request check if publicdir or suitable
-all root middlewares call on start
-all point middlewares call only on points
-{onFinish?,onSuccess?,onError?}
-? .onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
 
 USE/POINT
 .use(point)
@@ -81,21 +88,29 @@ here in plugine we may have .requireCtx(), becouse plugin may be related to some
 cors plugin
 Плагин может запровайдить в том числе и рендер штучки, ему ничто не мешает быть внутри функции, которая использует запровайженные штучки (это позволит например целую форму регистрации замутить)
 
-WALKER
-refactoring
-tests
-Прунить всё просто проверять регексом основные конструкции, иначе скипать
+ACTION
+request0.body.parsed/parse/wasRead/raw/json/text/validate/...
+!!! Before openapi endpoint we call only middlewares, and provide ({executeSelf}), when you call executeSelf() then input will be parsed, then will be called all previous loaders and ctx fns, and it will not be pased before
+if it is openapi request, then we do not manually parse body for input, else we just provide helpers in loader to get and parse input (search, body, params) from request
+Я могу те же самые йиэлд, возврат текста, и возврат форм даты просто опираясь на возвращаемый тип, когда буду делать опенапи поинт, ничего там такого нет
+Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
+× .lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
+! .lets('action', 'myAction', 'get').action({method: 'post', route: '', body: z(), params: z(), search: z(), headers: z(), cookies: z(), output: {like hono}, handler })
+× .cookies(z()) (ЗКуки не нужны и зхедеры тоже, это все нужно только опенапишникам)
+× .headers(z())
+add generics TRoute, THeaders, TCookies to Request0
+return type of loaders to response type, yield, etc
+TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
+if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
+_slug ← name
+Под опенапи сделать Парсинг каеристринг через ту штуку чтобы массивы и объекты дали
 
-ENGINE
-Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
-В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
-Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
-baseurl get from root point, and remove from engine config
-? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
-binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
-Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
-compiler options to engine, via ({customer,scope,nodeEnv}) => options
-fix compiler option name for node_modules prefixes
+LISTENER
+.lets('listener', 'mylistener', scopes).client(eventName, {type,set,input,request,point,publicdir}).server(eventName, options).listener()
+all root middlewares call on start
+all point middlewares call only on points
+{onFinish?,onSuccess?,onError?}
+? .onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
 
 INIT
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
@@ -108,6 +123,17 @@ and how cool it be to set init points just in usual ctx of points. Incredible co
 Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
 .enabled()
 ? Поинтсы провайдить не в моунт, а в инитиалайзер апа (вероятно)
+
+ENGINE
+Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
+В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
+Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
+baseurl get from root point, and remove from engine config
+? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
+binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
+Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
+compiler options to engine, via ({customer,scope,nodeEnv}) => options
+fix compiler option name for node_modules prefixes
 
 EXPO
 expo example
@@ -126,14 +152,6 @@ remove default generic values it is unsafe, better add AnySomethingType for it
 Отрефачить коллекцию поинтов, чтобы там мог быть хоть лэзи, хоть реди рекорд, и они могли как угодно комбинироваться
 Вынести из сервер и из клиент в отдельный пакет чтобы мочь применять его в других библиотеках
 
-ENVIRONMENT
-not client-server.ts, but environment.ts
-make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
-process.env.POINT0_SCOPE defined and can be used to remove deadcode
-process.env.POINT0_ENV (browser, mobile, server, electronRenderer, electronMain) defined and can be used to remove deadcode
-Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
-Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
-
 START0
 start0 without mono0
 refactor Error0: check ConvexError style; base has only cause recursion, everything else is plugins like isFetchError
@@ -147,6 +165,7 @@ https://oxc.rs/docs/guide/usage/linter/config
 
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
+В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}
 В суперстор добавить скоуп, чтобы оно не отдавалось в противном случае в сср
 Названия не хешировать, а просто нумеровать в экспорте поинтов
 Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед (и вообще отрефачить там всё проверить что там нужно)
@@ -222,17 +241,6 @@ static site generator;
 .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 
 or .static(false, [input1, input2, ...]) then loader work like usual loader and not runs on build static phase; 
 also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10, ({take, skip}) => [input1, input2])
-
-OPENAPI
-if it is openapi request, then we do not manually parse body for input, else we just provide helpers in loader to get and parse input (search, body, params) from request
-Я могу те же самые йиэлд, возврат текста, и возврат форм даты просто опираясь на возвращаемый тип, когда буду делать опенапи поинт, ничего там такого нет
-Хеадерс фн должны принимать всё что и обычный лоадер, но может не быть дата и инпута если это опшонс реквест
-.lets('openapi', 'my endpoint', {method: 'get' | 'post' | 'put' | 'delete', route: string, input: z.object({}), output: z.object({}), ... , variants: [] })
-return type of loaders to response type, yield, etc
-TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi})
-if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
-_slug ← name
-Под опенапи сделать Парсинг каеристринг через ту штуку чтобы массивы и объекты дали
 
 PRUNER
 check if real third-part packages not rhow on client or server
