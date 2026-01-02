@@ -14,6 +14,7 @@ export const client = Point0.create('client')
     env: process.env,
     Bun,
   })
+  .ctx([{ zxc: 123 }])
   // .serverurl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,

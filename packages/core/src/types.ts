@@ -328,16 +328,15 @@ export type EndPoint<
 >
 
 // utils
-export type Prettify<T> = T extends undefined
-  ? undefined
-  : {
-      [K in keyof T]: T[K]
-    }
+export type Prettify<T extends object> = {
+  [K in keyof T]: T[K]
+}
+export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
-  ? Omit<TCtx, keyof TAppend> & TAppend
+  ? Prettify<Omit<TCtx, keyof TAppend> & TAppend>
   : TAppend
 export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends UnknownCtx> = TCtx extends Ctx
-  ? Omit<TPrepend, keyof TCtx> & TPrepend
+  ? Prettify<Omit<TPrepend, keyof TCtx> & TPrepend>
   : TPrepend
 export type AppendCtxExposedKeys<
   TCurrent extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1358,7 +1357,7 @@ export type ClientMapperFnOptions<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 > = {
-  data: Prettify<
+  data: PrettifyOrUndefined<
     FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   >
 }

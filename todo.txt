@@ -4,7 +4,6 @@
 
 REFACTORING 0
 after .outer() we come to 'outerStage' when props() can not be set any more
-Не поинт реквест а реквест0
 AppendCtx with Prettify
 we do not need execute on ssr, just lets follow queryKeys
 we should while useHead on server just store last run heads array and retrieve it from SuperStore

@@ -17,7 +17,7 @@ import type {
   PointName,
   PointsScope,
   PointType,
-  Prettify,
+  PrettifyOrUndefined,
   RequiredCtx,
   RootPoint,
   UndefinedRoute,
@@ -932,13 +932,12 @@ export type RequiredCtxByPointsModule<TPointsModule extends ReadyPointsModule | 
     : TPointsModule extends LazyPointsModule
       ? TPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']
       : RequiredCtx
-
 export type RequiredCtxByPointsModules<
   T1 extends AnyPointsModule = AnyPointsModule,
   T2 extends AnyPointsModule = AnyPointsModule,
   T3 extends AnyPointsModule = AnyPointsModule,
   T4 extends AnyPointsModule = AnyPointsModule,
-> = Prettify<
+> = PrettifyOrUndefined<
   MergeOmitAnyMany<
     RequiredCtxByPointsModule<T1>,
     RequiredCtxByPointsModule<T2>,
