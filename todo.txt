@@ -45,6 +45,7 @@ restrict where lets can be used, like no lets on mountables I think. but can be 
 WALKER
 refactoring
 tests
+if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
 Прунить всё просто проверять регексом основные конструкции, иначе скипать
 
 ROOT

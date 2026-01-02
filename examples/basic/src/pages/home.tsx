@@ -91,9 +91,10 @@ export default generalLayout
     titleTemplate: null,
   })
   .loading((o) => {
-    return <div>Loadingx...</div>
+    return <div>Loading...</div>
   })
   // .loader()
+  // .page(function X({ location }) {
   .page(({ location }) => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)

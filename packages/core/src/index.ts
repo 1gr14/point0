@@ -3579,7 +3579,7 @@ export class Point0<
   //   component: TComponent,
   //   options?: { index?: number | undefined; prefix?: string; suffix?: string },
   // ): TComponent {
-  //   // TODO: it breaks HMR, lets set function CompoentName via compiler
+  //   // TODO: it breaks HMR in bun (but ok in vite), lets set function CompoentName via compiler
   //   return component
   //   // const { index, prefix, suffix } = options ?? {}
   //   // const currentName = component.displayName || component.name || 'X'
