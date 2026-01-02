@@ -5,8 +5,7 @@ import superjson from 'superjson'
 export const client = Point0.create('client')
   .ssr(true)
   .transformer(superjson)
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  .serverurl(process.env.SOURCE_BASE_URL!)
+  // .serverurl(process.env.SOURCE_BASE_URL!)
   .ctx({
     prisma,
     env: process.env,

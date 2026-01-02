@@ -25,6 +25,7 @@ do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 do not bundle core package, just expose in package json only index.js
 Укоротить до линкпрефетч
+when fetch on client 
 ? remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
 ? Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
 ? InputRaw → InputOriginal

@@ -301,11 +301,13 @@ Bun.serve({
       })
     }
     const url = new URL(request.url)
+    const forwardedHeaders = new Headers(request.headers)
+    forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
     return await fetch(
       \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
       {
         method: request.method,
-        headers: request.headers,
+        headers: forwardedHeaders,
         body: request.body,
       },
     )
@@ -419,11 +421,14 @@ Bun.serve({
             status: 404,
           })
         }
-        return await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
+        const forwardedHeaders = new Headers(originalRequest.headers)
+        forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client-Server', 'true')
+        const res = await fetch(`http://localhost:${this.server.port}${location.pathname}${location.search}`, {
           method: originalRequest.method,
-          headers: originalRequest.headers,
+          headers: forwardedHeaders,
           body: originalRequest.body,
         })
+        return res
       },
     })
     this.logger.info(`${this.scope} dev server started`)

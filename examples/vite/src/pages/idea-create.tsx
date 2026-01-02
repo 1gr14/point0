@@ -102,6 +102,7 @@ const Page = () => {
             generateIdeaMutation
               .fetch()
               .then(async (res) => {
+                console.info('res', res)
                 if (!res.body) {
                   setGenerated('No body')
                   return

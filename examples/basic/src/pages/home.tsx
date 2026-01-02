@@ -47,7 +47,6 @@ export const BestIdeaComponent = client
   }))
   .props<{ cta: string }>()
   .clientLoader(async (o) => {
-    console.log('clientLoaderxxx', o)
     await new Promise((resolve) => setTimeout(resolve, 1))
     return {
       ...o.data,

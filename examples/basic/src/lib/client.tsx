@@ -14,8 +14,7 @@ export const client = Point0.create('client')
     env: process.env,
     Bun,
   })
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  .serverurl(process.env.SOURCE_BASE_URL!)
+  // .serverurl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,
     refetchOnMount: false,

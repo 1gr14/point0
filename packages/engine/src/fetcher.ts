@@ -227,6 +227,9 @@ export class Fetcher {
     if (process.env.NODE_ENV === 'production') {
       return undefined
     }
+    if (request.original.headers.get('X-Point0-Forwarded-From-Dev-Client-Server') === 'true') {
+      return undefined
+    }
     bunServer ??= this.server.bunServer
     for (const client of this.server.clients) {
       // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself

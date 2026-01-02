@@ -4189,6 +4189,7 @@ export class Point0<
       method,
       body,
     })
+    console.info('resXXX', res)
     CookiesStore.refresh()
     console.info('cookies refreshed')
     if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
@@ -4227,7 +4228,7 @@ export class Point0<
     if (detailedResult.error) {
       throw detailedResult.error
     }
-    return detailedResult.data as FetchOutput<TServerLoaderOutput>
+    return detailedResult.output as FetchOutput<TServerLoaderOutput>
   }
 
   async executeDetailed(
