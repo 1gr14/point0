@@ -2,9 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-OUTER
-появляется оутер у которого есть рендерЕррор и рендерЛоадинг и чилдерн
-
 REFACTORING 0
 after .outer() we come to 'outerStage' when props() can not be set any more
 remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
