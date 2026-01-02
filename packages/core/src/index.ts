@@ -2276,68 +2276,69 @@ export class Point0<
     }) as never
   }
 
-  flatter<
-    TDataKey extends FinalLoaderMappedOutput<
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput
-    > extends { pages: Array<Record<infer TAnyDataKey, any>> }
-      ? Extract<TAnyDataKey, string>
-      : never,
-  >(
-    dataKey: TDataKey,
-  ): NiceMiddlePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> extends {
-      pages: Array<Record<any, any>>
-    }
-      ? {
-          flattened: FinalLoaderMappedOutput<
-            TQueryResultType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TClientMapperOutput
-          >['pages'][number][TDataKey]
-          original: FinalLoaderMappedOutput<
-            TQueryResultType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TClientMapperOutput
-          >
-        }
-      : never,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue({
-      _clientMapperFns: [
-        ...this._clientMapperFns,
-        ({
-          data,
-        }: {
-          data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-        }) => {
-          if (typeof data !== 'object' || !('pages' in data) || !Array.isArray(data.pages)) {
-            throw new Error(`Flatter can be called only on infinite query data`)
-          }
-          return {
-            flattened: data.pages.flatMap((page) => page[dataKey]),
-            original: data,
-          }
-        },
-      ] as never,
-    }) as never
-  }
+  // too strange, just use usual mapper if you need it
+  // flatter<
+  //   TDataKey extends FinalLoaderMappedOutput<
+  //     TQueryResultType,
+  //     TServerLoaderOutput,
+  //     TClientLoaderOutput,
+  //     TClientMapperOutput
+  //   > extends { pages: Array<Record<infer TAnyDataKey, any>> }
+  //     ? Extract<TAnyDataKey, string>
+  //     : never,
+  // >(
+  //   dataKey: TDataKey,
+  // ): NiceMiddlePoint<
+  //   TPointType,
+  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> extends {
+  //     pages: Array<Record<any, any>>
+  //   }
+  //     ? {
+  //         flattened: FinalLoaderMappedOutput<
+  //           TQueryResultType,
+  //           TServerLoaderOutput,
+  //           TClientLoaderOutput,
+  //           TClientMapperOutput
+  //         >['pages'][number][TDataKey]
+  //         original: FinalLoaderMappedOutput<
+  //           TQueryResultType,
+  //           TServerLoaderOutput,
+  //           TClientLoaderOutput,
+  //           TClientMapperOutput
+  //         >
+  //       }
+  //     : never,
+  //   TRouteDefinition,
+  //   TPrevRouteDefinition,
+  //   TInputSchema,
+  //   TQueryResultType,
+  //   TProps
+  // > {
+  //   return this._continue({
+  //     _clientMapperFns: [
+  //       ...this._clientMapperFns,
+  //       ({
+  //         data,
+  //       }: {
+  //         data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  //       }) => {
+  //         if (typeof data !== 'object' || !('pages' in data) || !Array.isArray(data.pages)) {
+  //           throw new Error(`Flatter can be called only on infinite query data`)
+  //         }
+  //         return {
+  //           flattened: data.pages.flatMap((page) => page[dataKey]),
+  //           original: data,
+  //         }
+  //       },
+  //     ] as never,
+  //   }) as never
+  // }
 
   head(
     head: MiddlewareHeadFn | ResolvableHead | string,

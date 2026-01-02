@@ -24,9 +24,12 @@ export const ideasPage = generalLayout
     pageParamFromInput: 'page',
   })
   .mapper(({ data }) => {
-    return { ...data, xxx: 'XxX' }
+    return {
+      flattened: data.pages.flatMap((page) => page.ideas.flatMap((idea) => ({ ...idea, xxx: 'XxX' }))),
+      original: data,
+    }
   })
-  .flatter('ideas')
+  // .flatter('ideas')
   .page(
     (o) => {
       return `${o.data.ideasCount} ideas x`
@@ -37,7 +40,7 @@ export const ideasPage = generalLayout
         <div>
           <h1>Ideas</h1>
           <p>Environment: {data.original.pages[0].env}</p>
-          <p>xxx: {data.original.xxx}</p>
+          <p>xxx: {data.flattened[0].xxx}</p>
           <p
             onClick={() => {
               setCount(count + 1)
