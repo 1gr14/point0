@@ -22,26 +22,29 @@ const someDate = Point0.define('someDate', () => new Date(), true)
 const someStable = Point0.define('someStable', () => 123, true)
 const someVar = Point0.define('someVar', () => 0, true)
 
-// export const BestIdeaComponent = client
-//   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
-//   .input(z.object({ x: z.coerce.number() }))
-//   .loader(async ({ ctx, input }) => ({
-//     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
-//     y: input.x * 2,
-//   }))
-//   .props<{ cta: string }>()
-//   .component(({ data, props }) => {
-//     return (
-//       <div>
-//         <h1>Best Ideaxxxx {data.y}</h1>
-//         <p>{props.cta}</p>
-//         <p>{data.bestIdea.title}</p>
-//         <p>
-//           <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
-//         </p>
-//       </div>
-//     )
-//   })
+export const BestIdeaComponent = client
+  .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
+  .input(z.object({ x: z.coerce.number() }))
+  .loader(async ({ ctx, input }) => ({
+    bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
+    y: input.x * 2,
+  }))
+  .props<{ cta: string }>()
+  .outer(({ children }) => {
+    return children
+  })
+  .component(function X({ data, props }) {
+    return (
+      <div>
+        <h1>Best Idea {data.y}</h1>
+        <p>{props.cta}</p>
+        <p>{data.bestIdea.title}</p>
+        <p>
+          <Link to={routes.idea({ id: data.bestIdea.id })}>More</Link>
+        </p>
+      </div>
+    )
+  })
 
 export default generalLayout
   .lets('page', 'home', '/')
@@ -49,7 +52,7 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  .page(() => {
+  .page(function X() {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
@@ -97,7 +100,7 @@ export default generalLayout
           <Icon style={{ width: '24px', height: '24px', color: '#007bff' }} />
           <span>SVG iconxxxx imported as React component via Vite SVGR plugin</span>
         </div>
-        {/* <BestIdeaComponent.Component cta="It is awesome!" input={{ x: 10 }} /> */}
+        <BestIdeaComponent.Component cta="It is awesome!" input={{ x: 10 }} />
         <nav>
           <Link to="/ideas">Browse Ideas</Link>
         </nav>
