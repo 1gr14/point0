@@ -4,43 +4,36 @@
 
 REFACTORING 0
 after .outer() we come to 'outerStage' when props() can not be set any more
-remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
-rename fetch to EngineFetcher
 Не поинт реквест а реквест0
-Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
-Убрать из Рута лоадеры иначе опенапи энды сломаются, при попытке читать инпут из боди. А также из кткс надо убрать инпут, ну и вообще будто смысл в лоадерах есть только в конечных эндпоинтах
-Поинт не часть реквеста, а часть просто мидлвары опшинсов & {point, root, scope, outputType} | {publicfile, publicdir}
 AppendCtx with Prettify
-Request0<TRoute>
 we do not need execute on ssr, just lets follow queryKeys
 we should while useHead on server just store last run heads array and retrieve it from SuperStore
 Удалить флатер
 ClientMapper → Mapper
-InputRaw → InputOriginal
-Remove inputOriginal from options of loader and ctx
 Айпи брать сначала из бансервера и только потом по респонсам
 SuperStore.predefined ← ssrLocation, etc
 check if parse input from request done via from scope transformer
 Do not omit, in exposedCtx, but if try to expose then error
 Не кастомер а энвиронмент
 Не ансейф а форс
-В фетч и серв назвать аргумент просто кткс
 useLoader and fetchDetailed to nice endpoints
 response should switch to next stage if provided
 return back type property to NicePoint
-make useLoader public fn, becouse useQuery not enough
 in Nice point.point also lets store nice type, so hide everything from user except required for us
 on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware
-fix what can be .lets from each point type
+do not cut methods, but add errors
+fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 do not bundle core package, just expose in package json only index.js
-Пусть первый поинт0 будет не криэйт а тоже летс рут
-restrict where lets can be used, like no lets on mountables I think. but can be on queries
-? if server loader has response then we can not use it to continue server loaders, so notice in lets restrictions
 Укоротить до линкпрефетч
-Методы надо не скрывать, а показывать разъяснительную ошибку
+? remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
+? Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
+? InputRaw → InputOriginal
+? Remove inputOriginal from options of loader and ctx
+? В фетч и серв назвать аргумент просто кткс
 
 WALKER
 refactoring
+Пусть первый поинт0 будет не криэйт а тоже летс рут
 tests
 if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
 Прунить всё просто проверять регексом основные конструкции, иначе скипать
