@@ -16,7 +16,7 @@ export const client = Point0.create('client')
     Bun,
   })
   // .Infer['Ctx']
-  .ctx([{ zxc: 123 }])
+  .ctx([{ oklmn: 123 }])
   // .Infer.Ctx
   // .ctx([{ request: 123, x: 'x' }])
   // .Infer['CtxExposedKeys']

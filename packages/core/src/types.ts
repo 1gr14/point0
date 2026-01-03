@@ -332,10 +332,14 @@ export type Prettify<T extends object> = {
 }
 export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
-  ? Omit<TCtx, keyof TAppend> & TAppend
+  ? IsNever<keyof TCtx> extends true
+    ? TAppend
+    : Omit<TCtx, keyof TAppend> & TAppend
   : TAppend
 export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends UnknownCtx> = TCtx extends Ctx
-  ? Omit<TPrepend, keyof TCtx> & TPrepend
+  ? IsNever<keyof TCtx> extends true
+    ? TPrepend
+    : Omit<TPrepend, keyof TCtx> & TPrepend
   : TPrepend
 export type AppendCtxExposedKeys<
   TCurrent extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -530,6 +534,7 @@ export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | Unde
 
 export type IsEmptyObject<T> = keyof T extends never ? true : false
 export type IsUnknownRecord<T> = T extends Record<string, unknown> ? true : false
+export type IsNever<T> = [T] extends [never] ? true : false
 
 // export type ShowError<Message extends string> = { error: Message } & never
 
