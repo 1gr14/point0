@@ -10,6 +10,6 @@
       "@point0/core": ["../core/src/index.ts"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "../core/src/request.ts"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["dist/**/*", "node_modules/**/*"]
 }

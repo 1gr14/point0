@@ -158,6 +158,7 @@ import type {
   StagePointTypeOrNever,
   MountablePointType,
   RenderablePointType,
+  AssertNoForbiddenMethodsIfNotSuitableStage,
 } from './types.js'
 import {
   blankDataTransformer,
@@ -1108,21 +1109,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    return this._continue<
-      StagePointTypeOrNever<TPointType>,
-      'root',
-      AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
-      PrependCtx<TCtx, TExtraRequiredCtx>,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({})
+    return this._continue({}) as never
   }
 
   serverurl(
@@ -1142,23 +1129,9 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    return this._continue<
-      StagePointTypeOrNever<TPointType>,
-      'root',
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({
+    return this._continue({
       _serverurl: serverurl,
-    })
+    }) as never
   }
 
   baseurl(
@@ -1178,23 +1151,9 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    return this._continue<
-      StagePointTypeOrNever<TPointType>,
-      'root',
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({
+    return this._continue({
       _baseurl: baseurl,
-    })
+    }) as never
   }
 
   // general settings
@@ -2219,7 +2178,9 @@ export class Point0<
   // middlewares
 
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TRouteDefinition, TInputSchema, Ctx>>(
-    ctxFn: TCtxFn & AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
+    ctxFn: TCtxFn &
+      AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2236,7 +2197,9 @@ export class Point0<
     TProps
   >
   ctx<TAppendCtx extends Ctx>(
-    ctx: [TAppendCtx] & AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>>, // ctx: HasForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> extends true
+    ctx: [TAppendCtx] &
+      AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2253,7 +2216,9 @@ export class Point0<
     TProps
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
-    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
+    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] &
+      AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2270,7 +2235,7 @@ export class Point0<
     TProps
   >
   ctx<TAppendCtx extends Ctx>(
-    ctx: TAppendCtx,
+    ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2309,7 +2274,8 @@ export class Point0<
       TRouteDefinition,
       TInputSchema,
       TNewServerLoaderOutput
-    >,
+    > &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2342,7 +2308,7 @@ export class Point0<
     UndefinedQueryResultType,
     TProps
   >
-  loader(enableServerLoader: true): NiceStagePoint<
+  loader(enableServerLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2392,7 +2358,8 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TNewClientLoaderOutput
-    >,
+    > &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
   ): NiceStagePoint<
     TNewClientLoaderOutput extends Response ? 'mapperStage' : 'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2432,7 +2399,9 @@ export class Point0<
     TProps
   >
   // client loader true means that we do not want server do ssr here
-  clientLoader(enableClientLoader: true): NiceStagePoint<
+  clientLoader(
+    enableClientLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
+  ): NiceStagePoint<
     'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2490,7 +2459,8 @@ export class Point0<
       TClientLoaderOutput,
       TClientMapperOutput,
       TNewClientMapperOutput
-    >,
+    > &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'mapper'>,
   ): NiceStagePoint<
     'mapperStage',
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2627,7 +2597,11 @@ export class Point0<
     }
   }
 
-  props<TNewProps extends Props>(): NiceStagePoint<
+  props<TNewProps extends Props>(
+    ...agrs: TPointType extends 'renderStage'
+      ? [AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'props'>]
+      : never[]
+  ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,

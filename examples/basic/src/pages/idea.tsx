@@ -1,5 +1,5 @@
 import { Link } from '@/lib/navigate'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ideaLayout } from '../layouts/idea.js'
 import type { Ctx } from '../lib/client.js'
 

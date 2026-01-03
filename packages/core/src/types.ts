@@ -45,10 +45,12 @@ export type UnknownCtx = Record<string, unknown>
 export type UndefinedCtx = undefined
 export type RequiredCtx = UnknownCtx | UndefinedCtx
 export type Ctx = UnknownCtx | EmptyCtx
+// export type Ctx = UnknownCtx
 export type EmptyData = Record<never, never>
 export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
+// export type Data = UnknownData
 export type AnyInfiniteData = InfiniteData<any, any>
 export type AnyDataOrInfiniteData = Data | (InfiniteData<any, any> & { [key: string]: unknown })
 export type LoaderOutput = Data | Response
@@ -1198,8 +1200,8 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       output: TServerLoaderOutput
     }
   | {
-      ctx: UnknownCtx
-      data: UnknownData | UndefinedData
+      ctx: Ctx
+      data: Data | UndefinedData
       head: ResolvableHead[]
       response: Response | UndefinedResponse
       effects: ResponseEffects
@@ -1471,19 +1473,36 @@ export type DataTransformerExtended = {
 }
 
 // nice middle point
-
-export type CutMethodsIfNotSuitableStage<
+export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TLiteral extends string,
-> = TPointType extends 'coreStage'
-  ? TLiteral
-  : TPointType extends 'clientStage'
-    ? Exclude<TLiteral, 'ctx' | 'loader'>
-    : TPointType extends 'mapperStage'
-      ? Exclude<TLiteral, 'ctx' | 'loader' | 'clientLoader'>
-      : TPointType extends 'renderStage'
-        ? Exclude<TLiteral, 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props'>
-        : never
+  TMethod extends 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props',
+> = TPointType extends 'clientStage'
+  ? TMethod extends 'loader'
+    ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add you .loader() before last .clientLoader()`>
+    : TMethod extends 'ctx'
+      ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add you .ctx() before last .clientLoader()`>
+      : unknown
+  : TPointType extends 'mapperStage'
+    ? TMethod extends 'loader'
+      ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .loader() before last .clientLoader()`>
+      : TMethod extends 'ctx'
+        ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .ctx() before last .clientLoader()`>
+        : TMethod extends 'clientLoader'
+          ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add you .clientLoader() before last .mapper()`>
+          : unknown
+    : TPointType extends 'renderStage'
+      ? TMethod extends 'loader'
+        ? ShowError<`You can not use loader() in render stage. Call it before any render methods`>
+        : TMethod extends 'ctx'
+          ? ShowError<`You can not use ctx() in render stage. Call it before any render methods`>
+          : TMethod extends 'clientLoader'
+            ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
+            : TMethod extends 'mapper'
+              ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
+              : TMethod extends 'props'
+                ? ShowError<`You can not use props() in render stage. Call it before any render methods`>
+                : unknown
+      : unknown
 
 export type NiceRootStagePoint<
   TPointType extends StagePointType,
@@ -1515,45 +1534,42 @@ export type NiceRootStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'root'
-    | 'ssr'
-    | 'transformer'
-    | 'requireCtx'
-    | 'serverurl'
-    | 'baseurl'
-    | 'mutationOptions'
-    | 'queryOptions'
-    | 'infiniteQueryOptions'
-    | 'pageQueryOptions'
-    | 'componentQueryOptions'
-    | 'providerQueryOptions'
-    | 'layoutQueryOptions'
-    | 'fetchOptions'
-    | 'layoutError'
-    | 'pageError'
-    | 'componentError'
-    | 'error'
-    | 'layoutLoading'
-    | 'pageLoading'
-    | 'componentLoading'
-    | 'loading'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    | 'head'
-    | 'scrollPosition'
-    | 'scrollRestore'
-    | 'prefetchPolicy'
-    | 'onPrefetch'
-    | 'prefetchOnHover'
-    | 'point'
-    | 'type'
-    | 'Infer'
-  >
+  | 'root'
+  | 'ssr'
+  | 'transformer'
+  | 'requireCtx'
+  | 'serverurl'
+  | 'baseurl'
+  | 'mutationOptions'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'layoutError'
+  | 'pageError'
+  | 'componentError'
+  | 'error'
+  | 'layoutLoading'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  | 'head'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'prefetchOnHover'
+  | 'point'
+  | 'type'
+  | 'Infer'
 >
 
 export type NiceBaseStagePoint<
@@ -1586,40 +1602,37 @@ export type NiceBaseStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'base'
-    | 'mutationOptions'
-    | 'queryOptions'
-    | 'infiniteQueryOptions'
-    | 'pageQueryOptions'
-    | 'componentQueryOptions'
-    | 'providerQueryOptions'
-    | 'layoutQueryOptions'
-    | 'fetchOptions'
-    | 'layoutError'
-    | 'pageError'
-    | 'componentError'
-    | 'error'
-    | 'layoutLoading'
-    | 'pageLoading'
-    | 'componentLoading'
-    | 'loading'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    | 'head'
-    | 'scrollPosition'
-    | 'scrollRestore'
-    | 'prefetchPolicy'
-    | 'onPrefetch'
-    | 'prefetchOnHover'
-    | 'point'
-    | 'type'
-    | 'Infer'
-  >
+  | 'base'
+  | 'mutationOptions'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'layoutError'
+  | 'pageError'
+  | 'componentError'
+  | 'error'
+  | 'layoutLoading'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  | 'head'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'prefetchOnHover'
+  | 'point'
+  | 'type'
+  | 'Infer'
 >
 
 export type NicePageStagePoint<
@@ -1652,33 +1665,30 @@ export type NicePageStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'page'
-    | 'fetchOptions'
-    | 'error'
-    | 'loading'
-    | 'wrapper'
-    | 'outer'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    // | 'flatter'
-    | 'head'
-    | 'props'
-    | 'scrollPosition'
-    | 'scrollRestore'
-    | 'prefetchPolicy'
-    | 'onPrefetch'
-    | 'prefetchOnHover'
-    | 'point'
-    | 'type'
-    | 'Infer'
-    | 'query'
-    | 'infiniteQuery'
-  >
+  | 'page'
+  | 'fetchOptions'
+  | 'error'
+  | 'loading'
+  | 'wrapper'
+  | 'outer'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  // | 'flatter'
+  | 'head'
+  | 'props'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'prefetchOnHover'
+  | 'point'
+  | 'type'
+  | 'Infer'
+  | 'query'
+  | 'infiniteQuery'
 >
 
 export type NiceComponentStagePoint<
@@ -1711,28 +1721,25 @@ export type NiceComponentStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'component'
-    | 'fetchOptions'
-    | 'error'
-    | 'loading'
-    | 'wrapper'
-    | 'outer'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    // | 'flatter'
-    | 'props'
-    | 'onPrefetch'
-    | 'point'
-    | 'type'
-    | 'Infer'
-    | 'query'
-    | 'infiniteQuery'
-  >
+  | 'component'
+  | 'fetchOptions'
+  | 'error'
+  | 'loading'
+  | 'wrapper'
+  | 'outer'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  // | 'flatter'
+  | 'props'
+  | 'onPrefetch'
+  | 'point'
+  | 'type'
+  | 'Infer'
+  | 'query'
+  | 'infiniteQuery'
 >
 
 export type NiceQueryStagePoint<
@@ -1765,20 +1772,17 @@ export type NiceQueryStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'query'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    | 'onPrefetch'
-    | 'point'
-    | 'type'
-    | 'Infer'
-  >
+  | 'query'
+  | 'fetchOptions'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  | 'onPrefetch'
+  | 'point'
+  | 'type'
+  | 'Infer'
 >
 
 export type NiceInfiniteQueryStagePoint<
@@ -1811,21 +1815,18 @@ export type NiceInfiniteQueryStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'infiniteQuery'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    // | 'flatter'
-    | 'onPrefetch'
-    | 'point'
-    | 'type'
-    | 'Infer'
-  >
+  | 'infiniteQuery'
+  | 'fetchOptions'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  // | 'flatter'
+  | 'onPrefetch'
+  | 'point'
+  | 'type'
+  | 'Infer'
 >
 
 export type NiceMutationStagePoint<
@@ -1858,20 +1859,17 @@ export type NiceMutationStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'mutation'
-    // | 'asFormData'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    | 'point'
-    | 'type'
-    | 'Infer'
-  >
+  | 'mutation'
+  // | 'asFormData'
+  | 'fetchOptions'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  | 'point'
+  | 'type'
+  | 'Infer'
 >
 
 export type NiceLayoutStagePoint<
@@ -1904,38 +1902,35 @@ export type NiceLayoutStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'layout'
-    | 'fetchOptions'
-    | 'pageQueryOptions'
-    | 'error'
-    | 'pageError'
-    | 'layoutError'
-    | 'loading'
-    | 'pageLoading'
-    | 'layoutLoading'
-    | 'wrapper'
-    | 'outer'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    // | 'flatter'
-    | 'head'
-    | 'props'
-    | 'scrollPosition'
-    | 'scrollRestore'
-    | 'prefetchPolicy'
-    | 'onPrefetch'
-    | 'prefetchOnHover'
-    | 'point'
-    | 'type'
-    | 'Infer'
-    | 'query'
-    | 'infiniteQuery'
-  >
+  | 'layout'
+  | 'fetchOptions'
+  | 'pageQueryOptions'
+  | 'error'
+  | 'pageError'
+  | 'layoutError'
+  | 'loading'
+  | 'pageLoading'
+  | 'layoutLoading'
+  | 'wrapper'
+  | 'outer'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  // | 'flatter'
+  | 'head'
+  | 'props'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'prefetchOnHover'
+  | 'point'
+  | 'type'
+  | 'Infer'
+  | 'query'
+  | 'infiniteQuery'
 >
 
 export type NiceProviderStagePoint<
@@ -1968,26 +1963,23 @@ export type NiceProviderStagePoint<
     TQueryResultType,
     TProps
   >,
-  CutMethodsIfNotSuitableStage<
-    TPointType,
-    | 'provider'
-    | 'fetchOptions'
-    | 'input'
-    | 'ctx'
-    | 'loader'
-    | 'clientLoader'
-    | 'mapper'
-    // | 'flatter'
-    | 'onPrefetch'
-    | 'point'
-    | 'type'
-    | 'Infer'
-    | 'query'
-    | 'infiniteQuery'
-    | 'error'
-    | 'loading'
-    | 'wrapper'
-  >
+  | 'provider'
+  | 'fetchOptions'
+  | 'input'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  // | 'flatter'
+  | 'onPrefetch'
+  | 'point'
+  | 'type'
+  | 'Infer'
+  | 'query'
+  | 'infiniteQuery'
+  | 'error'
+  | 'loading'
+  | 'wrapper'
 >
 
 export type NiceStagePoint<
