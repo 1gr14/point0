@@ -55,7 +55,7 @@ export class Fetcher {
     }
     const pointInput = await (async () => {
       if (pointType === 'page' || pointType === 'layout') {
-        return await this.getPointInputFromTaskRequest({ request })
+        return await this.getPointInputFromTaskRequest({ request, scope })
       }
       return undefined
     })()
@@ -68,7 +68,13 @@ export class Fetcher {
     }
   }
 
-  getPointInputFromTaskRequest = async ({ request }: { request: Request0 }): Promise<InputRawUnknown | undefined> => {
+  getPointInputFromTaskRequest = async ({
+    request,
+    scope,
+  }: {
+    request: Request0
+    scope: PointsScope
+  }): Promise<InputRawUnknown | undefined> => {
     if (request.location.pathname !== '/_point0') {
       return undefined
     }
@@ -100,7 +106,7 @@ export class Fetcher {
       throw new Error(`Invalid body point input: must be an object, got ${typeof inputRawNotTransformed}`)
     }
     const transformer = this.server.allPointsManagers.getTransformerByScope({
-      scope: request.from.scope,
+      scope,
       fallbackScope: this.server.fallbackScope,
     })
     const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
@@ -131,7 +137,10 @@ export class Fetcher {
     if (task?.pointInput) {
       return task.pointInput
     }
-    const inputFromTaskRequest = await this.getPointInputFromTaskRequest({ request })
+    const inputFromTaskRequest = await this.getPointInputFromTaskRequest({
+      request,
+      scope: suitable.pointsManager.scope,
+    })
     if (inputFromTaskRequest) {
       return inputFromTaskRequest
     }

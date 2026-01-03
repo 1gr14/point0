@@ -4,7 +4,6 @@
 
 REFACTORING 0
 
-Трансформер брать не из фром скоупа, а из скоупа принта, это логично
 
 do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
