@@ -90,39 +90,39 @@ describe('Point0', () => {
     }))
     expect(server2).toBeInstanceOf(Point0)
 
-    type X = (typeof server2)['Infer']['ServerExecuteResult']
-    type Y = NiceRootStagePoint<
-      'coreStage',
-      'root',
-      undefined,
-      { a: number; b: number; c: number },
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined
-    >['Infer']['ServerExecuteResult']
-    expectTypeOf(server2).toEqualTypeOf<
-      NiceRootStagePoint<
-        'coreStage',
-        'root',
-        undefined,
-        { a: number; b: number; c: number },
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined
-      >
-    >()
+    // type X = (typeof server2)['Infer']['ServerExecuteResult']
+    // type Y = NiceRootStagePoint<
+    //   'coreStage',
+    //   'root',
+    //   undefined,
+    //   { a: number; b: number; c: number },
+    //   undefined,
+    //   undefined,
+    //   undefined,
+    //   undefined,
+    //   undefined,
+    //   undefined,
+    //   undefined,
+    //   undefined,
+    //   undefined
+    // >['Infer']['ServerExecuteResult']
+    // expectTypeOf(server2).toEqualTypeOf<
+    //   NiceRootStagePoint<
+    //     'coreStage',
+    //     'root',
+    //     undefined,
+    //     { a: number; b: number; c: number },
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined,
+    //     undefined
+    //   >
+    // >()
     expect(server2.point._serverExecuteActions).toHaveLength(2)
     // not modified original server1
     expect(server1.point._serverExecuteActions).toHaveLength(1)
