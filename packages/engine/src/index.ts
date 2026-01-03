@@ -1,12 +1,10 @@
 import { Route0 } from '@devp0nt/route0'
 import type {
   EndPoint,
-  OmitRequiredCtxRequestProp,
   PointsScope,
   RequiredCtx,
   ServerExecuteResult,
   UndefinedCtx,
-  UndefinedCtxIfRequiredCtxContainsOnlyRequestProp,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
 import nodeFs from 'node:fs'
@@ -254,15 +252,15 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   }
 
   async serve(
-    ...args: UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx> extends UndefinedCtx
+    ...args: TRequiredCtx extends UndefinedCtx
       ? [
           options?: {
-            requiredCtx?: OmitRequiredCtxRequestProp<TRequiredCtx>
+            requiredCtx?: TRequiredCtx
           },
         ]
       : [
           options: {
-            requiredCtx: OmitRequiredCtxRequestProp<TRequiredCtx>
+            requiredCtx: TRequiredCtx
           },
         ]
   ): Promise<void> {
@@ -285,7 +283,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   }
 
   async fetch(
-    ...args: UndefinedCtxIfRequiredCtxContainsOnlyRequestProp<TRequiredCtx> extends UndefinedCtx
+    ...args: TRequiredCtx extends UndefinedCtx
       ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
       : [request: Request, options: { requiredCtx: TRequiredCtx }]
   ): Promise<Response | undefined> {
