@@ -4,8 +4,6 @@
 
 REFACTORING 0
 
-fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
-
 cookies, remove value from options and add it to {transformer: false | true | 'auto' | Transformer, fallback: value}
 
 normalize points collection things, make it any style, with tests
@@ -179,6 +177,7 @@ https://oxc.rs/docs/guide/usage/linter/config
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
 ? on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware (whcih problem do we solve?)
+fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 Инпутрау только где ющер вводит, иначе инпутрауанноуе
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
 В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}

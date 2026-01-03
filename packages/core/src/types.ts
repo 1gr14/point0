@@ -136,17 +136,17 @@ export type Infer<
 export type PointType =
   | 'root'
   | 'base'
-  | 'coreStage'
   | 'page'
   | 'component'
   | 'query'
   | 'infiniteQuery'
   | 'mutation'
   | 'layout'
+  | 'provider'
+  | 'coreStage'
   | 'clientStage'
   | 'mapperStage'
   | 'renderStage'
-  | 'provider'
 export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'renderStage'
 export type EndPointType = Exclude<PointType, StagePointType>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
@@ -2143,6 +2143,40 @@ export type NiceStagePoint<
                   : never
 
 // nice end point
+
+// | 'root'
+// | 'base'
+// | 'page'
+// | 'component'
+// | 'query'
+// | 'infiniteQuery'
+// | 'mutation'
+// | 'layout'
+// | 'provider'
+
+// type ShowErrorIfNotSuitableEndPointType<
+//   TPointType extends PointType,
+//   TLetsEndPointType extends EndPointType,
+//   TAllowedEndPointTypes extends EndPointType,
+// > = TAllowedEndPointTypes extends TLetsEndPointType
+//   ? unknown
+//   : ShowError<`You can not use .lets('${TLetsEndPointType}') in ${TPointType} end point`>
+// export type AssertNoForbiddenLetsIfNotSuitableEndPointType<
+//   TPointType extends PointType,
+//   TLetsEndPointType extends EndPointType,
+// > = TPointType extends 'base'
+//   ? ShowErrorIfNotSuitableEndPointType<
+//       TPointType,
+//       TLetsEndPointType,
+//       'base' | 'page' | 'component' | 'query' | 'infiniteQuery' | 'mutation' | 'layout' | 'provider'
+//     >
+//   : TPointType extends 'page'
+//     ? ShowErrorIfNotSuitableEndPointType<
+//         TPointType,
+//         TLetsEndPointType,
+//         'page' | 'component' | 'query' | 'infiniteQuery' | 'mutation' | 'layout' | 'provider'
+//       >
+//     : unknown
 
 export type NiceRootEndPoint<
   TPointType extends 'root',
