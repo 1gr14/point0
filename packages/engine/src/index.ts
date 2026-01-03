@@ -326,7 +326,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     })
     const executor = await Executor.create({
       request: Executor.createRequestByPointAndInput({ point, input }),
-      pointsManager: suitable.pointsManager,
+      points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: location,
       requiredCtx,

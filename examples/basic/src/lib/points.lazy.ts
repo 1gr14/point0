@@ -1,7 +1,7 @@
 import type { LazyPointsCollectionRecord } from '@point0/core'
 import { client as root } from './client.js'
 
-export const _unnamed_194a12vzyrr_lazy = {
+export const _unnamed_vcrzt7ph3o = {
   type: 'page',
   name: 'home',
   route: '/',
@@ -10,7 +10,7 @@ export const _unnamed_194a12vzyrr_lazy = {
   point: async () => (await import('../pages/home.js')).default.point,
 } as LazyPointsCollectionRecord
 
-export const _empty_26z4arz84c0_lazy = {
+export const _empty_29zfptrjw1d = {
   type: 'page',
   name: 'empty',
   route: '/empty&x',
@@ -18,7 +18,7 @@ export const _empty_26z4arz84c0_lazy = {
   point: async () => (await import('../pages/empty.js')).empty.point,
 } as LazyPointsCollectionRecord
 
-export const _filePage_k5oe64f0zy_lazy = {
+export const _filePage_12cq24h4kex = {
   type: 'page',
   name: 'file',
   route: '/file',
@@ -26,7 +26,7 @@ export const _filePage_k5oe64f0zy_lazy = {
   point: async () => (await import('../pages/file.js')).filePage.point,
 } as LazyPointsCollectionRecord
 
-export const _ideasPage_dsuwn7kpg6_lazy = {
+export const _ideasPage_yf0mq6zo2a = {
   type: 'page',
   name: 'ideas',
   route: '/ideas',
@@ -35,7 +35,7 @@ export const _ideasPage_dsuwn7kpg6_lazy = {
   point: async () => (await import('../pages/ideas.js')).ideasPage.point,
 } as LazyPointsCollectionRecord
 
-export const _unnamed_rblpffd78f_lazy = {
+export const _unnamed_np56kcde8h = {
   type: 'page',
   name: 'newIdea',
   route: '/ideas/new',
@@ -44,7 +44,7 @@ export const _unnamed_rblpffd78f_lazy = {
   point: async () => (await import('../pages/idea-create.js')).default.point,
 } as LazyPointsCollectionRecord
 
-export const _ideaPage_1h9zgk273a2_lazy = {
+export const _ideaPage_22cou3sgy48 = {
   type: 'page',
   name: 'idea',
   route: '/ideas/:id',
@@ -53,7 +53,7 @@ export const _ideaPage_1h9zgk273a2_lazy = {
   point: async () => (await import('../pages/idea.js')).ideaPage.point,
 } as LazyPointsCollectionRecord
 
-export const _ideaNewsPage_17oj6z76jfl_lazy = {
+export const _ideaNewsPage_1bvixp2xuk8 = {
   type: 'page',
   name: 'ideaNews',
   route: '/ideas/:id/news',
@@ -62,7 +62,7 @@ export const _ideaNewsPage_17oj6z76jfl_lazy = {
   point: async () => (await import('../pages/idea-news.js')).ideaNewsPage.point,
 } as LazyPointsCollectionRecord
 
-export const _sharedEmptyPage_1x5p7rnbnfb_lazy = {
+export const _sharedEmptyPage_10in8p3i6ro = {
   type: 'page',
   name: 'sharedEmpty',
   route: '/sharedEmpty2',
@@ -70,99 +70,99 @@ export const _sharedEmptyPage_1x5p7rnbnfb_lazy = {
   point: async () => (await import('../pages/empty.js')).sharedEmptyPage.point,
 } as LazyPointsCollectionRecord
 
-export const _generalLayout_2a89rn3ysgd_lazy = {
+export const _generalLayout_9hxs9xjakt = {
   type: 'layout',
   name: 'generalLayout',
   route: '/',
   point: async () => (await import('../layouts/general.js')).generalLayout.point,
 } as LazyPointsCollectionRecord
 
-export const _ideaLayout_29virt0uukc_lazy = {
+export const _ideaLayout_1l0lkelfnny = {
   type: 'layout',
   name: 'idea',
   route: '/ideas/:id',
   point: async () => (await import('../layouts/idea.js')).ideaLayout.point,
 } as LazyPointsCollectionRecord
 
-export const _BestIdeaComponent_242jb1jm1kp_lazy = {
+export const _BestIdeaComponent_2g95l27hv37 = {
   type: 'component',
   name: 'bestIdea',
   point: async () => (await import('../pages/home.js')).BestIdeaComponent.point,
 } as LazyPointsCollectionRecord
 
-export const _ExternalHelperComponent2_n1xbrdietv_lazy = {
+export const _ExternalHelperComponent2_2gjnidctt4q = {
   type: 'component',
   name: 'externalHelper2',
   point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent2.point,
 } as LazyPointsCollectionRecord
 
-export const _ExternalHelperComponent3_zzfd1v06eh_lazy = {
+export const _ExternalHelperComponent3_20y9zhu2wzl = {
   type: 'component',
   name: 'externalHelper2',
   point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent3.point,
 } as LazyPointsCollectionRecord
 
-export const _clientFn2Mutation_13ogi387skq_lazy = {
+export const _clientFn2Mutation_pebipqvgey = {
   type: 'mutation',
   name: 'clientFn2Mutation',
   point: async () => (await import('../pages/idea-create.js')).clientFn2Mutation.point,
 } as LazyPointsCollectionRecord
 
-export const _clientFnMutation_267786urot4_lazy = {
+export const _clientFnMutation_1pfvxperpc2 = {
   type: 'mutation',
   name: 'clientFnMutation',
   point: async () => (await import('../pages/idea-create.js')).clientFnMutation.point,
 } as LazyPointsCollectionRecord
 
-export const _clientFnMutationX_g8voc16gwq_lazy = {
+export const _clientFnMutationX_mbkgfjtlgl = {
   type: 'mutation',
   name: 'clientFnMutation',
   point: async () => (await import('../pages/idea-create.js')).clientFnMutationX.point,
 } as LazyPointsCollectionRecord
 
-export const _createIdeaMutation_covj1sfftq_lazy = {
+export const _createIdeaMutation_6lsfldlwq8 = {
   type: 'mutation',
   name: 'createIdea',
   point: async () => (await import('../pages/idea-create.js')).createIdeaMutation.point,
 } as LazyPointsCollectionRecord
 
-export const _generateIdeaMutation_2cgsxzalkcb_lazy = {
+export const _generateIdeaMutation_2epecrkeuwn = {
   type: 'mutation',
   name: 'generateIdea',
   point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation.point,
 } as LazyPointsCollectionRecord
 
-export const _uploadFileMutation_231owori99c_lazy = {
+export const _uploadFileMutation_2e3iyhqfm1h = {
   type: 'mutation',
   name: 'uploadFile',
   point: async () => (await import('../pages/file.js')).uploadFileMutation.point,
 } as LazyPointsCollectionRecord
 
-export const _sharedQuery_ehd68url3u_lazy = {
+export const _sharedQuery_aj42zpd8gt = {
   type: 'query',
   name: 'sharedQuery',
   point: async () => root.point.attach((await import('./shared.js')).sharedQuery.point),
 } as LazyPointsCollectionRecord
 
-export const _clientCtx1_2aazoua7zcl_lazy = {
+export const _clientCtx1_7hzqlccbi = {
   type: 'provider',
   name: 'testClientCtx1',
   point: async () => (await import('./client-ctx.js')).clientCtx1.point,
 } as LazyPointsCollectionRecord
 
-export const _clientCtx2_1vl423rboa8_lazy = {
+export const _clientCtx2_1jnj2bt0ivu = {
   type: 'provider',
   name: 'testClientCtx2',
   point: async () => (await import('./client-ctx.js')).clientCtx2.point,
 } as LazyPointsCollectionRecord
 
-export const _clientCtx3_1rlhk9hehay_lazy = {
+export const _clientCtx3_25y0jpqc3fk = {
   type: 'provider',
   name: 'testClientCtx3',
   point: async () => (await import('./client-ctx.js')).clientCtx3.point,
 } as LazyPointsCollectionRecord
 
-export const _root_lazy = {
+export const _root = {
   type: 'root' as const,
   name: 'client',
   point: root.point,

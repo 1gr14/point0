@@ -208,6 +208,8 @@ export class Point0<
 
   point: typeof this // this, needed for generator to collect points
 
+  private readonly __POINT0_INSTANCE__: boolean = true
+
   toString() {
     return `${this.scope}.${this.type}.${this.name}`
   }
@@ -309,7 +311,7 @@ export class Point0<
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
   private readonly _prefetchPolicy: PagePrefetchPolicy
   private readonly _onPrefetchFns: OnPrefetchFn[]
-  readonly polh: boolean | number
+  readonly _shouldBePrefetchedOnLinkHover: boolean | number
   private readonly _ProviderReactContext:
     | Context<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>>
     | undefined
@@ -629,7 +631,7 @@ export class Point0<
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
     this._prefetchPolicy = options._prefetchPolicy ?? 'everything'
     this._onPrefetchFns = options._onPrefetchFns ?? []
-    this.polh = options.polh ?? false
+    this._shouldBePrefetchedOnLinkHover = options.polh ?? false
     this._layoutErrorComponent =
       options._layoutErrorComponent ??
       ((({ error }) => {
@@ -1016,7 +1018,7 @@ export class Point0<
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
       _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
-      polh: overrides.polh ?? this.polh,
+      polh: overrides.polh ?? this._shouldBePrefetchedOnLinkHover,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -2890,7 +2892,7 @@ export class Point0<
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
-      polh: this._base?.polh ?? false,
+      polh: this._base?._shouldBePrefetchedOnLinkHover ?? false,
       _wrappers: this._base?._wrappers ?? [],
       _outers: this._base?._outers ?? [],
       _errorComponent: undefined,

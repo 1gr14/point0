@@ -288,7 +288,7 @@ export class Fetcher {
 
       const executor = await Executor.create({
         request,
-        pointsManager: suitable.pointsManager,
+        points: suitable.pointsManager,
         pageLocation: suitable.pageLocation,
         currentLocation: suitable.pageLocation ?? Route0.toRelLocation(request.location),
         requiredCtx,

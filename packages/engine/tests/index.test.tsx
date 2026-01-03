@@ -13,7 +13,7 @@ import type {
   UndefinedQueryResultType,
   UndefinedRouteDefinition,
 } from '@point0/core'
-import { Point0, PointsManager } from '@point0/core'
+import { Point0 } from '@point0/core'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
@@ -204,7 +204,7 @@ describe('Point0', () => {
   //   const run = await Executor.create({
   //     request: new Request('http://localhost/'),
   //     points: PointsManager.ready({
-  //       _root_ready: server2.attach(clientPointBase02),
+  //       _root: server2.attach(clientPointBase02),
   //       page: server2.attach(clientPoint02.point),
   //     }),
   //     pageLocation: Route0.getLocation('/'),
@@ -340,7 +340,7 @@ describe('Point0', () => {
   //   // })
   //   const run = await Executor.create({
   //     points: PointsManager.ready({
-  //       _root_ready: server1.attach(clientPointBase01),
+  //       _root: server1.attach(clientPointBase01),
   //       page: server1.attach(clientPoint01.point),
   //     }),
   //     pageLocation: Route0.getLocation(url),
@@ -380,7 +380,7 @@ describe('Point0', () => {
   //   // })
   //   const run2 = await Executor.create({
   //     points: PointsManager.ready({
-  //       _root_ready: server2.attach(clientPointBase02),
+  //       _root: server2.attach(clientPointBase02),
   //       page: server2.attach(clientPoint02.point),
   //     }),
   //     pageLocation: Route0.getLocation(url),
@@ -419,7 +419,7 @@ describe('Point0', () => {
   //   // })
   //   const run3 = await Executor.create({
   //     points: PointsManager.ready({
-  //       _root_ready: server3.attach(clientPointBase03),
+  //       _root: server3.attach(clientPointBase03),
   //       page: server3.attach(clientPoint03.point),
   //     }),
   //     pageLocation: Route0.getLocation(url),
@@ -469,10 +469,10 @@ describe('Point0', () => {
     // })
     const run1 = await Executor.create({
       request: new Request('http://localhost/'),
-      pointsManager: PointsManager.ready({
-        _root_ready: server1.attach(clientPointBase01),
+      points: {
+        _root: server1.attach(clientPointBase01),
         page: server1.attach(clientPoint01.point),
-      }),
+      },
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
@@ -518,10 +518,10 @@ describe('Point0', () => {
     // })
     const run2 = await Executor.create({
       request: new Request('http://localhost' + url),
-      pointsManager: PointsManager.ready({
-        _root_ready: server2.attach(clientPointBase02),
+      points: {
+        _root: server2.attach(clientPointBase02),
         page: server2.attach(clientPoint02.point),
-      }),
+      },
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },
@@ -562,10 +562,10 @@ describe('Point0', () => {
     // })
     const run3 = await Executor.create({
       request: new Request('http://localhost' + url),
-      pointsManager: PointsManager.ready({
-        _root_ready: server3.attach(clientPointBase03),
+      points: {
+        _root: server3.attach(clientPointBase03),
         page: server3.attach(clientPoint03.point),
-      }),
+      },
       pageLocation: Route0.getLocation(url),
       currentLocation: Route0.getLocation(url),
       requiredCtx: { r: 'str' },

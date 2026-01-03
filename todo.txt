@@ -4,10 +4,6 @@
 
 REFACTORING 0
 
-normalize points collection things, make it any style, with tests
-? ponts-manager to points0
-in Nice point.point also lets store nice type, so hide everything from user except required for us
-Укоротить до линкпрефетч
 
 we do not need execute on ssr, just lets follow queryKeys
 we should while useHead on server just store last run heads array and retrieve it from SuperStore
@@ -40,7 +36,7 @@ ROOT
 root.lets('root') & Point0.lets('root', 'x')
 scopes is array
 but scope is still just string
-walker add to lazy points root {scope}, and self scope is still _root_lazy, other roots just points
+walker add to lazy points root {scope}, and self scope is still _root, other roots just points
 remove .attach things
 
 ENVIRONMENT

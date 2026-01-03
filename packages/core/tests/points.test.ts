@@ -11,8 +11,8 @@ describe('points', () => {
   describe('pagesTree', () => {
     it('no layout pages', () => {
       const base = Point0.create('base').root()
-      const points = PointsManager.ready({
-        _root_ready: base,
+      const points = PointsManager.create({
+        _root: base,
         one: base.lets('page', '1', '/1').page(PC).point,
         two: base.lets('page', '2', '/2').page(PC).point,
       })
@@ -29,8 +29,8 @@ describe('points', () => {
     it('one layout page', () => {
       const base = Point0.create('base').root()
       const layout = base.lets('layout', 'layout', '/layout').layout(PC).point
-      const points = PointsManager.ready({
-        _root_ready: base,
+      const points = PointsManager.create({
+        _root: base,
         one: base.lets('page', '1', '/1').page(PC).point,
         two: layout.lets('page', '2', '/2').page(PC).point,
       })
@@ -53,11 +53,11 @@ describe('points', () => {
       const base = Point0.create('base').root()
       const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
       const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
-      const points = PointsManager.ready({
-        _root_ready: base,
-        one: base.lets('page', '1', '/1').page(PC).point,
-        two: layout1.lets('page', '2', '/2').page(PC).point,
-        three: layout2.lets('page', '3', '/3').page(PC).point,
+      const points = PointsManager.create({
+        _root: base,
+        one: base.lets('page', '1', '/1').page(PC),
+        two: layout1.lets('page', '2', '/2').page(PC),
+        three: layout2.lets('page', '3', '/3').page(PC),
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -84,8 +84,8 @@ describe('points', () => {
       const base = Point0.create('base').root()
       const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
       const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
-      const points = PointsManager.ready({
-        _root_ready: base,
+      const points = PointsManager.create({
+        _root: base,
         zero: base.lets('page', '0', '/0').page(PC).point,
         one: base.lets('page', '1', '/1').page(PC).point,
         two: layout1.lets('page', '2', '/2').page(PC).point,

@@ -13,7 +13,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         scope: 'server',
-        points: { _root_ready: Point0.create('server').root() } as never,
+        points: { _root: Point0.create('server').root() } as never,
         port: 3000,
         entry: './index.server.ts',
         outdir: '../dist/server',
@@ -22,7 +22,7 @@ describe('parseEngineOptions', () => {
       clients: [
         {
           scope: 'client',
-          points: { _root_ready: Point0.create('client').root() } as never,
+          points: { _root: Point0.create('client').root() } as never,
           generatePointsReady: './lib/points.ready.js',
           indexHtml: './index.html',
           port: 3001,
@@ -120,7 +120,7 @@ describe('parseEngineOptions', () => {
       // below all paths should be relative to cwdBeforeBuild like it was not built yet
       server: {
         scope: 'server',
-        points: { _root_ready: Point0.create('server').root() } as never,
+        points: { _root: Point0.create('server').root() } as never,
         port: 3000,
         entry: './index.server.ts',
         outdir: '../dist/server',
@@ -129,7 +129,7 @@ describe('parseEngineOptions', () => {
       clients: [
         {
           scope: 'client',
-          points: { _root_ready: Point0.create('client').root() } as never,
+          points: { _root: Point0.create('client').root() } as never,
           generatePointsReady: './lib/points.ready.js',
           indexHtml: './index.html',
           port: 3001,

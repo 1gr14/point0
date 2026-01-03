@@ -27,6 +27,8 @@ import type {
   UnknownCtx,
   UnknownData,
   WithMaybeOptionalReqiredCtx,
+  ReadyPointsModule,
+  LazyPointsModule,
 } from '@point0/core'
 import { Point0, PointsManager, Request0, Response0, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
@@ -84,15 +86,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
     request,
-    pointsManager,
+    points,
     pageLocation,
     currentLocation,
     requiredCtx,
     response0,
   }: {
     request: Request | Request0
-    pointsManager: PointsManager<true, TRequiredCtx>
-    // TODO: remove currentLoacton from here, use it from request
+    points: PointsManager<boolean, TRequiredCtx> | ReadyPointsModule<TRequiredCtx> | LazyPointsModule<TRequiredCtx>
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
@@ -101,6 +102,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const serverGlobalState = {}
     response0 ??= Response0.create()
     const request0 = Request0.create(request)
+    const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new Executor<TRequiredCtx>({
         request: request0,
@@ -198,7 +200,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
     executor ??= await Executor.create({
       request: Executor.createRequestByPointAndInput({ point, input }),
-      pointsManager: PointsManager.ready({ _root_ready: point._root, point, ...layoutsObject }),
+      points: { _root: point._root, point, ...layoutsObject },
       currentLocation: location,
       requiredCtx,
       pageLocation: point.type === 'page' ? location : undefined,

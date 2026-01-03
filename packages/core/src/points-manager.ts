@@ -35,7 +35,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   basepath: string | null
   hostname: string | null
   root: RootPoint
-  collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
+  collection: TReady extends true ? ReadyPointsCollection : NormalizedLazyPointsCollection
   ready: TReady
   routes: RoutesPretty
   routesHash: string
@@ -60,7 +60,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     absPath: string | null
     readFn: PointsReadFn | null
     root: RootPoint
-    collection: TReady extends true ? ReadyRoutedPointsCollection : LazyRoutedPointsCollection
+    collection: TReady extends true ? ReadyPointsCollection : NormalizedLazyPointsCollection
     routes: RoutesPretty
     ready: boolean
     scope: PointsScope
@@ -90,25 +90,24 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 
   // TODO: add readyByModule and readyByCollection
-  static readonly ready = <TReadyPointsModule extends ReadyPointsModule>(
+  private static readonly ready = <TReadyPointsModule extends ReadyPointsModule>(
     readyPoints: TReadyPointsModule,
     options?: {
       absPath?: string
       readFn?: PointsReadFn
     },
-  ): PointsManager<true, TReadyPointsModule['_root_ready']['point']['Infer']['RequiredCtx']> => {
+  ): PointsManager<true, TReadyPointsModule['_root']['point']['Infer']['RequiredCtx']> => {
     const { absPath, readFn } = options ?? {}
-    const { _root_ready, ...rest } = readyPoints
-    const readyPointsWithoutRoot = Object.values(rest).map((p) => p.point)
-    const rawPoints = PointsManager.rawToReadyPointsCollection(readyPointsWithoutRoot)
-    const routedPoints = PointsManager.toRoutedPointsCollection(rawPoints)
-    const routes = PointsManager.toRoutes({ points: routedPoints })
-    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: routedPoints })
-    const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new PointsManager<true, TReadyPointsModule['_root_ready']['point']['Infer']['RequiredCtx']>({
-      root: _root_ready.point,
-      scope: _root_ready.point.scope,
-      collection: routedPoints,
+    const { _root, ...rest } = readyPoints
+    const rawPoints: EndPoint[] = Object.values(rest).map((p) => p.point)
+    const collection = this.rawPointsCollectionToReadyPointsCollection(rawPoints)
+    const routes = PointsManager.toRoutes({ points: collection })
+    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: collection })
+    const pagesTree = PointsManager.toPagesTree({ points: collection, pagesTreeSource })
+    return new PointsManager<true, TReadyPointsModule['_root']['point']['Infer']['RequiredCtx']>({
+      root: _root.point,
+      scope: _root.point.scope,
+      collection,
       routes,
       ready: true,
       pagesTreeSource,
@@ -119,24 +118,24 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 
   // TODO: add lazyByModule and lazyByCollection
-  static readonly lazy = <TLazyPointsModule extends LazyPointsModule>(
+  private static readonly lazy = <TLazyPointsModule extends LazyPointsModule>(
     lazyPoints: TLazyPointsModule,
     options?: {
       absPath?: string
       readFn?: PointsReadFn
     },
-  ): PointsManager<false, TLazyPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']> => {
+  ): PointsManager<false, TLazyPointsModule['_root']['point']['Infer']['RequiredCtx']> => {
     const { absPath, readFn } = options ?? {}
-    const { _root_lazy, ...rest } = lazyPoints
-    const lazyPointsWithoutRoot = Object.values(rest) as LazyRoutedPointsCollection
-    const routedPoints = PointsManager.toRoutedPointsCollection(lazyPointsWithoutRoot)
-    const routes = PointsManager.toRoutes({ points: routedPoints })
-    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: routedPoints })
-    const pagesTree = PointsManager.toPagesTree({ points: routedPoints, pagesTreeSource })
-    return new PointsManager<false, TLazyPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']>({
-      root: _root_lazy.point,
-      scope: _root_lazy.point.scope,
-      collection: routedPoints,
+    const { _root, ...rest } = lazyPoints
+    const lazyPointsWithoutRoot = Object.values(rest) as LazyPointsCollection
+    const collection = PointsManager.toNormalizedLazyPointsCollection(lazyPointsWithoutRoot)
+    const routes = PointsManager.toRoutes({ points: collection })
+    const pagesTreeSource = PointsManager.toPagesTreeSource({ points: collection })
+    const pagesTree = PointsManager.toPagesTree({ points: collection, pagesTreeSource })
+    return new PointsManager<false, TLazyPointsModule['_root']['point']['Infer']['RequiredCtx']>({
+      root: _root.point,
+      scope: _root.point.scope,
+      collection,
       routes,
       ready: false,
       pagesTreeSource,
@@ -146,16 +145,16 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     })
   }
 
-  static readonly read = async <TReady extends boolean>({
-    absPath,
-    readFn,
-  }: {
-    absPath: string
-    readFn: PointsReadFn
-  }): Promise<PointsManager<TReady>> => {
-    const pointsModule = await readFn(absPath)
-    return PointsManager.create(pointsModule, { absPath, readFn }) as PointsManager<TReady>
-  }
+  // static readonly read = async <TReady extends boolean>({
+  //   absPath,
+  //   readFn,
+  // }: {
+  //   absPath: string
+  //   readFn: PointsReadFn
+  // }): Promise<PointsManager<TReady>> => {
+  //   const pointsModule = await readFn(absPath)
+  //   return PointsManager.create(pointsModule, { absPath, readFn }) as PointsManager<TReady>
+  // }
 
   static readonly create = <TPoints extends ReadyPointsModule | LazyPointsModule | PointsManager>(
     points: TPoints,
@@ -164,13 +163,19 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       readFn?: PointsReadFn
     },
   ): PointsManager<
-    boolean,
+    TPoints extends ReadyPointsModule
+      ? true
+      : TPoints extends LazyPointsModule
+        ? false
+        : TPoints extends PointsManager<true, any>
+          ? true
+          : false,
     TPoints extends PointsManager
       ? TPoints['root']['point']['Infer']['RequiredCtx']
       : TPoints extends ReadyPointsModule
-        ? TPoints['root']['point']['Infer']['RequiredCtx']
+        ? TPoints['_root']['point']['Infer']['RequiredCtx']
         : TPoints extends LazyPointsModule
-          ? TPoints['_root_lazy']['point']['Infer']['RequiredCtx']
+          ? TPoints['_root']['point']['Infer']['RequiredCtx']
           : RequiredCtx
   > => {
     const { absPath, readFn } = options ?? {}
@@ -180,10 +185,10 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       return points as never
     }
     if (PointsManager.isReadyPointsModule(points)) {
-      return PointsManager.ready(points, { absPath, readFn })
+      return PointsManager.ready(points, { absPath, readFn }) as never
     }
     if (PointsManager.isLazyPointsModule(points)) {
-      return PointsManager.lazy(points, { absPath, readFn })
+      return PointsManager.lazy(points, { absPath, readFn }) as never
     }
     throw new Error('Invalid points input')
   }
@@ -192,9 +197,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.absPath = points.absPath
     this.readFn = points.readFn
     this.root = points.root
-    this.collection = points.collection as TReady extends true
-      ? ReadyRoutedPointsCollection
-      : LazyRoutedPointsCollection
+    this.collection = points.collection as TReady extends true ? ReadyPointsCollection : NormalizedLazyPointsCollection
     this.routes = points.routes
     this.routesHash = points.routesHash
     this.pagesTreeSource = points.pagesTreeSource
@@ -218,9 +221,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (this.ready && !force) {
       return this as PointsManager<true, TRequiredCtx>
     }
-    const { readyPoints, errors } = await PointsManager.toReadyPointsCollection(
-      this.collection as LazyRoutedPointsCollection,
-    )
+    const { readyPoints, errors } = await PointsManager.toReadyPointsCollection(this.collection as LazyPointsCollection)
     for (const error of errors) {
       console.error(error)
     }
@@ -263,23 +264,25 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return this.collection.find((record) => record.type === 'root')?.point as RootPoint | undefined
   }
 
-  private static isLazyPointsModule(points: any): points is LazyPointsModule {
+  private static isLazyPointsModule(points: unknown): points is LazyPointsModule {
     return (
+      typeof points === 'object' &&
+      points !== null &&
       !Array.isArray(points) &&
-      // Object.keys(points).length > 0 &&
-      Object.values(points).every((p: any) => typeof p.type === 'string')
+      Object.values(points).some((p: any) => p?.point?.__POINT0_INSTANCE__ !== true)
     )
   }
 
-  private static isReadyPointsModule(points: any): points is ReadyPointsModule {
+  private static isReadyPointsModule(points: unknown): points is ReadyPointsModule {
     return (
+      typeof points === 'object' &&
+      points !== null &&
       !Array.isArray(points) &&
-      // Object.keys(points).length > 0 &&
-      Object.values(points).every((p: any) => typeof p.point?.type === 'string')
+      Object.values(points).every((p: any) => p?.point?.__POINT0_INSTANCE__ === true)
     )
   }
 
-  static isRoutedPointsCollection(points: any): points is LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
+  static isNormalizedLazyPointsCollection(points: any): points is NormalizedLazyPointsCollection {
     if (!Array.isArray(points)) {
       return false
     }
@@ -289,112 +292,127 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return points.every((p: any) => 'FC' in p)
   }
 
-  private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
-    return points.map((point) => {
-      return {
-        type: point.type,
-        name: point.name || '__POINT0_UNNAMED__',
-        point,
-        polh: point.polh,
-        layouts: point._layouts.map((l) => l.name || '__POINT0_UNNAMED__'),
-        route: point._route,
-        root: point._isRoot(),
-      }
-    })
-  }
+  // private static rawToReadyPointsCollection(points: RawPointsCollection): ReadyPointsCollection {
+  //   return points.map((point) => {
+  //     return {
+  //       type: point.type,
+  //       name: point.name || '__POINT0_UNNAMED__',
+  //       point,
+  //       polh: point.polh,
+  //       layouts: point._layouts.map((l) => l.name || '__POINT0_UNNAMED__'),
+  //       route: point._route,
+  //       root: point._isRoot(),
+  //     }
+  //   })
+  // }
 
-  private static moduleToReadyPointsCollection(points: ReadyPointsModule): ReadyPointsCollection {
-    const { root, ...rest } = points
-    return this.rawToReadyPointsCollection(Object.values(rest).map((p) => p.point))
-  }
+  // private static moduleToReadyPointsCollection(points: ReadyPointsModule): ReadyPointsCollection {
+  //   const { root, ...rest } = points
+  //   return this.rawToReadyPointsCollection(Object.values(rest).map((p) => p.point))
+  // }
 
-  private static moduleToLazyPointsCollection(points: LazyPointsModule): LazyPointsCollection {
-    return Object.values(points).flatMap((p) => ('type' in p ? [] : p))
-  }
+  // private static moduleToLazyPointsCollection(points: LazyPointsModule): LazyPointsCollection {
+  //   return Object.values(points).flatMap((p) => ('type' in p ? [] : p))
+  // }
 
-  private static toPointsCollection(
-    points:
-      | LazyPointsCollection
-      | ReadyPointsCollection
-      | LazyPointsModule
-      | ReadyPointsModule
-      | LazyRoutedPointsCollection
-      | ReadyRoutedPointsCollection,
-  ): LazyPointsCollection | ReadyPointsCollection | LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
-    if (PointsManager.isLazyPointsModule(points)) {
-      return PointsManager.moduleToLazyPointsCollection(points)
-    }
-    if (PointsManager.isReadyPointsModule(points)) {
-      return PointsManager.moduleToReadyPointsCollection(points)
-    }
-    return points
-  }
+  // private static toPointsCollection(
+  //   points:
+  //     | LazyPointsCollection
+  //     | ReadyPointsCollection
+  //     | LazyPointsModule
+  //     | ReadyPointsModule
+  //     | NormalizedLazyPointsCollection
+  //     | ReadyPointsCollection,
+  // ): LazyPointsCollection | ReadyPointsCollection | NormalizedLazyPointsCollection | ReadyPointsCollection {
+  //   if (PointsManager.isLazyPointsModule(points)) {
+  //     return PointsManager.moduleToLazyPointsCollection(points)
+  //   }
+  //   if (PointsManager.isReadyPointsModule(points)) {
+  //     return PointsManager.moduleToReadyPointsCollection(points)
+  //   }
+  //   return points
+  // }
 
-  static toRoutedPointsCollection(
-    points: ReadyPointsCollection | ReadyPointsModule | ReadyRoutedPointsCollection,
-  ): ReadyRoutedPointsCollection
-  static toRoutedPointsCollection(
-    points: LazyPointsCollection | LazyPointsModule | LazyRoutedPointsCollection,
-  ): LazyRoutedPointsCollection
-  static toRoutedPointsCollection(
-    points:
-      | LazyPointsCollection
-      | ReadyPointsCollection
-      | LazyPointsModule
-      | ReadyPointsModule
-      | LazyRoutedPointsCollection
-      | ReadyRoutedPointsCollection,
-  ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection
-  static toRoutedPointsCollection(
-    points:
-      | LazyPointsCollection
-      | ReadyPointsCollection
-      | LazyPointsModule
-      | ReadyPointsModule
-      | LazyRoutedPointsCollection
-      | ReadyRoutedPointsCollection,
-  ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection {
-    if (this.isRoutedPointsCollection(points)) {
+  // static toRoutedPointsCollection(
+  //   points: ReadyPointsCollection | ReadyPointsModule | ReadyRoutedPointsCollection,
+  // ): ReadyRoutedPointsCollection
+  // static toRoutedPointsCollection(
+  //   points: LazyPointsCollection | LazyPointsModule | LazyRoutedPointsCollection,
+  // ): LazyRoutedPointsCollection
+  // static toRoutedPointsCollection(
+  //   points:
+  //     | LazyPointsCollection
+  //     | ReadyPointsCollection
+  //     | LazyPointsModule
+  //     | ReadyPointsModule
+  //     | LazyRoutedPointsCollection
+  //     | ReadyRoutedPointsCollection,
+  // ): LazyRoutedPointsCollection | ReadyRoutedPointsCollection
+  static toNormalizedLazyPointsCollection(points: LazyPointsCollection): NormalizedLazyPointsCollection {
+    if (this.isNormalizedLazyPointsCollection(points)) {
       return points
     }
-    const pointsCollection = PointsManager.toPointsCollection(points)
-    return pointsCollection.map((record) => {
+    return points.map((record) => {
       const point = record.point
       return {
         type: record.type,
         name: record.name,
         route: record.route ? Route0.from(record.route) : undefined,
-        polh: record.polh,
+        polh: !!record.polh,
         point: record.point,
         layouts: record.layouts ?? [],
         FC:
           record.type === 'layout'
             ? typeof point === 'function'
               ? React.lazy(async () => ({
-                  default: await point().then((p) => p.Layout),
+                  default: await point().then((p) => p.point.Layout),
                 }))
-              : point.Layout
+              : point.point.Layout
             : record.type === 'page'
               ? typeof point === 'function'
                 ? React.lazy(async () => ({
-                    default: await point().then((p) => p.Page),
+                    default: await point().then((p) => p.point.Page),
                   }))
-                : point.Page
+                : point.point.Page
               : record.type === 'component'
                 ? typeof point === 'function'
                   ? React.lazy(async () => ({
-                      default: await point().then((p) => p.Component),
+                      default: await point().then((p) => p.point.Component),
                     }))
-                  : point.Component
+                  : point.point.Component
                 : record.type === 'provider'
                   ? typeof point === 'function'
                     ? React.lazy(async () => ({
-                        default: await point().then((p) => p.Provider),
+                        default: await point().then((p) => p.point.Provider),
                       }))
-                    : point.Provider
+                    : point.point.Provider
                   : undefined,
       }
-    }) as LazyRoutedPointsCollection | ReadyRoutedPointsCollection
+    })
+  }
+
+  private static rawPointsCollectionToReadyPointsCollection(points: EndPoint[]): ReadyPointsCollection {
+    return points.map((point) => {
+      return {
+        ready: true,
+        type: point.type,
+        name: point.name,
+        route: point._route ? Route0.from(point._route) : undefined,
+        polh: point._shouldBePrefetchedOnLinkHover,
+        point,
+        layouts: point._layouts.map((l) => l.name),
+        FC:
+          point.type === 'layout'
+            ? point.Layout
+            : point.type === 'page'
+              ? point.Page
+              : point.type === 'component'
+                ? point.Component
+                : point.type === 'provider'
+                  ? point.Provider
+                  : undefined,
+      }
+    })
   }
 
   static readonly toRoutes = ({
@@ -420,51 +438,52 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 
   private static async toReadyPointsCollection(
-    points: LazyRoutedPointsCollection,
-  ): Promise<{ readyPoints: ReadyRoutedPointsCollection; errors: unknown[] }> {
+    points: LazyPointsCollection,
+  ): Promise<{ readyPoints: ReadyPointsCollection; errors: unknown[] }> {
     const results = await Promise.allSettled(
       points.map(async (record, index) => {
         const pointPromise = typeof record.point === 'function' ? record.point() : record.point
-        const point = await pointPromise
-        const route = point._route
-        if (point.type === 'page' && !route) {
-          throw new Error(`No client route provided for page point. Index: ${index}.`)
-        }
-        const routeDefinition = route?.definition
-        const recordRouteDefinition = record.route ? Route0.from(record.route).getDefinition() : undefined
-        if (routeDefinition !== recordRouteDefinition) {
-          // console.warn(
-          //   `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
-          // )
-        }
-        const recordType = record.type
-        const pointType = point.type
-        const pointName = point.name
-        const recordName = record.name
-        if (pointName !== recordName) {
-          // console.warn(
-          //   `Point name does not match record name. Forget to regenerate points file?. Index: ${index}. ${pointType}.${pointName} !== ${recordType}.${recordName}`,
-          // )
-        }
-        if (recordType !== pointType) {
-          // console.warn(
-          //   `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. ${pointType}.${pointName} !== ${recordType}.${recordName}`,
-          // )
-        }
-        const recordLayouts = record.layouts
-        return {
-          ready: true,
-          point,
-          route,
-          polh: record.polh,
-          name: pointName || record.name,
-          type: pointType,
-          layouts: recordLayouts,
-          FC: record.FC,
-        }
+        return (await pointPromise).point
+        // const route = point._route
+        // if (point.type === 'page' && !route) {
+        //   throw new Error(`No client route provided for page point. Index: ${index}.`)
+        // }
+        // const routeDefinition = route?.definition
+        // const recordRouteDefinition = record.route ? Route0.from(record.route).getDefinition() : undefined
+        // if (routeDefinition !== recordRouteDefinition) {
+        //   // console.warn(
+        //   //   `Client route definition does not match record route definition. Forget to regenerate points file?. Index: ${index}. Client route definition: ${routeDefinition}. Record route definition: ${recordRouteDefinition}.`,
+        //   // )
+        // }
+        // const recordType = record.type
+        // const pointType = point.type
+        // const pointName = point.name
+        // const recordName = record.name
+        // if (pointName !== recordName) {
+        //   // console.warn(
+        //   //   `Point name does not match record name. Forget to regenerate points file?. Index: ${index}. ${pointType}.${pointName} !== ${recordType}.${recordName}`,
+        //   // )
+        // }
+        // if (recordType !== pointType) {
+        //   // console.warn(
+        //   //   `Record type does not match point type. Forget to regenerate points file?. Index: ${index}. ${pointType}.${pointName} !== ${recordType}.${recordName}`,
+        //   // )
+        // }
+        // const recordLayouts = record.layouts
+        // return {
+        //   ready: true,
+        //   point,
+        //   route,
+        //   polh: record.polh,
+        //   name: pointName || record.name,
+        //   type: pointType,
+        //   layouts: recordLayouts,
+        //   FC: record.FC,
+        // }
       }),
     )
-    const readyPoints = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+    const rawPoints = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+    const readyPoints = this.rawPointsCollectionToReadyPointsCollection(rawPoints)
     const errors = results.filter((r) => r.status === 'rejected').map((r) => r.reason)
     return { readyPoints, errors }
   }
@@ -476,10 +495,10 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }: {
     points:
       | Array<{ type: EndPointType; name: PointName; route?: string | undefined | AnyRoute; layouts?: string[] }>
-      | ReadyRoutedPointsCollection
-      | LazyRoutedPointsCollection
+      | ReadyPointsCollection
+      | NormalizedLazyPointsCollection
   }): PagesTreeSource => {
-    const pointsCollection = points // Points.toRoutedPointsCollection(points)
+    const pointsCollection = points
     const pages = pointsCollection.filter((p) => p.type === 'page' && p.layouts) as Array<{
       type: 'page'
       name: PointName
@@ -550,10 +569,10 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     points,
     pagesTreeSource,
   }: {
-    points: ReadyRoutedPointsCollection | LazyRoutedPointsCollection // | LazyPointsModule | ReadyPointsModule
+    points: ReadyPointsCollection | NormalizedLazyPointsCollection
     pagesTreeSource: PagesTreeSource
   }): PagesTree => {
-    const pointsCollection = points // this.toRoutedPointsCollection(points)
+    const pointsCollection = points
     const pagesTree: PagesTree = []
     for (const pagesTreeSourceRecord of pagesTreeSource) {
       const layoutRecord = pointsCollection.find((l) => l.type === 'layout' && l.name === pagesTreeSourceRecord.layout)
@@ -743,7 +762,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (pageLocation && pageLocation.hostname && this.hostname && pageLocation.hostname !== this.hostname) {
       return undefined
     }
-    for (const { route, point, type, name, FC, layouts } of this.collection as ReadyRoutedPointsCollection) {
+    for (const { route, point, type, name, FC, layouts } of this.collection) {
       if (pointType && type !== pointType) {
         continue
       }
@@ -805,7 +824,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   _getPagePointByHref = (
     href: string,
   ):
-    | { point: ReadyRoutedPointsCollectionRecord | LazyRoutedPointsCollectionRecord; location: ExactLocation }
+    | { point: ReadyPointsCollectionRecord | NormalizedLazyPointsCollectionRecord; location: ExactLocation }
     | undefined => {
     const location = this.routes._.getLocation(href)
     if (!location.exact || !location.route) {
@@ -850,61 +869,59 @@ export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | Lazy
 
 // collection
 
+export type ReadyPointsCollectionRecord = {
+  ready: true
+  type: EndPointType
+  name: PointName
+  route: AnyRoute | undefined
+  polh: boolean | number
+  point: EndPoint
+  FC: React.ComponentType | undefined
+  layouts?: string[]
+}
+export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
+
 export type LazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
   polh?: boolean | number
-  point: (() => Promise<EndPoint>) | EndPoint
+  point: (() => Promise<{ point: EndPoint }>) | { point: EndPoint }
   layouts?: string[]
 }
 export type LazyPointsCollection = LazyPointsCollectionRecord[]
-export type ReadyPointsCollectionRecord = {
-  type: EndPointType
-  name: PointName
-  route?: string | undefined
-  polh: boolean | number
-  point: EndPoint
-  FC?: React.ComponentType
-  layouts?: string[]
-}
-export type ReadyPointsCollection = ReadyPointsCollectionRecord[]
-export type LazyRoutedPointsCollectionRecord = {
+export type NormalizedLazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route: AnyRoute | UndefinedRoute
-  point: () => Promise<EndPoint>
+  point: (() => Promise<{ point: EndPoint }>) | { point: EndPoint }
   polh: boolean | number
-  FC?: React.LazyExoticComponent<React.ComponentType>
+  FC: React.LazyExoticComponent<React.ComponentType> | React.ComponentType | undefined
   layouts: string[]
 }
-export type LazyRoutedPointsCollection = LazyRoutedPointsCollectionRecord[]
-export type ReadyRoutedPointsCollectionRecord = {
-  type: EndPointType
-  name: PointName
-  route: AnyRoute | UndefinedRoute
-  point: EndPoint
-  polh: boolean | number
-  FC?: React.ComponentType
-  layouts: string[]
-}
-export type ReadyRoutedPointsCollection = ReadyRoutedPointsCollectionRecord[]
-export type RawPointsCollection = EndPoint[]
+export type NormalizedLazyPointsCollection = NormalizedLazyPointsCollectionRecord[]
 
-export type LazyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  _root_lazy: { point: RootPoint<TRequiredCtx>; type: 'root'; name: string }
-} & Record<string, LazyPointsCollectionRecord>
+export type RawPointsCollectionRecord = { point: EndPoint }
+export type RawPointsCollection = RawPointsCollectionRecord[]
+
+export type MixedPointsCollectionRecord =
+  | ReadyPointsCollectionRecord
+  | LazyPointsCollectionRecord
+  | NormalizedLazyPointsCollectionRecord
+  | RawPointsCollectionRecord
+export type MixedPointsCollection = MixedPointsCollectionRecord[]
+
 export type ReadyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  _root_ready: { point: RootPoint<TRequiredCtx> }
-} & Record<string, { point: EndPoint }>
+  _root: { point: RootPoint<TRequiredCtx> }
+} & Record<string, RawPointsCollectionRecord>
+export type LazyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
+  _root: { point: RootPoint<TRequiredCtx> }
+} & Record<string, LazyPointsCollectionRecord | RawPointsCollectionRecord>
 export type AnyPointsModule<TRequiredCtx extends RequiredCtx = any> =
-  | LazyPointsModule<TRequiredCtx>
   | ReadyPointsModule<TRequiredCtx>
+  | LazyPointsModule<TRequiredCtx>
 
 export type PointsModuleType = 'ready' | 'lazy'
-
-export type LazyPoints = PointsManager<false>
-export type ReadyPoints = PointsManager<true>
 
 // pages tree
 
@@ -936,9 +953,9 @@ export type PagesTree = PagesTreeRecord[]
 
 export type RequiredCtxByPointsModule<TPointsModule extends ReadyPointsModule | LazyPointsModule> =
   TPointsModule extends ReadyPointsModule
-    ? TPointsModule['_root_ready']['point']['Infer']['RequiredCtx']
+    ? TPointsModule['_root']['point']['Infer']['RequiredCtx']
     : TPointsModule extends LazyPointsModule
-      ? TPointsModule['_root_lazy']['point']['Infer']['RequiredCtx']
+      ? TPointsModule['_root']['point']['Infer']['RequiredCtx']
       : RequiredCtx
 export type RequiredCtxByPointsModules<
   T1 extends AnyPointsModule = AnyPointsModule,
