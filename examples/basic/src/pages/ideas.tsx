@@ -15,7 +15,7 @@ export const ideasPage = generalLayout
     // await new Promise((resolve) => setTimeout(resolve, 1000))
     return { ideas, ideasCount, env: ctx.env.NODE_ENV, nextCursor }
   })
-  .clientLoader(async ({ data }) => {
+  .loader(async ({ data }) => {
     return { ...data, amazing: '123', ideas: data.ideas.map((idea) => ({ ...idea, amazing: '234' })) }
   })
   .infiniteQuery({
@@ -32,7 +32,7 @@ export const ideasPage = generalLayout
   // .flatter('ideas')
   .page(
     (o) => {
-      return `${o.data.ideasCount} ideas x`
+      return `${o.data.original.pages[0].ideasCount} ideas x`
     },
     ({ data, query }) => {
       const [count, setCount] = useState(() => 0)

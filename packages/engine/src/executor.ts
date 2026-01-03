@@ -1,7 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0, type AnyLocation } from '@devp0nt/route0'
 import type {
-  AnyUnqueriedLoaderResult,
   AppComponent,
   Ctx,
   Data,
@@ -19,7 +18,6 @@ import type {
   PointsScope,
   QueryKey,
   RequiredCtx,
-  RootPoint,
   ServerExecuteAction,
   ServerExecuteResult,
   UndefinedData,
@@ -290,7 +288,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           ctx: this.requiredCtx ?? {},
           data: {},
-          head: [],
           error: Error0.from(inputError),
           status: 422,
           response: undefined,
@@ -316,13 +313,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            head: this.getCurrentPageHead({
-              point: this.pointsManager.root,
-              input: currentInputParsed,
-              inputRaw: input,
-              data: currentData,
-              error,
-            }),
             error,
             status: 404,
             response: currentResponse,
@@ -343,7 +333,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 return {
                   ctx: this.requiredCtx ?? {},
                   data: currentData,
-                  head: [],
                   error: Error0.from(safeParseResult.error),
                   status: 422,
                   response: currentResponse,
@@ -478,17 +467,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           ctx: currentCtx,
           data: currentData,
-          head:
-            // TODO: remove it when head will be fixed
-            point.type === 'page'
-              ? this.getCurrentPageHead({
-                  point: point as PagePoint,
-                  input: currentInputParsed,
-                  inputRaw: input,
-                  data: currentData,
-                  error: null,
-                })
-              : [],
           response: currentResponse,
           error: null,
           status: this.response0.status ?? 200,
@@ -504,14 +482,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
-            // TODO: remove it when head will be fixed
-            head: this.getCurrentPageHead({
-              point: (point ?? this.pointsManager.root) as PagePoint | RootPoint,
-              input: currentInputParsed,
-              inputRaw: input,
-              data: currentData,
-              error,
-            }),
             error: error0,
             status: error0.httpStatus ?? 500,
             response: currentResponse,
@@ -519,12 +489,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             effects: this.response0.effects,
           }
         } catch (error2) {
-          // in case if we have error in head resolver
           const error0 = Error0.from(error)
           return {
             ctx: currentCtx,
             data: currentData,
-            head: [],
             error: error0,
             status: error0.httpStatus ?? 500,
             response: currentResponse,
@@ -728,33 +696,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
     })
-  }
-
-  getCurrentPageHead({
-    point,
-    input,
-    inputRaw,
-    data,
-    error,
-  }: {
-    point: PagePoint | RootPoint
-    input: InputParsed
-    inputRaw: InputRaw
-    data: Data | UndefinedData
-    error: unknown
-  }): ResolvableHead[] {
-    if (!this.pageLocation) {
-      return []
-    }
-    const unqueriedLoaderResult = {
-      data: !point._hasClientLoader() ? data : undefined,
-      error: error ? Error0.from(error) : null,
-      input,
-      inputRaw,
-      location: this.pageLocation,
-      loading: point._hasClientLoader() && !error, // TODO:ASAP here check not hasClientLoader, but has clientOnlyData
-    } as AnyUnqueriedLoaderResult<any, any, any, any, any, any>
-    return point._executeHead(unqueriedLoaderResult)
   }
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {

@@ -3,6 +3,7 @@ import type {
   AnyLocation,
   AnyRoute,
   CallableRoute,
+  ExactLocation,
   Extended,
   FlatInputStringOnly,
   KnownLocation,
@@ -41,7 +42,6 @@ import type { SuperStoreDefinedItem } from './super-store.js'
 import { SuperStore } from './super-store.js'
 import type {
   AnyPoint,
-  AnyUnqueriedLoaderResult,
   AnyUseLoaderResult,
   AppendCtx,
   AppendCtxExposedKeys,
@@ -98,7 +98,7 @@ import type {
   LoadingHeadFn,
   MapperOutput,
   MergeInputSchemas,
-  MiddlewareHeadFn,
+  HeadFn,
   MountableComponent,
   MountableComponentProps,
   MountablePointType,
@@ -240,7 +240,7 @@ export class Point0<
   readonly _ssr: boolean
   readonly scope: PointsScope
   private readonly _attachedTo: PointsScope[]
-  private readonly _headFns: MiddlewareHeadFn[]
+  private readonly _headFns: HeadFn[]
   private readonly _defaultMutationOptions: UseMutationOptions | undefined
   private readonly _mutationOptions: UseMutationOptions | undefined
   private readonly _defaultQueryOptions: ExtraUseQueryOptions | undefined
@@ -424,7 +424,7 @@ export class Point0<
     _attachedTo: PointsScope[]
     _wrappers?: WrapperComponentType[]
     _outers?: OuterComponentType[]
-    _headFns?: MiddlewareHeadFn[]
+    _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions
     _mutationOptions?: UseMutationOptions
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions
@@ -767,7 +767,7 @@ export class Point0<
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | null
     _ssr?: boolean
-    _headFns?: MiddlewareHeadFn[]
+    _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
     _mutationOptions?: UseMutationOptions | undefined
     _defaultInfiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
@@ -1427,7 +1427,15 @@ export class Point0<
         > extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: ErrorHeadFn<TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
+            head: ErrorHeadFn<
+              TQueryResultType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TClientMapperOutput,
+              TInputSchema,
+              TRouteDefinition,
+              ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+            >,
             pageErrorComponent: ErrorComponentType<
               DestinationComponentType,
               TQueryResultType,
@@ -1466,7 +1474,7 @@ export class Point0<
     // })
     if (this._letsEndPointType === 'page') {
       const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
-      const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
+      const errorHeadFn: HeadFn | undefined = !headFn
         ? undefined
         : (options) => (!options.error ? {} : headFn(options as never))
       return this._continue({
@@ -1574,7 +1582,7 @@ export class Point0<
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageError',
     // })
-    const errorHeadFn: MiddlewareHeadFn | undefined = !headFn
+    const errorHeadFn: HeadFn | undefined = !headFn
       ? undefined
       : (options) => (!options.error ? {} : headFn(options as never))
     return this._continue({
@@ -1695,7 +1703,7 @@ export class Point0<
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageLoading',
     // })
-    const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
+    const loadingHeadFn: HeadFn | undefined = !headFn
       ? undefined
       : (options) => (!options.loading ? {} : headFn(options as never))
     return this._continue({
@@ -1779,7 +1787,15 @@ export class Point0<
         > extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: LoadingHeadFn<TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
+            head: LoadingHeadFn<
+              TQueryResultType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TClientMapperOutput,
+              TInputSchema,
+              TRouteDefinition,
+              ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+            >,
             pageLoadingComponent: LoadingComponentType<
               DestinationComponentType,
               TQueryResultType,
@@ -1815,7 +1831,7 @@ export class Point0<
     // })
     if (this._letsEndPointType === 'page') {
       const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
-      const loadingHeadFn: MiddlewareHeadFn | undefined = !headFn
+      const loadingHeadFn: HeadFn | undefined = !headFn
         ? undefined
         : (options) => (!options.error ? {} : headFn(options as never))
       return this._continue({
@@ -2572,7 +2588,7 @@ export class Point0<
   // }
 
   head(
-    head: MiddlewareHeadFn | ResolvableHead | string,
+    head: HeadFn | ResolvableHead | string,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -3026,7 +3042,15 @@ export class Point0<
         ]
       : [
           head:
-            | SuccessHeadFn<TServerLoaderOutput, TClientLoaderOutput, TRouteDefinition, TInputSchema>
+            | SuccessHeadFn<
+                TQueryResultType,
+                TServerLoaderOutput,
+                TClientLoaderOutput,
+                TClientMapperOutput,
+                TInputSchema,
+                TRouteDefinition,
+                ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+              >
             | ResolvableHead
             | string,
           page: PageComponent<
@@ -3072,7 +3096,7 @@ export class Point0<
       ),
     ]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
-    const successHeadFn: MiddlewareHeadFn | undefined = !headFn
+    const successHeadFn: HeadFn | undefined = !headFn
       ? undefined
       : // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         (options) => (!options.data || options.loading || options.error ? {} : headFn(options as never))
@@ -4067,10 +4091,12 @@ export class Point0<
   // }
 
   _executeHead(
-    unqueriedLoaderResult: AnyUnqueriedLoaderResult<
+    useLoaderResult: AnyUseLoaderResult<
       any,
+      TQueryResultType,
       TServerLoaderOutput,
       TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       AnyLocation
@@ -4078,7 +4104,7 @@ export class Point0<
   ): ResolvableHead[] {
     const head: ResolvableHead[] = []
     for (const headFn of this._headFns) {
-      const headFnResult = headFn(unqueriedLoaderResult as never)
+      const headFnResult = headFn(useLoaderResult as never)
       const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
       head.push(headFnResultResolvable)
     }
@@ -4086,16 +4112,18 @@ export class Point0<
   }
 
   private _useHead(
-    unqueriedLoaderResult: AnyUnqueriedLoaderResult<
+    unqueriedLoaderResult: AnyUseLoaderResult<
       any,
+      TQueryResultType,
       TServerLoaderOutput,
       TClientLoaderOutput,
+      TClientMapperOutput,
       TInputSchema,
       TRouteDefinition,
       AnyLocation
     >,
   ): void {
-    for (const headItem of this._executeHead(unqueriedLoaderResult)) {
+    for (const headItem of this._executeHead(unqueriedLoaderResult as never)) {
       useHead(headItem as never)
     }
   }
@@ -5980,7 +6008,7 @@ export class Point0<
       query: null,
     } as AnyUseLoaderResult<'success', any, any, any, any, any, any, any>
 
-    this._useHead(result)
+    this._useHead(result as never)
 
     return this._withOuters({
       children: this._withWrappers({
@@ -6034,14 +6062,7 @@ export class Point0<
       })
     }
 
-    this._useHead({ ...result, data: result.dataOrLastInfiteData } as AnyUnqueriedLoaderResult<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any
-    >)
+    this._useHead(result)
 
     if (result.error) {
       return this._withWrappers({

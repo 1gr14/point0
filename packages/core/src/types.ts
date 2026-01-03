@@ -781,69 +781,69 @@ export type UseLoaderResult<
           location: TLocation
         }
       : never
-export type UnqueriedLoaderResult<
-  TStatus extends 'pending' | 'error' | 'success',
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TLocation extends AnyLocation,
-> = TStatus extends 'success'
-  ? {
-      data: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
-      error: null
-      loading: false
-      input: InputParsed<TRouteDefinition, TInputSchema>
-      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-      location: TLocation
-    }
-  : TStatus extends 'pending'
-    ? {
-        data: undefined
-        error: null
-        loading: true
-        input: InputParsed<TRouteDefinition, TInputSchema>
-        inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-        location: TLocation
-      }
-    : TStatus extends 'error'
-      ? {
-          data: undefined
-          error: Error0
-          loading: false
-          input: InputParsed<TRouteDefinition, TInputSchema> | null
-          inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-          location: TLocation
-        }
-      : never
-export type AnyUnqueriedLoaderResult<
-  TStatus extends 'pending' | 'error' | 'success' = any,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TLocation extends AnyLocation = AnyLocation,
-> = IfAnyThenElse<
-  TStatus,
-  | UnqueriedLoaderResult<
-      'success',
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TInputSchema,
-      TRouteDefinition,
-      TLocation
-    >
-  | UnqueriedLoaderResult<'error', TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition, TLocation>
-  | UnqueriedLoaderResult<
-      'pending',
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TInputSchema,
-      TRouteDefinition,
-      TLocation
-    >,
-  UnqueriedLoaderResult<TStatus, TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition, TLocation>
->
+// export type UnqueriedLoaderResult<
+//   TStatus extends 'pending' | 'error' | 'success',
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TInputSchema extends InputSchema | UndefinedInputSchema,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TLocation extends AnyLocation,
+// > = TStatus extends 'success'
+//   ? {
+//       data: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
+//       error: null
+//       loading: false
+//       input: InputParsed<TRouteDefinition, TInputSchema>
+//       inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+//       location: TLocation
+//     }
+//   : TStatus extends 'pending'
+//     ? {
+//         data: undefined
+//         error: null
+//         loading: true
+//         input: InputParsed<TRouteDefinition, TInputSchema>
+//         inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+//         location: TLocation
+//       }
+//     : TStatus extends 'error'
+//       ? {
+//           data: undefined
+//           error: Error0
+//           loading: false
+//           input: InputParsed<TRouteDefinition, TInputSchema> | null
+//           inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+//           location: TLocation
+//         }
+//       : never
+// export type AnyUnqueriedLoaderResult<
+//   TStatus extends 'pending' | 'error' | 'success' = any,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = IfAnyThenElse<
+//   TStatus,
+//   | UnqueriedLoaderResult<
+//       'success',
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TInputSchema,
+//       TRouteDefinition,
+//       TLocation
+//     >
+//   | UnqueriedLoaderResult<'error', TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition, TLocation>
+//   | UnqueriedLoaderResult<
+//       'pending',
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TInputSchema,
+//       TRouteDefinition,
+//       TLocation
+//     >,
+//   UnqueriedLoaderResult<TStatus, TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition, TLocation>
+// >
 
 // endpoint components
 
@@ -1199,7 +1199,6 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
   | {
       ctx: TCtx
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-      head: ResolvableHead[]
       response: TServerLoaderOutput extends Response ? TServerLoaderOutput : undefined
       effects: ResponseEffects
       error: null
@@ -1209,7 +1208,6 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
   | {
       ctx: Ctx
       data: Data | UndefinedData
-      head: ResolvableHead[]
       response: Response | UndefinedResponse
       effects: ResponseEffects
       error: Error0
@@ -1393,54 +1391,107 @@ export type ClientMapperFn<
 // head
 
 export type SuccessHeadFn<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation = AnyLocation,
 > = (
-  options: MiddlewareHeadFnOptions<'success', TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
+  options: HeadFnOptions<
+    'success',
+    TQueryResultType,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TInputSchema,
+    TRouteDefinition,
+    TLocation
+  >,
 ) => ResolvableHead | string
 
 export type ErrorHeadFn<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation = AnyLocation,
 > = (
-  options: MiddlewareHeadFnOptions<'error', TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
+  options: HeadFnOptions<
+    'error',
+    TQueryResultType,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TInputSchema,
+    TRouteDefinition,
+    TLocation
+  >,
 ) => ResolvableHead | string
 
 export type LoadingHeadFn<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation = AnyLocation,
 > = (
-  options: MiddlewareHeadFnOptions<'pending', TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
+  options: HeadFnOptions<
+    'pending',
+    TQueryResultType,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TInputSchema,
+    TRouteDefinition,
+    TLocation
+  >,
 ) => ResolvableHead | string
 
-export type MiddlewareHeadFnOptions<
+export type HeadFnOptions<
   TStatus extends 'pending' | 'error' | 'success',
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-> = AnyUnqueriedLoaderResult<
-  TStatus,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TInputSchema,
-  TRouteDefinition,
-  ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
->
-export type MiddlewareHeadFn<
-  TStatus extends 'pending' | 'error' | 'success' = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation = AnyLocation,
+> = AnyUseLoaderResult<
+  TStatus,
+  TQueryResultType,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TClientMapperOutput,
+  TInputSchema,
+  TRouteDefinition,
+  TLocation
+>
+export type HeadFn<
+  TStatus extends 'pending' | 'error' | 'success' = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TLocation extends AnyLocation = AnyLocation,
 > = (
-  options: MiddlewareHeadFnOptions<TStatus, TServerLoaderOutput, TClientLoaderOutput, TInputSchema, TRouteDefinition>,
+  options: HeadFnOptions<
+    TStatus,
+    TQueryResultType,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TInputSchema,
+    TRouteDefinition,
+    TLocation
+  >,
 ) => ResolvableHead | string
 
 export type FetchOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TServerLoaderOutput

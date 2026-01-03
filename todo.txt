@@ -4,8 +4,6 @@
 
 REFACTORING 0
 
-we should while useHead on server just store last run heads array and retrieve it from SuperStore
-
 queryClient should be defined once in first root point no later
 
 
