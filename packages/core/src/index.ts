@@ -45,6 +45,8 @@ import type {
   AnyUseLoaderResult,
   AppendCtx,
   AppendCtxExposedKeys,
+  AssertNoForbiddenCtxExposedKeys,
+  AssertNoForbiddenMethodsIfNotSuitableStage,
   BasePoint,
   ClientExecuteAction,
   ClientExecuteDetailedResult,
@@ -99,18 +101,19 @@ import type {
   MiddlewareHeadFn,
   MountableComponent,
   MountableComponentProps,
+  MountablePointType,
   NiceBaseEndPoint,
   NiceComponentEndPoint,
   NiceEndPoint,
   NiceInfiniteQueryEndPoint,
   NiceLayoutEndPoint,
-  NiceStagePoint,
   NiceMutationEndPoint,
   NicePageEndPoint,
   NiceProviderEndPoint,
   NiceQueryEndPoint,
   NiceRootEndPoint,
   NiceRootStagePoint,
+  NiceStagePoint,
   OmitUnnamedKeys,
   OnPrefetchFn,
   OuterComponentType,
@@ -125,6 +128,7 @@ import type {
   QueryKey,
   QueryMode,
   QueryResultType,
+  RenderablePointType,
   RequiredCtx,
   RootPoint,
   RouteDefinition,
@@ -134,6 +138,7 @@ import type {
   ScrollPositionSetter,
   ServerExecuteAction,
   ShowError,
+  StagePointTypeOrNever,
   StandaloneSlashIfUndefined,
   SuccessHeadFn,
   UndefinedComponentComponent,
@@ -154,11 +159,6 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WrapperComponentType,
-  AssertNoForbiddenCtxExposedKeys,
-  StagePointTypeOrNever,
-  MountablePointType,
-  RenderablePointType,
-  AssertNoForbiddenMethodsIfNotSuitableStage,
 } from './types.js'
 import {
   blankDataTransformer,
@@ -3763,17 +3763,20 @@ export class Point0<
     if (this._outers.length === 0) {
       return children as Exclude<React.ReactNode, Promise<any>>
     }
-    return [...this._outers].reverse().reduce((acc, Outer, index) => {
-      return React.createElement(Outer, {
-        children: acc,
-        inputRaw,
-        input,
-        props,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }, children) as Exclude<React.ReactNode, Promise<any>>
+    return [...this._outers].reverse().reduce(
+      (acc, Outer, index) => {
+        return React.createElement(Outer, {
+          children: acc,
+          inputRaw,
+          input,
+          props,
+          location,
+          LoadingComponent,
+          ErrorComponent,
+        })
+      },
+      children as Exclude<React.ReactNode, Promise<any>>,
+    )
   }
 
   _hasServerLoader(): boolean {

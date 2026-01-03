@@ -115,7 +115,6 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   originalIndexHtml,
   content,
   executor,
-  head,
   env,
   domRootElementId,
   clientBundlePath,
@@ -123,7 +122,6 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   originalIndexHtml: string
   content?: TContent
   executor: Executor
-  head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   domRootElementId?: string
   clientBundlePath?: string
@@ -142,6 +140,8 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
     domRootElementId,
   })
+  // TODO:ASAP
+  const head: ResolvableHead[] = []
   if (head.length > 0) {
     html = await transformHtmlTemplate(createHead({ init: head }), html)
   }
@@ -226,7 +226,6 @@ export async function getReadableStreamWithWrapper({
 
 export async function renderReadableStream({
   App,
-  head,
   env,
   clientBundlePath,
   renderer = renderToReadableStream,
@@ -235,7 +234,6 @@ export async function renderReadableStream({
   executor,
 }: {
   App: AppComponent
-  head: ResolvableHead[]
   env?: Record<string, string | number | boolean | undefined>
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
@@ -246,7 +244,6 @@ export async function renderReadableStream({
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
     executor,
-    head,
     env,
     domRootElementId,
   })
@@ -267,7 +264,6 @@ export async function renderAppAsReadableStream({
   pageLocation: AnyLocation
   input: InputRaw
   env?: Record<string, string | number | boolean | undefined>
-  head: ResolvableHead[]
   renderer?: ReadableStreamRenderer
   clientBundlePath?: string
   originalIndexHtml: string

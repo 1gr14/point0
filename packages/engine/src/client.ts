@@ -835,13 +835,11 @@ Bun.serve({
 
   async renderAsReadableStream({
     executor,
-    executeResult,
     pagePoint,
     pageLocation,
     input,
   }: {
     executor: Executor
-    executeResult: ServerExecuteResult<any, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
@@ -849,7 +847,6 @@ Bun.serve({
     return await renderAppAsReadableStream({
       App: await this.getAppComponentForce(),
       executor,
-      head: executeResult.head,
       pagePoint,
       pageLocation,
       input,

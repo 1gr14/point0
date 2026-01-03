@@ -560,6 +560,12 @@ export type ShowError<Message extends string> = {
 //   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 //   { readonly __error__: Message } & never
 
+// Helper type to exclude async components (client-only, synchronous components)
+// type SyncComponentType<P = Record<string, never>> = React.ComponentClass<P> | ((props: P) => React.ReactElement | null)
+
+// Helper type to exclude Promise types from ReactNode (client-only, synchronous ReactNode)
+// export type SyncReactNode = Exclude<React.ReactNode, Promise<any>>
+
 // fetching and queries
 
 export type ClientExecuteDetailedResult<
@@ -1117,10 +1123,11 @@ export type OuterComponentProps<
   input: InputParsed<TRouteDefinition, TInputSchema>
   props: FinalProps<TProps>
   location: TLocation
-  children: React.ReactNode
+  children: Exclude<React.ReactNode, Promise<any>>
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
 }
+
 export type OuterComponentType<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,

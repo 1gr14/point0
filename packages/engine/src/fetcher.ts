@@ -315,24 +315,14 @@ export class Fetcher {
               throw new Error('Page Critical Error: Not Found')
             }
             const input = await this.getPointInput({ suitable, task, request })
-            const executeResult = await executor.execute({
-              point: suitable.point,
-              input,
-              withLayouts: true,
-            })
-            if (executeResult.error) {
-              this.server.logger.error(executeResult.error, meta)
-            }
             const readableStream = await relatedClient.renderAsReadableStream({
               executor,
-              executeResult,
               pagePoint: suitable.point as PagePoint | undefined,
               pageLocation: suitable.pageLocation,
               input,
             })
             return new Response(readableStream, {
               headers: { 'Content-Type': 'text/html' },
-              status: executeResult.status,
             })
           } catch (error) {
             // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error

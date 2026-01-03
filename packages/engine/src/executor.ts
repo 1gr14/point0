@@ -299,7 +299,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentData: UnknownData | UndefinedData = undefined
       let currentResponse: Response | undefined = undefined
       let currentOutput: LoaderOutput | UndefinedLoaderOutput = currentData
-      let currentStatus = 200
       let currentInputParsed: InputParsed = {}
       let currentInputSchema: InputSchema | undefined = undefined
 
@@ -402,7 +401,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               ) as ServerExecuteActionWithOutput<'loader'> | undefined
               if (ex) {
                 if (Array.isArray(ex.output)) {
-                  currentStatus = ex.output[0]
+                  this.response0.set.status(ex.output[0])
                   if (ex.output[1] instanceof Response) {
                     currentResponse = ex.output[1]
                     currentOutput = ex.output[1]
@@ -432,7 +431,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   point,
                 })
                 if (Array.isArray(result)) {
-                  currentStatus = result[0]
+                  this.response0.set.status(result[0])
                   if (result[1] instanceof Response) {
                     currentResponse = result[1]
                     currentOutput = result[1]
@@ -486,7 +485,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               : [],
           response: currentResponse,
           error: null,
-          status: currentStatus,
+          status: this.response0.status ?? 200,
           output: currentOutput,
           effects: this.response0.effects,
         }
