@@ -35,7 +35,8 @@ import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from 
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
-import type { ResolvableHead } from 'unhead/types'
+import type { ResolvableHead, Unhead } from 'unhead/types'
+import { createHead } from '@unhead/react/server'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   request: Request0
@@ -45,10 +46,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverGlobalState: {
+    __POINT0_REQUEST0__: Request0
+    __POINT0_RESPONSE0__: Response0
     __POINT0_SCOPE__: PointsScope
     __POINT0_QUERY_CLIENT__: QueryClient
     __POINT0_SSR_LOCATION__: AnyLocation | undefined
     __POINT0_CURRENT_LOCATION__: AnyLocation
+    __POINT0_UNHEAD_HEAD__: Unhead<ResolvableHead>
   }
 
   private constructor({
@@ -72,6 +76,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_QUERY_CLIENT__: QueryClient
       __POINT0_SSR_LOCATION__: AnyLocation | undefined
       __POINT0_CURRENT_LOCATION__: AnyLocation
+      __POINT0_UNHEAD_HEAD__: Unhead<ResolvableHead>
     }
     response0: Response0
   }) {
@@ -118,6 +123,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,
           __POINT0_CURRENT_LOCATION__: currentLocation,
+          __POINT0_UNHEAD_HEAD__: createHead(),
           ...serverGlobalState,
         },
       })

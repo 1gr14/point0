@@ -4,10 +4,9 @@
 
 REFACTORING 0
 
-
-we do not need execute on ssr, just lets follow queryKeys
 we should while useHead on server just store last run heads array and retrieve it from SuperStore
 
+queryClient should be defined once in first root point no later
 
 
 
@@ -38,6 +37,7 @@ scopes is array
 but scope is still just string
 walker add to lazy points root {scope}, and self scope is still _root, other roots just points
 remove .attach things
+queryClient should be defined once in first root point no later (check if this root hash previous root, then throw error)
 
 ENVIRONMENT
 Добавить изСср он будет тру только когда мы именно рендерим компоненты
@@ -62,6 +62,9 @@ binary, just throw error if some engine distdirs not inside firstlevel server di
 Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
 compiler options to engine, via ({customer,scope,nodeEnv}) => options
 fix compiler option name for node_modules prefixes
+
+REFACTORING 0
+spearate core files, do not reexport evrything from index
 
 
 

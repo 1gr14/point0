@@ -458,7 +458,6 @@ export const createViteDevServer = async ({
   customer: 'client' | 'server'
   hmrPort: number | null
   env?: EngineOptionsEnvParsed
-  // TODO:ASAP or respect prune enabling everywhere or remove it from everywhere
 }): Promise<ViteDevServer> => {
   return await pruneItWhenPoint0ServerBuildInProgress(async () => {
     if (!viteConfig) {

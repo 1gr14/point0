@@ -1,11 +1,10 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { AppComponent, InputRaw, PagePoint } from '@point0/core'
 import { SuperStore } from '@point0/core'
-import { createHead, transformHtmlTemplate } from '@unhead/react/server'
+import { transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
 import { renderToReadableStream } from 'react-dom/server'
-import type { ResolvableHead } from 'unhead/types'
 import type { Executor } from './executor.js'
 
 export type StaticRenderer = (reactNode: React.ReactNode) => string
@@ -140,11 +139,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
     domRootElementId,
   })
-  // TODO:ASAP
-  const head: ResolvableHead[] = []
-  if (head.length > 0) {
-    html = await transformHtmlTemplate(createHead({ init: head }), html)
-  }
+  html = await transformHtmlTemplate(executor.serverGlobalState.__POINT0_UNHEAD_HEAD__, html)
   html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
     content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
