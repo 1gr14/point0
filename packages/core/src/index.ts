@@ -87,7 +87,6 @@ import type {
   InputRawMaybeOptional,
   InputSchema,
   InputSchemaZod,
-  // HasForbiddenCtxExposedKeys,
   IsInputOptional,
   LayoutComponent,
   LayoutPoint,
@@ -1979,23 +1978,6 @@ export class Point0<
     TProps
   >
   ctx<TAppendCtx extends Ctx>(
-    ctx: TAppendCtx,
-  ): NiceMiddlePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    AppendCtx<TCtx, TAppendCtx>,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  >
-  ctx<TAppendCtx extends Ctx>(
     ctx: [TAppendCtx] & AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>>, // ctx: HasForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> extends true
   ): NiceMiddlePoint<
     TPointType,
@@ -2012,22 +1994,9 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-
-  ctx<
-    TAppendCtx extends Ctx,
-    TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>,
-    // _Assert extends true = AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
-  >(
-    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>, //   // ctx: HasForbiddenCtxExposedKeys<TAppendCtxExposedKeys> extends true
-    //   //       ShowError<`Forbidden to expose ctx keys: request, input, inputRaw, data, set, execute, ctx`>
-  ) //   //   ? [TAppendCtx, ...TAppendCtxExposedKeys[]] &
-  //   //   : [TAppendCtx, ...TAppendCtxExposedKeys[]],
-  //     // ...args: HasForbiddenCtxExposedKeys<TAppendCtxExposedKeys> extends true
-  // ) //   ? [ShowError<`Forbidden to expose ctx keys: request, input, inputRaw, data, set, execute, ctx`>]
-  // //   : never[]
-
-  // _Assert: AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
-  : NiceMiddlePoint<
+  ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
+    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
+  ): NiceMiddlePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2042,10 +2011,24 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  ctx(
-    ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]],
-    // ...args: [ShowError<`Forbidden to expose ctx keys: request, input, inputRaw, data, set, execute, ctx`>] | never[]
-  ) {
+  ctx<TAppendCtx extends Ctx>(
+    ctx: TAppendCtx,
+  ): NiceMiddlePoint<
+    TPointType,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    AppendCtx<TCtx, TAppendCtx>,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
     const ctxFn =
       typeof ctxOrFn === 'undefined' // in case if we prune ctx for client customer
         ? () => ({})
@@ -4136,7 +4119,7 @@ export class Point0<
     }, [query.data])
     const result = React.useMemo(() => {
       const dataOrLastInfiteData =
-        this._queryResultType === 'infiniteQuery' ? (query.data?.pages as any)?.at(-1) : query.data
+        this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(-1) : query.data
       return {
         data: mappedData,
         loading: query.isLoading,

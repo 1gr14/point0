@@ -15,7 +15,7 @@ describe('idea page', () => {
     const result = await Executor.execute({
       point: ideaPage.point,
       input: { id: '1' },
-      requiredCtx: { request: new Request('/') },
+      requiredCtx: { zxc: 123 },
     })
     expect(result.status).toBe(202)
   })
@@ -25,7 +25,7 @@ describe('idea page', () => {
       // TODO: allow guess request by point and input
       point: ideaPage.point,
       input: { id: '1' },
-      requiredCtx: { request: new Request('/') },
+      requiredCtx: { zxc: 123 },
     })
     expect(result.status).toBe(202)
   })

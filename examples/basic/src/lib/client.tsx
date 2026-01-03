@@ -8,7 +8,7 @@ export const queryClient = Point0.defineQueryClient(() => new QueryClient())
 export const client = Point0.create('client')
   .ssr(true)
   .transformer(superjson)
-  .requireCtx<{ request: Request }>()
+  .requireCtx<{ zxc: number }>()
   // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
     prisma,

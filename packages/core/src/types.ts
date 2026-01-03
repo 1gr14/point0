@@ -40,12 +40,12 @@ export type UndefinedPointsScope = undefined
 export type UndefinedRoute = undefined
 export type RouteDefinition = string
 export type UndefinedRouteDefinition = undefined
-export type EmptyCtx = Record<string, unknown> // TODO: use UndefinedCtx instead
+export type EmptyCtx = Record<never, never>
 export type UnknownCtx = Record<string, unknown>
 export type UndefinedCtx = undefined
 export type RequiredCtx = UnknownCtx | UndefinedCtx
 export type Ctx = UnknownCtx | EmptyCtx
-export type EmptyData = Record<string, unknown> // TODO: use UndefinedData instead
+export type EmptyData = Record<never, never>
 export type UnknownData = Record<string, unknown>
 export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
@@ -63,8 +63,7 @@ export type UndefinedQueryResultType = undefined
 
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type EmptyProps = {}
+export type EmptyProps = Record<never, never>
 export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends UndefinedProps ? EmptyProps : TProps
 
 // export type QueryKey = readonly [string, ...string[]]
@@ -356,8 +355,7 @@ export type ExposedCtx<TCtx extends Ctx, TCtxExposedKeys extends CtxExposedKeys 
     }
   : UndefinedCtx
 export type ExposedCtxOrEmpty<TCtx extends Ctx, TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys> =
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  ExposedCtx<TCtx, TCtxExposedKeys> extends undefined ? {} : ExposedCtx<TCtx, TCtxExposedKeys>
+  ExposedCtx<TCtx, TCtxExposedKeys> extends undefined ? Record<never, never> : ExposedCtx<TCtx, TCtxExposedKeys>
 export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
@@ -968,8 +966,7 @@ export type MountableComponentProps<
     ? { children: React.ReactNode }
     : TWithChildren extends null
       ? { children?: React.ReactNode }
-      : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-        {})
+      : Record<never, never>)
 export type MountableComponent<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,

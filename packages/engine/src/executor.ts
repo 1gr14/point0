@@ -291,10 +291,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       }
 
-      let currentCtx: Ctx = this.requiredCtx ?? {}
+      let currentCtx: UnknownCtx = this.requiredCtx ?? {}
       let currentCtxExposedKeys: string[] = []
-      let currentCtxExposed: Ctx = {}
-      let currentData: Data | UndefinedData = undefined
+      let currentCtxExposed: UnknownCtx = {}
+      let currentData: UnknownData | UndefinedData = undefined
       let currentResponse: Response | undefined = undefined
       let currentOutput: LoaderOutput | UndefinedLoaderOutput = currentData
       let currentStatus = 200
