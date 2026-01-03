@@ -155,6 +155,9 @@ import type {
   UseQueryOptions,
   WrapperComponentType,
   AssertNoForbiddenCtxExposedKeys,
+  StagePointTypeOrNever,
+  MountablePointType,
+  RenderablePointType,
 } from './types.js'
 import {
   blankDataTransformer,
@@ -1091,7 +1094,7 @@ export class Point0<
   // root settings
 
   requireCtx<TExtraRequiredCtx extends Ctx>(): NiceRootStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     'root',
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
     PrependCtx<TCtx, TExtraRequiredCtx>,
@@ -1106,7 +1109,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      TPointType,
+      StagePointTypeOrNever<TPointType>,
       'root',
       AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
       PrependCtx<TCtx, TExtraRequiredCtx>,
@@ -1125,7 +1128,7 @@ export class Point0<
   serverurl(
     serverurl: string,
   ): NiceRootStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     'root',
     TRequiredCtx,
     TCtx,
@@ -1140,7 +1143,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      TPointType,
+      StagePointTypeOrNever<TPointType>,
       'root',
       TRequiredCtx,
       TCtx,
@@ -1161,7 +1164,7 @@ export class Point0<
   baseurl(
     baseurl: string,
   ): NiceRootStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     'root',
     TRequiredCtx,
     TCtx,
@@ -1176,7 +1179,7 @@ export class Point0<
     TProps
   > {
     return this._continue<
-      TPointType,
+      StagePointTypeOrNever<TPointType>,
       'root',
       TRequiredCtx,
       TCtx,
@@ -1221,7 +1224,7 @@ export class Point0<
   ssr(
     ssr: boolean,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1243,7 +1246,7 @@ export class Point0<
   mutationOptions(
     mutationOptions: UseMutationOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1265,7 +1268,7 @@ export class Point0<
   queryOptions(
     queryOptions: ExtraUseQueryOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1287,7 +1290,7 @@ export class Point0<
   infiniteQueryOptions(
     infiniteQueryOptions: PartialUseInfiniteQueryOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1309,7 +1312,7 @@ export class Point0<
   pageQueryOptions(
     pageQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1331,7 +1334,7 @@ export class Point0<
   componentQueryOptions(
     componentQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1353,7 +1356,7 @@ export class Point0<
   providerQueryOptions(
     providerQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1375,7 +1378,7 @@ export class Point0<
   layoutQueryOptions(
     layoutQueryOptions: UseQueryOptions,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1397,7 +1400,7 @@ export class Point0<
   fetchOptions(
     fetchOptionsOrFn: FetchOptionsOrFn,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1439,7 +1442,7 @@ export class Point0<
           >
       : ErrorComponentType,
   ): NiceStagePoint<
-    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderStage' : TPointType,
+    TLetsEndPointType extends MountablePointType ? 'renderStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1477,7 +1480,7 @@ export class Point0<
           ]
       : never
   ): NiceStagePoint<
-    TLetsEndPointType extends 'page' ? 'renderStage' : TPointType,
+    TLetsEndPointType extends 'page' ? 'renderStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1529,7 +1532,7 @@ export class Point0<
   layoutError(
     layoutErrorComponent: ErrorComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1556,7 +1559,7 @@ export class Point0<
     head: ErrorHeadFn,
     pageErrorComponent: ErrorComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1573,7 +1576,7 @@ export class Point0<
   pageError(
     pageErrorComponent: ErrorComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1590,7 +1593,7 @@ export class Point0<
   pageError(
     ...args: [head: ErrorHeadFn, pageErrorComponent: ErrorComponentType] | [pageErrorComponent: ErrorComponentType]
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1622,7 +1625,7 @@ export class Point0<
   componentError(
     componentErrorComponent: ErrorComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1648,7 +1651,7 @@ export class Point0<
   layoutLoading(
     layoutLoadingComponent: LoadingComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1675,7 +1678,7 @@ export class Point0<
     head: LoadingHeadFn,
     pageLoadingComponent: LoadingComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1692,7 +1695,7 @@ export class Point0<
   pageLoading(
     pageLoadingComponent: LoadingComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1711,7 +1714,7 @@ export class Point0<
       | [head: LoadingHeadFn, pageLoadingComponent: LoadingComponentType]
       | [pageLoadingComponent: LoadingComponentType]
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1743,7 +1746,7 @@ export class Point0<
   componentLoading(
     componentLoadingComponent: LoadingComponentType,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1771,7 +1774,7 @@ export class Point0<
   }
 
   loading(
-    pageLoadingComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
+    pageLoadingComponent: TLetsEndPointType extends RenderablePointType
       ? FinalLoaderMappedOutput<
           TQueryResultType,
           TServerLoaderOutput,
@@ -1791,7 +1794,7 @@ export class Point0<
           >
       : LoadingComponentType,
   ): NiceStagePoint<
-    TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderStage' : TPointType,
+    TLetsEndPointType extends RenderablePointType ? 'renderStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1829,7 +1832,7 @@ export class Point0<
           ]
       : never
   ): NiceStagePoint<
-    TLetsEndPointType extends 'page' ? 'renderStage' : TPointType,
+    TLetsEndPointType extends 'page' ? 'renderStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1876,7 +1879,7 @@ export class Point0<
   }
 
   wrapper(
-    wrapperComponent: TLetsEndPointType extends 'page' | 'layout' | 'component'
+    wrapperComponent: TLetsEndPointType extends RenderablePointType
       ? FinalLoaderMappedOutput<
           TQueryResultType,
           TServerLoaderOutput,
@@ -1958,12 +1961,267 @@ export class Point0<
     }) as never
   }
 
+  // scroll restoration
+
+  scrollPosition(
+    documentElementGetter: () => HTMLElement | null,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  scrollPosition(
+    selector: string,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  scrollPosition(
+    getter: ScrollPositionGetter,
+    setter: ScrollPositionSetter,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
+  scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter]) {
+    const { getter, setter } = (() => {
+      if (args.length === 2) {
+        return { getter: args[0], setter: args[1] }
+      }
+      if (typeof args[0] === 'function') {
+        return {
+          getter: getWindowScrollPositionGetterByElementGetter(args[0]),
+          setter: getWindowScrollPositionSetterByElementGetter(args[0]),
+        }
+      }
+      if (typeof args[0] === 'string') {
+        return {
+          getter: getWindowScrollPositionGetterBySelector(args[0]),
+          setter: getWindowScrollPositionSetterBySelector(args[0]),
+        }
+      }
+      throw new Error('Invalid arguments for scrollPosition')
+    })()
+    return this._continue<
+      TPointType,
+      EndPointTypeOrNever<TLetsEndPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TQueryResultType,
+      TProps
+    >({
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
+      _scrollPositionGetter: getter ?? this._scrollPositionGetter,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
+      _scrollPositionSetter: setter ?? this._scrollPositionSetter,
+    }) as never
+  }
+
+  scrollRestore(
+    // true - restore, false - do not restore, null - set {x: 0, y: 0}
+    policy: ScrollPositionRestorePolicy | boolean | null,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      EndPointTypeOrNever<TLetsEndPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TQueryResultType,
+      TProps
+    >({
+      _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy,
+    }) as never
+  }
+
+  private static readonly _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> =
+    []
+
+  // prefetch mode
+
+  prefetchPolicy(
+    policy: PagePrefetchPolicy,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      EndPointTypeOrNever<TLetsEndPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TQueryResultType,
+      TProps
+    >({
+      _prefetchPolicy: policy,
+    }) as never
+  }
+
+  onPrefetch(
+    fn: OnPrefetchFn,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue<
+      TPointType,
+      EndPointTypeOrNever<TLetsEndPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TRouteDefinition,
+      TPrevRouteDefinition,
+      TInputSchema,
+      TQueryResultType,
+      TProps
+    >({
+      _onPrefetchFns: [...this._onPrefetchFns, fn],
+    }) as never
+  }
+
+  prefetchOnHover(
+    shouldBePrefetchedOnLinkHover: boolean | number,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      shouldBePrefetchedOnLinkHover,
+    }) as never
+  }
+
+  // transformer
+
+  transformer(
+    transformer: DataTransformer,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _tranformer: toExtendedTransformer(transformer),
+    }) as never
+  }
+
   // middlewares
 
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TRouteDefinition, TInputSchema, Ctx>>(
     ctxFn: TCtxFn & AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, InferCtxFnOutputCtxAppend<TCtxFn>>,
@@ -1980,7 +2238,7 @@ export class Point0<
   ctx<TAppendCtx extends Ctx>(
     ctx: [TAppendCtx] & AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>>, // ctx: HasForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> extends true
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
@@ -1997,7 +2255,7 @@ export class Point0<
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
@@ -2014,7 +2272,7 @@ export class Point0<
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     AppendCtx<TCtx, TAppendCtx>,
@@ -2053,7 +2311,7 @@ export class Point0<
       TNewServerLoaderOutput
     >,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2070,7 +2328,7 @@ export class Point0<
   loader(
     enableServerLoader: false,
   ): NiceStagePoint<
-    TPointType,
+    'coreStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2085,7 +2343,7 @@ export class Point0<
     TProps
   >
   loader(enableServerLoader: true): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2153,7 +2411,7 @@ export class Point0<
   clientLoader(
     enableClientLoader: false,
   ): NiceStagePoint<
-    TPointType,
+    'coreStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2175,7 +2433,7 @@ export class Point0<
   >
   // client loader true means that we do not want server do ssr here
   clientLoader(enableClientLoader: true): NiceStagePoint<
-    TPointType,
+    'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2251,7 +2509,7 @@ export class Point0<
   mapper(
     enableMapper: false,
   ): NiceStagePoint<
-    TPointType,
+    TClientLoaderOutput extends LoaderOutput ? 'clientStage' : 'coreStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2344,7 +2602,7 @@ export class Point0<
   head(
     head: MiddlewareHeadFn | ResolvableHead | string,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2370,7 +2628,7 @@ export class Point0<
   }
 
   props<TNewProps extends Props>(): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2395,7 +2653,7 @@ export class Point0<
       ? TNewInputSchema
       : ShowError<`Provided schema is not assignable to previous input schema`> & TNewInputSchema,
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -3213,7 +3471,7 @@ export class Point0<
           >,
         ]
   ): NiceStagePoint<
-    TPointType,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -3288,7 +3546,7 @@ export class Point0<
         TProps
       >
     : NiceStagePoint<
-        TPointType,
+        StagePointTypeOrNever<TPointType>,
         EndPointTypeOrNever<TLetsEndPointType>,
         TRequiredCtx,
         TCtx,
@@ -6554,30 +6812,6 @@ export class Point0<
 
   static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
 
-  // transformer
-
-  transformer(
-    transformer: DataTransformer,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue({
-      _tranformer: toExtendedTransformer(transformer),
-    }) as never
-  }
-
   // client-server helpers
 
   static isClient = ClientServerHelpers.isClient
@@ -6590,237 +6824,6 @@ export class Point0<
   static callServer = ClientServerHelpers.callServer.bind(ClientServerHelpers)
   static callClient = ClientServerHelpers.callClient.bind(ClientServerHelpers)
   static callClientElseServer = ClientServerHelpers.callClientElseServer.bind(ClientServerHelpers)
-
-  // scroll restoration
-
-  scrollPosition(
-    documentElementGetter: () => HTMLElement | null,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  >
-  scrollPosition(
-    selector: string,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  >
-  scrollPosition(
-    getter: ScrollPositionGetter,
-    setter: ScrollPositionSetter,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  >
-  scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter]) {
-    const { getter, setter } = (() => {
-      if (args.length === 2) {
-        return { getter: args[0], setter: args[1] }
-      }
-      if (typeof args[0] === 'function') {
-        return {
-          getter: getWindowScrollPositionGetterByElementGetter(args[0]),
-          setter: getWindowScrollPositionSetterByElementGetter(args[0]),
-        }
-      }
-      if (typeof args[0] === 'string') {
-        return {
-          getter: getWindowScrollPositionGetterBySelector(args[0]),
-          setter: getWindowScrollPositionSetterBySelector(args[0]),
-        }
-      }
-      throw new Error('Invalid arguments for scrollPosition')
-    })()
-    return this._continue<
-      TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
-      _scrollPositionGetter: getter ?? this._scrollPositionGetter,
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
-      _scrollPositionSetter: setter ?? this._scrollPositionSetter,
-    }) as never
-  }
-
-  scrollRestore(
-    // true - restore, false - do not restore, null - set {x: 0, y: 0}
-    policy: ScrollPositionRestorePolicy | boolean | null,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue<
-      TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({
-      _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy,
-    }) as never
-  }
-
-  private static readonly _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> =
-    []
-
-  // prefetch mode
-
-  prefetchPolicy(
-    policy: PagePrefetchPolicy,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue<
-      TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({
-      _prefetchPolicy: policy,
-    }) as never
-  }
-
-  onPrefetch(
-    fn: OnPrefetchFn,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue<
-      TPointType,
-      EndPointTypeOrNever<TLetsEndPointType>,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >({
-      _onPrefetchFns: [...this._onPrefetchFns, fn],
-    }) as never
-  }
-
-  prefetchOnHover(
-    shouldBePrefetchedOnLinkHover: boolean | number,
-  ): NiceStagePoint<
-    TPointType,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue({
-      shouldBePrefetchedOnLinkHover,
-    }) as never
-  }
 }
 
 export * from './cookies-store.js'

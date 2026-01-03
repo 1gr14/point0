@@ -148,13 +148,18 @@ export type PointType =
 export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'renderStage'
 export type EndPointType = Exclude<PointType, StagePointType>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
+export type RenderablePointType = 'page' | 'component' | 'layout'
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
 export type EndPointTypeOrNever<TPointType extends PointType | UndefinedEndPointType> = TPointType extends EndPointType
   ? TPointType
   : never
-export type EndPointTypeOrUndefinedOrNever<TPointType extends PointType | UndefinedEndPointType> =
-  TPointType extends EndPointType ? TPointType : TPointType extends UndefinedEndPointType ? undefined : never
+// export type EndPointTypeOrUndefinedOrNever<TPointType extends PointType | UndefinedEndPointType> =
+//   TPointType extends EndPointType ? TPointType : TPointType extends UndefinedEndPointType ? undefined : never
+export type StagePointTypeOrNever<TPointType extends PointType | UndefinedEndPointType> =
+  TPointType extends StagePointType ? TPointType : never
+// export type StagePointTypeOrUndefinedOrNever<TPointType extends PointType | UndefinedEndPointType> =
+//   TPointType extends StagePointType ? TPointType : TPointType extends UndefinedEndPointType ? undefined : never
 
 export type AnyPoint<
   TPointType extends PointType = PointType,
@@ -1479,7 +1484,7 @@ export type CutMethodsIfNotSuitableStage<
         : never
 
 export type NiceRootStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'root',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1550,7 +1555,7 @@ export type NiceRootStagePoint<
 >
 
 export type NiceBaseStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'base',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1616,7 +1621,7 @@ export type NiceBaseStagePoint<
 >
 
 export type NicePageStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'page',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1675,7 +1680,7 @@ export type NicePageStagePoint<
 >
 
 export type NiceComponentStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'component',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1729,7 +1734,7 @@ export type NiceComponentStagePoint<
 >
 
 export type NiceQueryStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'query',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1775,7 +1780,7 @@ export type NiceQueryStagePoint<
 >
 
 export type NiceInfiniteQueryStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'infiniteQuery',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1822,7 +1827,7 @@ export type NiceInfiniteQueryStagePoint<
 >
 
 export type NiceMutationStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'mutation',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1868,7 +1873,7 @@ export type NiceMutationStagePoint<
 >
 
 export type NiceLayoutStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'layout',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1932,7 +1937,7 @@ export type NiceLayoutStagePoint<
 >
 
 export type NiceProviderStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends 'provider',
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -1984,7 +1989,7 @@ export type NiceProviderStagePoint<
 >
 
 export type NiceStagePoint<
-  TPointType extends PointType,
+  TPointType extends StagePointType,
   TLetsEndPointType extends EndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
@@ -2147,7 +2152,7 @@ export type NiceStagePoint<
 
 export type NiceRootEndPoint<
   TPointType extends 'root',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2180,7 +2185,7 @@ export type NiceRootEndPoint<
 
 export type NiceBaseEndPoint<
   TPointType extends 'base',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2255,7 +2260,7 @@ export type WithInputSchemaLiteralIfExists<
 
 export type NicePageEndPoint<
   TPointType extends 'page',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2297,7 +2302,7 @@ export type NicePageEndPoint<
 
 export type NiceComponentEndPoint<
   TPointType extends 'component',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2338,7 +2343,7 @@ export type NiceComponentEndPoint<
 
 export type NiceLayoutEndPoint<
   TPointType extends 'layout',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2380,7 +2385,7 @@ export type NiceLayoutEndPoint<
 
 export type NiceQueryEndPoint<
   TPointType extends 'query',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2421,7 +2426,7 @@ export type NiceQueryEndPoint<
 
 export type NiceInfiniteQueryEndPoint<
   TPointType extends 'infiniteQuery',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2462,7 +2467,7 @@ export type NiceInfiniteQueryEndPoint<
 
 export type NiceMutationEndPoint<
   TPointType extends 'mutation',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2501,7 +2506,7 @@ export type NiceMutationEndPoint<
 
 export type NiceProviderEndPoint<
   TPointType extends 'provider',
-  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
