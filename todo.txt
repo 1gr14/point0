@@ -4,10 +4,7 @@
 
 REFACTORING 0
 
-useLoader and fetchDetailed to nice endpoints
 provide point itself to loaders and ctx fns
-return back type property to NicePoint
-in Nice point.point also lets store nice type, so hide everything from user except required for us
 on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware
 response should switch to next stage if provided
 
@@ -16,6 +13,7 @@ fix what can be .lets from each point type, restrict where lets can be used, lik
 after .outer() we come to 'outerStage' when props() can not be set any more
 
 normalize points collection things, make it any style, with tests
+in Nice point.point also lets store nice type, so hide everything from user except required for us
 Укоротить до линкпрефетч
 
 SuperStore.predefined ← ssrLocation, etc

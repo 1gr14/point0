@@ -1476,7 +1476,7 @@ export type CutMethodsIfNotSuitableStage<
         ? Exclude<TLiteral, 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props'>
         : never
 
-export type NiceRootMiddlePoint<
+export type NiceRootStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'root',
   TRequiredCtx extends RequiredCtx,
@@ -1542,11 +1542,12 @@ export type NiceRootMiddlePoint<
     | 'onPrefetch'
     | 'prefetchOnHover'
     | 'point'
+    | 'type'
     | 'Infer'
   >
 >
 
-export type NiceBaseMiddlePoint<
+export type NiceBaseStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'base',
   TRequiredCtx extends RequiredCtx,
@@ -1607,11 +1608,12 @@ export type NiceBaseMiddlePoint<
     | 'onPrefetch'
     | 'prefetchOnHover'
     | 'point'
+    | 'type'
     | 'Infer'
   >
 >
 
-export type NicePageMiddlePoint<
+export type NicePageStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'page',
   TRequiredCtx extends RequiredCtx,
@@ -1663,13 +1665,14 @@ export type NicePageMiddlePoint<
     | 'onPrefetch'
     | 'prefetchOnHover'
     | 'point'
+    | 'type'
     | 'Infer'
     | 'query'
     | 'infiniteQuery'
   >
 >
 
-export type NiceComponentMiddlePoint<
+export type NiceComponentStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'component',
   TRequiredCtx extends RequiredCtx,
@@ -1716,13 +1719,14 @@ export type NiceComponentMiddlePoint<
     | 'props'
     | 'onPrefetch'
     | 'point'
+    | 'type'
     | 'Infer'
     | 'query'
     | 'infiniteQuery'
   >
 >
 
-export type NiceQueryMiddlePoint<
+export type NiceQueryStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'query',
   TRequiredCtx extends RequiredCtx,
@@ -1754,11 +1758,21 @@ export type NiceQueryMiddlePoint<
   >,
   CutMethodsIfNotSuitableStage<
     TPointType,
-    'query' | 'fetchOptions' | 'input' | 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'onPrefetch' | 'point' | 'Infer'
+    | 'query'
+    | 'fetchOptions'
+    | 'input'
+    | 'ctx'
+    | 'loader'
+    | 'clientLoader'
+    | 'mapper'
+    | 'onPrefetch'
+    | 'point'
+    | 'type'
+    | 'Infer'
   >
 >
 
-export type NiceInfiniteQueryMiddlePoint<
+export type NiceInfiniteQueryStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'infiniteQuery',
   TRequiredCtx extends RequiredCtx,
@@ -1800,11 +1814,12 @@ export type NiceInfiniteQueryMiddlePoint<
     // | 'flatter'
     | 'onPrefetch'
     | 'point'
+    | 'type'
     | 'Infer'
   >
 >
 
-export type NiceMutationMiddlePoint<
+export type NiceMutationStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'mutation',
   TRequiredCtx extends RequiredCtx,
@@ -1845,11 +1860,12 @@ export type NiceMutationMiddlePoint<
     | 'clientLoader'
     | 'mapper'
     | 'point'
+    | 'type'
     | 'Infer'
   >
 >
 
-export type NiceLayoutMiddlePoint<
+export type NiceLayoutStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'layout',
   TRequiredCtx extends RequiredCtx,
@@ -1906,13 +1922,14 @@ export type NiceLayoutMiddlePoint<
     | 'onPrefetch'
     | 'prefetchOnHover'
     | 'point'
+    | 'type'
     | 'Infer'
     | 'query'
     | 'infiniteQuery'
   >
 >
 
-export type NiceProviderMiddlePoint<
+export type NiceProviderStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends 'provider',
   TRequiredCtx extends RequiredCtx,
@@ -1954,6 +1971,7 @@ export type NiceProviderMiddlePoint<
     // | 'flatter'
     | 'onPrefetch'
     | 'point'
+    | 'type'
     | 'Infer'
     | 'query'
     | 'infiniteQuery'
@@ -1963,7 +1981,7 @@ export type NiceProviderMiddlePoint<
   >
 >
 
-export type NiceMiddlePoint<
+export type NiceStagePoint<
   TPointType extends PointType,
   TLetsEndPointType extends EndPointType,
   TRequiredCtx extends RequiredCtx,
@@ -1978,7 +1996,7 @@ export type NiceMiddlePoint<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = TLetsEndPointType extends 'root'
-  ? NiceRootMiddlePoint<
+  ? NiceRootStagePoint<
       TPointType,
       TLetsEndPointType,
       TRequiredCtx,
@@ -1994,7 +2012,7 @@ export type NiceMiddlePoint<
       TProps
     >
   : TLetsEndPointType extends 'base'
-    ? NiceBaseMiddlePoint<
+    ? NiceBaseStagePoint<
         TPointType,
         TLetsEndPointType,
         TRequiredCtx,
@@ -2010,7 +2028,7 @@ export type NiceMiddlePoint<
         TProps
       >
     : TLetsEndPointType extends 'page'
-      ? NicePageMiddlePoint<
+      ? NicePageStagePoint<
           TPointType,
           TLetsEndPointType,
           TRequiredCtx,
@@ -2026,7 +2044,7 @@ export type NiceMiddlePoint<
           TProps
         >
       : TLetsEndPointType extends 'component'
-        ? NiceComponentMiddlePoint<
+        ? NiceComponentStagePoint<
             TPointType,
             TLetsEndPointType,
             TRequiredCtx,
@@ -2042,7 +2060,7 @@ export type NiceMiddlePoint<
             TProps
           >
         : TLetsEndPointType extends 'query'
-          ? NiceQueryMiddlePoint<
+          ? NiceQueryStagePoint<
               TPointType,
               TLetsEndPointType,
               TRequiredCtx,
@@ -2058,7 +2076,7 @@ export type NiceMiddlePoint<
               TProps
             >
           : TLetsEndPointType extends 'infiniteQuery'
-            ? NiceInfiniteQueryMiddlePoint<
+            ? NiceInfiniteQueryStagePoint<
                 TPointType,
                 TLetsEndPointType,
                 TRequiredCtx,
@@ -2074,7 +2092,7 @@ export type NiceMiddlePoint<
                 TProps
               >
             : TLetsEndPointType extends 'mutation'
-              ? NiceMutationMiddlePoint<
+              ? NiceMutationStagePoint<
                   TPointType,
                   TLetsEndPointType,
                   TRequiredCtx,
@@ -2090,7 +2108,7 @@ export type NiceMiddlePoint<
                   TProps
                 >
               : TLetsEndPointType extends 'layout'
-                ? NiceLayoutMiddlePoint<
+                ? NiceLayoutStagePoint<
                     TPointType,
                     TLetsEndPointType,
                     TRequiredCtx,
@@ -2106,7 +2124,7 @@ export type NiceMiddlePoint<
                     TProps
                   >
                 : TLetsEndPointType extends 'provider'
-                  ? NiceProviderMiddlePoint<
+                  ? NiceProviderStagePoint<
                       TPointType,
                       TLetsEndPointType,
                       TRequiredCtx,
@@ -2155,7 +2173,7 @@ export type NiceRootEndPoint<
     TQueryResultType,
     TProps
   >,
-  'attach' | 'lets' | 'point' | 'Infer'
+  'attach' | 'lets' | 'point' | 'type' | 'Infer'
 >
 
 export type NiceBaseEndPoint<
@@ -2188,26 +2206,35 @@ export type NiceBaseEndPoint<
     TQueryResultType,
     TProps
   >,
-  'lets' | 'point' | 'Infer'
+  'lets' | 'point' | 'type' | 'Infer'
 >
 
 export type WithFetchIfHasServerLoader<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TLiteral extends string,
-> = TServerLoaderOutput extends LoaderOutput ? TLiteral | 'fetch' : TLiteral
-export type WithQueryEndLiteralsIfSuitable<
+> = TServerLoaderOutput extends LoaderOutput ? TLiteral | 'fetch' | 'fetchDetailed' : TLiteral
+export type WithExecuteEndLiteralsIfSuitable<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TLiteral extends string,
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
       TServerLoaderOutput,
-      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'prefetchQuery' | 'execute' | 'executeDetailed'
+      | TLiteral
+      | 'useLoader'
+      | 'useQuery'
+      | 'getQueryKey'
+      | 'getQueryOptions'
+      | 'prefetchQuery'
+      | 'execute'
+      | 'executeDetailed'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
         TServerLoaderOutput,
         | TLiteral
+        | 'useLoader'
         | 'useInfiniteQuery'
         | 'getQueryKey'
         | 'getInfiniteQueryOptions'
@@ -2215,7 +2242,9 @@ export type WithQueryEndLiteralsIfSuitable<
         | 'execute'
         | 'executeDetailed'
       >
-    : TLiteral
+    : TClientMapperOutput extends MapperOutput
+      ? TLiteral | 'useLoader' | 'execute' | 'executeDetailed'
+      : TLiteral
 
 export type WithInputSchemaLiteralIfExists<
   TInputSchema extends InputSchema | UndefinedInputSchema,
@@ -2255,7 +2284,12 @@ export type NicePageEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'lets' | 'Infer' | 'Page' | 'X'>
+      WithExecuteEndLiteralsIfSuitable<
+        TServerLoaderOutput,
+        TClientMapperOutput,
+        TQueryResultType,
+        'point' | 'type' | 'lets' | 'Infer' | 'Page' | 'X'
+      >
     >
   >
 
@@ -2291,10 +2325,11 @@ export type NiceComponentEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<
+    WithExecuteEndLiteralsIfSuitable<
       TServerLoaderOutput,
+      TClientMapperOutput,
       TQueryResultType,
-      'point' | 'lets' | 'Infer' | 'Component' | 'X'
+      'point' | 'type' | 'lets' | 'Infer' | 'Component' | 'X'
     >
   >
 >
@@ -2332,7 +2367,12 @@ export type NiceLayoutEndPoint<
     >,
     WithInputSchemaLiteralIfExists<
       TInputSchema,
-      WithQueryEndLiteralsIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'lets' | 'Infer' | 'Layout' | 'X'>
+      WithExecuteEndLiteralsIfSuitable<
+        TServerLoaderOutput,
+        TClientMapperOutput,
+        TQueryResultType,
+        'point' | 'type' | 'lets' | 'Infer' | 'Layout' | 'X'
+      >
     >
   >
 
@@ -2368,7 +2408,12 @@ export type NiceQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
+    WithExecuteEndLiteralsIfSuitable<
+      TServerLoaderOutput,
+      TClientMapperOutput,
+      TQueryResultType,
+      'point' | 'type' | 'lets' | 'Infer'
+    >
   >
 >
 
@@ -2404,7 +2449,12 @@ export type NiceInfiniteQueryEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'lets' | 'Infer'>
+    WithExecuteEndLiteralsIfSuitable<
+      TServerLoaderOutput,
+      TClientMapperOutput,
+      TQueryResultType,
+      'point' | 'type' | 'lets' | 'Infer'
+    >
   >
 >
 
@@ -2442,7 +2492,7 @@ export type NiceMutationEndPoint<
     TInputSchema,
     WithFetchIfHasServerLoader<
       TServerLoaderOutput,
-      'point' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
+      'point' | 'type' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
     >
   >
 >
@@ -2479,10 +2529,11 @@ export type NiceProviderEndPoint<
   >,
   WithInputSchemaLiteralIfExists<
     TInputSchema,
-    WithQueryEndLiteralsIfSuitable<
+    WithExecuteEndLiteralsIfSuitable<
       TServerLoaderOutput,
+      TClientMapperOutput,
       TQueryResultType,
-      'point' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'Provider' | 'X' | 'Infer'
+      'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'Provider' | 'X' | 'Infer'
     >
   >
 >

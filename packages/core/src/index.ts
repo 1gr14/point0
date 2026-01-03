@@ -104,13 +104,13 @@ import type {
   NiceEndPoint,
   NiceInfiniteQueryEndPoint,
   NiceLayoutEndPoint,
-  NiceMiddlePoint,
+  NiceStagePoint,
   NiceMutationEndPoint,
   NicePageEndPoint,
   NiceProviderEndPoint,
   NiceQueryEndPoint,
   NiceRootEndPoint,
-  NiceRootMiddlePoint,
+  NiceRootStagePoint,
   OmitUnnamedKeys,
   OnPrefetchFn,
   OuterComponentType,
@@ -1043,7 +1043,7 @@ export class Point0<
 
   static create(
     scope: string,
-  ): NiceRootMiddlePoint<
+  ): NiceRootStagePoint<
     'coreStage',
     'root',
     UndefinedCtx,
@@ -1061,7 +1061,7 @@ export class Point0<
   static create<TRootPoint extends NiceRootEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     scope: string,
     attachedTo: PointsScope[],
-  ): NiceRootMiddlePoint<
+  ): NiceRootStagePoint<
     'coreStage',
     'root',
     // TODO: check .d.ts files, is this approach heavy or not?
@@ -1090,7 +1090,7 @@ export class Point0<
 
   // root settings
 
-  requireCtx<TExtraRequiredCtx extends Ctx>(): NiceRootMiddlePoint<
+  requireCtx<TExtraRequiredCtx extends Ctx>(): NiceRootStagePoint<
     TPointType,
     'root',
     AppendCtx<TRequiredCtx, TExtraRequiredCtx>,
@@ -1124,7 +1124,7 @@ export class Point0<
 
   serverurl(
     serverurl: string,
-  ): NiceRootMiddlePoint<
+  ): NiceRootStagePoint<
     TPointType,
     'root',
     TRequiredCtx,
@@ -1160,7 +1160,7 @@ export class Point0<
 
   baseurl(
     baseurl: string,
-  ): NiceRootMiddlePoint<
+  ): NiceRootStagePoint<
     TPointType,
     'root',
     TRequiredCtx,
@@ -1199,7 +1199,7 @@ export class Point0<
   // not needed, we check File or Blob in input, and then use FormData instead of JSON
   // asFormData(
   //   shouldAddMultipartFormDataHeaderToFetchOptions = true,
-  // ): NiceMiddlePoint<
+  // ): NiceStagePoint<
   //   TPointType,
   //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
@@ -1220,7 +1220,7 @@ export class Point0<
 
   ssr(
     ssr: boolean,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1242,7 +1242,7 @@ export class Point0<
 
   mutationOptions(
     mutationOptions: UseMutationOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1264,7 +1264,7 @@ export class Point0<
 
   queryOptions(
     queryOptions: ExtraUseQueryOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1286,7 +1286,7 @@ export class Point0<
 
   infiniteQueryOptions(
     infiniteQueryOptions: PartialUseInfiniteQueryOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1308,7 +1308,7 @@ export class Point0<
 
   pageQueryOptions(
     pageQueryOptions: UseQueryOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1330,7 +1330,7 @@ export class Point0<
 
   componentQueryOptions(
     componentQueryOptions: UseQueryOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1352,7 +1352,7 @@ export class Point0<
 
   providerQueryOptions(
     providerQueryOptions: UseQueryOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1374,7 +1374,7 @@ export class Point0<
 
   layoutQueryOptions(
     layoutQueryOptions: UseQueryOptions,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1396,7 +1396,7 @@ export class Point0<
 
   fetchOptions(
     fetchOptionsOrFn: FetchOptionsOrFn,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1438,7 +1438,7 @@ export class Point0<
             TProps
           >
       : ErrorComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1476,7 +1476,7 @@ export class Point0<
             >,
           ]
       : never
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TLetsEndPointType extends 'page' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1528,7 +1528,7 @@ export class Point0<
 
   layoutError(
     layoutErrorComponent: ErrorComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1555,7 +1555,7 @@ export class Point0<
   pageError(
     head: ErrorHeadFn,
     pageErrorComponent: ErrorComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1572,7 +1572,7 @@ export class Point0<
   >
   pageError(
     pageErrorComponent: ErrorComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1589,7 +1589,7 @@ export class Point0<
   >
   pageError(
     ...args: [head: ErrorHeadFn, pageErrorComponent: ErrorComponentType] | [pageErrorComponent: ErrorComponentType]
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1621,7 +1621,7 @@ export class Point0<
 
   componentError(
     componentErrorComponent: ErrorComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1647,7 +1647,7 @@ export class Point0<
 
   layoutLoading(
     layoutLoadingComponent: LoadingComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1674,7 +1674,7 @@ export class Point0<
   pageLoading(
     head: LoadingHeadFn,
     pageLoadingComponent: LoadingComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1691,7 +1691,7 @@ export class Point0<
   >
   pageLoading(
     pageLoadingComponent: LoadingComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1710,7 +1710,7 @@ export class Point0<
     ...args:
       | [head: LoadingHeadFn, pageLoadingComponent: LoadingComponentType]
       | [pageLoadingComponent: LoadingComponentType]
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1742,7 +1742,7 @@ export class Point0<
 
   componentLoading(
     componentLoadingComponent: LoadingComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1790,7 +1790,7 @@ export class Point0<
             TProps
           >
       : LoadingComponentType,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TLetsEndPointType extends 'page' | 'layout' | 'component' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1828,7 +1828,7 @@ export class Point0<
             >,
           ]
       : never
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TLetsEndPointType extends 'page' ? 'renderStage' : TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1902,7 +1902,7 @@ export class Point0<
           TRouteDefinition,
           TProps
         >,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'renderStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1931,7 +1931,7 @@ export class Point0<
 
   outer(
     outerComponent: OuterComponentType<TRouteDefinition, TInputSchema, TProps, AnyLocation>,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'renderStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1962,7 +1962,7 @@ export class Point0<
 
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TRouteDefinition, TInputSchema, Ctx>>(
     ctxFn: TCtxFn & AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1979,7 +1979,7 @@ export class Point0<
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: [TAppendCtx] & AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>>, // ctx: HasForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> extends true
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -1996,7 +1996,7 @@ export class Point0<
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2013,7 +2013,7 @@ export class Point0<
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2052,7 +2052,7 @@ export class Point0<
       TInputSchema,
       TNewServerLoaderOutput
     >,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2069,7 +2069,7 @@ export class Point0<
   >
   loader(
     enableServerLoader: false,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2084,7 +2084,7 @@ export class Point0<
     UndefinedQueryResultType,
     TProps
   >
-  loader(enableServerLoader: true): NiceMiddlePoint<
+  loader(enableServerLoader: true): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2135,7 +2135,7 @@ export class Point0<
       TClientLoaderOutput,
       TNewClientLoaderOutput
     >,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2152,7 +2152,7 @@ export class Point0<
   >
   clientLoader(
     enableClientLoader: false,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2174,7 +2174,7 @@ export class Point0<
     TProps
   >
   // client loader true means that we do not want server do ssr here
-  clientLoader(enableClientLoader: true): NiceMiddlePoint<
+  clientLoader(enableClientLoader: true): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2233,7 +2233,7 @@ export class Point0<
       TClientMapperOutput,
       TNewClientMapperOutput
     >,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'mapperStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2250,7 +2250,7 @@ export class Point0<
   >
   mapper(
     enableMapper: false,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2289,7 +2289,7 @@ export class Point0<
   //     : never,
   // >(
   //   dataKey: TDataKey,
-  // ): NiceMiddlePoint<
+  // ): NiceStagePoint<
   //   TPointType,
   //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
@@ -2343,7 +2343,7 @@ export class Point0<
 
   head(
     head: MiddlewareHeadFn | ResolvableHead | string,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2369,7 +2369,7 @@ export class Point0<
     }
   }
 
-  props<TNewProps extends Props>(): NiceMiddlePoint<
+  props<TNewProps extends Props>(): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2394,7 +2394,7 @@ export class Point0<
     > extends OmitUnnamedKeys<InputParsed<TRouteDefinition, TInputSchema>>
       ? TNewInputSchema
       : ShowError<`Provided schema is not assignable to previous input schema`> & TNewInputSchema,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2442,7 +2442,7 @@ export class Point0<
   //   route: FlatInputStringOnly<TNewRoute> extends InputRaw<TRouteDefinition, TInputSchema>
   //     ? TNewRoute
   //     : ShowError<`Route ${TNewRoute['definition']} is not assignable to previous input schema`> & TNewRoute,
-  // ): NiceMiddlePoint<
+  // ): NiceStagePoint<
   //   TPointType,
   //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
@@ -2458,7 +2458,7 @@ export class Point0<
   // >
   // route<TNewRouteDefinition extends `/${string}`>(
   //   routeDefinition: TNewRouteDefinition,
-  // ): NiceMiddlePoint<
+  // ): NiceStagePoint<
   //   TPointType,
   //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
@@ -2474,7 +2474,7 @@ export class Point0<
   // >
   // route<TNewRouteDefinition extends string>(
   //   relativeRouteDefinition: TNewRouteDefinition,
-  // ): NiceMiddlePoint<
+  // ): NiceStagePoint<
   //   TPointType,
   //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
@@ -2490,7 +2490,7 @@ export class Point0<
   //   TQueryResultType,
   //   TProps
   // >
-  // route(): NiceMiddlePoint<
+  // route(): NiceStagePoint<
   //   TPointType,
   //   EndPointTypeOrNever<TLetsEndPointType>,
   //   TRequiredCtx,
@@ -2530,7 +2530,7 @@ export class Point0<
     letsEndPointType: 'page',
     pointName: TPointName,
     route?: TProvidedRoute,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'coreStage',
     'page',
     TRequiredCtx,
@@ -2559,7 +2559,7 @@ export class Point0<
     letsEndPointType: 'layout',
     pointName: TPointName,
     route?: TProvidedRoute,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'coreStage',
     'layout',
     TRequiredCtx,
@@ -2587,7 +2587,7 @@ export class Point0<
   lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'root'>, TPointName extends PointName>(
     letsEndPointType: TNewLetsEndPointType,
     pointName: TPointName,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     'coreStage',
     TNewLetsEndPointType,
     TRequiredCtx,
@@ -3212,7 +3212,7 @@ export class Point0<
             QueryKey
           >,
         ]
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -3287,7 +3287,7 @@ export class Point0<
         'infiniteQuery',
         TProps
       >
-    : NiceMiddlePoint<
+    : NiceStagePoint<
         TPointType,
         EndPointTypeOrNever<TLetsEndPointType>,
         TRequiredCtx,
@@ -6558,7 +6558,7 @@ export class Point0<
 
   transformer(
     transformer: DataTransformer,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6595,7 +6595,7 @@ export class Point0<
 
   scrollPosition(
     documentElementGetter: () => HTMLElement | null,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6612,7 +6612,7 @@ export class Point0<
   >
   scrollPosition(
     selector: string,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6630,7 +6630,7 @@ export class Point0<
   scrollPosition(
     getter: ScrollPositionGetter,
     setter: ScrollPositionSetter,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6689,7 +6689,7 @@ export class Point0<
   scrollRestore(
     // true - restore, false - do not restore, null - set {x: 0, y: 0}
     policy: ScrollPositionRestorePolicy | boolean | null,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6730,7 +6730,7 @@ export class Point0<
 
   prefetchPolicy(
     policy: PagePrefetchPolicy,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6766,7 +6766,7 @@ export class Point0<
 
   onPrefetch(
     fn: OnPrefetchFn,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -6802,7 +6802,7 @@ export class Point0<
 
   prefetchOnHover(
     shouldBePrefetchedOnLinkHover: boolean | number,
-  ): NiceMiddlePoint<
+  ): NiceStagePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,

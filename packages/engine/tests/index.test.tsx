@@ -2,7 +2,7 @@ import { Route0 } from '@devp0nt/route0'
 import type {
   EmptyCtx,
   NiceRootEndPoint,
-  NiceRootMiddlePoint,
+  NiceRootStagePoint,
   UndefinedCtx,
   UndefinedCtxExposedKeys,
   UndefinedEndPointType,
@@ -64,7 +64,7 @@ describe('Point0', () => {
     expect(server1).toBeInstanceOf(Point0)
 
     expectTypeOf(server1).toEqualTypeOf<
-      NiceRootMiddlePoint<
+      NiceRootStagePoint<
         'coreStage',
         'root',
         UndefinedCtx,
@@ -91,7 +91,7 @@ describe('Point0', () => {
     expect(server2).toBeInstanceOf(Point0)
 
     expectTypeOf(server2).toEqualTypeOf<
-      NiceRootMiddlePoint<
+      NiceRootStagePoint<
         'coreStage',
         'root',
         undefined,
