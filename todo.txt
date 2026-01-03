@@ -4,7 +4,6 @@
 
 REFACTORING 0
 
-
 do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 after .outer() we come to 'outerStage' when props() can not be set any more
@@ -16,7 +15,6 @@ in Nice point.point also lets store nice type, so hide everything from user exce
 Укоротить до линкпрефетч
 
 SuperStore.predefined ← ssrLocation, etc
-Гет добавить в статик метод реквест0 и респонс0 и он уже будет брать это из супер стора
 
 we do not need execute on ssr, just lets follow queryKeys
 we should while useHead on server just store last run heads array and retrieve it from SuperStore
@@ -30,6 +28,8 @@ we should while useHead on server just store last run heads array and retrieve i
 ------
 ------
 ------
+
+
 
 
 
