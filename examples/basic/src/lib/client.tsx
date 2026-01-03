@@ -9,12 +9,17 @@ export const client = Point0.create('client')
   .ssr(true)
   .transformer(superjson)
   .requireCtx<{ request: Request }>()
+  // .Infer.Ctx// .Infer['RequiredCtx']
   .ctx({
     prisma,
     env: process.env,
     Bun,
   })
+  // .Infer['Ctx']
   .ctx([{ zxc: 123 }])
+  // .Infer.Ctx
+  // .ctx([{ request: 123, x: 'x' }])
+  // .Infer['CtxExposedKeys']
   // .serverurl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,

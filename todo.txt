@@ -4,7 +4,6 @@
 
 REFACTORING 0
 
-check if parse input from request done via from scope transformer
 Do not omit, in exposedCtx, but if try to expose then error
 do not bundle core package, just expose in package json only index.js
 

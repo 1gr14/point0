@@ -87,6 +87,7 @@ import type {
   InputRawMaybeOptional,
   InputSchema,
   InputSchemaZod,
+  // HasForbiddenCtxExposedKeys,
   IsInputOptional,
   LayoutComponent,
   LayoutPoint,
@@ -154,6 +155,7 @@ import type {
   UsePointQueryResult,
   UseQueryOptions,
   WrapperComponentType,
+  AssertNoForbiddenCtxExposedKeys,
 } from './types.js'
 import {
   blankDataTransformer,
@@ -1960,7 +1962,7 @@ export class Point0<
   // middlewares
 
   ctx<TCtxFn extends CtxFn<TCtx, TCtxExposedKeys, TRouteDefinition, TInputSchema, Ctx>>(
-    ctxFn: TCtxFn,
+    ctxFn: TCtxFn & AssertNoForbiddenCtxExposedKeys<InferCtxFnOutputCtxExposedKeys<TCtxFn>>,
   ): NiceMiddlePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1994,7 +1996,7 @@ export class Point0<
     TProps
   >
   ctx<TAppendCtx extends Ctx>(
-    ctx: [TAppendCtx],
+    ctx: [TAppendCtx] & AssertNoForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>>, // ctx: HasForbiddenCtxExposedKeys<Extract<keyof TAppendCtx, string>> extends true
   ): NiceMiddlePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2010,9 +2012,22 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
-    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]],
-  ): NiceMiddlePoint<
+
+  ctx<
+    TAppendCtx extends Ctx,
+    TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>,
+    // _Assert extends true = AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
+  >(
+    ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] & AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>, //   // ctx: HasForbiddenCtxExposedKeys<TAppendCtxExposedKeys> extends true
+    //   //       ShowError<`Forbidden to expose ctx keys: request, input, inputRaw, data, set, execute, ctx`>
+  ) //   //   ? [TAppendCtx, ...TAppendCtxExposedKeys[]] &
+  //   //   : [TAppendCtx, ...TAppendCtxExposedKeys[]],
+  //     // ...args: HasForbiddenCtxExposedKeys<TAppendCtxExposedKeys> extends true
+  // ) //   ? [ShowError<`Forbidden to expose ctx keys: request, input, inputRaw, data, set, execute, ctx`>]
+  // //   : never[]
+
+  // _Assert: AssertNoForbiddenCtxExposedKeys<TAppendCtxExposedKeys>,
+  : NiceMiddlePoint<
     TPointType,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2027,7 +2042,10 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
+  ctx(
+    ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]],
+    // ...args: [ShowError<`Forbidden to expose ctx keys: request, input, inputRaw, data, set, execute, ctx`>] | never[]
+  ) {
     const ctxFn =
       typeof ctxOrFn === 'undefined' // in case if we prune ctx for client customer
         ? () => ({})

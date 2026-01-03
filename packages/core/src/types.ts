@@ -333,10 +333,10 @@ export type Prettify<T extends object> = {
 }
 export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
-  ? Prettify<Omit<TCtx, keyof TAppend> & TAppend>
+  ? Omit<TCtx, keyof TAppend> & TAppend
   : TAppend
 export type PrependCtx<TCtx extends UnknownCtx | UndefinedCtx, TPrepend extends UnknownCtx> = TCtx extends Ctx
-  ? Prettify<Omit<TPrepend, keyof TCtx> & TPrepend>
+  ? Omit<TPrepend, keyof TCtx> & TPrepend
   : TPrepend
 export type AppendCtxExposedKeys<
   TCurrent extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -355,6 +355,9 @@ export type ExposedCtx<TCtx extends Ctx, TCtxExposedKeys extends CtxExposedKeys 
       [K in TCtxExposedKeys]: K extends keyof TCtx ? TCtx[K] : never
     }
   : UndefinedCtx
+export type ExposedCtxOrEmpty<TCtx extends Ctx, TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys> =
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  ExposedCtx<TCtx, TCtxExposedKeys> extends undefined ? {} : ExposedCtx<TCtx, TCtxExposedKeys>
 export type CurrentRouteDefinition<
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
 > = TRouteDefinition extends RouteDefinition ? TRouteDefinition : string
@@ -553,6 +556,9 @@ export type OmitUnnamedKeys<T> = {
 export type ShowError<Message extends string> = {
   readonly __error__: Message
 }
+// export type ShowError<Message extends string> =
+//   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+//   { readonly __error__: Message } & never
 
 // fetching and queries
 
@@ -1210,7 +1216,7 @@ export type CtxFnOptions<
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = Omit<ExposedCtx<TCtxPrev, TCtxExposedKeys>, 'request' | 'input' | 'inputRaw' | 'set' | 'execute' | 'ctx'> & {
+> = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
   request: Request0
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
@@ -1233,24 +1239,29 @@ export type CtxFn<
   | [TCtxAppend, ...Array<keyof TCtxAppend>]
 
 export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
+export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
+export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
+  ? unknown
+  : [string] extends [TExposedKeys]
+    ? unknown
+    : [Extract<TExposedKeys, ForbiddenCtxExposedKeys>] extends [never]
+      ? unknown
+      : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
 export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any>> =
-  TCtxFn extends CtxFn<any, any, any, any, infer TCtxFnOutput> ? TCtxFnOutput : never
+  TCtxFn extends CtxFn<any, any, any, any, infer TCtxAppend> ? TCtxAppend : never
 export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any, any>> =
   CtxFnOutput<TCtxFn> extends [infer TCtx]
     ? Extract<keyof TCtx, string>
-    : CtxFnOutput<TCtxFn> extends [Ctx, ...infer TCtxExposedKeys]
-      ? TCtxExposedKeys[number] extends string
-        ? TCtxExposedKeys[number]
-        : undefined
+    : CtxFnOutput<TCtxFn> extends [Ctx, ...infer TCtxExposedKeys extends string[]]
+      ? TCtxExposedKeys[number]
       : undefined
-
 export type LoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = Omit<ExposedCtx<TCtx, TCtxExposedKeys>, 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'> & {
+> = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
   request: Request0
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown

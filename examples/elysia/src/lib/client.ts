@@ -5,14 +5,13 @@ import superjson from 'superjson'
 export const client = Point0.create('client')
   .ssr(true)
   .transformer(superjson)
-  .requireCtx<{ x: number; y: number }>()
+  // .requireCtx<{ x: number; y: number }>()
   .ctx({
     prisma,
     env: process.env,
     Bun,
   })
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  .serverurl(process.env.SOURCE_BASE_URL!)
+  // .serverurl(process.env.SOURCE_BASE_URL!)
   .queryOptions({
     retry: false,
     refetchOnMount: false,
