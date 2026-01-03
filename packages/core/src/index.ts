@@ -2311,7 +2311,7 @@ export class Point0<
       TNewServerLoaderOutput
     >,
   ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
+    TNewServerLoaderOutput extends Response ? 'clientStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2394,7 +2394,7 @@ export class Point0<
       TNewClientLoaderOutput
     >,
   ): NiceStagePoint<
-    'clientStage',
+    TNewClientLoaderOutput extends Response ? 'mapperStage' : 'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,

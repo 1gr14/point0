@@ -4,10 +4,6 @@
 
 REFACTORING 0
 
-provide point itself to loaders and ctx fns
-on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware
-response should switch to next stage if provided
-
 do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 after .outer() we come to 'outerStage' when props() can not be set any more
@@ -179,6 +175,7 @@ https://oxc.rs/docs/guide/usage/linter/config
 
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
+? on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware (whcih problem do we solve?)
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
 В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}
 В суперстор добавить скоуп, чтобы оно не отдавалось в противном случае в сср
