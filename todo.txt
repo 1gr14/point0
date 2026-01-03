@@ -8,6 +8,8 @@ do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 after .outer() we come to 'outerStage' when props() can not be set any more
 
+cookies, remove value from options and add it to {transformer: false | true | 'auto' | Transformer, fallback: value}
+
 normalize points collection things, make it any style, with tests
 in Nice point.point also lets store nice type, so hide everything from user except required for us
 Укоротить до линкпрефетч
