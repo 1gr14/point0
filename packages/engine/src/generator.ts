@@ -508,8 +508,12 @@ export class FilesGenerator {
       lines.push(`export {}`)
     } else {
       for (const point of importedPoints) {
+        if (point.type === 'root') {
+          lines.push(`export const _${point.renamedExportName} = root`)
+          continue
+        }
         lines.push(`export const _${point.renamedExportName} = {`)
-        lines.push(`  type: '${point.type}'${point.type === 'root' ? ' as const' : ''},`)
+        lines.push(`  type: '${point.type}',`)
         lines.push(`  name: '${point.name}',`)
         if (point.route) {
           lines.push(`  route: '${point.route.definition}',`)
@@ -524,49 +528,18 @@ export class FilesGenerator {
             .join(', ')
           lines.push(`  layouts: [${arr}],`)
         }
-        // const exportNameSuffix = point.type === 'component' ? '.point' : ''
-        const exportNameSuffix = '.point'
-        if (point.type === 'root') {
-          lines.push(`  point: root.point,`)
 
-          lines.push(`}`)
+        if (point.scope === target.scope) {
+          lines.push(
+            `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+          )
         } else {
-          // idk how made hmr work nice inside page and component
-          // if (point.type === 'page' || point.type === 'component') {
-          //   if (point.scope === target.scope) {
-          //     lines.push(
-          //       `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => Point0.getGlobalPoint('${point.scope}', '${point.type}', '${point.name}'))),`,
-          //     )
-          //   } else {
-          //     // it is attached
-          //     lines.push(
-          //       `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => Point0.getGlobalPoint('${point.scope}', '${point.type}', '${point.name}')))),`,
-          //     )
-          //   }
-          // } else {
-          //   if (point.scope === target.scope) {
-          //     lines.push(
-          //       `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => m.${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix})),`,
-          //     )
-          //   } else {
-          //     // it is attached
-          //     lines.push(
-          //       `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsAbs, point.fileAbs)}?' + Math.random()).then((m) => m.${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix}))),`,
-          //     )
-          //   }
-          // }
-          if (point.scope === target.scope) {
-            lines.push(
-              `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix},`,
-            )
-          } else {
-            // it is attached
-            lines.push(
-              `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}${exportNameSuffix}),`,
-            )
-          }
-          lines.push(`} as LazyPointsCollectionRecord`)
+          // it is attached
+          lines.push(
+            `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}),`,
+          )
         }
+        lines.push(`} as LazyPointsCollectionRecord`)
         lines.push(``)
       }
     }
@@ -608,18 +581,17 @@ export class FilesGenerator {
     } else {
       lines.push(``)
       for (const point of importedPoints) {
-        const exportNameSuffix = '.point'
         if (point.type === 'root') {
-          lines.push(`export const _${point.renamedExportName} = ${point.renamedExportName}${exportNameSuffix}`)
+          lines.push(`export const _${point.renamedExportName} = ${point.renamedExportName}`)
         } else {
           if (point.scope === target.scope) {
             lines.push(
-              `export const _${point.renamedExportName} = ${point.renamedExportName}${exportNameSuffix} as RawPointsCollectionRecord`,
+              `export const _${point.renamedExportName} = ${point.renamedExportName} as RawPointsCollectionRecord`,
             )
           } else {
             // it is attached
             lines.push(
-              `export const _${point.renamedExportName} = root.point.attach(${point.renamedExportName}${exportNameSuffix}) as RawPointsCollectionRecord`,
+              `export const _${point.renamedExportName} = root.point.attach(${point.renamedExportName}) as RawPointsCollectionRecord`,
             )
           }
         }
