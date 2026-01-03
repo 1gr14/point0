@@ -145,8 +145,9 @@ export type PointType =
   | 'mapperStage'
   | 'renderStage'
   | 'provider'
-export type EndPointType = Exclude<PointType, 'coreStage' | 'clientStage' | 'renderStage' | 'mapperStage'>
-export type RenderablePointType = Extract<PointType, 'page' | 'component' | 'layout'>
+export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'renderStage'
+export type EndPointType = Exclude<PointType, StagePointType>
+export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
 export type EndPointTypeOrNever<TPointType extends PointType | UndefinedEndPointType> = TPointType extends EndPointType
@@ -539,6 +540,7 @@ export type IsNever<T> = [T] extends [never] ? true : false
 // export type ShowError<Message extends string> = { error: Message } & never
 
 export type IfAnyThenElse<T, Then, Else = T> = 0 extends 1 & T ? Then : Else
+export type IsAny<T> = 0 extends 1 & T ? true : false
 
 export type OmitUnnamedKeys<T> = {
   [K in keyof T as string extends K ? never : K]: T[K]
@@ -2539,8 +2541,8 @@ export type NiceProviderEndPoint<
 >
 
 export type NiceEndPoint<
-  TPointType extends PointType,
-  TLetsEndPointType extends EndPointType,
+  TPointType extends EndPointType,
+  TLetsEndPointType extends UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx,
   TCtx extends Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -2697,3 +2699,208 @@ export type NiceEndPoint<
                       TProps
                     >
                   : never
+
+// type _AnyNiceEndPoint<
+//   TPointType extends EndPointType = any,
+//   TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
+//   TRequiredCtx extends RequiredCtx = any,
+//   TCtx extends Ctx = any,
+//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+//   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+//   TInputSchema extends InputSchema | UndefinedInputSchema = any,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+//   TProps extends Props | UndefinedProps = any,
+// > = NiceEndPoint<
+//   TPointType,
+//   TLetsEndPointType,
+//   TRequiredCtx,
+//   TCtx,
+//   TCtxExposedKeys,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TRouteDefinition,
+//   TPrevRouteDefinition,
+//   TInputSchema,
+//   TQueryResultType,
+//   TProps
+// >
+
+// export type AnyNiceEndPoint<
+//   TPointType extends EndPointType = any,
+//   TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
+//   TRequiredCtx extends RequiredCtx = any,
+//   TCtx extends Ctx = any,
+//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+//   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+//   TInputSchema extends InputSchema | UndefinedInputSchema = any,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+//   TProps extends Props | UndefinedProps = any,
+// > = IfAnyThenElse<
+//   TPointType,
+//   | _AnyNiceEndPoint<
+//       'root',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'base',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'page',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'component',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'query',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'infiniteQuery',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'mutation',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'layout',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >
+//   | _AnyNiceEndPoint<
+//       'provider',
+//       TLetsEndPointType,
+//       TRequiredCtx,
+//       TCtx,
+//       TCtxExposedKeys,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TRouteDefinition,
+//       TPrevRouteDefinition,
+//       TInputSchema,
+//       TQueryResultType,
+//       TProps
+//     >,
+//   _AnyNiceEndPoint<
+//     TPointType,
+//     TLetsEndPointType,
+//     TRequiredCtx,
+//     TCtx,
+//     TCtxExposedKeys,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TRouteDefinition,
+//     TPrevRouteDefinition,
+//     TInputSchema,
+//     TQueryResultType,
+//     TProps
+//   >
+// >
+
+// type X = AnyNiceEndPoint['type']
+// const x: AnyNiceEndPoint
+// // x.
+// if (x.type === 'page') {
+//   x.
+// }
