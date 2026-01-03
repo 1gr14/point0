@@ -309,7 +309,7 @@ export class Point0<
   private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
   private readonly _prefetchPolicy: PagePrefetchPolicy
   private readonly _onPrefetchFns: OnPrefetchFn[]
-  readonly shouldBePrefetchedOnLinkHover: boolean | number
+  readonly polh: boolean | number
   private readonly _ProviderReactContext:
     | Context<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>>
     | undefined
@@ -495,7 +495,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    shouldBePrefetchedOnLinkHover?: boolean | number
+    polh?: boolean | number
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -629,7 +629,7 @@ export class Point0<
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
     this._prefetchPolicy = options._prefetchPolicy ?? 'everything'
     this._onPrefetchFns = options._onPrefetchFns ?? []
-    this.shouldBePrefetchedOnLinkHover = options.shouldBePrefetchedOnLinkHover ?? false
+    this.polh = options.polh ?? false
     this._layoutErrorComponent =
       options._layoutErrorComponent ??
       ((({ error }) => {
@@ -846,7 +846,7 @@ export class Point0<
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    shouldBePrefetchedOnLinkHover?: boolean | number
+    polh?: boolean | number
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -1016,7 +1016,7 @@ export class Point0<
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
       _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
-      shouldBePrefetchedOnLinkHover: overrides.shouldBePrefetchedOnLinkHover ?? this.shouldBePrefetchedOnLinkHover,
+      polh: overrides.polh ?? this.polh,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -2130,7 +2130,7 @@ export class Point0<
   }
 
   prefetchOnHover(
-    shouldBePrefetchedOnLinkHover: boolean | number,
+    polh: boolean | number,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2147,7 +2147,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      shouldBePrefetchedOnLinkHover,
+      polh,
     }) as never
   }
 
@@ -2890,7 +2890,7 @@ export class Point0<
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
-      shouldBePrefetchedOnLinkHover: this._base?.shouldBePrefetchedOnLinkHover ?? false,
+      polh: this._base?.polh ?? false,
       _wrappers: this._base?._wrappers ?? [],
       _outers: this._base?._outers ?? [],
       _errorComponent: undefined,

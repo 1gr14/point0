@@ -515,9 +515,7 @@ export class FilesGenerator {
           lines.push(`  route: '${point.route.definition}',`)
         }
         if (point.type === 'page') {
-          lines.push(
-            `  shouldBePrefetchedOnLinkHover: ${point.shouldBePrefetchedOnLinkHover === true ? 'true' : point.shouldBePrefetchedOnLinkHover === false ? 'false' : point.shouldBePrefetchedOnLinkHover},`,
-          )
+          lines.push(`  polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
         }
         if (point.type === 'page' && point.layouts?.length) {
           const arr = point.layouts

@@ -199,7 +199,7 @@ export class Walker {
                         : { layouts: [], errors: [] }
                     errors.push(...layoutsErrors)
 
-                    const shouldBePrefetchedOnLinkHover =
+                    const polh =
                       pointType !== 'page'
                         ? false
                         : await this.resolveShouldBePrefetchedOnLinkHover({ fileAbs, baseIdentifier: id.name })
@@ -210,7 +210,7 @@ export class Walker {
                       exportName: id.name,
                       fileAbs,
                       route,
-                      shouldBePrefetchedOnLinkHover,
+                      polh,
                       layouts,
                       scope,
                       attachedTo,
@@ -270,7 +270,7 @@ export class Walker {
                   : { layouts: [], errors: [] }
               errors.push(...layoutsErrors)
 
-              const shouldBePrefetchedOnLinkHover =
+              const polh =
                 pointType !== 'page'
                   ? false
                   : await this.resolveShouldBePrefetchedOnLinkHover({ fileAbs, baseIdentifier: 'default' })
@@ -281,7 +281,7 @@ export class Walker {
                 name: pointName,
                 fileAbs,
                 route,
-                shouldBePrefetchedOnLinkHover,
+                polh,
                 layouts,
                 scope,
                 attachedTo,
@@ -1882,7 +1882,7 @@ export class Walker {
   }
 
   /**
-   * Resolves shouldBePrefetchedOnLinkHover by finding .prefetchOnHover(value) in the chain.
+   * Resolves polh by finding .prefetchOnHover(value) in the chain.
    * If not found on current identifier, goes up the parent chain.
    * Returns false if not found anywhere.
    */
@@ -2391,7 +2391,7 @@ export class Walker {
       a.name === b.name &&
       a.type === b.type &&
       a.exportName === b.exportName &&
-      a.shouldBePrefetchedOnLinkHover === b.shouldBePrefetchedOnLinkHover &&
+      a.polh === b.polh &&
       a.route?.definition === b.route?.definition &&
       (a.layouts?.every((r) => b.layouts?.includes(r)) || (!a.layouts && !b.layouts))
     )
@@ -2413,7 +2413,7 @@ export type CollectedPoint = {
   name: PointName
   exportName: string
   route: AnyRoute | undefined
-  shouldBePrefetchedOnLinkHover: boolean | number
+  polh: boolean | number
   layouts?: string[]
   fileAbs: string
 }

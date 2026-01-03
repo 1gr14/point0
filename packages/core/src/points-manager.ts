@@ -295,7 +295,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         type: point.type,
         name: point.name || '__POINT0_UNNAMED__',
         point,
-        shouldBePrefetchedOnLinkHover: point.shouldBePrefetchedOnLinkHover,
+        polh: point.polh,
         layouts: point._layouts.map((l) => l.name || '__POINT0_UNNAMED__'),
         route: point._route,
         root: point._isRoot(),
@@ -364,7 +364,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         type: record.type,
         name: record.name,
         route: record.route ? Route0.from(record.route) : undefined,
-        shouldBePrefetchedOnLinkHover: record.shouldBePrefetchedOnLinkHover,
+        polh: record.polh,
         point: record.point,
         layouts: record.layouts ?? [],
         FC:
@@ -456,7 +456,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           ready: true,
           point,
           route,
-          shouldBePrefetchedOnLinkHover: record.shouldBePrefetchedOnLinkHover,
+          polh: record.polh,
           name: pointName || record.name,
           type: pointType,
           layouts: recordLayouts,
@@ -844,11 +844,17 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   }
 }
 
+// utils
+
+export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
+
+// collection
+
 export type LazyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
-  shouldBePrefetchedOnLinkHover?: boolean | number
+  polh?: boolean | number
   point: (() => Promise<EndPoint>) | EndPoint
   layouts?: string[]
 }
@@ -857,7 +863,7 @@ export type ReadyPointsCollectionRecord = {
   type: EndPointType
   name: PointName
   route?: string | undefined
-  shouldBePrefetchedOnLinkHover: boolean | number
+  polh: boolean | number
   point: EndPoint
   FC?: React.ComponentType
   layouts?: string[]
@@ -868,7 +874,7 @@ export type LazyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: () => Promise<EndPoint>
-  shouldBePrefetchedOnLinkHover: boolean | number
+  polh: boolean | number
   FC?: React.LazyExoticComponent<React.ComponentType>
   layouts: string[]
 }
@@ -878,7 +884,7 @@ export type ReadyRoutedPointsCollectionRecord = {
   name: PointName
   route: AnyRoute | UndefinedRoute
   point: EndPoint
-  shouldBePrefetchedOnLinkHover: boolean | number
+  polh: boolean | number
   FC?: React.ComponentType
   layouts: string[]
 }
@@ -899,6 +905,8 @@ export type PointsModuleType = 'ready' | 'lazy'
 
 export type LazyPoints = PointsManager<false>
 export type ReadyPoints = PointsManager<true>
+
+// pages tree
 
 export type PagesTreeSourceRecord = {
   layout: string | undefined
@@ -924,7 +932,7 @@ export type PagesTreeRecord = {
 }
 export type PagesTree = PagesTreeRecord[]
 
-export type PointsReadFn = (absPath: string) => Promise<ReadyPointsModule | LazyPointsModule>
+// required ctx type helpers
 
 export type RequiredCtxByPointsModule<TPointsModule extends ReadyPointsModule | LazyPointsModule> =
   TPointsModule extends ReadyPointsModule

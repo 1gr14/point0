@@ -183,7 +183,7 @@ export const SimpleLink = (props: LinkProps) => {
       {...rest}
       {...{
         onMouseEnter: (e) => {
-          if (pointWithLocation && pointWithLocation.point.shouldBePrefetchedOnLinkHover !== false) {
+          if (pointWithLocation && pointWithLocation.point.polh !== false) {
             // Clear any existing timeout
             if (prefetchTimeoutRef.current) {
               clearTimeout(prefetchTimeoutRef.current)
@@ -201,9 +201,7 @@ export const SimpleLink = (props: LinkProps) => {
                     console.error('Failed to prefetch page on hover', e)
                   })
               },
-              pointWithLocation.point.shouldBePrefetchedOnLinkHover === true
-                ? 30
-                : pointWithLocation.point.shouldBePrefetchedOnLinkHover,
+              pointWithLocation.point.polh === true ? 30 : pointWithLocation.point.polh,
             )
           }
           void onMouseEnter?.(e)
