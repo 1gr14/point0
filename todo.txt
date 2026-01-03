@@ -4,9 +4,6 @@
 
 REFACTORING 0
 
-Do not omit, in exposedCtx, but if try to expose then error
-do not bundle core package, just expose in package json only index.js
-
 useLoader and fetchDetailed to nice endpoints
 provide point itself to loaders and ctx fns
 return back type property to NicePoint
@@ -60,6 +57,7 @@ walker add to lazy points root {scope}, and self scope is still _root_lazy, othe
 remove .attach things
 
 ENVIRONMENT
+it is separate packe "@point0/environment", so we always check if thing imported from there
 callServer → callServerElseUndefined/callServerElseThrow, ectc just do it better, it is CSE base
 not client-server.ts, but environment.ts
 make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
@@ -196,6 +194,7 @@ normzliae all errors texts everyhere
 try catch evertywhere in engine to show real error in real place
 store each point location to normalize errors messages for example in No route or id provided for this point
 Проверить хмр компонентов лоадинга и врапера
+shrink core/index.ts size, by remove code duplicates
 Провайдер (вреоятно назовум его как-то иначе, возможно clientBeforeLoader и clientAfterLoader) можно добавить и к странице и к компоненту и к лэйоуту, тогда там мы можем на клиенте сровнуть ошибку например чтобы попасть на компонент ошибки, и в тоже время не иметь состояния загрузки. Установив провайдер его больше нельзя установить, и в то же время мы переходим в рендер стейдж
 throw error on Points.create() on cleint with different scope that was before
 throw if same name and type in current scope
