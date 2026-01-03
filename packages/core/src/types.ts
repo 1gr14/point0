@@ -18,8 +18,8 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput, util as ZodUtil } from 'zod'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
-import type { Request0 } from './request.js'
-import type { ResponseEffects, ResponseEffectsSetHelper } from './response-effects.js'
+import type { Request0 } from './request0.js'
+import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
 
 // basic
 

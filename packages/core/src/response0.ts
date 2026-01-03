@@ -32,7 +32,7 @@ export type ResponseEffectsSetHelper = {
   apply: (response: Response) => Response
 }
 
-export class ResponseEffectsManager {
+export class Response0 {
   headers: ResponseHeaders
   cookies: ResponseCookies
   status: ResponseStatus | undefined
@@ -47,7 +47,7 @@ export class ResponseEffectsManager {
       headers: this._setHeaders.bind(this) as SetResponseHeaderFn,
       cookies: this._setCookies.bind(this) as SetResponseCookieFn,
       status: this._setStatus.bind(this) as SetResponseStatusFn,
-      apply: this.applyToResponse.bind(this) as (response: Response) => Response,
+      apply: this.apply.bind(this) as (response: Response) => Response,
     } as ResponseEffectsSetHelper
 
     // Use defineProperty to create a getter that returns a snapshot of current state
@@ -119,8 +119,8 @@ export class ResponseEffectsManager {
     this.status = status
   }
 
-  static create(): ResponseEffectsManager {
-    return new ResponseEffectsManager()
+  static create(): Response0 {
+    return new Response0()
   }
 
   private static _serializeCookie(cookie: CookieOptions): string {
@@ -172,18 +172,16 @@ export class ResponseEffectsManager {
     return match ? match[1].trim() : ''
   }
 
-  private static _mergeCookies(response: Response, cookies: ResponseCookies): string[] {
+  private static _addCookiesToResponseIfNotExists(response: Response, cookies: ResponseCookies): string[] {
     const responseSetCookies = response.headers.getAll('set-cookie')
-    const responseCookieNames = new Set(
-      responseSetCookies.map((cookie) => ResponseEffectsManager._extractCookieName(cookie)),
-    )
+    const responseCookieNames = new Set(responseSetCookies.map((cookie) => Response0._extractCookieName(cookie)))
 
     // Response cookies first (higher priority)
     const merged: string[] = [...responseSetCookies]
 
     // Add effects cookies that don't conflict with response cookies
     for (const cookie of Object.values(cookies)) {
-      const cookieString = ResponseEffectsManager._serializeCookie(cookie)
+      const cookieString = Response0._serializeCookie(cookie)
       if (!responseCookieNames.has(cookie.name)) {
         merged.push(cookieString)
       }
@@ -192,11 +190,7 @@ export class ResponseEffectsManager {
     return merged
   }
 
-  mergeCookies(response: Response): string[] {
-    return ResponseEffectsManager._mergeCookies(response, this.cookies)
-  }
-
-  static applyToResponse(response: Response, effects: ResponseEffects): Response {
+  static apply(response: Response, effects: ResponseEffects): Response {
     const newHeaders = new Headers()
     const setCookieHeaderName = 'set-cookie'
 
@@ -215,7 +209,7 @@ export class ResponseEffectsManager {
     })
 
     // Merge and apply cookies
-    const mergedCookies = ResponseEffectsManager._mergeCookies(response, effects.cookies)
+    const mergedCookies = Response0._addCookiesToResponseIfNotExists(response, effects.cookies)
     for (const cookieString of mergedCookies) {
       newHeaders.append('Set-Cookie', cookieString)
     }
@@ -228,7 +222,7 @@ export class ResponseEffectsManager {
     })
   }
 
-  applyToResponse(response: Response): Response {
-    return ResponseEffectsManager.applyToResponse(response, this.effects)
+  apply(response: Response): Response {
+    return Response0.apply(response, this.effects)
   }
 }

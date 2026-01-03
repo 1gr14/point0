@@ -28,7 +28,7 @@ import type {
   UnknownData,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { Point0, PointsManager, Request0, ResponseEffectsManager, SuperStore } from '@point0/core'
+import { Point0, PointsManager, Request0, Response0, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -37,7 +37,7 @@ import type { ResolvableHead } from 'unhead/types'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   request: Request0
-  responseEffectsManager: ResponseEffectsManager
+  response0: Response0
   pointsManager: PointsManager<true, TRequiredCtx>
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
@@ -56,7 +56,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx,
     serverExecuteActionsWithOutput,
     serverGlobalState,
-    responseEffectsManager,
+    response0,
   }: {
     request: Request0
     pointsManager: PointsManager<true, TRequiredCtx>
@@ -65,16 +65,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx: TRequiredCtx
     serverGlobalState: {
       __POINT0_POINT_REQUEST__: Request0
-      __POINT0_RESPONSE_EFFECTS_MANAGER__: ResponseEffectsManager
+      __POINT0_RESPONSE_EFFECTS_MANAGER__: Response0
       __POINT0_SCOPE__: PointsScope
       __POINT0_QUERY_CLIENT__: QueryClient
       __POINT0_SSR_LOCATION__: AnyLocation | undefined
       __POINT0_CURRENT_LOCATION__: AnyLocation
     }
-    responseEffectsManager: ResponseEffectsManager
+    response0: Response0
   }) {
     this.request = request
-    this.responseEffectsManager = responseEffectsManager
+    this.response0 = response0
     this.pointsManager = pointsManager
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
@@ -88,7 +88,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     currentLocation,
     requiredCtx,
-    responseEffectsManager,
+    response0,
   }: {
     request: Request | Request0
     pointsManager: PointsManager<true, TRequiredCtx>
@@ -96,10 +96,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
-    responseEffectsManager?: ResponseEffectsManager
+    response0?: Response0
   }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
-    responseEffectsManager ??= ResponseEffectsManager.create()
+    response0 ??= Response0.create()
     const pointRequest = Request0.create(request)
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new Executor<TRequiredCtx>({
@@ -108,10 +108,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pageLocation,
         requiredCtx,
         serverExecuteActionsWithOutput: [],
-        responseEffectsManager,
+        response0,
         serverGlobalState: {
           __POINT0_POINT_REQUEST__: pointRequest,
-          __POINT0_RESPONSE_EFFECTS_MANAGER__: responseEffectsManager,
+          __POINT0_RESPONSE_EFFECTS_MANAGER__: response0,
           __POINT0_SCOPE__: pointsManager.scope,
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,
@@ -287,7 +287,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 422,
           response: undefined,
           output: {},
-          effects: this.responseEffectsManager.effects,
+          effects: this.response0.effects,
         }
       }
 
@@ -320,7 +320,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status: 404,
             response: currentResponse,
             output: currentOutput,
-            effects: this.responseEffectsManager.effects,
+            effects: this.response0.effects,
           }
         }
 
@@ -341,7 +341,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   status: 422,
                   response: currentResponse,
                   output: currentOutput,
-                  effects: this.responseEffectsManager.effects,
+                  effects: this.response0.effects,
                 }
               }
               currentInputParsed = safeParseResult.data
@@ -372,7 +372,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   execute: this.execute.bind(this),
                   inputRaw: input,
                   request: this.request,
-                  set: this.responseEffectsManager.set,
+                  set: this.response0.set,
                   point,
                 })
                 if (Array.isArray(result)) {
@@ -426,7 +426,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   execute: this.execute.bind(this),
                   inputRaw: input,
                   request: this.request,
-                  set: this.responseEffectsManager.set,
+                  set: this.response0.set,
                   point,
                 })
                 if (Array.isArray(result)) {
@@ -486,7 +486,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           error: null,
           status: currentStatus,
           output: currentOutput,
-          effects: this.responseEffectsManager.effects,
+          effects: this.response0.effects,
         }
       } catch (error) {
         try {
@@ -509,7 +509,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status: error0.httpStatus ?? 500,
             response: currentResponse,
             output: currentOutput,
-            effects: this.responseEffectsManager.effects,
+            effects: this.response0.effects,
           }
         } catch (error2) {
           // in case if we have error in head resolver
@@ -522,7 +522,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status: error0.httpStatus ?? 500,
             response: currentResponse,
             output: currentOutput,
-            effects: this.responseEffectsManager.effects,
+            effects: this.response0.effects,
           }
         }
       }

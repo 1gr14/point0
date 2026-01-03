@@ -4,6 +4,9 @@
 
 REFACTORING 0
 
+Респонс эффектс на респонс0, и файлы правильно назвать
+Трансформер брать не из фром скоупа, а из скоупа принта, это логично
+
 do not cut methods, but add errors
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 after .outer() we come to 'outerStage' when props() can not be set any more
@@ -15,15 +18,12 @@ in Nice point.point also lets store nice type, so hide everything from user exce
 Укоротить до линкпрефетч
 
 SuperStore.predefined ← ssrLocation, etc
+Гет добавить в статик метод реквест0 и респонс0 и он уже будет брать это из супер стора
 
 we do not need execute on ssr, just lets follow queryKeys
 we should while useHead on server just store last run heads array and retrieve it from SuperStore
 
-? remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
-? Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
-? InputRaw → InputOriginal
-? Remove inputOriginal from options of loader and ctx
-? В фетч и серв назвать аргумент просто кткс
+
 
 
 
@@ -53,6 +53,9 @@ walker add to lazy points root {scope}, and self scope is still _root_lazy, othe
 remove .attach things
 
 ENVIRONMENT
+Добавить изСср он будет тру только когда мы именно рендерим компоненты
+И в энвиронменте добавить констВхенЭнвиронмент({server,client,ssr})
+И в энвиронменте разрешить возвращать не функцию, а прямо ошибку чтобы он сровилась
 it is separate packe "@point0/environment", so we always check if thing imported from there
 callServer → callServerElseUndefined/callServerElseThrow, ectc just do it better, it is CSE base
 not client-server.ts, but environment.ts
@@ -163,6 +166,7 @@ try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
 Отрефачить коллекцию поинтов, чтобы там мог быть хоть лэзи, хоть реди рекорд, и они могли как угодно комбинироваться
 Вынести из сервер и из клиент в отдельный пакет чтобы мочь применять его в других библиотеках
+Разобраться с эррор баундари для фронта
 
 START0
 start0 without mono0
@@ -178,6 +182,7 @@ https://oxc.rs/docs/guide/usage/linter/config
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
 ? on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware (whcih problem do we solve?)
+Инпутрау только где ющер вводит, иначе инпутрауанноуе
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
 В куки добавить стрикт, чтобы если стрикт тру, то не парсить строку трансформером, а ещё лучше {transform: false,true,'auto'}
 В суперстор добавить скоуп, чтобы оно не отдавалось в противном случае в сср
@@ -223,14 +228,17 @@ Move type errors to its own types, so we can reuse them
 Replace all node methods with native bun methods, including watcher
 analyze why client bundle so big in examples
 on request to server for query or mutation which has no serverLoader throw error
+? Переделать всё на функции, поинт сделать просто типом, и даже lets пусть будет функцией выносимой
 ? possibility to subscribe to body chunks read
 ? ЮзЛоадерРезулт а там уже и куки и дата последняя полученная
+? Суперстор тоже в отдельный пакейдж, стобыего могли другие разрабы переиспользовать
 
 CREATE POINT0 APP
 cli to create app
 Опция криэйт апп поинт0 сразу предлагает купить старт0
 
 REDIRECT
+allow redirect by redirect() right inside outer, or via useRedirect()
 redirect (as option in loader and clientLoader for page)
 redirect as point method which will be applied to both client and server
 
@@ -402,7 +410,7 @@ polyfill
 
 Позже сделать летс тчк пейдж и прочие с объектным стилем и еслинт биом плагином для валидации порядка ключей
 
-
+? А потом и девопс штуки Аля летс ресурс, с такими же зависимостями как у инит CDKTF. Но пусть это делается через экстеншен, который позволяет доопределить всё включая опции энжины, кли команды, летс поинт тайпы, и прочее
 
 
 
@@ -438,6 +446,12 @@ polyfill
 -----------------
 ------ ??? ------
 -----------------
+
+? remove allpointsmanager, and fix relations points-mamager and all-points-manager and fetch and executor
+? Не нужен алл поинтс менеджер, у нас в сервере итак все поинтсы. А для клиента пусть называется просто пейджес три и туда попадают только лэйоуты и страницы
+? InputRaw → InputOriginal
+? Remove inputOriginal from options of loader and ctx
+? В фетч и серв назвать аргумент просто кткс
 
 ? При использовании икс квери а другом скоупе мы всё рут икс квери можем заменить на рут нашего скоупа, главное при летсе от Рута не Рута не передавать экстенд ФНС, а брать их в момент экзекьбта из рута запрашивающего скоупа, и тогда уж ну точно у Рута не должно быть дата лоадеров и кткс сеттеров... (да у нас есть разруливатель кода исходя из запускаемого скоупа, хватит всем и того, что они что надо прокинут в х рут)
 
