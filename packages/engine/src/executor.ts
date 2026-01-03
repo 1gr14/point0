@@ -1,7 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0, type AnyLocation } from '@devp0nt/route0'
 import type {
-  AnyPoint,
   AnyUnqueriedLoaderResult,
   AppComponent,
   Ctx,
@@ -15,10 +14,12 @@ import type {
   IsInputOptional,
   LoaderOutput,
   NiceEndPoint,
+  PagePoint,
   PointName,
   PointsScope,
   QueryKey,
   RequiredCtx,
+  RootPoint,
   ServerExecuteAction,
   ServerExecuteResult,
   UndefinedData,
@@ -27,7 +28,7 @@ import type {
   UnknownData,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { ResponseEffectsManager, Point0, Request0, PointsManager, SuperStore } from '@point0/core'
+import { Point0, PointsManager, Request0, ResponseEffectsManager, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import * as React from 'react'
@@ -150,7 +151,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return await SuperStore.runWithServerStorageProvider(this.serverGlobalState, callback)
   }
 
-  static createRequestByPointAndInput<TPoint extends EndPoint | AnyPoint>({
+  static createRequestByPointAndInput<TPoint extends EndPoint>({
     point,
     input,
   }: {
@@ -231,7 +232,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ...args:
       | [options: ExecuteOptions<any>]
       | [
-          point: AnyPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
+          point: EndPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
           input?: InputRaw,
         ]
   ): Promise<ServerExecuteResult<any, any>> {
@@ -240,7 +241,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       input = {},
       withLayouts = false,
     } = ((): {
-      point: AnyPoint | undefined
+      point: EndPoint | undefined
       input: InputRaw
       withLayouts: boolean
     } => {
@@ -248,7 +249,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         // so it is NiceEndPoint provided like first argument
         return { point: args[0]?.point, input: args[1] as InputRaw, withLayouts: false }
       }
-      // so it is AnyPoint provided in object
+      // so it is EndPoint provided in object
       return { point: args[0].point, input: args[0].input, withLayouts: !!args[0].withLayouts }
     })()
 
@@ -286,8 +287,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           status: 422,
           response: undefined,
           output: {},
-          // TODO:ASAP fix it
-          effects: {} as never,
+          effects: this.responseEffectsManager.effects,
         }
       }
 
@@ -320,8 +320,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status: 404,
             response: currentResponse,
             output: currentOutput,
-            // TODO:ASAP fix it
-            effects: {} as never,
+            effects: this.responseEffectsManager.effects,
           }
         }
 
@@ -342,8 +341,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   status: 422,
                   response: currentResponse,
                   output: currentOutput,
-                  // TODO:ASAP fix it
-                  effects: {} as never,
+                  effects: this.responseEffectsManager.effects,
                 }
               }
               currentInputParsed = safeParseResult.data
@@ -375,6 +373,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   inputRaw: input,
                   request: this.request,
                   set: this.responseEffectsManager.set,
+                  point,
                 })
                 if (Array.isArray(result)) {
                   const appendCtxExposedKeys =
@@ -428,6 +427,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   inputRaw: input,
                   request: this.request,
                   set: this.responseEffectsManager.set,
+                  point,
                 })
                 if (Array.isArray(result)) {
                   currentStatus = result[0]
@@ -471,19 +471,22 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return {
           ctx: currentCtx,
           data: currentData,
-          head: this.getCurrentPageHead({
-            point,
-            input: currentInputParsed,
-            inputRaw: input,
-            data: currentData,
-            error: null,
-          }),
+          head:
+            // TODO: remove it when head will be fixed
+            point.type === 'page'
+              ? this.getCurrentPageHead({
+                  point: point as PagePoint,
+                  input: currentInputParsed,
+                  inputRaw: input,
+                  data: currentData,
+                  error: null,
+                })
+              : [],
           response: currentResponse,
           error: null,
           status: currentStatus,
           output: currentOutput,
-          // TODO:ASAP fix it
-          effects: {} as never,
+          effects: this.responseEffectsManager.effects,
         }
       } catch (error) {
         try {
@@ -494,8 +497,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           return {
             ctx: currentCtx,
             data: currentData,
+            // TODO: remove it when head will be fixed
             head: this.getCurrentPageHead({
-              point: point ?? this.pointsManager.root,
+              point: (point ?? this.pointsManager.root) as PagePoint | RootPoint,
               input: currentInputParsed,
               inputRaw: input,
               data: currentData,
@@ -505,8 +509,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status: error0.httpStatus ?? 500,
             response: currentResponse,
             output: currentOutput,
-            // TODO:ASAP fix it
-            effects: {} as never,
+            effects: this.responseEffectsManager.effects,
           }
         } catch (error2) {
           // in case if we have error in head resolver
@@ -519,8 +522,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             status: error0.httpStatus ?? 500,
             response: currentResponse,
             output: currentOutput,
-            // TODO:ASAP fix it
-            effects: {} as never,
+            effects: this.responseEffectsManager.effects,
           }
         }
       }
@@ -582,7 +584,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     App: AppComponent
     renderToReadableStream: typeof RenderToReadableStream
-    pagePoint: AnyPoint | undefined
+    pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     input: InputRaw
     seenQueryHashes?: Set<string>
@@ -665,7 +667,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     data: Data
     input: InputParsed
     error: unknown
-    point: AnyPoint | undefined
+    point: EndPoint | undefined
   }): Promise<void> {
     await this.withServerGlobalState(async () => {
       if (
@@ -728,7 +730,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     data,
     error,
   }: {
-    point: AnyPoint
+    point: PagePoint | RootPoint
     input: InputParsed
     inputRaw: InputRaw
     data: Data | UndefinedData
@@ -764,7 +766,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pagePoint,
     input,
   }: {
-    pagePoint: AnyPoint
+    pagePoint: EndPoint
     input: InputRaw
   }): Promise<void> {
     await this.withServerGlobalState(async () => {

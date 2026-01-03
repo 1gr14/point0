@@ -1,5 +1,5 @@
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import type { AnyPoint, AppComponent, InputParsed, Request0, PointsScope, ServerExecuteResult } from '@point0/core'
+import type { AppComponent, InputParsed, Request0, PointsScope, ServerExecuteResult, PagePoint } from '@point0/core'
 import { PointsManager, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -842,7 +842,7 @@ Bun.serve({
   }: {
     executor: Executor
     executeResult: ServerExecuteResult<any, any>
-    pagePoint: AnyPoint | undefined
+    pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<ReadableStream> {
@@ -866,7 +866,7 @@ Bun.serve({
     input,
   }: {
     executor: Executor
-    pagePoint: AnyPoint | undefined
+    pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     input: InputParsed
   }): Promise<void> {

@@ -1,5 +1,5 @@
 import type { AnyLocation } from '@devp0nt/route0'
-import type { AnyPoint, AppComponent, InputRaw } from '@point0/core'
+import type { AppComponent, InputRaw, PagePoint } from '@point0/core'
 import { SuperStore } from '@point0/core'
 import { createHead, transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
@@ -263,7 +263,7 @@ export async function renderAppAsReadableStream({
 }: {
   App: AppComponent
   executor: Executor
-  pagePoint: AnyPoint | undefined
+  pagePoint: PagePoint | undefined
   pageLocation: AnyLocation
   input: InputRaw
   env?: Record<string, string | number | boolean | undefined>

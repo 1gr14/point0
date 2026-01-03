@@ -19,7 +19,7 @@ import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as Z
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request.js'
-import type { ResponseEffectsSetHelper } from './response-effects.js'
+import type { ResponseEffects, ResponseEffectsSetHelper } from './response-effects.js'
 
 // basic
 
@@ -1192,7 +1192,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       data: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
       head: ResolvableHead[]
       response: TServerLoaderOutput extends Response ? TServerLoaderOutput : undefined
-      effects: ResponseEffectsSetHelper
+      effects: ResponseEffects
       error: null
       status: number
       output: TServerLoaderOutput
@@ -1202,7 +1202,7 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
       data: UnknownData | UndefinedData
       head: ResolvableHead[]
       response: Response | UndefinedResponse
-      effects: ResponseEffectsSetHelper
+      effects: ResponseEffects
       error: Error0
       status: number
       output: LoaderOutput | UndefinedLoaderOutput
@@ -1215,6 +1215,7 @@ export type CtxFnOptions<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
   request: Request0
+  point: EndPoint | undefined
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   set: ResponseEffectsSetHelper
@@ -1260,6 +1261,7 @@ export type LoaderFnOptions<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
   request: Request0
+  point: EndPoint | undefined
   input: InputParsed<TRouteDefinition, TInputSchema>
   inputRaw: InputRawUnknown
   data: DataOrUndefinedData<TServerLoaderOutput>

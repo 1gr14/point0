@@ -53,14 +53,18 @@ export class ResponseEffectsManager {
     // Use defineProperty to create a getter that returns a snapshot of current state
     // This ensures inspect always reflects the current state and doesn't share references
     Object.defineProperty(this.set, 'inspect', {
-      get: () => ({
-        headers: { ...this.headers },
-        cookies: { ...this.cookies },
-        status: this.status,
-      }),
+      get: () => this.effects,
       enumerable: true,
       configurable: true,
     })
+  }
+
+  get effects(): ResponseEffects {
+    return {
+      headers: { ...this.headers },
+      cookies: { ...this.cookies },
+      status: this.status,
+    }
   }
 
   private _setHeaders(...args: any[]): void {
@@ -119,7 +123,7 @@ export class ResponseEffectsManager {
     return new ResponseEffectsManager()
   }
 
-  private _serializeCookie(cookie: CookieOptions): string {
+  private static _serializeCookie(cookie: CookieOptions): string {
     const parts: string[] = [`${cookie.name}=${cookie.value}`]
 
     if (cookie.path) {
@@ -162,22 +166,24 @@ export class ResponseEffectsManager {
     return parts.join('; ')
   }
 
-  private _extractCookieName(cookieString: string): string {
+  private static _extractCookieName(cookieString: string): string {
     const regex = /^([^=]+)=/
     const match = regex.exec(cookieString)
     return match ? match[1].trim() : ''
   }
 
-  mergeCookies(response: Response): string[] {
+  private static _mergeCookies(response: Response, cookies: ResponseCookies): string[] {
     const responseSetCookies = response.headers.getAll('set-cookie')
-    const responseCookieNames = new Set(responseSetCookies.map((cookie) => this._extractCookieName(cookie)))
+    const responseCookieNames = new Set(
+      responseSetCookies.map((cookie) => ResponseEffectsManager._extractCookieName(cookie)),
+    )
 
     // Response cookies first (higher priority)
     const merged: string[] = [...responseSetCookies]
 
     // Add effects cookies that don't conflict with response cookies
-    for (const cookie of Object.values(this.cookies)) {
-      const cookieString = this._serializeCookie(cookie)
+    for (const cookie of Object.values(cookies)) {
+      const cookieString = ResponseEffectsManager._serializeCookie(cookie)
       if (!responseCookieNames.has(cookie.name)) {
         merged.push(cookieString)
       }
@@ -186,12 +192,16 @@ export class ResponseEffectsManager {
     return merged
   }
 
-  applyToResponse(response: Response): Response {
+  mergeCookies(response: Response): string[] {
+    return ResponseEffectsManager._mergeCookies(response, this.cookies)
+  }
+
+  static applyToResponse(response: Response, effects: ResponseEffects): Response {
     const newHeaders = new Headers()
     const setCookieHeaderName = 'set-cookie'
 
     // Apply effects headers first (except Set-Cookie)
-    for (const [name, value] of Object.entries(this.headers)) {
+    for (const [name, value] of Object.entries(effects.headers)) {
       if (name.toLowerCase() !== setCookieHeaderName) {
         newHeaders.set(name, value)
       }
@@ -205,16 +215,20 @@ export class ResponseEffectsManager {
     })
 
     // Merge and apply cookies
-    const mergedCookies = this.mergeCookies(response)
+    const mergedCookies = ResponseEffectsManager._mergeCookies(response, effects.cookies)
     for (const cookieString of mergedCookies) {
       newHeaders.append('Set-Cookie', cookieString)
     }
 
-    const status = this.status ?? response.status
+    const status = effects.status ?? response.status
 
     return new Response(response.body, {
       status,
       headers: newHeaders,
     })
+  }
+
+  applyToResponse(response: Response): Response {
+    return ResponseEffectsManager.applyToResponse(response, this.effects)
   }
 }

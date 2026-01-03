@@ -1,6 +1,6 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx } from '@point0/core'
+import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx, PagePoint } from '@point0/core'
 import { Request0, ResponseEffectsManager, SuperStore } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
@@ -317,7 +317,7 @@ export class Fetcher {
             const readableStream = await relatedClient.renderAsReadableStream({
               executor,
               executeResult,
-              pagePoint: suitable.point,
+              pagePoint: suitable.point as PagePoint | undefined,
               pageLocation: suitable.pageLocation,
               input,
             })
@@ -349,7 +349,7 @@ export class Fetcher {
           }
           await relatedClient.prefetchAppPagePointDeep({
             executor,
-            pagePoint: suitable.point,
+            pagePoint: suitable.point as PagePoint | undefined,
             pageLocation: suitable.pageLocation,
             input: await this.getPointInput({ suitable, task, request }),
           })
