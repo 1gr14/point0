@@ -64,8 +64,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverGlobalState: {
-      __POINT0_POINT_REQUEST__: Request0
-      __POINT0_RESPONSE_EFFECTS_MANAGER__: Response0
+      __POINT0_REQUEST0__: Request0
+      __POINT0_RESPONSE0__: Response0
       __POINT0_SCOPE__: PointsScope
       __POINT0_QUERY_CLIENT__: QueryClient
       __POINT0_SSR_LOCATION__: AnyLocation | undefined
@@ -100,18 +100,18 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }): Promise<Executor<TRequiredCtx>> {
     const serverGlobalState = {}
     response0 ??= Response0.create()
-    const pointRequest = Request0.create(request)
+    const request0 = Request0.create(request)
     return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
       return new Executor<TRequiredCtx>({
-        request: pointRequest,
+        request: request0,
         pointsManager,
         pageLocation,
         requiredCtx,
         serverExecuteActionsWithOutput: [],
         response0,
         serverGlobalState: {
-          __POINT0_POINT_REQUEST__: pointRequest,
-          __POINT0_RESPONSE_EFFECTS_MANAGER__: response0,
+          __POINT0_REQUEST0__: request0,
+          __POINT0_RESPONSE0__: response0,
           __POINT0_SCOPE__: pointsManager.scope,
           __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
           __POINT0_SSR_LOCATION__: undefined,

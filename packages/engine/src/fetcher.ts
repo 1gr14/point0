@@ -417,8 +417,8 @@ export class Fetcher {
 
     return await SuperStore.runWithServerStorageProvider(
       {
-        __POINT0_POINT_REQUEST__: prepareFetchResult.request,
-        __POINT0_RESPONSE_EFFECTS_MANAGER__: response0,
+        __POINT0_REQUEST0__: prepareFetchResult.request,
+        __POINT0_RESPONSE0__: response0,
       },
       async () => {
         if (prepareFetchResult.devClientsProxyResult) {

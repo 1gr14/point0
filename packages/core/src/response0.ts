@@ -1,4 +1,6 @@
+import { ClientServerHelpers } from './client-server.js'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
+import { SuperStore } from './super-store.js'
 
 export type ResponseHeaders = Record<string, string>
 export type ResponseCookies = Record<string, CookieOptions>
@@ -224,5 +226,20 @@ export class Response0 {
 
   apply(response: Response): Response {
     return Response0.apply(response, this.effects)
+  }
+
+  static get(): Response0 {
+    if (!ClientServerHelpers.isServer) {
+      throw new Error(
+        'You can not get respnse0 not in server. Please call Respons0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+      )
+    }
+    const response0 = SuperStore.getWeak<Response0 | undefined>('__POINT0_RESPONSE0__')
+    if (!response0) {
+      throw new Error(
+        'Response0 is undefined while try to get it from server. Please call Respons0.get() only inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+      )
+    }
+    return response0
   }
 }

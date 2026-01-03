@@ -1,5 +1,7 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import { ClientServerHelpers } from './client-server.js'
+import { SuperStore } from './super-store.js'
 
 // TODO: add generics TRoute, THeaders, TCookies
 export class Request0 {
@@ -113,6 +115,21 @@ export class Request0 {
     }
 
     return new Request0({ original, headers, cookies, location, method, from })
+  }
+
+  static get(): Request0 {
+    if (!ClientServerHelpers.isServer) {
+      throw new Error(
+        'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+      )
+    }
+    const request0 = SuperStore.getWeak<Request0 | undefined>('__POINT0_REQUEST0__')
+    if (!request0) {
+      throw new Error(
+        'Request0 is undefined while try to get it from server. Please call Request0.get() only inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
+      )
+    }
+    return request0
   }
 }
 

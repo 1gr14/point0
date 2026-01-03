@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Point0 } from './index.js'
-import type { Request0 } from './request0.js'
-import type { Response0 } from './response0.js'
-import { SuperStore } from './super-store.js'
+import { Request0 } from './request0.js'
+import { Response0 } from './response0.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
@@ -204,17 +203,11 @@ export class CookiesStore {
   }
 
   static readonly serverCookieGetter: CookiesStoreGetter = (name) => {
-    const request = SuperStore.getWeak<Request0 | undefined>('__POINT0_POINT_REQUEST__')
-    if (!request) {
-      throw new Error('Request is undefined while try to get cookie from server')
-    }
-    return request.cookies[name]
+    const request0 = Request0.get()
+    return request0.cookies[name]
   }
   static readonly serverCookieSetter: CookiesStoreSetter = (cookieOptionsInput) => {
-    const response0 = SuperStore.getWeak<Response0 | undefined>('__POINT0_RESPONSE_EFFECTS_MANAGER__')
-    if (!response0) {
-      throw new Error('Response effects manager is undefined while try to set cookie from server')
-    }
+    const response0 = Response0.get()
     response0.set.cookies(cookieOptionsInput)
   }
 
