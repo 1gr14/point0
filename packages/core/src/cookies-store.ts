@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Point0 } from './index.js'
 import { Request0 } from './request0.js'
 import { Response0 } from './response0.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
+import { ClientServerHelpers } from './client-server.js'
 
 export type CookieSameSite = 'strict' | 'lax' | 'none'
 
@@ -37,54 +37,15 @@ export type CookieOptionsInput = {
   maxAge?: number
 }
 
-export type CookieOptionsInputWithDefaultValueAndHttpOnly<TValue> = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
-  value: TValue
-  httpOnly: true
+export type CookieDefineOptions<
+  THttpOnly extends boolean = false,
+  TTransformer extends DataTransformer | 'auto' | boolean = 'auto',
+  TFallback = undefined,
+> = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
+  httpOnly?: THttpOnly
+  transformer?: TTransformer
+  fallback?: TFallback
 }
-export type CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue> = Omit<
-  CookieOptionsInput,
-  'value' | 'httpOnly'
-> & {
-  value: TValue
-  httpOnly?: false
-}
-export type CookieOptionsInputWithoutDefaultValueAndHttpOnly = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
-  value?: undefined
-  httpOnly: true
-}
-export type CookieOptionsInputWithoutDefaultValueAndNotHttpOnly = Omit<CookieOptionsInput, 'value' | 'httpOnly'> & {
-  value?: undefined
-  httpOnly?: false
-}
-
-// type InferDefaultValue<
-//   TCookieOptionsInputWithDefaultValue extends
-//     | CookieOptionsInputWithDefaultValueAndHttpOnly<any>
-//     | CookieOptionsInputWithDefaultValueAndNotHttpOnly<any>
-//     | CookieOptionsInputWithoutDefaultValueAndHttpOnly
-//     | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly,
-// > =
-//   TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValueAndHttpOnly<infer TValue>
-//     ? TValue extends undefined
-//       ? undefined
-//       : TValue
-//     : TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValueAndNotHttpOnly<infer TValue>
-//       ? TValue extends undefined
-//         ? undefined
-//         : TValue
-//       : undefined
-// type InferHttpOnly<
-//   TCookieOptionsInputWithDefaultValue extends
-//     | CookieOptionsInputWithDefaultValueAndHttpOnly<any>
-//     | CookieOptionsInputWithDefaultValueAndNotHttpOnly<any>
-//     | CookieOptionsInputWithoutDefaultValueAndHttpOnly
-//     | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly,
-// > =
-//   TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithDefaultValueAndHttpOnly<any>
-//     ? true
-//     : TCookieOptionsInputWithDefaultValue extends CookieOptionsInputWithoutDefaultValueAndHttpOnly
-//       ? true
-//       : false
 
 export class CookiesStore {
   static clientDocumentCookieGetter: CookiesStoreGetter = (name) => {
@@ -134,69 +95,73 @@ export class CookiesStore {
     CookiesStore.clientCookieSetter = options?.clientCookieSetter ?? CookiesStore.clientCookieSetter
   }
 
-  // define(
-  //   ...args: TTransformer extends null ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<string>] : never[]
-  // ): CookiesStoreItem<string>
-  // define<TValue>(
-  //   ...args: TTransformer extends null
-  //     ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>, transformer: DataTransformer]
-  //     : [ShowError<`Transformer is required for setting cookie with custom value type`>]
-  // ): CookiesStoreItem<TValue>
-  // define<TValue>(
-  //   ...args: TTransformer extends DataTransformerExtended
-  //     ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<TValue>]
-  //     : never[]
-  // ): CookiesStoreItem<TValue>
-  // define(
-  //   ...args: TTransformer extends DataTransformerExtended
-  //     ? [cookieOptionsInput: CookieOptionsInputWithDefaultValue<string>, transformer: null]
-  //     : never[]
-  // ): CookiesStoreItem<string>
-  // define(
-  //   ...args:
-  //     | [cookieOptionsInput: CookieOptionsInputWithDefaultValue<any>, transformer?: DataTransformer | null]
-  //     | never[]
-  //     | [ShowError<any>]
-  // ): CookiesStoreItem<any> {
-  //   const cookieOptionsInput: CookieOptionsInputWithDefaultValue<any> =
-  //     args[0] as CookieOptionsInputWithDefaultValue<any>
-  //   const transformer: DataTransformerExtended | null = args[1] ? toExtendedTransformer(args[1]) : this.transformer
-  //   const item = new CookiesStoreItem<any>({
-  //     cookiesStore: this,
-  //     cookieOptionsInput,
-  //     transformer,
-  //   })
-  //   CookiesStore.items.add(item)
-  //   return item
-  // }
-  static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue>,
-    transformer?: DataTransformer | undefined,
-  ): CookiesStoreItem<TValue, TValue, false>
-  static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithDefaultValueAndHttpOnly<TValue>,
-    transformer?: DataTransformer | undefined,
-  ): Omit<CookiesStoreItem<TValue, TValue, true>, 'use' | 'refresh'>
-  static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithoutDefaultValueAndNotHttpOnly,
-    transformer?: DataTransformer | undefined,
+  // string, httpOnly=false, fallback=undefined
+  static define<TValue extends string = string>(
+    options: CookieDefineOptions<false, DataTransformer | 'auto' | boolean, undefined> | string,
   ): CookiesStoreItem<TValue, undefined, false>
-  static define<TValue = string>(
-    cookieOptionsInput: CookieOptionsInputWithoutDefaultValueAndHttpOnly,
-    transformer?: DataTransformer | undefined,
+
+  // string, httpOnly=false, fallback=TValue
+  static define<TValue extends string = string>(
+    options: CookieDefineOptions<false, DataTransformer | 'auto' | boolean, TValue>,
+  ): CookiesStoreItem<TValue, undefined, false>
+
+  // string, httpOnly=true, fallback=undefined
+  static define<TValue extends string = string>(
+    options: CookieDefineOptions<true, DataTransformer | 'auto' | boolean, undefined>,
   ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
-  static define<TValue = string>(
-    cookieOptionsInput:
-      | CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue>
-      | CookieOptionsInputWithDefaultValueAndHttpOnly<TValue>
-      | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly
-      | CookieOptionsInputWithoutDefaultValueAndHttpOnly,
-    transformer?: DataTransformer | undefined,
-  ): CookiesStoreItem<any, any, any> {
-    const transformerHere = transformer ? toExtendedTransformer(transformer) : CookiesStore.transformer
+
+  // string, httpOnly=true, fallback=TValue
+  static define<TValue extends string = string>(
+    options: CookieDefineOptions<true, DataTransformer | 'auto' | boolean, TValue>,
+  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+
+  // custom, httpOnly=false, fallback=undefined
+  static define<TValue>(
+    options: CookieDefineOptions<false, DataTransformer | 'auto' | true, undefined> | string,
+  ): CookiesStoreItem<TValue, undefined, false>
+
+  // custom, httpOnly=false, fallback=TValue
+  static define<TValue>(
+    options: CookieDefineOptions<false, DataTransformer | 'auto' | true, TValue>,
+  ): CookiesStoreItem<TValue, undefined, false>
+
+  // custom, httpOnly=true, fallback=undefined
+  static define<TValue>(
+    options: CookieDefineOptions<true, DataTransformer | 'auto' | true, undefined>,
+  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+
+  // custom, httpOnly=true, fallback=TValue
+  static define<TValue>(
+    options: CookieDefineOptions<true, DataTransformer | 'auto' | true, TValue>,
+  ): Omit<CookiesStoreItem<TValue, undefined, true>, 'use' | 'refresh'>
+
+  // implementation
+  static define(options: CookieDefineOptions<boolean, DataTransformer | 'auto' | boolean, any> | string) {
+    const transformerPolicy =
+      typeof options === 'string'
+        ? 'auto'
+        : options.transformer === undefined
+          ? 'auto'
+          : options.transformer === true
+            ? true
+            : options.transformer === false
+              ? false
+              : options.transformer === 'auto'
+                ? 'auto'
+                : true
+    const transformer =
+      typeof options === 'string'
+        ? CookiesStore.transformer
+        : typeof options.transformer === 'object'
+          ? toExtendedTransformer(options.transformer)
+          : CookiesStore.transformer
+    const cookieDefineOptions = typeof options === 'string' ? { name: options } : options
+    const fallback = typeof options === 'string' ? undefined : options.fallback
     const item = new CookiesStoreItem<any, any, any>({
-      cookieOptionsInput,
-      transformer: transformerHere,
+      cookieDefineOptions,
+      transformerPolicy,
+      transformer,
+      fallback,
     })
     CookiesStore.items.add(item)
     return item
@@ -212,10 +177,10 @@ export class CookiesStore {
   }
 
   static set: CookiesStoreSetter = (cookieOptionsInput) => {
-    if (!Point0.isServer && cookieOptionsInput.httpOnly) {
+    if (!ClientServerHelpers.isServer && cookieOptionsInput.httpOnly) {
       throw new Error(`Cannot set cookie "${cookieOptionsInput.name}" from client: httpOnly cookies are server-only`)
     }
-    if (Point0.isServer) {
+    if (ClientServerHelpers.isServer) {
       CookiesStore.serverCookieSetter(cookieOptionsInput)
     } else {
       CookiesStore.clientCookieSetter(cookieOptionsInput)
@@ -223,7 +188,7 @@ export class CookiesStore {
   }
 
   static get: CookiesStoreGetter = (name) => {
-    if (Point0.isServer) {
+    if (ClientServerHelpers.isServer) {
       return CookiesStore.serverCookieGetter(name)
     } else {
       return CookiesStore.clientCookieGetter(name)
@@ -231,7 +196,7 @@ export class CookiesStore {
   }
 
   static refresh(): void {
-    if (Point0.isServer) {
+    if (ClientServerHelpers.isServer) {
       throw new Error('refresh() is only available on the client')
     }
     this.items.forEach((item) => {
@@ -243,26 +208,27 @@ export class CookiesStore {
   }
 }
 
-class CookiesStoreItem<TValue, TDefaultValue, THttpOnly extends boolean> {
-  private readonly cookieOptionsInput: Omit<CookieOptionsInput, 'value'>
-  private readonly defaultValue: TDefaultValue
-  private readonly transformer: DataTransformerExtended | null
+class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
+  private readonly cookieDefineOptions: CookieDefineOptions<THttpOnly, any, TFallback>
+  private readonly fallback: TFallback
+  private readonly transformerPolicy: 'auto' | boolean
+  private readonly transformer: DataTransformerExtended
   private readonly refreshCallbacks = new Set<() => void>()
 
   constructor({
-    cookieOptionsInput,
+    cookieDefineOptions,
+    transformerPolicy,
     transformer,
+    fallback,
   }: {
-    cookieOptionsInput:
-      | CookieOptionsInputWithDefaultValueAndNotHttpOnly<TValue>
-      | CookieOptionsInputWithDefaultValueAndHttpOnly<TValue>
-      | CookieOptionsInputWithoutDefaultValueAndNotHttpOnly
-      | CookieOptionsInputWithoutDefaultValueAndHttpOnly
-    transformer: DataTransformerExtended | null
+    cookieDefineOptions: CookieDefineOptions<THttpOnly, any, TFallback>
+    transformerPolicy: 'auto' | boolean
+    transformer: DataTransformerExtended
+    fallback: TFallback
   }) {
-    const { value: defaultValue, ...cookieOptionsInputWithoutValue } = cookieOptionsInput
-    this.cookieOptionsInput = cookieOptionsInputWithoutValue
-    this.defaultValue = defaultValue as TDefaultValue
+    this.cookieDefineOptions = cookieDefineOptions
+    this.fallback = fallback
+    this.transformerPolicy = transformerPolicy
     this.transformer = transformer
   }
 
@@ -270,52 +236,63 @@ class CookiesStoreItem<TValue, TDefaultValue, THttpOnly extends boolean> {
    * Check if this cookie is httpOnly (server-only).
    */
   isHttpOnly(): THttpOnly {
-    return (this.cookieOptionsInput.httpOnly === true) as THttpOnly
+    return (this.cookieDefineOptions.httpOnly === true) as THttpOnly
   }
 
   set(value: TValue) {
-    if (!Point0.isServer && this.cookieOptionsInput.httpOnly) {
+    if (!ClientServerHelpers.isServer && this.cookieDefineOptions.httpOnly) {
       throw new Error(
-        `Cannot set cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
+        `Cannot set cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
     if (value === undefined) {
       this.delete()
     }
-    const stringified = this.transformer
-      ? typeof value === 'string'
-        ? value
-        : (this.transformer.stringify(value) as string)
-      : (value as string)
-    CookiesStore.set({ ...this.cookieOptionsInput, value: stringified })
+    const stringified = (() => {
+      if (this.transformerPolicy === false) {
+        return String(value)
+      }
+      if (this.transformerPolicy === true) {
+        return this.transformer.stringify(value) as string
+      }
+      return typeof value === 'string' ? value : (this.transformer.stringify(value) ?? String(value))
+    })()
+    CookiesStore.set({ ...this.cookieDefineOptions, value: stringified })
   }
 
   delete() {
-    if (!Point0.isServer && this.cookieOptionsInput.httpOnly) {
+    if (!ClientServerHelpers.isServer && this.cookieDefineOptions.httpOnly) {
       throw new Error(
-        `Cannot delete cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
+        `Cannot delete cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
-    CookiesStore.set({ ...this.cookieOptionsInput, value: '', expires: new Date(0) })
+    CookiesStore.set({ ...this.cookieDefineOptions, value: '', expires: new Date(0) })
   }
 
-  get(): TValue | TDefaultValue {
-    if (!Point0.isServer && this.cookieOptionsInput.httpOnly) {
+  get(): TValue | TFallback {
+    if (!ClientServerHelpers.isServer && this.cookieDefineOptions.httpOnly) {
       throw new Error(
-        `Cannot get cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
+        `Cannot get cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
-    const stringified = CookiesStore.get(this.cookieOptionsInput.name)
+    const stringified = CookiesStore.get(this.cookieDefineOptions.name)
     if (stringified === undefined) {
-      return this.defaultValue
+      return this.fallback
     }
-    try {
-      return this.transformer
-        ? ((this.transformer.parse(stringified) ?? stringified) as TValue)
-        : (stringified as TValue)
-    } catch {
-      return stringified as TValue
-    }
+    const parsed: TValue = (() => {
+      if (this.transformerPolicy === false) {
+        return stringified as TValue
+      }
+      if (this.transformerPolicy === true) {
+        return this.transformer.parse(stringified)
+      }
+      try {
+        return (this.transformer.parse(stringified) ?? stringified) as TValue
+      } catch {
+        return stringified as TValue
+      }
+    })()
+    return parsed
   }
 
   /**
@@ -323,12 +300,12 @@ class CookiesStoreItem<TValue, TDefaultValue, THttpOnly extends boolean> {
    * This will trigger all registered `use` hooks to update.
    */
   refresh(): void {
-    if (Point0.isServer) {
+    if (ClientServerHelpers.isServer) {
       throw new Error('refresh() is only available on the client')
     }
-    if (this.cookieOptionsInput.httpOnly) {
+    if (this.cookieDefineOptions.httpOnly) {
       throw new Error(
-        `Cannot refresh cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
+        `Cannot refresh cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
     this.refreshCallbacks.forEach((callback) => {
@@ -353,43 +330,28 @@ class CookiesStoreItem<TValue, TDefaultValue, THttpOnly extends boolean> {
    * @param onChange Optional callback that will be called when the cookie value changes (client only)
    * @returns The current cookie value
    */
-  use(onChange?: (value: TValue | TDefaultValue) => void): TValue | TDefaultValue {
+  use(onChange?: (value: TValue | TFallback) => void): TValue | TFallback {
     // On server, just return the current value
-    if (Point0.isServer) {
+    if (ClientServerHelpers.isServer) {
       return this.get()
     }
 
     // Check if httpOnly cookie is being accessed from client
-    if (this.cookieOptionsInput.httpOnly) {
+    if (this.cookieDefineOptions.httpOnly) {
       throw new Error(
-        `Cannot use cookie "${this.cookieOptionsInput.name}" from client: httpOnly cookies are server-only`,
+        `Cannot use cookie "${this.cookieDefineOptions.name}" from client: httpOnly cookies are server-only`,
       )
     }
 
     const getStringifiedValue = (): string | undefined => {
-      return CookiesStore.get(this.cookieOptionsInput.name)
+      return CookiesStore.get(this.cookieDefineOptions.name)
     }
 
-    const getValue = (): TValue | TDefaultValue => {
-      const stringified = getStringifiedValue()
-      if (stringified === undefined) {
-        return this.defaultValue
-      }
-      try {
-        return this.transformer
-          ? ((this.transformer.parse(stringified) ?? stringified) as TValue)
-          : (stringified as TValue)
-      } catch (error) {
-        console.error('Parsing cookie failed', this.cookieOptionsInput.name, stringified, error)
-        return stringified as TValue
-      }
-    }
-
-    const initialValue = getValue()
+    const initialValue = this.get()
     const initialStringified = getStringifiedValue()
-    const [value, setValue] = useState<TValue | TDefaultValue>(initialValue)
+    const [value, setValue] = useState<TValue | TFallback>(initialValue)
     const onChangeRef = useRef(onChange)
-    const prevValueRef = useRef<TValue | TDefaultValue>(initialValue)
+    const prevValueRef = useRef<TValue | TFallback>(initialValue)
     const prevOriginalValueRef = useRef<string | undefined>(initialStringified)
 
     // Update the onChange ref when it changes
@@ -403,7 +365,7 @@ class CookiesStoreItem<TValue, TDefaultValue, THttpOnly extends boolean> {
         const newStringified = getStringifiedValue()
         // Only update if the original stringified value actually changed
         if (newStringified !== prevOriginalValueRef.current) {
-          const newValue = getValue()
+          const newValue = this.get()
           setValue(newValue)
           if (onChangeRef.current && prevValueRef.current !== newValue) {
             onChangeRef.current(newValue)
