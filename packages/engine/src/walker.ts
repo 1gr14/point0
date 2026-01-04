@@ -367,12 +367,12 @@ export class WalkerParser {
           file,
         })
         errors.push(...findBaseLetsNodePathByBaseNodePathResult.errors)
-        if (!findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath) {
+        if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
           return undefined
         }
         const result = await this.parsePointByLetsNodePath({
           letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
-          file,
+          file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
         })
         errors.push(...result.errors)
         return result.parsedPoint
@@ -411,14 +411,27 @@ export class WalkerParser {
   }: {
     baseNodePath: NodePath<Node>
     file: WalkerFile<'parsed'>
-  }): Promise<{ baseLetsNodePath: NodePath<Node> | undefined; errors: unknown[] }> {
+  }): Promise<
+    | {
+        isFound: true
+        baseLetsNodePath: NodePath<Node>
+        baseFile: WalkerFile<'parsed'>
+        errors: unknown[]
+      }
+    | {
+        isFound: false
+        baseLetsNodePath: undefined
+        baseFile: undefined
+        errors: unknown[]
+      }
+  > {
     const errors: unknown[] = []
 
     try {
       // Step 1: Check if baseNodePath is an Identifier (e.g., "y" in "y.lets('page')")
       // If it's not an Identifier (e.g., it's Point0 or some other expression), we can't resolve it
       if (baseNodePath.node.type !== 'Identifier') {
-        return { baseLetsNodePath: undefined, errors }
+        return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
       }
 
       const baseIdentifierName = baseNodePath.node.name
@@ -429,6 +442,7 @@ export class WalkerParser {
       //   - An export: export const y = z.lets('XXX')
       //   - An import: import { y } from './file' or import y from './file'
       let foundLetsNodePath: NodePath<Node> | undefined
+      let foundBaseFile: WalkerFile<'parsed'> | undefined = file // Default to current file
       const importsToResolve: Array<{ importPath: string; importedName: string }> = []
 
       // First pass: Find declarations/exports in current file and collect imports
@@ -536,6 +550,7 @@ export class WalkerParser {
               errors.push(...result.errors)
               if (result.letsNodePath) {
                 foundLetsNodePath = result.letsNodePath
+                foundBaseFile = importedFile // The base point is in the imported file
                 break // Found it, stop searching
               }
             } catch (error) {
@@ -551,10 +566,13 @@ export class WalkerParser {
         }
       }
 
-      return { baseLetsNodePath: foundLetsNodePath, errors }
+      if (!foundLetsNodePath) {
+        return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
+      }
+      return { isFound: true, baseLetsNodePath: foundLetsNodePath, baseFile: foundBaseFile, errors }
     } catch (e) {
       errors.push(e)
-      return { baseLetsNodePath: undefined, errors }
+      return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
     }
   }
 
