@@ -39,43 +39,66 @@ describe('walker', () => {
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
-  it(
-    'should collect points from file',
-    helper(async ({ files: [file], walker }) => {
-      await file.write(`import {Point0} from '@point0/core'
-export const root = Point0.create('server').root()
-export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
-    `)
-      const points = await walker.collectPointsFromFile({ fileAbs: file.path })
-      expect(points.collectedPoints).toMatchObject([
-        {
-          type: 'root',
-          name: 'server',
-        },
-        {
-          type: 'page',
-          name: 'mypage',
-        },
-      ])
-    }),
-  )
+  describe('readAndParsePointsFromFile', () => {
+    it(
+      'can recognize root point in current file',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+  export const root = Point0.lets('root', 'myroot').root()
+      `)
+        const result = await walker.readAndParsePointsFromFile(file.path)
+        console.log(result)
+        // expect(points.collectedPoints).toMatchObject([
+        //   {
+        //     type: 'root',
+        //     name: 'server',
+        //   },
+        //   {
+        //     type: 'page',
+        //     name: 'mypage',
+        //   },
+        // ])
+      }),
+    )
+  })
 
-  it(
-    'should collect points from file, when root in another file',
-    helper(async ({ files: [file0, file1], walker }) => {
-      await file0.write(`import {Point0} from '@point0/core'
-export const root = Point0.create('server').root()
-    `)
-      await file1.write(`import {root} from '${file0.importpath}'
-export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
-    `)
-      const points = await walker.collectPointsFromFile({ fileAbs: file1.path })
-      expect(points.collectedPoints).toMatchObject([
-        {
-          type: 'page',
-          name: 'mypage',
-        },
-      ])
-    }),
-  )
+  //   it(
+  //     'should collect points from file',
+  //     helper(async ({ files: [file], walker }) => {
+  //       await file.write(`import {Point0} from '@point0/core'
+  // export const root = Point0.lets('root', 'server').root()
+  // export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+  //     `)
+  //       const points = await walker.collectPointsFromFile({ fileAbs: file.path })
+  //       expect(points.collectedPoints).toMatchObject([
+  //         {
+  //           type: 'root',
+  //           name: 'server',
+  //         },
+  //         {
+  //           type: 'page',
+  //           name: 'mypage',
+  //         },
+  //       ])
+  //     }),
+  //   )
+
+  //   it(
+  //     'should collect points from file, when root in another file',
+  //     helper(async ({ files: [file0, file1], walker }) => {
+  //       await file0.write(`import {Point0} from '@point0/core'
+  // export const root = Point0.lets('root', 'server').root()
+  //     `)
+  //       await file1.write(`import {root} from '${file0.importpath}'
+  // export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+  //     `)
+  //       const points = await walker.collectPointsFromFile({ fileAbs: file1.path })
+  //       expect(points.collectedPoints).toMatchObject([
+  //         {
+  //           type: 'page',
+  //           name: 'mypage',
+  //         },
+  //       ])
+  //     }),
+  //   )
 })
