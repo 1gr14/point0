@@ -486,7 +486,10 @@ export class Walker {
       for (const { importPath, importedName } of importsToResolve) {
         // Resolve the import path to get the actual file path
         // This handles TypeScript path aliases and relative paths
-        const resolvedPath = await WalkerResolver.detectExistingFilePathByImportPath(importPath, file.abs)
+        const resolvedPath = await WalkerResolver.detectExistingFilePathByImportPath({
+          importPath,
+          containingFile: file.abs,
+        })
         if (resolvedPath) {
           try {
             // Read and parse the imported file
@@ -818,7 +821,7 @@ export class WalkerResolver {
    * Searches up the directory tree to find the nearest tsconfig.json.
    * Returns null if TypeScript is not available or no tsconfig is found.
    */
-  private static async getTsConfigForDirectory(dir: string): Promise<{ options: any } | null> {
+  private static async getTsConfigForDirectory({ dir }: { dir: string }): Promise<{ options: any } | null> {
     // Check cache first
     if (WalkerResolver.tsConfigCache.has(dir)) {
       return WalkerResolver.tsConfigCache.get(dir) ?? null
@@ -891,7 +894,13 @@ export class WalkerResolver {
    * - Index file resolution (e.g., ./dir -> ./dir/index.ts)
    * Returns undefined if TypeScript is not available or resolution fails.
    */
-  private static async resolveTsImport(importPath: string, containingFile: string): Promise<string | undefined> {
+  private static async resolveTsImport({
+    importPath,
+    containingFile,
+  }: {
+    importPath: string
+    containingFile: string
+  }): Promise<string | undefined> {
     // Skip absolute paths - they don't need TypeScript resolution
     if (nodePath.isAbsolute(importPath)) {
       return undefined
@@ -904,7 +913,7 @@ export class WalkerResolver {
     }
 
     const containingDir = nodePath.dirname(containingFile)
-    const tsConfig = await WalkerResolver.getTsConfigForDirectory(containingDir)
+    const tsConfig = await WalkerResolver.getTsConfigForDirectory({ dir: containingDir })
     if (!tsConfig) {
       return undefined
     }
@@ -922,14 +931,17 @@ export class WalkerResolver {
    * First tries TypeScript resolution (for path aliases and relative paths),
    * then falls back to relative path resolution with extension guessing.
    */
-  static async detectExistingFilePathByImportPath(
-    importPath: string,
-    containingFile?: string,
-  ): Promise<string | undefined> {
+  static async detectExistingFilePathByImportPath({
+    importPath,
+    containingFile,
+  }: {
+    importPath: string
+    containingFile?: string
+  }): Promise<string | undefined> {
     // If we have a containing file, try TypeScript resolution first
     // This handles both path aliases (like @/lib/client) and relative paths
     if (containingFile) {
-      const tsResolved = await WalkerResolver.resolveTsImport(importPath, containingFile)
+      const tsResolved = await WalkerResolver.resolveTsImport({ importPath, containingFile })
       if (tsResolved) {
         try {
           await nodeFs.access(tsResolved)
