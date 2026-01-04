@@ -46,21 +46,19 @@ describe('walker', () => {
         await file.write(`import {Point0} from '@point0/core'
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: file.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints[0].simplify()).toMatchObject({
-          file: 'string',
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints[0].simplify()).toMatchObject({
+          file: file.basename,
           letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'myrootvariable',
           lastCalledMethod: 'root',
           baseNodePath: true,
           letsNodePath: true,
-          firstLetsArgNodePath: true,
-          secondLetsArgNodePath: true,
           thirdLetsArgNodePath: false,
           isBasePoint0: true,
-          parsedBasePoint: undefined,
+          parents: [],
         })
       }),
     )
@@ -72,36 +70,38 @@ describe('walker', () => {
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
                           export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: file.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(2)
-        expect(result.parsedPoints[0].simplify()).toMatchObject({
-          file: 'string',
+        expect(result.astPoints).toHaveLength(2)
+        expect(result.astPoints[0].simplify()).toMatchObject({
+          file: file.basename,
+          pointType: 'root',
+          pointName: 'myroot',
           letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'myrootvariable',
           lastCalledMethod: 'root',
           baseNodePath: true,
           letsNodePath: true,
-          firstLetsArgNodePath: true,
-          secondLetsArgNodePath: true,
           thirdLetsArgNodePath: false,
           isBasePoint0: true,
-          parsedBasePoint: undefined,
+          parents: [],
         })
-        expect(result.parsedPoints[1].simplify()).toMatchObject({
-          file: 'string',
+        expect(result.astPoints[1].simplify()).toMatchObject({
+          file: file.basename,
+          pointType: 'page',
+          pointName: 'mypage',
           letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'mypagevariable',
           lastCalledMethod: 'page',
           baseNodePath: true,
           letsNodePath: true,
-          firstLetsArgNodePath: true,
-          secondLetsArgNodePath: true,
           thirdLetsArgNodePath: false,
           isBasePoint0: false,
-          parsedBasePoint: {
-            exportName: 'myrootvariable',
-          },
+          parents: [
+            {
+              exportName: 'myrootvariable',
+            },
+          ],
         })
       }),
     )
@@ -114,23 +114,25 @@ describe('walker', () => {
         await file1.write(`import {myrootvariable} from '${file0.importpath}'
                         export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: file1.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: file1.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints[0].simplify()).toMatchObject({
-          file: 'string',
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints[0].simplify()).toMatchObject({
+          file: file1.basename,
+          pointType: 'page',
+          pointName: 'mypage',
           letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'mypagevariable',
           lastCalledMethod: 'page',
           baseNodePath: true,
           letsNodePath: true,
-          firstLetsArgNodePath: true,
-          secondLetsArgNodePath: true,
           thirdLetsArgNodePath: false,
           isBasePoint0: false,
-          parsedBasePoint: {
-            exportName: 'myrootvariable',
-          },
+          parents: [
+            {
+              exportName: 'myrootvariable',
+            },
+          ],
         })
       }),
     )
@@ -151,10 +153,10 @@ describe('walker', () => {
                       export const baseV = providerV.lets('base', 'baseN').base()
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f0.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: f0.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(11)
-        expect(result.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.astPoints).toHaveLength(11)
+        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'rootV',
           },
@@ -163,18 +165,35 @@ describe('walker', () => {
           },
           {
             exportName: 'pageV',
+            file: f0.basename,
           },
           {
             exportName: 'layoutV',
           },
           {
             exportName: 'componentV',
+            pointType: 'component',
+            pointName: 'componentN',
           },
           {
             exportName: 'mutationV',
-            parsedBasePoint: {
-              exportName: 'componentV',
-            },
+            parents: [
+              {
+                exportName: 'componentV',
+              },
+              {
+                exportName: 'layoutV',
+              },
+              {
+                exportName: 'pageV',
+              },
+              {
+                exportName: 'rootV2',
+              },
+              {
+                exportName: 'rootV',
+              },
+            ],
           },
           {
             exportName: 'queryV',
@@ -190,9 +209,6 @@ describe('walker', () => {
           },
           {
             exportName: 'baseV2',
-            parsedBasePoint: {
-              exportName: 'baseV',
-            },
           },
         ])
       }),
@@ -234,15 +250,44 @@ describe('walker', () => {
         await f10.write(`import {baseV} from '${f9.importpath}'
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f9.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: f9.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'baseV',
-            parsedBasePoint: {
-              exportName: 'providerV',
-            },
+            file: f9.basename,
+            pointType: 'base',
+            pointName: 'baseN',
+            parents: [
+              {
+                exportName: 'providerV',
+              },
+              {
+                exportName: 'infiniteQueryV',
+              },
+              {
+                exportName: 'queryV',
+              },
+              {
+                exportName: 'mutationV',
+              },
+              {
+                exportName: 'componentV',
+              },
+              {
+                exportName: 'layoutV',
+              },
+              {
+                exportName: 'pageV',
+              },
+              {
+                exportName: 'rootV2',
+              },
+              {
+                exportName: 'rootV',
+              },
+            ],
           },
         ])
       }),
@@ -259,15 +304,17 @@ describe('walker', () => {
         await f2.write(`import {root} from '${f1.importpath}'
                       export const page = root.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
-            parsedBasePoint: {
-              exportName: 'root',
-            },
+            parents: [
+              {
+                exportName: 'root',
+              },
+            ],
           },
         ])
       }),
@@ -284,15 +331,17 @@ describe('walker', () => {
         await f2.write(`import {root2} from '${f1.importpath}'
                       export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
-            parsedBasePoint: {
-              exportName: 'root',
-            },
+            parents: [
+              {
+                exportName: 'root',
+              },
+            ],
           },
         ])
       }),
@@ -310,15 +359,17 @@ describe('walker', () => {
         await f2.write(`import {root2} from '${f1.importpath}'
                       export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
-            parsedBasePoint: {
-              exportName: 'root',
-            },
+            parents: [
+              {
+                exportName: 'root',
+              },
+            ],
           },
         ])
       }),
@@ -337,21 +388,23 @@ describe('walker', () => {
         await f2.write(`import {root3} from '${f1.importpath}'
                       export const page = root3.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        const result = await walker.getAstPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.parsedPoints).toHaveLength(1)
-        expect(result.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.astPoints).toHaveLength(1)
+        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
-            parsedBasePoint: {
-              exportName: 'root',
-            },
+            parents: [
+              {
+                exportName: 'root',
+              },
+            ],
           },
         ])
       }),
     )
 
-    it.only(
+    it(
       'can parse files in parallel reusing cache',
       helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -388,80 +441,56 @@ describe('walker', () => {
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
         const results = await Promise.all([
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f0.path }),
-          walker.parsePointsFromFile({ fileAbs: f1.path }),
-          walker.parsePointsFromFile({ fileAbs: f2.path }),
-          walker.parsePointsFromFile({ fileAbs: f3.path }),
-          walker.parsePointsFromFile({ fileAbs: f4.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f0.path }),
+          walker.getAstPointsFromFile({ fileAbs: f1.path }),
+          walker.getAstPointsFromFile({ fileAbs: f2.path }),
+          walker.getAstPointsFromFile({ fileAbs: f3.path }),
+          walker.getAstPointsFromFile({ fileAbs: f4.path }),
           // one file multiple times
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
-          walker.parsePointsFromFile({ fileAbs: f6.path }),
-          walker.parsePointsFromFile({ fileAbs: f7.path }),
-          walker.parsePointsFromFile({ fileAbs: f8.path }),
-          walker.parsePointsFromFile({ fileAbs: f9.path }),
-          walker.parsePointsFromFile({ fileAbs: f10.path }),
-          walker.parsePointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
+          walker.getAstPointsFromFile({ fileAbs: f6.path }),
+          walker.getAstPointsFromFile({ fileAbs: f7.path }),
+          walker.getAstPointsFromFile({ fileAbs: f8.path }),
+          walker.getAstPointsFromFile({ fileAbs: f9.path }),
+          walker.getAstPointsFromFile({ fileAbs: f10.path }),
+          walker.getAstPointsFromFile({ fileAbs: f5.path }),
         ])
         const resultFirst = results[0]
         const resultLast = results[results.length - 1]
         expect(resultFirst.errors).toHaveLength(0)
-        expect(resultFirst.parsedPoints).toHaveLength(1)
-        expect(resultFirst.parsedPoints.map((p) => p.simplify())).toMatchObject([
+        expect(resultFirst.astPoints).toHaveLength(1)
+        expect(resultFirst.astPoints.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'mutationV',
-            parsedBasePoint: {
-              exportName: 'componentV',
-            },
+            pointType: 'mutation',
+            pointName: 'mutationN',
+            parents: [
+              {
+                exportName: 'componentV',
+              },
+              {
+                exportName: 'layoutV',
+              },
+              {
+                exportName: 'pageV',
+              },
+              {
+                exportName: 'rootV2',
+              },
+              {
+                exportName: 'rootV',
+              },
+            ],
           },
         ])
-        expect(resultFirst.parsedPoints[0].simplify()).toMatchObject(resultLast.parsedPoints[0].simplify())
+        expect(resultFirst.astPoints[0].simplify()).toMatchObject(resultLast.astPoints[0].simplify())
       }),
     )
-
-    //   it(
-    //     'should collect points from file',
-    //     helper(async ({ files: [file], walker }) => {
-    //       await file.write(`import {Point0} from '@point0/core'
-    // export const root = Point0.lets('root', 'server').root()
-    // export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
-    //     `)
-    //       const points = await walker.collectPointsFromFile({ fileAbs: file.path })
-    //       expect(points.collectedPoints).toMatchObject([
-    //         {
-    //           type: 'root',
-    //           name: 'server',
-    //         },
-    //         {
-    //           type: 'page',
-    //           name: 'mypage',
-    //         },
-    //       ])
-    //     }),
-    //   )
-
-    //   it(
-    //     'should collect points from file, when root in another file',
-    //     helper(async ({ files: [file0, file1], walker }) => {
-    //       await file0.write(`import {Point0} from '@point0/core'
-    // export const root = Point0.lets('root', 'server').root()
-    //     `)
-    //       await file1.write(`import {root} from '${file0.importpath}'
-    // export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
-    //     `)
-    //       const points = await walker.collectPointsFromFile({ fileAbs: file1.path })
-    //       expect(points.collectedPoints).toMatchObject([
-    //         {
-    //           type: 'page',
-    //           name: 'mypage',
-    //         },
-    //       ])
-    //     }),
-    //   )
   })
 })

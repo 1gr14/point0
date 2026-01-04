@@ -3,10 +3,10 @@ import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File, Node } from '@babel/types'
-import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
+import type { RoutesPretty } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
-import * as nodePath from 'node:path'
+import * as nodeFsPath from 'node:path'
 
 // Glossary: Babel AST Node Types and Concepts
 //
@@ -129,41 +129,23 @@ export class Walker {
   // <scope, Routes>
   readonly routes: Record<string, RoutesPretty>
 
-  readonly parser: WalkerParser
-
   constructor(options: { cwd?: string; routes?: Record<string, RoutesPretty> } = {}) {
     this.cwd = options.cwd ?? process.cwd()
     this.routes = options.routes ?? {}
-    this.parser = new WalkerParser({ walker: this })
   }
 
-  async parsePointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
-    parsedPoints: WalkerParsedPoint[]
+  async getAstPointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
+    astPoints: AstPoint[]
     errors: unknown[]
   }> {
-    return await this.parser.parsePointsFromFile({ fileAbs })
-  }
-}
-
-export class WalkerParser {
-  readonly walker: Walker
-
-  constructor({ walker }: { walker: Walker }) {
-    this.walker = walker
-  }
-
-  async parsePointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
-    parsedPoints: WalkerParsedPoint[]
-    errors: unknown[]
-  }> {
-    const parsedPoints: WalkerParsedPoint[] = []
+    const astPoints: AstPoint[] = []
     const errors: unknown[] = []
 
     try {
       const file = await WalkerFile.create(fileAbs).read()
 
       if (!file.mayContainPoints()) {
-        return { parsedPoints, errors }
+        return { astPoints, errors }
       }
       const fileParsed = file.parse()
 
@@ -186,28 +168,28 @@ export class WalkerParser {
 
       // Process all lets() calls async
       for (const letsNodePath of letsNodePaths) {
-        const result = await this.parsePointByLetsNodePath({ letsNodePath, file: fileParsed })
+        const result = await this.getAstPointByLetsNodePath({ letsNodePath, file: fileParsed })
         errors.push(...result.errors)
-        if (result.parsedPoint) {
-          parsedPoints.push(result.parsedPoint)
+        if (result.astPoint) {
+          astPoints.push(result.astPoint)
         }
       }
 
-      return { parsedPoints, errors }
+      return { astPoints, errors }
     } catch (e) {
       errors.push(e)
-      return { parsedPoints, errors }
+      return { astPoints, errors }
     }
   }
 
-  private async parsePointByLetsNodePath({
+  private async getAstPointByLetsNodePath({
     letsNodePath,
     file,
   }: {
     letsNodePath: NodePath<Node>
     file: WalkerFile<'parsed'>
   }): Promise<{
-    parsedPoint: WalkerParsedPoint | undefined
+    astPoint: AstPoint | undefined
     errors: unknown[]
   }> {
     const errors: unknown[] = []
@@ -217,12 +199,12 @@ export class WalkerParser {
       // CallExpression: A function call with parentheses and arguments
       // Example: Point0.lets('root', 'myroot') is a CallExpression
       // Because: It calls the lets() function with arguments ('root', 'myroot')
-      if (letsNode.type !== 'CallExpression') return { parsedPoint: undefined, errors }
+      if (letsNode.type !== 'CallExpression') return { astPoint: undefined, errors }
 
       // MemberExpression: A property/method access using dot notation
       // Example: In Point0.lets('root', 'myroot'), the "Point0.lets" part is a MemberExpression
       // Because: It accesses the "lets" property/method on the "Point0" object using dot notation
-      if (letsNode.callee.type !== 'MemberExpression') return { parsedPoint: undefined, errors }
+      if (letsNode.callee.type !== 'MemberExpression') return { astPoint: undefined, errors }
 
       // Extract the base object from the MemberExpression
       // Example: In Point0.lets('root', 'myroot'), this extracts "Point0"
@@ -239,6 +221,21 @@ export class WalkerParser {
       const firstLetsArgNodePath = letsArgs.length > 0 ? letsNodePath.get('arguments')[0] : undefined
       const secondLetsArgNodePath = letsArgs.length > 1 ? letsNodePath.get('arguments')[1] : undefined
       const thirdLetsArgNodePath = letsArgs.length > 2 ? letsNodePath.get('arguments')[2] : undefined
+
+      // Extract the point type and name from the lets() call
+      // Example: root.lets('page', 'mypage') → pointType = 'page', pointName = 'mypage'
+      const pointType: EndPointType | undefined =
+        firstLetsArgNodePath?.node.type === 'StringLiteral'
+          ? (firstLetsArgNodePath.node.value as EndPointType)
+          : undefined
+      const pointName =
+        secondLetsArgNodePath?.node.type === 'StringLiteral' ? secondLetsArgNodePath.node.value : undefined
+      if (!pointName) {
+        return { astPoint: undefined, errors }
+      }
+      if (!pointType || !END_POINT_TYPES.includes(pointType)) {
+        return { astPoint: undefined, errors }
+      }
 
       // Check if the base object is Point0 (the root entry point)
       // Example: In Point0.lets('root', 'myroot'), this returns true
@@ -263,7 +260,7 @@ export class WalkerParser {
         : undefined
       if (!letsPosition) {
         errors.push(new Error('lets position not found'))
-        return { parsedPoint: undefined, errors }
+        return { astPoint: undefined, errors }
       }
 
       // Extract how the point was exported (if it was exported)
@@ -358,7 +355,7 @@ export class WalkerParser {
         return maybeLastCalledMethod
       })()
 
-      const parsedBasePoint: WalkerParsedPoint | undefined = await (async () => {
+      const astBasePoint: AstPoint | undefined = await (async () => {
         if (isBasePoint0) {
           return undefined
         }
@@ -370,38 +367,38 @@ export class WalkerParser {
         if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
           return undefined
         }
-        const result = await this.parsePointByLetsNodePath({
+        const result = await this.getAstPointByLetsNodePath({
           letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
           file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
         })
         errors.push(...result.errors)
-        return result.parsedPoint
+        return result.astPoint
       })()
 
-      const parsedPoint = new WalkerParsedPoint({
+      const astPoint = new AstPoint({
         file,
+        pointType,
+        pointName,
         letsPosition,
         exportName,
         lastCalledMethod,
 
         baseNodePath,
         letsNodePath,
-        firstLetsArgNodePath,
-        secondLetsArgNodePath,
         thirdLetsArgNodePath,
 
         isBasePoint0,
-        parsedBasePoint,
+        astBasePoint,
       })
 
-      if (parsedPoint.isPoint()) {
-        return { parsedPoint, errors }
+      if (astPoint.isRelatedToPoint0()) {
+        return { astPoint, errors }
       }
 
-      return { parsedPoint: undefined, errors }
+      return { astPoint: undefined, errors }
     } catch (e) {
       errors.push(e)
-      return { parsedPoint: undefined, errors }
+      return { astPoint: undefined, errors }
     }
   }
 
@@ -912,146 +909,174 @@ export class WalkerParser {
   }
 }
 
-export class WalkerParsedPoint {
+export class AstPoint {
   readonly file: WalkerFile
+  readonly pointType: EndPointType
+  readonly pointName: PointName
   readonly letsPosition: { column: number; line: number }
   readonly exportName: string | undefined
   readonly lastCalledMethod: string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
-  readonly firstLetsArgNodePath: NodePath<Node> | undefined
-  readonly secondLetsArgNodePath: NodePath<Node> | undefined
   readonly thirdLetsArgNodePath: NodePath<Node> | undefined
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
-  readonly parsedBasePoint: WalkerParsedPoint | undefined
+  readonly astBasePoint: AstPoint | undefined
+  readonly parents: AstPoint[]
 
   constructor({
     file,
+    pointType,
+    pointName,
     letsPosition,
     exportName,
     lastCalledMethod,
     baseNodePath,
     letsNodePath,
-    firstLetsArgNodePath,
-    secondLetsArgNodePath,
     thirdLetsArgNodePath,
     isBasePoint0,
-    parsedBasePoint,
+    astBasePoint,
   }: {
     file: WalkerFile
+    pointType: EndPointType
+    pointName: PointName
     letsPosition: { column: number; line: number }
     exportName: string | undefined
     lastCalledMethod: string | undefined
     baseNodePath: NodePath<Node>
     letsNodePath: NodePath<Node>
-    firstLetsArgNodePath: NodePath<Node> | undefined
-    secondLetsArgNodePath: NodePath<Node> | undefined
     thirdLetsArgNodePath: NodePath<Node> | undefined
     isBasePoint0: boolean
-    parsedBasePoint: WalkerParsedPoint | undefined
+    astBasePoint: AstPoint | undefined
   }) {
     this.file = file
+    this.pointType = pointType
+    this.pointName = pointName
     this.letsPosition = letsPosition
     this.exportName = exportName
     this.lastCalledMethod = lastCalledMethod
     this.baseNodePath = baseNodePath
     this.letsNodePath = letsNodePath
-    this.firstLetsArgNodePath = firstLetsArgNodePath
-    this.secondLetsArgNodePath = secondLetsArgNodePath
     this.thirdLetsArgNodePath = thirdLetsArgNodePath
     this.isBasePoint0 = isBasePoint0
-    this.parsedBasePoint = parsedBasePoint
-  }
-
-  isPoint(): boolean {
-    const lastParsedBasePoint = this.getLastParsedBasePoint()
-    // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
-    return lastParsedBasePoint.isBasePoint0
-  }
-
-  getLastParsedBasePoint(): WalkerParsedPoint {
-    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
-    let current: WalkerParsedPoint = this
-    while (current.parsedBasePoint) {
-      current = current.parsedBasePoint
+    this.astBasePoint = astBasePoint
+    this.parents = []
+    let parent: AstPoint | undefined = astBasePoint
+    while (parent) {
+      this.parents.push(parent)
+      parent = parent.astBasePoint
     }
-    return current
   }
 
-  simplify(): WalkerParsedPointPrettified {
+  getLastParentOrSelf(): AstPoint {
+    if (this.parents.length > 0) {
+      return this.parents[this.parents.length - 1]
+    }
+    return this
+  }
+
+  getSelfAndParents(): AstPoint[] {
+    return [this, ...this.parents]
+  }
+
+  isRelatedToPoint0(): boolean {
+    const lastAstBasePoint = this.getLastParentOrSelf()
+    // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
+    return lastAstBasePoint.isBasePoint0
+  }
+
+  getScopes(): PointsScope[] {
+    const scopes: PointsScope[] = []
+    for (const astPoint of this.getSelfAndParents()) {
+      if (astPoint.pointType === 'root') {
+        scopes.push(astPoint.pointName)
+      }
+    }
+    return scopes
+  }
+
+  simplify(): AstPointSimplified {
     return {
-      file: 'string',
+      file: nodeFsPath.basename(this.file.abs, nodeFsPath.extname(this.file.abs)),
+      pointType: this.pointType,
+      pointName: this.pointName,
       letsPosition: this.letsPosition,
       exportName: this.exportName,
       lastCalledMethod: this.lastCalledMethod,
       baseNodePath: !!this.baseNodePath,
       letsNodePath: !!this.letsNodePath,
-      firstLetsArgNodePath: !!this.firstLetsArgNodePath,
-      secondLetsArgNodePath: !!this.secondLetsArgNodePath,
       thirdLetsArgNodePath: !!this.thirdLetsArgNodePath,
       isBasePoint0: this.isBasePoint0,
-      parsedBasePoint: this.parsedBasePoint?.simplify(),
+      parents: this.parents.map((parent) => parent.extraSimplify()),
+    }
+  }
+
+  extraSimplify(): AstPointExtraSimplified {
+    return {
+      file: this.file.abs,
+      exportName: this.exportName,
     }
   }
 }
 
-export type WalkerParsedPointPrettified = {
+export type AstPointSimplified = {
   file: string
+  pointType: EndPointType
+  pointName: PointName
   letsPosition: { column: number; line: number }
   exportName: string | undefined
   lastCalledMethod: string | undefined
   baseNodePath: boolean
   letsNodePath: boolean
-  firstLetsArgNodePath: boolean
-  secondLetsArgNodePath: boolean
   thirdLetsArgNodePath: boolean
   isBasePoint0: boolean
-  parsedBasePoint: WalkerParsedPointPrettified | undefined
+  parents: AstPointExtraSimplified[]
 }
 
-export class WalkerCollectedPoint {
-  readonly scope: PointsScope
-  readonly type: EndPointType
-  readonly name: PointName
-  readonly exportName: string
-  readonly route: AnyRoute | undefined
-  readonly polh: boolean | number
-  readonly layouts?: string[]
-  readonly file: WalkerFile
-  readonly parsed: WalkerParsedPoint
+export type AstPointExtraSimplified = Pick<AstPointSimplified, 'file' | 'exportName'>
 
-  constructor({
-    scope,
-    type,
-    name,
-    exportName,
-    route,
-    polh,
-    layouts,
-    file,
-    parsed,
-  }: {
-    scope: PointsScope
-    type: EndPointType
-    name: PointName
-    exportName: string
-    route: AnyRoute | undefined
-    polh: boolean | number
-    layouts?: string[]
-    file: WalkerFile
-    parsed: WalkerParsedPoint
-  }) {
-    this.scope = scope
-    this.type = type
-    this.name = name
-    this.exportName = exportName
-    this.route = route
-    this.polh = polh
-    this.layouts = layouts
-    this.file = file
-    this.parsed = parsed
-  }
-}
+// export class WalkerCollectedPoint {
+//   readonly scope: PointsScope
+//   readonly type: EndPointType
+//   readonly name: PointName
+//   readonly exportName: string
+//   readonly route: AnyRoute | undefined
+//   readonly polh: boolean | number
+//   readonly layouts?: string[]
+//   readonly file: WalkerFile
+//   readonly parsed: AstPoint
+
+//   constructor({
+//     scope,
+//     type,
+//     name,
+//     exportName,
+//     route,
+//     polh,
+//     layouts,
+//     file,
+//     parsed,
+//   }: {
+//     scope: PointsScope
+//     type: EndPointType
+//     name: PointName
+//     exportName: string
+//     route: AnyRoute | undefined
+//     polh: boolean | number
+//     layouts?: string[]
+//     file: WalkerFile
+//     parsed: AstPoint
+//   }) {
+//     this.scope = scope
+//     this.type = type
+//     this.name = name
+//     this.exportName = exportName
+//     this.route = route
+//     this.polh = polh
+//     this.layouts = layouts
+//     this.file = file
+//     this.parsed = parsed
+//   }
+// }
 
 export class WalkerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | 'read' | 'parsed'> {
   readonly abs: string
@@ -1216,11 +1241,11 @@ export class WalkerResolver {
     }
 
     // Find the nearest tsconfig.json by walking up the directory tree
-    let currentDir = nodePath.resolve(dir)
-    const root = nodePath.parse(currentDir).root
+    let currentDir = nodeFsPath.resolve(dir)
+    const root = nodeFsPath.parse(currentDir).root
 
     while (currentDir !== root) {
-      const tsConfigPath = nodePath.join(currentDir, 'tsconfig.json')
+      const tsConfigPath = nodeFsPath.join(currentDir, 'tsconfig.json')
       try {
         // Use synchronous read for caching (ts.sys.readFile is synchronous)
         const configFileText = ts.sys.readFile(tsConfigPath)
@@ -1244,7 +1269,7 @@ export class WalkerResolver {
           let cacheDir = dir
           while (cacheDir !== currentDir && cacheDir !== root) {
             WalkerResolver.tsConfigCache.set(cacheDir, parsedConfig)
-            cacheDir = nodePath.dirname(cacheDir)
+            cacheDir = nodeFsPath.dirname(cacheDir)
           }
           WalkerResolver.tsConfigCache.set(currentDir, parsedConfig)
           WalkerResolver.tsConfigCache.set(dir, parsedConfig)
@@ -1255,7 +1280,7 @@ export class WalkerResolver {
         // File doesn't exist, continue searching up
       }
 
-      const parentDir = nodePath.dirname(currentDir)
+      const parentDir = nodeFsPath.dirname(currentDir)
       if (parentDir === currentDir) break
       currentDir = parentDir
     }
@@ -1282,7 +1307,7 @@ export class WalkerResolver {
     containingFile: string
   }): Promise<string | undefined> {
     // Skip absolute paths - they don't need TypeScript resolution
-    if (nodePath.isAbsolute(importPath)) {
+    if (nodeFsPath.isAbsolute(importPath)) {
       return undefined
     }
 
@@ -1292,7 +1317,7 @@ export class WalkerResolver {
       return undefined
     }
 
-    const containingDir = nodePath.dirname(containingFile)
+    const containingDir = nodeFsPath.dirname(containingFile)
     const tsConfig = await WalkerResolver.getTsConfigForDirectory({ dir: containingDir })
     if (!tsConfig) {
       return undefined
@@ -1334,15 +1359,15 @@ export class WalkerResolver {
 
     // Fallback: try relative path resolution with extension guessing
     // For relative paths, resolve relative to containing file
-    const basePath = containingFile && importPath.startsWith('.') ? nodePath.dirname(containingFile) : undefined
+    const basePath = containingFile && importPath.startsWith('.') ? nodeFsPath.dirname(containingFile) : undefined
 
     const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
-    const currentExt = nodePath.extname(importPath)
+    const currentExt = nodeFsPath.extname(importPath)
     const importPathWithoutExt = importPath.replace(currentExt, '')
 
     for (const ext of exts) {
       const candidatePath = importPathWithoutExt + ext
-      const abs = basePath ? nodePath.resolve(basePath, candidatePath) : candidatePath
+      const abs = basePath ? nodeFsPath.resolve(basePath, candidatePath) : candidatePath
       try {
         await nodeFs.access(abs)
         return abs
