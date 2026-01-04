@@ -978,7 +978,7 @@ export class WalkerParsedPoint {
     return current
   }
 
-  prettify(): WalkerParsedPointPrettified {
+  simplify(): WalkerParsedPointPrettified {
     return {
       file: 'string',
       letsPosition: this.letsPosition,
@@ -990,7 +990,7 @@ export class WalkerParsedPoint {
       secondLetsArgNodePath: !!this.secondLetsArgNodePath,
       thirdLetsArgNodePath: !!this.thirdLetsArgNodePath,
       isBasePoint0: this.isBasePoint0,
-      parsedBasePoint: this.parsedBasePoint?.prettify(),
+      parsedBasePoint: this.parsedBasePoint?.simplify(),
     }
   }
 }
