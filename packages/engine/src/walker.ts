@@ -256,12 +256,51 @@ export class Walker {
       return undefined
     })()
 
-    // --- last called method ---
-    let lastCalledMethod: string | undefined
-    const parent = letsNodePath.parentPath
-    if (parent?.node.type === 'MemberExpression' && parent.node.property.type === 'Identifier') {
-      lastCalledMethod = parent.node.property.name
-    }
+    const lastCalledMethod = (() => {
+      // --- last called method ---
+      // Find the last method called in the chain after .lets()
+      // Rule: Code that starts with .lets('XXX') should end with .XXX()
+      // Example: Point0.lets('page', 'mypage').page(() => <div>Hello</div>)
+      //   - The chain starts with .lets('page', ...)
+      //   - The chain ends with .page(...)
+      //   - lastCalledMethod = 'page'
+      // Example: Point0.lets('page', 'mypage').one().two().page(() => <div>Hello</div>)
+      //   - The chain has intermediate calls: .one().two()
+      //   - The chain ends with .page(...)
+      //   - lastCalledMethod = 'page'
+      // Because: Our compiler enforces that the first argument to .lets() must match the final method call
+      //   This ensures type safety: .lets('page', ...) must be followed by .page() (even with intermediate calls)
+      let maybeLastCalledMethod: string | undefined
+      // Traverse UP the AST tree (towards the ast root) to find the topmost CallExpression
+      // In the AST, method chains are nested: .lets() is deeper, .page() is higher (closer to ast root)
+      // Example: Point0.lets('page', 'mypage').one().two().page()
+      //   AST structure (from ast root down): CallExpression(page) contains CallExpression(two) contains CallExpression(one) contains CallExpression(lets)
+      //   So .lets() is nested inside .one(), which is nested inside .two(), which is nested inside .page()
+      //   To find .page(), we traverse UP from .lets() using parentPath (child -> parent -> grandparent -> ...)
+      // Because: parentPath goes from child to parent, which moves UP the tree towards the ast root
+      let current: NodePath<Node> | null = letsNodePath.parentPath
+      while (current) {
+        // If we find a CallExpression, check if its callee is a MemberExpression
+        // This means we found a method call in the chain (e.g., .one(), .two(), .page())
+        if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
+          const callee = current.node.callee
+          if (callee.property.type === 'Identifier') {
+            // Update lastCalledMethod with each method we find
+            // The last one will be the topmost (final) method call in the chain
+            maybeLastCalledMethod = callee.property.name
+          }
+        }
+        // Continue traversing UP the AST tree (towards the root)
+        // We continue while we're in CallExpressions or MemberExpressions (part of the method chain)
+        if (current.node.type === 'CallExpression' || current.node.type === 'MemberExpression') {
+          current = current.parentPath // parentPath goes UP (child -> parent)
+        } else {
+          // We've reached the end of the chain (e.g., VariableDeclarator, AssignmentExpression, etc.)
+          break
+        }
+      }
+      return maybeLastCalledMethod
+    })()
 
     // --- recurse base ---
     let parsedBasePoint: ParsedPoint | undefined

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
+import type { ParsedPoint } from '../src/walker.js'
 import { Walker } from '../src/walker.js'
 
 type MyFile = Bun.BunFile & { path: string; basename: string; importpath: string }
@@ -33,6 +34,35 @@ const helper = (callback: ({ files, walker }: { files: MyFile[]; walker: Walker 
   }
 }
 
+type ParsedPointPrettified = Omit<
+  ParsedPoint,
+  | 'baseNodePath'
+  | 'letsNodePath'
+  | 'firstLetsArgNodePath'
+  | 'secondLetsArgNodePath'
+  | 'thirdLetsArgNodePath'
+  | 'parsedBasePoint'
+> & {
+  baseNodePath: boolean
+  letsNodePath: boolean
+  firstLetsArgNodePath: boolean
+  secondLetsArgNodePath: boolean
+  thirdLetsArgNodePath: boolean
+  parsedBasePoint: ParsedPointPrettified | undefined
+}
+const prettifyParsedPoint = (parsedPoint: ParsedPoint): ParsedPointPrettified => {
+  return {
+    ...parsedPoint,
+    baseNodePath: !!parsedPoint.baseNodePath,
+    letsNodePath: !!parsedPoint.letsNodePath,
+    firstLetsArgNodePath: !!parsedPoint.firstLetsArgNodePath,
+    secondLetsArgNodePath: !!parsedPoint.secondLetsArgNodePath,
+    thirdLetsArgNodePath: !!parsedPoint.thirdLetsArgNodePath,
+    fileAbs: !parsedPoint.fileAbs ? parsedPoint.fileAbs : typeof parsedPoint.fileAbs,
+    parsedBasePoint: parsedPoint.parsedBasePoint && prettifyParsedPoint(parsedPoint.parsedBasePoint),
+  }
+}
+
 describe('walker', () => {
   beforeAll(() => {
     nodeFs.rmSync(tempDir, { recursive: true, force: true })
@@ -44,20 +74,52 @@ describe('walker', () => {
       'can recognize root point in current file',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
-  export const root = Point0.lets('root', 'myroot').root()
+                          export const myrootvariable = Point0.lets('root', 'myroot').root()
       `)
         const result = await walker.readAndParsePointsFromFile(file.path)
-        console.log(result)
-        // expect(points.collectedPoints).toMatchObject([
-        //   {
-        //     type: 'root',
-        //     name: 'server',
-        //   },
-        //   {
-        //     type: 'page',
-        //     name: 'mypage',
-        //   },
-        // ])
+        expect(result.errors).toHaveLength(0)
+        expect(result.parsedPoints).toHaveLength(1)
+        expect(prettifyParsedPoint(result.parsedPoints[0])).toMatchObject({
+          fileAbs: 'string',
+          letsPosition: { line: expect.any(Number), column: expect.any(Number) },
+          exportName: 'myrootvariable',
+          lastCalledMethod: 'root',
+          baseNodePath: true,
+          letsNodePath: true,
+          firstLetsArgNodePath: true,
+          secondLetsArgNodePath: true,
+          thirdLetsArgNodePath: false,
+          isBasePoint0: true,
+          parsedBasePoint: undefined,
+        })
+      }),
+    )
+
+    it(
+      'can recognize page point in current file, when root point in same file',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+                          export const myrootvariable = Point0.lets('root', 'myroot').root()
+                          export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
+      `)
+        const result = await walker.readAndParsePointsFromFile(file.path)
+        expect(result.errors).toHaveLength(0)
+        expect(result.parsedPoints).toHaveLength(2)
+        expect(prettifyParsedPoint(result.parsedPoints[1])).toMatchObject({
+          fileAbs: 'string',
+          letsPosition: { line: expect.any(Number), column: expect.any(Number) },
+          exportName: 'mypagevariable',
+          lastCalledMethod: 'page',
+          baseNodePath: true,
+          letsNodePath: true,
+          firstLetsArgNodePath: true,
+          secondLetsArgNodePath: true,
+          thirdLetsArgNodePath: false,
+          isBasePoint0: false,
+          parsedBasePoint: {
+            exportName: 'myrootvariable',
+          },
+        })
       }),
     )
   })
