@@ -189,11 +189,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input,
     requiredCtx,
     withLayouts,
+    response0,
   }: {
     point: TPoint
     input: TPoint['Infer']['InputRaw']
     executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
     withLayouts?: boolean
+    response0?: Response0
   } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
     ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
   > {
@@ -209,14 +211,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       requiredCtx,
       pageLocation: point.type === 'page' ? location : undefined,
     })
-    return await executor.execute({ point, input, withLayouts })
+    return await executor.execute({ point, input, withLayouts, response0 })
   }
 
   async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     point: TPoint,
     ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
-      ? [input?: TPoint['Infer']['InputRaw']]
-      : [input: TPoint['Infer']['InputRaw']]
+      ? [input?: TPoint['Infer']['InputRaw'], response0?: Response0]
+      : [input: TPoint['Infer']['InputRaw'], response0?: Response0]
   ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
   async execute<
     TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | EndPoint | undefined,
@@ -224,6 +226,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     point,
     input,
     withLayouts,
+    response0,
   }: ExecuteOptions<TPoint>): Promise<
     ServerExecuteResult<
       TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
@@ -240,23 +243,31 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       | [
           point: EndPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
           input?: InputRaw,
+          response0?: Response0,
         ]
   ): Promise<ServerExecuteResult<any, any>> {
     const {
       point,
       input = {},
       withLayouts = false,
+      response0 = Response0.create(),
     } = ((): {
       point: EndPoint | undefined
       input: InputRaw
       withLayouts: boolean
+      response0?: Response0
     } => {
       if (args[0] === undefined || 'Infer' in args[0]) {
         // so it is NiceEndPoint provided like first argument
-        return { point: args[0]?.point, input: args[1] as InputRaw, withLayouts: false }
+        return { point: args[0]?.point, input: args[1] as InputRaw, withLayouts: false, response0: args[2] }
       }
       // so it is EndPoint provided in object
-      return { point: args[0].point, input: args[0].input, withLayouts: !!args[0].withLayouts }
+      return {
+        point: args[0].point,
+        input: args[0].input,
+        withLayouts: !!args[0].withLayouts,
+        response0: args[0].response0,
+      }
     })()
 
     return await this.withServerGlobalState(async () => {
@@ -268,6 +279,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           await this.execute({
             point: layout,
             input,
+            response0, // here if layout set some status, it will be applied to current response0
           })
         }
       }
@@ -285,14 +297,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         return { parsedInput: result.data, inputError: undefined }
       })()
       if (inputError) {
+        const status = 422
+        response0.set.status(status)
         return {
           ctx: this.requiredCtx ?? {},
           data: {},
           error: Error0.from(inputError),
-          status: 422,
+          status,
           response: undefined,
           output: {},
-          effects: this.response0.effects,
+          effects: response0.effects,
         }
       }
 
@@ -310,14 +324,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
         if (!point) {
           const error = new Error0(`Point Not Found`)
+          const status = 404
+          response0.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
             error,
-            status: 404,
+            status,
             response: currentResponse,
             output: currentOutput,
-            effects: this.response0.effects,
+            effects: response0.effects,
           }
         }
 
@@ -330,14 +346,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               currentInputSchema = newCurrentInputSchema
               const safeParseResult = newCurrentInputSchema.safeParse(input)
               if (safeParseResult.error) {
+                const status = 422
+                response0.set.status(status)
                 return {
                   ctx: this.requiredCtx ?? {},
                   data: currentData,
                   error: Error0.from(safeParseResult.error),
-                  status: 422,
+                  status,
                   response: currentResponse,
                   output: currentOutput,
-                  effects: this.response0.effects,
+                  effects: response0.effects,
                 }
               }
               currentInputParsed = safeParseResult.data
@@ -348,6 +366,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
               ) as ServerExecuteActionWithOutput<'ctx'> | undefined
               if (ex) {
+                // TODO:ASAP if ex then we should get previous effects also?
                 if (Array.isArray(ex.output)) {
                   const appendCtxExposedKeys =
                     ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
@@ -368,7 +387,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   execute: this.execute.bind(this),
                   inputRaw: input,
                   request: this.request,
-                  set: this.response0.set,
+                  set: response0.set,
                   point,
                 })
                 if (Array.isArray(result)) {
@@ -422,11 +441,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   execute: this.execute.bind(this),
                   inputRaw: input,
                   request: this.request,
-                  set: this.response0.set,
+                  set: response0.set,
                   point,
                 })
                 if (Array.isArray(result)) {
-                  this.response0.set.status(result[0])
+                  response0.set.status(result[0])
                   if (result[1] instanceof Response) {
                     currentResponse = result[1]
                     currentOutput = result[1]
@@ -464,14 +483,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (currentData) {
           await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
         }
+        const status = response0.status ?? 200
+        response0.set.status(status)
         return {
           ctx: currentCtx,
           data: currentData,
           response: currentResponse,
           error: null,
-          status: this.response0.status ?? 200,
+          status,
           output: currentOutput,
-          effects: this.response0.effects,
+          effects: response0.effects,
         }
       } catch (error) {
         try {
@@ -479,25 +500,29 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             await this.appendQueryClientCache({ data: currentData, point, error, input })
           }
           const error0 = Error0.from(error)
+          const status = error0.httpStatus ?? 500
+          response0.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
             error: error0,
-            status: error0.httpStatus ?? 500,
+            status,
             response: currentResponse,
             output: currentOutput,
-            effects: this.response0.effects,
+            effects: response0.effects,
           }
         } catch (error2) {
           const error0 = Error0.from(error)
+          const status = error0.httpStatus ?? 500
+          response0.set.status(status)
           return {
             ctx: currentCtx,
             data: currentData,
             error: error0,
-            status: error0.httpStatus ?? 500,
+            status,
             response: currentResponse,
             output: currentOutput,
-            effects: this.response0.effects,
+            effects: response0.effects,
           }
         }
       }
@@ -614,7 +639,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           input: suitableMarker.input,
         })
         if (suitable) {
-          await this.execute({ point: suitable.point, input: suitableMarker.input })
+          await this.execute({
+            point: suitable.point,
+            input: suitableMarker.input,
+            response0: suitable.point === pagePoint ? this.response0 : undefined, // if it is loader for desired page, then we want it to be applied to executor response0, else new one will be created
+          })
         }
       }
 
@@ -760,6 +789,7 @@ export type ExecuteOptions<
     ? InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>
     : InputRaw
   withLayouts?: boolean
+  response0?: Response0
 }
 export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
   ? {

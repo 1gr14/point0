@@ -3636,6 +3636,7 @@ export class Point0<
     extra: Record<string, any>
   }): void {
     Object.assign(component, {
+      __POINT0_INSTANCE__: true,
       Infer: point.Infer,
       point,
       lets: point.lets.bind(point),

@@ -366,6 +366,7 @@ export class Fetcher {
         point: suitable.point,
         // TODO: wehn openapi will be ready, do not send here parsed input for this type of points
         input: await this.getPointInput({ suitable, task, request }),
+        response0: executor.response0, // here we pass executor response0, becouse we want to apply status and effects to it
       })
       if (executeResult.error) {
         this.server.logger.error(executeResult.error, meta)

@@ -331,7 +331,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       currentLocation: location,
       requiredCtx,
     })
-    return await executor.execute({ point: suitable.point, input, withLayouts })
+    return await executor.execute({ point: suitable.point, input, withLayouts, response0: executor.response0 })
   }
 
   async clean(): Promise<void> {

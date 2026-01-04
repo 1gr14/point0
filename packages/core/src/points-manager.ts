@@ -537,7 +537,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (!suitable) {
       return undefined
     }
-    const page = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
+    const page = typeof suitable.point === 'function' ? (await suitable.point()).point : suitable.point.point
 
     // Prefetch the (possibly lazy) page component
     if (suitable.FC) {
@@ -551,7 +551,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           if (layout.FC) {
             await PointsManager.prefetchLazyComponent(layout.FC)
           }
-          return typeof layout.point === 'function' ? await layout.point() : layout.point
+          return typeof layout.point === 'function' ? (await layout.point()).point : layout.point.point
         }),
     )
 
