@@ -444,6 +444,7 @@ export class WalkerParser {
       let foundLetsNodePath: NodePath<Node> | undefined
       let foundBaseFile: WalkerFile<'parsed'> | undefined = file // Default to current file
       const importsToResolve: Array<{ importPath: string; importedName: string }> = []
+      const identifierAssignmentsToResolve: Array<{ identifierName: string; file: WalkerFile<'parsed'> }> = []
 
       // First pass: Find declarations/exports in current file and collect imports
       traverse(file.ast, {
@@ -467,6 +468,7 @@ export class WalkerParser {
 
         // Case 2: Named export in the same file
         // Example: export const y = z.lets('page', 'mypage').page()
+        // Or: export const root2 = root (where root is imported)
         ExportNamedDeclaration: (p) => {
           if (foundLetsNodePath) return
           const decl = p.node.declaration
@@ -482,6 +484,12 @@ export class WalkerParser {
                     const initPath = declarator.get('init') as NodePath<Node>
                     foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: initPath, targetNode: letsCall })
                     break
+                  }
+                  // If init is an Identifier (e.g., export const root2 = root), recursively resolve it
+                  else if (init.type === 'Identifier') {
+                    // This is a variable assignment like `export const root2 = root`
+                    // We need to recursively resolve the identifier (root) in the same file
+                    identifierAssignmentsToResolve.push({ identifierName: init.name, file })
                   }
                 }
               }
@@ -562,6 +570,52 @@ export class WalkerParser {
             }
           } else {
             errors.push(new Error(`Could not resolve import path: ${importPath}`))
+          }
+        }
+      }
+
+      // Third pass: Resolve identifier assignments (e.g., export const root2 = root)
+      // where root is imported or defined elsewhere in the file
+      if (!foundLetsNodePath && identifierAssignmentsToResolve.length > 0) {
+        for (const { identifierName, file: assignmentFile } of identifierAssignmentsToResolve) {
+          // Find where this identifier is declared (as an import or variable)
+          // We'll create a synthetic traversal looking for the identifier declaration
+          let identifierNodePath: NodePath<Node> | undefined
+
+          // Look for the identifier in imports and variable declarations
+          traverse(assignmentFile.ast, {
+            VariableDeclarator: (p) => {
+              if (identifierNodePath) return
+              if (p.node.id.type === 'Identifier' && p.node.id.name === identifierName) {
+                identifierNodePath = p.get('id') as NodePath<Node>
+              }
+            },
+            ImportSpecifier: (p) => {
+              if (identifierNodePath) return
+              if (p.node.local.name === identifierName) {
+                identifierNodePath = p.get('local') as NodePath<Node>
+              }
+            },
+            ImportDefaultSpecifier: (p) => {
+              if (identifierNodePath) return
+              if (p.node.local.name === identifierName) {
+                identifierNodePath = p.get('local') as NodePath<Node>
+              }
+            },
+          })
+
+          if (identifierNodePath) {
+            // Recursively resolve this identifier
+            const result = await this.findBaseLetsNodePathByBaseNodePath({
+              baseNodePath: identifierNodePath,
+              file: assignmentFile,
+            })
+            errors.push(...result.errors)
+            if (result.isFound) {
+              foundLetsNodePath = result.baseLetsNodePath
+              foundBaseFile = result.baseFile
+              break // Found it, stop searching
+            }
           }
         }
       }
@@ -672,15 +726,45 @@ export class WalkerParser {
   }): Promise<{ letsNodePath: NodePath<Node> | undefined; errors: unknown[] }> {
     const errors: unknown[] = []
     let foundLetsNodePath: NodePath<Node> | undefined
+    const reExportsToResolve: Array<{ sourcePath: string; nameToFind: string }> = []
+    const identifierExportsToResolve: Array<{ identifierName: string }> = []
 
     try {
-      // Traverse the AST to find exports matching the exportName
+      // First pass: Traverse the AST to find exports matching the exportName
       traverse(file.ast, {
-        // Case 1: Named export - export const root = Point0.lets(...)
-        // Example: export const root = Point0.lets('root', 'myroot').root()
+        // Case 1: Named export - export const root = Point0.lets(...) or export {root} from './file'
         ExportNamedDeclaration: (p) => {
           if (foundLetsNodePath) return // Already found, skip
           const decl = p.node.declaration
+
+          // Case 1a: Re-export - export {root} from './file' or export {root as other} from './file'
+          // Example: export {root} from './file'
+          if (p.node.source) {
+            const sourcePath = p.node.source.value
+            if (typeof sourcePath === 'string') {
+              // Check if this re-export matches our export name
+              for (const spec of p.node.specifiers) {
+                if (spec.type === 'ExportSpecifier') {
+                  // In ExportSpecifier, exported can be Identifier or StringLiteral, local is Identifier
+                  const exportedName = spec.exported.type === 'Identifier' ? spec.exported.name : spec.exported.value
+                  // spec.local is always Identifier in ExportSpecifier
+                  const localName = spec.local.name
+
+                  // Check if the exported name matches (or if no alias, the local name matches)
+                  if (exportedName === exportName || (!exportedName && localName === exportName)) {
+                    // The actual name to look for in the source file is the local name
+                    const nameToFind = localName || exportedName
+                    if (nameToFind) {
+                      reExportsToResolve.push({ sourcePath, nameToFind })
+                    }
+                  }
+                }
+              }
+            }
+            return // Handled re-export case, continue to next
+          }
+
+          // Case 1b: Direct export - export const root = Point0.lets(...)
           // Check if it's a variable declaration (export const ...)
           if (decl?.type === 'VariableDeclaration') {
             const declarations = p.get('declaration').get('declarations')
@@ -699,6 +783,10 @@ export class WalkerParser {
                     // Find the NodePath that wraps the .lets() call by traversing down the chain
                     foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: initPath, targetNode: letsCall })
                     break // Found it, stop searching
+                  }
+                  // If init is an Identifier (e.g., export const root2 = root), collect it for resolution
+                  else if (init.type === 'Identifier') {
+                    identifierExportsToResolve.push({ identifierName: init.name })
                   }
                 }
               }
@@ -725,6 +813,96 @@ export class WalkerParser {
           }
         },
       })
+
+      // Second pass: Resolve re-exports if we haven't found the declaration yet
+      if (!foundLetsNodePath && reExportsToResolve.length > 0) {
+        for (const { sourcePath, nameToFind } of reExportsToResolve) {
+          // Resolve the source path to get the actual file path
+          const resolvedPath = await WalkerResolver.detectExistingFilePathByImportPath({
+            importPath: sourcePath,
+            containingFile: file.abs,
+          })
+          if (resolvedPath) {
+            try {
+              // Read and parse the source file
+              const sourceFile = await WalkerFile.create(resolvedPath)
+                .read()
+                .then((f) => f.parse())
+              // Recursively search in the source file for the export
+              const result = await this.findLetsNodePathByExportName({
+                exportName: nameToFind,
+                file: sourceFile,
+              })
+              errors.push(...result.errors)
+              if (result.letsNodePath) {
+                foundLetsNodePath = result.letsNodePath
+                break // Found it, stop searching
+              }
+            } catch (error) {
+              errors.push(
+                new Error(`Failed to parse re-exported file ${resolvedPath}: ${(error as Error).message}`, {
+                  cause: error,
+                }),
+              )
+            }
+          } else {
+            errors.push(new Error(`Could not resolve re-export path: ${sourcePath}`))
+          }
+        }
+      }
+
+      // Third pass: Resolve identifier exports (e.g., export const root2 = root)
+      // where root is imported or defined elsewhere in the file
+      if (!foundLetsNodePath && identifierExportsToResolve.length > 0) {
+        for (const { identifierName } of identifierExportsToResolve) {
+          // First try to find it as an export in the same file
+          const result = await this.findLetsNodePathByExportName({
+            exportName: identifierName,
+            file,
+          })
+          errors.push(...result.errors)
+          if (result.letsNodePath) {
+            foundLetsNodePath = result.letsNodePath
+            break // Found it, stop searching
+          }
+
+          // If not found as export, try to find it as an import or variable declaration
+          // by creating a synthetic NodePath and using findBaseLetsNodePathByBaseNodePath
+          let identifierNodePath: NodePath<Node> | undefined
+          traverse(file.ast, {
+            ImportSpecifier: (p) => {
+              if (identifierNodePath) return
+              if (p.node.local.name === identifierName) {
+                identifierNodePath = p.get('local') as NodePath<Node>
+              }
+            },
+            ImportDefaultSpecifier: (p) => {
+              if (identifierNodePath) return
+              if (p.node.local.name === identifierName) {
+                identifierNodePath = p.get('local') as NodePath<Node>
+              }
+            },
+            VariableDeclarator: (p) => {
+              if (identifierNodePath) return
+              if (p.node.id.type === 'Identifier' && p.node.id.name === identifierName) {
+                identifierNodePath = p.get('id') as NodePath<Node>
+              }
+            },
+          })
+
+          if (identifierNodePath) {
+            const baseResult = await this.findBaseLetsNodePathByBaseNodePath({
+              baseNodePath: identifierNodePath,
+              file,
+            })
+            errors.push(...baseResult.errors)
+            if (baseResult.isFound) {
+              foundLetsNodePath = baseResult.baseLetsNodePath
+              break // Found it, stop searching
+            }
+          }
+        }
+      }
 
       return { letsNodePath: foundLetsNodePath, errors }
     } catch (e) {

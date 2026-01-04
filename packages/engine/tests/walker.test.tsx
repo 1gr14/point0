@@ -172,6 +172,9 @@ describe('walker', () => {
           },
           {
             exportName: 'mutationV',
+            parsedBasePoint: {
+              exportName: 'componentV',
+            },
           },
           {
             exportName: 'queryV',
@@ -187,6 +190,9 @@ describe('walker', () => {
           },
           {
             exportName: 'baseV2',
+            parsedBasePoint: {
+              exportName: 'baseV',
+            },
           },
         ])
       }),
@@ -234,6 +240,9 @@ describe('walker', () => {
         expect(result.parsedPoints.map((p) => p.prettify())).toMatchObject([
           {
             exportName: 'baseV',
+            parsedBasePoint: {
+              exportName: 'providerV',
+            },
           },
         ])
       }),
@@ -250,12 +259,93 @@ describe('walker', () => {
         await f2.write(`import {root} from '${f1.importpath}'
                       export const page = root.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.parsePointsFromFile({ fileAbs: f9.path })
+        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
         expect(result.parsedPoints).toHaveLength(1)
         expect(result.parsedPoints.map((p) => p.prettify())).toMatchObject([
           {
             exportName: 'page',
+            parsedBasePoint: {
+              exportName: 'root',
+            },
+          },
+        ])
+      }),
+    )
+
+    it(
+      'can recognize nested points in different files, when base was reexported renamed',
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+                      export const root = Point0.lets('root', 'root').root()                      
+        `)
+        await f1.write(`export {root as root2} from '${f0.importpath}'
+        `)
+        await f2.write(`import {root2} from '${f1.importpath}'
+                      export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
+        `)
+        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.parsedPoints).toHaveLength(1)
+        expect(result.parsedPoints.map((p) => p.prettify())).toMatchObject([
+          {
+            exportName: 'page',
+            parsedBasePoint: {
+              exportName: 'root',
+            },
+          },
+        ])
+      }),
+    )
+
+    it(
+      'can recognize nested points in different files, when base was imported, renamed, exported',
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+                      export const root = Point0.lets('root', 'root').root()                      
+        `)
+        await f1.write(`import {root} from '${f0.importpath}'
+                        export const root2 = root
+        `)
+        await f2.write(`import {root2} from '${f1.importpath}'
+                      export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
+        `)
+        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.parsedPoints).toHaveLength(1)
+        expect(result.parsedPoints.map((p) => p.prettify())).toMatchObject([
+          {
+            exportName: 'page',
+            parsedBasePoint: {
+              exportName: 'root',
+            },
+          },
+        ])
+      }),
+    )
+
+    it(
+      'can recognize nested points in different files, when base was imported, renamed twice, exported',
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+        await f0.write(`import {Point0} from '@point0/core'
+                      export const root = Point0.lets('root', 'root').root()                      
+        `)
+        await f1.write(`import {root} from '${f0.importpath}'
+                        export const root2 = root
+                        export const root3 = root2
+        `)
+        await f2.write(`import {root3} from '${f1.importpath}'
+                      export const page = root3.lets('page', 'page').page(() => <div>Hello</div>)
+        `)
+        const result = await walker.parsePointsFromFile({ fileAbs: f2.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.parsedPoints).toHaveLength(1)
+        expect(result.parsedPoints.map((p) => p.prettify())).toMatchObject([
+          {
+            exportName: 'page',
+            parsedBasePoint: {
+              exportName: 'root',
+            },
           },
         ])
       }),
