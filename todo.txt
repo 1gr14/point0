@@ -5,8 +5,8 @@
 WALKER
 refactoring
 Не кастомер а энвиронмент
+error when user forget to export point
 Пусть первый поинт0 будет не криэйт а тоже летс рут
-tests
 if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
 Прунить всё просто проверять регексом основные конструкции, иначе скипать
 
