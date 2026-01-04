@@ -8,6 +8,79 @@ import type { EndPointType, PointName, PointsScope } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 
+// Glossary: Babel AST Node Types and Concepts
+//
+// This glossary explains the AST (Abstract Syntax Tree) node types used in this file
+// to parse Point0.lets() calls from source code.
+//
+// CallExpression:
+//   - Definition: Represents a function call with parentheses and arguments
+//   - Example: Point0.lets('root', 'myroot') is a CallExpression
+//   - Because: It calls the lets() function with arguments ('root', 'myroot')
+//   - Properties:
+//     * callee: The function being called (e.g., Point0.lets)
+//     * arguments: Array of argument nodes (e.g., ['root', 'myroot'])
+//
+// MemberExpression:
+//   - Definition: Represents accessing a property or method of an object using dot notation
+//   - Example: In Point0.lets('root', 'myroot'), the "Point0.lets" part is a MemberExpression
+//   - Because: It accesses the "lets" property/method on the "Point0" object using dot notation
+//   - Properties:
+//     * object: The object being accessed (e.g., Point0)
+//     * property: The property/method being accessed (e.g., lets)
+//   - Note: Computed properties like obj[someVar] are also MemberExpressions, but with computed: true
+//
+// Identifier:
+//   - Definition: A simple identifier name (variable name, property name, etc.)
+//   - Example: In Point0.lets, both "Point0" and "lets" are Identifiers
+//   - Because: They are direct names, not computed properties like Point0[someVar]
+//   - Properties:
+//     * name: The string name of the identifier (e.g., "Point0", "lets")
+//
+// VariableDeclarator:
+//   - Definition: Represents a variable declaration (part of const/let/var statements)
+//   - Example: const root = Point0.lets(...) - "root = Point0.lets(...)" is a VariableDeclarator
+//   - Properties:
+//     * id: The identifier being declared (e.g., root)
+//     * init: The initializer expression (e.g., Point0.lets(...))
+//
+// VariableDeclaration:
+//   - Definition: Represents a variable declaration statement (const/let/var)
+//   - Example: const root = Point0.lets(...) - the entire statement is a VariableDeclaration
+//   - Properties:
+//     * kind: The declaration kind ('const', 'let', or 'var')
+//     * declarations: Array of VariableDeclarator nodes
+//
+// ExportNamedDeclaration:
+//   - Definition: Represents a named export statement
+//   - Example: export const root = Point0.lets(...) is an ExportNamedDeclaration
+//   - Properties:
+//     * declaration: The declaration being exported (e.g., VariableDeclaration)
+//
+// ExportDefaultDeclaration:
+//   - Definition: Represents a default export statement
+//   - Example: export default Point0.lets(...) is an ExportDefaultDeclaration
+//   - Properties:
+//     * declaration: The declaration being exported as default
+//
+// NodePath (Babel concept):
+//   - Definition: A wrapper around an AST node that provides traversal and manipulation methods
+//   - Example: letsNodePath is a NodePath wrapping the CallExpression node
+//   - Methods:
+//     * .get('property'): Get a NodePath for a specific property (e.g., get('callee'))
+//     * .get('arguments')[0]: Get a NodePath for array element (e.g., first argument)
+//     * .findParent(): Find parent node matching a condition
+//     * .node: Access the underlying AST node
+//
+// Common AST Node Properties:
+//   - callee: In CallExpression, the function being called (can be Identifier or MemberExpression)
+//   - object: In MemberExpression, the object being accessed (e.g., Point0 in Point0.lets)
+//   - property: In MemberExpression, the property being accessed (e.g., lets in Point0.lets)
+//   - arguments: In CallExpression, array of argument nodes passed to the function
+//   - type: The node type string (e.g., 'CallExpression', 'MemberExpression', 'Identifier')
+//   - loc: Location information (line, column) for the node in source code
+//
+
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
   : typeof traverseType
@@ -45,8 +118,19 @@ export class Walker {
     traverse(fileParsed.ast, {
       CallExpression: (p) => {
         const callee = p.node.callee
+        // MemberExpression: A property/method access using dot notation
+        // Example: In Point0.lets('root', 'myroot'), the "Point0.lets" part is a MemberExpression
+        // Because: It accesses the "lets" property/method on the "Point0" object using dot notation
         if (callee.type !== 'MemberExpression') return
+
+        // Identifier: A simple identifier name (not a computed property like [someVar])
+        // Example: In Point0.lets, the "lets" part is an Identifier
+        // Because: It's a direct property name, not a computed property access like Point0[someVar]
         if (callee.property.type !== 'Identifier') return
+
+        // Check if the property name is 'lets'
+        // Example: Point0.lets('root', 'myroot') - we're looking for calls to .lets()
+        // Because: We only want to parse Point0.lets() calls, not other method calls
         if (callee.property.name !== 'lets') return
 
         const result = this.parsePointByLetsNodePath({ letsNodePath: p, file: fileParsed })
@@ -73,22 +157,47 @@ export class Walker {
     const errors: unknown[] = []
 
     const letsNode = letsNodePath.node
+
+    // CallExpression: A function call with parentheses and arguments
+    // Example: Point0.lets('root', 'myroot') is a CallExpression
+    // Because: It calls the lets() function with arguments ('root', 'myroot')
     if (letsNode.type !== 'CallExpression') return { parsedPoint: undefined, errors }
+
+    // MemberExpression: A property/method access using dot notation
+    // Example: In Point0.lets('root', 'myroot'), the "Point0.lets" part is a MemberExpression
+    // Because: It accesses the "lets" property/method on the "Point0" object using dot notation
     if (letsNode.callee.type !== 'MemberExpression') return { parsedPoint: undefined, errors }
 
-    // --- base ---
+    // Extract the base object from the MemberExpression
+    // Example: In Point0.lets('root', 'myroot'), this extracts "Point0"
+    // Because: We need to know what object .lets() is being called on (Point0 or something else)
+    // The callee is "Point0.lets" (MemberExpression), and its "object" property is "Point0"
     const baseNodePath = letsNodePath.get('callee').get('object')
 
-    // --- arguments ---
-    const args = letsNode.arguments
-    const firstLetsArgNodePath = args[0] ? letsNodePath.get('arguments')[0] : undefined
-    const secondLetsArgNodePath = args[1] ? letsNodePath.get('arguments')[1] : undefined
-    const thirdLetsArgNodePath = args[2] ? letsNodePath.get('arguments')[2] : undefined
+    // Extract arguments from the CallExpression
+    // Example: In Point0.lets('root', 'myroot'), letsArgs contains ['root', 'myroot']
+    // Because: We need to access the NodePaths for each argument to parse them later
+    const letsArgs = letsNode.arguments
+    // Access NodePaths for each argument using array indexing
+    // Note: Checking length instead of truthiness to handle falsy argument values (0, false, null)
+    const firstLetsArgNodePath = letsArgs.length > 0 ? letsNodePath.get('arguments')[0] : undefined
+    const secondLetsArgNodePath = letsArgs.length > 1 ? letsNodePath.get('arguments')[1] : undefined
+    const thirdLetsArgNodePath = letsArgs.length > 2 ? letsNodePath.get('arguments')[2] : undefined
 
-    // --- is Point0 ---
+    // Check if the base object is Point0 (the root entry point)
+    // Example: In Point0.lets('root', 'myroot'), this returns true
+    // Example: In root.lets('page', 'mypage'), this returns false (base is "root", not "Point0")
+    // Identifier: The base must be a simple identifier name (not a computed property or expression)
     const isBasePoint0 = baseNodePath.node.type === 'Identifier' && baseNodePath.node.name === 'Point0'
 
-    // --- position ---
+    // Extract the source code location (line and column) of the lets() call
+    // Example: In Point0.lets('root', 'myroot'), this gets the position where "lets" appears
+    // Because: We need to report errors and provide source locations for debugging
+    // Note: loc may be undefined if:
+    //   - The node was programmatically created (not parsed from source)
+    //   - Error recovery created a placeholder node without location info
+    //   - The AST was transformed and location info was lost
+    //   - Edge cases where Babel couldn't determine the location
     const loc = letsNode.loc?.start
     const letsPosition = loc
       ? {
@@ -101,36 +210,51 @@ export class Walker {
       return { parsedPoint: undefined, errors }
     }
 
-    // --- export / variable ---
-    let exportName: string | undefined
-    let variableName: string | undefined
-    let isTopLevelVariable = false
+    // Extract how the point was exported (if it was exported)
+    // Example: export const root = Point0.lets(...) → exportName = "root"
+    // Example: export default Point0.lets(...) → exportName = "default"
+    // Example: const root = Point0.lets(...) → exportName = undefined (not exported)
+    // Because: We need to know the export name to reference this point from other files
+    const exportName: string | undefined = (() => {
+      // Find the parent export declaration node (ExportNamedDeclaration or ExportDefaultDeclaration)
+      // This walks up the AST tree to find where the lets() call is exported
+      // Note: We only check for export declarations, not VariableDeclarator, because:
+      //   - If exported, findParent will find ExportNamedDeclaration or ExportDefaultDeclaration
+      //   - If not exported, findParent won't find these types, and we return undefined
+      const decl = letsNodePath.findParent((p) => {
+        const n = p.node
+        return (
+          n.type === 'ExportNamedDeclaration' || // Example: export const root = Point0.lets('root', 'myroot')
+          n.type === 'ExportDefaultDeclaration' // Example: export default Point0.lets('root', 'myroot')
+        )
+      })
 
-    const decl = letsNodePath.findParent((p) => {
-      const n = p.node
-      return (
-        n.type === 'VariableDeclarator' || n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration'
-      )
-    })
-
-    if (decl) {
-      const n = decl.node
-      if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier') {
-        variableName = n.id.name
-        isTopLevelVariable = true
+      // If no export declaration was found, the point is not exported
+      if (!decl) {
+        return undefined
       }
-      if (n.type === 'ExportNamedDeclaration') {
-        const d = n.declaration
-        if (d?.type === 'VariableDeclaration' && d.declarations[0]?.id.type === 'Identifier') {
-          exportName = d.declarations[0].id.name
-          isTopLevelVariable = true
+      const declNode = decl.node
+
+      // Case 1: Named export - export const root = Point0.lets(...)
+      // Example: export const root = Point0.lets('root', 'myroot')
+      // Because: ExportNamedDeclaration wraps a VariableDeclaration, which contains the variable name
+      if (declNode.type === 'ExportNamedDeclaration') {
+        const variableDecl = declNode.declaration
+        if (variableDecl?.type === 'VariableDeclaration' && variableDecl.declarations[0]?.id.type === 'Identifier') {
+          return variableDecl.declarations[0].id.name
         }
       }
-      if (n.type === 'ExportDefaultDeclaration') {
-        exportName = 'default'
-        isTopLevelVariable = true
+
+      // Case 2: Default export - export default Point0.lets(...)
+      // Example: export default Point0.lets('root', 'myroot')
+      // Because: Default exports use the special name "default"
+      else if (declNode.type === 'ExportDefaultDeclaration') {
+        return 'default'
       }
-    }
+
+      // Fallback: If we found a declaration but it doesn't match expected types, return undefined
+      return undefined
+    })()
 
     // --- last called method ---
     let lastCalledMethod: string | undefined
@@ -161,8 +285,6 @@ export class Walker {
       fileAbs: file.abs,
       letsPosition,
       exportName,
-      variableName,
-      isTopLevelVariable,
       lastCalledMethod,
 
       baseNodePath,
@@ -485,8 +607,6 @@ export type ParsedPoint = {
   fileAbs: string
   letsPosition: { column: number; line: number }
   exportName: string | undefined
-  variableName: string | undefined
-  isTopLevelVariable: boolean
   lastCalledMethod: string | undefined
 
   baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
