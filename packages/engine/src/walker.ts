@@ -63,6 +63,36 @@ import * as nodePath from 'node:path'
 //   - Properties:
 //     * declaration: The declaration being exported as default
 //
+// ImportDeclaration:
+//   - Definition: Represents an import statement from another module
+//   - Example: import { root } from './file' or import root from './file'
+//   - Because: We need to resolve imports to find where base identifiers are defined
+//   - Properties:
+//     * source: The module being imported from (e.g., './file')
+//     * specifiers: Array of import specifiers (ImportSpecifier, ImportDefaultSpecifier, etc.)
+//
+// ImportSpecifier:
+//   - Definition: Represents a named import (part of import { ... } from ...)
+//   - Example: import { root, page } from './file' - "root" and "page" are ImportSpecifiers
+//   - Properties:
+//     * imported: The name being imported (can be Identifier or StringLiteral for aliases)
+//     * local: The local name (Identifier) - same as imported unless aliased
+//   - Note: import { root as myRoot } uses imported="root" and local="myRoot"
+//
+// ImportDefaultSpecifier:
+//   - Definition: Represents a default import (part of import defaultName from ...)
+//   - Example: import root from './file' - "root" is an ImportDefaultSpecifier
+//   - Properties:
+//     * local: The local name (Identifier) for the default import
+//
+// StringLiteral:
+//   - Definition: Represents a string literal value
+//   - Example: In import { root } from './file', the './file' is a StringLiteral
+//   - Because: Import paths are string literals in the AST
+//   - Properties:
+//     * value: The string value (e.g., './file', '@point0/core')
+//   - Note: Also used for string arguments like Point0.lets('root', 'myroot') where 'root' and 'myroot' are StringLiterals
+//
 // NodePath (Babel concept):
 //   - Definition: A wrapper around an AST node that provides traversal and manipulation methods
 //   - Example: letsNodePath is a NodePath wrapping the CallExpression node
@@ -77,6 +107,14 @@ import * as nodePath from 'node:path'
 //   - object: In MemberExpression, the object being accessed (e.g., Point0 in Point0.lets)
 //   - property: In MemberExpression, the property being accessed (e.g., lets in Point0.lets)
 //   - arguments: In CallExpression, array of argument nodes passed to the function
+//   - source: In ImportDeclaration, the module path (StringLiteral) being imported from
+//   - specifiers: In ImportDeclaration, array of import specifiers (ImportSpecifier, ImportDefaultSpecifier, etc.)
+//   - imported: In ImportSpecifier, the name being imported (Identifier or StringLiteral)
+//   - local: In ImportSpecifier/ImportDefaultSpecifier, the local identifier name
+//   - id: In VariableDeclarator, the identifier being declared
+//   - init: In VariableDeclarator, the initializer expression (the value being assigned)
+//   - declaration: In ExportNamedDeclaration/ExportDefaultDeclaration, the declaration being exported
+//   - value: In StringLiteral, the string value
 //   - type: The node type string (e.g., 'CallExpression', 'MemberExpression', 'Identifier')
 //   - loc: Location information (line, column) for the node in source code
 //
@@ -98,15 +136,11 @@ export class Walker {
 
   // Parse points from files
 
-  async readAndParsePointsFromFile(fileAbs: string): Promise<{ parsedPoints: ParsedPoint[]; errors: unknown[] }> {
-    const file = await WalkerFile.create(fileAbs).read()
-    return this.parsePointsFromFile({ file })
-  }
-
-  private parsePointsFromFile({ file }: { file: WalkerFile<'read' | 'parsed'> }): {
+  async parsePointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
     parsedPoints: ParsedPoint[]
     errors: unknown[]
-  } {
+  }> {
+    const file = await WalkerFile.create(fileAbs).read()
     const parsedPoints: ParsedPoint[] = []
     const errors: unknown[] = []
 
@@ -115,45 +149,45 @@ export class Walker {
     }
     const fileParsed = file.parse()
 
+    // We need to collect all lets() calls first, then process them async
+    const letsNodePaths: Array<NodePath<Node>> = []
     traverse(fileParsed.ast, {
       CallExpression: (p) => {
-        const callee = p.node.callee
-        // MemberExpression: A property/method access using dot notation
-        // Example: In Point0.lets('root', 'myroot'), the "Point0.lets" part is a MemberExpression
-        // Because: It accesses the "lets" property/method on the "Point0" object using dot notation
-        if (callee.type !== 'MemberExpression') return
-
-        // Identifier: A simple identifier name (not a computed property like [someVar])
-        // Example: In Point0.lets, the "lets" part is an Identifier
-        // Because: It's a direct property name, not a computed property access like Point0[someVar]
-        if (callee.property.type !== 'Identifier') return
-
-        // Check if the property name is 'lets'
+        // Check if this is a .lets() call expression
         // Example: Point0.lets('root', 'myroot') - we're looking for calls to .lets()
         // Because: We only want to parse Point0.lets() calls, not other method calls
-        if (callee.property.name !== 'lets') return
-
-        const result = this.parsePointByLetsNodePath({ letsNodePath: p, file: fileParsed })
-        errors.push(...result.errors)
-        if (result.parsedPoint) {
-          parsedPoints.push(result.parsedPoint)
+        // Reusing isLetsCallExpression helper which checks:
+        //   - It's a CallExpression (already known since we're in CallExpression visitor)
+        //   - The callee is a MemberExpression (e.g., Point0.lets)
+        //   - The property is an Identifier named 'lets'
+        if (this.isLetsCallExpression(p.node)) {
+          letsNodePaths.push(p)
         }
       },
     })
 
+    // Process all lets() calls async
+    for (const letsNodePath of letsNodePaths) {
+      const result = await this.parsePointByLetsNodePath({ letsNodePath, file: fileParsed })
+      errors.push(...result.errors)
+      if (result.parsedPoint) {
+        parsedPoints.push(result.parsedPoint)
+      }
+    }
+
     return { parsedPoints, errors }
   }
 
-  private parsePointByLetsNodePath({
+  private async parsePointByLetsNodePath({
     letsNodePath,
     file,
   }: {
     letsNodePath: NodePath<Node>
     file: WalkerFile<'parsed'>
-  }): {
+  }): Promise<{
     parsedPoint: ParsedPoint | undefined
     errors: unknown[]
-  } {
+  }> {
     const errors: unknown[] = []
 
     const letsNode = letsNodePath.node
@@ -302,23 +336,25 @@ export class Walker {
       return maybeLastCalledMethod
     })()
 
-    // --- recurse base ---
-    let parsedBasePoint: ParsedPoint | undefined
-
-    if (!isBasePoint0) {
-      const findBaseLetsNodePathByBaseNodePathResult = this.findBaseLetsNodePathByBaseNodePath({ baseNodePath, file })
-      errors.push(...findBaseLetsNodePathByBaseNodePathResult.errors)
-      if (findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath) {
-        const result = this.parsePointByLetsNodePath({
-          letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
-          file,
-        })
-        errors.push(...result.errors)
-        if (result.parsedPoint) {
-          parsedBasePoint = result.parsedPoint
-        }
+    const parsedBasePoint: ParsedPoint | undefined = await (async () => {
+      if (isBasePoint0) {
+        return undefined
       }
-    }
+      const findBaseLetsNodePathByBaseNodePathResult = await this.findBaseLetsNodePathByBaseNodePath({
+        baseNodePath,
+        file,
+      })
+      errors.push(...findBaseLetsNodePathByBaseNodePathResult.errors)
+      if (!findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath) {
+        return undefined
+      }
+      const result = await this.parsePointByLetsNodePath({
+        letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
+        file,
+      })
+      errors.push(...result.errors)
+      return result.parsedPoint
+    })()
 
     const parsedPoint: ParsedPoint = {
       fileAbs: file.abs,
@@ -338,16 +374,186 @@ export class Walker {
     return { parsedPoint, errors }
   }
 
-  private findBaseLetsNodePathByBaseNodePath({
+  private async findBaseLetsNodePathByBaseNodePath({
     baseNodePath,
     file,
   }: {
     baseNodePath: NodePath<Node>
     file: WalkerFile<'parsed'>
-  }): { baseLetsNodePath: NodePath<Node> | undefined; errors: unknown[] } {
+  }): Promise<{ baseLetsNodePath: NodePath<Node> | undefined; errors: unknown[] }> {
     const errors: unknown[] = []
-    // TODO: find base lets node path by base node path
-    return { baseLetsNodePath: undefined, errors }
+
+    // Step 1: Check if baseNodePath is an Identifier (e.g., "y" in "y.lets('page')")
+    // If it's not an Identifier (e.g., it's Point0 or some other expression), we can't resolve it
+    if (baseNodePath.node.type !== 'Identifier') {
+      return { baseLetsNodePath: undefined, errors }
+    }
+
+    const baseIdentifierName = baseNodePath.node.name
+
+    // Step 2: Search in the current file for where this identifier is defined
+    // It could be:
+    //   - A variable declaration: const y = z.lets('XXX')
+    //   - An export: export const y = z.lets('XXX')
+    //   - An import: import { y } from './file' or import y from './file'
+    let foundLetsNodePath: NodePath<Node> | undefined
+    const importsToResolve: Array<{ importPath: string; importedName: string }> = []
+
+    // First pass: Find declarations/exports in current file and collect imports
+    traverse(file.ast, {
+      // Case 1: Variable declaration in the same file
+      // Example: const y = z.lets('page', 'mypage').page()
+      VariableDeclarator: (p) => {
+        if (foundLetsNodePath) return // Already found
+        if (p.node.id.type === 'Identifier' && p.node.id.name === baseIdentifierName) {
+          const init = p.node.init
+          if (init && this.isLetsCallExpression(init)) {
+            foundLetsNodePath = p.get('init') as NodePath<Node>
+          }
+        }
+      },
+
+      // Case 2: Named export in the same file
+      // Example: export const y = z.lets('page', 'mypage').page()
+      ExportNamedDeclaration: (p) => {
+        if (foundLetsNodePath) return
+        const decl = p.node.declaration
+        if (decl?.type === 'VariableDeclaration') {
+          const declarations = p.get('declaration').get('declarations')
+          for (const declarator of declarations) {
+            if (declarator.node.id.type === 'Identifier' && declarator.node.id.name === baseIdentifierName) {
+              const init = declarator.node.init
+              if (init && this.isLetsCallExpression(init)) {
+                foundLetsNodePath = declarator.get('init') as NodePath<Node>
+                break
+              }
+            }
+          }
+        }
+      },
+
+      // Case 3: Default export in the same file
+      // Example: export default z.lets('page', 'mypage').page()
+      ExportDefaultDeclaration: (p) => {
+        if (foundLetsNodePath) return
+        if (baseIdentifierName === 'default') {
+          const decl = p.node.declaration
+          if (this.isLetsCallExpression(decl)) {
+            foundLetsNodePath = p.get('declaration') as NodePath<Node>
+          }
+        }
+      },
+
+      // Case 4: Import from another file - collect for later resolution
+      // Example: import { y } from './file' or import y from './file'
+      ImportDeclaration: (p) => {
+        if (foundLetsNodePath) return
+        const importPath = p.node.source.value
+        if (typeof importPath !== 'string') return
+
+        // Check if this import matches our identifier
+        for (const spec of p.node.specifiers) {
+          if (spec.type === 'ImportSpecifier' && spec.local.name === baseIdentifierName) {
+            const importedName = spec.imported.type === 'Identifier' ? spec.imported.name : undefined
+            if (importedName) {
+              importsToResolve.push({ importPath, importedName })
+            }
+            break
+          } else if (spec.type === 'ImportDefaultSpecifier' && spec.local.name === baseIdentifierName) {
+            importsToResolve.push({ importPath, importedName: 'default' })
+            break
+          }
+        }
+      },
+    })
+
+    // Second pass: Resolve imports if we haven't found the declaration yet
+    if (!foundLetsNodePath && importsToResolve.length > 0) {
+      for (const { importPath, importedName } of importsToResolve) {
+        // Resolve the import path to get the actual file path
+        // This handles TypeScript path aliases and relative paths
+        const resolvedPath = await this.detectExistingFilePathByImportPath(importPath, file.abs)
+        if (resolvedPath) {
+          try {
+            // Read and parse the imported file
+            const importedFile = await WalkerFile.create(resolvedPath)
+              .read()
+              .then((f) => f.parse())
+            // Recursively search in the imported file for the export
+            const result = await this.findLetsNodePathByExportName({
+              exportName: importedName,
+              file: importedFile,
+            })
+            errors.push(...result.errors)
+            if (result.letsNodePath) {
+              foundLetsNodePath = result.letsNodePath
+              break // Found it, stop searching
+            }
+          } catch (error) {
+            errors.push(
+              new Error(`Failed to parse imported file ${resolvedPath}: ${(error as Error).message}`, { cause: error }),
+            )
+          }
+        } else {
+          errors.push(new Error(`Could not resolve import path: ${importPath}`))
+        }
+      }
+    }
+
+    return { baseLetsNodePath: foundLetsNodePath, errors }
+  }
+
+  // Helper: Check if a node is a .lets() call expression
+  private isLetsCallExpression(node: Node): boolean {
+    if (node.type !== 'CallExpression') return false
+    if (node.callee.type !== 'MemberExpression') return false
+    if (node.callee.property.type !== 'Identifier') return false
+    return node.callee.property.name === 'lets'
+  }
+
+  // Helper: Find the .lets() NodePath by export name in a file
+  private async findLetsNodePathByExportName({
+    exportName,
+    file,
+  }: {
+    exportName: string
+    file: WalkerFile<'parsed'>
+  }): Promise<{ letsNodePath: NodePath<Node> | undefined; errors: unknown[] }> {
+    const errors: unknown[] = []
+    let foundLetsNodePath: NodePath<Node> | undefined
+
+    traverse(file.ast, {
+      // Check named exports
+      ExportNamedDeclaration: (p) => {
+        if (foundLetsNodePath) return
+        const decl = p.node.declaration
+        if (decl?.type === 'VariableDeclaration') {
+          const declarations = p.get('declaration').get('declarations')
+          for (const declarator of declarations) {
+            if (declarator.node.id.type === 'Identifier' && declarator.node.id.name === exportName) {
+              const init = declarator.node.init
+              if (init && this.isLetsCallExpression(init)) {
+                foundLetsNodePath = declarator.get('init') as NodePath<Node>
+                break
+              }
+            }
+          }
+        }
+      },
+
+      // Check default exports
+      ExportDefaultDeclaration: (p) => {
+        if (foundLetsNodePath) return
+        if (exportName === 'default') {
+          const decl = p.node.declaration
+          if (this.isLetsCallExpression(decl)) {
+            foundLetsNodePath = p.get('declaration') as NodePath<Node>
+          }
+        }
+      },
+    })
+
+    return { letsNodePath: foundLetsNodePath, errors }
   }
 
   // TS Helpers

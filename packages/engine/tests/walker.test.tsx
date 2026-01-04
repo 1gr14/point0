@@ -76,7 +76,7 @@ describe('walker', () => {
         await file.write(`import {Point0} from '@point0/core'
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
       `)
-        const result = await walker.readAndParsePointsFromFile(file.path)
+        const result = await walker.parsePointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.parsedPoints).toHaveLength(1)
         expect(prettifyParsedPoint(result.parsedPoints[0])).toMatchObject({
@@ -102,7 +102,7 @@ describe('walker', () => {
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
                           export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
       `)
-        const result = await walker.readAndParsePointsFromFile(file.path)
+        const result = await walker.parsePointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.parsedPoints).toHaveLength(2)
         expect(prettifyParsedPoint(result.parsedPoints[1])).toMatchObject({
