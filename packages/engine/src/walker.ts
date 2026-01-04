@@ -220,8 +220,6 @@ export class Walker {
       // Note: Checking length instead of truthiness to handle falsy argument values (0, false, null)
       const firstLetsArgNodePath = letsArgs.length > 0 ? letsNodePath.get('arguments')[0] : undefined
       const secondLetsArgNodePath = letsArgs.length > 1 ? letsNodePath.get('arguments')[1] : undefined
-      const thirdLetsArgNodePath = letsArgs.length > 2 ? letsNodePath.get('arguments')[2] : undefined
-
       // Extract the point type and name from the lets() call
       // Example: root.lets('page', 'mypage') → pointType = 'page', pointName = 'mypage'
       const pointType: EndPointType | undefined =
@@ -242,26 +240,6 @@ export class Walker {
       // Example: In root.lets('page', 'mypage'), this returns false (base is "root", not "Point0")
       // Identifier: The base must be a simple identifier name (not a computed property or expression)
       const isBasePoint0 = baseNodePath.node.type === 'Identifier' && baseNodePath.node.name === 'Point0'
-
-      // Extract the source code location (line and column) of the lets() call
-      // Example: In Point0.lets('root', 'myroot'), this gets the position where "lets" appears
-      // Because: We need to report errors and provide source locations for debugging
-      // Note: loc may be undefined if:
-      //   - The node was programmatically created (not parsed from source)
-      //   - Error recovery created a placeholder node without location info
-      //   - The AST was transformed and location info was lost
-      //   - Edge cases where Babel couldn't determine the location
-      const loc = letsNode.loc?.start
-      const letsPosition = loc
-        ? {
-            line: loc.line,
-            column: loc.column,
-          }
-        : undefined
-      if (!letsPosition) {
-        errors.push(new Error('lets position not found'))
-        return { astPoint: undefined, errors }
-      }
 
       // Extract how the point was exported (if it was exported)
       // Example: export const root = Point0.lets(...) → exportName = "root"
@@ -309,52 +287,6 @@ export class Walker {
         return undefined
       })()
 
-      const lastCalledMethod = (() => {
-        // --- last called method ---
-        // Find the last method called in the chain after .lets()
-        // Rule: Code that starts with .lets('XXX') should end with .XXX()
-        // Example: Point0.lets('page', 'mypage').page(() => <div>Hello</div>)
-        //   - The chain starts with .lets('page', ...)
-        //   - The chain ends with .page(...)
-        //   - lastCalledMethod = 'page'
-        // Example: Point0.lets('page', 'mypage').one().two().page(() => <div>Hello</div>)
-        //   - The chain has intermediate calls: .one().two()
-        //   - The chain ends with .page(...)
-        //   - lastCalledMethod = 'page'
-        // Because: Our compiler enforces that the first argument to .lets() must match the final method call
-        //   This ensures type safety: .lets('page', ...) must be followed by .page() (even with intermediate calls)
-        let maybeLastCalledMethod: string | undefined
-        // Traverse UP the AST tree (towards the ast root) to find the topmost CallExpression
-        // In the AST, method chains are nested: .lets() is deeper, .page() is higher (closer to ast root)
-        // Example: Point0.lets('page', 'mypage').one().two().page()
-        //   AST structure (from ast root down): CallExpression(page) contains CallExpression(two) contains CallExpression(one) contains CallExpression(lets)
-        //   So .lets() is nested inside .one(), which is nested inside .two(), which is nested inside .page()
-        //   To find .page(), we traverse UP from .lets() using parentPath (child -> parent -> grandparent -> ...)
-        // Because: parentPath goes from child to parent, which moves UP the tree towards the ast root
-        let current: NodePath<Node> | null = letsNodePath.parentPath
-        while (current) {
-          // If we find a CallExpression, check if its callee is a MemberExpression
-          // This means we found a method call in the chain (e.g., .one(), .two(), .page())
-          if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
-            const callee = current.node.callee
-            if (callee.property.type === 'Identifier') {
-              // Update lastCalledMethod with each method we find
-              // The last one will be the topmost (final) method call in the chain
-              maybeLastCalledMethod = callee.property.name
-            }
-          }
-          // Continue traversing UP the AST tree (towards the root)
-          // We continue while we're in CallExpressions or MemberExpressions (part of the method chain)
-          if (current.node.type === 'CallExpression' || current.node.type === 'MemberExpression') {
-            current = current.parentPath // parentPath goes UP (child -> parent)
-          } else {
-            // We've reached the end of the chain (e.g., VariableDeclarator, AssignmentExpression, etc.)
-            break
-          }
-        }
-        return maybeLastCalledMethod
-      })()
-
       const astBasePoint: AstPoint | undefined = await (async () => {
         if (isBasePoint0) {
           return undefined
@@ -379,14 +311,9 @@ export class Walker {
         file,
         pointType,
         pointName,
-        letsPosition,
         exportName,
-        lastCalledMethod,
-
         baseNodePath,
         letsNodePath,
-        thirdLetsArgNodePath,
-
         isBasePoint0,
         astBasePoint,
       })
@@ -913,12 +840,9 @@ export class AstPoint {
   readonly file: WalkerFile
   readonly pointType: EndPointType
   readonly pointName: PointName
-  readonly letsPosition: { column: number; line: number }
   readonly exportName: string | undefined
-  readonly lastCalledMethod: string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
-  readonly thirdLetsArgNodePath: NodePath<Node> | undefined
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
   readonly astBasePoint: AstPoint | undefined
   readonly parents: AstPoint[]
@@ -927,36 +851,27 @@ export class AstPoint {
     file,
     pointType,
     pointName,
-    letsPosition,
     exportName,
-    lastCalledMethod,
     baseNodePath,
     letsNodePath,
-    thirdLetsArgNodePath,
     isBasePoint0,
     astBasePoint,
   }: {
     file: WalkerFile
     pointType: EndPointType
     pointName: PointName
-    letsPosition: { column: number; line: number }
     exportName: string | undefined
-    lastCalledMethod: string | undefined
     baseNodePath: NodePath<Node>
     letsNodePath: NodePath<Node>
-    thirdLetsArgNodePath: NodePath<Node> | undefined
     isBasePoint0: boolean
     astBasePoint: AstPoint | undefined
   }) {
     this.file = file
     this.pointType = pointType
     this.pointName = pointName
-    this.letsPosition = letsPosition
     this.exportName = exportName
-    this.lastCalledMethod = lastCalledMethod
     this.baseNodePath = baseNodePath
     this.letsNodePath = letsNodePath
-    this.thirdLetsArgNodePath = thirdLetsArgNodePath
     this.isBasePoint0 = isBasePoint0
     this.astBasePoint = astBasePoint
     this.parents = []
@@ -984,6 +899,72 @@ export class AstPoint {
     return lastAstBasePoint.isBasePoint0
   }
 
+  getLastCalledMethodName(): string | undefined {
+    // --- last called method ---
+    // Find the last method called in the chain after .lets()
+    // Rule: Code that starts with .lets('XXX') should end with .XXX()
+    // Example: Point0.lets('page', 'mypage').page(() => <div>Hello</div>)
+    //   - The chain starts with .lets('page', ...)
+    //   - The chain ends with .page(...)
+    //   - lastCalledMethod = 'page'
+    // Example: Point0.lets('page', 'mypage').one().two().page(() => <div>Hello</div>)
+    //   - The chain has intermediate calls: .one().two()
+    //   - The chain ends with .page(...)
+    //   - lastCalledMethod = 'page'
+    // Because: Our compiler enforces that the first argument to .lets() must match the final method call
+    //   This ensures type safety: .lets('page', ...) must be followed by .page() (even with intermediate calls)
+    let maybeLastCalledMethod: string | undefined
+    // Traverse UP the AST tree (towards the ast root) to find the topmost CallExpression
+    // In the AST, method chains are nested: .lets() is deeper, .page() is higher (closer to ast root)
+    // Example: Point0.lets('page', 'mypage').one().two().page()
+    //   AST structure (from ast root down): CallExpression(page) contains CallExpression(two) contains CallExpression(one) contains CallExpression(lets)
+    //   So .lets() is nested inside .one(), which is nested inside .two(), which is nested inside .page()
+    //   To find .page(), we traverse UP from .lets() using parentPath (child -> parent -> grandparent -> ...)
+    // Because: parentPath goes from child to parent, which moves UP the tree towards the ast root
+    let current: NodePath<Node> | null = this.letsNodePath.parentPath
+    while (current) {
+      // If we find a CallExpression, check if its callee is a MemberExpression
+      // This means we found a method call in the chain (e.g., .one(), .two(), .page())
+      if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
+        const callee = current.node.callee
+        if (callee.property.type === 'Identifier') {
+          // Update lastCalledMethod with each method we find
+          // The last one will be the topmost (final) method call in the chain
+          maybeLastCalledMethod = callee.property.name
+        }
+      }
+      // Continue traversing UP the AST tree (towards the root)
+      // We continue while we're in CallExpressions or MemberExpressions (part of the method chain)
+      if (current.node.type === 'CallExpression' || current.node.type === 'MemberExpression') {
+        current = current.parentPath // parentPath goes UP (child -> parent)
+      } else {
+        // We've reached the end of the chain (e.g., VariableDeclarator, AssignmentExpression, etc.)
+        break
+      }
+    }
+    return maybeLastCalledMethod
+  }
+
+  getLetsPosition(): { file: string; line: number; column: number } | undefined {
+    // Extract the source code location (line and column) of the lets() call
+    // Example: In Point0.lets('root', 'myroot'), this gets the position where "lets" appears
+    // Because: We need to report errors and provide source locations for debugging
+    // Note: loc may be undefined if:
+    //   - The node was programmatically created (not parsed from source)
+    //   - Error recovery created a placeholder node without location info
+    //   - The AST was transformed and location info was lost
+    //   - Edge cases where Babel couldn't determine the location
+    const loc = this.letsNodePath.node.loc?.start
+    const letsPosition = loc
+      ? {
+          file: this.file.abs,
+          line: loc.line,
+          column: loc.column,
+        }
+      : undefined
+    return letsPosition
+  }
+
   getScopes(): PointsScope[] {
     const scopes: PointsScope[] = []
     for (const astPoint of this.getSelfAndParents()) {
@@ -999,12 +980,9 @@ export class AstPoint {
       file: nodeFsPath.basename(this.file.abs, nodeFsPath.extname(this.file.abs)),
       pointType: this.pointType,
       pointName: this.pointName,
-      letsPosition: this.letsPosition,
       exportName: this.exportName,
-      lastCalledMethod: this.lastCalledMethod,
       baseNodePath: !!this.baseNodePath,
       letsNodePath: !!this.letsNodePath,
-      thirdLetsArgNodePath: !!this.thirdLetsArgNodePath,
       isBasePoint0: this.isBasePoint0,
       parents: this.parents.map((parent) => parent.extraSimplify()),
     }
@@ -1022,12 +1000,9 @@ export type AstPointSimplified = {
   file: string
   pointType: EndPointType
   pointName: PointName
-  letsPosition: { column: number; line: number }
   exportName: string | undefined
-  lastCalledMethod: string | undefined
   baseNodePath: boolean
   letsNodePath: boolean
-  thirdLetsArgNodePath: boolean
   isBasePoint0: boolean
   parents: AstPointExtraSimplified[]
 }

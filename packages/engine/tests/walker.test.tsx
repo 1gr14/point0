@@ -39,7 +39,7 @@ describe('walker', () => {
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
-  describe('parsePointsFromFile', () => {
+  describe('getAstPointsFromFile', () => {
     it(
       'can recognize root point in current file',
       helper(async ({ files: [file], walker }) => {
@@ -51,12 +51,9 @@ describe('walker', () => {
         expect(result.astPoints).toHaveLength(1)
         expect(result.astPoints[0].simplify()).toMatchObject({
           file: file.basename,
-          letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'myrootvariable',
-          lastCalledMethod: 'root',
           baseNodePath: true,
           letsNodePath: true,
-          thirdLetsArgNodePath: false,
           isBasePoint0: true,
           parents: [],
         })
@@ -77,12 +74,9 @@ describe('walker', () => {
           file: file.basename,
           pointType: 'root',
           pointName: 'myroot',
-          letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'myrootvariable',
-          lastCalledMethod: 'root',
           baseNodePath: true,
           letsNodePath: true,
-          thirdLetsArgNodePath: false,
           isBasePoint0: true,
           parents: [],
         })
@@ -90,12 +84,9 @@ describe('walker', () => {
           file: file.basename,
           pointType: 'page',
           pointName: 'mypage',
-          letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'mypagevariable',
-          lastCalledMethod: 'page',
           baseNodePath: true,
           letsNodePath: true,
-          thirdLetsArgNodePath: false,
           isBasePoint0: false,
           parents: [
             {
@@ -121,12 +112,9 @@ describe('walker', () => {
           file: file1.basename,
           pointType: 'page',
           pointName: 'mypage',
-          letsPosition: { line: expect.any(Number), column: expect.any(Number) },
           exportName: 'mypagevariable',
-          lastCalledMethod: 'page',
           baseNodePath: true,
           letsNodePath: true,
-          thirdLetsArgNodePath: false,
           isBasePoint0: false,
           parents: [
             {
