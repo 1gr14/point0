@@ -149,6 +149,18 @@ refactor Env0: just cool validation helpers
 unwind and tailwind
 https://oxc.rs/docs/guide/usage/linter/config
 
+
+
+
+
+------
+------
+------
+
+
+
+
+
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
 ? on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware (whcih problem do we solve?)
@@ -228,6 +240,9 @@ MDX
 Мдкс если видит в своей папке или выше файл тчк роут то он файловый роут
 Мдкс может в бэйзе просто написать скоуп тчк тайп тчк нэйм
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
+
+FILEROUTING
+Функция файлроут, которая автоматически вставляет в себя строку текущего файла по отношению к файлу .файлроут или текущей папке. И к ней даже к строка можно дописать плюсики или как стринглитерал заиспользовать
 
 STATIC
 static site generator; 
