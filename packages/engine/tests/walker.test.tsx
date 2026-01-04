@@ -124,6 +124,36 @@ describe('walker', () => {
     )
   })
 
+  it(
+    'can recognize page point in current file, when root point in another file',
+    helper(async ({ files: [file0, file1], walker }) => {
+      await file0.write(`import {Point0} from '@point0/core'
+                        export const myrootvariable = Point0.lets('root', 'myroot').root()
+    `)
+      await file1.write(`import {myrootvariable} from '${file0.importpath}'
+                        export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
+    `)
+      const result = await walker.parsePointsFromFile({ fileAbs: file1.path })
+      expect(result.errors).toHaveLength(0)
+      expect(result.parsedPoints).toHaveLength(1)
+      expect(prettifyParsedPoint(result.parsedPoints[0])).toMatchObject({
+        fileAbs: 'string',
+        letsPosition: { line: expect.any(Number), column: expect.any(Number) },
+        exportName: 'mypagevariable',
+        lastCalledMethod: 'page',
+        baseNodePath: true,
+        letsNodePath: true,
+        firstLetsArgNodePath: true,
+        secondLetsArgNodePath: true,
+        thirdLetsArgNodePath: false,
+        isBasePoint0: false,
+        parsedBasePoint: {
+          exportName: 'myrootvariable',
+        },
+      })
+    }),
+  )
+
   //   it(
   //     'should collect points from file',
   //     helper(async ({ files: [file], walker }) => {

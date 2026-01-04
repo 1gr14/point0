@@ -160,7 +160,7 @@ export class Walker {
         //   - It's a CallExpression (already known since we're in CallExpression visitor)
         //   - The callee is a MemberExpression (e.g., Point0.lets)
         //   - The property is an Identifier named 'lets'
-        if (this.isLetsCallExpression(p.node)) {
+        if (this.isLetsCallExpression({ node: p.node })) {
           letsNodePaths.push(p)
         }
       },
@@ -407,8 +407,14 @@ export class Walker {
         if (foundLetsNodePath) return // Already found
         if (p.node.id.type === 'Identifier' && p.node.id.name === baseIdentifierName) {
           const init = p.node.init
-          if (init && this.isLetsCallExpression(init)) {
-            foundLetsNodePath = p.get('init') as NodePath<Node>
+          if (init) {
+            // Find the .lets() call in the chain (e.g., Point0.lets('root', 'myroot').root())
+            const letsCall = this.findLetsCallInChain({ node: init })
+            if (letsCall) {
+              // Find the NodePath for the .lets() call by traversing down
+              const initPath = p.get('init') as NodePath<Node>
+              foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: initPath, targetNode: letsCall })
+            }
           }
         }
       },
@@ -423,9 +429,14 @@ export class Walker {
           for (const declarator of declarations) {
             if (declarator.node.id.type === 'Identifier' && declarator.node.id.name === baseIdentifierName) {
               const init = declarator.node.init
-              if (init && this.isLetsCallExpression(init)) {
-                foundLetsNodePath = declarator.get('init') as NodePath<Node>
-                break
+              if (init) {
+                // Find the .lets() call in the chain (e.g., Point0.lets('root', 'myroot').root())
+                const letsCall = this.findLetsCallInChain({ node: init })
+                if (letsCall) {
+                  const initPath = declarator.get('init') as NodePath<Node>
+                  foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: initPath, targetNode: letsCall })
+                  break
+                }
               }
             }
           }
@@ -438,8 +449,11 @@ export class Walker {
         if (foundLetsNodePath) return
         if (baseIdentifierName === 'default') {
           const decl = p.node.declaration
-          if (this.isLetsCallExpression(decl)) {
-            foundLetsNodePath = p.get('declaration') as NodePath<Node>
+          // Find the .lets() call in the chain (e.g., Point0.lets('root', 'myroot').root())
+          const letsCall = this.findLetsCallInChain({ node: decl })
+          if (letsCall) {
+            const declPath = p.get('declaration') as NodePath<Node>
+            foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: declPath, targetNode: letsCall })
           }
         }
       },
@@ -504,50 +518,149 @@ export class Walker {
   }
 
   // Helper: Check if a node is a .lets() call expression
-  private isLetsCallExpression(node: Node): boolean {
+  // Example: isLetsCallExpression({ node: Point0.lets('root', 'myroot') }) → true
+  // Example: isLetsCallExpression({ node: Point0.lets('root', 'myroot').root() }) → false (it's the .root() call, not .lets())
+  // Because: We need to identify .lets() calls to parse them as points
+  //   The node passed here is typically from p.node.init or declarator.node.init
+  private isLetsCallExpression({ node }: { node: Node }): boolean {
     if (node.type !== 'CallExpression') return false
     if (node.callee.type !== 'MemberExpression') return false
     if (node.callee.property.type !== 'Identifier') return false
     return node.callee.property.name === 'lets'
   }
 
+  // Helper: Find the .lets() call in a method chain by traversing down
+  // Example: findLetsCallInChain({ node: Point0.lets('root', 'myroot').root() })
+  //   - Input: The entire chain CallExpression (.root())
+  //   - Output: The .lets() CallExpression node
+  // Because: When we have a chain like Point0.lets('root', 'myroot').root(),
+  //   the init expression is the entire chain ending with .root(), not just .lets()
+  //   We need to traverse DOWN the chain (towards the leaves) to find the .lets() call
+  //   Chain structure: CallExpression(.root()) -> MemberExpression(.root) -> CallExpression(.lets())
+  //   The node passed here is typically from declarator.node.init or p.node.declaration
+  private findLetsCallInChain({ node }: { node: Node }): Node | undefined {
+    if (!this.isLetsCallExpression({ node })) {
+      // If this isn't a .lets() call, check if it's a CallExpression with a MemberExpression callee
+      // If so, traverse down to the object to find .lets()
+      if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression') {
+        const object = node.callee.object
+        // Recursively search in the object (which might be another CallExpression in the chain)
+        return this.findLetsCallInChain({ node: object })
+      }
+      return undefined
+    }
+    // Found it! This node is the .lets() CallExpression
+    return node
+  }
+
+  // Helper: Find the NodePath for a specific node by traversing down a chain
+  // Example: findLetsNodePathInChain({
+  //   nodePath: NodePath for Point0.lets('root', 'myroot').root(),
+  //   targetNode: The .lets() CallExpression node (found by findLetsCallInChain)
+  // })
+  //   - Input nodePath: NodePath wrapping the entire chain (e.g., from declarator.get('init'))
+  //   - Input targetNode: The specific .lets() Node we want to find (from findLetsCallInChain)
+  //   - Output: NodePath wrapping the .lets() CallExpression
+  // Because: We need the NodePath (not just the Node) to pass to parsePointByLetsNodePath
+  //   We traverse DOWN the chain from the top-level NodePath to find the NodePath that wraps targetNode
+  //   Chain structure: NodePath(.root()) -> NodePath(.root MemberExpression) -> NodePath(.lets() CallExpression)
+  private findLetsNodePathInChain({
+    nodePath,
+    targetNode,
+  }: {
+    nodePath: NodePath<Node>
+    targetNode: Node
+  }): NodePath<Node> | undefined {
+    // If this NodePath's node matches the target, return it
+    if (nodePath.node === targetNode) {
+      return nodePath
+    }
+
+    // If this is a CallExpression with a MemberExpression callee, traverse down
+    if (nodePath.node.type === 'CallExpression' && nodePath.node.callee.type === 'MemberExpression') {
+      const calleePath = nodePath.get('callee')
+      if (calleePath.node.type === 'MemberExpression') {
+        const objectPath = calleePath.get('object')
+        // Recursively search in the object path (which is deeper in the chain)
+        const found = this.findLetsNodePathInChain({ nodePath: objectPath, targetNode })
+        if (found) {
+          return found
+        }
+      }
+    }
+
+    return undefined
+  }
+
   // Helper: Find the .lets() NodePath by export name in a file
+  // Purpose: When we have an import like "import { root } from './file'", we need to find where "root" is exported
+  //   and get the NodePath for its .lets() call so we can parse it as a point
+  // Example: findLetsNodePathByExportName({
+  //   exportName: 'root',
+  //   file: parsedFile // File containing: export const root = Point0.lets('root', 'myroot').root()
+  // })
+  //   - Searches for: export const root = ...
+  //   - Finds: Point0.lets('root', 'myroot').root()
+  //   - Returns: NodePath wrapping the .lets() CallExpression
+  // Because: This is used when resolving imports - we need to find the base point definition
+  //   in the imported file to understand the point hierarchy
   private async findLetsNodePathByExportName({
     exportName,
     file,
   }: {
-    exportName: string
-    file: WalkerFile<'parsed'>
+    exportName: string // The export name to search for (e.g., 'root' or 'default')
+    file: WalkerFile<'parsed'> // The parsed file to search in
   }): Promise<{ letsNodePath: NodePath<Node> | undefined; errors: unknown[] }> {
     const errors: unknown[] = []
     let foundLetsNodePath: NodePath<Node> | undefined
 
+    // Traverse the AST to find exports matching the exportName
     traverse(file.ast, {
-      // Check named exports
+      // Case 1: Named export - export const root = Point0.lets(...)
+      // Example: export const root = Point0.lets('root', 'myroot').root()
       ExportNamedDeclaration: (p) => {
-        if (foundLetsNodePath) return
+        if (foundLetsNodePath) return // Already found, skip
         const decl = p.node.declaration
+        // Check if it's a variable declaration (export const ...)
         if (decl?.type === 'VariableDeclaration') {
           const declarations = p.get('declaration').get('declarations')
+          // Iterate through all variable declarators in the export
           for (const declarator of declarations) {
+            // Check if this declarator matches our export name
             if (declarator.node.id.type === 'Identifier' && declarator.node.id.name === exportName) {
               const init = declarator.node.init
-              if (init && this.isLetsCallExpression(init)) {
-                foundLetsNodePath = declarator.get('init') as NodePath<Node>
-                break
+              if (init) {
+                // Find the .lets() call in the chain (e.g., Point0.lets('root', 'myroot').root())
+                // The init might be a chain ending with .root(), .page(), etc., so we traverse down
+                const letsCall = this.findLetsCallInChain({ node: init })
+                if (letsCall) {
+                  // Get the NodePath for the init expression
+                  const initPath = declarator.get('init') as NodePath<Node>
+                  // Find the NodePath that wraps the .lets() call by traversing down the chain
+                  foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: initPath, targetNode: letsCall })
+                  break // Found it, stop searching
+                }
               }
             }
           }
         }
       },
 
-      // Check default exports
+      // Case 2: Default export - export default Point0.lets(...)
+      // Example: export default Point0.lets('root', 'myroot').root()
       ExportDefaultDeclaration: (p) => {
-        if (foundLetsNodePath) return
+        if (foundLetsNodePath) return // Already found, skip
+        // Only process if we're looking for the default export
         if (exportName === 'default') {
           const decl = p.node.declaration
-          if (this.isLetsCallExpression(decl)) {
-            foundLetsNodePath = p.get('declaration') as NodePath<Node>
+          // Find the .lets() call in the chain (e.g., Point0.lets('root', 'myroot').root())
+          // The declaration might be a chain ending with .root(), .page(), etc., so we traverse down
+          const letsCall = this.findLetsCallInChain({ node: decl })
+          if (letsCall) {
+            // Get the NodePath for the declaration
+            const declPath = p.get('declaration') as NodePath<Node>
+            // Find the NodePath that wraps the .lets() call by traversing down the chain
+            foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: declPath, targetNode: letsCall })
           }
         }
       },
