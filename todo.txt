@@ -2,26 +2,6 @@
 ------ before start0 -----
 --------------------------
 
-REFACTORING 0
-
-queryClient should be defined once in first root point no later
-
-
-
-
-
-
-
-------
-------
-------
-
-
-
-
-
-
-
 WALKER
 refactoring
 Не кастомер а энвиронмент
@@ -36,10 +16,11 @@ scopes is array
 but scope is still just string
 walker add to lazy points root {scope}, and self scope is still _root, other roots just points
 remove .attach things
-queryClient should be defined once in first root point no later (check if this root hash previous root, then throw error)
+query client can be defined on any root, and will be attached to all requests from this client scope
 
 ENVIRONMENT
 Добавить изСср он будет тру только когда мы именно рендерим компоненты
+remove isClient etc from Point0
 И в энвиронменте добавить констВхенЭнвиронмент({server,client,ssr})
 И в энвиронменте разрешить возвращать не функцию, а прямо ошибку чтобы он сровилась
 it is separate packe "@point0/environment", so we always check if thing imported from there
