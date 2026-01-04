@@ -24,8 +24,6 @@ import type {
 } from './types.js'
 import { appendSlash, getBasepathOrNull, getHostnameOrNull } from './utils.js'
 
-// TODO: maybe do not use modules, use just points collection. I think modules can help later with hmr or something else, so we can remove it later
-
 export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extends RequiredCtx = RequiredCtx> {
   transformer: DataTransformerExtended
   absPath: string | null
@@ -96,7 +94,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       absPath?: string
       readFn?: PointsReadFn
     },
-  ): PointsManager<true, TReadyPointsModule['_root']['point']['Infer']['RequiredCtx']> => {
+  ): PointsManager<true, TReadyPointsModule['_root']['point']['point']['Infer']['RequiredCtx']> => {
     const { absPath, readFn } = options ?? {}
     const { _root, ...rest } = readyPoints
     const rawPoints: EndPoint[] = Object.values(rest).map((p) => p.point)
@@ -104,9 +102,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     const routes = PointsManager.toRoutes({ points: collection })
     const pagesTreeSource = PointsManager.toPagesTreeSource({ points: collection })
     const pagesTree = PointsManager.toPagesTree({ points: collection, pagesTreeSource })
-    return new PointsManager<true, TReadyPointsModule['_root']['point']['Infer']['RequiredCtx']>({
-      root: _root.point,
-      scope: _root.point.scope,
+    return new PointsManager<true, TReadyPointsModule['_root']['point']['point']['Infer']['RequiredCtx']>({
+      root: _root.point.point,
+      scope: _root.point.point.scope,
       collection,
       routes,
       ready: true,
@@ -124,7 +122,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       absPath?: string
       readFn?: PointsReadFn
     },
-  ): PointsManager<false, TLazyPointsModule['_root']['point']['Infer']['RequiredCtx']> => {
+  ): PointsManager<false, TLazyPointsModule['_root']['point']['point']['Infer']['RequiredCtx']> => {
     const { absPath, readFn } = options ?? {}
     const { _root, ...rest } = lazyPoints
     const lazyPointsWithoutRoot = Object.values(rest) as LazyPointsCollection
@@ -132,9 +130,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     const routes = PointsManager.toRoutes({ points: collection })
     const pagesTreeSource = PointsManager.toPagesTreeSource({ points: collection })
     const pagesTree = PointsManager.toPagesTree({ points: collection, pagesTreeSource })
-    return new PointsManager<false, TLazyPointsModule['_root']['point']['Infer']['RequiredCtx']>({
-      root: _root.point,
-      scope: _root.point.scope,
+    return new PointsManager<false, TLazyPointsModule['_root']['point']['point']['Infer']['RequiredCtx']>({
+      root: _root.point.point,
+      scope: _root.point.point.scope,
       collection,
       routes,
       ready: false,
@@ -160,11 +158,11 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           ? true
           : false,
     TPoints extends PointsManager
-      ? TPoints['root']['point']['Infer']['RequiredCtx']
+      ? TPoints['root']['point']['point']['Infer']['RequiredCtx']
       : TPoints extends ReadyPointsModule
-        ? TPoints['_root']['point']['Infer']['RequiredCtx']
+        ? TPoints['_root']['point']['point']['Infer']['RequiredCtx']
         : TPoints extends LazyPointsModule
-          ? TPoints['_root']['point']['Infer']['RequiredCtx']
+          ? TPoints['_root']['point']['point']['Infer']['RequiredCtx']
           : RequiredCtx
   > => {
     const { absPath, readFn } = options ?? {}
@@ -537,14 +535,14 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     if (!suitable) {
       return undefined
     }
-    const page = typeof suitable.point === 'function' ? (await suitable.point()).point : suitable.point.point
+    const page: EndPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
 
     // Prefetch the (possibly lazy) page component
     if (suitable.FC) {
       await PointsManager.prefetchLazyComponent(suitable.FC)
     }
 
-    const layouts = await Promise.all(
+    const layouts: EndPoint[] = await Promise.all(
       this.collection
         .filter((p) => p.type === 'layout' && suitable.layouts?.includes(p.name))
         .map(async (layout) => {
@@ -638,7 +636,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     scope?: PointsScope | undefined
   }):
     | {
-        point: TReady extends true ? EndPoint : () => Promise<EndPoint>
+        point: TReady extends true ? EndPoint : (() => Promise<EndPoint>) | EndPoint
         name: PointName
         type: PointType
         FC: React.ComponentType | React.LazyExoticComponent<React.ComponentType<any>> | undefined
@@ -663,7 +661,10 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         if (name === pointName) {
           if (type !== 'page') {
             return {
-              point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+              // point: point as TReady extends true
+              //   ? { point: EndPoint }
+              //   : (() => Promise<{ point: EndPoint }>) | { point: EndPoint },
+              point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
               name,
               type,
               pageLocation: undefined,
@@ -673,7 +674,10 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           }
           if (!route || !input) {
             return {
-              point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+              // point: point as TReady extends true
+              //   ? { point: EndPoint }
+              //   : (() => Promise<{ point: EndPoint }>) | { point: EndPoint },
+              point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
               name,
               type,
               pageLocation: undefined,
@@ -684,7 +688,8 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
           // TODO: add helper for htis in route0, like route.getSelfLocation(input): ExactLocation
           const match = route.getLocation(route.get(input))
           return {
-            point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+            // point: point as TReady extends true ? { point: EndPoint } : () => Promise<{ point: EndPoint }>,
+            point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
             name,
             type,
             pageLocation: match.exact ? match : undefined,
@@ -702,7 +707,10 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
       const match = route?.getLocation(pageLocation)
       if (match?.exact) {
         return {
-          point: point as TReady extends true ? EndPoint : () => Promise<EndPoint>,
+          // point: point as TReady extends true
+          //   ? { point: EndPoint }
+          //   : (() => Promise<{ point: EndPoint }>) | { point: EndPoint },
+          point: (typeof point === 'function' ? async () => (await point()).point : point.point) as EndPoint,
           name,
           type,
           pageLocation: match,
@@ -805,10 +813,14 @@ export type MixedPointsCollectionRecord =
 export type MixedPointsCollection = MixedPointsCollectionRecord[]
 
 export type ReadyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  _root: { point: RootPoint<TRequiredCtx> }
+  _root: {
+    point: { point: RootPoint<TRequiredCtx> }
+  }
 } & Record<string, RawPointsCollectionRecord>
 export type LazyPointsModule<TRequiredCtx extends RequiredCtx = RequiredCtx> = {
-  _root: { point: RootPoint<TRequiredCtx> }
+  _root: {
+    point: { point: RootPoint<TRequiredCtx> }
+  }
 } & Record<string, LazyPointsCollectionRecord | RawPointsCollectionRecord>
 export type AnyPointsModule<TRequiredCtx extends RequiredCtx = any> =
   | ReadyPointsModule<TRequiredCtx>
@@ -844,9 +856,9 @@ export type PagesTree = PagesTreeRecord[]
 
 export type RequiredCtxByPointsModule<TPointsModule extends ReadyPointsModule | LazyPointsModule> =
   TPointsModule extends ReadyPointsModule
-    ? TPointsModule['_root']['point']['Infer']['RequiredCtx']
+    ? TPointsModule['_root']['point']['point']['Infer']['RequiredCtx']
     : TPointsModule extends LazyPointsModule
-      ? TPointsModule['_root']['point']['Infer']['RequiredCtx']
+      ? TPointsModule['_root']['point']['point']['Infer']['RequiredCtx']
       : RequiredCtx
 export type RequiredCtxByPointsModules<
   T1 extends AnyPointsModule = AnyPointsModule,
