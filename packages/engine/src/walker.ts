@@ -129,12 +129,28 @@ export class Walker {
   // <scope, Routes>
   readonly routes: Record<string, RoutesPretty>
 
+  readonly parser: WalkerParser
+
   constructor(options: { cwd?: string; routes?: Record<string, RoutesPretty> } = {}) {
     this.cwd = options.cwd ?? process.cwd()
     this.routes = options.routes ?? {}
+    this.parser = new WalkerParser({ walker: this })
   }
 
-  // Parse points from files
+  async parsePointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
+    parsedPoints: ParsedPoint[]
+    errors: unknown[]
+  }> {
+    return await this.parser.parsePointsFromFile({ fileAbs })
+  }
+}
+
+export class WalkerParser {
+  readonly walker: Walker
+
+  constructor({ walker }: { walker: Walker }) {
+    this.walker = walker
+  }
 
   async parsePointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
     parsedPoints: ParsedPoint[]

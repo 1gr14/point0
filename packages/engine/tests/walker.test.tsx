@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, it, expect, beforeAll, afterAll } from 'bun:test'
+import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import type { ParsedPoint } from '../src/walker.js'
