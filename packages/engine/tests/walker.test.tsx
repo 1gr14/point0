@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
+import type { ParsedAstPoint } from '../src/walker.js'
 import { Walker } from '../src/walker.js'
+import { Route0, Routes } from '@devp0nt/route0'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
@@ -39,7 +41,7 @@ describe('walker', () => {
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
-  describe('getAstPointsFromFile', () => {
+  describe('Walker#getAstPointsFromFile()', () => {
     it(
       'can recognize root point in current file',
       helper(async ({ files: [file], walker }) => {
@@ -478,6 +480,342 @@ describe('walker', () => {
           },
         ])
         expect(resultFirst.astPoints[0].simplify()).toMatchObject(resultLast.astPoints[0].simplify())
+      }),
+    )
+  })
+
+  describe('AstPoint#parse()', () => {
+    const fix = (parsed: ParsedAstPoint) => {
+      return {
+        ...parsed,
+        route: parsed.route ? parsed.route.definition : undefined,
+      }
+    }
+    it(
+      'root point',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        const parsed = result.astPoints[0].parse()
+        expect(parsed).toMatchObject({
+          valid: true,
+          scope: 'myroot',
+          type: 'root',
+          name: 'myroot',
+          exportName: 'myrootvariable',
+          route: undefined,
+          polh: false,
+          layouts: [],
+          pos: {
+            line: 2,
+            column: 30,
+          },
+          errors: [],
+        })
+      }),
+    )
+
+    it(
+      'page point',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        const parsed = result.astPoints[1].parse()
+        expect(fix(parsed)).toMatchObject({
+          valid: true,
+          scope: 'myroot',
+          type: 'page',
+          name: 'mypage',
+          exportName: 'mypagevariable',
+          route: '/mypage',
+          polh: false,
+          layouts: [],
+          pos: {
+            line: 3,
+            column: 30,
+          },
+          errors: [],
+        })
+      }),
+    )
+
+    const fix1 = (parsed: ParsedAstPoint) => {
+      return {
+        valid: parsed.valid,
+        name: parsed.name,
+        route: parsed.route ? parsed.route.definition : undefined,
+      }
+    }
+
+    it(
+      'page point with first level route',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+const routes = Routes.create({
+  r5: Route0.create('/r5'),
+  r6: Route0.create('/r6'),
+})
+export const p1 = myrootvariable.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+export const p2 = myrootvariable.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
+export const p3 = myrootvariable.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
+export const p4 = myrootvariable.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
+export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          route: '/',
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          route: '/r2',
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          route: '/r3',
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p4',
+          route: '/r4',
+        })
+        expect(parsed[4]).toMatchObject({
+          valid: true,
+          name: 'p5',
+          route: '/r5',
+        })
+      }),
+    )
+
+    it(
+      'page point with deep level route',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const l1 = myrootvariable.lets('layout', 'l1', '/x').layout()
+export const l2 = l1.lets('layout', 'l2').layout()
+const routes = Routes.create({
+  r5: Route0.create('/r5'),
+  r6: Route0.create('/r6'),
+})
+export const p1 = l2.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+export const p2 = l2.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
+export const p3 = l2.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
+export const p4 = l2.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
+export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          route: '/x',
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          route: '/x/r2',
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          route: '/x/r3',
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p4',
+          route: '/r4',
+        })
+        expect(parsed[4]).toMatchObject({
+          valid: true,
+          name: 'p5',
+          route: '/r5',
+        })
+      }),
+    )
+
+    it(
+      'parse page point with very deep level route',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const l1 = myrootvariable.lets('layout', 'l1', '/x').layout()
+export const l2 = l1.lets('layout', 'l2').layout()
+export const b2 = l2.lets('base', 'b2').base()
+export const l3 = b2.lets('layout', 'l3', Route0.create('/l3')).layout()
+export const l4 = l3.lets('layout', 'l4').layout()
+export const l5 = l4.lets('layout', 'l5', 'o/k').layout()
+export const l6 = l5.lets('layout', 'l6', 'l').layout()
+const routes = Routes.create({
+  r5: Route0.create('/r5'),
+  r6: Route0.create('/r6'),
+})
+export const p1 = l6.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+export const p2 = l6.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
+export const p3 = l6.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
+export const p4 = l6.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
+export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          route: '/l3/o/k/l',
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          route: '/l3/o/k/l/r2',
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          route: '/l3/o/k/l/r3',
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p4',
+          route: '/r4',
+        })
+        expect(parsed[4]).toMatchObject({
+          valid: true,
+          name: 'p5',
+          route: '/r5',
+        })
+      }),
+    )
+
+    const fix2 = (parsed: ParsedAstPoint) => {
+      return {
+        valid: parsed.valid,
+        name: parsed.name,
+        layouts: parsed.layouts,
+      }
+    }
+
+    it(
+      'page point layouts',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const l1 = myrootvariable.lets('layout', 'l1', '/x').layout()
+export const l2 = l1.lets('layout', 'l2').layout()
+export const b2 = l2.lets('base', 'b2').base()
+export const l3 = b2.lets('layout', 'l3').layout()
+export const p0 = myrootvariable.lets('page', 'p0', '/').page(() => <div>Hello</div>)
+export const p1 = l1.lets('page', 'p1', '/').page(() => <div>Hello</div>)
+export const p2 = l2.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
+export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix2(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'p0',
+          layouts: [],
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          layouts: ['l1'],
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          layouts: ['l1', 'l2'],
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          layouts: ['l1', 'l2', 'l3'],
+        })
+      }),
+    )
+
+    it(
+      'layout point layouts',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const myrootvariable = Point0.lets('root', 'myroot').root()
+export const l1 = myrootvariable.lets('layout', 'l1', '/x').layout()
+export const l2 = l1.lets('layout', 'l2').layout()
+export const b2 = l2.lets('base', 'b2').base()
+export const l3 = b2.lets('layout', 'l3').layout()
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+
+        const parsed = result.astPoints.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'l1',
+          layouts: [],
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'l2',
+          layouts: ['l1'],
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'l3',
+          layouts: ['l1', 'l2'],
+        })
       }),
     )
   })

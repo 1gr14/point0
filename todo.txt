@@ -37,6 +37,7 @@ ENGINE
 В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
 Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
 baseurl get from root point, and remove from engine config
+auto port getter
 ? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
 binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
 Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
