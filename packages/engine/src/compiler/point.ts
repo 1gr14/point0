@@ -461,37 +461,127 @@ export class CompilerPoint {
     if (this._methods) {
       return this._methods
     }
-    // TODO: find all methods nodesPaths and this methods names inside this point
+    // Find all methods nodesPaths and this methods names inside this point
+    // Traverse UP the AST tree (towards the ast root) to find all CallExpressions
+    // Similar to getLastCalledMethodName(), but collect all methods in the chain
+    const methods: Array<{ nodePath: NodePath<Node>; name: string }> = []
+    let current: NodePath<Node> | null = this.letsNodePath.parentPath
+
+    while (current) {
+      // If we find a CallExpression, check if its callee is a MemberExpression
+      // This means we found a method call in the chain (e.g., .ctx(), .loader(), .page())
+      if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
+        const callee = current.node.callee
+        if (callee.property.type === 'Identifier') {
+          // Collect each method we find
+          methods.push({
+            nodePath: current,
+            name: callee.property.name,
+          })
+        }
+      }
+      // Continue traversing UP the AST tree (towards the root)
+      // We continue while we're in CallExpressions or MemberExpressions (part of the method chain)
+      if (current.node.type === 'CallExpression' || current.node.type === 'MemberExpression') {
+        current = current.parentPath // parentPath goes UP (child -> parent)
+      } else {
+        // We've reached the end of the chain (e.g., VariableDeclarator, AssignmentExpression, etc.)
+        break
+      }
+    }
+
+    // Reverse to get methods in order from .lets() to final method (e.g., .ctx(), .loader(), .page())
+    this._methods = methods.reverse()
     return this._methods
   }
 
-  removeMethodArgs(name: string): void {
-    // TODO
+  private removeMethodArgs(name: string): void {
+    // Find all method calls with the given name and remove their arguments
+    const methods = this.methods
+    for (const method of methods) {
+      if (method.name === name && method.nodePath.node.type === 'CallExpression') {
+        // Clear all arguments
+        method.nodePath.node.arguments = []
+      }
+    }
   }
 
-  isMethodArgBooleanLiteral(name: string): boolean {
-    // TODO
+  // private isMethodArgBooleanLiteral(name: string): boolean {
+  //   // Check if the method has a single boolean literal argument
+  //   const methods = this.methods
+  //   for (const method of methods) {
+  //     if (method.name === name && method.nodePath.node.type === 'CallExpression') {
+  //       const args = method.nodePath.node.arguments
+  //       if (args.length === 1 && args[0]?.type === 'BooleanLiteral') {
+  //         return true
+  //       }
+  //     }
+  //   }
+  //   return false
+  // }
+
+  private removeMethodArgsIfNotBooleanLiteral(name: string): void {
+    // Remove arguments from method calls if they're not boolean literals
+    const methods = this.methods
+    for (const method of methods) {
+      if (method.name === name && method.nodePath.node.type === 'CallExpression') {
+        const args = method.nodePath.node.arguments
+        // If there's exactly one argument and it's a boolean literal, keep it
+        // Otherwise, remove all arguments
+        if (!(args.length === 1 && args[0]?.type === 'BooleanLiteral')) {
+          method.nodePath.node.arguments = []
+        }
+      }
+    }
   }
 
-  removeMethodArgsIfNotBooleanLiteral(name: string): void {
-    // TODO
-  }
+  // private replaceLastMethodArgWithArrowFnReturnNull(name: string): void {
+  //   // Replace the last argument of the method with an arrow function that returns null
+  //   const methods = this.methods
+  //   for (const method of methods) {
+  //     if (method.name === name && method.nodePath.node.type === 'CallExpression') {
+  //       const args = method.nodePath.node.arguments
+  //       if (args.length > 0) {
+  //         // Replace the last argument with an arrow function that returns null
+  //         args[args.length - 1] = {
+  //           type: 'ArrowFunctionExpression',
+  //           id: null,
+  //           generator: false,
+  //           async: false,
+  //           expression: true,
+  //           params: [],
+  //           body: {
+  //             type: 'NullLiteral',
+  //           },
+  //         } as any
+  //       }
+  //     }
+  //   }
+  // }
 
-  replaceLastMethodArgWithArrowFnReturnNull(name: string): void {
-    // TODO
-  }
-
-  pruneForClient(): void {
+  private pruneForClient(): void {
     this.removeMethodArgs('ctx')
     this.removeMethodArgsIfNotBooleanLiteral('loader')
-    // TODO
   }
 
-  pruneForServer(): void {
+  private pruneForServer(): void {
     // Nothing here. For now we do not prune server side.
   }
 
+  private _prune: false | 'client' | 'server' = false
   prune(target: 'client' | 'server'): void {
+    if (this._prune) {
+      if (this._prune === target) {
+        return
+      }
+      throw new Error(`Point ${this.pointName} is already pruned for target ${this._prune}`)
+    }
+    if (!this.file.isRead()) {
+      throw new Error(`File ${this.file.abs} is not read yet`)
+    }
+    if (!this.file.isParsed()) {
+      throw new Error(`File ${this.file.abs} is not parsed yet`)
+    }
     if (target === 'client') {
       this.pruneForClient()
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -501,6 +591,7 @@ export class CompilerPoint {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid target: ${target}`)
     }
+    this._prune = target
   }
 }
 

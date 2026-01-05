@@ -96,6 +96,8 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
         ast: undefined,
         _mayContainPoints: undefined,
         forcedContent,
+        _pruneForEngineHolderBuildPhase: false,
+        _pruneForRuntimeTarget: false,
       }) as CompilerFile<'read'>
     }
     if (this.forcedContent) {
@@ -121,6 +123,8 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       state: 'read',
       ast: undefined,
       _mayContainPoints: undefined,
+      _pruneForEngineHolderBuildPhase: false,
+      _pruneForRuntimeTarget: false,
     }) as CompilerFile<'read'>
   }
 
@@ -174,8 +178,12 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
   }
 
   // TODO:ASAP check if we can not prune this, and just exclude vite from server build
+  private _pruneForEngineHolderBuildPhase = false
   pruneForEngineHolderBuildPhase(isBuildPhase: boolean): void {
     if (!isBuildPhase) {
+      return
+    }
+    if (this._pruneForEngineHolderBuildPhase) {
       return
     }
     if (!this.isRead()) {
@@ -222,14 +230,23 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
         }
       },
     })
+
+    this._pruneForEngineHolderBuildPhase = true
   }
 
+  private _pruneForRuntimeTarget: false | 'client' | 'server' = false
   pruneForRuntimeTarget(target: 'client' | 'server'): void {
     if (!this.isRead()) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (!this.isParsed()) {
       throw new Error(`File ${this.abs} is not parsed yet`)
+    }
+    if (this._pruneForRuntimeTarget) {
+      if (this._pruneForRuntimeTarget === target) {
+        return
+      }
+      throw new Error(`File ${this.abs} is already pruned for runtime target ${this._pruneForRuntimeTarget}`)
     }
 
     const makeThrow = (msg: string) => ({
@@ -387,5 +404,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
         }
       },
     })
+
+    this._pruneForRuntimeTarget = target
   }
 }

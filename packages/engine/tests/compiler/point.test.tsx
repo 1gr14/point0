@@ -555,4 +555,122 @@ const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
       }),
     )
   })
+
+  describe('#prune', () => {
+    describe('client', () => {
+      it.concurrent(
+        'removes ctx args',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').ctx().root();"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'removes loader args if not boolean literal',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').loader().root();"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'keeps loader args if boolean literal',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').loader(true).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').loader(true).root();"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'handles ctx and loader in chain',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').ctx().loader().root();"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'handles multiple ctx calls',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => ({ b: 2 })).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').ctx().ctx().root();"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'handles loader with boolean literal and non-boolean',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 2 })).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').loader(true).loader().root();"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'handles page point with ctx and loader',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>)
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.prune('client')
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>);"
+          `)
+        }),
+      )
+    })
+  })
 })
