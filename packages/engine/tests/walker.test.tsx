@@ -307,7 +307,7 @@ describe('walker', () => {
             ],
           },
         ])
-      }),
+      }, false),
     )
 
     it(

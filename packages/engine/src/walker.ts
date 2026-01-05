@@ -249,7 +249,16 @@ export class Walker {
       // Example: In Point0.lets('root', 'myroot'), this returns true
       // Example: In root.lets('page', 'mypage'), this returns false (base is "root", not "Point0")
       // Identifier: The base must be a simple identifier name (not a computed property or expression)
-      const isBasePoint0 = baseNodePath.node.type === 'Identifier' && baseNodePath.node.name === 'Point0'
+      // Also verify that Point0 was imported from '@point0/core' to ensure it's the real Point0
+      const isBasePoint0 =
+        baseNodePath.node.type === 'Identifier' &&
+        baseNodePath.node.name === 'Point0' &&
+        this.isIdentifierImportedNamedFromPackage({
+          identifierNodePath: baseNodePath,
+          file,
+          packageName: '@point0/core',
+          importedName: 'Point0',
+        })
 
       // Extract how the point was exported (if it was exported)
       // Example: export const root = Point0.lets(...) → exportName = "root"
@@ -470,6 +479,8 @@ export class Walker {
         },
       })
 
+      const rnd = Math.random()
+
       // Second pass: Resolve imports if we haven't found the declaration yet
       if (!foundLetsNodePath && importsToResolve.length > 0) {
         for (const { importPath, importedName } of importsToResolve) {
@@ -491,9 +502,9 @@ export class Walker {
                 file: importedFile,
               })
               errors.push(...result.errors)
-              if (result.letsNodePath) {
+              if (result.isFound) {
                 foundLetsNodePath = result.letsNodePath
-                foundBaseFile = importedFile // The base point is in the imported file
+                foundBaseFile = result.foundFile // The base point is in the imported file
                 break // Found it, stop searching
               }
             } catch (error) {
@@ -563,6 +574,60 @@ export class Walker {
       errors.push(e)
       return { isFound: false, baseLetsNodePath: undefined, baseFile: undefined, errors }
     }
+  }
+
+  // Helper: Check if an identifier is imported as a named import from a specific package
+  // Example: import { Point0 } from '@point0/core' → returns true for Point0 identifier
+  // Example: import { anything } from 'any-package' → returns true for anything identifier
+  // Example: const Point0 = something → returns false (not imported from package)
+  // Because: We need to verify that an identifier is actually imported from a specific package and not just a variable with the same name
+  private isIdentifierImportedNamedFromPackage({
+    identifierNodePath,
+    file,
+    packageName,
+    importedName,
+  }: {
+    identifierNodePath: NodePath<Node>
+    file: WalkerFile<'parsed'>
+    packageName: string
+    importedName: string
+  }): boolean {
+    // Must be an Identifier node
+    if (identifierNodePath.node.type !== 'Identifier') {
+      return false
+    }
+
+    const identifierName = identifierNodePath.node.name
+
+    // Search for ImportDeclaration nodes in the file's AST
+    let isImportedFromPackage = false
+    traverse(file.ast, {
+      ImportDeclaration: (p) => {
+        // Check if this import is from the specified package
+        const importSource = p.node.source.value
+        if (typeof importSource !== 'string' || importSource !== packageName) {
+          return
+        }
+
+        // Check all import specifiers for named imports only
+        for (const spec of p.node.specifiers) {
+          // Named import - import { importedName } from 'packageName'
+          if (spec.type === 'ImportSpecifier') {
+            const specImportedName = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value
+            const localName = spec.local.name
+
+            // Check if the local name matches our identifier and it's imported with the expected name
+            if (localName === identifierName && specImportedName === importedName) {
+              isImportedFromPackage = true
+              p.stop() // Stop traversal once we found a match
+              return
+            }
+          }
+        }
+      },
+    })
+
+    return isImportedFromPackage
   }
 
   // Helper: Check if a node is a .lets() call expression
@@ -658,11 +723,22 @@ export class Walker {
   }: {
     exportName: string // The export name to search for (e.g., 'root' or 'default')
     file: WalkerFile<'parsed'> // The parsed file to search in
-  }): Promise<{ letsNodePath: NodePath<Node> | undefined; errors: unknown[] }> {
+  }): Promise<
+    | { isFound: boolean; foundFile: WalkerFile<'parsed'>; letsNodePath: NodePath<Node>; errors: unknown[] }
+    | {
+        isFound: false
+        foundFile: undefined
+        letsNodePath: undefined
+        errors: unknown[]
+      }
+  > {
     const errors: unknown[] = []
     let foundLetsNodePath: NodePath<Node> | undefined
+    let foundFile: WalkerFile<'parsed'> | undefined
     const reExportsToResolve: Array<{ sourcePath: string; nameToFind: string }> = []
     const identifierExportsToResolve: Array<{ identifierName: string }> = []
+
+    const rnd = Math.random()
 
     try {
       // First pass: Traverse the AST to find exports matching the exportName
@@ -717,6 +793,7 @@ export class Walker {
                     const initPath = declarator.get('init') as NodePath<Node>
                     // Find the NodePath that wraps the .lets() call by traversing down the chain
                     foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: initPath, targetNode: letsCall })
+                    if (foundLetsNodePath) foundFile = file
                     break // Found it, stop searching
                   }
                   // If init is an Identifier (e.g., export const root2 = root), collect it for resolution
@@ -744,6 +821,7 @@ export class Walker {
               const declPath = p.get('declaration') as NodePath<Node>
               // Find the NodePath that wraps the .lets() call by traversing down the chain
               foundLetsNodePath = this.findLetsNodePathInChain({ nodePath: declPath, targetNode: letsCall })
+              if (foundLetsNodePath) foundFile = file
             }
           }
         },
@@ -769,8 +847,9 @@ export class Walker {
                 file: sourceFile,
               })
               errors.push(...result.errors)
-              if (result.letsNodePath) {
+              if (result.isFound) {
                 foundLetsNodePath = result.letsNodePath
+                foundFile = result.foundFile
                 break // Found it, stop searching
               }
             } catch (error) {
@@ -796,8 +875,9 @@ export class Walker {
             file,
           })
           errors.push(...result.errors)
-          if (result.letsNodePath) {
+          if (result.isFound) {
             foundLetsNodePath = result.letsNodePath
+            foundFile = result.foundFile
             break // Found it, stop searching
           }
 
@@ -833,16 +913,21 @@ export class Walker {
             errors.push(...baseResult.errors)
             if (baseResult.isFound) {
               foundLetsNodePath = baseResult.baseLetsNodePath
+              foundFile = baseResult.baseFile
               break // Found it, stop searching
             }
           }
         }
       }
 
-      return { letsNodePath: foundLetsNodePath, errors }
+      if (!foundLetsNodePath || !foundFile) {
+        return { isFound: false, foundFile: undefined, letsNodePath: undefined, errors }
+      }
+
+      return { isFound: true, foundFile, letsNodePath: foundLetsNodePath, errors }
     } catch (e) {
       errors.push(e)
-      return { letsNodePath: undefined, errors }
+      return { isFound: false, foundFile: undefined, letsNodePath: undefined, errors }
     }
   }
 }
