@@ -5,7 +5,7 @@ import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 const general = {
   // entry: ['src/index.ts'],
   entry: [
-    'src/client-server.ts',
+    'src/runtime.ts',
     'src/cookies-store.ts',
     'src/index.ts',
     'src/points-manager.ts',

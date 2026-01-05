@@ -34,7 +34,6 @@ import { useMemo } from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
-import { ClientServerHelpers } from './client-server.js'
 import { CookiesStore } from './cookies-store.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
@@ -173,6 +172,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import { runtime } from './runtime.js'
 
 export class Point0<
   TPointType extends PointType,
@@ -4495,7 +4495,7 @@ export class Point0<
   ): Promise<
     ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   > {
-    if (Point0.isServer) {
+    if (runtime.is.server) {
       throw new Error0(
         'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
       )
@@ -5365,7 +5365,7 @@ export class Point0<
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
       try {
-        if (Point0.isServer) {
+        if (runtime.is.server) {
           throw new Error(
             'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
@@ -6797,19 +6797,6 @@ export class Point0<
   )
 
   static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
-
-  // client-server helpers
-
-  static isClient = ClientServerHelpers.isClient
-  static isServer = ClientServerHelpers.isServer
-  static constServerUnsafe = ClientServerHelpers.constServerUnsafe.bind(ClientServerHelpers)
-  static constClientUnsafe = ClientServerHelpers.constClientUnsafe.bind(ClientServerHelpers)
-  static constServer = ClientServerHelpers.constServer.bind(ClientServerHelpers)
-  static constClient = ClientServerHelpers.constClient.bind(ClientServerHelpers)
-  static constClientElseServer = ClientServerHelpers.constClientElseServer.bind(ClientServerHelpers)
-  static callServer = ClientServerHelpers.callServer.bind(ClientServerHelpers)
-  static callClient = ClientServerHelpers.callClient.bind(ClientServerHelpers)
-  static callClientElseServer = ClientServerHelpers.callClientElseServer.bind(ClientServerHelpers)
 }
 
 export * from './cookies-store.js'
@@ -6821,3 +6808,4 @@ export * from './super-store.js'
 export type * from './types.js'
 export * from './unhead.js'
 export * from './utils.js'
+export * from './runtime.js'

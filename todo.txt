@@ -3,13 +3,10 @@
 --------------------------
 
 WALKER
-generator
 compiler
 Не кастомер а энвиронмент
 if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
-Прунить всё просто проверять регексом основные конструкции, иначе скипать
-Не гет поинтс, п коллект аст поинтс
-? Поправить файлы чтобы волкер не был оазюросан пок кускам
+separate file inside dir compiler
 
 ROOT
 root.lets('root') & Point0.lets('root', 'x')
@@ -19,7 +16,8 @@ walker add to lazy points root {scope}, and self scope is still _root, other roo
 remove .attach things
 query client can be defined on any root, and will be attached to all requests from this client scope
 
-ENVIRONMENT
+RUNTIME
+runtime.server, runtime.define.server, runtime.call.client, runtime.define({server: x, client: y}), runtime.call({server: x, client: y})
 Добавить изСср он будет тру только когда мы именно рендерим компоненты, and isDrySsr
 remove isClient etc from Point0
 И в энвиронменте добавить констВхенЭнвиронмент({server,client,ssr})
@@ -265,6 +263,9 @@ MDX
 
 FILEROUTING
 Функция файлроут, которая автоматически вставляет в себя строку текущего файла по отношению к файлу .файлроут или текущей папке. И к ней даже к строка можно дописать плюсики или как стринглитерал заиспользовать
+() => '' → will be rewritten to () => 'currentfilepath'
+() => '+zxc' → will be rewritten () => 'currentfilepath+zxc'
+() => Route0.create('+zxc') → will be rewritten () => Route0.create('currentfilepath+zxc')
 
 STATIC
 static site generator; 
@@ -351,12 +352,6 @@ launch
 ELECTRON
 somehow wh we have now in client-server, have same ot main-renderer process, via replace fetch implementation
 
-
-
-
-
-
-
 ROUTES/NOT FOUND
 we already have in router option to provide 404
 allow * in routes so we can define special 404 for specific paths
@@ -427,9 +422,9 @@ polyfill
 
 ? А потом и девопс штуки Аля летс ресурс, с такими же зависимостями как у инит CDKTF. Но пусть это делается через экстеншен, который позволяет доопределить всё включая опции энжины, кли команды, летс поинт тайпы, и прочее
 
+Разрешить летс первым аргументом передать что угодно типо свой билдер. Так мы можем и ресурсы тераформа создать, и мессенджер кастомный
 
-
-
+При создании рута можно определить тип соурса, по сути это лишь знать реквест0 подменить и респонс0 и фетч
 
 
 

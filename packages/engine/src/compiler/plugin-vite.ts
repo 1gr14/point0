@@ -1,8 +1,8 @@
 import type { PointsScope } from '@point0/core'
 import MagicString from 'magic-string'
 import type { Plugin } from 'vite'
-import type { PruneCustomer } from './walker.js'
-import { Walker } from './walker.js'
+import type { PruneCustomer } from './collector.js'
+import { Collector } from './collector.js'
 
 export function compilerVitePlugin({
   customer,
@@ -26,7 +26,7 @@ export function compilerVitePlugin({
       const [filepath] = id.split('?', 1)
       if (!filter.test(filepath)) return null
 
-      const walker = new Walker()
+      const walker = new Collector()
       let transformed = await walker.prunePoint0Methods({ content: code, fileAbs: filepath, customer })
       transformed = await walker.prunePoint0ClientServer({ content: transformed, fileAbs: filepath, customer })
       transformed = await walker.pruneForBuildInProgress({

@@ -1,13 +1,16 @@
-import babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
 import traverseModule from '@babel/traverse'
-import type { File, Node } from '@babel/types'
+import type { Node } from '@babel/types'
 import type { AnyRoute, RoutesPretty } from '@devp0nt/route0'
-import type { EndPointType, PointsScope } from '@point0/core'
-import * as nodeFs from 'node:fs/promises'
-import * as nodeFsPath from 'node:path'
-import { AstPoint } from './ast-point.js'
+import type { EndPointType } from '@point0/core'
+import { CompilerFile } from './file.js'
+import { CompilerPoint } from './point.js'
+import { FileResolver } from './resolver.js'
+
+const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
+  ? T
+  : typeof traverseType
 
 // Glossary: Babel AST Node Types and Concepts
 //
@@ -120,11 +123,7 @@ import { AstPoint } from './ast-point.js'
 //   - loc: Location information (line, column) for the node in source code
 //
 
-const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
-  ? T
-  : typeof traverseType
-
-export class Walker {
+export class Collector {
   readonly cwd: string
 
   // <scope, Routes>
@@ -143,18 +142,18 @@ export class Walker {
     return (routes as any)?.[routeKey]
   }
 
-  async collectAstPointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
-    astPoints: AstPoint[]
+  async collectPointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
+    points: CompilerPoint[]
     errors: unknown[]
   }> {
-    const astPoints: AstPoint[] = []
+    const points: CompilerPoint[] = []
     const errors: unknown[] = []
 
     try {
-      const file = await WalkerFile.create(fileAbs).read()
+      const file = await CompilerFile.create(fileAbs).read()
 
       if (!file.mayContainPoints()) {
-        return { astPoints, errors }
+        return { points, errors }
       }
       const fileParsed = file.parse()
 
@@ -177,28 +176,28 @@ export class Walker {
 
       // Process all lets() calls async
       for (const letsNodePath of letsNodePaths) {
-        const result = await this.collectAstPointByLetsNodePath({ letsNodePath, file: fileParsed })
+        const result = await this.collectPointByLetsNodePath({ letsNodePath, file: fileParsed })
         errors.push(...result.errors)
-        if (result.astPoint) {
-          astPoints.push(result.astPoint)
+        if (result.point) {
+          points.push(result.point)
         }
       }
 
-      return { astPoints, errors }
+      return { points, errors }
     } catch (e) {
       errors.push(e)
-      return { astPoints, errors }
+      return { points, errors }
     }
   }
 
-  private async collectAstPointByLetsNodePath({
+  private async collectPointByLetsNodePath({
     letsNodePath,
     file,
   }: {
     letsNodePath: NodePath<Node>
-    file: WalkerFile<'parsed'>
+    file: CompilerFile<'parsed'>
   }): Promise<{
-    astPoint: AstPoint | undefined
+    point: CompilerPoint | undefined
     errors: unknown[]
   }> {
     const errors: unknown[] = []
@@ -208,12 +207,12 @@ export class Walker {
       // CallExpression: A function call with parentheses and arguments
       // Example: Point0.lets('root', 'myroot') is a CallExpression
       // Because: It calls the lets() function with arguments ('root', 'myroot')
-      if (letsNode.type !== 'CallExpression') return { astPoint: undefined, errors }
+      if (letsNode.type !== 'CallExpression') return { point: undefined, errors }
 
       // MemberExpression: A property/method access using dot notation
       // Example: In Point0.lets('root', 'myroot'), the "Point0.lets" part is a MemberExpression
       // Because: It accesses the "lets" property/method on the "Point0" object using dot notation
-      if (letsNode.callee.type !== 'MemberExpression') return { astPoint: undefined, errors }
+      if (letsNode.callee.type !== 'MemberExpression') return { point: undefined, errors }
 
       // Extract the base object from the MemberExpression
       // Example: In Point0.lets('root', 'myroot'), this extracts "Point0"
@@ -238,10 +237,10 @@ export class Walker {
       const pointName =
         secondLetsArgNodePath?.node.type === 'StringLiteral' ? secondLetsArgNodePath.node.value : undefined
       if (!pointName) {
-        return { astPoint: undefined, errors }
+        return { point: undefined, errors }
       }
       if (!pointType || !END_POINT_TYPES.includes(pointType)) {
-        return { astPoint: undefined, errors }
+        return { point: undefined, errors }
       }
 
       // Check if the base object is Point0 (the root entry point)
@@ -305,7 +304,7 @@ export class Walker {
         return undefined
       })()
 
-      const astBasePoint: AstPoint | undefined = await (async () => {
+      const baseCompilerPoint: CompilerPoint | undefined = await (async () => {
         if (isBasePoint0) {
           return undefined
         }
@@ -317,15 +316,15 @@ export class Walker {
         if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
           return undefined
         }
-        const result = await this.collectAstPointByLetsNodePath({
+        const result = await this.collectPointByLetsNodePath({
           letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
           file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
         })
         errors.push(...result.errors)
-        return result.astPoint
+        return result.point
       })()
 
-      const astPoint = new AstPoint({
+      const point = new CompilerPoint({
         walker: this,
         file,
         pointType,
@@ -334,17 +333,17 @@ export class Walker {
         baseNodePath,
         letsNodePath,
         isBasePoint0,
-        astBasePoint,
+        baseCompilerPoint,
       })
 
-      if (astPoint.isRelatedToPoint0()) {
-        return { astPoint, errors }
+      if (point.isRelatedToPoint0()) {
+        return { point, errors }
       }
 
-      return { astPoint: undefined, errors }
+      return { point: undefined, errors }
     } catch (e) {
       errors.push(e)
-      return { astPoint: undefined, errors }
+      return { point: undefined, errors }
     }
   }
 
@@ -353,12 +352,12 @@ export class Walker {
     file,
   }: {
     baseNodePath: NodePath<Node>
-    file: WalkerFile<'parsed'>
+    file: CompilerFile<'parsed'>
   }): Promise<
     | {
         isFound: true
         baseLetsNodePath: NodePath<Node>
-        baseFile: WalkerFile<'parsed'>
+        baseFile: CompilerFile<'parsed'>
         errors: unknown[]
       }
     | {
@@ -385,9 +384,9 @@ export class Walker {
       //   - An export: export const y = z.lets('XXX')
       //   - An import: import { y } from './file' or import y from './file'
       let foundLetsNodePath: NodePath<Node> | undefined
-      let foundBaseFile: WalkerFile<'parsed'> | undefined = file // Default to current file
+      let foundBaseFile: CompilerFile<'parsed'> | undefined = file // Default to current file
       const importsToResolve: Array<{ importPath: string; importedName: string }> = []
-      const identifierAssignmentsToResolve: Array<{ identifierName: string; file: WalkerFile<'parsed'> }> = []
+      const identifierAssignmentsToResolve: Array<{ identifierName: string; file: CompilerFile<'parsed'> }> = []
 
       // First pass: Find declarations/exports in current file and collect imports
       traverse(file.ast, {
@@ -483,14 +482,14 @@ export class Walker {
         for (const { importPath, importedName } of importsToResolve) {
           // Resolve the import path to get the actual file path
           // This handles TypeScript path aliases and relative paths
-          const resolvedPath = await WalkerResolver.detectExistingFilePathByImportPath({
+          const resolvedPath = await FileResolver.detectExistingFilePathByImportPath({
             importPath,
             containingFile: file.abs,
           })
           if (resolvedPath) {
             try {
               // Read and parse the imported file
-              const importedFile = await WalkerFile.create(resolvedPath)
+              const importedFile = await CompilerFile.create(resolvedPath)
                 .read()
                 .then((f) => f.parse())
               // Recursively search in the imported file for the export
@@ -585,7 +584,7 @@ export class Walker {
     importedName,
   }: {
     identifierNodePath: NodePath<Node>
-    file: WalkerFile<'parsed'>
+    file: CompilerFile<'parsed'>
     packageName: string
     importedName: string
   }): boolean {
@@ -719,9 +718,9 @@ export class Walker {
     file,
   }: {
     exportName: string // The export name to search for (e.g., 'root' or 'default')
-    file: WalkerFile<'parsed'> // The parsed file to search in
+    file: CompilerFile<'parsed'> // The parsed file to search in
   }): Promise<
-    | { isFound: boolean; foundFile: WalkerFile<'parsed'>; letsNodePath: NodePath<Node>; errors: unknown[] }
+    | { isFound: boolean; foundFile: CompilerFile<'parsed'>; letsNodePath: NodePath<Node>; errors: unknown[] }
     | {
         isFound: false
         foundFile: undefined
@@ -731,7 +730,7 @@ export class Walker {
   > {
     const errors: unknown[] = []
     let foundLetsNodePath: NodePath<Node> | undefined
-    let foundFile: WalkerFile<'parsed'> | undefined
+    let foundFile: CompilerFile<'parsed'> | undefined
     const reExportsToResolve: Array<{ sourcePath: string; nameToFind: string }> = []
     const identifierExportsToResolve: Array<{ identifierName: string }> = []
 
@@ -826,14 +825,14 @@ export class Walker {
       if (!foundLetsNodePath && reExportsToResolve.length > 0) {
         for (const { sourcePath, nameToFind } of reExportsToResolve) {
           // Resolve the source path to get the actual file path
-          const resolvedPath = await WalkerResolver.detectExistingFilePathByImportPath({
+          const resolvedPath = await FileResolver.detectExistingFilePathByImportPath({
             importPath: sourcePath,
             containingFile: file.abs,
           })
           if (resolvedPath) {
             try {
               // Read and parse the source file
-              const sourceFile = await WalkerFile.create(resolvedPath)
+              const sourceFile = await CompilerFile.create(resolvedPath)
                 .read()
                 .then((f) => f.parse())
               // Recursively search in the source file for the export
@@ -927,307 +926,6 @@ export class Walker {
   }
 }
 
-export class WalkerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | 'read' | 'parsed'> {
-  readonly abs: string
-  content: TState extends 'read' | 'parsed' ? string : undefined
-  ast: TState extends 'parsed' ? babel.ParseResult<File> : undefined
-  timestamp: TState extends 'read' | 'parsed' ? number : undefined
-  state: TState
-
-  static collection = new Map<string, WalkerFile>()
-
-  private constructor({
-    abs,
-    content,
-    ast,
-    timestamp,
-    state,
-  }: {
-    abs: string
-    content?: string
-    ast?: babel.ParseResult<File>
-    timestamp?: number
-    state: TState
-  }) {
-    this.abs = abs
-    this.content = content as TState extends 'read' | 'parsed' ? string : undefined
-    this.ast = ast as TState extends 'parsed' ? babel.ParseResult<File> : undefined
-    this.timestamp = timestamp as TState extends 'read' | 'parsed' ? number : undefined
-    this.state = state
-    WalkerFile.collection.set(abs, this)
-  }
-
-  static create(fileAbs: string): WalkerFile {
-    const exFile = this.collection.get(fileAbs)
-    if (exFile) {
-      return exFile
-    }
-    return new WalkerFile({ abs: fileAbs, state: 'idle' })
-  }
-
-  isRead(): this is WalkerFile<'read' | 'parsed'> {
-    return this.state === 'read' || this.state === 'parsed'
-  }
-
-  isParsed(): this is WalkerFile<'parsed'> {
-    return this.state === 'parsed'
-  }
-
-  getSelfActual(): WalkerFile {
-    const exFile = WalkerFile.collection.get(this.abs)
-    if (exFile) {
-      return exFile
-    }
-    return new WalkerFile({ abs: this.abs, state: 'idle' })
-  }
-
-  async read(): Promise<WalkerFile<'read' | 'parsed'>> {
-    const self = this.getSelfActual()
-    const stats = await (async () => {
-      try {
-        return await nodeFs.stat(self.abs)
-      } catch (e) {
-        throw new Error(`Failed to read file ${self.abs}: ${(e as Error).message}`, { cause: e })
-      }
-    })()
-    const currentTimestamp = stats.mtimeMs
-    if (self.timestamp === currentTimestamp && self.isRead()) {
-      return self
-    }
-    const content = await nodeFs.readFile(this.abs, 'utf8')
-    return Object.assign(self, {
-      content,
-      timestamp: currentTimestamp,
-      state: 'read',
-      ast: undefined,
-      mayContainPointsResult: undefined,
-    }) as WalkerFile<'read'>
-  }
-
-  parse(): WalkerFile<'parsed'> {
-    const self = this.getSelfActual()
-    if (self.isParsed()) {
-      return self
-    }
-    if (!self.isRead()) {
-      throw new Error(`File ${self.abs} is not read yet`)
-    }
-    const ast = babel.parse(self.content, {
-      sourceType: 'module',
-      errorRecovery: true,
-      plugins: [
-        'typescript',
-        'jsx',
-        'decorators-legacy',
-        'classProperties',
-        'classPrivateProperties',
-        'classPrivateMethods',
-      ],
-    })
-    return Object.assign(self, {
-      ast,
-      state: 'parsed',
-    }) as WalkerFile<'parsed'>
-  }
-
-  private mayContainPointsResult: boolean | undefined = undefined
-  mayContainPoints(): boolean {
-    if (!this.isRead()) {
-      throw new Error(`File ${this.abs} is not read yet`)
-    }
-    if (this.mayContainPointsResult !== undefined) {
-      return this.mayContainPointsResult
-    }
-    this.mayContainPointsResult = this.content.includes('.lets(')
-    return this.mayContainPointsResult
-  }
-}
-
-export class WalkerResolver {
-  // TS Helpers
-
-  // Cache for TypeScript compiler options per directory
-  // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
-  private static readonly tsConfigCache = new Map<string, any>()
-
-  // Lazy-loaded TypeScript module (null if not available)
-  private static tsModule: typeof import('typescript') | null | undefined = undefined
-
-  /**
-   * Lazy-loads TypeScript module if available.
-   * Returns null if TypeScript is not installed.
-   */
-  private static async getTypeScriptModule(): Promise<typeof import('typescript') | null> {
-    if (this.tsModule !== undefined) {
-      return this.tsModule
-    }
-    try {
-      this.tsModule = await import('typescript')
-      return this.tsModule
-    } catch {
-      this.tsModule = null
-      return null
-    }
-  }
-
-  /**
-   * Loads and caches TypeScript compiler options for a given directory.
-   * Searches up the directory tree to find the nearest tsconfig.json.
-   * Returns null if TypeScript is not available or no tsconfig is found.
-   */
-  private static async getTsConfigForDirectory({ dir }: { dir: string }): Promise<{ options: any } | null> {
-    // Check cache first
-    if (WalkerResolver.tsConfigCache.has(dir)) {
-      return WalkerResolver.tsConfigCache.get(dir) ?? null
-    }
-
-    // Check if TypeScript is available
-    const ts = await WalkerResolver.getTypeScriptModule()
-    if (!ts) {
-      // Cache null for all directories to avoid repeated checks
-      WalkerResolver.tsConfigCache.set(dir, null)
-      return null
-    }
-
-    // Find the nearest tsconfig.json by walking up the directory tree
-    let currentDir = nodeFsPath.resolve(dir)
-    const root = nodeFsPath.parse(currentDir).root
-
-    while (currentDir !== root) {
-      const tsConfigPath = nodeFsPath.join(currentDir, 'tsconfig.json')
-      try {
-        // Use synchronous read for caching (ts.sys.readFile is synchronous)
-        const configFileText = ts.sys.readFile(tsConfigPath)
-        if (configFileText) {
-          const configFile = ts.readConfigFile(tsConfigPath, ts.sys.readFile.bind(ts.sys))
-          if (configFile.error) {
-            // Cache null to avoid re-reading
-            WalkerResolver.tsConfigCache.set(dir, null)
-            return null
-          }
-
-          const parsedConfig = ts.parseJsonConfigFileContent(
-            configFile.config,
-            ts.sys,
-            currentDir,
-            undefined,
-            tsConfigPath,
-          )
-
-          // Cache for this directory and all parent directories we checked
-          let cacheDir = dir
-          while (cacheDir !== currentDir && cacheDir !== root) {
-            WalkerResolver.tsConfigCache.set(cacheDir, parsedConfig)
-            cacheDir = nodeFsPath.dirname(cacheDir)
-          }
-          WalkerResolver.tsConfigCache.set(currentDir, parsedConfig)
-          WalkerResolver.tsConfigCache.set(dir, parsedConfig)
-
-          return parsedConfig
-        }
-      } catch {
-        // File doesn't exist, continue searching up
-      }
-
-      const parentDir = nodeFsPath.dirname(currentDir)
-      if (parentDir === currentDir) break
-      currentDir = parentDir
-    }
-
-    // No tsconfig found, cache null
-    this.tsConfigCache.set(dir, null)
-    return null
-  }
-
-  /**
-   * Resolves an import path using TypeScript's module resolution.
-   * This handles TypeScript path aliases (paths in tsconfig.json) and relative paths.
-   * TypeScript's resolver can handle:
-   * - Path aliases (e.g., @/lib/client)
-   * - Relative paths with extension resolution
-   * - Index file resolution (e.g., ./dir -> ./dir/index.ts)
-   * Returns undefined if TypeScript is not available or resolution fails.
-   */
-  private static async resolveTsImport({
-    importPath,
-    containingFile,
-  }: {
-    importPath: string
-    containingFile: string
-  }): Promise<string | undefined> {
-    // Skip absolute paths - they don't need TypeScript resolution
-    if (nodeFsPath.isAbsolute(importPath)) {
-      return undefined
-    }
-
-    // Check if TypeScript is available
-    const ts = await WalkerResolver.getTypeScriptModule()
-    if (!ts) {
-      return undefined
-    }
-
-    const containingDir = nodeFsPath.dirname(containingFile)
-    const tsConfig = await WalkerResolver.getTsConfigForDirectory({ dir: containingDir })
-    if (!tsConfig) {
-      return undefined
-    }
-
-    try {
-      const result = ts.resolveModuleName(importPath, containingFile, tsConfig.options, ts.sys)
-      return result.resolvedModule?.resolvedFileName
-    } catch {
-      return undefined
-    }
-  }
-
-  /**
-   * Detects the actual file path for an import path.
-   * First tries TypeScript resolution (for path aliases and relative paths),
-   * then falls back to relative path resolution with extension guessing.
-   */
-  static async detectExistingFilePathByImportPath({
-    importPath,
-    containingFile,
-  }: {
-    importPath: string
-    containingFile?: string
-  }): Promise<string | undefined> {
-    // If we have a containing file, try TypeScript resolution first
-    // This handles both path aliases (like @/lib/client) and relative paths
-    if (containingFile) {
-      const tsResolved = await WalkerResolver.resolveTsImport({ importPath, containingFile })
-      if (tsResolved) {
-        try {
-          await nodeFs.access(tsResolved)
-          return tsResolved
-        } catch {
-          // File doesn't exist, continue to fallback
-        }
-      }
-    }
-
-    // Fallback: try relative path resolution with extension guessing
-    // For relative paths, resolve relative to containing file
-    const basePath = containingFile && importPath.startsWith('.') ? nodeFsPath.dirname(containingFile) : undefined
-
-    const exts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
-    const currentExt = nodeFsPath.extname(importPath)
-    const importPathWithoutExt = importPath.replace(currentExt, '')
-
-    for (const ext of exts) {
-      const candidatePath = importPathWithoutExt + ext
-      const abs = basePath ? nodeFsPath.resolve(basePath, candidatePath) : candidatePath
-      try {
-        await nodeFs.access(abs)
-        return abs
-      } catch {
-        // File doesn't exist, try next extension
-      }
-    }
-    return undefined
-  }
-}
-
 export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
   page: 'page',
   layout: 'layout',
@@ -1243,7 +941,3 @@ export const POINT_METHOD_TO_TYPE_MAP: Record<string, EndPointType> = Object.fro
   Object.entries(POINT_TYPE_TO_METHOD_MAP).map(([type, method]) => [method, type as EndPointType]),
 )
 export const END_POINT_TYPES: EndPointType[] = Object.keys(POINT_TYPE_TO_METHOD_MAP) as EndPointType[]
-
-export type PruneCustomerFlat = 'client' | 'server' | 'none'
-export type PruneCustomerByScope = Record<PointsScope, PruneCustomerFlat>
-export type PruneCustomer = PruneCustomerFlat | PruneCustomerByScope

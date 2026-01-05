@@ -659,7 +659,7 @@ Bun.serve({
           })
         : {}
 
-      const prunePlugin = await import('./compiler-bun.js').then((module) =>
+      const prunePlugin = await import('./compiler/plugin-bun.js').then((module) =>
         module.compilerBunPlugin({ customer: 'client', scope: this.scope }),
       )
 
@@ -738,7 +738,7 @@ Bun.serve({
 
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-      const prunePlugin = await import('./compiler-vite.js').then((module) =>
+      const prunePlugin = await import('./compiler/plugin-vite.js').then((module) =>
         module.compilerVitePlugin({ customer: 'client', scope: this.scope }),
       )
 

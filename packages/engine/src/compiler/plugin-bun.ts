@@ -1,8 +1,8 @@
 import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
 import type { PointsScope } from '@point0/core'
-import type { PruneCustomer } from './walker.js'
-import { Walker } from './walker.js'
+import type { PruneCustomer } from './collector.js'
+import { Collector } from './collector.js'
 
 export function compilerBunPlugin({
   customer,
@@ -27,7 +27,7 @@ export function compilerBunPlugin({
         const filepath = args.path
         try {
           original = await Bun.file(filepath).text()
-          const walker = new Walker()
+          const walker = new Collector()
           let transformed = await walker.prunePoint0Methods({
             content: original,
             fileAbs: filepath,

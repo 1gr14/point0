@@ -1,4 +1,4 @@
-import { ClientServerHelpers } from './client-server.js'
+import { runtime } from './runtime.js'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 import { SuperStore } from './super-store.js'
 
@@ -229,7 +229,7 @@ export class Response0 {
   }
 
   static get(): Response0 {
-    if (!ClientServerHelpers.isServer) {
+    if (!runtime.is.server) {
       throw new Error(
         'You can not get respnse0 not in server. Please call Respons0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )

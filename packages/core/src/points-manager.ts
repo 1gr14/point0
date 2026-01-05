@@ -2,7 +2,7 @@ import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0n
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { ClientServerHelpers } from './client-server.js'
+import { runtime } from './runtime.js'
 import { SuperStore } from './super-store.js'
 import type {
   DataTransformerExtended,
@@ -81,7 +81,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.transformer = this.root._tranformer
     this.ssr = this.root._ssr
     PointsManager.setPointsManager(this)
-    if (ClientServerHelpers.isClient) {
+    if (runtime.is.client) {
       SuperStore.setWeak('__POINT0_SCOPE__', this.scope)
       SuperStore.setWeak('__POINT0_TRANSFORMER__', this.transformer)
     }

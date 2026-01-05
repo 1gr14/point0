@@ -5,19 +5,20 @@ import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core'
 import { dedupeSlashes } from '@point0/core'
 import * as nodeFsPath from 'node:path'
-import type { Walker, WalkerFile } from './walker.js'
+import type { Collector } from './collector.js'
+import type { CompilerFile } from './file.js'
 
-export class AstPoint {
-  readonly walker: Walker
-  readonly file: WalkerFile
+export class CompilerPoint {
+  readonly walker: Collector
+  readonly file: CompilerFile
   readonly pointType: EndPointType
   readonly pointName: PointName
   readonly exportName: string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
-  readonly astBasePoint: AstPoint | undefined
-  readonly parents: AstPoint[]
+  readonly baseCompilerPoint: CompilerPoint | undefined
+  readonly parents: CompilerPoint[]
 
   constructor({
     walker,
@@ -28,17 +29,17 @@ export class AstPoint {
     baseNodePath,
     letsNodePath,
     isBasePoint0,
-    astBasePoint,
+    baseCompilerPoint,
   }: {
-    walker: Walker
-    file: WalkerFile
+    walker: Collector
+    file: CompilerFile
     pointType: EndPointType
     pointName: PointName
     exportName: string | undefined
     baseNodePath: NodePath<Node>
     letsNodePath: NodePath<Node>
     isBasePoint0: boolean
-    astBasePoint: AstPoint | undefined
+    baseCompilerPoint: CompilerPoint | undefined
   }) {
     this.walker = walker
     this.file = file
@@ -48,23 +49,23 @@ export class AstPoint {
     this.baseNodePath = baseNodePath
     this.letsNodePath = letsNodePath
     this.isBasePoint0 = isBasePoint0
-    this.astBasePoint = astBasePoint
+    this.baseCompilerPoint = baseCompilerPoint
     this.parents = []
-    let parent: AstPoint | undefined = astBasePoint
+    let parent: CompilerPoint | undefined = baseCompilerPoint
     while (parent) {
       this.parents.push(parent)
-      parent = parent.astBasePoint
+      parent = parent.baseCompilerPoint
     }
   }
 
-  getLastParentOrSelf(): AstPoint {
+  getLastParentOrSelf(): CompilerPoint {
     if (this.parents.length > 0) {
       return this.parents[this.parents.length - 1]
     }
     return this
   }
 
-  getSelfAndParents(): AstPoint[] {
+  getSelfAndParents(): CompilerPoint[] {
     return [this, ...this.parents]
   }
 
@@ -366,7 +367,7 @@ export class AstPoint {
     return [...layouts].reverse()
   }
 
-  simplify(): AstPointSimplified {
+  simplify(): CompilerPointSimplified {
     return {
       file: nodeFsPath.basename(this.file.abs, nodeFsPath.extname(this.file.abs)),
       pointType: this.pointType,
@@ -379,15 +380,15 @@ export class AstPoint {
     }
   }
 
-  extraSimplify(): AstPointExtraSimplified {
+  extraSimplify(): CompilerPointExtraSimplified {
     return {
       file: this.file.abs,
       exportName: this.exportName,
     }
   }
 
-  private readonly _parsed: ParsedAstPoint | undefined = undefined
-  get parsed(): ParsedAstPoint {
+  private readonly _parsed: CompilerPointParsed | undefined = undefined
+  get parsed(): CompilerPointParsed {
     if (this._parsed) {
       return this._parsed
     }
@@ -432,11 +433,11 @@ export class AstPoint {
       errors,
       valid,
       file: this.file,
-      ast: this,
-    } as ParsedAstPointValid | ParsedAstPointInvalid
+      original: this,
+    } as CompilerPointParsedValid | CompilerPointParsedInvalid
   }
 
-  static isSameParsedAstPoint(a: ParsedAstPoint, b: ParsedAstPoint): boolean {
+  static isSameParsedPoints(a: CompilerPointParsed, b: CompilerPointParsed): boolean {
     return (
       a.scope === b.scope &&
       a.scopes.every((s) => b.scopes.includes(s)) &&
@@ -452,9 +453,58 @@ export class AstPoint {
       a.file.abs === b.file.abs
     )
   }
+
+  // pruner
+
+  _methods: Array<{ nodePath: NodePath<Node>; name: string }> | undefined = undefined
+  get methods(): Array<{ nodePath: NodePath<Node>; name: string }> {
+    if (this._methods) {
+      return this._methods
+    }
+    // TODO: find all methods nodesPaths and this methods names inside this point
+    return this._methods
+  }
+
+  removeMethodArgs(name: string): void {
+    // TODO
+  }
+
+  isMethodArgBooleanLiteral(name: string): boolean {
+    // TODO
+  }
+
+  removeMethodArgsIfNotBooleanLiteral(name: string): void {
+    // TODO
+  }
+
+  replaceLastMethodArgWithArrowFnReturnNull(name: string): void {
+    // TODO
+  }
+
+  pruneForClient(): void {
+    this.removeMethodArgs('ctx')
+    this.removeMethodArgsIfNotBooleanLiteral('loader')
+    // TODO
+  }
+
+  pruneForServer(): void {
+    // Nothing here. For now we do not prune server side.
+  }
+
+  prune(target: 'client' | 'server'): void {
+    if (target === 'client') {
+      this.pruneForClient()
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    } else if (target === 'server') {
+      this.pruneForServer()
+    } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Invalid target: ${target}`)
+    }
+  }
 }
 
-export type AstPointSimplified = {
+export type CompilerPointSimplified = {
   file: string
   pointType: EndPointType
   pointName: PointName
@@ -462,13 +512,13 @@ export type AstPointSimplified = {
   baseNodePath: boolean
   letsNodePath: boolean
   isBasePoint0: boolean
-  parents: AstPointExtraSimplified[]
+  parents: CompilerPointExtraSimplified[]
 }
 
-export type AstPointExtraSimplified = Pick<AstPointSimplified, 'file' | 'exportName'>
+export type CompilerPointExtraSimplified = Pick<CompilerPointSimplified, 'file' | 'exportName'>
 
-export type ParsedAstPointPos = { file: string; line: number; column: number }
-export type ParsedAstPointValid = {
+export type CompilerPointParsedPos = { file: string; line: number; column: number }
+export type CompilerPointParsedValid = {
   scope: PointsScope
   scopes: PointsScope[]
   type: EndPointType
@@ -477,13 +527,13 @@ export type ParsedAstPointValid = {
   route: AnyRoute | undefined
   polh: boolean | number
   layouts: string[]
-  pos: ParsedAstPointPos
+  pos: CompilerPointParsedPos
   errors: unknown[]
   valid: true
-  file: WalkerFile
-  ast: AstPoint
+  file: CompilerFile
+  original: CompilerPoint
 }
-export type ParsedAstPointInvalid = {
+export type CompilerPointParsedInvalid = {
   scope: PointsScope | undefined
   scopes: PointsScope[]
   type: EndPointType
@@ -492,10 +542,10 @@ export type ParsedAstPointInvalid = {
   route: AnyRoute | undefined
   polh: boolean | number | undefined
   layouts: string[]
-  pos: ParsedAstPointPos | undefined
+  pos: CompilerPointParsedPos | undefined
   errors: unknown[]
   valid: false
-  file: WalkerFile
-  ast: AstPoint
+  file: CompilerFile
+  original: CompilerPoint
 }
-export type ParsedAstPoint = ParsedAstPointValid | ParsedAstPointInvalid
+export type CompilerPointParsed = CompilerPointParsedValid | CompilerPointParsedInvalid

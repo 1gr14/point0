@@ -1,15 +1,18 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import { ClientServerHelpers } from './client-server.js'
+import { runtime } from './runtime.js'
 import type { DataTransformerExtended, IfAnyThenElse } from './types.js'
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
   (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||
-  (ClientServerHelpers.isClient
+  (runtime.is.client
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>))
 // (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<SuperStoreState>))
 ;(globalThis as any).__POINT0_SUPER_STORE_CONFIG__ =
   (globalThis as any).__POINT0_SUPER_STORE_CONFIG__ || ({} as SuperStoreConfig)
+;(globalThis as any).__GET_SSR_PHASE__ = () => {
+  return SuperStore.getWeak<boolean | 'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__') ?? false
+}
 
 export class SuperStore {
   private static dehydrated: Record<string, unknown> = {}
@@ -251,7 +254,7 @@ export class SuperStore {
   }
 
   static getState = (): SuperStoreState => {
-    if (ClientServerHelpers.isClient) {
+    if (runtime.is.client) {
       return SuperStore.clientState
     } else {
       const serverStorage = SuperStore.getServerStorage()

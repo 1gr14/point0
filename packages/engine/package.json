@@ -17,7 +17,7 @@
   },
   "type": "module",
   "bin": {
-    "point0": "./dist/bin.js"
+    "point0": "./dist/cli.js"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
@@ -42,29 +42,41 @@
       "types": "./dist/fetch.d.ts",
       "import": "./dist/fetch.js"
     },
-    "./generator": {
-      "types": "./dist/generator.d.ts",
-      "import": "./dist/generator.js"
-    },
     "./render": {
       "types": "./dist/render.d.ts",
       "import": "./dist/render.js"
     },
-    "./compiler": {
-      "types": "./dist/compiler.d.ts",
-      "import": "./dist/compiler.js"
+    "./compiler/collector": {
+      "types": "./dist/compiler/collector.d.ts",
+      "import": "./dist/compiler/collector.js"
     },
-    "./compiler-bun-static": {
-      "types": "./dist/compiler-bun-static.d.ts",
-      "import": "./dist/compiler-bun-static.js"
+    "./compiler/file": {
+      "types": "./dist/compiler/file.d.ts",
+      "import": "./dist/compiler/file.js"
     },
-    "./compiler-bun": {
-      "types": "./dist/compiler-bun.d.ts",
-      "import": "./dist/compiler-bun.js"
+    "./compiler/generator": {
+      "types": "./dist/compiler/generator.d.ts",
+      "import": "./dist/compiler/generator.js"
     },
-    "./compiler-vite": {
-      "types": "./dist/compiler-vite.d.ts",
-      "import": "./dist/compiler-vite.js"
+    "./compiler/plugin-bun-static": {
+      "types": "./dist/compiler/plugin-bun-static.d.ts",
+      "import": "./dist/compiler/plugin-bun-static.js"
+    },
+    "./compiler/plugin-bun": {
+      "types": "./dist/compiler/plugin-bun.d.ts",
+      "import": "./dist/compiler/plugin-bun.js"
+    },
+    "./compiler/plugin-vite": {
+      "types": "./dist/compiler/plugin-vite.d.ts",
+      "import": "./dist/compiler/plugin-vite.js"
+    },
+    "./compiler/point": {
+      "types": "./dist/compiler/point.d.ts",
+      "import": "./dist/compiler/point.js"
+    },
+    "./compiler/resolver": {
+      "types": "./dist/compiler/resolver.d.ts",
+      "import": "./dist/compiler/resolver.js"
     },
     "./publicdir": {
       "types": "./dist/publicdir.d.ts",
@@ -77,10 +89,6 @@
     "./utils": {
       "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js"
-    },
-    "./walker": {
-      "types": "./dist/walker.d.ts",
-      "import": "./dist/walker.js"
     },
     "./executor": {
       "types": "./dist/executor.d.ts",

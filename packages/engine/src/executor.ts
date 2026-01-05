@@ -11,12 +11,14 @@ import type {
   InputRaw,
   InputSchema,
   IsInputOptional,
+  LazyPointsModule,
   LoaderOutput,
   NiceEndPoint,
   PagePoint,
   PointName,
   PointsScope,
   QueryKey,
+  ReadyPointsModule,
   RequiredCtx,
   ServerExecuteAction,
   ServerExecuteResult,
@@ -25,16 +27,14 @@ import type {
   UnknownCtx,
   UnknownData,
   WithMaybeOptionalReqiredCtx,
-  ReadyPointsModule,
-  LazyPointsModule,
 } from '@point0/core'
-import { Point0, PointsManager, Request0, Response0, SuperStore } from '@point0/core'
+import { PointsManager, Request0, Response0, runtime, SuperStore } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
+import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { ResolvableHead, Unhead } from 'unhead/types'
-import { createHead } from '@unhead/react/server'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   request: Request0
@@ -129,7 +129,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   getQueryClient(): QueryClient {
-    return Point0.isClient ? SuperStore.get('__POINT0_QUERY_CLIENT__') : this.serverGlobalState.__POINT0_QUERY_CLIENT__
+    return runtime.is.client
+      ? SuperStore.get('__POINT0_QUERY_CLIENT__')
+      : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
 
   getScope(): PointsScope {
@@ -137,7 +139,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
-    if (Point0.isClient) {
+    if (runtime.is.client) {
       // TODO: figure out, is Executor really can be called in client? I think, no
       SuperStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
@@ -146,7 +148,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
-    if (Point0.isClient) {
+    if (runtime.is.client) {
       SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
       return
     }

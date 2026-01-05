@@ -1,17 +1,17 @@
 import { UnheadProvider as UnheadProviderClient, createHead as createHeadClient } from '@unhead/react/client'
 import { createElement } from 'react'
 import type { ResolvableHead, Unhead } from 'unhead/types'
-import { ClientServerHelpers } from './client-server.js'
+import { runtime } from './runtime.js'
 import { SuperStore } from './index.js'
 
-const clientHead = ClientServerHelpers.isClient ? createHeadClient() : (undefined as never)
+const clientHead = runtime.is.client ? createHeadClient() : (undefined as never)
 
 export const UnheadProvider = ({
   children,
 }: {
   children: React.ReactNode
 }): React.ReactNode | Promise<React.ReactNode> => {
-  if (ClientServerHelpers.isClient) {
+  if (runtime.is.client) {
     return createElement(UnheadProviderClient, { head: clientHead, children })
   } else {
     return (async () => {

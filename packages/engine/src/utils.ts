@@ -470,7 +470,7 @@ export const createViteDevServer = async ({
       customer,
     })
 
-    const prunePlugin = await import('./compiler-vite.js').then((module) =>
+    const prunePlugin = await import('./compiler/plugin-vite.js').then((module) =>
       module.compilerVitePlugin({ customer, scope }),
     )
 

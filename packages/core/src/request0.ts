@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { ClientServerHelpers } from './client-server.js'
+import { runtime } from './runtime.js'
 import { SuperStore } from './super-store.js'
 
 // TODO: add generics TRoute, THeaders, TCookies
@@ -118,7 +118,7 @@ export class Request0 {
   }
 
   static get(): Request0 {
-    if (!ClientServerHelpers.isServer) {
+    if (!runtime.is.server) {
       throw new Error(
         'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )
