@@ -5,7 +5,7 @@ import superjson from 'superjson'
 
 export const queryClient = Point0.defineQueryClient(() => new QueryClient())
 
-export const client = Point0.create('client')
+export const client = Point0.lets('root', 'client')
   .ssr(true)
   .transformer(superjson)
   .requireCtx<{ zxc: number }>()

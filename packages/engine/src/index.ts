@@ -233,6 +233,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
                 })
               })
           let processes = start()
+          // TODO:ASAP check if it is required, does not watch enough?
           this.onPointFileChange((event, path, points) => {
             processes.forEach((p) => {
               p.kill('SIGKILL')
@@ -242,7 +243,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
           return []
         }
       })()
-      // and here we rung one instance of client dev servers per each client
+      // and here we run one instance of client dev servers per each client
       const clientsDevSevers = this.serveClientDevServers()
       await Promise.all([generatorProcess, ...serverEntryProcesses, clientsDevSevers])
     } else {

@@ -386,10 +386,10 @@ export class AstPoint {
     }
   }
 
-  private readonly parsed: ParsedAstPoint | undefined = undefined
-  parse(): ParsedAstPoint {
-    if (this.parsed) {
-      return this.parsed
+  private readonly _parsed: ParsedAstPoint | undefined = undefined
+  get parsed(): ParsedAstPoint {
+    if (this._parsed) {
+      return this._parsed
     }
     const errors: unknown[] = []
     const scopes = this.getScopes()
@@ -431,7 +431,26 @@ export class AstPoint {
       pos,
       errors,
       valid,
+      file: this.file,
+      ast: this,
     } as ParsedAstPointValid | ParsedAstPointInvalid
+  }
+
+  static isSameParsedAstPoint(a: ParsedAstPoint, b: ParsedAstPoint): boolean {
+    return (
+      a.scope === b.scope &&
+      a.scopes.every((s) => b.scopes.includes(s)) &&
+      b.scopes.every((s) => a.scopes.includes(s)) &&
+      a.type === b.type &&
+      a.name === b.name &&
+      a.exportName === b.exportName &&
+      a.route?.definition === b.route?.definition &&
+      a.polh === b.polh &&
+      a.layouts.every((l) => b.layouts.includes(l)) &&
+      b.layouts.every((l) => a.layouts.includes(l)) &&
+      a.valid === b.valid &&
+      a.file.abs === b.file.abs
+    )
   }
 }
 
@@ -458,10 +477,11 @@ export type ParsedAstPointValid = {
   route: AnyRoute | undefined
   polh: boolean | number
   layouts: string[]
-  file: WalkerFile
   pos: ParsedAstPointPos
   errors: unknown[]
   valid: true
+  file: WalkerFile
+  ast: AstPoint
 }
 export type ParsedAstPointInvalid = {
   scope: PointsScope | undefined
@@ -472,9 +492,10 @@ export type ParsedAstPointInvalid = {
   route: AnyRoute | undefined
   polh: boolean | number | undefined
   layouts: string[]
-  file: WalkerFile
   pos: ParsedAstPointPos | undefined
   errors: unknown[]
   valid: false
+  file: WalkerFile
+  ast: AstPoint
 }
 export type ParsedAstPoint = ParsedAstPointValid | ParsedAstPointInvalid

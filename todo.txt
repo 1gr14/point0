@@ -3,7 +3,6 @@
 --------------------------
 
 WALKER
-ast point to another file
 generator
 compiler
 Не кастомер а энвиронмент

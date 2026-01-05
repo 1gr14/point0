@@ -7,7 +7,7 @@ import * as nodePath from 'node:path'
 import type { EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker } from './walker.js'
-import { AstPoint, type ParsedAstPoint, type ParsedAstPointValid } from './ast-point.js'
+import type { ParsedAstPoint } from './ast-point.js'
 
 type ChangeCollectedPointsEvent = {
   deleted: ParsedAstPoint[]
@@ -44,9 +44,9 @@ type FilesGeneratorTarget = {
 }
 
 export type FilesGeneratorPointsFilesChangeWatcher = (
-  fileEvent: 'update' | 'delete',
-  fileAbs: string,
-  pointsEvent: ChangeCollectedPointsEvent,
+  event: 'update' | 'delete',
+  path: string,
+  points: ParsedAstPoint[],
 ) => Promise<void> | void
 
 export class FilesGenerator {
@@ -213,11 +213,10 @@ export class FilesGenerator {
       }),
     )
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
-    const collectedPoints = collectedChunks.flatMap((chunk) =>
-      chunk.flatMap((p) => p.astPoints.map((astPoint) => astPoint.parsed)),
-    )
+    const collectedPoints = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.collectedPoints))
     const prevPoints = [...this.points]
-    const newPoints = collectedPoints.filter((p) => p.valid)
+    const newPoints =
+      errors.length === 0 ? collectedPoints : FilesGenerator.mergePointsSafely(this.points, collectedPoints)
     const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newPoints)
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
@@ -411,17 +410,19 @@ export class FilesGenerator {
     outputAbs,
     target,
   }: {
-    points: ParsedAstPointValid[]
+    points: CollectedPoint[]
     outputAbs: string
     target: FilesGeneratorTarget
   }): {
     importLines: string[]
-    importedPoints: Array<ParsedAstPointValid & { index: number; renamedExportName: string }>
+    importedPoints: Array<CollectedPoint & { hash: string; renamedExportName: string }>
     // rootSingleReexportLine: string // for lazy points file
     rootSingleImportLine: string | null // for lazy points file
     hasNotRootPoints: boolean
   } {
-    points = points.filter((p) => p.scope === target.scope)
+    points = points.filter(
+      (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
+    )
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
     let rootSingleImportLine: string | null = null
@@ -432,15 +433,16 @@ export class FilesGenerator {
       exports: Array<{ originalExportName: string; renamedExportName: string; root: boolean }>
     }> = []
 
-    const importedPoints = points.map((point, index) => {
-      const importPath = FilesGenerator.toRelativeJsImportPath(outputAbs, point.file.abs)
+    const importedPoints = points.map((point) => {
+      const importPath = FilesGenerator.toRelativeJsImportPath(outputAbs, point.fileAbs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
+      const hash = FilesGenerator.hash(point)
       const renamedExportName =
         point.type === 'root'
           ? 'root'
           : point.exportName === 'default'
-            ? `unnamed_${index}`
-            : `${point.exportName}_${index}`
+            ? `unnamed_${hash}`
+            : `${point.exportName}_${hash}`
       const originalExportName = point.exportName === 'default' ? 'default' : point.exportName
       const newItem = { originalExportName, renamedExportName, root: point.type === 'root' }
       if (importPathAndExportNames) {
@@ -453,7 +455,7 @@ export class FilesGenerator {
       }
       return {
         ...point,
-        index,
+        hash,
         renamedExportName,
       }
     })
@@ -482,7 +484,9 @@ export class FilesGenerator {
     if (!target.outputPointsLazyAbs) {
       throw new Error('outputPointsLazyAbs is not set')
     }
-    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as ParsedAstPointValid[]
+    const points = this.points.filter(
+      (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
+    )
     const lines: string[] = []
     if (target.banner) {
       lines.push(target.banner)
@@ -523,7 +527,7 @@ export class FilesGenerator {
         if (point.type === 'page') {
           lines.push(`  polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
         }
-        if (point.type === 'page' && point.layouts.length) {
+        if (point.type === 'page' && point.layouts?.length) {
           const arr = point.layouts
             .map((r) => `'${r}'`)
             .reverse()
@@ -533,12 +537,12 @@ export class FilesGenerator {
 
         if (point.scope === target.scope) {
           lines.push(
-            `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+            `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
           )
         } else {
           // it is attached
           lines.push(
-            `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName}),`,
+            `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.fileAbs)}')).${point.exportName === 'default' ? 'default' : point.exportName}),`,
           )
         }
         lines.push(`} as LazyPointsCollectionRecord`)
@@ -555,7 +559,9 @@ export class FilesGenerator {
       throw new Error('outputReadyAbs is not set')
     }
 
-    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as ParsedAstPointValid[]
+    const points = this.points.filter(
+      (p) => p.scope === target.scope || (p.attachedTo.includes(target.scope) && p.type !== 'root'),
+    )
 
     if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
       throw new Error(`Root point not found for target ${target.scope}`)
@@ -748,17 +754,58 @@ export class FilesGenerator {
   // utils
 
   private static getCollectedPointsDiff(
-    prevPoints: ParsedAstPoint[],
-    newPoints: ParsedAstPoint[],
+    prevPoints: CollectedPoint[],
+    newPoints: CollectedPoint[],
   ): {
-    deleted: ParsedAstPoint[]
-    added: ParsedAstPoint[]
+    deleted: CollectedPoint[]
+    added: CollectedPoint[]
     changed: boolean
   } {
-    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => AstPoint.isSameParsedAstPoint(p, cp)))
-    const added = newPoints.filter((p) => !prevPoints.some((cp) => AstPoint.isSameParsedAstPoint(p, cp)))
+    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => Walker.isSameCollectedPoint(p, cp)))
+    const added = newPoints.filter((p) => !prevPoints.some((cp) => Walker.isSameCollectedPoint(p, cp)))
     const changed = added.length > 0 || deleted.length > 0
     return { deleted, added, changed }
+  }
+
+  // if was error, we only want to replace conflicted and add new, and do not remove old points
+  private static mergePointsSafely(prevPoints: CollectedPoint[], newPoints: CollectedPoint[]): CollectedPoint[] {
+    const result = [...prevPoints]
+    for (const newPoint of newPoints) {
+      const prevConflictedPointIndex = result.findIndex((p) =>
+        Walker.isSameNameAndTypeAndScopeCollectedPoint(p, newPoint),
+      )
+      if (prevConflictedPointIndex !== -1) {
+        result[prevConflictedPointIndex] = newPoint
+        continue
+      }
+      const prevPointIndex = result.findIndex((p) => Walker.isSameCollectedPoint(p, newPoint))
+      if (prevPointIndex === -1) {
+        result.push(newPoint)
+        continue
+      }
+    }
+    return Walker.toUniqueCollectedPoints(result)
+  }
+
+  // 53-bit non-crypto hash (by bryc). Crazy fast in JS.
+  private static cyrb53(str: string, seed = 0): number {
+    let h1 = 0xdeadbeef ^ seed
+    let h2 = 0x41c6ce57 ^ seed
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i)
+      h1 = Math.imul(h1 ^ ch, 2654435761)
+      h2 = Math.imul(h2 ^ ch, 1597334677)
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+    // returns 0..2^53-1
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0)
+  }
+
+  // Convenience for short suffixes
+  private static hash(input: unknown, seed = 0): string {
+    const s = typeof input === 'string' ? input : JSON.stringify(input)
+    return FilesGenerator.cyrb53(s, seed).toString(36) // short, URL/file-safe
   }
 
   private static chunk<T>(array: readonly T[], size: number): T[][] {
@@ -781,18 +828,18 @@ export class FilesGenerator {
 
   // wathcer
 
-  getCollectedPointsRelatedToPath(path: string): ParsedAstPoint[] {
-    const exactPoints = this.pointsByPaths.get(path)
-    if (exactPoints) {
-      return exactPoints
+  getCollectedPointsRelatedToPath(path: string): CollectedPoint[] {
+    const exactPoint = this.pointsByPaths.get(path)
+    if (exactPoint) {
+      return [exactPoint]
     }
     const pointsPaths = Array.from(this.pointsByPaths.keys())
-    const result: ParsedAstPoint[] = []
+    const result: CollectedPoint[] = []
     for (const pointPath of pointsPaths) {
       if (pointPath.startsWith(path)) {
-        const points = this.pointsByPaths.get(pointPath)
-        if (points) {
-          result.push(...points)
+        const point = this.pointsByPaths.get(pointPath)
+        if (point) {
+          result.push(point)
         }
       }
     }
@@ -850,7 +897,7 @@ export class FilesGenerator {
               this.addOrUpdateFile(targetAbs)
             }
             const evt = await this.process()
-            this.notifyCustomWatchers(isDelete ? 'delete' : 'update', targetAbs, evt)
+            this.notifyCustomWatchersIfSuitable(isDelete ? 'delete' : 'update', targetAbs)
             if (evt.changed) {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
@@ -881,13 +928,13 @@ export class FilesGenerator {
     this.pointsFilesChangeWatchers.push(callback)
   }
 
-  private notifyCustomWatchers(
-    fileEvent: 'update' | 'delete',
-    fileAbs: string,
-    pointsEvent: ChangeCollectedPointsEvent,
-  ): void {
+  private notifyCustomWatchersIfSuitable(event: 'update' | 'delete', path: string): void {
+    const points = this.getCollectedPointsRelatedToPath(path)
+    if (points.length === 0) {
+      return
+    }
     for (const watcher of this.pointsFilesChangeWatchers) {
-      void watcher(fileEvent, fileAbs, pointsEvent)
+      void watcher(event, path, points)
     }
   }
 }

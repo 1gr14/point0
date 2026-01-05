@@ -143,7 +143,7 @@ export class Walker {
     return (routes as any)?.[routeKey]
   }
 
-  async getAstPointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
+  async collectAstPointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
     astPoints: AstPoint[]
     errors: unknown[]
   }> {
@@ -177,7 +177,7 @@ export class Walker {
 
       // Process all lets() calls async
       for (const letsNodePath of letsNodePaths) {
-        const result = await this.getAstPointByLetsNodePath({ letsNodePath, file: fileParsed })
+        const result = await this.collectAstPointByLetsNodePath({ letsNodePath, file: fileParsed })
         errors.push(...result.errors)
         if (result.astPoint) {
           astPoints.push(result.astPoint)
@@ -191,7 +191,7 @@ export class Walker {
     }
   }
 
-  private async getAstPointByLetsNodePath({
+  private async collectAstPointByLetsNodePath({
     letsNodePath,
     file,
   }: {
@@ -317,7 +317,7 @@ export class Walker {
         if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
           return undefined
         }
-        const result = await this.getAstPointByLetsNodePath({
+        const result = await this.collectAstPointByLetsNodePath({
           letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
           file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
         })

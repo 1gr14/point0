@@ -2,7 +2,7 @@ import { Point0 } from '@point0/core'
 import { prisma } from './prisma.js'
 import superjson from 'superjson'
 
-export const client = Point0.create('client')
+export const client = Point0.lets('root', 'client')
   .ssr(true)
   .transformer(superjson)
   // .requireCtx<{ x: number; y: number }>()
