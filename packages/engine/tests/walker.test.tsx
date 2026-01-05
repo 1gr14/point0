@@ -10,7 +10,7 @@ type TestFile = Bun.BunFile & { path: string; basename: string; importpath: stri
 const tempDir = nodePath.join(__dirname, 'temp/walker')
 
 const createRandomFile = () => {
-  const basename = Math.random().toString(36).substring(2, 15)
+  const basename = crypto.randomUUID()
   const path = nodePath.join(tempDir, basename + '.tsx')
   const importpath = './' + basename + '.js'
   return Object.assign(Bun.file(path), { path, basename, importpath })
@@ -307,7 +307,7 @@ describe('walker', () => {
             ],
           },
         ])
-      }, false),
+      }),
     )
 
     it(

@@ -79,6 +79,7 @@ import type {
   FinalLoaderData,
   FinalLoaderMappedOutput,
   FinalProps,
+  HeadFn,
   IfAnyThenElse,
   Infer,
   InferCtxFnOutputCtxAppend,
@@ -98,13 +99,11 @@ import type {
   LoadingHeadFn,
   MapperOutput,
   MergeInputSchemas,
-  HeadFn,
   MountableComponent,
   MountableComponentProps,
   MountablePointType,
   NiceBaseEndPoint,
   NiceComponentEndPoint,
-  NiceEndPoint,
   NiceInfiniteQueryEndPoint,
   NiceLayoutEndPoint,
   NiceMutationEndPoint,
@@ -239,7 +238,7 @@ export class Point0<
   readonly _tranformer: DataTransformerExtended
   readonly _ssr: boolean
   readonly scope: PointsScope
-  private readonly _attachedTo: PointsScope[]
+  readonly scopes: PointsScope[]
   private readonly _headFns: HeadFn[]
   private readonly _defaultMutationOptions: UseMutationOptions | undefined
   private readonly _mutationOptions: UseMutationOptions | undefined
@@ -421,7 +420,7 @@ export class Point0<
     _tranformer?: DataTransformerExtended | undefined
     _ssr?: boolean
     scope: PointsScope
-    _attachedTo: PointsScope[]
+    scopes: PointsScope[]
     _wrappers?: WrapperComponentType[]
     _outers?: OuterComponentType[]
     _headFns?: HeadFn[]
@@ -583,7 +582,7 @@ export class Point0<
   }) {
     this.point = this
     this.scope = options.scope
-    this._attachedTo = options._attachedTo
+    this.scopes = options.scopes
     this._base = options._base ?? undefined
     this._root = options._root ?? undefined
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
@@ -757,7 +756,7 @@ export class Point0<
   >(overrides: {
     type?: TPointType
     scope?: PointsScope
-    _attachedTo?: PointsScope[]
+    scopes?: PointsScope[]
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
@@ -961,7 +960,7 @@ export class Point0<
       TProps
     >({
       scope: overrides.scope ?? this.scope,
-      _attachedTo: overrides._attachedTo ?? this._attachedTo,
+      scopes: overrides.scopes ?? this.scopes,
       _base: overrides._base ?? this._base,
       _root: overrides._root ?? this._root,
       type: (overrides.type ?? this.type) as TPointType,
@@ -1031,24 +1030,9 @@ export class Point0<
     })
   }
 
-  // TODO: remove it
-  attach<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
-    point: TPoint,
-  ): TPoint {
-    const result = this._continue({
-      ...point,
-      _headFns: [...this._headFns, ...point.point._headFns],
-      _serverExecuteActions: [...this._serverExecuteActions, ...point.point._serverExecuteActions],
-      _clientExecuteActions: [...this._clientExecuteActions, ...point.point._clientExecuteActions],
-      scope: this.scope,
-      _root: this._root,
-      _attachedTo: [],
-    }) as never
-    return result
-  }
-
-  static create(
-    scope: string,
+  static lets(
+    pointType: 'root',
+    pointName: string,
   ): NiceRootStagePoint<
     'coreStage',
     'root',
@@ -1064,33 +1048,14 @@ export class Point0<
     UndefinedQueryResultType,
     UndefinedProps
   >
-  static create<TRootPoint extends NiceRootEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
-    scope: string,
-    attachedTo: PointsScope[],
-  ): NiceRootStagePoint<
-    'coreStage',
-    'root',
-    // TODO: check .d.ts files, is this approach heavy or not?
-    TRootPoint['Infer']['RequiredCtx'],
-    TRootPoint['Infer']['Ctx'],
-    TRootPoint['Infer']['CtxExposedKeys'],
-    TRootPoint['Infer']['ServerLoaderOutput'],
-    TRootPoint['Infer']['ClientLoaderOutput'],
-    TRootPoint['Infer']['ClientMapperOutput'],
-    UndefinedRoute,
-    UndefinedRoute,
-    UndefinedInputSchema,
-    UndefinedQueryResultType,
-    UndefinedProps
-  >
-  static create(scope: string, attachedTo?: PointsScope[]) {
+  static lets(pointType: 'root', pointName: string) {
     return new Point0({
       type: 'coreStage',
-      scope,
-      _attachedTo: attachedTo ?? [],
+      scope: pointName,
+      scopes: [pointName],
       _letsEndPointType: 'root',
       _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
-      name: scope,
+      name: pointName,
     }) as never
   }
 
@@ -2776,6 +2741,24 @@ export class Point0<
   //   }) as never
   // }
 
+  lets(
+    letsEndPointType: 'root',
+    pointName: string,
+  ): NiceStagePoint<
+    'coreStage',
+    'root',
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TPrevRouteDefinition,
+    TRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    UndefinedProps
+  >
   lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = TPointName>(
     letsEndPointType: 'page',
     pointName: TPointName,
@@ -2877,7 +2860,11 @@ export class Point0<
       }
       return prevRoute
     })()
+    const scopes = letsEndPointType === 'root' ? [pointName, ...this.scopes] : this.scopes
+    const scope = letsEndPointType === 'root' ? pointName : this.scope
     return this._continue({
+      scope,
+      scopes,
       type: 'coreStage',
       _letsEndPointType: letsEndPointType,
       name: pointName,
@@ -3641,7 +3628,6 @@ export class Point0<
       point,
       lets: point.lets.bind(point),
       inputSchema: point.inputSchema,
-      attach: point.attach.bind(point),
       useQuery: point.useQuery.bind(point),
       getQueryOptions: point.getQueryOptions.bind(point),
       prefetchQuery: point.prefetchQuery.bind(point),
@@ -4422,10 +4408,9 @@ export class Point0<
     const method = 'post'
 
     const outputType = args[2] ?? 'data'
-    const scope = this._attachedTo.length === 0 ? this.scope : Point0.getPointsManager().scope
     url.searchParams.set('type', this.type)
     url.searchParams.set('name', this.name)
-    url.searchParams.set('scope', scope)
+    url.searchParams.set('scope', this.scope)
     url.searchParams.set('output', outputType)
 
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)

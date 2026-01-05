@@ -479,8 +479,6 @@ export class Walker {
         },
       })
 
-      const rnd = Math.random()
-
       // Second pass: Resolve imports if we haven't found the declaration yet
       if (!foundLetsNodePath && importsToResolve.length > 0) {
         for (const { importPath, importedName } of importsToResolve) {
@@ -737,8 +735,6 @@ export class Walker {
     let foundFile: WalkerFile<'parsed'> | undefined
     const reExportsToResolve: Array<{ sourcePath: string; nameToFind: string }> = []
     const identifierExportsToResolve: Array<{ identifierName: string }> = []
-
-    const rnd = Math.random()
 
     try {
       // First pass: Traverse the AST to find exports matching the exportName

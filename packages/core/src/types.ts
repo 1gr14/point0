@@ -2266,7 +2266,7 @@ export type NiceRootEndPoint<
     TQueryResultType,
     TProps
   >,
-  'attach' | 'lets' | 'point' | 'type' | 'Infer'
+  'lets' | 'point' | 'type' | 'Infer'
 >
 
 export type NiceBaseEndPoint<
