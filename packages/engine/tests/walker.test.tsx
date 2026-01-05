@@ -42,7 +42,7 @@ describe('walker', () => {
   })
 
   describe('Walker#getAstPointsFromFile()', () => {
-    it(
+    it.concurrent(
       'can recognize root point in current file',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
@@ -62,7 +62,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize page point in current file, when root point in same file',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
@@ -98,7 +98,7 @@ describe('walker', () => {
         })
       }),
     )
-    it(
+    it.concurrent(
       'can recognize page point in current file, when root point in another file',
       helper(async ({ files: [file0, file1], walker }) => {
         await file0.write(`import {Point0} from '@point0/core'
@@ -127,7 +127,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize nested points in same file',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -204,7 +204,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize nested points in different files',
       helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -283,7 +283,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize nested points in different files, when base was reexported',
       helper(async ({ files: [f0, f1, f2], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -310,7 +310,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize nested points in different files, when base was reexported renamed',
       helper(async ({ files: [f0, f1, f2], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -337,7 +337,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize nested points in different files, when base was imported, renamed, exported',
       helper(async ({ files: [f0, f1, f2], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -365,7 +365,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can recognize nested points in different files, when base was imported, renamed twice, exported',
       helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -394,7 +394,7 @@ describe('walker', () => {
       }),
     )
 
-    it(
+    it.concurrent(
       'can parse files in parallel reusing cache',
       helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -491,7 +491,7 @@ describe('walker', () => {
         route: parsed.route ? parsed.route.definition : undefined,
       }
     }
-    it(
+    it.concurrent(
       'root point',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
@@ -519,7 +519,7 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
       }),
     )
 
-    it(
+    it.concurrent(
       'page point',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
@@ -555,7 +555,7 @@ export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().
       }
     }
 
-    it(
+    it.concurrent(
       'page point with first level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -610,7 +610,7 @@ export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>H
       }),
     )
 
-    it(
+    it.concurrent(
       'page point with deep level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -667,7 +667,7 @@ export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
       }),
     )
 
-    it(
+    it.concurrent(
       'parse page point with very deep level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -737,7 +737,7 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
       }
     }
 
-    it(
+    it.concurrent(
       'page point layouts',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -786,7 +786,7 @@ export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
       }),
     )
 
-    it(
+    it.concurrent(
       'layout point layouts',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -834,7 +834,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
       }
     }
 
-    it(
+    it.concurrent(
       'page point prefetchOnLinkHover (polh)',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -878,7 +878,7 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
       }),
     )
 
-    it(
+    it.concurrent(
       'error when last called method name does not match point type',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
@@ -924,7 +924,7 @@ export const root1 = Point0.lets('root', 'root1')
       }
     }
 
-    it(
+    it.concurrent(
       'point scopes',
       helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
@@ -963,7 +963,7 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
       }),
     )
 
-    it(
+    it.concurrent(
       'error when point not exported',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({

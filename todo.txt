@@ -18,7 +18,7 @@ remove .attach things
 query client can be defined on any root, and will be attached to all requests from this client scope
 
 ENVIRONMENT
-Добавить изСср он будет тру только когда мы именно рендерим компоненты
+Добавить изСср он будет тру только когда мы именно рендерим компоненты, and isDrySsr
 remove isClient etc from Point0
 И в энвиронменте добавить констВхенЭнвиронмент({server,client,ssr})
 И в энвиронменте разрешить возвращать не функцию, а прямо ошибку чтобы он сровилась
@@ -164,6 +164,7 @@ https://oxc.rs/docs/guide/usage/linter/config
 REFACTROING 2
 ? Квери клиент тоже в предефайнед, убрать его из самого поинт0 (ну он у нас один на всех, типо как и кукисы)
 ? on mountables TQueryResultType should be undefined untill final method, or query method, or infiniteQuery method, then point becomes renderMiddleware (whcih problem do we solve?)
+walker cache on read and parse with await (promise) memoize until settled
 fix what can be .lets from each point type, restrict where lets can be used, like no lets on mountables I think. but can be on queries
 Инпутрау только где ющер вводит, иначе инпутрауанноуе
 В роут с генерированными роутами добавлять в комментах путь к компоненту, который объявил
