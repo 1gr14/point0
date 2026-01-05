@@ -962,5 +962,37 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
         })
       }),
     )
+
+    it(
+      'error when point not exported',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+const root0 = Point0.lets('root', 'root0').root()
+const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>) 
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.astPoints).toHaveLength(2)
+
+        const parsed0 = result.astPoints[0].parse()
+        expect(parsed0.valid).toBe(false)
+        expect(parsed0.errors).toHaveLength(1)
+        expect((parsed0.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
+
+        const parsed1 = result.astPoints[1].parse()
+        expect(parsed1.valid).toBe(false)
+        expect(parsed1.errors).toHaveLength(1)
+        expect((parsed1.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
+      }),
+    )
   })
 })
