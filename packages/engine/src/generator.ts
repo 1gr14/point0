@@ -4,7 +4,7 @@ import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { EngineOptionsRoutes } from './config.js'
+import type { EngineLogger, EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker } from './walker.js'
 import { AstPoint, type ParsedAstPoint, type ParsedAstPointValid } from './ast-point.js'
@@ -22,6 +22,7 @@ export type FilesGeneratorOptions = {
   glob: string | string[]
   targets: FilesGeneratorTargetOptions[]
   banner?: string
+  logger?: EngineLogger
 }
 
 export type FilesGeneratorTargetOptions = {
@@ -58,6 +59,7 @@ export class FilesGenerator {
   readonly targets: FilesGeneratorTarget[]
   readonly routes: Record<string, RoutesPretty>
   private isRoutesInitialized = false
+  readonly logger: EngineLogger
 
   readonly watchDir: string
   readonly watchIgnore: string[]
@@ -77,6 +79,12 @@ export class FilesGenerator {
   constructor(opts: FilesGeneratorOptions) {
     this.banner = opts.banner
     this.cwd = opts.cwd
+    this.logger = opts.logger ?? {
+      info: console.info.bind(console),
+      error: console.error.bind(console),
+      warn: console.warn.bind(console),
+      debug: console.debug.bind(console),
+    }
     const glob = Array.isArray(opts.glob) ? opts.glob : [opts.glob]
     this.globInclude = glob.filter((g) => !g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g))
     this.globExclude = glob.filter((g) => g.startsWith('!')).map((g) => nodePath.resolve(this.cwd, g.slice(1)))
@@ -113,8 +121,8 @@ export class FilesGenerator {
     if (!options?.logOnNotWritten && !written) {
       return
     }
-    const [consoleMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
-    console[consoleMethod]([emoji, `${points.length} points processed`].filter(Boolean).join(' '))
+    const [loggerMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
+    this.logger[loggerMethod]([emoji, `${points.length} points processed`].filter(Boolean).join(' '))
   }
 
   // files
@@ -216,6 +224,13 @@ export class FilesGenerator {
     const collectedPoints = collectedChunks.flatMap((chunk) =>
       chunk.flatMap((p) => p.astPoints.map((astPoint) => astPoint.parsed)),
     )
+    const invalidPoints = collectedPoints.filter((p) => !p.valid)
+    for (const point of invalidPoints) {
+      const posStr = point.pos ? `${point.pos.file}:${point.pos.line}:${point.pos.column}` : 'unknown'
+      const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join('\n')
+      const message = `${point.type}.${point.name} in ${posStr}\n${errorsMessages}`
+      this.logger.error(message)
+    }
     const prevPoints = [...this.points]
     const newPoints = collectedPoints.filter((p) => p.valid)
     const diff = FilesGenerator.getCollectedPointsDiff(prevPoints, newPoints)
@@ -223,7 +238,7 @@ export class FilesGenerator {
     this.sortPoints()
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
     for (const error of errors) {
-      console.error(error instanceof Error ? error.message : String(error))
+      this.logger.error(error instanceof Error ? error.message : String(error))
     }
     this.actualizePointsByPaths()
     return {
@@ -284,21 +299,21 @@ export class FilesGenerator {
       tasks.push({
         content: this.emitLazyPointsFile(target),
         outputAbs: target.outputPointsLazyAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.lazy.ts`),
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${crypto.randomUUID()}.lazy.ts`),
       })
     }
     if (target.outputPointsReadyAbs) {
       tasks.push({
         content: this.emitReadyPointsFile(target),
         outputAbs: target.outputPointsReadyAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.ready.ts`),
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${crypto.randomUUID()}.ready.ts`),
       })
     }
     if (target.outputRoutesAbs) {
       tasks.push({
         content: this.emitRoutesPointsFile(target),
         outputAbs: target.outputRoutesAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.routes.ts`),
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${crypto.randomUUID()}.routes.ts`),
       })
     }
     // if (this.outputWouterRoutesAbs) {
@@ -362,43 +377,43 @@ export class FilesGenerator {
 
   // emit
 
-  async isOutputFilesExists(): Promise<boolean> {
-    const results = await Promise.all(this.targets.map(async (target) => await this.isTargetOutputFilesExists(target)))
-    return results.every((r) => r)
-  }
+  // async isOutputFilesExists(): Promise<boolean> {
+  //   const results = await Promise.all(this.targets.map(async (target) => await this.isTargetOutputFilesExists(target)))
+  //   return results.every((r) => r)
+  // }
 
-  async isTargetOutputFilesExists(target: FilesGeneratorTarget): Promise<boolean> {
-    if (!target.outputPointsLazyAbs && !target.outputPointsReadyAbs && !target.outputRoutesAbs) {
-      return true
-    }
-    const promises: Array<Promise<boolean>> = []
-    if (target.outputPointsLazyAbs) {
-      promises.push(
-        nodeFs
-          .access(target.outputPointsLazyAbs)
-          .then(() => true)
-          .catch(() => false),
-      )
-    }
-    if (target.outputPointsReadyAbs) {
-      promises.push(
-        nodeFs
-          .access(target.outputPointsReadyAbs)
-          .then(() => true)
-          .catch(() => false),
-      )
-    }
-    if (target.outputRoutesAbs) {
-      promises.push(
-        nodeFs
-          .access(target.outputRoutesAbs)
-          .then(() => true)
-          .catch(() => false),
-      )
-    }
-    const results = await Promise.all(promises)
-    return results.every((r) => r)
-  }
+  // async isTargetOutputFilesExists(target: FilesGeneratorTarget): Promise<boolean> {
+  //   if (!target.outputPointsLazyAbs && !target.outputPointsReadyAbs && !target.outputRoutesAbs) {
+  //     return true
+  //   }
+  //   const promises: Array<Promise<boolean>> = []
+  //   if (target.outputPointsLazyAbs) {
+  //     promises.push(
+  //       nodeFs
+  //         .access(target.outputPointsLazyAbs)
+  //         .then(() => true)
+  //         .catch(() => false),
+  //     )
+  //   }
+  //   if (target.outputPointsReadyAbs) {
+  //     promises.push(
+  //       nodeFs
+  //         .access(target.outputPointsReadyAbs)
+  //         .then(() => true)
+  //         .catch(() => false),
+  //     )
+  //   }
+  //   if (target.outputRoutesAbs) {
+  //     promises.push(
+  //       nodeFs
+  //         .access(target.outputRoutesAbs)
+  //         .then(() => true)
+  //         .catch(() => false),
+  //     )
+  //   }
+  //   const results = await Promise.all(promises)
+  //   return results.every((r) => r)
+  // }
 
   // private emitSuperStoreInitialization(): string[] {
   //   const lines: string[] = []
@@ -805,7 +820,7 @@ export class FilesGenerator {
       this.watchDir,
       async (err, events) => {
         if (err) {
-          console.error(`🔴 watcher error: ${err.message}`)
+          this.logger.error(`🔴 generator error: ${err.message}`)
           return
         }
         for (const event of events) {
@@ -854,15 +869,15 @@ export class FilesGenerator {
             if (evt.changed) {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
-                console.info(`➖ ${deletedTypesAndNames}`)
+                this.logger.info(`➖ ${deletedTypesAndNames}`)
               }
               if (evt.added.length > 0) {
                 const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(' ')
-                console.info(`➕ ${addedTypesAndNames}`)
+                this.logger.info(`➕ ${addedTypesAndNames}`)
               }
             }
           } catch (e) {
-            console.error(`🔴 ${(e as Error).message}`)
+            this.logger.error(`🔴 ${(e as Error).message}`)
           }
         }
       },
@@ -871,10 +886,17 @@ export class FilesGenerator {
       },
     )
 
-    console.info('generator watcher started')
+    this.logger.info('generator watcher started')
 
     // Store subscription for potential cleanup
     this.watchSubscription = subscription
+  }
+
+  async stopWatch() {
+    if (this.watchSubscription) {
+      await this.watchSubscription.unsubscribe()
+      this.watchSubscription = undefined
+    }
   }
 
   onPointFileChange(callback: FilesGeneratorPointsFilesChangeWatcher) {

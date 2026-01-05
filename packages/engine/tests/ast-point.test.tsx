@@ -9,7 +9,7 @@ type TestFile = Bun.BunFile & { path: string; basename: string; importpath: stri
 
 const tempDir = nodePath.join(__dirname, 'temp/ast-point')
 
-const createRandomFile = () => {
+const prepareRandomFile = () => {
   const basename = crypto.randomUUID()
   const path = nodePath.join(tempDir, basename + '.tsx')
   const importpath = './' + basename + '.js'
@@ -19,7 +19,7 @@ const createRandomFile = () => {
 const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, deleteFiles = true) => {
   return async () => {
     const walker = new Walker({ cwd: tempDir })
-    const files = Array.from({ length: 11 }, createRandomFile)
+    const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
         files,

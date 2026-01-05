@@ -20,6 +20,8 @@ import { toAbsPath, toJsExtension } from './utils.js'
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
   error: (error: unknown, meta?: Record<string, any>) => any
+  warn: (message: string, meta?: Record<string, any>) => any
+  debug: (message: string, meta?: Record<string, any>) => any
 }
 
 export type EngineOptionsPublicdir =
@@ -347,6 +349,8 @@ const parseEngineGeneralOptions = ({
     logger: generalOptions.logger || {
       info: console.info.bind(console),
       error: console.error.bind(console),
+      warn: console.warn.bind(console),
+      debug: console.debug.bind(console),
     },
     itWasBuilt,
     cwdAfterBuild,

@@ -93,6 +93,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     server.clients = clients
 
     const generator = FilesGenerator.create({
+      logger: parsedOptions.general.logger,
       cwd: parsedOptions.general.cwd,
       glob: parsedOptions.general.pointsGlob,
       targets: [
