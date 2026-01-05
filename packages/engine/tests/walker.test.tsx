@@ -498,10 +498,12 @@ describe('walker', () => {
 export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints[0].parse()
         expect(parsed).toMatchObject({
           valid: true,
           scope: 'myroot',
+          scopes: ['myroot'],
           type: 'root',
           name: 'myroot',
           exportName: 'myrootvariable',
@@ -525,6 +527,7 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
 export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints[1].parse()
         expect(fix(parsed)).toMatchObject({
           valid: true,
@@ -577,6 +580,7 @@ export const p4 = myrootvariable.lets('page', 'p4', Route0.create('/r4')).page((
 export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
@@ -633,6 +637,7 @@ export const p4 = l2.lets('page', 'p4', Route0.create('/r4')).page(() => <div>He
 export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
@@ -694,6 +699,7 @@ export const p4 = l6.lets('page', 'p4', Route0.create('/r4')).page(() => <div>He
 export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
@@ -755,6 +761,7 @@ export const p2 = l2.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix2(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
@@ -799,7 +806,7 @@ export const b2 = l2.lets('base', 'b2').base()
 export const l3 = b2.lets('layout', 'l3').layout()
         `)
         const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
-
+        expect(result.errors).toHaveLength(0)
         const parsed = result.astPoints.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
@@ -815,6 +822,143 @@ export const l3 = b2.lets('layout', 'l3').layout()
           valid: true,
           name: 'l3',
           layouts: ['l1', 'l2'],
+        })
+      }),
+    )
+
+    const fix3 = (parsed: ParsedAstPoint) => {
+      return {
+        valid: parsed.valid,
+        name: parsed.name,
+        polh: parsed.polh,
+      }
+    }
+
+    it(
+      'page point prefetchOnLinkHover (polh)',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').prefetchOnLinkHover(true).root()
+export const p1 = root.lets('page', 'p1', '/').prefetchOnLinkHover(false).page(() => <div>Hello</div>)
+export const p2 = p1.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
+export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
+        const parsed = result.astPoints.map((p) => fix3(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'root',
+          polh: true,
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'p1',
+          polh: false,
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'p2',
+          polh: false,
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'p3',
+          polh: 100,
+        })
+      }),
+    )
+
+    it(
+      'error when last called method name does not match point type',
+      helper(async ({ files: [file] }) => {
+        const walker = new Walker({
+          cwd: tempDir,
+          routes: {
+            myroot: Routes.create({
+              r5: Route0.create('/r5'),
+              r6: Route0.create('/r6'),
+            }),
+          },
+        })
+        await file.write(`import {Point0} from '@point0/core'
+export const root0 = Point0.lets('root', 'root0').prefetchOnLinkHover(true)
+export const root1 = Point0.lets('root', 'root1')
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.astPoints).toHaveLength(2)
+
+        const parsed0 = result.astPoints[0].parse()
+        expect(parsed0.valid).toBe(false)
+        expect(parsed0.errors).toHaveLength(1)
+        expect((parsed0.errors[0] as Error).message).toBe(
+          `Last called method name 'prefetchOnLinkHover' does not match point type 'root'. Please, use .root() in end of point chain`,
+        )
+
+        const parsed1 = result.astPoints[1].parse()
+        expect(parsed1.valid).toBe(false)
+        expect(parsed1.errors).toHaveLength(1)
+        expect(parsed1.name).toBe('root1')
+        expect((parsed1.errors[0] as Error).message).toBe(
+          `Last called method name 'undefined' does not match point type 'root'. Please, use .root() in end of point chain`,
+        )
+      }),
+    )
+
+    const fix4 = (parsed: ParsedAstPoint) => {
+      return {
+        valid: parsed.valid,
+        name: parsed.name,
+        scope: parsed.scope,
+        scopes: parsed.scopes,
+      }
+    }
+
+    it(
+      'point scopes',
+      helper(async ({ files: [file], walker }) => {
+        await file.write(`import {Point0} from '@point0/core'
+export const root0 = Point0.lets('root', 'root0').root()
+export const root1 = root0.lets('root', 'root1').root()
+export const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
+export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</div>)
+        `)
+        const result = await walker.getAstPointsFromFile({ fileAbs: file.path })
+        expect(result.errors).toHaveLength(0)
+        const parsed = result.astPoints.map((p) => fix4(p.parse()))
+        expect(parsed[0]).toMatchObject({
+          valid: true,
+          name: 'root0',
+          scope: 'root0',
+          scopes: ['root0'],
+        })
+        expect(parsed[1]).toMatchObject({
+          valid: true,
+          name: 'root1',
+          scope: 'root1',
+          scopes: ['root1', 'root0'],
+        })
+        expect(parsed[2]).toMatchObject({
+          valid: true,
+          name: 'page0',
+          scope: 'root0',
+          scopes: ['root0'],
+        })
+        expect(parsed[3]).toMatchObject({
+          valid: true,
+          name: 'page1',
+          scope: 'root1',
+          scopes: ['root1', 'root0'],
         })
       }),
     )

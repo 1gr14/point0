@@ -44,7 +44,7 @@ export class Walker {
   readonly layoutsCache = new Map<string, string[]>()
 
   // Map<fileAbs:baseIdentifier, boolean>
-  readonly prefetchOnHoverCache = new Map<string, boolean | number>()
+  readonly prefetchOnLinkHoverCache = new Map<string, boolean | number>()
 
   // Cache for TypeScript compiler options per directory
   // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
@@ -1268,7 +1268,7 @@ export class Walker {
   }
 
   /**
-   * Finds .prefetchOnHover(value) call in the chain for a given identifier.
+   * Finds .prefetchOnLinkHover(value) call in the chain for a given identifier.
    * Returns the boolean value if found, undefined otherwise.
    */
   private findPrefetchOnHoverOnIdentifier({
@@ -1289,7 +1289,7 @@ export class Walker {
           if (
             callee.type === 'MemberExpression' &&
             callee.property.type === 'Identifier' &&
-            callee.property.name === 'prefetchOnHover'
+            callee.property.name === 'prefetchOnLinkHover'
           ) {
             const topLevelAssignedIdentifier = this.findTopLevelAssignedIdentifier(p.get('callee').get('object'))
             if (topLevelAssignedIdentifier !== baseIdentifier) return
@@ -1306,7 +1306,7 @@ export class Walker {
       })
     } catch (e) {
       console.warn(
-        `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} find prefetchOnHover on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
+        `🔴 ${nodePath.relative(this.cwd, loggableFileAbs)} find prefetchOnLinkHover on identifier for ${baseIdentifier} failed: ${(e as Error).message}`,
       )
     }
 
@@ -1882,7 +1882,7 @@ export class Walker {
   }
 
   /**
-   * Resolves polh by finding .prefetchOnHover(value) in the chain.
+   * Resolves polh by finding .prefetchOnLinkHover(value) in the chain.
    * If not found on current identifier, goes up the parent chain.
    * Returns false if not found anywhere.
    */
@@ -1897,7 +1897,7 @@ export class Walker {
     _seen = new Set<string>(),
   ): Promise<boolean | number> {
     const cacheKey = `${fileAbs}::${baseIdentifier}`
-    const cacheMap = this.prefetchOnHoverCache
+    const cacheMap = this.prefetchOnLinkHoverCache
     const cacheValue = cacheMap.get(cacheKey)
 
     if (cacheValue !== undefined) {
@@ -1941,7 +1941,7 @@ export class Walker {
     }
 
     //
-    // 1) find .prefetchOnHover on THIS identifier
+    // 1) find .prefetchOnLinkHover on THIS identifier
     //
     const thisValue = this.findPrefetchOnHoverOnIdentifier({
       loggableFileAbs: fileAbs,

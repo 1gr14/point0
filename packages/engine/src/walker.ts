@@ -1143,7 +1143,7 @@ export class AstPoint {
 
   getPrefetchOnLinkHover(): boolean | number {
     // Go through self and parents (from child to parent)
-    // Return the first prefetchOnHover value found, or undefined if none found
+    // Return the first prefetchOnLinkHover value found, or undefined if none found
     const points = this.getSelfAndParents()
 
     for (const point of points) {
@@ -1158,21 +1158,21 @@ export class AstPoint {
   }
 
   /**
-   * Finds .prefetchOnHover(value) call in the chain starting from letsNodePath.
+   * Finds .prefetchOnLinkHover(value) call in the chain starting from letsNodePath.
    * Traverses up the AST tree to find the call.
    * Returns the boolean or number value if found, undefined otherwise.
    */
   private findPrefetchOnHoverInChain(letsNodePath: NodePath<Node>): boolean | number | undefined {
-    // Traverse UP the AST tree (towards the ast root) to find .prefetchOnHover() calls
+    // Traverse UP the AST tree (towards the ast root) to find .prefetchOnLinkHover() calls
     // Similar to getLastCalledMethodName(), but looking for a specific method
     let current: NodePath<Node> | null = letsNodePath.parentPath
 
     while (current) {
-      // Check if this is a CallExpression with .prefetchOnHover()
+      // Check if this is a CallExpression with .prefetchOnLinkHover()
       if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
         const callee = current.node.callee
-        if (callee.property.type === 'Identifier' && callee.property.name === 'prefetchOnHover') {
-          // Found .prefetchOnHover() call, extract the argument value
+        if (callee.property.type === 'Identifier' && callee.property.name === 'prefetchOnLinkHover') {
+          // Found .prefetchOnLinkHover() call, extract the argument value
           const valueArg = current.node.arguments.at(0)
           if (valueArg?.type === 'BooleanLiteral') {
             return valueArg.value
@@ -1249,10 +1249,19 @@ export class AstPoint {
     errors.push(...routeErrors)
     const polh = this.getPrefetchOnLinkHover()
     const layouts = this.getLayouts()
+    const lastCalledMethodName = this.getLastCalledMethodName()
+    if (lastCalledMethodName !== this.pointType) {
+      errors.push(
+        new Error(
+          `Last called method name '${lastCalledMethodName || typeof lastCalledMethodName}' does not match point type '${this.pointType}'. Please, use .${this.pointType}() in end of point chain`,
+        ),
+      )
+    }
     const valid = !errors.length
 
     return {
       scope,
+      scopes,
       type: this.pointType,
       name: this.pointName,
       exportName,
@@ -1282,6 +1291,7 @@ export type AstPointExtraSimplified = Pick<AstPointSimplified, 'file' | 'exportN
 export type ParsedAstPointPos = { file: string; line: number; column: number }
 export type ParsedAstPointValid = {
   scope: PointsScope
+  scopes: PointsScope[]
   type: EndPointType
   name: PointName
   exportName: string
@@ -1295,6 +1305,7 @@ export type ParsedAstPointValid = {
 }
 export type ParsedAstPointInvalid = {
   scope: PointsScope | undefined
+  scopes: PointsScope[]
   type: EndPointType
   name: PointName
   exportName: string | undefined

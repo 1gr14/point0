@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 
 export const ideaNewsPage = ideaLayout
   .lets('page', 'ideaNews', 'news')
-  .prefetchOnHover(2000)
+  .prefetchOnLinkHover(2000)
   .page(
     ({ data: { idea }, input }) => `${idea.news.length} news for idea "${idea.title}"`,
     ({ data: { idea }, query }) => {

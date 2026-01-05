@@ -44,7 +44,7 @@ export const client = Point0.create('client')
       </div>
     )
   })
-  .prefetchOnHover(true)
+  .prefetchOnLinkHover(true)
   .root()
 
 export type Ctx = (typeof client)['Infer']['Ctx']

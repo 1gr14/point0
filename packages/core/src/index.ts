@@ -2147,7 +2147,7 @@ export class Point0<
     }) as never
   }
 
-  prefetchOnHover(
+  prefetchOnLinkHover(
     polh: boolean | number,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,

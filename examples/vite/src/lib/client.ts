@@ -19,7 +19,7 @@ export const client = Point0.create('client')
     refetchInterval: false,
     refetchIntervalInBackground: false,
   })
-  .prefetchOnHover(true)
+  .prefetchOnLinkHover(true)
   .head({
     title: 'Loading...',
     titleTemplate: '%s | IdeaNick',
