@@ -459,7 +459,7 @@ export const createViteDevServer = async ({
   hmrPort: number | null
   env?: EngineOptionsEnvParsed
 }): Promise<ViteDevServer> => {
-  return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+  return await pruneItOnEngineHolderBuildPhase(async () => {
     if (!viteConfig) {
       throw new Error(`Vite config not found for client "${scope}"`)
     }
@@ -530,6 +530,6 @@ export const createViteDevServer = async ({
 
 // build helpers
 
-export const pruneItWhenPoint0ServerBuildInProgress = <T>(callback: () => T): T => {
+export const pruneItOnEngineHolderBuildPhase = <T>(callback: () => T): T => {
   return callback()
 }

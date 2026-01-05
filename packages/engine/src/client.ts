@@ -26,7 +26,7 @@ import {
   extractClientBunBuildConfig,
   extractClientBunDevPluginsStrings,
   extractViteConfig,
-  pruneItWhenPoint0ServerBuildInProgress,
+  pruneItOnEngineHolderBuildPhase,
   resolveTempDirPath,
 } from './utils.js'
 
@@ -628,7 +628,7 @@ Bun.serve({
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+    return await pruneItOnEngineHolderBuildPhase(async () => {
       const { bunBuildConfig, clean = false } = options ?? {}
 
       const buildPaths = this.getBuildPaths()
@@ -692,7 +692,7 @@ Bun.serve({
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+    return await pruneItOnEngineHolderBuildPhase(async () => {
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for client "${this.scope}"`)
       }

@@ -787,8 +787,8 @@ export class Walker {
         const node = p.node
         const callee = node.callee
 
-        // Check if callee is an Identifier named 'pruneItWhenPoint0ServerBuildInProgress'
-        if (callee.type === 'Identifier' && callee.name === 'pruneItWhenPoint0ServerBuildInProgress') {
+        // Check if callee is an Identifier named 'pruneItOnEngineHolderBuildPhase'
+        if (callee.type === 'Identifier' && callee.name === 'pruneItOnEngineHolderBuildPhase') {
           const args = node.arguments as any[]
           // Replace the first argument (callback) with the throw function
           if (args.length > 0) {

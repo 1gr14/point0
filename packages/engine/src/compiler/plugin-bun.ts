@@ -27,18 +27,18 @@ export function compilerBunPlugin({
         const filepath = args.path
         try {
           original = await Bun.file(filepath).text()
-          const walker = new Collector()
-          let transformed = await walker.prunePoint0Methods({
+          const collector = new Collector()
+          let transformed = await collector.prunePoint0Methods({
             content: original,
             fileAbs: filepath,
             customer,
           })
-          transformed = await walker.prunePoint0ClientServer({
+          transformed = await collector.prunePoint0ClientServer({
             content: transformed,
             fileAbs: filepath,
             customer,
           })
-          transformed = await walker.pruneForBuildInProgress({
+          transformed = await collector.pruneForBuildInProgress({
             content: transformed,
             fileAbs: filepath,
             customer,

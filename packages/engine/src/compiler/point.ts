@@ -9,7 +9,7 @@ import type { Collector } from './collector.js'
 import type { CompilerFile } from './file.js'
 
 export class CompilerPoint {
-  readonly walker: Collector
+  readonly collector: Collector
   readonly file: CompilerFile
   readonly pointType: EndPointType
   readonly pointName: PointName
@@ -21,7 +21,7 @@ export class CompilerPoint {
   readonly parents: CompilerPoint[]
 
   constructor({
-    walker,
+    collector,
     file,
     pointType,
     pointName,
@@ -31,7 +31,7 @@ export class CompilerPoint {
     isBasePoint0,
     baseCompilerPoint,
   }: {
-    walker: Collector
+    collector: Collector
     file: CompilerFile
     pointType: EndPointType
     pointName: PointName
@@ -41,7 +41,7 @@ export class CompilerPoint {
     isBasePoint0: boolean
     baseCompilerPoint: CompilerPoint | undefined
   }) {
-    this.walker = walker
+    this.collector = collector
     this.file = file
     this.pointType = pointType
     this.pointName = pointName
@@ -257,7 +257,7 @@ export class CompilerPoint {
       const prop = routeArg.property
       if (prop.type === 'Identifier') {
         const routeKey = prop.name
-        const scopeRoute = this.walker.getRouteByScope(scope, routeKey)
+        const scopeRoute = this.collector.getRouteByScope(scope, routeKey)
         if (scopeRoute) {
           return { routeSegment: undefined, routeFull: scopeRoute, errors }
         } else {

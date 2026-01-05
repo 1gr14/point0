@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it, jest } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { FilesGenerator } from '../src/compiler/generator.js'
-import { waitUntilFileChanged } from './utils.js'
-import type { EngineLogger } from '../src/config.js'
+import { FilesGenerator } from '../../src/compiler/generator.js'
+import { waitUntilFileChanged } from '../utils.js'
+import type { EngineLogger } from '../../src/config.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string; isExists: () => boolean }
 

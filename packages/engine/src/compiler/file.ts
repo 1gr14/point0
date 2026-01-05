@@ -174,7 +174,10 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
   }
 
   // TODO:ASAP check if we can not prune this, and just exclude vite from server build
-  pruneForBuildPhase(): void {
+  pruneForEngineHolderBuildPhase(isBuildPhase: boolean): void {
+    if (!isBuildPhase) {
+      return
+    }
     if (!this.isRead()) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
@@ -209,12 +212,177 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
         const node = p.node
         const callee = node.callee
 
-        // Check if callee is an Identifier named 'pruneItWhenPoint0ServerBuildInProgress'
-        if (callee.type === 'Identifier' && callee.name === 'pruneItWhenPoint0ServerBuildInProgress') {
+        // Check if callee is an Identifier named 'pruneItOnEngineHolderBuildPhase'
+        if (callee.type === 'Identifier' && callee.name === 'pruneItOnEngineHolderBuildPhase') {
           const args = node.arguments as any[]
           // Replace the first argument (callback) with the throw function
           if (args.length > 0) {
             args[0] = makeThrow()
+          }
+        }
+      },
+    })
+  }
+
+  pruneForRuntimeTarget(target: 'client' | 'server'): void {
+    if (!this.isRead()) {
+      throw new Error(`File ${this.abs} is not read yet`)
+    }
+    if (!this.isParsed()) {
+      throw new Error(`File ${this.abs} is not parsed yet`)
+    }
+
+    const makeThrow = (msg: string) => ({
+      type: 'ArrowFunctionExpression',
+      id: null,
+      generator: false,
+      async: false,
+      expression: false,
+      params: [],
+      body: {
+        type: 'BlockStatement',
+        body: [
+          {
+            type: 'ThrowStatement',
+            argument: {
+              type: 'NewExpression',
+              callee: { type: 'Identifier', name: 'Error' },
+              arguments: [{ type: 'StringLiteral', value: msg }],
+            },
+          },
+        ],
+      },
+    })
+
+    const makeUndefined = () => ({
+      type: 'Identifier',
+      name: 'undefined',
+    })
+
+    traverse(this.ast, {
+      MemberExpression: (p) => {
+        const node = p.node
+
+        // Handle runtime.is.client, runtime.is.server, runtime.is.ssr
+        if (
+          node.object.type === 'MemberExpression' &&
+          node.object.object.type === 'Identifier' &&
+          node.object.object.name === 'runtime'
+        ) {
+          if (node.object.property.type === 'Identifier' && node.object.property.name === 'is') {
+            if (node.property.type === 'Identifier') {
+              const name = node.property.name
+              if (name === 'client') {
+                p.replaceWith({
+                  type: 'BooleanLiteral',
+                  value: target === 'client',
+                })
+              } else if (name === 'server') {
+                p.replaceWith({
+                  type: 'BooleanLiteral',
+                  value: target === 'server',
+                })
+              }
+              // Note: runtime.is.ssr is a getter that returns a function result, so we leave it as-is
+            }
+          }
+        }
+      },
+
+      CallExpression: (p) => {
+        const node = p.node
+        const callee = node.callee
+
+        if (callee.type !== 'MemberExpression') return
+
+        const args = node.arguments as any[]
+
+        // Handle runtime.call.server(), runtime.call.client()
+        if (
+          callee.object.type === 'MemberExpression' &&
+          callee.object.object.type === 'Identifier' &&
+          callee.object.object.name === 'runtime' &&
+          callee.object.property.type === 'Identifier' &&
+          callee.object.property.name === 'call'
+        ) {
+          if (callee.property.type === 'Identifier') {
+            const name = callee.property.name
+
+            if (name === 'server' && target === 'client' && args.length > 0) {
+              args[0] = makeThrow('Call server function from client')
+            } else if (name === 'client' && target === 'server' && args.length > 0) {
+              args[0] = makeThrow('Call client function from server')
+            }
+          }
+        }
+        // Handle runtime.call() with options object
+        else if (
+          callee.object.type === 'Identifier' &&
+          callee.object.name === 'runtime' &&
+          callee.property.type === 'Identifier' &&
+          callee.property.name === 'call'
+        ) {
+          if (args.length > 0 && args[0].type === 'ObjectExpression') {
+            const props = args[0].properties as any[]
+            if (target === 'client') {
+              // Find server property and replace with throw
+              for (const prop of props) {
+                if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
+                  prop.value = makeThrow('Call server function from client')
+                }
+              }
+            } else {
+              // Find client property and replace with throw
+              for (const prop of props) {
+                if (prop.key.type === 'Identifier' && prop.key.name === 'client' && prop.value) {
+                  prop.value = makeThrow('Call client function from server')
+                }
+              }
+            }
+          }
+        }
+        // Handle runtime.define.server(), runtime.define.client()
+        else if (
+          callee.object.type === 'MemberExpression' &&
+          callee.object.object.type === 'Identifier' &&
+          callee.object.object.name === 'runtime' &&
+          callee.object.property.type === 'Identifier' &&
+          callee.object.property.name === 'define'
+        ) {
+          if (callee.property.type === 'Identifier') {
+            const name = callee.property.name
+
+            if (name === 'server' && target === 'client' && args.length > 0) {
+              args[0] = makeUndefined()
+            } else if (name === 'client' && target === 'server' && args.length > 0) {
+              args[0] = makeUndefined()
+            }
+          }
+        }
+        // Handle runtime.define() with options object
+        else if (
+          callee.object.type === 'Identifier' &&
+          callee.object.name === 'runtime' &&
+          callee.property.type === 'Identifier' &&
+          callee.property.name === 'define'
+        ) {
+          if (args.length > 0 && args[0].type === 'ObjectExpression') {
+            const props = args[0].properties as any[]
+            if (target === 'client') {
+              // Find server property and replace with undefined
+              for (const prop of props) {
+                if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
+                  prop.value = makeUndefined()
+                }
+              }
+            } else {
+              // Find client property and replace with undefined
+              for (const prop of props) {
+                if (prop.key.type === 'Identifier' && prop.key.name === 'client' && prop.value) {
+                  prop.value = makeUndefined()
+                }
+              }
+            }
           }
         }
       },

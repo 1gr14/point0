@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Collector } from '../src/compiler/collector.js'
+import { Collector } from '../../src/compiler/collector.js'
 import { Route0, Routes } from '@devp0nt/route0'
-import type { CompilerPointParsed } from '../src/compiler/point.js'
+import type { CompilerPointParsed } from '../../src/compiler/point.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
-const tempDir = nodePath.join(__dirname, 'temp/ast-point')
+const tempDir = nodePath.join(__dirname, 'temp/point')
 
 const prepareRandomFile = () => {
   const basename = crypto.randomUUID()
@@ -16,14 +16,17 @@ const prepareRandomFile = () => {
   return Object.assign(Bun.file(path), { path, basename, importpath })
 }
 
-const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Collector }) => any, deleteFiles = true) => {
+const helper = (
+  callback: ({ files, collector }: { files: TestFile[]; collector: Collector }) => any,
+  deleteFiles = true,
+) => {
   return async () => {
-    const walker = new Collector({ cwd: tempDir })
+    const collector = new Collector({ cwd: tempDir })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
         files,
-        walker,
+        collector,
       })
     } finally {
       await Promise.allSettled(
@@ -35,7 +38,7 @@ const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Colle
   }
 }
 
-describe('AstPoint', () => {
+describe('CompilerPoint', () => {
   beforeAll(() => {
     nodeFs.rmSync(tempDir, { recursive: true, force: true })
     nodeFs.mkdirSync(tempDir, { recursive: true })
@@ -50,13 +53,13 @@ describe('AstPoint', () => {
     }
     it.concurrent(
       'root point',
-      helper(async ({ files: [file], walker }) => {
+      helper(async ({ files: [file], collector }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints[0].parsed
+        const parsed = result.points[0].parsed
         expect(parsed).toMatchObject({
           valid: true,
           scope: 'myroot',
@@ -78,14 +81,14 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
 
     it.concurrent(
       'page point',
-      helper(async ({ files: [file], walker }) => {
+      helper(async ({ files: [file], collector }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const myrootvariable = Point0.lets('root', 'myroot').root()
 export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints[1].parsed
+        const parsed = result.points[1].parsed
         expect(fix(parsed)).toMatchObject({
           valid: true,
           scope: 'myroot',
@@ -115,7 +118,7 @@ export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().
     it.concurrent(
       'page point with first level route',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -136,9 +139,9 @@ export const p3 = myrootvariable.lets('page', 'p3', '/r3').page(() => <div>Hello
 export const p4 = myrootvariable.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -170,7 +173,7 @@ export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>H
     it.concurrent(
       'page point with deep level route',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -193,9 +196,9 @@ export const p3 = l2.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
 export const p4 = l2.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -227,7 +230,7 @@ export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
     it.concurrent(
       'parse page point with very deep level route',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -255,9 +258,9 @@ export const p3 = l6.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
 export const p4 = l6.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -297,7 +300,7 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
     it.concurrent(
       'page point layouts',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -317,9 +320,9 @@ export const p1 = l1.lets('page', 'p1', '/').page(() => <div>Hello</div>)
 export const p2 = l2.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.filter((p) => p.pointType === 'page').map((p) => fix2(p.parsed))
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix2(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p0',
@@ -346,7 +349,7 @@ export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
     it.concurrent(
       'layout point layouts',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -362,9 +365,9 @@ export const l2 = l1.lets('layout', 'l2').layout()
 export const b2 = l2.lets('base', 'b2').base()
 export const l3 = b2.lets('layout', 'l3').layout()
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parsed))
+        const parsed = result.points.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'l1',
@@ -394,7 +397,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
     it.concurrent(
       'page point prefetchOnLinkHover (polh)',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -409,9 +412,9 @@ export const p1 = root.lets('page', 'p1', '/').prefetchOnLinkHover(false).page((
 export const p2 = p1.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.map((p) => fix3(p.parsed))
+        const parsed = result.points.map((p) => fix3(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root',
@@ -438,7 +441,7 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
     it.concurrent(
       'error when last called method name does not match point type',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -451,18 +454,18 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
 export const root0 = Point0.lets('root', 'root0').prefetchOnLinkHover(true)
 export const root1 = Point0.lets('root', 'root1')
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(2)
+        expect(result.points).toHaveLength(2)
 
-        const parsed0 = result.astPoints[0].parsed
+        const parsed0 = result.points[0].parsed
         expect(parsed0.valid).toBe(false)
         expect(parsed0.errors).toHaveLength(1)
         expect((parsed0.errors[0] as Error).message).toBe(
           `Last called method name 'prefetchOnLinkHover' does not match point type 'root'. Please, use .root() in end of point chain`,
         )
 
-        const parsed1 = result.astPoints[1].parsed
+        const parsed1 = result.points[1].parsed
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect(parsed1.name).toBe('root1')
@@ -483,16 +486,16 @@ export const root1 = Point0.lets('root', 'root1')
 
     it.concurrent(
       'point scopes',
-      helper(async ({ files: [file], walker }) => {
+      helper(async ({ files: [file], collector }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root0 = Point0.lets('root', 'root0').root()
 export const root1 = root0.lets('root', 'root1').root()
 export const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
 export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.astPoints.map((p) => fix4(p.parsed))
+        const parsed = result.points.map((p) => fix4(p.parsed))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root0',
@@ -523,7 +526,7 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
     it.concurrent(
       'error when point not exported',
       helper(async ({ files: [file] }) => {
-        const walker = new Collector({
+        const collector = new Collector({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -536,16 +539,16 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
 const root0 = Point0.lets('root', 'root0').root()
 const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>) 
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(2)
+        expect(result.points).toHaveLength(2)
 
-        const parsed0 = result.astPoints[0].parsed
+        const parsed0 = result.points[0].parsed
         expect(parsed0.valid).toBe(false)
         expect(parsed0.errors).toHaveLength(1)
         expect((parsed0.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
 
-        const parsed1 = result.astPoints[1].parsed
+        const parsed1 = result.points[1].parsed
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect((parsed1.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)

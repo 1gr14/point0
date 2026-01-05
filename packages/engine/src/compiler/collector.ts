@@ -325,7 +325,7 @@ export class Collector {
       })()
 
       const point = new CompilerPoint({
-        walker: this,
+        collector: this,
         file,
         pointType,
         pointName,

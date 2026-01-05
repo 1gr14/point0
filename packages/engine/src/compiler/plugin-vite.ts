@@ -26,16 +26,16 @@ export function compilerVitePlugin({
       const [filepath] = id.split('?', 1)
       if (!filter.test(filepath)) return null
 
-      const walker = new Collector()
-      let transformed = await walker.prunePoint0Methods({ content: code, fileAbs: filepath, customer })
-      transformed = await walker.prunePoint0ClientServer({ content: transformed, fileAbs: filepath, customer })
-      transformed = await walker.pruneForBuildInProgress({
+      const collector = new Collector()
+      let transformed = await collector.prunePoint0Methods({ content: code, fileAbs: filepath, customer })
+      transformed = await collector.prunePoint0ClientServer({ content: transformed, fileAbs: filepath, customer })
+      transformed = await collector.pruneForBuildInProgress({
         content: transformed,
         fileAbs: filepath,
         customer,
       })
       if (process.env.NODE_ENV !== 'production' && customer === 'client') {
-        transformed = await walker.addHmrToNonComponentPoints({ content: transformed, fileAbs: filepath, customer })
+        transformed = await collector.addHmrToNonComponentPoints({ content: transformed, fileAbs: filepath, customer })
       }
 
       if (transformed === code) return null

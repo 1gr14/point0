@@ -22,7 +22,7 @@ import {
   extractViteConfig,
   getDirByPaths,
   loadBunPlugins,
-  pruneItWhenPoint0ServerBuildInProgress,
+  pruneItOnEngineHolderBuildPhase,
   validateEntrypoints,
 } from './utils.js'
 import { Fetcher } from './fetcher.js'
@@ -572,7 +572,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    return await pruneItWhenPoint0ServerBuildInProgress(async () => {
+    return await pruneItOnEngineHolderBuildPhase(async () => {
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for server`)
       }

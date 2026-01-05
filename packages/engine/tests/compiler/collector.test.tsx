@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Collector } from '../src/compiler/collector.js'
+import { Collector } from '../../src/compiler/collector.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
-const tempDir = nodePath.join(__dirname, 'temp/walker')
+const tempDir = nodePath.join(__dirname, 'temp/collector')
 
 const prepareRandomFile = () => {
   const basename = crypto.randomUUID()
@@ -14,14 +14,17 @@ const prepareRandomFile = () => {
   return Object.assign(Bun.file(path), { path, basename, importpath })
 }
 
-const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Collector }) => any, deleteFiles = true) => {
+const helper = (
+  callback: ({ files, collector }: { files: TestFile[]; collector: Collector }) => any,
+  deleteFiles = true,
+) => {
   return async () => {
-    const walker = new Collector({ cwd: tempDir })
+    const collector = new Collector({ cwd: tempDir })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
         files,
-        walker,
+        collector,
       })
     } finally {
       await Promise.allSettled(
@@ -33,23 +36,23 @@ const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Colle
   }
 }
 
-describe('Walker', () => {
+describe('Collector', () => {
   beforeAll(() => {
     nodeFs.rmSync(tempDir, { recursive: true, force: true })
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
-  describe('#getAstPointsFromFile', () => {
+  describe('#collectPointsFromFile', () => {
     it.concurrent(
       'can recognize root point in current file',
-      helper(async ({ files: [file], walker }) => {
+      helper(async ({ files: [file], collector }) => {
         await file.write(`import {Point0} from '@point0/core'
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints[0].simplify()).toMatchObject({
+        expect(result.points).toHaveLength(1)
+        expect(result.points[0].simplify()).toMatchObject({
           file: file.basename,
           exportName: 'myrootvariable',
           baseNodePath: true,
@@ -62,15 +65,15 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize page point in current file, when root point in same file',
-      helper(async ({ files: [file], walker }) => {
+      helper(async ({ files: [file], collector }) => {
         await file.write(`import {Point0} from '@point0/core'
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
                           export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(2)
-        expect(result.astPoints[0].simplify()).toMatchObject({
+        expect(result.points).toHaveLength(2)
+        expect(result.points[0].simplify()).toMatchObject({
           file: file.basename,
           pointType: 'root',
           pointName: 'myroot',
@@ -80,7 +83,7 @@ describe('Walker', () => {
           isBasePoint0: true,
           parents: [],
         })
-        expect(result.astPoints[1].simplify()).toMatchObject({
+        expect(result.points[1].simplify()).toMatchObject({
           file: file.basename,
           pointType: 'page',
           pointName: 'mypage',
@@ -98,17 +101,17 @@ describe('Walker', () => {
     )
     it.concurrent(
       'can recognize page point in current file, when root point in another file',
-      helper(async ({ files: [file0, file1], walker }) => {
+      helper(async ({ files: [file0, file1], collector }) => {
         await file0.write(`import {Point0} from '@point0/core'
                         export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
         await file1.write(`import {myrootvariable} from '${file0.importpath}'
                         export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: file1.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: file1.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints[0].simplify()).toMatchObject({
+        expect(result.points).toHaveLength(1)
+        expect(result.points[0].simplify()).toMatchObject({
           file: file1.basename,
           pointType: 'page',
           pointName: 'mypage',
@@ -127,7 +130,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in same file',
-      helper(async ({ files: [f0], walker }) => {
+      helper(async ({ files: [f0], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const rootV = Point0.lets('root', 'rootN').root()
                       export const rootV2 = rootV.lets('root', 'rootN2').root()
@@ -141,10 +144,10 @@ describe('Walker', () => {
                       export const baseV = providerV.lets('base', 'baseN').base()
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: f0.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: f0.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(11)
-        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.points).toHaveLength(11)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'rootV',
           },
@@ -204,7 +207,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in different files',
-      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const rootV = Point0.lets('root', 'rootN').root()                      
         `)
@@ -238,10 +241,10 @@ describe('Walker', () => {
         await f10.write(`import {baseV} from '${f9.importpath}'
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: f9.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: f9.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.points).toHaveLength(1)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'baseV',
             file: f9.basename,
@@ -283,7 +286,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in different files, when base was reexported',
-      helper(async ({ files: [f0, f1, f2], walker }) => {
+      helper(async ({ files: [f0, f1, f2], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const root = Point0.lets('root', 'root').root()                      
         `)
@@ -292,10 +295,10 @@ describe('Walker', () => {
         await f2.write(`import {root} from '${f1.importpath}'
                       export const page = root.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: f2.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.points).toHaveLength(1)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
             parents: [
@@ -310,7 +313,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in different files, when base was reexported renamed',
-      helper(async ({ files: [f0, f1, f2], walker }) => {
+      helper(async ({ files: [f0, f1, f2], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const root = Point0.lets('root', 'root').root()                      
         `)
@@ -319,10 +322,10 @@ describe('Walker', () => {
         await f2.write(`import {root2} from '${f1.importpath}'
                       export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: f2.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.points).toHaveLength(1)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
             parents: [
@@ -337,7 +340,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in different files, when base was imported, renamed, exported',
-      helper(async ({ files: [f0, f1, f2], walker }) => {
+      helper(async ({ files: [f0, f1, f2], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const root = Point0.lets('root', 'root').root()                      
         `)
@@ -347,10 +350,10 @@ describe('Walker', () => {
         await f2.write(`import {root2} from '${f1.importpath}'
                       export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: f2.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.points).toHaveLength(1)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
             parents: [
@@ -365,7 +368,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can recognize nested points in different files, when base was imported, renamed twice, exported',
-      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const root = Point0.lets('root', 'root').root()                      
         `)
@@ -376,10 +379,10 @@ describe('Walker', () => {
         await f2.write(`import {root3} from '${f1.importpath}'
                       export const page = root3.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ fileAbs: f2.path })
+        const result = await collector.collectPointsFromFile({ fileAbs: f2.path })
         expect(result.errors).toHaveLength(0)
-        expect(result.astPoints).toHaveLength(1)
-        expect(result.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(result.points).toHaveLength(1)
+        expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
             parents: [
@@ -394,7 +397,7 @@ describe('Walker', () => {
 
     it.concurrent(
       'can parse files in parallel reusing cache',
-      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
+      helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], collector }) => {
         await f0.write(`import {Point0} from '@point0/core'
                       export const rootV = Point0.lets('root', 'rootN').root()                      
         `)
@@ -429,31 +432,31 @@ describe('Walker', () => {
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
         const results = await Promise.all([
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f0.path }),
-          walker.collectPointsFromFile({ fileAbs: f1.path }),
-          walker.collectPointsFromFile({ fileAbs: f2.path }),
-          walker.collectPointsFromFile({ fileAbs: f3.path }),
-          walker.collectPointsFromFile({ fileAbs: f4.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f0.path }),
+          collector.collectPointsFromFile({ fileAbs: f1.path }),
+          collector.collectPointsFromFile({ fileAbs: f2.path }),
+          collector.collectPointsFromFile({ fileAbs: f3.path }),
+          collector.collectPointsFromFile({ fileAbs: f4.path }),
           // one file multiple times
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
-          walker.collectPointsFromFile({ fileAbs: f6.path }),
-          walker.collectPointsFromFile({ fileAbs: f7.path }),
-          walker.collectPointsFromFile({ fileAbs: f8.path }),
-          walker.collectPointsFromFile({ fileAbs: f9.path }),
-          walker.collectPointsFromFile({ fileAbs: f10.path }),
-          walker.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
+          collector.collectPointsFromFile({ fileAbs: f6.path }),
+          collector.collectPointsFromFile({ fileAbs: f7.path }),
+          collector.collectPointsFromFile({ fileAbs: f8.path }),
+          collector.collectPointsFromFile({ fileAbs: f9.path }),
+          collector.collectPointsFromFile({ fileAbs: f10.path }),
+          collector.collectPointsFromFile({ fileAbs: f5.path }),
         ])
         const resultFirst = results[0]
         const resultLast = results[results.length - 1]
         expect(resultFirst.errors).toHaveLength(0)
-        expect(resultFirst.astPoints).toHaveLength(1)
-        expect(resultFirst.astPoints.map((p) => p.simplify())).toMatchObject([
+        expect(resultFirst.points).toHaveLength(1)
+        expect(resultFirst.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'mutationV',
             pointType: 'mutation',
@@ -477,7 +480,7 @@ describe('Walker', () => {
             ],
           },
         ])
-        expect(resultFirst.astPoints[0].simplify()).toMatchObject(resultLast.astPoints[0].simplify())
+        expect(resultFirst.points[0].simplify()).toMatchObject(resultLast.points[0].simplify())
       }),
     )
   })
