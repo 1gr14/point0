@@ -3,11 +3,14 @@
 --------------------------
 
 WALKER
+ast point to another file
 generator
 compiler
 Не кастомер а энвиронмент
 if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
 Прунить всё просто проверять регексом основные конструкции, иначе скипать
+Не гет поинтс, п коллект аст поинтс
+? Поправить файлы чтобы волкер не был оазюросан пок кускам
 
 ROOT
 root.lets('root') & Point0.lets('root', 'x')
@@ -39,12 +42,22 @@ baseurl get from root point, and remove from engine config
 auto port getter
 ? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
 binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
-Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называется
+Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называетсяE
 compiler options to engine, via ({customer,scope,nodeEnv}) => options
 fix compiler option name for node_modules prefixes
+Генерейт поинтс если ему нужно пусть генерирует через объект с путём и тайп лэйзи или реди
+В энжину импорт мета файлнейм автоматом добавлять через компилер
 
 REFACTORING 0
 spearate core files, do not reexport evrything from index
+ssr can not be on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
+allow .ssr() on any point
+add ssr to queryKey and if it is false, then do not ssr when meet it
+На фронте в префетче добавить политику клиентЭндСерверНоСср, чтобы в случае квериклиентДегидрефтедСтейили эвересынг их дофетчить
+Экзекьют на сервере пусть не возвращает статус
+add browser test via light panda
+Не респонс0 а просто эффектс и эффектс вэлью
+На клиенте в кукисах хранить фром поинт0, и тогда запросы к бану мидлвару можно исходя из кукисов перенаправлять
 
 
 
@@ -118,6 +131,8 @@ and how cool it be to set init points just in usual ctx of points. Incredible co
 Летс иниту всё же придётся прогонять сунковые клиент лоадеры на месте (но он вообще по другому экстрактится, он даже не экстрактится а инициализируется), и всё же
 .enabled()
 ? Поинтсы провайдить не в моунт, а в инитиалайзер апа (вероятно)
+В клиенте вероятно нет клиент и сервер, всё разгуливается просто в функции инит через энвиронмент, надо решить проблему того, что если в ините клиента асунк испорты, чтобы после сср не показывало ловлинги. Вероятно надо просто добавить поле сср, в которое можно добавить строку клиент или но например
+Тут короче клиент просто если сунк, то он мапер, а если асунк то уж что поделаешь будет лоадинг на весь сайт
 
 EXPO
 expo example
@@ -125,6 +140,12 @@ expo router
 respect null on baseurl for client, so page like requests to server will be not recpected
 check if there is no client port defined if there is no App and indexhtml, so it should not be served
 ? remove location from mountable components, becouse in expo for example it is very strange property
+
+LAYOUT
+.layout(layoutPoint)
+.layout('layoutPointName')
+? Лэйоуты объявленные с астериском применяются сами по себе в момент генерации поинтов
+Если лэйоут или пейдж прокидывае инпут в пропсы, тогнда мы их не берём из парамсов рута
 
 REFACTROING 1
 bin → cli
@@ -137,6 +158,7 @@ remove default generic values it is unsafe, better add AnySomethingType for it
 Отрефачить коллекцию поинтов, чтобы там мог быть хоть лэзи, хоть реди рекорд, и они могли как угодно комбинироваться
 Вынести из сервер и из клиент в отдельный пакет чтобы мочь применять его в других библиотеках
 Разобраться с эррор баундари для фронта
+добавить дебаглогеры повсюду, а также на фронт разрешить прокидывать логер, и вообще логгер не часть энжины, а часть поинта
 
 START0
 start0 without mono0
@@ -297,16 +319,19 @@ elysia and uWebSocket separate realizations
 Обёртка над дризлом для реальайма на бэке запоминает что надо отправлять, а возвращая на фронт кроме роусов ещё метк, тем самым фронт как раз и заставляет на это подписаться
 !!! Когда будем делать провайдер надо учесть, что он будет вызываться внутри юзстейта синхронно, и далее перевязываться, при изменении полученной дата или инпута, но в опшинсы ему мы прокинем сетВэлью, которое должно полностью соответствовать тому, что он же возвращает. Это позволит в этот же провайдер впихнуть любой реалтайм листенер, и менять данные
 !!! Лайв метод для обычных кверей. Просто определяет что должно быть от сервера на входе, а внутрифункции как просто этот посыл применить к данным. И допустим вторым аргументом определяем идентификатор комнаты, который и при отправке должен передать сервер, по умолчанию это всегда просто айди, а поведение это всегда просто замена данных 
+Просто нужна функция обёртка над любым дб клиентом. ДайвФайнд и лайвФайндМени, там главное понять что юник Кей, и какие трансформации, вот этот результат и должна отдавать лайв квери с сервера: примари Кей, название таблицы, трансформации
 
 EXAMPLES
 example refactor
 example auth
 example zustand (usual/persistent)
 
+DOCS
+Если какая бяка будет попадать на клиент, надо просто делать импорт дефер
+
 LAUNCH
 hide todo.txt
 find unused code
-docs
 license
 sematic release + protected branches (main, next)
 npm
@@ -322,6 +347,10 @@ launch
 
 
 
+
+
+ELECTRON
+somehow wh we have now in client-server, have same ot main-renderer process, via replace fetch implementation
 
 
 
