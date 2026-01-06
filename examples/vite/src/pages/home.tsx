@@ -77,7 +77,7 @@ export default generalLayout
             setState2(state2 + 1)
           }}
         >
-          Click mexxxx
+          Click me
         </button>
         <p>State: {state}</p>
         <p>State2: {state2}</p>
