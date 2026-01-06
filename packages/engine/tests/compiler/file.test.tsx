@@ -51,59 +51,61 @@ describe('CompilerFile', () => {
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
+  const prefix = `const runtime=require('@point0/runtime');`
+
   describe('#pruneForRuntimeTarget', () => {
     it.concurrent(
       'runtime.is.server = true',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`if (runtime.is.server) console.log('server')`)
+        const cf = await file.wrp(`${prefix} if (runtime.is.server) console.info('server')`)
         cf.pruneForRuntimeTarget('server')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"if (true) console.log('server');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');if (true) console.info('server');"`)
       }),
     )
 
     it.concurrent(
       'runtime.is.server = false',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`if (runtime.is.server) console.log('server')`)
+        const cf = await file.wrp(`${prefix} if (runtime.is.server) console.info('server')`)
         cf.pruneForRuntimeTarget('client')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"if (false) console.log('server');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');if (false) console.info('server');"`)
       }),
     )
 
     it.concurrent(
       'runtime.is.client = true',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`if (runtime.is.client) console.log('client')`)
+        const cf = await file.wrp(`${prefix} if (runtime.is.client) console.info('client')`)
         cf.pruneForRuntimeTarget('client')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"if (true) console.log('client');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');if (true) console.info('client');"`)
       }),
     )
 
     it.concurrent(
       'runtime.is.client = false',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`if (runtime.is.client) console.log('client')`)
+        const cf = await file.wrp(`${prefix} if (runtime.is.client) console.info('client')`)
         cf.pruneForRuntimeTarget('server')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"if (false) console.log('client');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');if (false) console.info('client');"`)
       }),
     )
 
     it.concurrent(
       'runtime.is.ssr not changed',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`if (runtime.is.ssr) console.log('ssr')`)
+        const cf = await file.wrp(`${prefix} if (runtime.is.ssr) console.info('ssr')`)
         cf.pruneForRuntimeTarget('client')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"if (runtime.is.ssr) console.log('ssr');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');if (runtime.is.ssr) console.info('ssr');"`)
       }),
     )
 
     it.concurrent(
       'runtime.call.server() - client target replaces callback',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`runtime.call.server(() => console.log('server'))`)
+        const cf = await file.wrp(`${prefix} runtime.call.server(() => console.info('server'))`)
         cf.pruneForRuntimeTarget('client')
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"runtime.call.server(() => {throw new Error("Call server function from client");});"`,
+          `"const runtime = require('@point0/runtime');runtime.call.server(() => {throw new Error("Call server function from client");});"`,
         )
       }),
     )
@@ -111,19 +113,19 @@ describe('CompilerFile', () => {
     it.concurrent(
       'runtime.call.server() - server target keeps callback',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`runtime.call.server(() => console.log('server'))`)
+        const cf = await file.wrp(`${prefix} runtime.call.server(() => console.info('server'))`)
         cf.pruneForRuntimeTarget('server')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"runtime.call.server(() => console.log('server'));"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');runtime.call.server(() => console.info('server'));"`)
       }),
     )
 
     it.concurrent(
       'runtime.call.client() - server target replaces callback',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`runtime.call.client(() => console.log('client'))`)
+        const cf = await file.wrp(`${prefix} runtime.call.client(() => console.info('client'))`)
         cf.pruneForRuntimeTarget('server')
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"runtime.call.client(() => {throw new Error("Call client function from server");});"`,
+          `"const runtime = require('@point0/runtime');runtime.call.client(() => {throw new Error("Call client function from server");});"`,
         )
       }),
     )
@@ -131,9 +133,9 @@ describe('CompilerFile', () => {
     it.concurrent(
       'runtime.call.client() - client target keeps callback',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`runtime.call.client(() => console.log('client'))`)
+        const cf = await file.wrp(`${prefix} runtime.call.client(() => console.info('client'))`)
         cf.pruneForRuntimeTarget('client')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"runtime.call.client(() => console.log('client'));"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');runtime.call.client(() => console.info('client'));"`)
       }),
     )
 
@@ -141,11 +143,11 @@ describe('CompilerFile', () => {
       'runtime.call() with server option - client target replaces callback',
       helper(async ({ files: [file] }) => {
         const cf = await file.wrp(
-          `runtime.call({ server: () => console.log('server'), client: () => console.log('client') })`,
+          `${prefix} runtime.call({ server: () => console.info('server'), client: () => console.info('client') })`,
         )
         cf.pruneForRuntimeTarget('client')
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"runtime.call({ server: () => {throw new Error("Call server function from client");}, client: () => console.log('client') });"`,
+          `"const runtime = require('@point0/runtime');runtime.call({ server: () => {throw new Error("Call server function from client");}, client: () => console.info('client') });"`,
         )
       }),
     )
@@ -154,11 +156,11 @@ describe('CompilerFile', () => {
       'runtime.call() with client option - server target replaces callback',
       helper(async ({ files: [file] }) => {
         const cf = await file.wrp(
-          `runtime.call({ server: () => console.log('server'), client: () => console.log('client') })`,
+          `${prefix} runtime.call({ server: () => console.info('server'), client: () => console.info('client') })`,
         )
         cf.pruneForRuntimeTarget('server')
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"runtime.call({ server: () => console.log('server'), client: () => {throw new Error("Call client function from server");} });"`,
+          `"const runtime = require('@point0/runtime');runtime.call({ server: () => console.info('server'), client: () => {throw new Error("Call client function from server");} });"`,
         )
       }),
     )
@@ -166,46 +168,48 @@ describe('CompilerFile', () => {
     it.concurrent(
       'runtime.define.server() - client target replaces value',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`const x = runtime.define.server('server-value')`)
+        const cf = await file.wrp(`${prefix} const x = runtime.define.server('server-value')`)
         cf.pruneForRuntimeTarget('client')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"const x = runtime.define.server(undefined);"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');const x = runtime.define.server(undefined);"`)
       }),
     )
 
     it.concurrent(
       'runtime.define.server() - server target keeps value',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`const x = runtime.define.server('server-value')`)
+        const cf = await file.wrp(`${prefix} const x = runtime.define.server('server-value')`)
         cf.pruneForRuntimeTarget('server')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"const x = runtime.define.server('server-value');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');const x = runtime.define.server('server-value');"`)
       }),
     )
 
     it.concurrent(
       'runtime.define.client() - server target replaces value',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`const x = runtime.define.client('client-value')`)
+        const cf = await file.wrp(`${prefix} const x = runtime.define.client('client-value')`)
         cf.pruneForRuntimeTarget('server')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"const x = runtime.define.client(undefined);"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');const x = runtime.define.client(undefined);"`)
       }),
     )
 
     it.concurrent(
       'runtime.define.client() - client target keeps value',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`const x = runtime.define.client('client-value')`)
+        const cf = await file.wrp(`${prefix} const x = runtime.define.client('client-value')`)
         cf.pruneForRuntimeTarget('client')
-        expect(cf.toCode()).toMatchInlineSnapshot(`"const x = runtime.define.client('client-value');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');const x = runtime.define.client('client-value');"`)
       }),
     )
 
     it.concurrent(
       'runtime.define() with server option - client target replaces value',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`const x = runtime.define({ server: 'server-value', client: 'client-value' })`)
+        const cf = await file.wrp(
+          `${prefix} const x = runtime.define({ server: 'server-value', client: 'client-value' })`,
+        )
         cf.pruneForRuntimeTarget('client')
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const x = runtime.define({ server: undefined, client: 'client-value' });"`,
+          `"const runtime = require('@point0/runtime');const x = runtime.define({ server: undefined, client: 'client-value' });"`,
         )
       }),
     )
@@ -213,10 +217,12 @@ describe('CompilerFile', () => {
     it.concurrent(
       'runtime.define() with client option - server target replaces value',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`const x = runtime.define({ server: 'server-value', client: 'client-value' })`)
+        const cf = await file.wrp(
+          `${prefix} const x = runtime.define({ server: 'server-value', client: 'client-value' })`,
+        )
         cf.pruneForRuntimeTarget('server')
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const x = runtime.define({ server: 'server-value', client: undefined });"`,
+          `"const runtime = require('@point0/runtime');const x = runtime.define({ server: 'server-value', client: undefined });"`,
         )
       }),
     )
@@ -226,19 +232,19 @@ describe('CompilerFile', () => {
     it.concurrent(
       'isBuildPhase = false does not modify code',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`pruneItOnEngineHolderBuildPhase(() => console.log('test'))`)
+        const cf = await file.wrp(`${prefix} pruneItOnEngineHolderBuildPhase(() => console.info('test'))`)
         cf.pruneForEngineHolderBuildPhase(false)
-        expect(cf.toCode()).toMatchInlineSnapshot(`"pruneItOnEngineHolderBuildPhase(() => console.log('test'));"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');pruneItOnEngineHolderBuildPhase(() => console.info('test'));"`)
       }),
     )
 
     it.concurrent(
       'isBuildPhase = true replaces callback with throw',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`pruneItOnEngineHolderBuildPhase(() => console.log('test'))`)
+        const cf = await file.wrp(`${prefix} pruneItOnEngineHolderBuildPhase(() => console.info('test'))`)
         cf.pruneForEngineHolderBuildPhase(true)
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
+          `"const runtime = require('@point0/runtime');pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
         )
       }),
     )
@@ -246,9 +252,9 @@ describe('CompilerFile', () => {
     it.concurrent(
       'isBuildPhase = true with no matching call does not modify code',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`console.log('test')`)
+        const cf = await file.wrp(`${prefix} console.info('test')`)
         cf.pruneForEngineHolderBuildPhase(true)
-        expect(cf.toCode()).toMatchInlineSnapshot(`"console.log('test');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');console.info('test');"`)
       }),
     )
 
@@ -256,11 +262,11 @@ describe('CompilerFile', () => {
       'isBuildPhase = true replaces multiple callbacks',
       helper(async ({ files: [file] }) => {
         const cf = await file.wrp(
-          `pruneItOnEngineHolderBuildPhase(() => console.log('test1')); pruneItOnEngineHolderBuildPhase(() => console.log('test2'))`,
+          `${prefix} pruneItOnEngineHolderBuildPhase(() => console.info('test1')); pruneItOnEngineHolderBuildPhase(() => console.info('test2'))`,
         )
         cf.pruneForEngineHolderBuildPhase(true)
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
+          `"const runtime = require('@point0/runtime');pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
         )
       }),
     )
@@ -268,19 +274,19 @@ describe('CompilerFile', () => {
     it.concurrent(
       'isBuildPhase = true with no arguments does not crash',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`pruneItOnEngineHolderBuildPhase()`)
+        const cf = await file.wrp(`${prefix} pruneItOnEngineHolderBuildPhase()`)
         cf.pruneForEngineHolderBuildPhase(true)
-        expect(cf.toCode()).toMatchInlineSnapshot(`"pruneItOnEngineHolderBuildPhase();"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');pruneItOnEngineHolderBuildPhase();"`)
       }),
     )
 
     it.concurrent(
       'isBuildPhase = true replaces callback with complex body',
       helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`pruneItOnEngineHolderBuildPhase(() => { const x = 1; return x + 2; })`)
+        const cf = await file.wrp(`${prefix} pruneItOnEngineHolderBuildPhase(() => { const x = 1; return x + 2; })`)
         cf.pruneForEngineHolderBuildPhase(true)
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
+          `"const runtime = require('@point0/runtime');pruneItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
         )
       }),
     )

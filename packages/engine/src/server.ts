@@ -175,7 +175,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
   async extractBunPlugins(): Promise<BunPlugin[]> {
     const extractedPlugins = await extractServerBunPlugins({
-      nodeEnv: process.env.NODE_ENV ?? 'development',
+      environment: process.env.NODE_ENV ?? 'development',
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
@@ -208,7 +208,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
-      customer: 'server',
+      target: 'server',
       hmrPort: this.hmrPort,
     })
     this.viteDevServer = viteDevServer
@@ -519,13 +519,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     process.env.NODE_ENV = NODE_ENV
 
     const thisBunBuildConfig = await executeServerBunBuildConfig({
-      nodeEnv: NODE_ENV,
+      environment: NODE_ENV,
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
     const providedBunBuildConfig = bunBuildConfig
       ? await executeServerBunBuildConfig({
-          nodeEnv: NODE_ENV,
+          environment: NODE_ENV,
           bunBuildConfig,
           bunPlugins: [],
         })
@@ -595,7 +595,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
-        customer: 'server',
+        target: 'server',
       })
 
       const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()

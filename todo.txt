@@ -40,7 +40,7 @@ auto port getter
 ? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
 binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
 Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называетсяE
-compiler options to engine, via ({customer,scope,nodeEnv}) => options
+compiler options to engine, via ({customer,scope,environment}) => options
 fix compiler option name for node_modules prefixes
 Генерейт поинтс если ему нужно пусть генерирует через объект с путём и тайп лэйзи или реди
 В энжину импорт мета файлнейм автоматом добавлять через компилер

@@ -274,7 +274,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const tempDir = resolveTempDirPath(['client-bun-dev-server', this.scope])
     const pluginsStrings = await extractClientBunDevPluginsStrings({
       cwd: this.cwd,
-      nodeEnv: process.env.NODE_ENV ?? 'development',
+      environment: process.env.NODE_ENV ?? 'development',
       command: 'serve',
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
@@ -382,7 +382,7 @@ Bun.serve({
     const viteDevServer = await createViteDevServer({
       viteConfig: this.viteConfig,
       scope: this.scope,
-      customer: 'client',
+      target: 'client',
       hmrPort: this.hmrPort,
       env: this.env,
     })
@@ -647,13 +647,13 @@ Bun.serve({
       process.env.NODE_ENV = NODE_ENV
 
       const thisBunBuildConfig = await extractClientBunBuildConfig({
-        nodeEnv: NODE_ENV,
+        environment: NODE_ENV,
         bunBuildConfig: this.bunBuildConfig,
         bunPlugins: this.bunPlugins,
       })
       const providedBunBuildConfig = bunBuildConfig
         ? await extractClientBunBuildConfig({
-            nodeEnv: NODE_ENV,
+            environment: NODE_ENV,
             bunBuildConfig,
             bunPlugins: [],
           })
@@ -714,7 +714,7 @@ Bun.serve({
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
-        customer: 'client',
+        target: 'client',
       })
 
       if (!(await Bun.file(buildPaths.indexHtml).exists())) {

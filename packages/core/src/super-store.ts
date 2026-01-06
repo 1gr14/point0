@@ -10,9 +10,6 @@ import type { DataTransformerExtended, IfAnyThenElse } from './types.js'
 // (new (await import('node:async_hooks').then((m) => m.AsyncLocalStorage))() as AsyncLocalStorage<SuperStoreState>))
 ;(globalThis as any).__POINT0_SUPER_STORE_CONFIG__ =
   (globalThis as any).__POINT0_SUPER_STORE_CONFIG__ || ({} as SuperStoreConfig)
-;(globalThis as any).__GET_SSR_PHASE__ = () => {
-  return SuperStore.getWeak<boolean | 'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__') ?? false
-}
 
 export class SuperStore {
   private static dehydrated: Record<string, unknown> = {}
@@ -357,4 +354,7 @@ export type SuperStoreDefinedItem<TValue = any, TDehydratedValue = any> = {
   get: () => TValue
   set: (value: TValue) => void
   config: SuperStoreConfigItem<TValue, TDehydratedValue>
+}
+;(globalThis as any).__GET_SSR_PHASE__ = () => {
+  return SuperStore.getWeak<boolean | 'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__') ?? false
 }

@@ -8,6 +8,7 @@ import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
 import Icon from '../assets/icon.svg?react'
+import { runtime } from '@point0/runtime'
 
 // const something = SuperStore.define('something', () => {
 //   return {
@@ -17,7 +18,7 @@ import Icon from '../assets/icon.svg?react'
 //     var: 0,
 //   }
 // })
-const someRandom = Point0.define('someRandom', () => Math.random(), true)
+// const someRandom = Point0.define('someRandom', () => Math.random(), true)
 const someDate = Point0.define('someDate', () => new Date(), true)
 const someStable = Point0.define('someStable', () => 123, true)
 const someVar = Point0.define('someVar', () => 0, true)

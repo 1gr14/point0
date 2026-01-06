@@ -192,8 +192,8 @@ export const removeLikeJsExtension = (path: string) => {
 
 // TODO:ASAP make any config suitable
 export type ServerBunBuildConfigDefinitionFnOptions = {
-  nodeEnv: string
-  customer: 'server'
+  environment: string
+  target: 'server'
 }
 export type ServerBunBuildConfigDefinitionFn = (
   options: ServerBunBuildConfigDefinitionFnOptions,
@@ -201,8 +201,8 @@ export type ServerBunBuildConfigDefinitionFn = (
 export type ServerBunBuildConfigDefinition = ServerBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type ClientBunBuildConfigDefinitionFnOptions = {
-  nodeEnv: string
-  customer: 'client'
+  environment: string
+  target: 'client'
 }
 export type ClientBunBuildConfigDefinitionFn = (
   options: ClientBunBuildConfigDefinitionFnOptions,
@@ -210,60 +210,60 @@ export type ClientBunBuildConfigDefinitionFn = (
 export type ClientBunBuildConfigDefinition = ClientBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type BunBuildConfigDefinitionFnOptions = {
-  nodeEnv: string
-  customer: 'client' | 'server'
+  environment: string
+  target: 'client' | 'server'
 }
 export type BunBuildConfigDefinitionFn = (options: BunBuildConfigDefinitionFnOptions) => Partial<BuildConfig>
 export type BunBuildConfigDefinition = BunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export const executeServerBunBuildConfig = async ({
-  nodeEnv,
+  environment,
   bunBuildConfig,
   bunPlugins,
 }: {
-  nodeEnv: string
+  environment: string
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
   return await extractBunBuildConfig({
-    nodeEnv,
+    environment,
     bunBuildConfig: bunBuildConfig as BunBuildConfigDefinition,
     bunPlugins: bunPlugins as BunPluginsDefinition,
-    customer: 'server',
+    target: 'server',
   })
 }
 
 export const extractClientBunBuildConfig = async ({
-  nodeEnv,
+  environment,
   bunBuildConfig,
   bunPlugins,
 }: {
-  nodeEnv: string
+  environment: string
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
   return await extractBunBuildConfig({
-    nodeEnv,
+    environment,
     bunBuildConfig: bunBuildConfig as BunBuildConfigDefinition,
     bunPlugins: bunPlugins as BunPluginsDefinition,
-    customer: 'client',
+    target: 'client',
   })
 }
 
 export const extractBunBuildConfig = async ({
-  nodeEnv,
-  customer,
+  environment,
+  target,
   bunBuildConfig,
   bunPlugins,
 }: {
-  nodeEnv: string
-  customer: 'client' | 'server'
+  environment: string
+  target: 'client' | 'server'
   bunBuildConfig: BunBuildConfigDefinition
   bunPlugins: BunPluginsDefinition
 }): Promise<Partial<BuildConfig>> => {
   const executedBunConfig =
-    typeof bunBuildConfig === 'function' ? bunBuildConfig({ nodeEnv, customer }) : bunBuildConfig
-  const extractedBunPlugins = await extractBunPlugins({ nodeEnv, command: 'build', bunPlugins, customer })
+    typeof bunBuildConfig === 'function' ? bunBuildConfig({ environment, target }) : bunBuildConfig
+  const extractedBunPlugins = await extractBunPlugins({ environment, command: 'build', bunPlugins, target })
   return {
     ...executedBunConfig,
     plugins: [...extractedBunPlugins, ...(executedBunConfig.plugins ?? [])],
@@ -273,9 +273,9 @@ export const extractBunBuildConfig = async ({
 // plugins
 
 export type ServerBunPluginsDefinitionFnOptions = {
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
-  customer: 'server'
+  target: 'server'
 }
 export type ServerBunPluginsDefinitionFn = (
   options: ServerBunPluginsDefinitionFnOptions,
@@ -283,9 +283,9 @@ export type ServerBunPluginsDefinitionFn = (
 export type ServerBunPluginsDefinition = ServerBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type ClientBunPluginsDefinitionFnOptions = {
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
-  customer: 'client'
+  target: 'client'
 }
 export type ClientBunPluginsDefinitionFn = (
   options: ClientBunPluginsDefinitionFnOptions,
@@ -293,9 +293,9 @@ export type ClientBunPluginsDefinitionFn = (
 export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type BunPluginsDefinitionFnOptions = {
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
-  customer: 'client' | 'server'
+  target: 'client' | 'server'
 }
 export type BunPluginsDefinitionFn = (
   options: BunPluginsDefinitionFnOptions,
@@ -303,52 +303,52 @@ export type BunPluginsDefinitionFn = (
 export type BunPluginsDefinition = BunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export const extractServerBunPlugins = async ({
-  nodeEnv,
+  environment,
   command,
   bunPlugins,
 }: {
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
   bunPlugins: ServerBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
-    nodeEnv,
+    environment,
     command,
     bunPlugins: bunPlugins as BunPluginsDefinition,
-    customer: 'server',
+    target: 'server',
   })
 }
 
 export const extractClientBunPlugins = async ({
-  nodeEnv,
+  environment,
   command,
   bunPlugins,
 }: {
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
-    nodeEnv,
+    environment,
     command,
     bunPlugins: bunPlugins as BunPluginsDefinition,
-    customer: 'client',
+    target: 'client',
   })
 }
 
 export const extractBunPlugins = async ({
-  nodeEnv,
+  environment,
   command,
   bunPlugins,
-  customer,
+  target,
 }: {
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
   bunPlugins: BunPluginsDefinition
-  customer: 'client' | 'server'
+  target: 'client' | 'server'
 }): Promise<BunPlugin[]> => {
   const bunPluginsArray =
-    typeof bunPlugins === 'function' ? await bunPlugins({ nodeEnv, command, customer }) : bunPlugins
+    typeof bunPlugins === 'function' ? await bunPlugins({ environment, command, target }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p) => {
       if (typeof p === 'string') {
@@ -361,19 +361,19 @@ export const extractBunPlugins = async ({
 
 export const extractClientBunDevPluginsStrings = async ({
   cwd,
-  nodeEnv,
+  environment,
   command,
   bunPlugins,
   errorOnNotString,
 }: {
   cwd: string
-  nodeEnv: string
+  environment: string
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
   errorOnNotString: string
 }): Promise<string[]> => {
   const bunPluginsArray =
-    typeof bunPlugins === 'function' ? await bunPlugins({ nodeEnv, command, customer: 'client' }) : bunPlugins
+    typeof bunPlugins === 'function' ? await bunPlugins({ environment, command, target: 'client' }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p, index) => {
       if (typeof p === 'string') {
@@ -425,21 +425,21 @@ export const resolveTempDirPath = (subdir: string[] = []): string => {
 export const extractViteConfig = async ({
   viteConfig,
   command,
-  customer,
+  target,
 }: {
   viteConfig: EngineOptionsViteConfig
   command: 'serve' | 'build'
-  customer: 'client' | 'server'
+  target: 'client' | 'server'
 }): Promise<ExtractedViteConfig> => {
   return typeof viteConfig === 'function'
-    ? await viteConfig({ command, mode: `${process.env.NODE_ENV || 'development'}-${customer}` })
+    ? await viteConfig({ command, mode: `${process.env.NODE_ENV || 'development'}-${target}` })
     : typeof viteConfig === 'string'
       ? await (async () => {
           const importedViteConfig = await import(/* @vite-ignore */ viteConfig).then(
             (module) => module.default || module,
           )
           if (typeof importedViteConfig === 'function') {
-            return await importedViteConfig({ command, mode: `${process.env.NODE_ENV || 'development'}-${customer}` })
+            return await importedViteConfig({ command, mode: `${process.env.NODE_ENV || 'development'}-${target}` })
           }
           return importedViteConfig
         })()
@@ -449,13 +449,13 @@ export const extractViteConfig = async ({
 export const createViteDevServer = async ({
   viteConfig,
   scope,
-  customer,
+  target,
   hmrPort,
   env,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
-  customer: 'client' | 'server'
+  target: 'client' | 'server'
   hmrPort: number | null
   env?: EngineOptionsEnvParsed
 }): Promise<ViteDevServer> => {
@@ -467,11 +467,11 @@ export const createViteDevServer = async ({
     const loadedViteConfig: ExtractedViteConfig = await extractViteConfig({
       viteConfig,
       command: 'serve',
-      customer,
+      target,
     })
 
     const compilerPlugin = await import('./compiler/plugin/vite.js').then((module) =>
-      module.compilerVitePlugin({ target: 'client' }),
+      module.compilerVitePlugin({ target }),
     )
 
     const hmr =

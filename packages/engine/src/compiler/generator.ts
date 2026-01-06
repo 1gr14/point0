@@ -539,10 +539,7 @@ export class FilesGenerator {
           lines.push(`  polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
         }
         if (point.type === 'page' && point.layouts.length) {
-          const arr = point.layouts
-            .map((r) => `'${r}'`)
-            .reverse()
-            .join(', ')
+          const arr = point.layouts.map((r) => `'${r}'`).join(', ')
           lines.push(`  layouts: [${arr}],`)
         }
 

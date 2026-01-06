@@ -192,7 +192,9 @@ Last called method name 'undefined' does not match point type 'page'. Please, us
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, logger }) => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
-export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+export const layout1 = root.lets('layout', 'layout1').layout(() => <div>Layout1</div>)
+export const layout2 = layout1.lets('layout', 'layout2').layout(() => <div>Layout2</div>)
+export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
         `)
 
         const generator = FilesGenerator.create({
@@ -218,7 +220,22 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
             name: 'mypage',
             route: '/mypage',
             polh: false,
+            layouts: ['layout1', 'layout2'],
             point: async () => (await import('./file0.js')).page,
+          } as LazyPointsCollectionRecord
+
+          export const _layout1_1 = {
+            type: 'layout',
+            name: 'layout1',
+            route: '/',
+            point: async () => (await import('./file0.js')).layout1,
+          } as LazyPointsCollectionRecord
+
+          export const _layout2_2 = {
+            type: 'layout',
+            name: 'layout2',
+            route: '/',
+            point: async () => (await import('./file0.js')).layout2,
           } as LazyPointsCollectionRecord
 
           export const _root = root

@@ -49,7 +49,7 @@ export const _ideaPage_5 = {
   name: 'idea',
   route: '/ideas/:id',
   polh: true,
-  layouts: ['idea', 'generalLayout'],
+  layouts: ['generalLayout', 'idea'],
   point: async () => (await import('../pages/idea.js')).ideaPage,
 } as LazyPointsCollectionRecord
 
@@ -58,7 +58,7 @@ export const _ideaNewsPage_6 = {
   name: 'ideaNews',
   route: '/ideas/:id/news',
   polh: 2000,
-  layouts: ['idea', 'generalLayout'],
+  layouts: ['generalLayout', 'idea'],
   point: async () => (await import('../pages/idea-news.js')).ideaNewsPage,
 } as LazyPointsCollectionRecord
 
