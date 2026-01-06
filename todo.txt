@@ -3,9 +3,7 @@
 --------------------------
 
 WALKER
-_hmr(() => {})
-if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
-fix todos
+remove all cache things. Lets just parse in place
 
 ROOT
 scopes is array
