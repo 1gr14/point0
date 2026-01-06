@@ -15,7 +15,12 @@ export function compilerBunPlugin({
       build.onLoad({ filter: compilerFilepathFilter }, async (args) => {
         const filepath = args.path
         try {
-          const result = await compile({ file: filepath, target, isEngineHolderBuildPhase })
+          const result = await compile({
+            file: filepath,
+            target,
+            isEngineHolderBuildPhase,
+            hmrFixPolicy: 'arrowFunctionExpression',
+          })
           if (!result.modified) {
             return {
               contents: result.code,

@@ -1,5 +1,8 @@
+import type babel from '@babel/parser'
+import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
-import type { Node } from '@babel/types'
+import traverseModule from '@babel/traverse'
+import type { Node, File } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core'
@@ -7,6 +10,10 @@ import { dedupeSlashes } from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { Collector } from './collector.js'
 import type { CompilerFile } from './file.js'
+
+const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
+  ? T
+  : typeof traverseType
 
 export class CompilerPoint {
   readonly collector: Collector
@@ -73,52 +80,6 @@ export class CompilerPoint {
     const lastAstBasePoint = this.getLastParentOrSelf()
     // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
     return lastAstBasePoint.isBasePoint0
-  }
-
-  getLastCalledMethodName(): string | undefined {
-    // --- last called method ---
-    // Find the last method called in the chain after .lets()
-    // Rule: Code that starts with .lets('XXX') should end with .XXX()
-    // Example: Point0.lets('page', 'mypage').page(() => <div>Hello</div>)
-    //   - The chain starts with .lets('page', ...)
-    //   - The chain ends with .page(...)
-    //   - lastCalledMethod = 'page'
-    // Example: Point0.lets('page', 'mypage').one().two().page(() => <div>Hello</div>)
-    //   - The chain has intermediate calls: .one().two()
-    //   - The chain ends with .page(...)
-    //   - lastCalledMethod = 'page'
-    // Because: Our compiler enforces that the first argument to .lets() must match the final method call
-    //   This ensures type safety: .lets('page', ...) must be followed by .page() (even with intermediate calls)
-    let maybeLastCalledMethod: string | undefined
-    // Traverse UP the AST tree (towards the ast root) to find the topmost CallExpression
-    // In the AST, method chains are nested: .lets() is deeper, .page() is higher (closer to ast root)
-    // Example: Point0.lets('page', 'mypage').one().two().page()
-    //   AST structure (from ast root down): CallExpression(page) contains CallExpression(two) contains CallExpression(one) contains CallExpression(lets)
-    //   So .lets() is nested inside .one(), which is nested inside .two(), which is nested inside .page()
-    //   To find .page(), we traverse UP from .lets() using parentPath (child -> parent -> grandparent -> ...)
-    // Because: parentPath goes from child to parent, which moves UP the tree towards the ast root
-    let current: NodePath<Node> | null = this.letsNodePath.parentPath
-    while (current) {
-      // If we find a CallExpression, check if its callee is a MemberExpression
-      // This means we found a method call in the chain (e.g., .one(), .two(), .page())
-      if (current.node.type === 'CallExpression' && current.node.callee.type === 'MemberExpression') {
-        const callee = current.node.callee
-        if (callee.property.type === 'Identifier') {
-          // Update lastCalledMethod with each method we find
-          // The last one will be the topmost (final) method call in the chain
-          maybeLastCalledMethod = callee.property.name
-        }
-      }
-      // Continue traversing UP the AST tree (towards the root)
-      // We continue while we're in CallExpressions or MemberExpressions (part of the method chain)
-      if (current.node.type === 'CallExpression' || current.node.type === 'MemberExpression') {
-        current = current.parentPath // parentPath goes UP (child -> parent)
-      } else {
-        // We've reached the end of the chain (e.g., VariableDeclarator, AssignmentExpression, etc.)
-        break
-      }
-    }
-    return maybeLastCalledMethod
   }
 
   getLetsPosition(): { file: string; line: number; column: number } | undefined {
@@ -410,7 +371,8 @@ export class CompilerPoint {
     errors.push(...routeErrors)
     const polh = this.getPrefetchOnLinkHover()
     const layouts = this.getLayouts()
-    const lastCalledMethodName = this.getLastCalledMethodName()
+    const methods = this.getMethods({ target: 'none', isEngineHolderBuildPhase: undefined })
+    const lastCalledMethodName = methods.at(-1)?.name
     if (lastCalledMethodName !== this.pointType) {
       errors.push(
         new Error(
@@ -456,16 +418,96 @@ export class CompilerPoint {
 
   // pruner
 
-  _methods: Array<{ nodePath: NodePath<Node>; name: string }> | undefined = undefined
-  get methods(): Array<{ nodePath: NodePath<Node>; name: string }> {
-    if (this._methods) {
-      return this._methods
+  _getLetsNodePath = new Map<string, NodePath<Node> | Error>()
+  getLetsNodePath({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server' | 'none'
+    isEngineHolderBuildPhase?: boolean
+  }): NodePath<Node> {
+    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
+    const prevResult = this._getLetsNodePath.get(key)
+    if (prevResult) {
+      if (prevResult instanceof Error) {
+        throw prevResult
+      }
+      return prevResult
+    }
+    if (key === 'none') {
+      const result = this.letsNodePath
+      this._getLetsNodePath.set(key, result)
+      return result
+    }
+    const ast = this.file.getTargetAst({ target, isEngineHolderBuildPhase })
+
+    let found: NodePath<Node> | null = null
+    const originalLoc = this.letsNodePath.node.loc
+    if (!originalLoc) {
+      const error = new Error('Lets node has no location information')
+      this._getLetsNodePath.set(key, error)
+      throw error
+    }
+    const targetLine = originalLoc.start.line
+    const targetColumn = originalLoc.start.column
+
+    traverse(ast, {
+      enter: (path) => {
+        // Match by location (works even after cloning)
+        const nodeLoc = path.node.loc
+        if (
+          nodeLoc?.start.line === targetLine &&
+          nodeLoc.start.column === targetColumn &&
+          path.node.type === this.letsNodePath.node.type
+        ) {
+          // Additional check: ensure it's a CallExpression with the same structure
+          if (path.node.type === 'CallExpression' && this.letsNodePath.node.type === 'CallExpression') {
+            const pathCallee = path.node.callee
+            const originalCallee = this.letsNodePath.node.callee
+            if (
+              pathCallee.type === 'MemberExpression' &&
+              originalCallee.type === 'MemberExpression' &&
+              pathCallee.property.type === 'Identifier' &&
+              originalCallee.property.type === 'Identifier' &&
+              pathCallee.property.name === originalCallee.property.name &&
+              pathCallee.property.name === 'lets'
+            ) {
+              found = path
+              path.stop()
+            }
+          }
+        }
+      },
+    })
+
+    if (!(found as any)) {
+      const error = new Error('Lets node not found in cloned AST')
+      this._getLetsNodePath.set(key, error)
+      throw error
+    }
+
+    this._getLetsNodePath.set(key, found as unknown as NodePath<Node>)
+    return found as unknown as NodePath<Node>
+  }
+
+  _getMethods = new Map<string, Array<{ nodePath: NodePath<Node>; name: string }>>()
+  getMethods({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server' | 'none'
+    isEngineHolderBuildPhase?: boolean
+  }): Array<{ nodePath: NodePath<Node>; name: string }> {
+    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
+    const prevResult = this._getMethods.get(key)
+    if (prevResult) {
+      return prevResult
     }
     // Find all methods nodesPaths and this methods names inside this point
     // Traverse UP the AST tree (towards the ast root) to find all CallExpressions
     // Similar to getLastCalledMethodName(), but collect all methods in the chain
     const methods: Array<{ nodePath: NodePath<Node>; name: string }> = []
-    let current: NodePath<Node> | null = this.letsNodePath.parentPath
+    let current: NodePath<Node> | null = this.getLetsNodePath({ target, isEngineHolderBuildPhase }).parentPath
 
     while (current) {
       // If we find a CallExpression, check if its callee is a MemberExpression
@@ -490,9 +532,8 @@ export class CompilerPoint {
       }
     }
 
-    // Reverse to get methods in order from .lets() to final method (e.g., .ctx(), .loader(), .page())
-    this._methods = methods.reverse()
-    return this._methods
+    this._getMethods.set(key, methods)
+    return methods
   }
 
   private removeMethodArgs({
@@ -505,7 +546,7 @@ export class CompilerPoint {
     isEngineHolderBuildPhase?: boolean
   }): void {
     // Find all method calls with the given name and remove their arguments
-    const methods = this.methods
+    const methods = this.getMethods({ target, isEngineHolderBuildPhase })
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         // Clear all arguments
@@ -539,7 +580,7 @@ export class CompilerPoint {
     isEngineHolderBuildPhase?: boolean
   }): void {
     // Remove arguments from method calls if they're not boolean literals
-    const methods = this.methods
+    const methods = this.getMethods({ target, isEngineHolderBuildPhase })
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         const args = method.nodePath.node.arguments
@@ -614,6 +655,117 @@ export class CompilerPoint {
       throw new Error(`Invalid target: ${target}`)
     }
     this._prune.push(key)
+  }
+
+  // prettifier
+
+  private readonly _addHmrFix: string[] = []
+  addHmrFix({
+    target,
+    isEngineHolderBuildPhase,
+    policy,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+    policy: 'functionDeclaration' | 'arrowFunctionExpression'
+  }): void {
+    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
+    if (this._addHmrFix.includes(key)) {
+      return
+    }
+
+    if (!this.file.isRead()) {
+      throw new Error(`File ${this.file.abs} is not read yet`)
+    }
+    if (!this.file.isParsed()) {
+      this.file.parse()
+    }
+
+    // Get the last method call in the chain (the topmost/final CallExpression)
+    const methods = this.getMethods({ target, isEngineHolderBuildPhase })
+    if (methods.length === 0) {
+      this._addHmrFix.push(key)
+      return
+    }
+
+    // The last method in the array is the final method call (e.g., .mutation(), .query())
+    const lastMethod = methods[methods.length - 1]
+    if (lastMethod.nodePath.node.type !== 'CallExpression') {
+      this._addHmrFix.push(key)
+      return
+    }
+
+    // Skip if point type is component, layout, or page (only add HMR to non-component points)
+    // Exception: if component point not ends with functional component
+    if (this.pointType === 'component' || this.pointType === 'layout' || this.pointType === 'page') {
+      const lastMethodCall = lastMethod.nodePath.node
+      const hasValidEnding = lastMethod.name === this.pointType
+      const alreadyHasFunctionalComponent = hasValidEnding && lastMethodCall.arguments.length !== 0
+      if (alreadyHasFunctionalComponent) {
+        this._addHmrFix.push(key)
+        return
+      }
+      // Otherwise, continue to add HMR fix (last method matches pointType and has no args)
+    }
+
+    // Create the function: function X() { return null }
+    const makeFunctionDeclarationReturnNull = () => ({
+      type: 'FunctionExpression' as const,
+      id: {
+        type: 'Identifier' as const,
+        name: 'X',
+      },
+      generator: false,
+      async: false,
+      params: [],
+      body: {
+        type: 'BlockStatement' as const,
+        body: [
+          {
+            type: 'ReturnStatement' as const,
+            argument: { type: 'NullLiteral' as const },
+          },
+        ],
+      },
+    })
+
+    // Create the function: () => { return null }
+    const makeArrowFunctionExpressionReturnNull = () => ({
+      type: 'ArrowFunctionExpression' as const,
+      params: [],
+      body: {
+        type: 'BlockStatement' as const,
+        body: [{ type: 'ReturnStatement' as const, argument: { type: 'NullLiteral' as const } }],
+      },
+    })
+
+    const makeFunctionReturnNull =
+      policy === 'functionDeclaration' ? makeFunctionDeclarationReturnNull : makeArrowFunctionExpressionReturnNull
+
+    // Create MemberExpression: lastMethodCallNode._hmr
+    const hmrMemberExpression = {
+      type: 'MemberExpression' as const,
+      object: lastMethod.nodePath.node,
+      property: {
+        type: 'Identifier' as const,
+        name: '_hmr',
+      },
+      computed: false,
+      optional: false,
+    }
+
+    // Create CallExpression: lastMethodCallNode._hmr(function X() { return null })
+    const hmrCallExpression = {
+      type: 'CallExpression' as const,
+      callee: hmrMemberExpression,
+      arguments: [makeFunctionReturnNull()],
+      optional: false,
+    }
+
+    // Replace the original last method call node with the new one that has ._hmr() chained
+    lastMethod.nodePath.replaceWith(hmrCallExpression as any)
+    this.file.setTargetAstModified({ target, isEngineHolderBuildPhase })
+    this._addHmrFix.push(key)
   }
 }
 

@@ -9,11 +9,13 @@ export const compile = async ({
   file: fileAbs,
   target,
   isEngineHolderBuildPhase = process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true',
+  hmrFixPolicy = 'none',
 }: {
   content?: string
   file: string
   target: 'client' | 'server'
   isEngineHolderBuildPhase?: boolean
+  hmrFixPolicy?: 'functionDeclaration' | 'arrowFunctionExpression' | 'none'
 }): Promise<{ code: string; points: CompilerPoint[]; errors: unknown[]; modified: boolean }> => {
   const errors: unknown[] = []
   const cf = await CompilerFile.create(fileAbs).read({ content })
@@ -22,6 +24,9 @@ export const compile = async ({
   errors.push(...collectResult.errors)
   for (const point of collectResult.points) {
     point.prune({ target, isEngineHolderBuildPhase })
+    if (hmrFixPolicy !== 'none') {
+      point.addHmrFix({ target, policy: hmrFixPolicy })
+    }
   }
   cf.pruneForEngineHolderBuildPhase({ target, isEngineHolderBuildPhase })
   cf.pruneForRuntimeTarget({ target, isEngineHolderBuildPhase })

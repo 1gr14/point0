@@ -44,11 +44,12 @@ describe('CompilerPoint', () => {
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
-  describe('#parse', () => {
+  describe.concurrent('#parse', () => {
     const fix = (parsed: CompilerPointParsed) => {
+      const { file, original, route, ...rest } = parsed
       return {
-        ...parsed,
-        route: parsed.route ? parsed.route.definition : undefined,
+        ...rest,
+        route: route ? route.definition : undefined,
       }
     }
     it.concurrent(
@@ -668,6 +669,220 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>);"
+          `)
+        }),
+      )
+    })
+  })
+
+  describe('#addHmrFix', () => {
+    describe('client', () => {
+      it.concurrent(
+        'adds HMR fix to root point with functionDeclaration policy',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'adds HMR fix to root point with arrowFunctionExpression policy',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root()._hmr(() => {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'adds HMR fix to page point without functional component',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'page', '/').page()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const page = root.lets('page', 'page', '/').page()._hmr(function X() {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'skips HMR fix for page point with functional component',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>);"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'adds HMR fix to layout point without functional component',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const layout = root.lets('layout', 'layout', '/').layout()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const layout = root.lets('layout', 'layout', '/').layout()._hmr(() => {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'skips HMR fix for layout point with functional component',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layout</div>)
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layout</div>);"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'adds HMR fix to component point without functional component',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const component = root.lets('component', 'component', '/').component()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const component = root.lets('component', 'component', '/').component()._hmr(function X() {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'skips HMR fix for component point with functional component',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const component = root.lets('component', 'component', '/').component(() => <div>Component</div>)
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const component = root.lets('component', 'component', '/').component(() => <div>Component</div>);"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'adds HMR fix to point with method chain',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()._hmr(function X() {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'is idempotent - does not add HMR fix twice',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'handles different policies independently',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          // Second call with different policy should still work (but uses same target key)
+          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
+          // Should still have functionDeclaration since it was added first and is idempotent
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
+          `)
+        }),
+      )
+    })
+
+    describe('server', () => {
+      it.concurrent(
+        'adds HMR fix to root point on server',
+        helper(async ({ files: [file], collector }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+        `)
+          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const point = result.points[0]
+          point.addHmrFix({ target: 'server', policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode({ target: 'server' })).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root()._hmr(() => {return null;});"
           `)
         }),
       )

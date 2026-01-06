@@ -167,7 +167,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: TPoint['Infer']['InputRaw']
   }): Request {
     // TODO: generate real request by point and input
-    return new Request(`/TODO:FIXME`)
+    return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
   }
 
   static createRequestByPointScopeTypeNameInput({
@@ -182,7 +182,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     input: InputRaw
   }): Request {
     // TODO: generate real request by point scope type name and input
-    return new Request(`/TODO:FIXME`)
+    return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
   }
 
   static async execute<TPoint extends EndPoint>({

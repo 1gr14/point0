@@ -213,30 +213,33 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     target,
     isEngineHolderBuildPhase,
   }: {
-    target: 'client' | 'server'
+    target: 'client' | 'server' | 'none'
     isEngineHolderBuildPhase?: boolean
   }): string {
+    if (target === 'none') {
+      return 'none'
+    }
     return `${target}-${!!isEngineHolderBuildPhase}`
   }
 
   getTargetAst(
     options:
       | {
-          target: 'client' | 'server'
+          target: 'client' | 'server' | 'none'
           isEngineHolderBuildPhase?: boolean
         }
       | string,
   ): babel.ParseResult<File> {
     const key = typeof options === 'string' ? options : this.getTargetKey(options)
+    const parsed = this.isParsed() ? this : this.parse()
+    if (key === 'none') {
+      return parsed.ast
+    }
     const ast = this.targetAstMap.get(key)
     if (ast) {
       return ast
     }
-    const parsed = this.isParsed() ? this : this.parse()
-    const clonedAst = {
-      ...parsed.ast,
-      program: cloneNode(parsed.ast.program, /* deep */ true),
-    }
+    const clonedAst = cloneNode(parsed.ast, /* deep */ true)
     this.targetAstMap.set(key, clonedAst)
     return clonedAst
   }
@@ -245,10 +248,13 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     target,
     isEngineHolderBuildPhase,
   }: {
-    target: 'client' | 'server'
+    target: 'client' | 'server' | 'none'
     isEngineHolderBuildPhase?: boolean
   }): boolean {
     const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    if (key === 'none') {
+      return false
+    }
     const modified = this.targetAstModifiedMap.get(key)
     return !!modified
   }
@@ -257,10 +263,13 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     target,
     isEngineHolderBuildPhase,
   }: {
-    target: 'client' | 'server'
+    target: 'client' | 'server' | 'none'
     isEngineHolderBuildPhase?: boolean
   }): void {
     const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    if (key === 'none') {
+      throw new Error('Cannot set target ast modified for none target')
+    }
     this.targetAstModifiedMap.set(key, true)
   }
 

@@ -180,8 +180,7 @@ export const page = root.lets('page', 'mypage')
         `)
         expect(getLogs()[0][0]).toBe('1 points processed')
         expect(getLogs()[1][0]).toBe(
-          `page.mypage in ${rootFile.path}:3:20
-Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain`,
+          `page.mypage: Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain in ${rootFile.path}:3:20`,
         )
         expect(getLogs()).toHaveLength(2)
       }),

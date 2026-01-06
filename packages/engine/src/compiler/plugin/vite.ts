@@ -15,7 +15,13 @@ export function compilerVitePlugin({
     async transform(code, id, options) {
       const [filepath] = id.split('?', 1)
       if (!compilerFilepathFilter.test(filepath)) return null
-      const result = await compile({ content: code, file: filepath, target, isEngineHolderBuildPhase })
+      const result = await compile({
+        content: code,
+        file: filepath,
+        target,
+        isEngineHolderBuildPhase,
+        hmrFixPolicy: 'functionDeclaration',
+      })
 
       if (!result.modified) return null
 

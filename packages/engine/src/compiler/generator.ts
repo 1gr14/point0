@@ -543,16 +543,9 @@ export class FilesGenerator {
           lines.push(`  layouts: [${arr}],`)
         }
 
-        if (point.scope === target.scope) {
-          lines.push(
-            `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
-          )
-        } else {
-          // it is attached
-          lines.push(
-            `  point: async () => root.point.attach((await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName}),`,
-          )
-        }
+        lines.push(
+          `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+        )
         lines.push(`} as LazyPointsCollectionRecord`)
         lines.push(``)
       }
@@ -596,16 +589,9 @@ export class FilesGenerator {
         if (point.type === 'root') {
           lines.push(`export const _${point.renamedExportName} = ${point.renamedExportName}`)
         } else {
-          if (point.scope === target.scope) {
-            lines.push(
-              `export const _${point.renamedExportName} = ${point.renamedExportName} as RawPointsCollectionRecord`,
-            )
-          } else {
-            // it is attached
-            lines.push(
-              `export const _${point.renamedExportName} = root.point.attach(${point.renamedExportName}) as RawPointsCollectionRecord`,
-            )
-          }
+          lines.push(
+            `export const _${point.renamedExportName} = ${point.renamedExportName} as RawPointsCollectionRecord`,
+          )
         }
         lines.push(``)
       }

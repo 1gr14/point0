@@ -2,21 +2,14 @@
 ------ before start0 -----
 --------------------------
 
-read for target
-hmr compiler
+WALKER
+_hmr(() => {})
+if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
 fix todos
 
-WALKER
-compiler
-Не кастомер а энвиронмент
-if vite then replace () => with function X, if bun then leave as is, becouse when bun see function it never hmr or reload at all
-separate file inside dir compiler
-
 ROOT
-root.lets('root') & Point0.lets('root', 'x')
 scopes is array
 but scope is still just string
-walker add to lazy points root {scope}, and self scope is still _root, other roots just points
 remove .attach things
 query client can be defined on any root, and will be attached to all requests from this client scope
 
@@ -50,7 +43,7 @@ fix compiler option name for node_modules prefixes
 В энжину импорт мета файлнейм автоматом добавлять через компилер
 
 REFACTORING 0
-spearate core files, do not reexport evrything from index
+compiler self package
 ssr can not be on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
 allow .ssr() on any point
 __GET_SSR_PHASE__
