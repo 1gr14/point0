@@ -182,10 +182,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const prunePlugin = this.viteConfig // we inject vite prune plugin in vite config
       ? []
       : [
-          await import('./compiler/plugin-bun.js').then((module) =>
+          await import('./compiler/plugin/bun.js').then((module) =>
             module.compilerBunPlugin({
-              customer: 'server',
-              scope: null,
+              target: 'server',
             }),
           ),
         ]
@@ -534,7 +533,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
     const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
 
-    process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'true'
+    process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'true'
     const buildOutput = await Bun.build({
       target: 'bun',
       sourcemap: 'linked',
@@ -567,7 +566,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
       },
     })
-    process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'false'
+    process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'false'
     return buildOutput.outputs.map((output) => output.path)
   }
 
@@ -620,8 +619,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const viteRoot =
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-      const prunePlugin = await import('./compiler/plugin-vite.js').then((module) =>
-        module.compilerVitePlugin({ customer: 'server', scope: this.scope }),
+      const prunePlugin = await import('./compiler/plugin/vite.js').then((module) =>
+        module.compilerVitePlugin({ target: 'server' }),
       )
 
       const config: ExtractedViteConfig = {
@@ -653,9 +652,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       }
-      process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'true'
+      process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'true'
       const buildResult = await viteBuild(config)
-      process.env.POINT0_SERVER_BUILD_IN_PROGRESS = 'false'
+      process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'false'
 
       const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
       const outputFiles: string[] = []

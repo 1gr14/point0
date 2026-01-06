@@ -46,37 +46,21 @@
       "types": "./dist/render.d.ts",
       "import": "./dist/render.js"
     },
-    "./compiler/collector": {
-      "types": "./dist/compiler/collector.d.ts",
-      "import": "./dist/compiler/collector.js"
+    "./compiler": {
+      "types": "./dist/compiler/index.d.ts",
+      "import": "./dist/compiler/index.js"
     },
-    "./compiler/file": {
-      "types": "./dist/compiler/file.d.ts",
-      "import": "./dist/compiler/file.js"
+    "./compiler/plugin/bun-static": {
+      "types": "./dist/compiler/plugin/bun-static.d.ts",
+      "import": "./dist/compiler/plugin/bun-static.js"
     },
-    "./compiler/generator": {
-      "types": "./dist/compiler/generator.d.ts",
-      "import": "./dist/compiler/generator.js"
+    "./compiler/plugin/bun": {
+      "types": "./dist/compiler/plugin/bun.d.ts",
+      "import": "./dist/compiler/plugin/bun.js"
     },
-    "./compiler/plugin-bun-static": {
-      "types": "./dist/compiler/plugin-bun-static.d.ts",
-      "import": "./dist/compiler/plugin-bun-static.js"
-    },
-    "./compiler/plugin-bun": {
-      "types": "./dist/compiler/plugin-bun.d.ts",
-      "import": "./dist/compiler/plugin-bun.js"
-    },
-    "./compiler/plugin-vite": {
-      "types": "./dist/compiler/plugin-vite.d.ts",
-      "import": "./dist/compiler/plugin-vite.js"
-    },
-    "./compiler/point": {
-      "types": "./dist/compiler/point.d.ts",
-      "import": "./dist/compiler/point.js"
-    },
-    "./compiler/resolver": {
-      "types": "./dist/compiler/resolver.d.ts",
-      "import": "./dist/compiler/resolver.js"
+    "./compiler/plugin/vite": {
+      "types": "./dist/compiler/plugin/vite.d.ts",
+      "import": "./dist/compiler/plugin/vite.js"
     },
     "./publicdir": {
       "types": "./dist/publicdir.d.ts",
@@ -130,6 +114,7 @@
   },
   "peerDependencies": {
     "@point0/core": "workspace:*",
+    "@point0/runtime": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "@tanstack/react-query": "catalog:",

@@ -732,7 +732,7 @@ export class Walker {
     fileAbs: string
     customer: PruneCustomer
   }): Promise<string> {
-    if (process.env.POINT0_SERVER_BUILD_IN_PROGRESS !== 'true') {
+    if (process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE !== 'true') {
       return content
     }
 
@@ -1004,7 +1004,7 @@ export class Walker {
    *
    * or
    *
-   *   Point0.create('admin').base()
+   *   Point0.lets('root', 'admin').base()
    *
    * If we see `.base()` at the end and the root is Point0.create(<name>),
    * then it's a "base" point and its name is the first string arg of the root call.
@@ -1025,7 +1025,7 @@ export class Walker {
     }
 
     // walk LEFT through the chain to find the root call:
-    // ... .head(...) .serverurl(...) Point0.create('client')
+    // ... .head(...) .serverurl(...) Point0.lets('root', 'client')
     let current: Expression | null | undefined = node.callee.object
     let rootCall: CallExpression | null = null
 
@@ -2160,7 +2160,7 @@ export class Walker {
   }
 
   /**
-   * Executes scope from a chain by walking left to find Point0.create('scope')
+   * Executes scope from a chain by walking left to find Point0.lets('root', 'scope')
    */
   private extractScopeFromChain({
     fileAbs,
@@ -2174,7 +2174,7 @@ export class Walker {
     }
 
     // Walk LEFT through the chain to find the root call:
-    // ... .head(...) .serverurl(...) Point0.create('client')
+    // ... .head(...) .serverurl(...) Point0.lets('root', 'client')
     let current: Expression | null | undefined = node
     let rootCall: CallExpression | null = null
 

@@ -1,5 +1,5 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import { runtime } from './runtime.js'
+import { runtime } from '@point0/runtime'
 import type { DataTransformerExtended, IfAnyThenElse } from './types.js'
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
   (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||

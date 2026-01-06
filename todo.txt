@@ -49,6 +49,7 @@ REFACTORING 0
 spearate core files, do not reexport evrything from index
 ssr can not be on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
 allow .ssr() on any point
+__GET_SSR_PHASE__
 add ssr to queryKey and if it is false, then do not ssr when meet it
 На фронте в префетче добавить политику клиентЭндСерверНоСср, чтобы в случае квериклиентДегидрефтедСтейили эвересынг их дофетчить
 Экзекьют на сервере пусть не возвращает статус

@@ -1,7 +1,7 @@
 import { UnheadProvider as UnheadProviderClient, createHead as createHeadClient } from '@unhead/react/client'
 import { createElement } from 'react'
 import type { ResolvableHead, Unhead } from 'unhead/types'
-import { runtime } from './runtime.js'
+import { runtime } from '@point0/runtime'
 import { SuperStore } from './index.js'
 
 const clientHead = runtime.is.client ? createHeadClient() : (undefined as never)

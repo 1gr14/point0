@@ -10,7 +10,7 @@ const PC = () => React.createElement('div', { children: 'X' })
 describe('points', () => {
   describe('pagesTree', () => {
     it('no layout pages', () => {
-      const base = Point0.create('base').root()
+      const base = Point0.lets('root', 'base').root()
       const points = PointsManager.create({
         _root: base,
         one: base.lets('page', '1', '/1').page(PC).point,
@@ -27,7 +27,7 @@ describe('points', () => {
     })
 
     it('one layout page', () => {
-      const base = Point0.create('base').root()
+      const base = Point0.lets('root', 'base').root()
       const layout = base.lets('layout', 'layout', '/layout').layout(PC).point
       const points = PointsManager.create({
         _root: base,
@@ -50,7 +50,7 @@ describe('points', () => {
     })
 
     it('two layouts page', () => {
-      const base = Point0.create('base').root()
+      const base = Point0.lets('root', 'base').root()
       const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
       const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
       const points = PointsManager.create({
@@ -81,7 +81,7 @@ describe('points', () => {
     })
 
     it('two layouts two pages', () => {
-      const base = Point0.create('base').root()
+      const base = Point0.lets('root', 'base').root()
       const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
       const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
       const points = PointsManager.create({

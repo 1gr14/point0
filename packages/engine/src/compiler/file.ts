@@ -22,6 +22,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
   timestamp: TState extends 'read' | 'parsed' ? number : undefined
   state: TState
   forcedContent: string | undefined
+  modified: boolean
 
   // I think it is ok not clone ast when we try to modify, becouse if we modify then we do not need previous values of ast
   // private _astModified: babel.ParseResult<File> | undefined
@@ -59,6 +60,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     this.ast = ast as TState extends 'parsed' ? babel.ParseResult<File> : undefined
     this.timestamp = timestamp as TState extends 'read' | 'parsed' ? number : undefined
     this.state = state
+    this.modified = false
     CompilerFile.collection.set(abs, this)
   }
 
@@ -78,6 +80,14 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     return this.state === 'parsed'
   }
 
+  static getCachedContentOrUndefined(fileAbs: string): string | undefined {
+    const exFile = CompilerFile.collection.get(fileAbs)
+    if (exFile) {
+      return exFile.content
+    }
+    return undefined
+  }
+
   getSelfActual(): CompilerFile {
     const exFile = CompilerFile.collection.get(this.abs)
     if (exFile) {
@@ -88,19 +98,20 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
 
   async read(options?: { content?: string }): Promise<CompilerFile<'read' | 'parsed'>> {
     const forcedContent = options?.content
-    if (forcedContent) {
+    if (forcedContent !== undefined) {
       return Object.assign(this, {
         content: forcedContent,
         timestamp: 0,
         state: 'read',
         ast: undefined,
+        modified: false,
         _mayContainPoints: undefined,
         forcedContent,
         _pruneForEngineHolderBuildPhase: false,
         _pruneForRuntimeTarget: false,
       }) as CompilerFile<'read'>
     }
-    if (this.forcedContent) {
+    if (this.forcedContent !== undefined) {
       return this as CompilerFile<'read' | 'parsed'>
     }
 
@@ -122,6 +133,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       timestamp: currentTimestamp,
       state: 'read',
       ast: undefined,
+      modified: false,
       _mayContainPoints: undefined,
       _pruneForEngineHolderBuildPhase: false,
       _pruneForRuntimeTarget: false,
@@ -151,6 +163,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     return Object.assign(self, {
       ast,
       state: 'parsed',
+      modified: false,
     }) as CompilerFile<'parsed'>
   }
 
@@ -179,8 +192,8 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
 
   // TODO:ASAP check if we can not prune this, and just exclude vite from server build
   private _pruneForEngineHolderBuildPhase = false
-  pruneForEngineHolderBuildPhase(isBuildPhase: boolean): void {
-    if (!isBuildPhase) {
+  pruneForEngineHolderBuildPhase(isEngineHolderBuildPhase: boolean): void {
+    if (!isEngineHolderBuildPhase) {
       return
     }
     if (this._pruneForEngineHolderBuildPhase) {
@@ -189,9 +202,12 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     if (!this.isRead()) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
-    if (!this.isParsed()) {
-      throw new Error(`File ${this.abs} is not parsed yet`)
+    if (!this.content.includes('pruneItOnEngineHolderBuildPhase')) {
+      return
     }
+    const parsed = this.isParsed() ? this : this.parse()
+
+    let modified = false
 
     const makeThrow = () => ({
       type: 'ArrowFunctionExpression',
@@ -215,7 +231,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       },
     })
 
-    traverse(this.ast, {
+    traverse(parsed.ast, {
       CallExpression: (p) => {
         const node = p.node
         const callee = node.callee
@@ -226,12 +242,14 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
           // Replace the first argument (callback) with the throw function
           if (args.length > 0) {
             args[0] = makeThrow()
+            modified = true
           }
         }
       },
     })
 
     this._pruneForEngineHolderBuildPhase = true
+    this.modified ||= modified
   }
 
   private _pruneForRuntimeTarget: false | 'client' | 'server' = false
@@ -239,15 +257,18 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     if (!this.isRead()) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
-    if (!this.isParsed()) {
-      throw new Error(`File ${this.abs} is not parsed yet`)
+    if (!this.content.includes('@point0/runtime')) {
+      return
     }
+    const parsed = this.isParsed() ? this : this.parse()
     if (this._pruneForRuntimeTarget) {
       if (this._pruneForRuntimeTarget === target) {
         return
       }
       throw new Error(`File ${this.abs} is already pruned for runtime target ${this._pruneForRuntimeTarget}`)
     }
+
+    let modified = false
 
     const makeThrow = (msg: string) => ({
       type: 'ArrowFunctionExpression',
@@ -276,7 +297,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       name: 'undefined',
     })
 
-    traverse(this.ast, {
+    traverse(parsed.ast, {
       MemberExpression: (p) => {
         const node = p.node
 
@@ -294,11 +315,13 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
                   type: 'BooleanLiteral',
                   value: target === 'client',
                 })
+                modified = true
               } else if (name === 'server') {
                 p.replaceWith({
                   type: 'BooleanLiteral',
                   value: target === 'server',
                 })
+                modified = true
               }
               // Note: runtime.is.ssr is a getter that returns a function result, so we leave it as-is
             }
@@ -327,8 +350,10 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
 
             if (name === 'server' && target === 'client' && args.length > 0) {
               args[0] = makeThrow('Call server function from client')
+              modified = true
             } else if (name === 'client' && target === 'server' && args.length > 0) {
               args[0] = makeThrow('Call client function from server')
+              modified = true
             }
           }
         }
@@ -346,6 +371,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
               for (const prop of props) {
                 if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
                   prop.value = makeThrow('Call server function from client')
+                  modified = true
                 }
               }
             } else {
@@ -353,6 +379,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
               for (const prop of props) {
                 if (prop.key.type === 'Identifier' && prop.key.name === 'client' && prop.value) {
                   prop.value = makeThrow('Call client function from server')
+                  modified = true
                 }
               }
             }
@@ -371,8 +398,10 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
 
             if (name === 'server' && target === 'client' && args.length > 0) {
               args[0] = makeUndefined()
+              modified = true
             } else if (name === 'client' && target === 'server' && args.length > 0) {
               args[0] = makeUndefined()
+              modified = true
             }
           }
         }
@@ -390,6 +419,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
               for (const prop of props) {
                 if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
                   prop.value = makeUndefined()
+                  modified = true
                 }
               }
             } else {
@@ -397,6 +427,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
               for (const prop of props) {
                 if (prop.key.type === 'Identifier' && prop.key.name === 'client' && prop.value) {
                   prop.value = makeUndefined()
+                  modified = true
                 }
               }
             }
@@ -404,6 +435,8 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
         }
       },
     })
+
+    this.modified ||= modified
 
     this._pruneForRuntimeTarget = target
   }

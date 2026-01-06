@@ -502,6 +502,7 @@ export class CompilerPoint {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         // Clear all arguments
         method.nodePath.node.arguments = []
+        this.file.modified = true
       }
     }
   }
@@ -530,6 +531,7 @@ export class CompilerPoint {
         // Otherwise, remove all arguments
         if (!(args.length === 1 && args[0]?.type === 'BooleanLiteral')) {
           method.nodePath.node.arguments = []
+          this.file.modified = true
         }
       }
     }
@@ -580,7 +582,7 @@ export class CompilerPoint {
       throw new Error(`File ${this.file.abs} is not read yet`)
     }
     if (!this.file.isParsed()) {
-      throw new Error(`File ${this.file.abs} is not parsed yet`)
+      this.file.parse()
     }
     if (target === 'client') {
       this.pruneForClient()

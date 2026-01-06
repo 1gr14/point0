@@ -1,4 +1,4 @@
-import { runtime } from './runtime.js'
+import { runtime } from '@point0/runtime'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 import { SuperStore } from './super-store.js'
 

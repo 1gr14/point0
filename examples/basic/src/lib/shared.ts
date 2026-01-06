@@ -1,7 +1,7 @@
-import { Point0 } from '@point0/core'
-import type { client } from './client'
+import { client } from './client'
 
-export const shared = Point0.create<typeof client>('shared', ['client'])
+export const shared = client
+  .lets('root', 'shared')
   .loader(() => ({
     shared1: 'shared22',
   }))

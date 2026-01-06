@@ -470,8 +470,8 @@ export const createViteDevServer = async ({
       customer,
     })
 
-    const prunePlugin = await import('./compiler/plugin-vite.js').then((module) =>
-      module.compilerVitePlugin({ customer, scope }),
+    const compilerPlugin = await import('./compiler/plugin/vite.js').then((module) =>
+      module.compilerVitePlugin({ target: 'client' }),
     )
 
     const hmr =
@@ -485,7 +485,7 @@ export const createViteDevServer = async ({
             }
     return await createServer({
       ...loadedViteConfig,
-      plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
+      plugins: [...(loadedViteConfig.plugins ?? []), compilerPlugin],
       configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',

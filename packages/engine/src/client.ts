@@ -1,5 +1,5 @@
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import type { AppComponent, InputParsed, Request0, PointsScope, ServerExecuteResult, PagePoint } from '@point0/core'
+import type { AppComponent, InputParsed, PagePoint, PointsScope, Request0 } from '@point0/core'
 import { PointsManager, getHostnameOrNull } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -282,7 +282,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const scriptPath = nodePath.join(tempDir, 'serve.js')
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const bunfigTomlContent = `[serve.static]
-plugins = ["@point0/engine/compiler-bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
+plugins = ["@point0/engine/compiler/plugin/bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
@@ -324,7 +324,7 @@ Bun.serve({
       env: {
         ...process.env,
         // FORCE_COLOR: '1',
-        POINT0_COMPILER_OPTIONS: JSON.stringify({ customer: 'client', scope: this.scope }),
+        POINT0_COMPILER_OPTIONS: JSON.stringify({ target: 'client' }),
         NODE_ENV: process.env.NODE_ENV,
       },
     })
@@ -659,8 +659,8 @@ Bun.serve({
           })
         : {}
 
-      const prunePlugin = await import('./compiler/plugin-bun.js').then((module) =>
-        module.compilerBunPlugin({ customer: 'client', scope: this.scope }),
+      const compilerPlugin = await import('./compiler/plugin/bun.js').then((module) =>
+        module.compilerBunPlugin({ target: 'client' }),
       )
 
       const buildOutput = await Bun.build({
@@ -672,7 +672,7 @@ Bun.serve({
         minify: NODE_ENV === 'production',
         ...thisBunBuildConfig,
         ...providedBunBuildConfig,
-        plugins: [...(thisBunBuildConfig.plugins ?? []), prunePlugin],
+        plugins: [...(thisBunBuildConfig.plugins ?? []), compilerPlugin],
         entrypoints: [
           buildPaths.indexHtml,
           ...(thisBunBuildConfig.entrypoints ?? []),
@@ -738,13 +738,13 @@ Bun.serve({
 
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-      const prunePlugin = await import('./compiler/plugin-vite.js').then((module) =>
-        module.compilerVitePlugin({ customer: 'client', scope: this.scope }),
+      const compilerPlugin = await import('./compiler/plugin/vite.js').then((module) =>
+        module.compilerVitePlugin({ target: 'client' }),
       )
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
+        plugins: [...(loadedViteConfig.plugins ?? []), compilerPlugin],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

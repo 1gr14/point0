@@ -2,7 +2,7 @@ import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0n
 import { Route0, Routes } from '@devp0nt/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { runtime } from './runtime.js'
+import { runtime } from '@point0/runtime'
 import { SuperStore } from './super-store.js'
 import type {
   DataTransformerExtended,

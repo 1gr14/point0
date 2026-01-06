@@ -46,9 +46,7 @@ export const empty = client
     },
   )
 
-export const sharedEmptyPage = client
-  .attach(sharedQuery)
-  // .lets('page', 'sharedEmpty')
+export const sharedEmptyPage = sharedQuery
   .lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2'))
   .page(({ data }) => {
     return (

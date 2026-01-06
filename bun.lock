@@ -131,6 +131,7 @@
       "peerDependencies": {
         "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
+        "@point0/runtime": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@unhead/react": "catalog:",
         "react": "catalog:",
@@ -165,7 +166,7 @@
       "name": "@point0/engine",
       "version": "0.1.0",
       "bin": {
-        "point0": "./dist/bin.js",
+        "point0": "./dist/cli.js",
       },
       "dependencies": {
         "@babel/parser": "^7.28.5",
@@ -194,6 +195,7 @@
         "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
         "@point0/core": "workspace:*",
+        "@point0/runtime": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@unhead/react": "catalog:",
         "react": "catalog:",
@@ -215,6 +217,17 @@
         "@point0/core": "workspace:*",
         "react": "catalog:",
         "react-dom": "catalog:",
+      },
+    },
+    "packages/runtime": {
+      "name": "@point0/runtime",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.2.22",
+        "@types/node": "^20.0.0",
+        "esbuild-fix-imports-plugin": "^1.0.22",
+        "tsup": "^8.0.0",
+        "typescript": "^5.0.0",
       },
     },
     "packages/wouter": {
@@ -503,6 +516,8 @@
     "@point0/example-vite": ["@point0/example-vite@workspace:examples/vite"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
+
+    "@point0/runtime": ["@point0/runtime@workspace:packages/runtime"],
 
     "@point0/wouter": ["@point0/wouter@workspace:packages/wouter"],
 

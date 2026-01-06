@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { runtime } from './runtime.js'
+import { runtime } from '@point0/runtime'
 import { SuperStore } from './super-store.js'
 
 // TODO: add generics TRoute, THeaders, TCookies

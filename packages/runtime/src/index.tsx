@@ -26,6 +26,7 @@ const target = isClient ? 'client' : 'server'
 const isSsr = (): false | true | 'prepass' | 'final' => {
   // const ssr = SuperStore.getWeak<'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__')
   const getSsrPhase: unknown = (globalThis as any).__GET_SSR_PHASE__
+  // TODO: maybe check import.meta.env.SSR ot something like vite provides? We do not need it for point0, so I think it does not needed
   if (typeof getSsrPhase !== 'function') {
     return false
   }

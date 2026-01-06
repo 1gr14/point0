@@ -172,7 +172,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { runtime } from './runtime.js'
+import { runtime } from '@point0/runtime'
 
 export class Point0<
   TPointType extends PointType,
@@ -6808,4 +6808,4 @@ export * from './super-store.js'
 export type * from './types.js'
 export * from './unhead.js'
 export * from './utils.js'
-export * from './runtime.js'
+export * from '@point0/runtime'
