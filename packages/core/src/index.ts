@@ -3622,6 +3622,11 @@ export class Point0<
     point: AnyPoint<any, any, any, any, any, any, any, any, any, any, any, any>
     extra: Record<string, any>
   }): void {
+    if ((component as any).__POINT0_INSTANCE__) {
+      throw new Error(
+        'This component is already assigned to a point. Please use a different component. Better always define component in place by arrow function.',
+      )
+    }
     Object.assign(component, {
       __POINT0_INSTANCE__: true,
       Infer: point.Infer,

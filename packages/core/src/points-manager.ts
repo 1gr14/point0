@@ -97,7 +97,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
   ): PointsManager<true, TReadyPointsModule['_root']['point']['point']['Infer']['RequiredCtx']> => {
     const { absPath, readFn } = options ?? {}
     const { _root, ...rest } = readyPoints
-    const rawPoints: EndPoint[] = Object.values(rest).map((p) => p.point)
+    const rawPoints: EndPoint[] = Object.values(rest).map((p) => p.point.point)
     const collection = this.rawPointsCollectionToReadyPointsCollection(rawPoints)
     const routes = PointsManager.toRoutes({ points: collection })
     const pagesTreeSource = PointsManager.toPagesTreeSource({ points: collection })

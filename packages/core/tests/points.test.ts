@@ -5,7 +5,7 @@ import { PointsManager } from '../src/points-manager.js'
 
 // TODO: move all tests to separate files in test dir and refactor it
 
-const PC = () => React.createElement('div', { children: 'X' })
+const getFC = () => () => React.createElement('div', { children: 'X' })
 
 describe('points', () => {
   describe('pagesTree', () => {
@@ -13,8 +13,8 @@ describe('points', () => {
       const base = Point0.lets('root', 'base').root()
       const points = PointsManager.create({
         _root: base,
-        one: base.lets('page', '1', '/1').page(PC).point,
-        two: base.lets('page', '2', '/2').page(PC).point,
+        one: base.lets('page', '1', '/1').page(getFC()).point,
+        two: base.lets('page', '2', '/2').page(getFC()).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -28,11 +28,11 @@ describe('points', () => {
 
     it('one layout page', () => {
       const base = Point0.lets('root', 'base').root()
-      const layout = base.lets('layout', 'layout', '/layout').layout(PC).point
+      const layout = base.lets('layout', 'layout', '/layout').layout(getFC()).point
       const points = PointsManager.create({
         _root: base,
-        one: base.lets('page', '1', '/1').page(PC).point,
-        two: layout.lets('page', '2', '/2').page(PC).point,
+        one: base.lets('page', '1', '/1').page(getFC()).point,
+        two: layout.lets('page', '2', '/2').page(getFC()).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -51,13 +51,13 @@ describe('points', () => {
 
     it('two layouts page', () => {
       const base = Point0.lets('root', 'base').root()
-      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
-      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
+      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC()).point
+      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC()).point
       const points = PointsManager.create({
         _root: base,
-        one: base.lets('page', '1', '/1').page(PC),
-        two: layout1.lets('page', '2', '/2').page(PC),
-        three: layout2.lets('page', '3', '/3').page(PC),
+        one: base.lets('page', '1', '/1').page(getFC()),
+        two: layout1.lets('page', '2', '/2').page(getFC()),
+        three: layout2.lets('page', '3', '/3').page(getFC()),
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([
@@ -82,16 +82,16 @@ describe('points', () => {
 
     it('two layouts two pages', () => {
       const base = Point0.lets('root', 'base').root()
-      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(PC).point
-      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(PC).point
+      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC()).point
+      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC()).point
       const points = PointsManager.create({
         _root: base,
-        zero: base.lets('page', '0', '/0').page(PC).point,
-        one: base.lets('page', '1', '/1').page(PC).point,
-        two: layout1.lets('page', '2', '/2').page(PC).point,
-        three: layout1.lets('page', '3', '/3').page(PC).point,
-        four: layout2.lets('page', '4', '/4').page(PC).point,
-        five: layout2.lets('page', '5', '/5').page(PC).point,
+        zero: base.lets('page', '0', '/0').page(getFC()).point,
+        one: base.lets('page', '1', '/1').page(getFC()).point,
+        two: layout1.lets('page', '2', '/2').page(getFC()).point,
+        three: layout1.lets('page', '3', '/3').page(getFC()).point,
+        four: layout2.lets('page', '4', '/4').page(getFC()).point,
+        five: layout2.lets('page', '5', '/5').page(getFC()).point,
       })
       const pagesTreeSource = PointsManager.toPagesTreeSource({ points: points.collection })
       expect(pagesTreeSource).toEqual([

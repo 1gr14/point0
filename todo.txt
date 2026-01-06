@@ -2,6 +2,10 @@
 ------ before start0 -----
 --------------------------
 
+read for target
+hmr compiler
+fix todos
+
 WALKER
 compiler
 Не кастомер а энвиронмент
