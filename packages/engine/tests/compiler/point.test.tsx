@@ -566,8 +566,8 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx().root();"
           `)
@@ -582,8 +582,8 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').loader().root();"
           `)
@@ -598,8 +598,8 @@ export const root = Point0.lets('root', 'root').loader(true).root()
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').loader(true).root();"
           `)
@@ -614,8 +614,8 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx().loader().root();"
           `)
@@ -630,8 +630,8 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx().ctx().root();"
           `)
@@ -646,8 +646,8 @@ export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').loader(true).loader().root();"
           `)
@@ -663,8 +663,8 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
         `)
           const result = await collector.collectPointsFromFile({ fileAbs: file.path })
           const point = result.points[0]
-          point.prune('client')
-          expect(point.file.toCode()).toMatchInlineSnapshot(`
+          point.prune({ target: 'client' })
+          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>);"

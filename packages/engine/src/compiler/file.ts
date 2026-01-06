@@ -4,6 +4,7 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File } from '@babel/types'
 import * as nodeFs from 'node:fs/promises'
+import { cloneNode } from '@babel/types'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -22,7 +23,11 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
   timestamp: TState extends 'read' | 'parsed' ? number : undefined
   state: TState
   forcedContent: string | undefined
-  modified: boolean
+
+  // Map<target+isEngineHolderBuildPhase, ast>
+  private readonly targetAstMap = new Map<string, babel.ParseResult<File>>()
+  // Map<target+isEngineHolderBuildPhase, modified>
+  private readonly targetAstModifiedMap = new Map<string, boolean>()
 
   // I think it is ok not clone ast when we try to modify, becouse if we modify then we do not need previous values of ast
   // private _astModified: babel.ParseResult<File> | undefined
@@ -60,7 +65,6 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     this.ast = ast as TState extends 'parsed' ? babel.ParseResult<File> : undefined
     this.timestamp = timestamp as TState extends 'read' | 'parsed' ? number : undefined
     this.state = state
-    this.modified = false
     CompilerFile.collection.set(abs, this)
   }
 
@@ -104,11 +108,12 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
         timestamp: 0,
         state: 'read',
         ast: undefined,
-        modified: false,
+        targetAstMap: new Map(),
+        targetAstModifiedMap: new Map(),
         _mayContainPoints: undefined,
         forcedContent,
-        _pruneForEngineHolderBuildPhase: false,
-        _pruneForRuntimeTarget: false,
+        _pruneForEngineHolderBuildPhase: [],
+        _pruneForRuntimeTarget: [],
       }) as CompilerFile<'read'>
     }
     if (this.forcedContent !== undefined) {
@@ -133,10 +138,11 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       timestamp: currentTimestamp,
       state: 'read',
       ast: undefined,
-      modified: false,
+      targetAstMap: new Map(),
+      targetAstModifiedMap: new Map(),
       _mayContainPoints: undefined,
-      _pruneForEngineHolderBuildPhase: false,
-      _pruneForRuntimeTarget: false,
+      _pruneForEngineHolderBuildPhase: [],
+      _pruneForRuntimeTarget: [],
     }) as CompilerFile<'read'>
   }
 
@@ -162,8 +168,11 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     })
     return Object.assign(self, {
       ast,
+      targetAstMap: new Map(),
+      targetAstModifiedMap: new Map(),
       state: 'parsed',
-      modified: false,
+      _pruneForEngineHolderBuildPhase: [],
+      _pruneForRuntimeTarget: [],
     }) as CompilerFile<'parsed'>
   }
 
@@ -179,24 +188,97 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     return this._mayContainPoints
   }
 
-  toCode(): string {
+  toCode({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): string {
     if (!this.isRead()) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (!this.isParsed()) {
       throw new Error(`File ${this.abs} is not parsed yet`)
     }
-    const { code } = babelGenerator(this.ast, { retainLines: true })
+    const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    const ast = this.targetAstMap.get(key) || this.ast
+    const { code } = babelGenerator(ast, { retainLines: true })
     return code
   }
 
+  // modificators
+
+  getTargetKey({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): string {
+    return `${target}-${!!isEngineHolderBuildPhase}`
+  }
+
+  getTargetAst(
+    options:
+      | {
+          target: 'client' | 'server'
+          isEngineHolderBuildPhase?: boolean
+        }
+      | string,
+  ): babel.ParseResult<File> {
+    const key = typeof options === 'string' ? options : this.getTargetKey(options)
+    const ast = this.targetAstMap.get(key)
+    if (ast) {
+      return ast
+    }
+    const parsed = this.isParsed() ? this : this.parse()
+    const clonedAst = {
+      ...parsed.ast,
+      program: cloneNode(parsed.ast.program, /* deep */ true),
+    }
+    this.targetAstMap.set(key, clonedAst)
+    return clonedAst
+  }
+
+  isTargetAstModified({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): boolean {
+    const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    const modified = this.targetAstModifiedMap.get(key)
+    return !!modified
+  }
+
+  setTargetAstModified({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): void {
+    const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    this.targetAstModifiedMap.set(key, true)
+  }
+
   // TODO:ASAP check if we can not prune this, and just exclude vite from server build
-  private _pruneForEngineHolderBuildPhase = false
-  pruneForEngineHolderBuildPhase(isEngineHolderBuildPhase: boolean): void {
-    if (!isEngineHolderBuildPhase) {
+  private readonly _pruneForEngineHolderBuildPhase: string[] = []
+  pruneForEngineHolderBuildPhase({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase: boolean
+  }): void {
+    const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    if (this._pruneForEngineHolderBuildPhase.includes(key)) {
       return
     }
-    if (this._pruneForEngineHolderBuildPhase) {
+    if (!isEngineHolderBuildPhase) {
+      this._pruneForEngineHolderBuildPhase.push(key)
       return
     }
     if (!this.isRead()) {
@@ -205,7 +287,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
     if (!this.content.includes('pruneItOnEngineHolderBuildPhase')) {
       return
     }
-    const parsed = this.isParsed() ? this : this.parse()
+    const ast = this.getTargetAst(key)
 
     let modified = false
 
@@ -231,7 +313,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       },
     })
 
-    traverse(parsed.ast, {
+    traverse(ast, {
       CallExpression: (p) => {
         const node = p.node
         const callee = node.callee
@@ -248,25 +330,31 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       },
     })
 
-    this._pruneForEngineHolderBuildPhase = true
-    this.modified ||= modified
+    this._pruneForEngineHolderBuildPhase.push(key)
+    if (modified as boolean) {
+      this.setTargetAstModified({ target, isEngineHolderBuildPhase })
+    }
   }
 
-  private _pruneForRuntimeTarget: false | 'client' | 'server' = false
-  pruneForRuntimeTarget(target: 'client' | 'server'): void {
+  private readonly _pruneForRuntimeTarget: string[] = []
+  pruneForRuntimeTarget({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): void {
+    const key = this.getTargetKey({ target, isEngineHolderBuildPhase })
+    if (this._pruneForRuntimeTarget.includes(key)) {
+      return
+    }
     if (!this.isRead()) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (!this.content.includes('@point0/runtime')) {
       return
     }
-    const parsed = this.isParsed() ? this : this.parse()
-    if (this._pruneForRuntimeTarget) {
-      if (this._pruneForRuntimeTarget === target) {
-        return
-      }
-      throw new Error(`File ${this.abs} is already pruned for runtime target ${this._pruneForRuntimeTarget}`)
-    }
+    const ast = this.getTargetAst(key)
 
     let modified = false
 
@@ -297,7 +385,7 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       name: 'undefined',
     })
 
-    traverse(parsed.ast, {
+    traverse(ast, {
       MemberExpression: (p) => {
         const node = p.node
 
@@ -436,8 +524,9 @@ export class CompilerFile<TState extends 'idle' | 'read' | 'parsed' = 'idle' | '
       },
     })
 
-    this.modified ||= modified
-
-    this._pruneForRuntimeTarget = target
+    this._pruneForRuntimeTarget.push(key)
+    if (modified as boolean) {
+      this.setTargetAstModified({ target, isEngineHolderBuildPhase })
+    }
   }
 }

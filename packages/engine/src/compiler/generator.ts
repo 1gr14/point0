@@ -227,8 +227,8 @@ export class FilesGenerator {
     const invalidPoints = collectedPoints.filter((p) => !p.valid)
     for (const point of invalidPoints) {
       const posStr = point.pos ? `${point.pos.file}:${point.pos.line}:${point.pos.column}` : 'unknown'
-      const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join('\n')
-      const message = `${point.type}.${point.name} in ${posStr}\n${errorsMessages}`
+      const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
+      const message = `${point.type}.${point.name}: ${errorsMessages} in ${posStr}`
       this.logger.error(message)
     }
     const prevPoints = [...this.points]

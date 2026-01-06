@@ -495,14 +495,22 @@ export class CompilerPoint {
     return this._methods
   }
 
-  private removeMethodArgs(name: string): void {
+  private removeMethodArgs({
+    name,
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    name: string
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): void {
     // Find all method calls with the given name and remove their arguments
     const methods = this.methods
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         // Clear all arguments
         method.nodePath.node.arguments = []
-        this.file.modified = true
+        this.file.setTargetAstModified({ target, isEngineHolderBuildPhase })
       }
     }
   }
@@ -521,7 +529,15 @@ export class CompilerPoint {
   //   return false
   // }
 
-  private removeMethodArgsIfNotBooleanLiteral(name: string): void {
+  private removeMethodArgsIfNotBooleanLiteral({
+    name,
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    name: string
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): void {
     // Remove arguments from method calls if they're not boolean literals
     const methods = this.methods
     for (const method of methods) {
@@ -531,7 +547,7 @@ export class CompilerPoint {
         // Otherwise, remove all arguments
         if (!(args.length === 1 && args[0]?.type === 'BooleanLiteral')) {
           method.nodePath.node.arguments = []
-          this.file.modified = true
+          this.file.setTargetAstModified({ target, isEngineHolderBuildPhase })
         }
       }
     }
@@ -561,22 +577,26 @@ export class CompilerPoint {
   //   }
   // }
 
-  private pruneForClient(): void {
-    this.removeMethodArgs('ctx')
-    this.removeMethodArgsIfNotBooleanLiteral('loader')
+  private pruneForClient({ isEngineHolderBuildPhase }: { isEngineHolderBuildPhase?: boolean }): void {
+    this.removeMethodArgs({ name: 'ctx', target: 'client', isEngineHolderBuildPhase })
+    this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader', target: 'client', isEngineHolderBuildPhase })
   }
 
-  private pruneForServer(): void {
+  private pruneForServer({ isEngineHolderBuildPhase }: { isEngineHolderBuildPhase?: boolean }): void {
     // Nothing here. For now we do not prune server side.
   }
 
-  private _prune: false | 'client' | 'server' = false
-  prune(target: 'client' | 'server'): void {
-    if (this._prune) {
-      if (this._prune === target) {
-        return
-      }
-      throw new Error(`Point ${this.pointName} is already pruned for target ${this._prune}`)
+  private readonly _prune: string[] = []
+  prune({
+    target,
+    isEngineHolderBuildPhase,
+  }: {
+    target: 'client' | 'server'
+    isEngineHolderBuildPhase?: boolean
+  }): void {
+    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
+    if (this._prune.includes(key)) {
+      return
     }
     if (!this.file.isRead()) {
       throw new Error(`File ${this.file.abs} is not read yet`)
@@ -585,15 +605,15 @@ export class CompilerPoint {
       this.file.parse()
     }
     if (target === 'client') {
-      this.pruneForClient()
+      this.pruneForClient({ isEngineHolderBuildPhase })
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (target === 'server') {
-      this.pruneForServer()
+      this.pruneForServer({ isEngineHolderBuildPhase })
     } else {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid target: ${target}`)
     }
-    this._prune = target
+    this._prune.push(key)
   }
 }
 

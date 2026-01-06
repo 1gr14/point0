@@ -21,11 +21,18 @@ export const compile = async ({
   const collectResult = await collector.collectPointsFromFile({ fileAbs })
   errors.push(...collectResult.errors)
   for (const point of collectResult.points) {
-    point.prune(target)
+    point.prune({ target, isEngineHolderBuildPhase })
   }
-  cf.pruneForEngineHolderBuildPhase(isEngineHolderBuildPhase)
-  cf.pruneForRuntimeTarget(target)
-  return { code: cf.modified ? cf.toCode() : cf.content, points: collectResult.points, errors, modified: true }
+  cf.pruneForEngineHolderBuildPhase({ target, isEngineHolderBuildPhase })
+  cf.pruneForRuntimeTarget({ target, isEngineHolderBuildPhase })
+  return {
+    code: cf.isTargetAstModified({ target, isEngineHolderBuildPhase })
+      ? cf.toCode({ target, isEngineHolderBuildPhase })
+      : cf.content,
+    points: collectResult.points,
+    errors,
+    modified: true,
+  }
 }
 
 export * from './collector.js'
