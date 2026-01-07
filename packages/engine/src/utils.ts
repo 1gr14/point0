@@ -485,7 +485,7 @@ export const createViteDevServer = async ({
             }
     return await createServer({
       ...loadedViteConfig,
-      plugins: [...(loadedViteConfig.plugins ?? []), compilerPlugin],
+      plugins: [compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
       configFile: false,
       clearScreen: loadedViteConfig.clearScreen ?? false,
       appType: 'custom',

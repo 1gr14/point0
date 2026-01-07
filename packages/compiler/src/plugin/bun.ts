@@ -4,7 +4,10 @@ import type { CompilerOptions } from '../compiler.js'
 import { Compiler } from '../compiler.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
-  const compiler = options instanceof Compiler ? options : Compiler.create(options)
+  const compiler =
+    options instanceof Compiler
+      ? options
+      : Compiler.create({ ...options, hmrFixPolicy: options.hmrFixPolicy ?? 'none' })
   return {
     name: 'point0-compiler',
     setup(build) {

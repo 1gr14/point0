@@ -282,7 +282,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const scriptPath = nodePath.join(tempDir, 'serve.js')
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const bunfigTomlContent = `[serve.static]
-plugins = ["@point0/engine/compiler/plugin/bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
+plugins = ["@point0/compiler/plugin/bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';

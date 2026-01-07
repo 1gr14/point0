@@ -4,7 +4,10 @@ import type { CompilerOptions } from '../compiler.js'
 import { Compiler } from '../compiler.js'
 
 export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin {
-  const compiler = options instanceof Compiler ? options : Compiler.create(options)
+  const compiler =
+    options instanceof Compiler
+      ? options
+      : Compiler.create({ ...options, hmrFixPolicy: options.hmrFixPolicy ?? 'function' })
   return {
     name: 'point0-compiler',
     enforce: 'pre',
@@ -17,8 +20,6 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
       })
 
       if (!result.modified) return null
-
-      console.log('result', result.code)
 
       const ms = new MagicString(code)
       ms.overwrite(0, code.length, result.code)

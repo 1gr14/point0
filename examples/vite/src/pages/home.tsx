@@ -54,7 +54,7 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  .page(function L({ location }) {
+  .page(({ location }) => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
@@ -78,7 +78,7 @@ export default generalLayout
             setState2(state2 + 1)
           }}
         >
-          Click mexxx
+          Click me
         </button>
         <p>State: {state}</p>
         <p>State2: {state2}</p>
