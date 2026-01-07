@@ -22,7 +22,7 @@ import {
   extractViteConfig,
   getDirByPaths,
   loadBunPlugins,
-  pruneItOnEngineHolderBuildPhase,
+  shakeItOnEngineHolderBuildPhase,
   validateEntrypoints,
 } from './utils.js'
 import { Fetcher } from './fetcher.js'
@@ -179,7 +179,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
-    const prunePlugin = this.viteConfig // we inject vite prune plugin in vite config
+    const shakePlugin = this.viteConfig // we inject vite shake plugin in vite config
       ? []
       : [
           await import('./compiler/plugin/bun.js').then((module) =>
@@ -188,7 +188,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
             }),
           ),
         ]
-    const extractedBunPlugins = [...extractedPlugins, ...prunePlugin]
+    const extractedBunPlugins = [...extractedPlugins, ...shakePlugin]
     return extractedBunPlugins
   }
 
@@ -571,7 +571,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    return await pruneItOnEngineHolderBuildPhase(async () => {
+    return await shakeItOnEngineHolderBuildPhase(async () => {
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for server`)
       }
@@ -619,13 +619,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const viteRoot =
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-      const prunePlugin = await import('./compiler/plugin/vite.js').then((module) =>
+      const shakePlugin = await import('./compiler/plugin/vite.js').then((module) =>
         module.compilerVitePlugin({ target: 'server' }),
       )
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...(loadedViteConfig.plugins ?? []), prunePlugin],
+        plugins: [...(loadedViteConfig.plugins ?? []), shakePlugin],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

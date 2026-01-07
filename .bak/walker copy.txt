@@ -303,7 +303,7 @@ export class Walker {
     }
   }
 
-  async prunePoint0Methods({
+  async shakePoint0Methods({
     content,
     fileAbs,
     methods: methodsProvided,
@@ -533,7 +533,7 @@ export class Walker {
     return out
   }
 
-  async prunePoint0ClientServer({
+  async shakePoint0ClientServer({
     content,
     fileAbs,
     customer,
@@ -548,7 +548,7 @@ export class Walker {
     const code =
       content ??
       (await nodeFs.readFile(fileAbs, 'utf8').catch((e: unknown) => {
-        console.warn(`🔴 prunePoint0ClientServer: cannot read file ${fileAbs}: ${(e as Error).message}`)
+        console.warn(`🔴 shakePoint0ClientServer: cannot read file ${fileAbs}: ${(e as Error).message}`)
         throw e
       }))
 
@@ -568,7 +568,7 @@ export class Walker {
       })
       this.astCache.set(fileAbs, ast)
     } catch (e) {
-      console.warn(`🔴 prunePoint0ClientServer: parse failed for ${fileAbs}: ${(e as Error).message}`)
+      console.warn(`🔴 shakePoint0ClientServer: parse failed for ${fileAbs}: ${(e as Error).message}`)
       return code
     }
 
@@ -723,7 +723,7 @@ export class Walker {
     return out
   }
 
-  async pruneForBuildInProgress({
+  async shakeForBuildInProgress({
     content,
     fileAbs,
     customer,
@@ -754,7 +754,7 @@ export class Walker {
       })
       this.astCache.set(fileAbs, ast)
     } catch (e) {
-      console.warn(`🔴 pruneForBuildInProgress: parse failed for ${fileAbs}: ${(e as Error).message}`)
+      console.warn(`🔴 shakeForBuildInProgress: parse failed for ${fileAbs}: ${(e as Error).message}`)
       return code
     }
 
@@ -787,8 +787,8 @@ export class Walker {
         const node = p.node
         const callee = node.callee
 
-        // Check if callee is an Identifier named 'pruneItOnEngineHolderBuildPhase'
-        if (callee.type === 'Identifier' && callee.name === 'pruneItOnEngineHolderBuildPhase') {
+        // Check if callee is an Identifier named 'shakeItOnEngineHolderBuildPhase'
+        if (callee.type === 'Identifier' && callee.name === 'shakeItOnEngineHolderBuildPhase') {
           const args = node.arguments as any[]
           // Replace the first argument (callback) with the throw function
           if (args.length > 0) {

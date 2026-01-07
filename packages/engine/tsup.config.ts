@@ -9,7 +9,7 @@ const general = {
     'src/error.ts',
     'src/fetcher.ts',
     'src/compiler/index.ts',
-    'src/compiler/collector.ts',
+    'src/compiler/walker.ts',
     'src/compiler/file.ts',
     'src/compiler/generator.ts',
     'src/compiler/plugin/bun-static.ts',

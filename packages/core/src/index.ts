@@ -1429,7 +1429,7 @@ export class Point0<
     TProps
   >
   error(...args: [head: any, errorComponent: any] | [errorComponent: any]) {
-    // in case if we prune pageError for serverNoSsr target
+    // in case if we shake pageError for serverNoSsr target
     const [head, errorComponent = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
       ErrorHeadFn | undefined,
       ErrorComponentType,
@@ -1481,7 +1481,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune layoutError for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr target
       _layoutErrorComponent: layoutErrorComponent || (() => null),
       // _layoutErrorComponent: this._applyComponentDisplayName(layoutErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'LayoutError',
@@ -1541,7 +1541,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    // in case if we prune pageError for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
+    // in case if we shake pageError for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
     const [head, pageErrorComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     // this._applyComponentDisplayName(pageErrorComponent, {
@@ -1574,7 +1574,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune componentError for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr target
       _componentErrorComponent: componentErrorComponent || (() => null),
       // _componentErrorComponent: this._applyComponentDisplayName(componentErrorComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'ComponentError',
@@ -1600,7 +1600,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune layoutLoading for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr target
       _layoutLoadingComponent: layoutLoadingComponent || (() => null),
       // _layoutLoadingComponent: this._applyComponentDisplayName(layoutLoadingComponent || (() => null), {
       //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'LayoutLoading',
@@ -1662,7 +1662,7 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
-    // in case if we prune pageLoading for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
+    // in case if we shake pageLoading for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
     const [head, pageLoadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
     const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
     // this._applyComponentDisplayName(pageLoadingComponent, {
@@ -1695,10 +1695,10 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune componentLoading for serverNoSsr target
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
       _componentLoadingComponent: (componentLoadingComponent as never) || (() => null),
       // _componentLoadingComponent: this._applyComponentDisplayName(
-      //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune componentLoading for serverNoSsr target
+      //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
       //   (componentLoadingComponent as never) || (() => null),
       //   {
       //     suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'ComponentLoading',
@@ -1789,7 +1789,7 @@ export class Point0<
     TProps
   >
   loading(...args: [head: any, pageLoadingComponent: any] | [pageLoadingComponent: any]) {
-    // in case if we prune pageLoading for serverNoSsr target
+    // in case if we shake pageLoading for serverNoSsr target
     const [head, loadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
     // this._applyComponentDisplayName(loadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Loading',
@@ -1991,9 +1991,9 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _scrollPositionGetter: getter ?? this._scrollPositionGetter,
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was pruned for server
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _scrollPositionSetter: setter ?? this._scrollPositionSetter,
     }) as never
   }
@@ -2236,7 +2236,7 @@ export class Point0<
   >
   ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
     const ctxFn =
-      typeof ctxOrFn === 'undefined' // in case if we prune ctx for client target
+      typeof ctxOrFn === 'undefined' // in case if we shake ctx for client target
         ? () => ({})
         : typeof ctxOrFn === 'function'
           ? ctxOrFn
@@ -2327,7 +2327,7 @@ export class Point0<
       _queryResultType: this._queryResultType ?? 'query',
       _serverExecuteActions: [
         ...this._serverExecuteActions,
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we prune loader for client
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake loader for client
         { type: 'loader', fn: loaderFn ?? ((c: any) => c.data), unstableId: Point0._getNextUnstableId() },
       ] as never,
     }) as never
@@ -2428,7 +2428,7 @@ export class Point0<
         {
           type: 'loader',
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          fn: clientLoaderFn || ((o: any) => o.data), // in case if we prune clientLoader for server without ssr target
+          fn: clientLoaderFn || ((o: any) => o.data), // in case if we shake clientLoader for server without ssr target
           unstableId: Point0._getNextUnstableId(),
         },
       ] as never,

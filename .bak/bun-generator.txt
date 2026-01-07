@@ -260,8 +260,8 @@
 //   // processing
 
 //   private async processFile(fileAbs: string): Promise<ChangeCollectedPointsEvent> {
-//     const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
-//     const { collectedPoints, errors } = await collector.collectPointsFromFile({ fileAbs })
+//     const walker = new PointsWalker({ basepath: this.basepath, routes: this.routes })
+//     const { collectedPoints, errors } = await walker.collectPointsFromFile({ fileAbs })
 //     const prevPointsWithThisFile = this.points.filter((p) => p.fileAbs === fileAbs)
 //     const deleted =
 //       errors.length > 0
@@ -282,11 +282,11 @@
 //   private async processFiles(chunkSize = 30): Promise<ChangeCollectedPointsEvent> {
 //     const files = [...this.files]
 //     const chunks = FileGenerator.chunk(files, chunkSize)
-//     const collector = new PointsCollector({ basepath: this.basepath, routes: this.routes })
+//     const walker = new PointsWalker({ basepath: this.basepath, routes: this.routes })
 //     const collectedChunks = await Promise.all(
 //       chunks.map(async (chunk) => {
 //         const pointsArrays = await Promise.all(
-//           chunk.map(async (fileAbs) => await collector.collectPointsFromFile({ fileAbs })),
+//           chunk.map(async (fileAbs) => await walker.collectPointsFromFile({ fileAbs })),
 //         )
 //         return pointsArrays.flat()
 //       }),
@@ -539,7 +539,7 @@
 //   }
 // }
 
-// export class PointsCollector {
+// export class PointsWalker {
 //   readonly basepath: string
 //   readonly routes: Routes | undefined
 
@@ -734,7 +734,7 @@
 //     // The last method in the chain determines the point type (e.g. ".page()", ".layout()", etc.)
 //     const lastProp = node.callee.property
 //     const lastMethod = lastProp?.type === 'Identifier' ? lastProp.name : null
-//     const pointType = PointsCollector.pointMethodToPointType(lastMethod)
+//     const pointType = PointsWalker.pointMethodToPointType(lastMethod)
 //     if (!pointType) return { pointType: null, pointName: null, root: false, errors }
 
 //     // Find .lets('type','name') anywhere earlier in the chain
@@ -1194,7 +1194,7 @@
 
 //     // parent is in SAME file (export const child = parent....)
 //     const parentAbs = parentImportPath
-//       ? await PointsCollector.detectExistingFilePathByImportPath(
+//       ? await PointsWalker.detectExistingFilePathByImportPath(
 //           nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
 //         )
 //       : fileAbs
@@ -1355,7 +1355,7 @@
 //     // 3) resolve parent file
 //     //
 //     const parentAbs = parentImportPath
-//       ? await PointsCollector.detectExistingFilePathByImportPath(
+//       ? await PointsWalker.detectExistingFilePathByImportPath(
 //           nodePath.resolve(nodePath.dirname(fileAbs), parentImportPath),
 //         )
 //       : fileAbs

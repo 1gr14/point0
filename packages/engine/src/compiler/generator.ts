@@ -6,7 +6,7 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineLogger, EngineOptionsRoutes } from '../config.js'
 import { getDirByPaths, resolveTempDirPath } from '../utils.js'
-import { END_POINT_TYPES, Collector } from './collector.js'
+import { END_POINT_TYPES, Walker } from './walker.js'
 import { CompilerPoint, type CompilerPointParsed, type CompilerPointParsedValid } from './point.js'
 
 type ChangeCollectedPointsEvent = {
@@ -211,24 +211,22 @@ export class FilesGenerator {
     await this.initRoutesInstances()
     const files = [...this.files]
     const chunks = FilesGenerator.chunk(files, chunkSize)
-    const collector = new Collector({ cwd: this.cwd, routes: this.routes })
+    const walker = new Walker({ cwd: this.cwd, routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
-        const pointsArrays = await Promise.all(
-          chunk.map(async (fileAbs) => await collector.collectPointsFromFile({ fileAbs })),
-        )
+        const pointsArrays = await Promise.all(chunk.map(async (file) => await walker.collectPointsFromFile({ file })))
         return pointsArrays.flat()
       }),
     )
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
-    const collectedPoints = collectedChunks.flatMap((chunk) =>
-      chunk.flatMap((p) => p.points.map((point) => point.parsed)),
+    const collectedPoints = await Promise.all(
+      collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.points.map(async (point) => await point.parse()))),
     )
+
     const invalidPoints = collectedPoints.filter((p) => !p.valid)
     for (const point of invalidPoints) {
-      const posStr = point.pos ? `${point.pos.file}:${point.pos.line}:${point.pos.column}` : 'unknown'
       const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
-      const message = `${point.type}.${point.name}: ${errorsMessages} in ${posStr}`
+      const message = `${point.type}.${point.name}: ${errorsMessages} in ${point.strpos}`
       this.logger.error(message)
     }
     const prevPoints = [...this.points]

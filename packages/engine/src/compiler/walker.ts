@@ -123,7 +123,7 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 //   - loc: Location information (line, column) for the node in source code
 //
 
-export class Collector {
+export class Walker {
   readonly cwd: string
 
   // <scope, Routes>
@@ -142,24 +142,34 @@ export class Collector {
     return (routes as any)?.[routeKey]
   }
 
-  async collectPointsFromFile({ fileAbs }: { fileAbs: string }): Promise<{
-    points: CompilerPoint[]
-    errors: unknown[]
-  }> {
+  async collectPointsFromFile({ file: providedFile }: { file: string | CompilerFile<true> }): Promise<
+    | {
+        points: CompilerPoint[]
+        errors: unknown[]
+        file: CompilerFile<true>
+        ok: true
+      }
+    | {
+        points: CompilerPoint[]
+        errors: unknown[]
+        file: CompilerFile<any> | undefined
+        ok: false
+      }
+  > {
     const points: CompilerPoint[] = []
     const errors: unknown[] = []
+    const fileIdle = typeof providedFile === 'string' ? CompilerFile.create(providedFile) : providedFile
 
     try {
-      const file = await CompilerFile.create(fileAbs).read()
+      const file = await fileIdle.read()
 
       if (!file.mayContainPoints()) {
-        return { points, errors }
+        return { points, errors, file, ok: true }
       }
-      const fileParsed = file.parse()
 
       // We need to collect all lets() calls first, then process them async
       const letsNodePaths: Array<NodePath<Node>> = []
-      traverse(fileParsed.ast, {
+      traverse(file.ast, {
         CallExpression: (p) => {
           // Check if this is a .lets() call expression
           // Example: Point0.lets('root', 'myroot') - we're looking for calls to .lets()
@@ -176,17 +186,17 @@ export class Collector {
 
       // Process all lets() calls async
       for (const letsNodePath of letsNodePaths) {
-        const result = await this.collectPointByLetsNodePath({ letsNodePath, file: fileParsed })
+        const result = await this.collectPointByLetsNodePath({ letsNodePath, file })
         errors.push(...result.errors)
         if (result.point) {
           points.push(result.point)
         }
       }
 
-      return { points, errors }
+      return { points, errors, file, ok: true }
     } catch (e) {
       errors.push(e)
-      return { points, errors }
+      return { points, errors, file: fileIdle, ok: false }
     }
   }
 
@@ -195,7 +205,7 @@ export class Collector {
     file,
   }: {
     letsNodePath: NodePath<Node>
-    file: CompilerFile<'parsed'>
+    file: CompilerFile<true>
   }): Promise<{
     point: CompilerPoint | undefined
     errors: unknown[]
@@ -304,28 +314,8 @@ export class Collector {
         return undefined
       })()
 
-      const baseCompilerPoint: CompilerPoint | undefined = await (async () => {
-        if (isBasePoint0) {
-          return undefined
-        }
-        const findBaseLetsNodePathByBaseNodePathResult = await this.findBaseLetsNodePathByBaseNodePath({
-          baseNodePath,
-          file,
-        })
-        errors.push(...findBaseLetsNodePathByBaseNodePathResult.errors)
-        if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
-          return undefined
-        }
-        const result = await this.collectPointByLetsNodePath({
-          letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
-          file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
-        })
-        errors.push(...result.errors)
-        return result.point
-      })()
-
       const point = new CompilerPoint({
-        collector: this,
+        walker: this,
         file,
         pointType,
         pointName,
@@ -333,18 +323,64 @@ export class Collector {
         baseNodePath,
         letsNodePath,
         isBasePoint0,
-        baseCompilerPoint,
       })
 
-      if (point.isRelatedToPoint0()) {
-        return { point, errors }
-      }
-
-      return { point: undefined, errors }
+      return { point, errors }
     } catch (e) {
       errors.push(e)
       return { point: undefined, errors }
     }
+  }
+
+  private async collectParentPointByPoint({
+    point,
+  }: {
+    point: CompilerPoint
+  }): Promise<{ parent: CompilerPoint | undefined; errors: unknown[] }> {
+    const errors: unknown[] = []
+    try {
+      if (point.isBasePoint0) {
+        return { parent: undefined, errors }
+      }
+      const findBaseLetsNodePathByBaseNodePathResult = await this.findBaseLetsNodePathByBaseNodePath({
+        baseNodePath: point.baseNodePath,
+        file: point.file,
+      })
+      errors.push(...findBaseLetsNodePathByBaseNodePathResult.errors)
+      if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
+        return { parent: undefined, errors }
+      }
+      const result = await this.collectPointByLetsNodePath({
+        letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
+        file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
+      })
+      errors.push(...result.errors)
+      return { parent: result.point, errors }
+    } catch (e) {
+      errors.push(e)
+      return { parent: undefined, errors }
+    }
+  }
+
+  async collectParentPointsByPoint({
+    point,
+  }: {
+    point: CompilerPoint
+  }): Promise<{ parents: CompilerPoint[]; errors: unknown[] }> {
+    const errors: unknown[] = []
+    const parents: CompilerPoint[] = []
+    let currentPoint = point as CompilerPoint | undefined
+    while (currentPoint) {
+      const result = await this.collectParentPointByPoint({ point: currentPoint })
+      errors.push(...result.errors)
+      if (!result.parent) {
+        currentPoint = undefined
+        break
+      }
+      parents.push(result.parent)
+      currentPoint = result.parent
+    }
+    return { parents, errors }
   }
 
   private async findBaseLetsNodePathByBaseNodePath({
@@ -352,12 +388,12 @@ export class Collector {
     file,
   }: {
     baseNodePath: NodePath<Node>
-    file: CompilerFile<'parsed'>
+    file: CompilerFile<true>
   }): Promise<
     | {
         isFound: true
         baseLetsNodePath: NodePath<Node>
-        baseFile: CompilerFile<'parsed'>
+        baseFile: CompilerFile<true>
         errors: unknown[]
       }
     | {
@@ -384,9 +420,9 @@ export class Collector {
       //   - An export: export const y = z.lets('XXX')
       //   - An import: import { y } from './file' or import y from './file'
       let foundLetsNodePath: NodePath<Node> | undefined
-      let foundBaseFile: CompilerFile<'parsed'> | undefined = file // Default to current file
+      let foundBaseFile: CompilerFile<true> | undefined = file // Default to current file
       const importsToResolve: Array<{ importPath: string; importedName: string }> = []
-      const identifierAssignmentsToResolve: Array<{ identifierName: string; file: CompilerFile<'parsed'> }> = []
+      const identifierAssignmentsToResolve: Array<{ identifierName: string; file: CompilerFile<true> }> = []
 
       // First pass: Find declarations/exports in current file and collect imports
       traverse(file.ast, {
@@ -489,9 +525,7 @@ export class Collector {
           if (resolvedPath) {
             try {
               // Read and parse the imported file
-              const importedFile = await CompilerFile.create(resolvedPath)
-                .read()
-                .then((f) => f.parse())
+              const importedFile = await CompilerFile.create(resolvedPath).read()
               // Recursively search in the imported file for the export
               const result = await this.findLetsNodePathByExportName({
                 exportName: importedName,
@@ -584,7 +618,7 @@ export class Collector {
     importedName,
   }: {
     identifierNodePath: NodePath<Node>
-    file: CompilerFile<'parsed'>
+    file: CompilerFile<true>
     packageName: string
     importedName: string
   }): boolean {
@@ -718,9 +752,9 @@ export class Collector {
     file,
   }: {
     exportName: string // The export name to search for (e.g., 'root' or 'default')
-    file: CompilerFile<'parsed'> // The parsed file to search in
+    file: CompilerFile<true> // The parsed file to search in
   }): Promise<
-    | { isFound: boolean; foundFile: CompilerFile<'parsed'>; letsNodePath: NodePath<Node>; errors: unknown[] }
+    | { isFound: boolean; foundFile: CompilerFile<true>; letsNodePath: NodePath<Node>; errors: unknown[] }
     | {
         isFound: false
         foundFile: undefined
@@ -730,7 +764,7 @@ export class Collector {
   > {
     const errors: unknown[] = []
     let foundLetsNodePath: NodePath<Node> | undefined
-    let foundFile: CompilerFile<'parsed'> | undefined
+    let foundFile: CompilerFile<true> | undefined
     const reExportsToResolve: Array<{ sourcePath: string; nameToFind: string }> = []
     const identifierExportsToResolve: Array<{ identifierName: string }> = []
 
@@ -832,9 +866,7 @@ export class Collector {
           if (resolvedPath) {
             try {
               // Read and parse the source file
-              const sourceFile = await CompilerFile.create(resolvedPath)
-                .read()
-                .then((f) => f.parse())
+              const sourceFile = await CompilerFile.create(resolvedPath).read()
               // Recursively search in the source file for the export
               const result = await this.findLetsNodePathByExportName({
                 exportName: nameToFind,

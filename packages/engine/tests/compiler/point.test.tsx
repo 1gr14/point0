@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Collector } from '../../src/compiler/collector.js'
+import { Walker } from '../../src/compiler/walker.js'
 import { Route0, Routes } from '@devp0nt/route0'
 import type { CompilerPointParsed } from '../../src/compiler/point.js'
 
@@ -16,17 +16,14 @@ const prepareRandomFile = () => {
   return Object.assign(Bun.file(path), { path, basename, importpath })
 }
 
-const helper = (
-  callback: ({ files, collector }: { files: TestFile[]; collector: Collector }) => any,
-  deleteFiles = true,
-) => {
+const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, deleteFiles = true) => {
   return async () => {
-    const collector = new Collector({ cwd: tempDir })
+    const walker = new Walker({ cwd: tempDir })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
         files,
-        collector,
+        walker,
       })
     } finally {
       await Promise.allSettled(
@@ -54,14 +51,14 @@ describe('CompilerPoint', () => {
     }
     it.concurrent(
       'root point',
-      helper(async ({ files: [file], collector }) => {
+      helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points[0].parsed
-        expect(parsed).toMatchObject({
+        const parsed = await result.points[0].parse()
+        expect(fix(parsed)).toMatchObject({
           valid: true,
           scope: 'myroot',
           scopes: ['myroot'],
@@ -82,14 +79,14 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
 
     it.concurrent(
       'page point',
-      helper(async ({ files: [file], collector }) => {
+      helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const myrootvariable = Point0.lets('root', 'myroot').root()
 export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points[1].parsed
+        const parsed = await result.points[1].parse()
         expect(fix(parsed)).toMatchObject({
           valid: true,
           scope: 'myroot',
@@ -119,7 +116,7 @@ export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().
     it.concurrent(
       'page point with first level route',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -140,9 +137,11 @@ export const p3 = myrootvariable.lets('page', 'p3', '/r3').page(() => <div>Hello
 export const p4 = myrootvariable.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
+        const parsed = await Promise.all(
+          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix1)),
+        )
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -174,7 +173,7 @@ export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>H
     it.concurrent(
       'page point with deep level route',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -197,9 +196,11 @@ export const p3 = l2.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
 export const p4 = l2.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
+        const parsed = await Promise.all(
+          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix1)),
+        )
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -231,7 +232,7 @@ export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
     it.concurrent(
       'parse page point with very deep level route',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -259,9 +260,11 @@ export const p3 = l6.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
 export const p4 = l6.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parsed))
+        const parsed = await Promise.all(
+          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix1)),
+        )
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -301,7 +304,7 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
     it.concurrent(
       'page point layouts',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -321,9 +324,11 @@ export const p1 = l1.lets('page', 'p1', '/').page(() => <div>Hello</div>)
 export const p2 = l2.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix2(p.parsed))
+        const parsed = await Promise.all(
+          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix2)),
+        )
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p0',
@@ -350,7 +355,7 @@ export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
     it.concurrent(
       'layout point layouts',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -366,9 +371,11 @@ export const l2 = l1.lets('layout', 'l2').layout()
 export const b2 = l2.lets('base', 'b2').base()
 export const l3 = b2.lets('layout', 'l3').layout()
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parsed))
+        const parsed = await Promise.all(
+          result.points.filter((p) => p.pointType === 'layout').map(async (p) => await p.parse().then(fix2)),
+        )
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'l1',
@@ -398,7 +405,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
     it.concurrent(
       'page point prefetchOnLinkHover (polh)',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -413,9 +420,9 @@ export const p1 = root.lets('page', 'p1', '/').prefetchOnLinkHover(false).page((
 export const p2 = p1.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.map((p) => fix3(p.parsed))
+        const parsed = await Promise.all(result.points.map(async (p) => await p.parse().then(fix3)))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root',
@@ -442,7 +449,7 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
     it.concurrent(
       'error when last called method name does not match point type',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -455,18 +462,18 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
 export const root0 = Point0.lets('root', 'root0').prefetchOnLinkHover(true)
 export const root1 = Point0.lets('root', 'root1')
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(2)
 
-        const parsed0 = result.points[0].parsed
+        const parsed0 = await result.points[0].parse()
         expect(parsed0.valid).toBe(false)
         expect(parsed0.errors).toHaveLength(1)
         expect((parsed0.errors[0] as Error).message).toBe(
           `Last called method name 'prefetchOnLinkHover' does not match point type 'root'. Please, use .root() in end of point chain`,
         )
 
-        const parsed1 = result.points[1].parsed
+        const parsed1 = await result.points[1].parse()
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect(parsed1.name).toBe('root1')
@@ -487,16 +494,16 @@ export const root1 = Point0.lets('root', 'root1')
 
     it.concurrent(
       'point scopes',
-      helper(async ({ files: [file], collector }) => {
+      helper(async ({ files: [file], walker }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root0 = Point0.lets('root', 'root0').root()
 export const root1 = root0.lets('root', 'root1').root()
 export const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
 export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</div>)
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.map((p) => fix4(p.parsed))
+        const parsed = await Promise.all(result.points.map(async (p) => await p.parse().then(fix4)))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root0',
@@ -507,7 +514,7 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
           valid: true,
           name: 'root1',
           scope: 'root1',
-          scopes: ['root1', 'root0'],
+          scopes: ['root0', 'root1'],
         })
         expect(parsed[2]).toMatchObject({
           valid: true,
@@ -519,7 +526,7 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
           valid: true,
           name: 'page1',
           scope: 'root1',
-          scopes: ['root1', 'root0'],
+          scopes: ['root0', 'root1'],
         })
       }),
     )
@@ -527,7 +534,7 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
     it.concurrent(
       'error when point not exported',
       helper(async ({ files: [file] }) => {
-        const collector = new Collector({
+        const walker = new Walker({
           cwd: tempDir,
           routes: {
             myroot: Routes.create({
@@ -540,16 +547,16 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
 const root0 = Point0.lets('root', 'root0').root()
 const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>) 
         `)
-        const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+        const result = await walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(2)
 
-        const parsed0 = result.points[0].parsed
+        const parsed0 = await result.points[0].parse()
         expect(parsed0.valid).toBe(false)
         expect(parsed0.errors).toHaveLength(1)
         expect((parsed0.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
 
-        const parsed1 = result.points[1].parsed
+        const parsed1 = await result.points[1].parse()
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect((parsed1.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
@@ -557,18 +564,18 @@ const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
     )
   })
 
-  describe('#prune', () => {
+  describe('#shake', () => {
     describe('client', () => {
       it.concurrent(
         'removes ctx args',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx().root();"
           `)
@@ -577,14 +584,14 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
 
       it.concurrent(
         'removes loader args if not boolean literal',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').loader().root();"
           `)
@@ -593,14 +600,14 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
 
       it.concurrent(
         'keeps loader args if boolean literal',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').loader(true).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').loader(true).root();"
           `)
@@ -609,14 +616,14 @@ export const root = Point0.lets('root', 'root').loader(true).root()
 
       it.concurrent(
         'handles ctx and loader in chain',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx().loader().root();"
           `)
@@ -625,14 +632,14 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
 
       it.concurrent(
         'handles multiple ctx calls',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => ({ b: 2 })).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx().ctx().root();"
           `)
@@ -641,14 +648,14 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
 
       it.concurrent(
         'handles loader with boolean literal and non-boolean',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 2 })).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').loader(true).loader().root();"
           `)
@@ -657,15 +664,15 @@ export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 
 
       it.concurrent(
         'handles page point with ctx and loader',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>)
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.prune({ target: 'client' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.shake({ target: 'client' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>);"
@@ -679,14 +686,14 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
     describe('client', () => {
       it.concurrent(
         'adds HMR fix to root point with functionDeclaration policy',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
           `)
@@ -695,14 +702,14 @@ export const root = Point0.lets('root', 'root').root()
 
       it.concurrent(
         'adds HMR fix to root point with arrowFunctionExpression policy',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root()._hmr(() => {return null;});"
           `)
@@ -711,15 +718,15 @@ export const root = Point0.lets('root', 'root').root()
 
       it.concurrent(
         'adds HMR fix to page point without functional component',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const page = root.lets('page', 'page', '/').page()._hmr(function X() {return null;});"
@@ -729,15 +736,15 @@ export const page = root.lets('page', 'page', '/').page()
 
       it.concurrent(
         'skips HMR fix for page point with functional component',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>);"
@@ -747,15 +754,15 @@ export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
 
       it.concurrent(
         'adds HMR fix to layout point without functional component',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const layout = root.lets('layout', 'layout', '/').layout()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const layout = root.lets('layout', 'layout', '/').layout()._hmr(() => {return null;});"
@@ -765,15 +772,15 @@ export const layout = root.lets('layout', 'layout', '/').layout()
 
       it.concurrent(
         'skips HMR fix for layout point with functional component',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layout</div>)
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layout</div>);"
@@ -783,15 +790,15 @@ export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layou
 
       it.concurrent(
         'adds HMR fix to component point without functional component',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const component = root.lets('component', 'component', '/').component()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const component = root.lets('component', 'component', '/').component()._hmr(function X() {return null;});"
@@ -801,15 +808,15 @@ export const component = root.lets('component', 'component', '/').component()
 
       it.concurrent(
         'skips HMR fix for component point with functional component',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const component = root.lets('component', 'component', '/').component(() => <div>Component</div>)
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
-          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const component = root.lets('component', 'component', '/').component(() => <div>Component</div>);"
@@ -819,14 +826,14 @@ export const component = root.lets('component', 'component', '/').component(() =
 
       it.concurrent(
         'adds HMR fix to point with method chain',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()._hmr(function X() {return null;});"
           `)
@@ -835,15 +842,15 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
 
       it.concurrent(
         'is idempotent - does not add HMR fix twice',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
           `)
@@ -852,17 +859,17 @@ export const root = Point0.lets('root', 'root').root()
 
       it.concurrent(
         'handles different policies independently',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.addHmrFix({ target: 'client', policy: 'functionDeclaration' })
+          point.addHmrFix({ policy: 'functionDeclaration' })
           // Second call with different policy should still work (but uses same target key)
-          point.addHmrFix({ target: 'client', policy: 'arrowFunctionExpression' })
+          point.addHmrFix({ policy: 'arrowFunctionExpression' })
           // Should still have functionDeclaration since it was added first and is idempotent
-          expect(point.file.toCode({ target: 'client' })).toMatchInlineSnapshot(`
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
           `)
@@ -873,14 +880,14 @@ export const root = Point0.lets('root', 'root').root()
     describe('server', () => {
       it.concurrent(
         'adds HMR fix to root point on server',
-        helper(async ({ files: [file], collector }) => {
+        helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await collector.collectPointsFromFile({ fileAbs: file.path })
+          const result = await walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
-          point.addHmrFix({ target: 'server', policy: 'arrowFunctionExpression' })
-          expect(point.file.toCode({ target: 'server' })).toMatchInlineSnapshot(`
+          point.addHmrFix({ policy: 'arrowFunctionExpression' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root()._hmr(() => {return null;});"
           `)

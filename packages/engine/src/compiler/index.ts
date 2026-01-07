@@ -1,12 +1,11 @@
-import { Collector } from './collector.js'
-import { CompilerFile } from './file.js'
 import type { CompilerPoint } from './point.js'
+import { Walker } from './walker.js'
 
 export const compilerFilepathFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
 export const compile = async ({
   content,
-  file: fileAbs,
+  file,
   target,
   isEngineHolderBuildPhase = process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true',
   hmrFixPolicy = 'none',
@@ -18,30 +17,31 @@ export const compile = async ({
   hmrFixPolicy?: 'functionDeclaration' | 'arrowFunctionExpression' | 'none'
 }): Promise<{ code: string; points: CompilerPoint[]; errors: unknown[]; modified: boolean }> => {
   const errors: unknown[] = []
-  const cf = await CompilerFile.create(fileAbs).read({ content })
-  const collector = new Collector()
-  const collectResult = await collector.collectPointsFromFile({ fileAbs })
+  const walker = new Walker()
+  const collectResult = await walker.collectPointsFromFile({ file })
   errors.push(...collectResult.errors)
+  if (!collectResult.ok) {
+    return { code: content || '', points: collectResult.points, errors, modified: false }
+  }
+  const cf = collectResult.file
   for (const point of collectResult.points) {
-    point.prune({ target, isEngineHolderBuildPhase })
+    point.shake({ target })
     if (hmrFixPolicy !== 'none') {
-      point.addHmrFix({ target, policy: hmrFixPolicy })
+      point.addHmrFix({ policy: hmrFixPolicy })
     }
   }
-  cf.pruneForEngineHolderBuildPhase({ target, isEngineHolderBuildPhase })
-  cf.pruneForRuntimeTarget({ target, isEngineHolderBuildPhase })
+  cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })
+  cf.shakeForRuntimeTarget({ target })
   return {
-    code: cf.isTargetAstModified({ target, isEngineHolderBuildPhase })
-      ? cf.toCode({ target, isEngineHolderBuildPhase })
-      : cf.content,
+    code: cf.modified ? cf.toCode() : cf.content,
     points: collectResult.points,
     errors,
     modified: true,
   }
 }
 
-export * from './collector.js'
 export * from './file.js'
 export * from './generator.js'
 export * from './point.js'
 export * from './resolver.js'
+export * from './walker.js'

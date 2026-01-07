@@ -1,34 +1,25 @@
-import type babel from '@babel/parser'
-import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
-import traverseModule from '@babel/traverse'
-import type { Node, File } from '@babel/types'
+import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core'
 import { dedupeSlashes } from '@point0/core'
 import * as nodeFsPath from 'node:path'
-import type { Collector } from './collector.js'
 import type { CompilerFile } from './file.js'
-
-const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
-  ? T
-  : typeof traverseType
+import type { Walker } from './walker.js'
 
 export class CompilerPoint {
-  readonly collector: Collector
-  readonly file: CompilerFile
+  readonly walker: Walker
+  readonly file: CompilerFile<true>
   readonly pointType: EndPointType
   readonly pointName: PointName
   readonly exportName: string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
-  readonly baseCompilerPoint: CompilerPoint | undefined
-  readonly parents: CompilerPoint[]
 
   constructor({
-    collector,
+    walker,
     file,
     pointType,
     pointName,
@@ -36,19 +27,17 @@ export class CompilerPoint {
     baseNodePath,
     letsNodePath,
     isBasePoint0,
-    baseCompilerPoint,
   }: {
-    collector: Collector
-    file: CompilerFile
+    walker: Walker
+    file: CompilerFile<true>
     pointType: EndPointType
     pointName: PointName
     exportName: string | undefined
     baseNodePath: NodePath<Node>
     letsNodePath: NodePath<Node>
     isBasePoint0: boolean
-    baseCompilerPoint: CompilerPoint | undefined
   }) {
-    this.collector = collector
+    this.walker = walker
     this.file = file
     this.pointType = pointType
     this.pointName = pointName
@@ -56,30 +45,17 @@ export class CompilerPoint {
     this.baseNodePath = baseNodePath
     this.letsNodePath = letsNodePath
     this.isBasePoint0 = isBasePoint0
-    this.baseCompilerPoint = baseCompilerPoint
-    this.parents = []
-    let parent: CompilerPoint | undefined = baseCompilerPoint
-    while (parent) {
-      this.parents.push(parent)
-      parent = parent.baseCompilerPoint
-    }
   }
 
-  getLastParentOrSelf(): CompilerPoint {
-    if (this.parents.length > 0) {
-      return this.parents[this.parents.length - 1]
+  get strpos(): string {
+    return `${this.file.abs}:${this.letsNodePath.node.loc?.start.line || 0}:${this.letsNodePath.node.loc?.start.column || 0}`
+  }
+
+  getEarliestParentOrSelf({ parents }: { parents: CompilerPoint[] }): CompilerPoint {
+    if (parents.length > 0) {
+      return parents[parents.length - 1]
     }
     return this
-  }
-
-  getSelfAndParents(): CompilerPoint[] {
-    return [this, ...this.parents]
-  }
-
-  isRelatedToPoint0(): boolean {
-    const lastAstBasePoint = this.getLastParentOrSelf()
-    // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
-    return lastAstBasePoint.isBasePoint0
   }
 
   getLetsPosition(): { file: string; line: number; column: number } | undefined {
@@ -102,25 +78,20 @@ export class CompilerPoint {
     return letsPosition
   }
 
-  getScopes(): PointsScope[] {
+  getScopes({ parents }: { parents: CompilerPoint[] }): PointsScope[] {
     const scopes: PointsScope[] = []
-    for (const astPoint of this.getSelfAndParents()) {
-      if (astPoint.pointType === 'root') {
-        scopes.push(astPoint.pointName)
+    for (const point of [this, ...parents]) {
+      if (point.pointType === 'root') {
+        scopes.push(point.pointName)
       }
     }
-    return scopes
+    return scopes.reverse()
   }
 
-  getThirdLetsArgString(): string | undefined {
-    const thirdLetsArgString = this.letsNodePath.get('arguments').at(2)
-    if (thirdLetsArgString?.node.type === 'StringLiteral') {
-      return thirdLetsArgString.node.value
-    }
-    return undefined
-  }
-
-  getRoute(scope: string): { errors: unknown[]; route: AnyRoute | undefined } {
+  getRoute({ scope, parents }: { scope: string; parents: CompilerPoint[] }): {
+    errors: unknown[]
+    route: AnyRoute | undefined
+  } {
     const errors: unknown[] = []
     if (!['page', 'layout'].includes(this.pointType)) {
       return { errors, route: undefined }
@@ -128,7 +99,7 @@ export class CompilerPoint {
 
     // Go through self and parents (from child to parent)
     // getSelfAndParents() returns [this, ...this.parents] (child first)
-    const points = this.getSelfAndParents().reverse()
+    const points = [this, ...parents].reverse()
     const routeSegments: string[] = []
 
     // Process from child to parent (as returned by getSelfAndParents)
@@ -218,7 +189,7 @@ export class CompilerPoint {
       const prop = routeArg.property
       if (prop.type === 'Identifier') {
         const routeKey = prop.name
-        const scopeRoute = this.collector.getRouteByScope(scope, routeKey)
+        const scopeRoute = this.walker.getRouteByScope(scope, routeKey)
         if (scopeRoute) {
           return { routeSegment: undefined, routeFull: scopeRoute, errors }
         } else {
@@ -263,10 +234,10 @@ export class CompilerPoint {
     return { routeSegment: undefined, routeFull: undefined, errors }
   }
 
-  getPrefetchOnLinkHover(): boolean | number {
+  getPrefetchOnLinkHover({ parents }: { parents: CompilerPoint[] }): boolean | number {
     // Go through self and parents (from child to parent)
     // Return the first prefetchOnLinkHover value found, or undefined if none found
-    const points = this.getSelfAndParents()
+    const points = [this, ...parents]
 
     for (const point of points) {
       const result = this.findPrefetchOnHoverInChain(point.letsNodePath)
@@ -318,9 +289,9 @@ export class CompilerPoint {
     return undefined
   }
 
-  getLayouts(): string[] {
+  getLayouts({ parents }: { parents: CompilerPoint[] }): string[] {
     const layouts: string[] = []
-    for (const point of this.parents) {
+    for (const point of [...parents]) {
       if (point.pointType === 'layout') {
         layouts.push(point.pointName)
       }
@@ -337,25 +308,27 @@ export class CompilerPoint {
       baseNodePath: !!this.baseNodePath,
       letsNodePath: !!this.letsNodePath,
       isBasePoint0: this.isBasePoint0,
-      parents: this.parents.map((parent) => parent.extraSimplify()),
     }
   }
 
   extraSimplify(): CompilerPointExtraSimplified {
     return {
       file: this.file.abs,
-      exportName: this.exportName,
+      pointName: this.pointName,
     }
   }
 
-  private readonly _parsed: CompilerPointParsed | undefined = undefined
-  get parsed(): CompilerPointParsed {
-    if (this._parsed) {
-      return this._parsed
+  private readonly _parse: CompilerPointParsed | undefined = undefined
+  async parse(): Promise<CompilerPointParsed> {
+    if (this._parse) {
+      return this._parse
     }
     const errors: unknown[] = []
-    const scopes = this.getScopes()
-    const scope = scopes.at(0)
+    const parentsResult = await this.walker.collectParentPointsByPoint({ point: this })
+    errors.push(...parentsResult.errors)
+    const parents = parentsResult.parents
+    const scopes = this.getScopes({ parents })
+    const scope = scopes.at(-1)
     if (!scope) {
       errors.push(new Error('Scope not found. Looks like point not attached to any scope.'))
     }
@@ -367,17 +340,24 @@ export class CompilerPoint {
     if (!pos) {
       errors.push(new Error('Point position not found. We do not know what to do...'))
     }
-    const { route, errors: routeErrors } = scope ? this.getRoute(scope) : { route: undefined, errors: [] }
+    const { route, errors: routeErrors } = scope ? this.getRoute({ scope, parents }) : { route: undefined, errors: [] }
     errors.push(...routeErrors)
-    const polh = this.getPrefetchOnLinkHover()
-    const layouts = this.getLayouts()
-    const methods = this.getMethods({ target: 'none', isEngineHolderBuildPhase: undefined })
+    const polh = this.getPrefetchOnLinkHover({ parents })
+    const layouts = this.getLayouts({ parents })
+    const methods = this.getMethods()
     const lastCalledMethodName = methods.at(-1)?.name
     if (lastCalledMethodName !== this.pointType) {
       errors.push(
         new Error(
           `Last called method name '${lastCalledMethodName || typeof lastCalledMethodName}' does not match point type '${this.pointType}'. Please, use .${this.pointType}() in end of point chain`,
         ),
+      )
+    }
+    const earliestPoint = this.getEarliestParentOrSelf({ parents })
+    // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
+    if (!earliestPoint.isBasePoint0) {
+      errors.push(
+        new Error(`Earliest point is not related to Point0. It is strange. Check it please: ${earliestPoint.strpos}`),
       )
     }
     const valid = !errors.length
@@ -392,6 +372,7 @@ export class CompilerPoint {
       polh,
       layouts,
       pos,
+      strpos: this.strpos,
       errors,
       valid,
       file: this.file,
@@ -416,98 +397,18 @@ export class CompilerPoint {
     )
   }
 
-  // pruner
+  // shaker
 
-  _getLetsNodePath = new Map<string, NodePath<Node> | Error>()
-  getLetsNodePath({
-    target,
-    isEngineHolderBuildPhase,
-  }: {
-    target: 'client' | 'server' | 'none'
-    isEngineHolderBuildPhase?: boolean
-  }): NodePath<Node> {
-    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
-    const prevResult = this._getLetsNodePath.get(key)
-    if (prevResult) {
-      if (prevResult instanceof Error) {
-        throw prevResult
-      }
-      return prevResult
-    }
-    if (key === 'none') {
-      const result = this.letsNodePath
-      this._getLetsNodePath.set(key, result)
-      return result
-    }
-    const ast = this.file.getTargetAst({ target, isEngineHolderBuildPhase })
-
-    let found: NodePath<Node> | null = null
-    const originalLoc = this.letsNodePath.node.loc
-    if (!originalLoc) {
-      const error = new Error('Lets node has no location information')
-      this._getLetsNodePath.set(key, error)
-      throw error
-    }
-    const targetLine = originalLoc.start.line
-    const targetColumn = originalLoc.start.column
-
-    traverse(ast, {
-      enter: (path) => {
-        // Match by location (works even after cloning)
-        const nodeLoc = path.node.loc
-        if (
-          nodeLoc?.start.line === targetLine &&
-          nodeLoc.start.column === targetColumn &&
-          path.node.type === this.letsNodePath.node.type
-        ) {
-          // Additional check: ensure it's a CallExpression with the same structure
-          if (path.node.type === 'CallExpression' && this.letsNodePath.node.type === 'CallExpression') {
-            const pathCallee = path.node.callee
-            const originalCallee = this.letsNodePath.node.callee
-            if (
-              pathCallee.type === 'MemberExpression' &&
-              originalCallee.type === 'MemberExpression' &&
-              pathCallee.property.type === 'Identifier' &&
-              originalCallee.property.type === 'Identifier' &&
-              pathCallee.property.name === originalCallee.property.name &&
-              pathCallee.property.name === 'lets'
-            ) {
-              found = path
-              path.stop()
-            }
-          }
-        }
-      },
-    })
-
-    if (!(found as any)) {
-      const error = new Error('Lets node not found in cloned AST')
-      this._getLetsNodePath.set(key, error)
-      throw error
-    }
-
-    this._getLetsNodePath.set(key, found as unknown as NodePath<Node>)
-    return found as unknown as NodePath<Node>
-  }
-
-  _getMethods = new Map<string, Array<{ nodePath: NodePath<Node>; name: string }>>()
-  getMethods({
-    target,
-    isEngineHolderBuildPhase,
-  }: {
-    target: 'client' | 'server' | 'none'
-    isEngineHolderBuildPhase?: boolean
-  }): Array<{ nodePath: NodePath<Node>; name: string }> {
-    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
-    const prevResult = this._getMethods.get(key)
-    if (prevResult) {
-      return prevResult
+  _getMethods: Array<{ nodePath: NodePath<Node>; name: string }> | undefined = undefined
+  getMethods(): Array<{ nodePath: NodePath<Node>; name: string }> {
+    if (this._getMethods) {
+      return this._getMethods
     }
     // Find all methods nodesPaths and this methods names inside this point
     // Traverse UP the AST tree (towards the ast root) to find all CallExpressions
     // Similar to getLastCalledMethodName(), but collect all methods in the chain
     const methods: Array<{ nodePath: NodePath<Node>; name: string }> = []
-    let current: NodePath<Node> | null = this.getLetsNodePath({ target, isEngineHolderBuildPhase }).parentPath
+    let current: NodePath<Node> | null = this.letsNodePath.parentPath
 
     while (current) {
       // If we find a CallExpression, check if its callee is a MemberExpression
@@ -532,26 +433,18 @@ export class CompilerPoint {
       }
     }
 
-    this._getMethods.set(key, methods)
+    this._getMethods = methods
     return methods
   }
 
-  private removeMethodArgs({
-    name,
-    target,
-    isEngineHolderBuildPhase,
-  }: {
-    name: string
-    target: 'client' | 'server'
-    isEngineHolderBuildPhase?: boolean
-  }): void {
+  private removeMethodArgs({ name }: { name: string }): void {
     // Find all method calls with the given name and remove their arguments
-    const methods = this.getMethods({ target, isEngineHolderBuildPhase })
+    const methods = this.getMethods()
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         // Clear all arguments
         method.nodePath.node.arguments = []
-        this.file.setTargetAstModified({ target, isEngineHolderBuildPhase })
+        this.file.modified = true
       }
     }
   }
@@ -570,17 +463,9 @@ export class CompilerPoint {
   //   return false
   // }
 
-  private removeMethodArgsIfNotBooleanLiteral({
-    name,
-    target,
-    isEngineHolderBuildPhase,
-  }: {
-    name: string
-    target: 'client' | 'server'
-    isEngineHolderBuildPhase?: boolean
-  }): void {
+  private removeMethodArgsIfNotBooleanLiteral({ name }: { name: string }): void {
     // Remove arguments from method calls if they're not boolean literals
-    const methods = this.getMethods({ target, isEngineHolderBuildPhase })
+    const methods = this.getMethods()
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         const args = method.nodePath.node.arguments
@@ -588,7 +473,7 @@ export class CompilerPoint {
         // Otherwise, remove all arguments
         if (!(args.length === 1 && args[0]?.type === 'BooleanLiteral')) {
           method.nodePath.node.arguments = []
-          this.file.setTargetAstModified({ target, isEngineHolderBuildPhase })
+          this.file.modified = true
         }
       }
     }
@@ -618,80 +503,51 @@ export class CompilerPoint {
   //   }
   // }
 
-  private pruneForClient({ isEngineHolderBuildPhase }: { isEngineHolderBuildPhase?: boolean }): void {
-    this.removeMethodArgs({ name: 'ctx', target: 'client', isEngineHolderBuildPhase })
-    this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader', target: 'client', isEngineHolderBuildPhase })
+  private shakeForClient(): void {
+    this.removeMethodArgs({ name: 'ctx' })
+    this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader' })
   }
 
-  private pruneForServer({ isEngineHolderBuildPhase }: { isEngineHolderBuildPhase?: boolean }): void {
-    // Nothing here. For now we do not prune server side.
+  private shakeForServer(): void {
+    // Nothing here. For now we do not shake server side.
   }
 
-  private readonly _prune: string[] = []
-  prune({
-    target,
-    isEngineHolderBuildPhase,
-  }: {
-    target: 'client' | 'server'
-    isEngineHolderBuildPhase?: boolean
-  }): void {
-    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
-    if (this._prune.includes(key)) {
+  private _shake = false
+  shake({ target }: { target: 'client' | 'server' }): void {
+    if (this._shake) {
       return
     }
-    if (!this.file.isRead()) {
-      throw new Error(`File ${this.file.abs} is not read yet`)
-    }
-    if (!this.file.isParsed()) {
-      this.file.parse()
-    }
     if (target === 'client') {
-      this.pruneForClient({ isEngineHolderBuildPhase })
+      this.shakeForClient()
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (target === 'server') {
-      this.pruneForServer({ isEngineHolderBuildPhase })
+      this.shakeForServer()
     } else {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid target: ${target}`)
     }
-    this._prune.push(key)
+    this._shake = true
   }
 
   // prettifier
 
-  private readonly _addHmrFix: string[] = []
-  addHmrFix({
-    target,
-    isEngineHolderBuildPhase,
-    policy,
-  }: {
-    target: 'client' | 'server'
-    isEngineHolderBuildPhase?: boolean
-    policy: 'functionDeclaration' | 'arrowFunctionExpression'
-  }): void {
-    const key = this.file.getTargetKey({ target, isEngineHolderBuildPhase })
-    if (this._addHmrFix.includes(key)) {
+  private _addHmrFix = false
+  addHmrFix({ policy }: { policy: 'functionDeclaration' | 'arrowFunctionExpression' }): void {
+    if (this._addHmrFix) {
       return
     }
 
-    if (!this.file.isRead()) {
-      throw new Error(`File ${this.file.abs} is not read yet`)
-    }
-    if (!this.file.isParsed()) {
-      this.file.parse()
-    }
-
     // Get the last method call in the chain (the topmost/final CallExpression)
-    const methods = this.getMethods({ target, isEngineHolderBuildPhase })
+    const methods = this.getMethods()
     if (methods.length === 0) {
-      this._addHmrFix.push(key)
+      this._addHmrFix = true
       return
     }
 
     // The last method in the array is the final method call (e.g., .mutation(), .query())
     const lastMethod = methods[methods.length - 1]
     if (lastMethod.nodePath.node.type !== 'CallExpression') {
-      this._addHmrFix.push(key)
+      this._addHmrFix = true
       return
     }
 
@@ -702,7 +558,7 @@ export class CompilerPoint {
       const hasValidEnding = lastMethod.name === this.pointType
       const alreadyHasFunctionalComponent = hasValidEnding && lastMethodCall.arguments.length !== 0
       if (alreadyHasFunctionalComponent) {
-        this._addHmrFix.push(key)
+        this._addHmrFix = true
         return
       }
       // Otherwise, continue to add HMR fix (last method matches pointType and has no args)
@@ -764,8 +620,8 @@ export class CompilerPoint {
 
     // Replace the original last method call node with the new one that has ._hmr() chained
     lastMethod.nodePath.replaceWith(hmrCallExpression as any)
-    this.file.setTargetAstModified({ target, isEngineHolderBuildPhase })
-    this._addHmrFix.push(key)
+    this.file.modified = true
+    this._addHmrFix = true
   }
 }
 
@@ -777,10 +633,9 @@ export type CompilerPointSimplified = {
   baseNodePath: boolean
   letsNodePath: boolean
   isBasePoint0: boolean
-  parents: CompilerPointExtraSimplified[]
 }
 
-export type CompilerPointExtraSimplified = Pick<CompilerPointSimplified, 'file' | 'exportName'>
+export type CompilerPointExtraSimplified = Pick<CompilerPointSimplified, 'file' | 'pointName'>
 
 export type CompilerPointParsedPos = { file: string; line: number; column: number }
 export type CompilerPointParsedValid = {
@@ -794,8 +649,9 @@ export type CompilerPointParsedValid = {
   layouts: string[]
   pos: CompilerPointParsedPos
   errors: unknown[]
+  strpos: string
   valid: true
-  file: CompilerFile
+  file: CompilerFile<true>
   original: CompilerPoint
 }
 export type CompilerPointParsedInvalid = {
@@ -807,10 +663,11 @@ export type CompilerPointParsedInvalid = {
   route: AnyRoute | undefined
   polh: boolean | number | undefined
   layouts: string[]
-  pos: CompilerPointParsedPos | undefined
+  pos: CompilerPointParsedPos
+  strpos: string | undefined
   errors: unknown[]
   valid: false
-  file: CompilerFile
+  file: CompilerFile<true>
   original: CompilerPoint
 }
 export type CompilerPointParsed = CompilerPointParsedValid | CompilerPointParsedInvalid

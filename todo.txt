@@ -234,7 +234,7 @@ loader(() => {}, {cache: false | string})
 ССР опцию можно добавлять в квери, чтобы при серверном рендеринге если квери находится, то она все равно не префетчится
 ? Юз лоадер респонс должен быть сервер респонсом если там такой есть
 ? Добавить реквест реферера и там указать какому скоупа принадлежал реферер
-? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will prune all ctx and loaders already)
+? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will shake all ctx and loaders already)
 
 TEST
 test for units
@@ -533,9 +533,9 @@ NOT ELYSIA, BUT FULLSTACK FRAMEWORK
 ??? И полюбому хедеры и куки будут наложены на новый респонс
 ...we do not fight with elysia, ay of it route or routes can be defined, lets just later make extensions and add .elysiaLoader, or maybe made it core functionality
 
-× .reqHeaders<T>(z.object({})) // request headers // prune on client → just .header()
-× .resHeaders<T>(z.object({})) // response headers // prune on client → why? we just return it from loaders
-× .cookies<T>(z...) // request cookies // prune on client → why do we ever need it, just parse it in loader and add needed to ctx (it is optional, but possible)
+× .reqHeaders<T>(z.object({})) // request headers // shake on client → just .header()
+× .resHeaders<T>(z.object({})) // response headers // shake on client → why? we just return it from loaders
+× .cookies<T>(z...) // request cookies // shake on client → why do we ever need it, just parse it in loader and add needed to ctx (it is optional, but possible)
 × .headers(z.object({})) // request headers → we do not need it, jsut parse in loader and add to ctx (it is optional, but possible)
 × Own req and res wrapper around original request → when openapi, we will have additional "openapi" option in loaders with all stuff
 × in loader return [status, data, res.headers.set()] → not needed in final response header may be any becouse of any connection problem
