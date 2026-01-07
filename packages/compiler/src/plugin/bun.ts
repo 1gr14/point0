@@ -1,25 +1,18 @@
 import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
-import { compile, compilerFilepathFilter } from '../index.js'
+import type { CompilerOptions } from '../compiler.js'
+import { Compiler } from '../compiler.js'
 
-export function compilerBunPlugin({
-  target,
-  isEngineHolderBuildPhase,
-}: {
-  target: 'client' | 'server'
-  isEngineHolderBuildPhase?: boolean
-}): BunPlugin {
+export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
+  const compiler = options instanceof Compiler ? options : Compiler.create(options)
   return {
     name: 'point0-compiler',
     setup(build) {
-      build.onLoad({ filter: compilerFilepathFilter }, async (args) => {
+      build.onLoad({ filter: compiler.compilerFilepathFilter }, async (args) => {
         const filepath = args.path
         try {
-          const result = await compile({
+          const result = await compiler.compile({
             file: filepath,
-            target,
-            isEngineHolderBuildPhase,
-            hmrFixPolicy: 'arrowFunctionExpression',
           })
           if (!result.modified) {
             return {

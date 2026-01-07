@@ -3,6 +3,7 @@ import { defineConfig, type Options } from 'tsup'
 const general = {
   entry: [
     'src/index.ts',
+    'src/compiler.ts',
     'src/walker.ts',
     'src/file.ts',
     'src/plugin/bun-static.ts',

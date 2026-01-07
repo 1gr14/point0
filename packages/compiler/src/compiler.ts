@@ -1,6 +1,13 @@
 import type { CompilerPoint } from './point.js'
 import { Walker } from './walker.js'
 
+export type CompilerOptions = {
+  target: 'client' | 'server'
+  compilerFilepathFilter?: RegExp
+  isEngineHolderBuildPhase?: boolean
+  hmrFixPolicy?: 'functionDeclaration' | 'arrowFunctionExpression' | 'none'
+}
+
 export class Compiler {
   compilerFilepathFilter: RegExp
   walker: Walker
@@ -30,16 +37,11 @@ export class Compiler {
     this.hmrFixPolicy = hmrFixPolicy
   }
 
-  static create(options: {
-    target: 'client' | 'server'
-    compilerFilepathFilter?: RegExp
-    isEngineHolderBuildPhase?: boolean
-    hmrFixPolicy?: 'functionDeclaration' | 'arrowFunctionExpression' | 'none'
-  }) {
+  static create(options: CompilerOptions) {
     const { target, compilerFilepathFilter, isEngineHolderBuildPhase, hmrFixPolicy } = options
     const walker = new Walker()
     return new Compiler({
-      compilerFilepathFilter: compilerFilepathFilter ?? this.defaultCompilerFilepathFilter,
+      compilerFilepathFilter: compilerFilepathFilter ?? Compiler.defaultCompilerFilepathFilter,
       walker,
       target,
       isEngineHolderBuildPhase,

@@ -18,6 +18,8 @@
     "@point0/wouter": "workspace:*",
     "@point0/react-dom": "workspace:*",
     "@point0/elysia": "workspace:*",
+    "@point0/compiler": "workspace:*",
+    "@point0/runtime": "workspace:*",
     "superjson": "^2.2.5",
     "elysia": "^1.4.16",
     "react": "^19.0.0",

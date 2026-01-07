@@ -16,6 +16,8 @@
     "@point0/engine": "workspace:*",
     "@point0/wouter": "workspace:*",
     "@point0/react-dom": "workspace:*",
+    "@point0/compiler": "workspace:*",
+    "@point0/runtime": "workspace:*",
     "@devp0nt/route0": "^1.0.0-next.52",
     "superjson": "^2.2.5",
     "react": "^19.0.0",

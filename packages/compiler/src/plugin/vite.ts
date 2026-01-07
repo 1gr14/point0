@@ -1,29 +1,24 @@
 import MagicString from 'magic-string'
 import type { Plugin } from 'vite'
-import { compile, compilerFilepathFilter } from '../index.js'
+import type { CompilerOptions } from '../compiler.js'
+import { Compiler } from '../compiler.js'
 
-export function compilerVitePlugin({
-  target,
-  isEngineHolderBuildPhase,
-}: {
-  target: 'client' | 'server'
-  isEngineHolderBuildPhase?: boolean
-}): Plugin {
+export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin {
+  const compiler = options instanceof Compiler ? options : Compiler.create(options)
   return {
     name: 'point0-compiler',
     enforce: 'pre',
     async transform(code, id, options) {
       const [filepath] = id.split('?', 1)
-      if (!compilerFilepathFilter.test(filepath)) return null
-      const result = await compile({
+      if (!compiler.compilerFilepathFilter.test(filepath)) return null
+      const result = await compiler.compile({
         content: code,
         file: filepath,
-        target,
-        isEngineHolderBuildPhase,
-        hmrFixPolicy: 'functionDeclaration',
       })
 
       if (!result.modified) return null
+
+      console.log('result', result.code)
 
       const ms = new MagicString(code)
       ms.overwrite(0, code.length, result.code)
