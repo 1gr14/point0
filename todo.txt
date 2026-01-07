@@ -4,16 +4,19 @@
 
 RUNTIME
 Рантайм из продакшен, девелопмент, тест, и энв переменные
-runtime.scope
+runtime.is.scope
+runtime.scope.define, runtime.scope.define.expo()
 runtime.env variables
 runtime.is.ssr type
 runtime.is.browser (enugh for any desired case)
 __GET_SSR_PHASE__
+рантай скоуп кол и дефайн, с возможностью определить типы скоупов
 Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
 Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
 
 ENGINE
 ? Прун он билдпхэйз просто на уровне Хардинга энвы можно задать
+Генератор для клиента пусть берёт только иниты пейджи лэйоуты, а для сервера только с серверными лоадерами и пейджи лэйоутв с ссаром
 Компилер прямо в энжину можо передать, аможно передать фалс и тогда его там не будет
 хмрПорт или желание отсутвия порта не нул, а фалс должен быть
 Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
@@ -31,6 +34,12 @@ fix compiler option name for node_modules prefixes
 Генерейт поинтс если ему нужно пусть генерирует через объект с путём и тайп лэйзи или реди
 В энжину импорт мета файлнейм автоматом добавлять через компилер
 
+COMPILER
+addHmrFix → hmrFix
+Убедиться, что компилер не ломает информацию о выведенных позициях, иделает нормальные соурсмапы
+Экспортированным функциям _hmr давать хорошие имена с подчёркиванием и если такая функция есть то приписывать к ней цифорку
+walker cache for compiled files by settings and file timestemp
+allow hardcode: {'runtime.is.expo': true} or any
 
 INPUT
 Проверить расширяемость инпута на юниты
@@ -42,6 +51,8 @@ standard schema
 Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
 
 REFACTORING 0
+Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
+Лоадер стейдж нужен, чтобы все в рядок стряли
 query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope
 e2e tests
 hmr tests
@@ -110,6 +121,7 @@ TOpenapi, and if exists, then loaders has .loader({openapi}: {openapi: TOpenapi}
 if TOpenapi, then it can be query or infiniteQuery or mutation, based on what was provided .query(), .infiniteQuery(), .mutation()
 _slug ← name
 Под опенапи сделать Парсинг каеристринг через ту штуку чтобы массивы и объекты дали
+Опенапи фн а опшинсах имеет селф, который и можно передать в экзекьют, если нужны прежние лоадеры и контекст
 
 LISTENER
 .lets('listener', 'mylistener', scopes).client(eventName, {type,set,input,request,point,publicdir}).server(eventName, options).listener()
@@ -217,10 +229,6 @@ loader(() => {}, {cache: false | string})
 ? Добавить реквест реферера и там указать какому скоупа принадлежал реферер
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will shake all ctx and loaders already)
 
-COMPILER
-walker cache for compiled files by settings and file timestemp
-allow hardcode: {'runtime.is.expo': true} or any
-
 TEST
 test for units
 test for engine
@@ -278,6 +286,7 @@ also allow .static(10, ({take, skip}) => [input1, input2]) or .static(false, 10,
 PRUNER
 check if real third-part packages not rhow on client or server
 serverOnlyPackages, clientOnlyPackages, throw on build and on runtime
+inspect by filepath how this file and in which place come to files via cli command
 
 REALTIME
 mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
@@ -352,6 +361,7 @@ launch
 
 ELECTRON
 somehow wh we have now in client-server, have same ot main-renderer process, via replace fetch implementation
+Надо сразу чекнуть электрон, вероятно консумХэндлер достаточно добавить, чтобы поинт просто взял и стал чем угодно, но будто бы тут лучше отдельную разработку для электорна делать, это подождёт
 
 ROUTES/NOT FOUND
 we already have in router option to provide 404
