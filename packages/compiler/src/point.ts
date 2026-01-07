@@ -532,7 +532,7 @@ export class CompilerPoint {
   // prettifier
 
   private _addHmrFix = false
-  addHmrFix({ policy }: { policy: 'functionDeclaration' | 'arrowFunctionExpression' }): void {
+  addHmrFix({ policy }: { policy: 'function' | 'arrowFunction' }): void {
     if (this._addHmrFix) {
       return
     }
@@ -551,13 +551,69 @@ export class CompilerPoint {
       return
     }
 
-    // Skip if point type is component, layout, or page (only add HMR to non-component points)
-    // Exception: if component point not ends with functional component
+    // Check if point type is component, layout, or page and has functional component
     if (this.pointType === 'component' || this.pointType === 'layout' || this.pointType === 'page') {
-      const lastMethodCall = lastMethod.nodePath.node
       const hasValidEnding = lastMethod.name === this.pointType
-      const alreadyHasFunctionalComponent = hasValidEnding && lastMethodCall.arguments.length !== 0
+      const lastMethodCall = lastMethod.nodePath.node
+      const firstArg = lastMethodCall.arguments.at(0)
+      const alreadyHasFunctionalComponent = hasValidEnding && !!firstArg
       if (alreadyHasFunctionalComponent) {
+        // Check if the existing function type matches the policy
+        const isArrowFunction = firstArg.type === 'ArrowFunctionExpression'
+        const isFunctionExpression = firstArg.type === 'FunctionExpression'
+        const needsConversion =
+          (policy === 'function' && isArrowFunction) || (policy === 'arrowFunction' && isFunctionExpression)
+
+        if (needsConversion) {
+          // Convert the function to match the policy
+          if (policy === 'function' && isArrowFunction) {
+            // Convert arrow function to function expression
+            const arrowFn = firstArg as any
+            // If arrow function has expression body (not BlockStatement), wrap it in return statement
+            let body = arrowFn.body
+            if (body.type !== 'BlockStatement') {
+              body = {
+                type: 'BlockStatement' as const,
+                body: [
+                  {
+                    type: 'ReturnStatement' as const,
+                    argument: body,
+                  },
+                ],
+              }
+            }
+            const functionExpr = {
+              type: 'FunctionExpression' as const,
+              id: {
+                type: 'Identifier' as const,
+                name: 'X',
+              },
+              generator: false,
+              async: arrowFn.async || false,
+              params: arrowFn.params || [],
+              body,
+            }
+            lastMethodCall.arguments[0] = functionExpr as any
+            this.file.modified = true
+          } else if (policy === 'arrowFunction' && isFunctionExpression) {
+            // Convert function expression to arrow function
+            const functionExpr = firstArg as any
+            // Keep the body as is (BlockStatement stays as BlockStatement)
+            const arrowFn = {
+              type: 'ArrowFunctionExpression' as const,
+              async: functionExpr.async || false,
+              params: functionExpr.params || [],
+              body: functionExpr.body || {
+                type: 'BlockStatement' as const,
+                body: [],
+              },
+            }
+            lastMethodCall.arguments[0] = arrowFn as any
+            this.file.modified = true
+          }
+        }
+        // For page/layout/component points with existing functions, don't add HMR fix
+        // Just convert if needed, then return
         this._addHmrFix = true
         return
       }
@@ -596,7 +652,7 @@ export class CompilerPoint {
     })
 
     const makeFunctionReturnNull =
-      policy === 'functionDeclaration' ? makeFunctionDeclarationReturnNull : makeArrowFunctionExpressionReturnNull
+      policy === 'function' ? makeFunctionDeclarationReturnNull : makeArrowFunctionExpressionReturnNull
 
     // Create MemberExpression: lastMethodCallNode._hmr
     const hmrMemberExpression = {

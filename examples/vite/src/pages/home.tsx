@@ -35,10 +35,10 @@ export const BestIdeaComponent = client
   .outer(({ children }) => {
     return children
   })
-  .component(({ data, props }) => {
+  .component(function Z({ data, props }) {
     return (
       <div>
-        <h1>Best Idea {data.y}</h1>
+        <h1>Best Ideax {data.y}</h1>
         <p>{props.cta}</p>
         <p>{data.bestIdea.title}</p>
         <p>
@@ -54,7 +54,7 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  .page(({ location }) => {
+  .page(function L({ location }) {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
@@ -78,7 +78,7 @@ export default generalLayout
             setState2(state2 + 1)
           }}
         >
-          Click me
+          Click mexxx
         </button>
         <p>State: {state}</p>
         <p>State2: {state2}</p>
@@ -120,7 +120,7 @@ const HelperComponent = () => {
           setState(state + 1)
         }}
       >
-        Click mex
+        Click me
       </button>
     </div>
   )

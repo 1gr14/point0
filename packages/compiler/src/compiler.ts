@@ -5,7 +5,7 @@ export type CompilerOptions = {
   target: 'client' | 'server'
   compilerFilepathFilter?: RegExp
   isEngineHolderBuildPhase?: boolean
-  hmrFixPolicy?: 'functionDeclaration' | 'arrowFunctionExpression' | 'none'
+  hmrFixPolicy?: 'function' | 'arrowFunction' | 'none'
 }
 
 export class Compiler {
@@ -13,7 +13,7 @@ export class Compiler {
   walker: Walker
   target: 'client' | 'server'
   isEngineHolderBuildPhase: boolean | undefined
-  hmrFixPolicy: 'functionDeclaration' | 'arrowFunctionExpression' | 'none' | undefined
+  hmrFixPolicy: 'function' | 'arrowFunction' | 'none' | undefined
 
   static defaultCompilerFilepathFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
@@ -28,7 +28,7 @@ export class Compiler {
     walker: Walker
     target: 'client' | 'server'
     isEngineHolderBuildPhase: boolean | undefined
-    hmrFixPolicy: 'functionDeclaration' | 'arrowFunctionExpression' | 'none' | undefined
+    hmrFixPolicy: 'function' | 'arrowFunction' | 'none' | undefined
   }) {
     this.compilerFilepathFilter = compilerFilepathFilter
     this.walker = walker
@@ -59,11 +59,10 @@ export class Compiler {
     content?: string
     file: string
     isEngineHolderBuildPhase?: boolean
-    hmrFixPolicy?: 'functionDeclaration' | 'arrowFunctionExpression' | 'none'
+    hmrFixPolicy?: 'function' | 'arrowFunction' | 'none'
   }): Promise<{ code: string; points: CompilerPoint[]; errors: unknown[]; modified: boolean }> {
     const errors: unknown[] = []
-    const walker = new Walker()
-    const collectResult = await walker.collectPointsFromFile({ file })
+    const collectResult = await this.walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
       return { code: content || '', points: collectResult.points, errors, modified: false }
@@ -81,7 +80,7 @@ export class Compiler {
       code: cf.modified ? cf.toCode() : cf.content,
       points: collectResult.points,
       errors,
-      modified: true,
+      modified: cf.modified,
     }
   }
 }

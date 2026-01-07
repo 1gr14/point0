@@ -48,7 +48,7 @@ export const root = Point0.lets('root', 'root').root()
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
-        expect(result.modified).toBe(true)
+        expect(result.modified).toBe(false)
         expect(result.code).toContain('Point0.lets')
       }),
     )
@@ -89,12 +89,12 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects hmrFixPolicy option - functionDeclaration',
+      'respects hmrFixPolicy option - function',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'functionDeclaration' })
+        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'function' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._hmr(function X()')
@@ -102,12 +102,12 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects hmrFixPolicy option - arrowFunctionExpression',
+      'respects hmrFixPolicy option - arrowFunction',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'arrowFunctionExpression' })
+        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'arrowFunction' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._hmr(() =>')
@@ -130,12 +130,12 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'handles file with no points',
       helper(async ({ files: [file] }) => {
-        await file.write(`console.log('hello')`)
+        await file.write(`console.info('hello')`)
         const compiler = Compiler.create({ target: 'client' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(0)
-        expect(result.modified).toBe(true)
+        expect(result.modified).toBe(false)
       }),
     )
   })

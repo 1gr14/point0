@@ -142,7 +142,13 @@ export class Walker {
     return (routes as any)?.[routeKey]
   }
 
-  async collectPointsFromFile({ file: providedFile }: { file: string | CompilerFile<true> }): Promise<
+  async collectPointsFromFile({
+    file: providedFile,
+    content,
+  }: {
+    file: string | CompilerFile<true>
+    content?: string
+  }): Promise<
     | {
         points: CompilerPoint[]
         errors: unknown[]
@@ -158,7 +164,7 @@ export class Walker {
   > {
     const points: CompilerPoint[] = []
     const errors: unknown[] = []
-    const fileIdle = typeof providedFile === 'string' ? CompilerFile.create(providedFile) : providedFile
+    const fileIdle = typeof providedFile === 'string' ? CompilerFile.create(providedFile, content) : providedFile
 
     try {
       const file = await fileIdle.read()

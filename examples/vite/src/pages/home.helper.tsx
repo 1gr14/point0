@@ -12,13 +12,13 @@ export const ExternalHelperComponent = () => {
   }, [])
   return (
     <div>
-      <p>External Helperxx: {state}</p>
+      <p>External Helper: {state}</p>
       <button
         onClick={() => {
           setState(0)
         }}
       >
-        Click me
+        Click mex
       </button>
     </div>
   )
