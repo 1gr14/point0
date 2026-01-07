@@ -63,6 +63,7 @@ standard schema
 Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
 
 REFACTORING 0
+point0 also separate file, index jsut reexport everything
 compiler self package
 ssr can not be on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
 allow .ssr() on any point
