@@ -5,7 +5,7 @@ export const engine = Engine.create(import.meta.url, {
   // clientsSelfOutdir: '../dist',
   pointsGlob: ['**/*.{ts,tsx}'],
   server: {
-    scope: 'server',
+    scope: 'client',
     port: 3000,
     entry: './index.server.ts',
     outdir: '../dist/server',

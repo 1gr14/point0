@@ -112,6 +112,28 @@
         "vite-tsconfig-paths": "^5.1.4",
       },
     },
+    "packages/compiler": {
+      "name": "@point0/compiler",
+      "version": "0.1.0",
+      "dependencies": {
+        "@babel/generator": "^7.28.5",
+        "@babel/parser": "^7.28.5",
+        "@babel/traverse": "^7.28.5",
+        "@babel/types": "^7.28.5",
+      },
+      "devDependencies": {
+        "@types/babel__traverse": "^7.28.0",
+        "@types/bun": "^1.2.22",
+        "@types/node": "^20.0.0",
+        "esbuild-fix-imports-plugin": "^1.0.22",
+        "tsup": "^8.0.0",
+        "typescript": "^5.0.0",
+      },
+      "peerDependencies": {
+        "@devp0nt/route0": "catalog:",
+        "@point0/core": "workspace:*",
+      },
+    },
     "packages/core": {
       "name": "@point0/core",
       "version": "0.1.0",
@@ -169,8 +191,6 @@
         "point0": "./dist/cli.js",
       },
       "dependencies": {
-        "@babel/parser": "^7.28.5",
-        "@babel/traverse": "^7.28.5",
         "@parcel/watcher": "^2.5.1",
         "commander": "^14.0.2",
         "fast-glob": "^3.3.2",
@@ -180,7 +200,6 @@
         "qs": "^6.14.0",
       },
       "devDependencies": {
-        "@types/babel__traverse": "^7.28.0",
         "@types/bun": "^1.2.22",
         "@types/lodash": "^4.17.20",
         "@types/minimatch": "^6.0.0",
@@ -194,6 +213,7 @@
       "peerDependencies": {
         "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
+        "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/runtime": "workspace:*",
         "@tanstack/react-query": "catalog:",
@@ -502,6 +522,8 @@
     "@pnpm/network.ca-file": ["@pnpm/network.ca-file@1.0.2", "", { "dependencies": { "graceful-fs": "4.2.10" } }, "sha512-YcPQ8a0jwYU9bTdJDpXjMi7Brhkr1mXsXrUJvjqM2mQDgkRiz8jFaQGOdaLxgjtUfQgZhKy/O3cG/YwmgKaxLA=="],
 
     "@pnpm/npm-conf": ["@pnpm/npm-conf@2.3.1", "", { "dependencies": { "@pnpm/config.env-replace": "^1.1.0", "@pnpm/network.ca-file": "^1.0.1", "config-chain": "^1.1.11" } }, "sha512-c83qWb22rNRuB0UaVCI0uRPNRr8Z0FWnEIvT47jiHAmOIUHbBOg5XvV7pM5x+rKn9HRpjxquDbXYSXr3fAKFcw=="],
+
+    "@point0/compiler": ["@point0/compiler@workspace:packages/compiler"],
 
     "@point0/core": ["@point0/core@workspace:packages/core"],
 

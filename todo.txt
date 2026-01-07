@@ -42,6 +42,8 @@ ENGINE
 Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
 baseurl get from root point, and remove from engine config
 auto port getter
+generate: {points:path, routes:path}
+server should get only its own points, and its already should include all points, so we do not need all-points-manager
 ? Убрать из энжины необходимость указывать импорт мета файл, мы же и так знаем путь к ней до билда в самом билд скрипте (ох...)
 binary, just throw error if some engine distdirs not inside firstlevel server distdir, else just copy them as dirs when do one-file-executable
 Путь к энжине не п не е а ф, а лучше посмотреть как у тсконыига называетсяE

@@ -4,10 +4,15 @@ import fg from 'fast-glob'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import type { EngineLogger, EngineOptionsRoutes } from '../config.js'
-import { getDirByPaths, resolveTempDirPath } from '../utils.js'
-import { END_POINT_TYPES, Walker } from './walker.js'
-import { CompilerPoint, type CompilerPointParsed, type CompilerPointParsedValid } from './point.js'
+import type { EngineLogger, EngineOptionsRoutes } from './config.js'
+import { getDirByPaths, resolveTempDirPath } from './utils.js'
+import {
+  END_POINT_TYPES,
+  Walker,
+  CompilerPoint,
+  type CompilerPointParsed,
+  type CompilerPointParsedValid,
+} from '@point0/compiler'
 
 type ChangeCollectedPointsEvent = {
   deleted: CompilerPointParsed[]

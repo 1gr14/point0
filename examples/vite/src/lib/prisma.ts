@@ -1,7 +1,7 @@
 // TODO: create guard for server-only
 // import 'server-only'
 
-const wait = async (ms = 300) => await new Promise((resolve) => setTimeout(resolve, ms))
+const wait = async (ms = 50) => await new Promise((resolve) => setTimeout(resolve, ms))
 
 export const prisma = {
   idea: {

@@ -6,9 +6,10 @@ import { generalLayout } from '../layouts/general.js'
 import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
-import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
+// import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
+import { ExternalHelperComponent } from './home.helper.js'
 import Icon from '../assets/icon.svg?react'
-import { runtime } from '@point0/runtime'
+// import { runtime } from '@point0/runtime'
 
 // const something = SuperStore.define('something', () => {
 //   return {
@@ -86,7 +87,7 @@ export default generalLayout
         <hr />
         <ExternalHelperComponent />
         {/* <ExternalHelperComponent2.Component /> */}
-        <ExternalHelperComponent2.Component />
+        {/* <ExternalHelperComponent2.Component /> */}
         <hr />
         <p>Something date: {someDate.get().getTime()}</p>
         <p>Something stable: {someStable.get()}</p>
@@ -119,7 +120,7 @@ const HelperComponent = () => {
           setState(state + 1)
         }}
       >
-        Click me
+        Click mex
       </button>
     </div>
   )

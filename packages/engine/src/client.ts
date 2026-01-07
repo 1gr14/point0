@@ -659,7 +659,7 @@ Bun.serve({
           })
         : {}
 
-      const compilerPlugin = await import('./compiler/plugin/bun.js').then((module) =>
+      const compilerPlugin = await import('@point0/compiler/plugin/bun').then((module) =>
         module.compilerBunPlugin({ target: 'client' }),
       )
 
@@ -738,7 +738,7 @@ Bun.serve({
 
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-      const compilerPlugin = await import('./compiler/plugin/vite.js').then((module) =>
+      const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
         module.compilerVitePlugin({ target: 'client' }),
       )
 

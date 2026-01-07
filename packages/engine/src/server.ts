@@ -182,7 +182,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     const shakePlugin = this.viteConfig // we inject vite shake plugin in vite config
       ? []
       : [
-          await import('./compiler/plugin/bun.js').then((module) =>
+          await import('@point0/compiler/plugin/bun').then((module) =>
             module.compilerBunPlugin({
               target: 'server',
             }),
@@ -619,7 +619,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const viteRoot =
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-      const shakePlugin = await import('./compiler/plugin/vite.js').then((module) =>
+      const shakePlugin = await import('@point0/compiler/plugin/vite').then((module) =>
         module.compilerVitePlugin({ target: 'server' }),
       )
 

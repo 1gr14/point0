@@ -41,7 +41,6 @@ export const compile = async ({
 }
 
 export * from './file.js'
-export * from './generator.js'
 export * from './point.js'
 export * from './resolver.js'
 export * from './walker.js'

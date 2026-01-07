@@ -46,21 +46,9 @@
       "types": "./dist/render.d.ts",
       "import": "./dist/render.js"
     },
-    "./compiler": {
-      "types": "./dist/compiler/index.d.ts",
-      "import": "./dist/compiler/index.js"
-    },
-    "./compiler/plugin/bun-static": {
-      "types": "./dist/compiler/plugin/bun-static.d.ts",
-      "import": "./dist/compiler/plugin/bun-static.js"
-    },
-    "./compiler/plugin/bun": {
-      "types": "./dist/compiler/plugin/bun.d.ts",
-      "import": "./dist/compiler/plugin/bun.js"
-    },
-    "./compiler/plugin/vite": {
-      "types": "./dist/compiler/plugin/vite.d.ts",
-      "import": "./dist/compiler/plugin/vite.js"
+    "./generator": {
+      "types": "./dist/generator.d.ts",
+      "import": "./dist/generator.js"
     },
     "./publicdir": {
       "types": "./dist/publicdir.d.ts",
@@ -102,8 +90,6 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
-    "@babel/parser": "^7.28.5",
-    "@babel/traverse": "^7.28.5",
     "@parcel/watcher": "^2.5.1",
     "commander": "^14.0.2",
     "fast-glob": "^3.3.2",
@@ -115,6 +101,7 @@
   "peerDependencies": {
     "@point0/core": "workspace:*",
     "@point0/runtime": "workspace:*",
+    "@point0/compiler": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -124,7 +111,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/babel__traverse": "^7.28.0",
     "@types/bun": "^1.2.22",
     "@types/minimatch": "^6.0.0",
     "@types/node": "^20.0.0",

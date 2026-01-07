@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Walker } from '../../src/compiler/walker.js'
+import { Walker } from '../src/walker.js'
 import { Route0, Routes } from '@devp0nt/route0'
-import type { CompilerPointParsed } from '../../src/compiler/point.js'
+import type { CompilerPointParsed } from '../src/point.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 

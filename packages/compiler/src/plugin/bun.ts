@@ -1,6 +1,6 @@
 import type { BunPlugin } from 'bun'
 // import MagicString from 'magic-string'
-import { compile, CompilerFile, compilerFilepathFilter } from '../index.js'
+import { compile, compilerFilepathFilter } from '../index.js'
 
 export function compilerBunPlugin({
   target,
@@ -43,7 +43,9 @@ export function compilerBunPlugin({
         } catch (e) {
           console.error(e)
           return {
-            contents: CompilerFile.getCachedContentOrUndefined(filepath) ?? '',
+            // TODO:ASAP
+            contents: '',
+            // contents: CompilerFile.getCachedContentOrUndefined(filepath) ?? '',
             loader: guessLoader(filepath),
           }
         }

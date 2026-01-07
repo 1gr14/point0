@@ -470,7 +470,7 @@ export const createViteDevServer = async ({
       target,
     })
 
-    const compilerPlugin = await import('./compiler/plugin/vite.js').then((module) =>
+    const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
       module.compilerVitePlugin({ target }),
     )
 

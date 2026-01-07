@@ -74,43 +74,31 @@ export const _BestIdeaComponent_8 = {
   point: async () => (await import('../pages/home.js')).BestIdeaComponent,
 } as LazyPointsCollectionRecord
 
-export const _ExternalHelperComponent2_9 = {
-  type: 'component',
-  name: 'externalHelper2',
-  point: async () => (await import('../pages/home.helper.js')).ExternalHelperComponent2,
-} as LazyPointsCollectionRecord
-
-export const _createIdeaMutation_10 = {
+export const _createIdeaMutation_9 = {
   type: 'mutation',
   name: 'createIdea',
   point: async () => (await import('../pages/idea-create.js')).createIdeaMutation,
 } as LazyPointsCollectionRecord
 
-export const _generateIdeaMutation_11 = {
+export const _generateIdeaMutation_10 = {
   type: 'mutation',
   name: 'generateIdea',
   point: async () => (await import('../pages/idea-create.js')).generateIdeaMutation,
 } as LazyPointsCollectionRecord
 
-export const _myMut_12 = {
-  type: 'mutation',
-  name: 'myMut',
-  point: async () => (await import('../pages/home.helper.js')).myMut,
-} as LazyPointsCollectionRecord
-
-export const _clientCtx1_13 = {
+export const _clientCtx1_11 = {
   type: 'provider',
   name: 'testClientCtx1',
   point: async () => (await import('./client-ctx.js')).clientCtx1,
 } as LazyPointsCollectionRecord
 
-export const _clientCtx2_14 = {
+export const _clientCtx2_12 = {
   type: 'provider',
   name: 'testClientCtx2',
   point: async () => (await import('./client-ctx.js')).clientCtx2,
 } as LazyPointsCollectionRecord
 
-export const _clientCtx3_15 = {
+export const _clientCtx3_13 = {
   type: 'provider',
   name: 'testClientCtx3',
   point: async () => (await import('./client-ctx.js')).clientCtx3,
