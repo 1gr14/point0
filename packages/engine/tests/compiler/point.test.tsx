@@ -735,7 +735,7 @@ export const page = root.lets('page', 'page', '/').page()
       )
 
       it.concurrent(
-        'skips HMR fix for page point with functional component',
+        'skips HMR fix for page point with functional arrow function component',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
@@ -748,6 +748,24 @@ export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
             "import { Point0 } from '@point0/core';
             export const root = Point0.lets('root', 'root').root();
             export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>);"
+          `)
+        }),
+      )
+
+      it.concurrent(
+        'skips HMR fix for page point with functional function component',
+        helper(async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'page', '/').page(function MyFunction() {return <div>Hello</div>})
+        `)
+          const result = await walker.collectPointsFromFile({ file: file.path })
+          const point = result.points[1]
+          point.addHmrFix({ policy: 'functionDeclaration' })
+          expect(point.file.toCode()).toMatchInlineSnapshot(`
+            "import { Point0 } from '@point0/core';
+            export const root = Point0.lets('root', 'root').root();
+            export const page = root.lets('page', 'page', '/').page(function MyFunction() {return <div>Hello</div>;});"
           `)
         }),
       )

@@ -34,7 +34,7 @@ export const BestIdeaComponent = client
   .outer(({ children }) => {
     return children
   })
-  .component(function X({ data, props }) {
+  .component(({ data, props }) => {
     return (
       <div>
         <h1>Best Idea {data.y}</h1>
@@ -53,7 +53,7 @@ export default generalLayout
     title: 'IdeaNick Forever!',
     titleTemplate: null,
   })
-  .page(function X() {
+  .page(({ location }) => {
     const [state, setState] = useState(someVar.get())
     const [state2, setState2] = useState(0)
     useEffect(() => {
