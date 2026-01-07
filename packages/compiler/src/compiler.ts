@@ -5,7 +5,7 @@ export type CompilerOptions = {
   target: 'client' | 'server'
   compilerFilepathFilter?: RegExp
   isEngineHolderBuildPhase?: boolean
-  hmrFixPolicy?: 'function' | 'arrowFunction' | 'none'
+  hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
 }
 
 export class Compiler {
@@ -13,7 +13,7 @@ export class Compiler {
   walker: Walker
   target: 'client' | 'server'
   isEngineHolderBuildPhase: boolean | undefined
-  hmrFixPolicy: 'function' | 'arrowFunction' | 'none' | undefined
+  hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
 
   static defaultCompilerFilepathFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
@@ -28,7 +28,7 @@ export class Compiler {
     walker: Walker
     target: 'client' | 'server'
     isEngineHolderBuildPhase: boolean | undefined
-    hmrFixPolicy: 'function' | 'arrowFunction' | 'none' | undefined
+    hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
   }) {
     this.compilerFilepathFilter = compilerFilepathFilter
     this.walker = walker
@@ -59,7 +59,7 @@ export class Compiler {
     content?: string
     file: string
     isEngineHolderBuildPhase?: boolean
-    hmrFixPolicy?: 'function' | 'arrowFunction' | 'none'
+    hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
   }): Promise<{ code: string; points: CompilerPoint[]; errors: unknown[]; modified: boolean }> {
     const errors: unknown[] = []
     const collectResult = await this.walker.collectPointsFromFile({ file, content })

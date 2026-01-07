@@ -7,7 +7,10 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
   const compiler =
     options instanceof Compiler
       ? options
-      : Compiler.create({ ...options, hmrFixPolicy: options.hmrFixPolicy ?? 'function' })
+      : Compiler.create({
+          ...options,
+          hmrFixPolicy: options.hmrFixPolicy ?? (process.env.NODE_ENV !== 'production' ? 'function' : 'none'),
+        })
   return {
     name: 'point0-compiler',
     enforce: 'pre',

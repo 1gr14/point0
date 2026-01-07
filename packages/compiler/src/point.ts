@@ -532,7 +532,7 @@ export class CompilerPoint {
   // prettifier
 
   private _addHmrFix = false
-  addHmrFix({ policy }: { policy: 'function' | 'arrowFunction' }): void {
+  addHmrFix({ policy }: { policy: 'function' | 'arrowFunction' | 'externalFunction' }): void {
     if (this._addHmrFix) {
       return
     }
@@ -562,11 +562,110 @@ export class CompilerPoint {
         const isArrowFunction = firstArg.type === 'ArrowFunctionExpression'
         const isFunctionExpression = firstArg.type === 'FunctionExpression'
         const needsConversion =
-          (policy === 'function' && isArrowFunction) || (policy === 'arrowFunction' && isFunctionExpression)
+          (policy === 'function' && isArrowFunction) ||
+          (policy === 'arrowFunction' && isFunctionExpression) ||
+          (policy === 'externalFunction' && isArrowFunction)
 
         if (needsConversion) {
+          // Handle externalFunction policy: extract arrow function to external named function
+          if (policy === 'externalFunction' && isArrowFunction) {
+            // Extract arrow function to external named function
+            const arrowFn = firstArg as any
+            // Generate function name: capitalize pointType + capitalize pointName
+            // Example: page + home → PageHome, component + myComponent → ComponentMyComponent
+            const functionName =
+              this.pointType.charAt(0).toUpperCase() +
+              this.pointType.slice(1) +
+              (this.pointName.charAt(0).toUpperCase() + this.pointName.slice(1))
+
+            // Convert arrow function body to function body
+            let body = arrowFn.body
+            if (body.type !== 'BlockStatement') {
+              body = {
+                type: 'BlockStatement' as const,
+                body: [
+                  {
+                    type: 'ReturnStatement' as const,
+                    argument: body,
+                  },
+                ],
+              }
+            }
+
+            // Create FunctionDeclaration
+            const functionDeclaration = {
+              type: 'FunctionDeclaration' as const,
+              id: {
+                type: 'Identifier' as const,
+                name: functionName,
+              },
+              generator: false,
+              async: arrowFn.async || false,
+              params: arrowFn.params || [],
+              body,
+            }
+
+            // Find parent VariableDeclaration, ExportNamedDeclaration, or ExportDefaultDeclaration
+            // We need to find the statement-level parent (not VariableDeclarator)
+            const parentDecl = lastMethod.nodePath.findParent((p) => {
+              const n = p.node
+              return (
+                n.type === 'VariableDeclaration' ||
+                n.type === 'ExportNamedDeclaration' ||
+                n.type === 'ExportDefaultDeclaration'
+              )
+            })
+
+            if (parentDecl) {
+              // Parse the file if not already parsed
+              const parseResult = this.file.parse()
+              if (parseResult.ok) {
+                const program = parseResult.ast.program
+                // Find the index of the parent declaration in the program body
+                // parentDecl.node should be the ExportNamedDeclaration, ExportDefaultDeclaration, or VariableDeclaration
+                const parentNode = parentDecl.node
+                let parentIndex = -1
+
+                // Try direct reference match first
+                parentIndex = program.body.findIndex((stmt) => stmt === parentNode)
+
+                // If not found, try structural matching
+                if (parentIndex === -1) {
+                  parentIndex = program.body.findIndex((stmt) => {
+                    // If parentNode is VariableDeclaration but stmt is ExportNamedDeclaration wrapping it
+                    if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'VariableDeclaration') {
+                      return stmt.declaration === parentNode
+                    }
+                    // If both are ExportDefaultDeclaration, compare by their declaration expressions
+                    if (stmt.type === 'ExportDefaultDeclaration' && parentNode.type === 'ExportDefaultDeclaration') {
+                      // Both are ExportDefaultDeclaration, check if they contain the same expression
+                      // by comparing their declaration expressions
+                      return stmt.declaration === parentNode.declaration
+                    }
+                    // If both are ExportNamedDeclaration, compare declarations
+                    if (stmt.type === 'ExportNamedDeclaration' && parentNode.type === 'ExportNamedDeclaration') {
+                      return stmt.declaration === parentNode.declaration
+                    }
+                    return false
+                  })
+                }
+
+                if (parentIndex !== -1) {
+                  program.body.splice(parentIndex, 0, functionDeclaration as any)
+                  this.file.modified = true
+                }
+              }
+            }
+
+            // Replace arrow function with identifier reference
+            lastMethodCall.arguments[0] = {
+              type: 'Identifier' as const,
+              name: functionName,
+            } as any
+            this.file.modified = true
+          }
           // Convert the function to match the policy
-          if (policy === 'function' && isArrowFunction) {
+          else if (policy === 'function' && isArrowFunction) {
             // Convert arrow function to function expression
             const arrowFn = firstArg as any
             // If arrow function has expression body (not BlockStatement), wrap it in return statement
@@ -652,7 +751,9 @@ export class CompilerPoint {
     })
 
     const makeFunctionReturnNull =
-      policy === 'function' ? makeFunctionDeclarationReturnNull : makeArrowFunctionExpressionReturnNull
+      policy === 'function' // || policy === 'externalFunction' → it is not needed, becouse bun will break in this case (bun should never see named functions as components for some unknown reasons)
+        ? makeFunctionDeclarationReturnNull
+        : makeArrowFunctionExpressionReturnNull
 
     // Create MemberExpression: lastMethodCallNode._hmr
     const hmrMemberExpression = {

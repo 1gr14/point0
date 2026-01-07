@@ -7,7 +7,10 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   const compiler =
     options instanceof Compiler
       ? options
-      : Compiler.create({ ...options, hmrFixPolicy: options.hmrFixPolicy ?? 'none' })
+      : Compiler.create({
+          ...options,
+          hmrFixPolicy: options.hmrFixPolicy ?? (process.env.NODE_ENV !== 'production' ? 'externalFunction' : 'none'),
+        })
   return {
     name: 'point0-compiler',
     setup(build) {
@@ -22,6 +25,10 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
               contents: result.code,
               loader: guessLoader(filepath),
             }
+          }
+          if (filepath === '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx') {
+            console.info('result.modified', result.modified)
+            console.info('result.code', result.code)
           }
 
           // const ms = new MagicString(original)

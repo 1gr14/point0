@@ -885,6 +885,145 @@ export const component = root.lets('component', 'component', '/').component(() =
         }),
       )
 
+      describe('externalFunction policy', () => {
+        it.concurrent(
+          'extracts arrow function to external function for page point',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              export const root = Point0.lets('root', 'root').root();function PageHome() {return (
+                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'extracts arrow function to external function for many page points',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
+export const page1 = root.lets('page', 'home1', '/').page(() => <div>Hello1</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            const point1 = result.points[2]
+            point1.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              export const root = Point0.lets('root', 'root').root();function PageHome() {return (
+                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome);function PageHome1() {return (
+                  <div>Hello1</div>);}export const page1 = root.lets('page', 'home1', '/').page(PageHome1);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'extracts arrow function to external function for export default',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+const root = Point0.lets('root', 'root').root()
+export default root.lets('page', 'home', '/').page(() => <div>Hello</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              const root = Point0.lets('root', 'root').root();function PageHome() {return (
+                  <div>Hello</div>);}export default root.lets('page', 'home', '/').page(PageHome);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'extracts arrow function to external function for layout point',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const layout = root.lets('layout', 'main', '/').layout(() => <div>Layout</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              export const root = Point0.lets('root', 'root').root();function LayoutMain() {return (
+                  <div>Layout</div>);}export const layout = root.lets('layout', 'main', '/').layout(LayoutMain);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'extracts arrow function to external function for component point',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const component = root.lets('component', 'myComponent', '/').component(() => <div>Component</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              export const root = Point0.lets('root', 'root').root();function ComponentMyComponent() {return (
+                  <div>Component</div>);}export const component = root.lets('component', 'myComponent', '/').component(ComponentMyComponent);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'works like arrowFunction policy when no existing function',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page()
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              export const root = Point0.lets('root', 'root').root();
+              export const page = root.lets('page', 'home', '/').page()._hmr(() => {return null;});"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'works like function policy when existing function is function expression',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page(function MyPage() {return <div>Hello</div>})
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              export const root = Point0.lets('root', 'root').root();
+              export const page = root.lets('page', 'home', '/').page(function MyPage() {return <div>Hello</div>;});"
+            `)
+            expect(point.file.modified).toBe(false)
+          }),
+        )
+      })
+
       it.concurrent(
         'adds HMR fix to point with method chain',
         helper(async ({ files: [file], walker }) => {
