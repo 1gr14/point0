@@ -26,10 +26,6 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
               loader: guessLoader(filepath),
             }
           }
-          if (filepath === '/Users/iserdmi/cc/opensource/devp0nt/point0/examples/basic/src/pages/home.tsx') {
-            console.info('result.modified', result.modified)
-            console.info('result.code', result.code)
-          }
 
           // const ms = new MagicString(original)
           // ms.overwrite(0, original.length, transformed)

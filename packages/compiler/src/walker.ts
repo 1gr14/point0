@@ -142,6 +142,36 @@ export class Walker {
     return (routes as any)?.[routeKey]
   }
 
+  files = new Map<string, CompilerFile<any>>()
+  createFile(file: string, content?: string): CompilerFile<any> {
+    const exFile = this.files.get(file)
+    if (exFile) {
+      return exFile
+    }
+    const newFile = CompilerFile.create(file, content)
+    this.files.set(file, newFile)
+    return newFile
+    // return CompilerFile.create(file, content)
+  }
+
+  filePromises = new Map<string, Promise<CompilerFile<true>>>()
+  async readFile(file: string | CompilerFile<any>): Promise<CompilerFile<true>> {
+    const fileAbs = typeof file === 'string' ? file : file.abs
+    const exReadPromise = this.filePromises.get(fileAbs)
+    if (exReadPromise) {
+      return await exReadPromise
+    }
+    const fileInstance = typeof file === 'string' ? this.createFile(fileAbs) : file
+    const newReadPromise = fileInstance.read().then((f) => {
+      this.filePromises.delete(fileAbs)
+      return f
+    })
+    this.filePromises.set(fileAbs, newReadPromise)
+    return await newReadPromise
+    // const fileInstance = typeof file === 'string' ? this.createFile(file) : file
+    // return await fileInstance.read()
+  }
+
   async collectPointsFromFile({
     file: providedFile,
     content,
@@ -164,10 +194,10 @@ export class Walker {
   > {
     const points: CompilerPoint[] = []
     const errors: unknown[] = []
-    const fileIdle = typeof providedFile === 'string' ? CompilerFile.create(providedFile, content) : providedFile
+    const fileIdle = typeof providedFile === 'string' ? this.createFile(providedFile, content) : providedFile
 
     try {
-      const file = await fileIdle.read()
+      const file = await this.readFile(fileIdle.abs)
 
       if (!file.mayContainPoints()) {
         return { points, errors, file, ok: true }
@@ -531,7 +561,7 @@ export class Walker {
           if (resolvedPath) {
             try {
               // Read and parse the imported file
-              const importedFile = await CompilerFile.create(resolvedPath).read()
+              const importedFile = await this.readFile(resolvedPath)
               // Recursively search in the imported file for the export
               const result = await this.findLetsNodePathByExportName({
                 exportName: importedName,
@@ -872,7 +902,7 @@ export class Walker {
           if (resolvedPath) {
             try {
               // Read and parse the source file
-              const sourceFile = await CompilerFile.create(resolvedPath).read()
+              const sourceFile = await this.readFile(resolvedPath)
               // Recursively search in the source file for the export
               const result = await this.findLetsNodePathByExportName({
                 exportName: nameToFind,

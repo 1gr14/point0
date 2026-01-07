@@ -2,41 +2,20 @@
 ------ before start0 -----
 --------------------------
 
-COMPILER
-Компилер классом и его можно передать прямо в энжину
-remove all cache things. Lets just parse in place
-compiler another package
-Прун он билдпхэйз просто на уровне Хардинга энвы можно задать
-И не прун а шейк
-В компилере парентов ищем на этапе запроса из поинтов, до этого достаточно просто проверить что началось на летс стррка строка
-Рантайм из продакшен, девелопмент, тест, и энв переменные
-Будто бы нет смысла в коллекторе отдельно, всё пусть истекает из просто найденного поинта
-Ггенератор не часть компилера, он просто его использует
-? Скоупес ревертнуть, чтобы они шли в порядке объявления
-? Попробовать клон аст делать через просто репарс контента
-
-ROOT
-scopes is array
-but scope is still just string
-remove .attach things
-query client can be defined on any root, and will be attached to all requests from this client scope
-
 RUNTIME
-runtime.server, runtime.define.server, runtime.call.client, runtime.define({server: x, client: y}), runtime.call({server: x, client: y})
-Добавить изСср он будет тру только когда мы именно рендерим компоненты, and isDrySsr
-remove isClient etc from Point0
-И в энвиронменте добавить констВхенЭнвиронмент({server,client,ssr})
-И в энвиронменте разрешить возвращать не функцию, а прямо ошибку чтобы он сровилась
-it is separate packe "@point0/environment", so we always check if thing imported from there
-callServer → callServerElseUndefined/callServerElseThrow, ectc just do it better, it is CSE base
-not client-server.ts, but environment.ts
-make clientserver import helpers without class, like just fns, and allow compiler understand if it is imported fro, '@point0/core' then respect them
-process.env.POINT0_SCOPE defined and can be used to remove deadcode
-process.env.POINT0_ENV (browser, mobile, server, electronRenderer, electronMain) defined and can be used to remove deadcode
+Рантайм из продакшен, девелопмент, тест, и энв переменные
+runtime.scope
+runtime.env variables
+runtime.is.ssr type
+runtime.is.browser (enugh for any desired case)
+__GET_SSR_PHASE__
 Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
 Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
 
 ENGINE
+? Прун он билдпхэйз просто на уровне Хардинга энвы можно задать
+Компилер прямо в энжину можо передать, аможно передать фалс и тогда его там не будет
+хмрПорт или желание отсутвия порта не нул, а фалс должен быть
 Убедиться что при указании клиентского скопа в энжине сервер не запустится, и запустятся только нужные клиенты, и что они могут обращаться к серверу в другом процессе
 В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
 Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
@@ -63,11 +42,13 @@ standard schema
 Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
 
 REFACTORING 0
+query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope
+e2e tests
+hmr tests
 point0 also separate file, index jsut reexport everything
 compiler self package
 ssr can not be on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
 allow .ssr() on any point
-__GET_SSR_PHASE__
 Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 ЗАчем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
 Вынести из супер стора сериалмзацию, перенести её в сср стор который такойже как кукисстор, и также устанавливается в эффекты
@@ -78,9 +59,6 @@ add ssr to queryKey and if it is false, then do not ssr when meet it
 add browser test via light panda
 Не респонс0 а просто эффектс и эффектс вэлью
 На клиенте в кукисах хранить фром поинт0, и тогда запросы к бану мидлвару можно исходя из кукисов перенаправлять
-
-
-
 
 
 ------
@@ -238,6 +216,10 @@ loader(() => {}, {cache: false | string})
 ? Юз лоадер респонс должен быть сервер респонсом если там такой есть
 ? Добавить реквест реферера и там указать какому скоупа принадлежал реферер
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will shake all ctx and loaders already)
+
+COMPILER
+walker cache for compiled files by settings and file timestemp
+allow hardcode: {'runtime.is.expo': true} or any
 
 TEST
 test for units

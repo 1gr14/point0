@@ -1,3 +1,4 @@
+import type { CompilerFile } from './file.js'
 import type { CompilerPoint } from './point.js'
 import { Walker } from './walker.js'
 
@@ -10,7 +11,6 @@ export type CompilerOptions = {
 
 export class Compiler {
   compilerFilepathFilter: RegExp
-  walker: Walker
   target: 'client' | 'server'
   isEngineHolderBuildPhase: boolean | undefined
   hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
@@ -19,19 +19,16 @@ export class Compiler {
 
   constructor({
     compilerFilepathFilter,
-    walker,
     target,
     isEngineHolderBuildPhase,
     hmrFixPolicy,
   }: {
     compilerFilepathFilter: RegExp
-    walker: Walker
     target: 'client' | 'server'
     isEngineHolderBuildPhase: boolean | undefined
     hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
   }) {
     this.compilerFilepathFilter = compilerFilepathFilter
-    this.walker = walker
     this.target = target
     this.isEngineHolderBuildPhase = isEngineHolderBuildPhase
     this.hmrFixPolicy = hmrFixPolicy
@@ -39,10 +36,8 @@ export class Compiler {
 
   static create(options: CompilerOptions) {
     const { target, compilerFilepathFilter, isEngineHolderBuildPhase, hmrFixPolicy } = options
-    const walker = new Walker()
     return new Compiler({
       compilerFilepathFilter: compilerFilepathFilter ?? Compiler.defaultCompilerFilepathFilter,
-      walker,
       target,
       isEngineHolderBuildPhase,
       hmrFixPolicy,
@@ -60,12 +55,19 @@ export class Compiler {
     file: string
     isEngineHolderBuildPhase?: boolean
     hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
-  }): Promise<{ code: string; points: CompilerPoint[]; errors: unknown[]; modified: boolean }> {
+  }): Promise<{
+    file: CompilerFile<true> | undefined
+    code: string
+    points: CompilerPoint[]
+    errors: unknown[]
+    modified: boolean
+  }> {
     const errors: unknown[] = []
-    const collectResult = await this.walker.collectPointsFromFile({ file, content })
+    const walker = new Walker()
+    const collectResult = await walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
-      return { code: content || '', points: collectResult.points, errors, modified: false }
+      return { file: collectResult.file, code: content || '', points: collectResult.points, errors, modified: false }
     }
     const cf = collectResult.file
     for (const point of collectResult.points) {
@@ -77,6 +79,7 @@ export class Compiler {
     cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })
     cf.shakeForRuntimeTarget({ target: this.target })
     return {
+      file: cf,
       code: cf.modified ? cf.toCode() : cf.content,
       points: collectResult.points,
       errors,
