@@ -145,6 +145,23 @@ export class CompilerFile<THasContent extends boolean> {
     return this._mayContainPoints
   }
 
+  _isIdentifierExists: Record<string, boolean> = {}
+  isIdentifierExists(name: string): boolean {
+    if (name in this._isIdentifierExists) {
+      return this._isIdentifierExists[name]
+    }
+    let exists = false
+    traverse(this.ast, {
+      Identifier: (path) => {
+        if (path.node.name === name) {
+          exists = true
+          path.stop()
+        }
+      },
+    })
+    return exists
+  }
+
   toCode(): string {
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)

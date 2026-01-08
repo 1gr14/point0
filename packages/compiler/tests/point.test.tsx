@@ -1022,6 +1022,73 @@ export const page = root.lets('page', 'home', '/').page(function MyPage() {retur
             expect(point.file.modified).toBe(false)
           }),
         )
+
+        it.concurrent(
+          'generates unique function name when name already exists',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+function PageHome() { return null }
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              function PageHome() {return null;}
+              export const root = Point0.lets('root', 'root').root();function PageHome0() {return (
+                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome0);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'generates unique function name with incremented suffix when multiple names exist',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+function PageHome() { return null }
+function PageHome0() { return null }
+function PageHome1() { return null }
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              function PageHome() {return null;}
+              function PageHome0() {return null;}
+              function PageHome1() {return null;}
+              export const root = Point0.lets('root', 'root').root();function PageHome2() {return (
+                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome2);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
+
+        it.concurrent(
+          'handles name collision with variable declarations',
+          helper(async ({ files: [file], walker }) => {
+            await file.write(`import {Point0} from '@point0/core'
+const PageHome = () => null
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
+        `)
+            const result = await walker.collectPointsFromFile({ file: file.path })
+            const point = result.points[1]
+            point.addHmrFix({ policy: 'externalFunction' })
+            expect(point.file.toCode()).toMatchInlineSnapshot(`
+              "import { Point0 } from '@point0/core';
+              const PageHome = () => null;
+              export const root = Point0.lets('root', 'root').root();function PageHome0() {return (
+                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome0);"
+            `)
+            expect(point.file.modified).toBe(true)
+          }),
+        )
       })
 
       it.concurrent(

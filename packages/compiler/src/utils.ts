@@ -16,3 +16,13 @@ export const normalizeEnvConsts = (consts: CompilerEnvConsts): CompilerEnvConsts
   }
   return consts
 }
+
+export const pascalCase = (str: string): string => {
+  return str
+    .normalize('NFKD') // normalize unicode
+    .replace(/[^a-zA-Z0-9 ]+/g, ' ') // keep letters, numbers, spaces
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('')
+}

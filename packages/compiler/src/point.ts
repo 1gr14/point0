@@ -6,6 +6,7 @@ import type { EndPointType, PointName, PointsScope } from '@point0/core'
 import { dedupeSlashes } from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
+import { pascalCase } from './utils.js'
 import type { Walker } from './walker.js'
 
 export class CompilerPoint {
@@ -531,6 +532,18 @@ export class CompilerPoint {
 
   // prettifier
 
+  private generateUniqueIdentifier(baseName: string): string {
+    let candidateName = baseName
+    let counter = 0
+
+    while (this.file.isIdentifierExists(candidateName)) {
+      candidateName = `${baseName}${counter}`
+      counter++
+    }
+
+    return candidateName
+  }
+
   private _addHmrFix = false
   addHmrFix({ policy }: { policy: 'function' | 'arrowFunction' | 'externalFunction' }): void {
     if (this._addHmrFix) {
@@ -573,10 +586,9 @@ export class CompilerPoint {
             const arrowFn = firstArg as any
             // Generate function name: capitalize pointType + capitalize pointName
             // Example: page + home → PageHome, component + myComponent → ComponentMyComponent
-            const functionName =
-              this.pointType.charAt(0).toUpperCase() +
-              this.pointType.slice(1) +
-              (this.pointName.charAt(0).toUpperCase() + this.pointName.slice(1))
+
+            // Check if name exists and generate unique name if needed
+            const functionName = this.generateUniqueIdentifier(pascalCase(this.pointType + '_' + this.pointName))
 
             // Convert arrow function body to function body
             let body = arrowFn.body

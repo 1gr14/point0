@@ -4,7 +4,6 @@
 
 
 COMPILER
-Экспортированным функциям _hmr давать хорошие имена с подчёркиванием и если такая функция есть то приписывать к ней цифорку
 Прунить для сервера клиент лоадеры и клиентИнпуты, и прочее клиентское
 Тесты с файлами писать как функции, а не как строки, чтобы проверять что мы используем реальный синтаксис
 Разрешить undefined () в тех конструкциях, где мы пруним, чтобы было понятно, что тип андефайнейд возможен (в исплементации под перегрузкой)
@@ -59,6 +58,7 @@ REFACTORING 0
 e2e tests via code
 browser test via running server
 hmr tests
+displayName dynamic
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 Лоадер стейдж нужен, чтобы все в рядок стряли
 query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope
