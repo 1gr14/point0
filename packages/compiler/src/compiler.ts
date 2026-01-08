@@ -9,7 +9,7 @@ export type CompilerOptions = {
   consts?: CompilerEnvConsts
   filter?: RegExp
   isEngineHolderBuildPhase?: boolean
-  hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
+  hmrFix?: 'function' | 'arrowFunction' | 'externalFunction' | false
 }
 
 export class Compiler {
@@ -18,7 +18,7 @@ export class Compiler {
   target: 'client' | 'server'
   consts: CompilerEnvConsts | undefined
   isEngineHolderBuildPhase: boolean | undefined
-  hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
+  hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false | undefined
 
   static defaultFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
@@ -28,32 +28,32 @@ export class Compiler {
     scope,
     consts,
     isEngineHolderBuildPhase,
-    hmrFixPolicy,
+    hmrFix,
   }: {
     filter: RegExp
     target: 'client' | 'server'
     scope: string
     consts: CompilerEnvConsts | undefined
     isEngineHolderBuildPhase: boolean | undefined
-    hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
+    hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false | undefined
   }) {
     this.filter = filter
     this.target = target
     this.scope = scope
     this.consts = consts
     this.isEngineHolderBuildPhase = isEngineHolderBuildPhase
-    this.hmrFixPolicy = hmrFixPolicy
+    this.hmrFix = hmrFix
   }
 
   static create(options: CompilerOptions) {
-    const { filter, target, scope, consts, isEngineHolderBuildPhase, hmrFixPolicy } = options
+    const { filter, target, scope, consts, isEngineHolderBuildPhase, hmrFix } = options
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       target,
       scope,
       consts,
       isEngineHolderBuildPhase,
-      hmrFixPolicy,
+      hmrFix,
     })
   }
 
@@ -65,7 +65,7 @@ export class Compiler {
     file,
     isEngineHolderBuildPhase = this.isEngineHolderBuildPhase ??
       process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true',
-    hmrFixPolicy = this.hmrFixPolicy ?? 'none',
+    hmrFix = this.hmrFix ?? false,
   }: {
     content?: string
     scope?: string
@@ -73,7 +73,7 @@ export class Compiler {
     consts?: CompilerEnvConsts
     file: string
     isEngineHolderBuildPhase?: boolean
-    hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
+    hmrFix?: 'function' | 'arrowFunction' | 'externalFunction' | false
   }): Promise<{
     file: CompilerFile<true> | undefined
     code: string
@@ -91,8 +91,8 @@ export class Compiler {
     const cf = collectResult.file
     for (const point of collectResult.points) {
       point.shakeMethods({ target })
-      if (hmrFixPolicy !== 'none') {
-        point.addHmrFix({ policy: hmrFixPolicy })
+      if (hmrFix) {
+        point.addHmrFix({ policy: hmrFix })
       }
     }
     cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })

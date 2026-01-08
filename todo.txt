@@ -10,10 +10,8 @@ addHmrFix → hmrFix
 Убедиться, что компилер не ломает информацию о выведенных позициях, иделает нормальные соурсмапы
 Экспортированным функциям _hmr давать хорошие имена с подчёркиванием и если такая функция есть то приписывать к ней цифорку
 walker cache for compiled files by settings and file timestemp
-Рантайм тчк билд по ней попробовать вайт отрезать
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
-allow hardcode: {'runtime.is.expo': true} or any
 
 ENGINE
 envVars
@@ -37,6 +35,8 @@ compiler options to engine, via ({customer,scope,environment}) => options
 fix compiler option name for node_modules prefixes
 Генерейт поинтс если ему нужно пусть генерирует через объект с путём и тайп лэйзи или реди
 В энжину импорт мета файлнейм автоматом добавлять через компилер
+Рантайм тчк билд по ней попробовать вайт отрезать
+тест билдера, что он прунит что надо реально удаляет дедкод
 
 INPUT
 Проверить расширяемость инпута на юниты

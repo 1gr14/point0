@@ -109,12 +109,12 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects hmrFixPolicy option - function',
+      'respects hmrFix option - function',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFixPolicy: 'function' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: 'function' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._hmr(function X()')
@@ -122,12 +122,12 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects hmrFixPolicy option - arrowFunction',
+      'respects hmrFix option - arrowFunction',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFixPolicy: 'arrowFunction' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: 'arrowFunction' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._hmr(() =>')
@@ -135,12 +135,12 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects hmrFixPolicy option - none',
+      'respects hmrFix option - false',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFixPolicy: 'none' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFix: false })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain('._hmr')
