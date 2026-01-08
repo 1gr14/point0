@@ -61,6 +61,7 @@
     "@babel/types": "^7.28.5"
   },
   "peerDependencies": {
+    "typescript": "*",
     "@point0/core": "workspace:*",
     "@devp0nt/route0": "catalog:"
   },

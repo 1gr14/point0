@@ -24,7 +24,7 @@ const prepareRandomFile = () => {
 
 const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, deleteFiles = true) => {
   return async () => {
-    const walker = new Walker({ cwd: tempDir })
+    const walker = new Walker({ routes: undefined })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
@@ -61,9 +61,9 @@ describe('CompilerPoint', () => {
         await file.write(`import {Point0} from '@point0/core'
 export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await result.points[0].parse()
+        const parsed = result.points[0].parse()
         expect(fix(parsed)).toMatchObject({
           valid: true,
           scope: 'myroot',
@@ -90,9 +90,9 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
 export const myrootvariable = Point0.lets('root', 'myroot').root()
 export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await result.points[1].parse()
+        const parsed = result.points[1].parse()
         expect(fix(parsed)).toMatchObject({
           valid: true,
           scope: 'myroot',
@@ -123,7 +123,6 @@ export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().
       'page point with first level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -143,11 +142,9 @@ export const p3 = myrootvariable.lets('page', 'p3', '/r3').page(() => <div>Hello
 export const p4 = myrootvariable.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(
-          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix1)),
-        )
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -180,7 +177,6 @@ export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>H
       'page point with deep level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -202,11 +198,9 @@ export const p3 = l2.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
 export const p4 = l2.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(
-          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix1)),
-        )
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -239,7 +233,6 @@ export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
       'page point with very deep level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -266,11 +259,9 @@ export const p3 = l6.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
 export const p4 = l6.lets('page', 'p4', Route0.create('/r4')).page(() => <div>Hello</div>)
 export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(
-          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix1)),
-        )
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -311,7 +302,6 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
       'page point layouts',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -330,11 +320,9 @@ export const p1 = l1.lets('page', 'p1', '/').page(() => <div>Hello</div>)
 export const p2 = l2.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(
-          result.points.filter((p) => p.pointType === 'page').map(async (p) => await p.parse().then(fix2)),
-        )
+        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix2(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p0',
@@ -362,7 +350,6 @@ export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
       'layout point layouts',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -377,11 +364,9 @@ export const l2 = l1.lets('layout', 'l2').layout()
 export const b2 = l2.lets('base', 'b2').base()
 export const l3 = b2.lets('layout', 'l3').layout()
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(
-          result.points.filter((p) => p.pointType === 'layout').map(async (p) => await p.parse().then(fix2)),
-        )
+        const parsed = result.points.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'l1',
@@ -412,7 +397,6 @@ export const l3 = b2.lets('layout', 'l3').layout()
       'page point prefetchOnLinkHover (polh)',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -426,9 +410,9 @@ export const p1 = root.lets('page', 'p1', '/').prefetchOnLinkHover(false).page((
 export const p2 = p1.lets('page', 'p2', 'r2').page(() => <div>Hello</div>)
 export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(result.points.map(async (p) => await p.parse().then(fix3)))
+        const parsed = result.points.map((p) => fix3(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root',
@@ -456,7 +440,6 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
       'error when last called method name does not match point type',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -468,18 +451,18 @@ export const p3 = p2.lets('page', 'p3', '/r3').prefetchOnLinkHover(100).page(() 
 export const root0 = Point0.lets('root', 'root0').prefetchOnLinkHover(true)
 export const root1 = Point0.lets('root', 'root1')
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(2)
 
-        const parsed0 = await result.points[0].parse()
+        const parsed0 = result.points[0].parse()
         expect(parsed0.valid).toBe(false)
         expect(parsed0.errors).toHaveLength(1)
         expect((parsed0.errors[0] as Error).message).toBe(
           `Last called method name 'prefetchOnLinkHover' does not match point type 'root'. Please, use .root() in end of point chain`,
         )
 
-        const parsed1 = await result.points[1].parse()
+        const parsed1 = result.points[1].parse()
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect(parsed1.name).toBe('root1')
@@ -507,9 +490,9 @@ export const root1 = root0.lets('root', 'root1').root()
 export const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
 export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = await Promise.all(result.points.map(async (p) => await p.parse().then(fix4)))
+        const parsed = result.points.map((p) => fix4(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'root0',
@@ -541,7 +524,6 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
       'error when point not exported',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
-          cwd: tempDir,
           routes: {
             myroot: Routes.create({
               r5: Route0.create('/r5'),
@@ -553,16 +535,16 @@ export const page1 = root1.lets('page', 'page1', 'r1').page(() => <div>Hello</di
 const root0 = Point0.lets('root', 'root0').root()
 const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>) 
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(2)
 
-        const parsed0 = await result.points[0].parse()
+        const parsed0 = result.points[0].parse()
         expect(parsed0.valid).toBe(false)
         expect(parsed0.errors).toHaveLength(1)
         expect((parsed0.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
 
-        const parsed1 = await result.points[1].parse()
+        const parsed1 = result.points[1].parse()
         expect(parsed1.valid).toBe(false)
         expect(parsed1.errors).toHaveLength(1)
         expect((parsed1.errors[0] as Error).message).toBe(`Point not exported. Please, add export to the point.`)
@@ -578,7 +560,7 @@ const page0 = root0.lets('page', 'page0', '/').page(() => <div>Hello</div>)
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -595,7 +577,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -612,7 +594,7 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').loader(true).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -629,7 +611,7 @@ export const root = Point0.lets('root', 'root').loader(true).root()
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -646,7 +628,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => ({ b: 2 })).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -663,7 +645,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 2 })).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -681,7 +663,7 @@ export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>)
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -707,7 +689,7 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -728,7 +710,7 @@ export const root = Point0.lets('root', 'root').root()
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -750,7 +732,7 @@ export const root = Point0.lets('root', 'root').root()
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -774,7 +756,7 @@ export const page = root.lets('page', 'page', '/').page()
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -794,7 +776,7 @@ export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page(function MyFunction() {return <div>Hello</div>})
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -816,7 +798,7 @@ export const page = root.lets('page', 'page', '/').page(function MyFunction() {r
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -838,7 +820,7 @@ export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').page(function MyFunction() {return <div>Hello</div>})
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -860,7 +842,7 @@ export const page = root.lets('page', 'page', '/').page(function MyFunction() {r
 export const root = Point0.lets('root', 'root').root()
 export const layout = root.lets('layout', 'layout', '/').layout()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -885,7 +867,7 @@ export const layout = root.lets('layout', 'layout', '/').layout()
 export const root = Point0.lets('root', 'root').root()
 export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layout</div>)
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -907,7 +889,7 @@ export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layou
 export const root = Point0.lets('root', 'root').root()
 export const component = root.lets('component', 'component', '/').component()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -931,7 +913,7 @@ export const component = root.lets('component', 'component', '/').component()
 export const root = Point0.lets('root', 'root').root()
 export const component = root.lets('component', 'component', '/').component(() => <div>Component</div>)
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -954,7 +936,7 @@ export const component = root.lets('component', 'component', '/').component(() =
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -978,7 +960,7 @@ export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
 export const page1 = root.lets('page', 'home1', '/').page(() => <div>Hello1</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             const point1 = result.points[2]
@@ -1007,7 +989,7 @@ export const page1 = root.lets('page', 'home1', '/').page(() => <div>Hello1</div
 const root = Point0.lets('root', 'root').root()
 export default root.lets('page', 'home', '/').page(() => <div>Hello</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1030,7 +1012,7 @@ export default root.lets('page', 'home', '/').page(() => <div>Hello</div>)
 export const root = Point0.lets('root', 'root').root()
 export const layout = root.lets('layout', 'main', '/').layout(() => <div>Layout</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1053,7 +1035,7 @@ export const layout = root.lets('layout', 'main', '/').layout(() => <div>Layout<
 export const root = Point0.lets('root', 'root').root()
 export const component = root.lets('component', 'myComponent', '/').component(() => <div>Component</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1078,7 +1060,7 @@ export const component = root.lets('component', 'myComponent', '/').component(()
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page()
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1103,7 +1085,7 @@ export const page = root.lets('page', 'home', '/').page()
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page(function MyPage() {return <div>Hello</div>})
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1126,7 +1108,7 @@ function PageHome() { return null }
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1155,7 +1137,7 @@ function PageHome1() { return null }
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1188,7 +1170,7 @@ const PageHome = () => null
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
         `)
-            const result = await walker.collectPointsFromFile({ file: file.path })
+            const result = walker.collectPointsFromFile({ file: file.path })
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1212,7 +1194,7 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
@@ -1235,7 +1217,7 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.addHmrFix({ policy: 'function' })
           point.addHmrFix({ policy: 'function' })
@@ -1257,7 +1239,7 @@ export const root = Point0.lets('root', 'root').root()
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.addHmrFix({ policy: 'function' })
           // Second call with different policy should still work (but uses same target key)
@@ -1283,7 +1265,7 @@ export const root = Point0.lets('root', 'root').root()
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-          const result = await walker.collectPointsFromFile({ file: file.path })
+          const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[0]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`

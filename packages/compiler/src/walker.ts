@@ -124,14 +124,13 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 //
 
 export class Walker {
-  readonly cwd: string
+  readonly files = new Map<string, CompilerFile<any>>()
 
   // <scope, Routes>
   readonly routes: Record<string, RoutesPretty<any>>
 
-  constructor(options: { cwd?: string; routes?: Record<string, RoutesPretty<any>> } = {}) {
-    this.cwd = options.cwd ?? process.cwd()
-    this.routes = options.routes ?? {}
+  constructor({ routes }: { routes: Record<string, RoutesPretty<any>> | undefined }) {
+    this.routes = routes ?? {}
   }
 
   getRoutesByScope(scope: string): RoutesPretty | undefined {
@@ -142,43 +141,13 @@ export class Walker {
     return (routes as any)?.[routeKey]
   }
 
-  files = new Map<string, CompilerFile<any>>()
-  createFile(file: string, content?: string): CompilerFile<any> {
-    const exFile = this.files.get(file)
-    if (exFile) {
-      return exFile
-    }
-    const newFile = CompilerFile.create(file, content)
-    this.files.set(file, newFile)
-    return newFile
-    // return CompilerFile.create(file, content)
+  async readManyAsync({ files, fresh }: { files: string[]; fresh: boolean }): Promise<Array<CompilerFile<true>>> {
+    return await Promise.all(
+      files.map(async (file) => await CompilerFile.readAsync({ walker: this, file, fresh: false })),
+    )
   }
 
-  filePromises = new Map<string, Promise<CompilerFile<true>>>()
-  async readFile(file: string | CompilerFile<any>): Promise<CompilerFile<true>> {
-    const fileAbs = typeof file === 'string' ? file : file.abs
-    const exReadPromise = this.filePromises.get(fileAbs)
-    if (exReadPromise) {
-      return await exReadPromise
-    }
-    const fileInstance = typeof file === 'string' ? this.createFile(fileAbs) : file
-    const newReadPromise = fileInstance.read().then((f) => {
-      this.filePromises.delete(fileAbs)
-      return f
-    })
-    this.filePromises.set(fileAbs, newReadPromise)
-    return await newReadPromise
-    // const fileInstance = typeof file === 'string' ? this.createFile(file) : file
-    // return await fileInstance.read()
-  }
-
-  async collectPointsFromFile({
-    file: providedFile,
-    content,
-  }: {
-    file: string | CompilerFile<true>
-    content?: string
-  }): Promise<
+  collectPointsFromFile({ file: providedFile, content }: { file: string | CompilerFile<true>; content?: string }):
     | {
         points: CompilerPoint[]
         errors: unknown[]
@@ -190,14 +159,17 @@ export class Walker {
         errors: unknown[]
         file: CompilerFile<any> | undefined
         ok: false
-      }
-  > {
+      } {
     const points: CompilerPoint[] = []
     const errors: unknown[] = []
-    const fileIdle = typeof providedFile === 'string' ? this.createFile(providedFile, content) : providedFile
+    const fileIdle = CompilerFile.create({
+      walker: this,
+      file: typeof providedFile === 'string' ? providedFile : providedFile.abs,
+      content,
+    })
 
     try {
-      const file = await this.readFile(fileIdle.abs)
+      const file = fileIdle.readSync(!content)
 
       if (!file.mayContainPoints()) {
         return { points, errors, file, ok: true }
@@ -222,7 +194,7 @@ export class Walker {
 
       // Process all lets() calls async
       for (const letsNodePath of letsNodePaths) {
-        const result = await this.collectPointByLetsNodePath({ letsNodePath, file })
+        const result = this.collectPointByLetsNodePath({ letsNodePath, file })
         errors.push(...result.errors)
         if (result.point) {
           points.push(result.point)
@@ -236,16 +208,16 @@ export class Walker {
     }
   }
 
-  private async collectPointByLetsNodePath({
+  private collectPointByLetsNodePath({
     letsNodePath,
     file,
   }: {
     letsNodePath: NodePath<Node>
     file: CompilerFile<true>
-  }): Promise<{
+  }): {
     point: CompilerPoint | undefined
     errors: unknown[]
-  }> {
+  } {
     const errors: unknown[] = []
     try {
       const letsNode = letsNodePath.node
@@ -368,17 +340,16 @@ export class Walker {
     }
   }
 
-  private async collectParentPointByPoint({
-    point,
-  }: {
-    point: CompilerPoint
-  }): Promise<{ parent: CompilerPoint | undefined; errors: unknown[] }> {
+  collectParentPointByPoint({ point }: { point: CompilerPoint }): {
+    parent: CompilerPoint | undefined
+    errors: unknown[]
+  } {
     const errors: unknown[] = []
     try {
       if (point.isBasePoint0) {
         return { parent: undefined, errors }
       }
-      const findBaseLetsNodePathByBaseNodePathResult = await this.findBaseLetsNodePathByBaseNodePath({
+      const findBaseLetsNodePathByBaseNodePathResult = this.findBaseLetsNodePathByBaseNodePath({
         baseNodePath: point.baseNodePath,
         file: point.file,
       })
@@ -386,7 +357,7 @@ export class Walker {
       if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
         return { parent: undefined, errors }
       }
-      const result = await this.collectPointByLetsNodePath({
+      const result = this.collectPointByLetsNodePath({
         letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,
         file: findBaseLetsNodePathByBaseNodePathResult.baseFile,
       })
@@ -398,16 +369,12 @@ export class Walker {
     }
   }
 
-  async collectParentPointsByPoint({
-    point,
-  }: {
-    point: CompilerPoint
-  }): Promise<{ parents: CompilerPoint[]; errors: unknown[] }> {
+  collectParentPointsByPoint({ point }: { point: CompilerPoint }): { parents: CompilerPoint[]; errors: unknown[] } {
     const errors: unknown[] = []
     const parents: CompilerPoint[] = []
     let currentPoint = point as CompilerPoint | undefined
     while (currentPoint) {
-      const result = await this.collectParentPointByPoint({ point: currentPoint })
+      const result = this.collectParentPointByPoint({ point: currentPoint })
       errors.push(...result.errors)
       if (!result.parent) {
         currentPoint = undefined
@@ -419,13 +386,13 @@ export class Walker {
     return { parents, errors }
   }
 
-  private async findBaseLetsNodePathByBaseNodePath({
+  findBaseLetsNodePathByBaseNodePath({
     baseNodePath,
     file,
   }: {
     baseNodePath: NodePath<Node>
     file: CompilerFile<true>
-  }): Promise<
+  }):
     | {
         isFound: true
         baseLetsNodePath: NodePath<Node>
@@ -437,8 +404,7 @@ export class Walker {
         baseLetsNodePath: undefined
         baseFile: undefined
         errors: unknown[]
-      }
-  > {
+      } {
     const errors: unknown[] = []
 
     try {
@@ -554,16 +520,16 @@ export class Walker {
         for (const { importPath, importedName } of importsToResolve) {
           // Resolve the import path to get the actual file path
           // This handles TypeScript path aliases and relative paths
-          const resolvedPath = await FileResolver.detectExistingFilePathByImportPath({
+          const resolvedPath = FileResolver.detectExistingFilePathByImportPath({
             importPath,
             containingFile: file.abs,
           })
           if (resolvedPath) {
             try {
               // Read and parse the imported file
-              const importedFile = await this.readFile(resolvedPath)
+              const importedFile = CompilerFile.readSync({ walker: this, file: resolvedPath, fresh: true })
               // Recursively search in the imported file for the export
-              const result = await this.findLetsNodePathByExportName({
+              const result = this.findLetsNodePathByExportName({
                 exportName: importedName,
                 file: importedFile,
               })
@@ -618,7 +584,7 @@ export class Walker {
 
           if (identifierNodePath) {
             // Recursively resolve this identifier
-            const result = await this.findBaseLetsNodePathByBaseNodePath({
+            const result = this.findBaseLetsNodePathByBaseNodePath({
               baseNodePath: identifierNodePath,
               file: assignmentFile,
             })
@@ -783,21 +749,20 @@ export class Walker {
   //   - Returns: NodePath wrapping the .lets() CallExpression
   // Because: This is used when resolving imports - we need to find the base point definition
   //   in the imported file to understand the point hierarchy
-  private async findLetsNodePathByExportName({
+  findLetsNodePathByExportName({
     exportName,
     file,
   }: {
     exportName: string // The export name to search for (e.g., 'root' or 'default')
     file: CompilerFile<true> // The parsed file to search in
-  }): Promise<
+  }):
     | { isFound: boolean; foundFile: CompilerFile<true>; letsNodePath: NodePath<Node>; errors: unknown[] }
     | {
         isFound: false
         foundFile: undefined
         letsNodePath: undefined
         errors: unknown[]
-      }
-  > {
+      } {
     const errors: unknown[] = []
     let foundLetsNodePath: NodePath<Node> | undefined
     let foundFile: CompilerFile<true> | undefined
@@ -895,16 +860,16 @@ export class Walker {
       if (!foundLetsNodePath && reExportsToResolve.length > 0) {
         for (const { sourcePath, nameToFind } of reExportsToResolve) {
           // Resolve the source path to get the actual file path
-          const resolvedPath = await FileResolver.detectExistingFilePathByImportPath({
+          const resolvedPath = FileResolver.detectExistingFilePathByImportPath({
             importPath: sourcePath,
             containingFile: file.abs,
           })
           if (resolvedPath) {
             try {
               // Read and parse the source file
-              const sourceFile = await this.readFile(resolvedPath)
+              const sourceFile = CompilerFile.readSync({ walker: this, file: resolvedPath, fresh: true })
               // Recursively search in the source file for the export
-              const result = await this.findLetsNodePathByExportName({
+              const result = this.findLetsNodePathByExportName({
                 exportName: nameToFind,
                 file: sourceFile,
               })
@@ -932,7 +897,7 @@ export class Walker {
       if (!foundLetsNodePath && identifierExportsToResolve.length > 0) {
         for (const { identifierName } of identifierExportsToResolve) {
           // First try to find it as an export in the same file
-          const result = await this.findLetsNodePathByExportName({
+          const result = this.findLetsNodePathByExportName({
             exportName: identifierName,
             file,
           })
@@ -968,7 +933,7 @@ export class Walker {
           })
 
           if (identifierNodePath) {
-            const baseResult = await this.findBaseLetsNodePathByBaseNodePath({
+            const baseResult = this.findBaseLetsNodePathByBaseNodePath({
               baseNodePath: identifierNodePath,
               file,
             })

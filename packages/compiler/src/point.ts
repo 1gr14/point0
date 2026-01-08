@@ -319,12 +319,12 @@ export class CompilerPoint {
   }
 
   private readonly _parse: CompilerPointParsed | undefined = undefined
-  async parse(): Promise<CompilerPointParsed> {
+  parse(): CompilerPointParsed {
     if (this._parse) {
       return this._parse
     }
     const errors: unknown[] = []
-    const parentsResult = await this.walker.collectParentPointsByPoint({ point: this })
+    const parentsResult = this.walker.collectParentPointsByPoint({ point: this })
     errors.push(...parentsResult.errors)
     const parents = parentsResult.parents
     const scopes = this.getScopes({ parents })
@@ -504,7 +504,6 @@ export class CompilerPoint {
   // }
 
   private shakeMethodsForClient(): void {
-    console.log('shakeMethodsForClient', this.file.abs)
     this.removeMethodArgs({ name: 'ctx' })
     this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader' })
   }

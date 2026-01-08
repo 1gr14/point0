@@ -4,8 +4,10 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File } from '@babel/types'
 import * as nodeFs from 'node:fs/promises'
+import * as nodeFsSync from 'node:fs'
 import prettier from 'prettier'
 import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
+import type { Walker } from './walker.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -20,59 +22,107 @@ const babelGenerator = ((generatorModule as any).default ?? generatorModule) as 
 export class CompilerFile<THasContent extends boolean> {
   readonly abs: string
   content: THasContent extends true ? string : undefined
-  timestamp: THasContent extends true ? number : undefined
-  hasRead: boolean
+  mtime: THasContent extends true ? number : undefined
+  rtime: THasContent extends true ? number : undefined
   modified = false
+  walker: Walker
 
   private constructor({
     abs,
     content,
-    timestamp,
-    hasRead,
+    mtime,
+    rtime,
+    walker,
   }: {
     abs: string
     content: string | undefined
-    timestamp: number | undefined
-    hasRead: boolean
+    mtime: number | undefined
+    rtime: number | undefined
+    walker: Walker
   }) {
     this.abs = abs
     this.content = content as THasContent extends true ? string : undefined
-    this.timestamp = timestamp as THasContent extends true ? number : undefined
-    this.hasRead = hasRead
+    this.mtime = mtime as THasContent extends true ? number : undefined
+    this.rtime = rtime as THasContent extends true ? number : undefined
+    this.walker = walker
   }
 
-  static create<TContent extends string | undefined = undefined>(
-    fileAbs: string,
-    content?: TContent,
-  ): CompilerFile<TContent extends string ? true : false> {
-    return new CompilerFile({
-      abs: fileAbs,
+  static create<TContent extends string | undefined = undefined>({
+    walker,
+    file,
+    content,
+  }: {
+    walker: Walker
+    file: string
+    content?: TContent
+  }): CompilerFile<TContent extends string ? true : false> {
+    const exCf = walker.files.get(file)
+    const contentProvided = typeof content !== 'undefined'
+    if (exCf && !contentProvided) {
+      return exCf
+    }
+    const cf = new CompilerFile({
+      abs: file,
       content,
-      timestamp: typeof content !== 'undefined' ? 0 : undefined,
-      hasRead: false,
+      mtime: contentProvided ? 0 : undefined,
+      rtime: new Date().getTime(),
+      walker,
     })
+    if (contentProvided) {
+      // if content was provided, then it is not real content of file, so we do not want to cache this file, we want rerad it if another point needs it
+      walker.files.set(file, cf)
+    }
+    return cf
   }
 
-  static async read(fileAbs: string): Promise<CompilerFile<true>> {
-    return await CompilerFile.create(fileAbs).read()
+  // static getOrCreate({ walker, file, content }: { walker: Walker; file: string; content?: string }): CompilerFile<any> {
+  //   const exFile = walker.files.get(file)
+  //   if (exFile) {
+  //     return exFile
+  //   }
+  //   return CompilerFile.create({ walker, file, content })
+  // }
+
+  private pruneFnsCache() {
+    this._parse = undefined
+    this._mayContainPoints = undefined
+    this._isIdentifierExists = {}
+    this._shakeForEngineHolderBuildPhase = undefined
+    this._shakeForEnv = undefined
+  }
+
+  static async readAsync({
+    walker,
+    file,
+    fresh,
+  }: {
+    walker: Walker
+    file: string
+    fresh: boolean
+  }): Promise<CompilerFile<true>> {
+    return await CompilerFile.create({ walker, file }).readAsync(fresh)
+  }
+
+  static readSync({ walker, file, fresh }: { walker: Walker; file: string; fresh: boolean }): CompilerFile<true> {
+    return CompilerFile.create({ walker, file }).readSync(fresh)
   }
 
   hasContent(): this is CompilerFile<true> {
-    return this.hasRead
+    return !!this.content
   }
 
   isParsed() {
     return !!this.ast
   }
 
-  assertRead(): asserts this is CompilerFile<true> {
-    if (!this.hasRead) {
+  assertHasContent(): asserts this is CompilerFile<true> {
+    if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
   }
 
-  async read(): Promise<CompilerFile<true>> {
-    if (this.content) {
+  private async _readAsync(fresh: boolean): Promise<CompilerFile<true>> {
+    if (this.content && !fresh) {
       return this as CompilerFile<true>
     }
     const stats = await (async () => {
@@ -82,10 +132,60 @@ export class CompilerFile<THasContent extends boolean> {
         throw new Error(`Failed to read file ${this.abs}: ${(e as Error).message}`, { cause: e })
       }
     })()
+    if (stats.mtimeMs === this.mtime && this.content) {
+      return this as CompilerFile<true>
+    }
+    // const cf = new CompilerFile({
+    //   abs: this.abs,
+    //   content: await nodeFs.readFile(this.abs, 'utf8'),
+    //   mtime: stats.mtimeMs,
+    //   rtime: new Date().getTime(),
+    //   walker: this.walker,
+    // })
+    // this.walker.files.set(this.abs, cf)
+    // return cf
     const result = this as CompilerFile<true>
     result.content = await nodeFs.readFile(this.abs, 'utf8')
-    result.timestamp = stats.mtimeMs
-    result.hasRead = true
+    result.mtime = stats.mtimeMs
+    result.rtime = new Date().getTime()
+    this.pruneFnsCache()
+    return result
+  }
+  private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
+  async readAsync(fresh: boolean): Promise<CompilerFile<true>> {
+    const pendingPromise = this._readAsyncPendingPromises.get(this.abs)
+    if (pendingPromise) {
+      return await pendingPromise
+    }
+    const newPromise = this._readAsync(fresh).then((cf) => {
+      this._readAsyncPendingPromises.delete(this.abs)
+      return cf
+    })
+    this._readAsyncPendingPromises.set(this.abs, newPromise)
+    return await newPromise
+  }
+
+  readSync(fresh: boolean): CompilerFile<true> {
+    if (this.content && !fresh) {
+      return this as CompilerFile<true>
+    }
+    const stats = nodeFsSync.statSync(this.abs)
+    if (stats.mtimeMs === this.mtime && this.content) {
+      return this as CompilerFile<true>
+    }
+    // const cf = new CompilerFile({
+    //   abs: this.abs,
+    //   content: nodeFsSync.readFileSync(this.abs, 'utf8'),
+    //   mtime: stats.mtimeMs,
+    //   rtime: new Date().getTime(),
+    //   walker: this.walker,
+    // })
+    // this.walker.files.set(this.abs, cf)
+    const result = this as CompilerFile<true>
+    result.content = nodeFsSync.readFileSync(this.abs, 'utf8')
+    result.mtime = stats.mtimeMs
+    result.rtime = new Date().getTime()
+    this.pruneFnsCache()
     return result
   }
 
@@ -146,7 +246,7 @@ export class CompilerFile<THasContent extends boolean> {
     return this._mayContainPoints
   }
 
-  _isIdentifierExists: Record<string, boolean> = {}
+  private _isIdentifierExists: Record<string, boolean> = {}
   isIdentifierExists(name: string): boolean {
     if (name in this._isIdentifierExists) {
       return this._isIdentifierExists[name]
@@ -160,6 +260,7 @@ export class CompilerFile<THasContent extends boolean> {
         }
       },
     })
+    this._isIdentifierExists[name] = exists
     return exists
   }
 
@@ -192,7 +293,7 @@ export class CompilerFile<THasContent extends boolean> {
         ok: boolean
         modified: boolean
       }
-    | false = false
+    | undefined = undefined
   shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase }: { isEngineHolderBuildPhase: boolean }): {
     errors: unknown[]
     ok: boolean
@@ -276,7 +377,7 @@ export class CompilerFile<THasContent extends boolean> {
         ok: boolean
         modified: boolean
       }
-    | false = false
+    | undefined = undefined
   shakeForEnv({ target, scope, consts }: { target: 'client' | 'server'; scope: string; consts?: CompilerEnvConsts }): {
     target: 'client' | 'server'
     scope: string
@@ -334,28 +435,6 @@ export class CompilerFile<THasContent extends boolean> {
           type: 'NullLiteral',
         }) as any
 
-      // Helper to check if a var name matches consts (supports wildcard patterns like "SOMETHING_*")
-      // const shouldReplaceVar = (varName: string): {forceValue: string | number | boolean | null | undefined, shouldReplace: boolean, shouldForce: boolean} => {
-      //   for (const constPattern of consts) {
-      //     if (typeof constPattern === 'string') {
-      //       if (constPattern.endsWith('*')) {
-      //         const prefix = constPattern.slice(0, -1)
-      //         if (varName.startsWith(prefix)) {
-      //           return { forceValue: undefined, shouldReplace: true, shouldForce: false }
-      //         }
-      //       } else if (varName === constPattern) {
-      //         return { forceValue: undefined, shouldReplace: true, shouldForce: false }
-      //       }
-      //     }
-      //     if (typeof constPattern === 'object') {
-      //       const forceValue = constPattern[varName]
-      //       if (forceValue !== undefined) {
-      //         return { forceValue, shouldReplace: true, shouldForce: true }
-      //       }
-      //     }
-      //   }
-      //   return { forceValue: undefined, shouldReplace: false, shouldForce: false }
-      // }
       const checkReplaceVar = (
         varName: string,
         processEnvValue: string | number | boolean | null | undefined,

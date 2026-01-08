@@ -22,7 +22,7 @@ const prepareRandomFile = () => {
 
 const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, deleteFiles = true) => {
   return async () => {
-    const walker = new Walker({ cwd: tempDir })
+    const walker = new Walker({ routes: undefined })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
@@ -52,7 +52,7 @@ describe('Walker', () => {
         await file.write(`import {Point0} from '@point0/core'
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points[0].simplify()).toMatchObject({
@@ -72,7 +72,7 @@ describe('Walker', () => {
                           export const myrootvariable = Point0.lets('root', 'myroot').root()
                           export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file.path })
+        const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(2)
         expect(result.points[0].simplify()).toMatchObject({
@@ -94,7 +94,7 @@ describe('Walker', () => {
           isBasePoint0: false,
         })
 
-        const parents1 = await walker.collectParentPointsByPoint({ point: result.points[1] })
+        const parents1 = walker.collectParentPointsByPoint({ point: result.points[1] })
         expect(parents1.errors).toHaveLength(0)
         expect(parents1.parents).toHaveLength(1)
         expect(parents1.parents[0].simplify()).toMatchObject({
@@ -111,7 +111,7 @@ describe('Walker', () => {
         await file1.write(`import {myrootvariable} from '${file0.importpath}'
                         export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: file1.path })
+        const result = walker.collectPointsFromFile({ file: file1.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points[0].simplify()).toMatchObject({
@@ -124,7 +124,7 @@ describe('Walker', () => {
           isBasePoint0: false,
         })
 
-        const parents2 = await walker.collectParentPointsByPoint({ point: result.points[0] })
+        const parents2 = walker.collectParentPointsByPoint({ point: result.points[0] })
         expect(parents2.errors).toHaveLength(0)
         expect(parents2.parents).toHaveLength(1)
         expect(parents2.parents[0].simplify()).toMatchObject({
@@ -149,7 +149,7 @@ describe('Walker', () => {
                       export const baseV = providerV.lets('base', 'baseN').base()
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const result = await walker.collectPointsFromFile({ file: f0.path })
+        const result = walker.collectPointsFromFile({ file: f0.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(11)
         expect(result.points.map((p) => p.simplify())).toMatchObject([
@@ -191,7 +191,7 @@ describe('Walker', () => {
           },
         ])
 
-        const parents5 = await walker.collectParentPointsByPoint({ point: result.points[5] })
+        const parents5 = walker.collectParentPointsByPoint({ point: result.points[5] })
         expect(parents5.errors).toHaveLength(0)
         expect(parents5.parents).toHaveLength(5)
         expect(parents5.parents.map((p) => p.extraSimplify())).toMatchObject([
@@ -250,7 +250,7 @@ describe('Walker', () => {
         await f10.write(`import {baseV} from '${f9.importpath}'
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const result = await walker.collectPointsFromFile({ file: f9.path })
+        const result = walker.collectPointsFromFile({ file: f9.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points.map((p) => p.simplify())).toMatchObject([
@@ -262,7 +262,7 @@ describe('Walker', () => {
           },
         ])
 
-        const parents0 = await walker.collectParentPointsByPoint({ point: result.points[0] })
+        const parents0 = walker.collectParentPointsByPoint({ point: result.points[0] })
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(9)
         expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
@@ -308,7 +308,7 @@ describe('Walker', () => {
         await f2.write(`import {root} from '${f1.importpath}'
                       export const page = root.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: f2.path })
+        const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points.map((p) => p.simplify())).toMatchObject([
@@ -317,7 +317,7 @@ describe('Walker', () => {
           },
         ])
 
-        const parents0 = await walker.collectParentPointsByPoint({ point: result.points[0] })
+        const parents0 = walker.collectParentPointsByPoint({ point: result.points[0] })
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents[0].simplify()).toMatchObject({
@@ -337,7 +337,7 @@ describe('Walker', () => {
         await f2.write(`import {root2} from '${f1.importpath}'
                       export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: f2.path })
+        const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points.map((p) => p.simplify())).toMatchObject([
@@ -346,7 +346,7 @@ describe('Walker', () => {
           },
         ])
 
-        const parents0 = await walker.collectParentPointsByPoint({ point: result.points[0] })
+        const parents0 = walker.collectParentPointsByPoint({ point: result.points[0] })
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
@@ -369,7 +369,7 @@ describe('Walker', () => {
         await f2.write(`import {root2} from '${f1.importpath}'
                       export const page = root2.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: f2.path })
+        const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points.map((p) => p.simplify())).toMatchObject([
@@ -378,7 +378,7 @@ describe('Walker', () => {
           },
         ])
 
-        const parents0 = await walker.collectParentPointsByPoint({ point: result.points[0] })
+        const parents0 = walker.collectParentPointsByPoint({ point: result.points[0] })
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents[0].simplify()).toMatchObject({
@@ -400,7 +400,7 @@ describe('Walker', () => {
         await f2.write(`import {root3} from '${f1.importpath}'
                       export const page = root3.lets('page', 'page').page(() => <div>Hello</div>)
         `)
-        const result = await walker.collectPointsFromFile({ file: f2.path })
+        const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
         expect(result.points.map((p) => p.simplify())).toMatchObject([
@@ -409,7 +409,7 @@ describe('Walker', () => {
           },
         ])
 
-        const parents0 = await walker.collectParentPointsByPoint({ point: result.points[0] })
+        const parents0 = walker.collectParentPointsByPoint({ point: result.points[0] })
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents[0].extraSimplify()).toMatchObject({
@@ -454,7 +454,30 @@ describe('Walker', () => {
         await f10.write(`import {baseV} from '${f9.importpath}'
                       export const baseV2 = baseV.lets('base', 'baseN2').loader().base()
         `)
-        const results = await Promise.all([
+        await walker.readManyAsync({
+          files: [
+            f5.path,
+            f0.path,
+            f1.path,
+            f2.path,
+            f3.path,
+            f4.path,
+            f5.path,
+            f5.path,
+            f5.path,
+            f5.path,
+            f5.path,
+            f5.path,
+            f6.path,
+            f7.path,
+            f8.path,
+            f9.path,
+            f10.path,
+            f5.path,
+          ],
+          fresh: false,
+        })
+        const results = [
           walker.collectPointsFromFile({ file: f5.path }),
           walker.collectPointsFromFile({ file: f0.path }),
           walker.collectPointsFromFile({ file: f1.path }),
@@ -474,7 +497,7 @@ describe('Walker', () => {
           walker.collectPointsFromFile({ file: f9.path }),
           walker.collectPointsFromFile({ file: f10.path }),
           walker.collectPointsFromFile({ file: f5.path }),
-        ])
+        ]
         const resultFirst = results[0]
         const resultLast = results[results.length - 1]
         expect(resultFirst.errors).toHaveLength(0)
@@ -488,7 +511,7 @@ describe('Walker', () => {
         ])
         expect(resultFirst.points[0].simplify()).toMatchObject(resultLast.points[0].simplify())
 
-        const parents0 = await walker.collectParentPointsByPoint({ point: resultFirst.points[0] })
+        const parents0 = walker.collectParentPointsByPoint({ point: resultFirst.points[0] })
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(5)
         expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([

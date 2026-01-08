@@ -4,6 +4,7 @@ import * as nodePath from 'node:path'
 import { CompilerFile } from '../src/file.js'
 import { toText } from './utils.js'
 import { shakeItOnEngineHolderBuildPhase } from '@point0/engine/utils'
+import { Walker } from '../src/walker.js'
 
 type TestFile = Bun.BunFile & {
   path: string
@@ -11,29 +12,37 @@ type TestFile = Bun.BunFile & {
   importpath: string
   cf: CompilerFile<false>
   wrp: (content: string | (() => any)) => Promise<CompilerFile<true>>
+  wrpsync: (content: string | (() => any)) => Promise<CompilerFile<true>>
 }
 
 const tempDir = nodePath.join(__dirname, 'temp/file')
 
-const prepareRandomFile = (): TestFile => {
+const prepareRandomFile = (walker: Walker): TestFile => {
   const basename = crypto.randomUUID()
   const path = nodePath.join(tempDir, basename + '.tsx')
   const importpath = './' + basename + '.js'
-  const cf: CompilerFile<false> = CompilerFile.create(path)
+  const cf: CompilerFile<false> = CompilerFile.create({ walker, file: path })
   const bunFile = Bun.file(path)
   // write, read, parse
   const wrp = async (content: string | (() => any)) => {
     await bunFile.write(await toText(content))
-    await cf.read()
-    cf.assertRead()
+    await cf.readAsync(true)
+    cf.assertHasContent()
     return cf
   }
-  return Object.assign(bunFile, { path, basename, importpath, cf, wrp })
+  const wrpsync = async (content: string | (() => any)) => {
+    await bunFile.write(await toText(content))
+    cf.readSync(true)
+    cf.assertHasContent()
+    return cf
+  }
+  return Object.assign(bunFile, { path, basename, importpath, cf, wrp, wrpsync })
 }
 
 const helper = (callback: ({ files }: { files: TestFile[] }) => any, deleteFiles = true) => {
   return async () => {
-    const files = Array.from({ length: 11 }, prepareRandomFile)
+    const walker = new Walker({ routes: undefined })
+    const files = Array.from({ length: 11 }, () => prepareRandomFile(walker))
     try {
       await callback({
         files,
@@ -113,7 +122,7 @@ describe('CompilerFile', () => {
       it.concurrent(
         'env.target.is.client = false',
         helper(async ({ files: [file] }) => {
-          const cf = await file.wrp(async () => {
+          const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/env')
             if (env.target.is.client) console.info('client')
           })
@@ -149,7 +158,7 @@ describe('CompilerFile', () => {
       it.concurrent(
         'env.target.is.ssr not changed when target is server',
         helper(async ({ files: [file] }) => {
-          const cf = await file.wrp(async () => {
+          const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/env')
             if (env.target.is.ssr) console.info('ssr')
           })
@@ -187,7 +196,7 @@ describe('CompilerFile', () => {
       it.concurrent(
         'env.target.define.server() - server target keeps value',
         helper(async ({ files: [file] }) => {
-          const cf = await file.wrp(async () => {
+          const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/env')
             console.info(env.target.define.server('server-value'))
           })
@@ -223,7 +232,7 @@ describe('CompilerFile', () => {
       it.concurrent(
         'env.target.define.client() - client target keeps value',
         helper(async ({ files: [file] }) => {
-          const cf = await file.wrp(async () => {
+          const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/env')
             console.info(env.target.define.client('client-value'))
           })
@@ -259,7 +268,7 @@ describe('CompilerFile', () => {
       it.concurrent(
         'env.target.define() with client option - server target replaces value',
         helper(async ({ files: [file] }) => {
-          const cf = await file.wrp(async () => {
+          const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/env')
             console.info(env.target.define({ server: 'server-value', client: 'client-value' }))
           })
