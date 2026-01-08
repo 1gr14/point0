@@ -4,6 +4,7 @@ import { Walker } from './walker.js'
 
 export type CompilerOptions = {
   target: 'client' | 'server'
+  scope: string
   filter?: RegExp
   isEngineHolderBuildPhase?: boolean
   hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
@@ -11,6 +12,7 @@ export type CompilerOptions = {
 
 export class Compiler {
   filter: RegExp
+  scope: string
   target: 'client' | 'server'
   isEngineHolderBuildPhase: boolean | undefined
   hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
@@ -20,25 +22,29 @@ export class Compiler {
   constructor({
     filter,
     target,
+    scope,
     isEngineHolderBuildPhase,
     hmrFixPolicy,
   }: {
     filter: RegExp
     target: 'client' | 'server'
+    scope: string
     isEngineHolderBuildPhase: boolean | undefined
     hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
   }) {
     this.filter = filter
     this.target = target
+    this.scope = scope
     this.isEngineHolderBuildPhase = isEngineHolderBuildPhase
     this.hmrFixPolicy = hmrFixPolicy
   }
 
   static create(options: CompilerOptions) {
-    const { target, filter, isEngineHolderBuildPhase, hmrFixPolicy } = options
+    const { filter, target, scope, isEngineHolderBuildPhase, hmrFixPolicy } = options
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       target,
+      scope,
       isEngineHolderBuildPhase,
       hmrFixPolicy,
     })
@@ -46,12 +52,16 @@ export class Compiler {
 
   async compile({
     content,
+    scope = this.scope,
+    target = this.target,
     file,
     isEngineHolderBuildPhase = this.isEngineHolderBuildPhase ??
       process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true',
     hmrFixPolicy = this.hmrFixPolicy ?? 'none',
   }: {
     content?: string
+    scope?: string
+    target?: 'client' | 'server'
     file: string
     isEngineHolderBuildPhase?: boolean
     hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
@@ -71,13 +81,13 @@ export class Compiler {
     }
     const cf = collectResult.file
     for (const point of collectResult.points) {
-      point.shake({ target: this.target })
+      point.shakeMethods({ target })
       if (hmrFixPolicy !== 'none') {
         point.addHmrFix({ policy: hmrFixPolicy })
       }
     }
     cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })
-    cf.shakeForRuntimeTarget({ target: this.target })
+    cf.shakeForEnv({ target })
     return {
       file: cf,
       code: cf.modified ? cf.toCode() : cf.content,

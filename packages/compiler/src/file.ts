@@ -231,35 +231,40 @@ export class CompilerFile<THasContent extends boolean> {
     }
   }
 
-  private _shakeForRuntimeTarget:
+  private _shakeForEnv:
     | {
         target: 'client' | 'server'
+        scope: string
+        consts: string[] // can be env name like NODE_ENV, or string SOMETHING_* then we should force value for all const started with SOMETHING_
         errors: unknown[]
         ok: boolean
         modified: boolean
       }
     | false = false
-  shakeForRuntimeTarget({ target }: { target: 'client' | 'server' }): {
+  shakeForEnv({ target, scope, consts = [] }: { target: 'client' | 'server'; scope: string; consts?: string[] }): {
     target: 'client' | 'server'
+    scope: string
+    consts: string[]
     errors: unknown[]
     ok: boolean
     modified: boolean
   } {
     const errors: unknown[] = []
+    consts.push('NODE_ENV', 'POINT0_SCOPE')
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
-    if (this._shakeForRuntimeTarget) {
-      if (this._shakeForRuntimeTarget.target !== target) {
-        throw new Error(`Already shaked for target ${this._shakeForRuntimeTarget.target}`)
+    if (this._shakeForEnv) {
+      if (this._shakeForEnv.target !== target) {
+        throw new Error(`Already shaked for target ${this._shakeForEnv.target}`)
       }
-      return this._shakeForRuntimeTarget
+      return this._shakeForEnv
     }
     try {
       if (!this.content.includes('@point0/runtime')) {
-        this._shakeForRuntimeTarget = { target, errors, ok: true, modified }
-        return this._shakeForRuntimeTarget
+        this._shakeForEnv = { target, scope, consts, errors, ok: true, modified }
+        return this._shakeForEnv
       }
 
       const makeThrow = (msg: string) => ({
@@ -428,13 +433,13 @@ export class CompilerFile<THasContent extends boolean> {
         },
       })
 
-      this._shakeForRuntimeTarget = { target, errors, ok: true, modified }
+      this._shakeForEnv = { target, scope, consts, errors, ok: true, modified }
       this.modified ||= modified
-      return this._shakeForRuntimeTarget
+      return this._shakeForEnv
     } catch (e) {
       errors.push(e)
-      this._shakeForRuntimeTarget = { target, errors, ok: false, modified }
-      return this._shakeForRuntimeTarget
+      this._shakeForEnv = { target, scope, consts, errors, ok: false, modified }
+      return this._shakeForEnv
     }
   }
 }

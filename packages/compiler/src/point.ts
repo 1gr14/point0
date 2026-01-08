@@ -503,25 +503,25 @@ export class CompilerPoint {
   //   }
   // }
 
-  private shakeForClient(): void {
+  private shakeMethodsForClient(): void {
     this.removeMethodArgs({ name: 'ctx' })
     this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader' })
   }
 
-  private shakeForServer(): void {
+  private shakeMethodsForServer(): void {
     // Nothing here. For now we do not shake server side.
   }
 
   private _shake = false
-  shake({ target }: { target: 'client' | 'server' }): void {
+  shakeMethods({ target }: { target: 'client' | 'server' }): void {
     if (this._shake) {
       return
     }
     if (target === 'client') {
-      this.shakeForClient()
+      this.shakeMethodsForClient()
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (target === 'server') {
-      this.shakeForServer()
+      this.shakeMethodsForServer()
     } else {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid target: ${target}`)
