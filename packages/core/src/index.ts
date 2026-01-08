@@ -174,6 +174,62 @@ import {
 } from './utils.js'
 import { env } from '@point0/env'
 
+// known stage fns
+
+// requireCtx: server, nothing to prune
+// serverurl: client, nothing to prune
+// baseurl: both, nothing to prune
+// ssr: both, nothing to prune
+// mutationOptions: client, prune on server
+// queryOptions: client, prune on server
+// infiniteQueryOptions: client, prune on server
+// pageQueryOptions: client, prune on server
+// componentQueryOptions: client, prune on server
+// providerQueryOptions: client, prune on server
+// layoutQueryOptions: client, prune on server
+// fetchOptions: client, prune on server
+
+// error: both, prune on nossr-server
+// layoutError: both, prune on nossr-server
+// pageError: both, prune on nossr-server
+// componentError: both, prune on nossr-server
+// layoutLoading: both, prune on nossr-server
+// pageLoading: both, prune on nossr-server
+// componentLoading: both, prune on nossr-server
+// loading: both, prune on nossr-server
+// wrapper: both, prune on nossr-server
+// outer: both, prune on nossr-server
+
+// scrollPosition: client, prune on server
+// scrollRestore: client, prune on server
+// prefetchPolicy: both, nothing to prune (but in fact right now not used in server code)
+// onPrefetch: client, prune on server
+// prefetchOnLinkHover: client, prune on server
+
+// transformer: both, nothing to prune
+
+// ctx: server, prune on client
+// loader: server, prune on client
+
+// clientLoader: client, prune on server
+
+// mapper: both, nothing to prune
+
+// head: both, nothing to prune
+// props: both, nothing to prune
+// input: both, nothing to prune
+
+// root: both, nothing to prune
+// base: both, nothing to prune
+// page: both, prune on nossr-server (replace last argument wirh () => null)
+
+// component: both, prune on nossr-server
+// layout: both, prune on nossr-server
+// provider: both, nothing to prune
+// query: client, prune on server
+// infiniteQuery: client, prune on server
+// mutation: client, prune on server
+
 export class Point0<
   TPointType extends PointType,
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
@@ -1957,7 +2013,8 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter]) {
+  scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
+    // [] in case if it was shaked for serverNoSsr
     const { getter, setter } = (() => {
       if (args.length === 2) {
         return { getter: args[0], setter: args[1] }
@@ -1974,7 +2031,10 @@ export class Point0<
           setter: getWindowScrollPositionSetterBySelector(args[0]),
         }
       }
-      throw new Error('Invalid arguments for scrollPosition')
+      return {
+        getter: this._scrollPositionGetter,
+        setter: this._scrollPositionSetter,
+      }
     })()
     return this._continue<
       TPointType,
@@ -1991,16 +2051,14 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
-      _scrollPositionGetter: getter ?? this._scrollPositionGetter,
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
-      _scrollPositionSetter: setter ?? this._scrollPositionSetter,
+      _scrollPositionGetter: getter,
+      _scrollPositionSetter: setter,
     }) as never
   }
 
   scrollRestore(
     // true - restore, false - do not restore, null - set {x: 0, y: 0}
-    policy: ScrollPositionRestorePolicy | boolean | null,
+    policy: ScrollPositionRestorePolicy | boolean | null | undefined, // undefined in case if it was shaked for serverNoSsr
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2031,7 +2089,7 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy,
+      _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
   }
 
@@ -2072,7 +2130,8 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _prefetchPolicy: policy,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for serverNoSsr
+      _prefetchPolicy: policy ?? this._prefetchPolicy,
     }) as never
   }
 
@@ -2108,7 +2167,8 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      _onPrefetchFns: [...this._onPrefetchFns, fn],
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for serve
+      _onPrefetchFns: [...this._onPrefetchFns, fn ?? (() => undefined)],
     }) as never
   }
 
@@ -2130,7 +2190,8 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      polh,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
+      polh: polh ?? this._shouldBePrefetchedOnLinkHover,
     }) as never
   }
 
