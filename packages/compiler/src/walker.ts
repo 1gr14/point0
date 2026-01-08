@@ -171,7 +171,12 @@ export class Walker {
     try {
       const file = fileIdle.readSync(!content)
 
+      if (file.allPointsWasCollected) {
+        return { points: file.getCollectedPoints(), errors, file, ok: true }
+      }
+
       if (!file.mayContainPoints()) {
+        file.allPointsWasCollected = true
         return { points, errors, file, ok: true }
       }
 
@@ -201,6 +206,7 @@ export class Walker {
         }
       }
 
+      file.allPointsWasCollected = true
       return { points, errors, file, ok: true }
     } catch (e) {
       errors.push(e)
@@ -215,11 +221,15 @@ export class Walker {
     letsNodePath: NodePath<Node>
     file: CompilerFile<true>
   }): {
-    point: CompilerPoint | undefined
+    point: CompilerPoint | null | undefined
     errors: unknown[]
   } {
     const errors: unknown[] = []
     try {
+      const pointFromMemory = file.getPointFormMemoryByLetsNodePath(letsNodePath)
+      if (pointFromMemory) {
+        return { point: pointFromMemory, errors }
+      }
       const letsNode = letsNodePath.node
 
       // CallExpression: A function call with parentheses and arguments
@@ -255,10 +265,10 @@ export class Walker {
       const pointName =
         secondLetsArgNodePath?.node.type === 'StringLiteral' ? secondLetsArgNodePath.node.value : undefined
       if (!pointName) {
-        return { point: undefined, errors }
+        return { point: null, errors }
       }
       if (!pointType || !END_POINT_TYPES.includes(pointType)) {
-        return { point: undefined, errors }
+        return { point: null, errors }
       }
 
       // Check if the base object is Point0 (the root entry point)
@@ -341,13 +351,13 @@ export class Walker {
   }
 
   collectParentPointByPoint({ point }: { point: CompilerPoint }): {
-    parent: CompilerPoint | undefined
+    parent: CompilerPoint | null | undefined
     errors: unknown[]
   } {
     const errors: unknown[] = []
     try {
       if (point.isBasePoint0) {
-        return { parent: undefined, errors }
+        return { parent: null, errors }
       }
       const findBaseLetsNodePathByBaseNodePathResult = this.findBaseLetsNodePathByBaseNodePath({
         baseNodePath: point.baseNodePath,
@@ -355,7 +365,7 @@ export class Walker {
       })
       errors.push(...findBaseLetsNodePathByBaseNodePathResult.errors)
       if (!findBaseLetsNodePathByBaseNodePathResult.isFound) {
-        return { parent: undefined, errors }
+        return { parent: null, errors }
       }
       const result = this.collectPointByLetsNodePath({
         letsNodePath: findBaseLetsNodePathByBaseNodePathResult.baseLetsNodePath,

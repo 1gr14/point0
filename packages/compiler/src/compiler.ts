@@ -1,6 +1,6 @@
 import type { RoutesPretty } from '@devp0nt/route0'
 import type { CompilerFile } from './file.js'
-import type { CompilerPoint } from './point.js'
+import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'
 import { Walker } from './walker.js'
 
@@ -69,12 +69,13 @@ export class Compiler {
     })
   }
 
-  compile({ content, file }: { content?: string; file: string }): {
+  compile({ content, file, tryIndex = 0 }: { content?: string; file: string; tryIndex?: number }): {
     file: CompilerFile<true> | undefined
     code: string
     points: CompilerPoint[]
     errors: unknown[]
     modified: boolean
+    tryIndex: number
   } {
     const target = this.target
     const scope = this.scope
@@ -86,7 +87,14 @@ export class Compiler {
     const collectResult = this.walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
-      return { file: collectResult.file, code: content || '', points: collectResult.points, errors, modified: false }
+      return {
+        file: collectResult.file,
+        code: content || '',
+        points: collectResult.points,
+        errors,
+        modified: false,
+        tryIndex,
+      }
     }
     const cf = collectResult.file
     for (const point of collectResult.points) {
@@ -97,12 +105,20 @@ export class Compiler {
     }
     cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })
     cf.shakeForEnv({ target, scope, consts })
+    const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
+    if (isSomeStale) {
+      if (tryIndex >= 10) {
+        throw new Error('Too many tries to compile file. Looks like it is endless loop of changes.')
+      }
+      return this.compile({ content, file, tryIndex: tryIndex + 1 })
+    }
     return {
       file: cf,
       code: cf.modified ? cf.toCode() : cf.content,
       points: collectResult.points,
       errors,
       modified: cf.modified,
+      tryIndex,
     }
   }
 }

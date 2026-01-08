@@ -1,13 +1,15 @@
 import generatorModule from '@babel/generator'
 import babel from '@babel/parser'
 import type traverseType from '@babel/traverse'
+import type { NodePath } from '@babel/traverse'
+import type { Node, File } from '@babel/types'
 import traverseModule from '@babel/traverse'
-import type { File } from '@babel/types'
 import * as nodeFs from 'node:fs/promises'
 import * as nodeFsSync from 'node:fs'
 import prettier from 'prettier'
 import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
+import type { CompilerPoint } from './point.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -24,27 +26,42 @@ export class CompilerFile<THasContent extends boolean> {
   content: THasContent extends true ? string : undefined
   mtime: THasContent extends true ? number : undefined
   rtime: THasContent extends true ? number : undefined
-  modified = false
+  modified: boolean
   walker: Walker
+  points: Set<CompilerPoint>
+  allPointsWasCollected: boolean
+  stale: boolean
 
   private constructor({
     abs,
     content,
     mtime,
     rtime,
+    modified,
     walker,
+    points,
+    allPointsWasCollected,
+    stale,
   }: {
     abs: string
     content: string | undefined
     mtime: number | undefined
     rtime: number | undefined
+    modified: boolean
     walker: Walker
+    points: Set<CompilerPoint>
+    allPointsWasCollected: boolean
+    stale: boolean
   }) {
     this.abs = abs
     this.content = content as THasContent extends true ? string : undefined
     this.mtime = mtime as THasContent extends true ? number : undefined
     this.rtime = rtime as THasContent extends true ? number : undefined
+    this.modified = modified
     this.walker = walker
+    this.points = points
+    this.allPointsWasCollected = allPointsWasCollected
+    this.stale = stale
   }
 
   static create<TContent extends string | undefined = undefined>({
@@ -66,7 +83,11 @@ export class CompilerFile<THasContent extends boolean> {
       content,
       mtime: contentProvided ? 0 : undefined,
       rtime: new Date().getTime(),
+      modified: false,
       walker,
+      points: new Set(),
+      allPointsWasCollected: false,
+      stale: false,
     })
     if (contentProvided) {
       // if content was provided, then it is not real content of file, so we do not want to cache this file, we want rerad it if another point needs it
@@ -75,20 +96,57 @@ export class CompilerFile<THasContent extends boolean> {
     return cf
   }
 
-  // static getOrCreate({ walker, file, content }: { walker: Walker; file: string; content?: string }): CompilerFile<any> {
-  //   const exFile = walker.files.get(file)
-  //   if (exFile) {
-  //     return exFile
-  //   }
-  //   return CompilerFile.create({ walker, file, content })
-  // }
+  cloneAndMadeStale() {
+    const cloned = new CompilerFile({
+      abs: this.abs,
+      content: this.content,
+      mtime: this.mtime,
+      rtime: this.rtime,
+      modified: this.modified,
+      walker: this.walker,
+      points: this.points,
+      allPointsWasCollected: this.allPointsWasCollected,
+      stale: true,
+    })
+    cloned._parse = this._parse
+    cloned._mayContainPoints = this._mayContainPoints
+    cloned._isIdentifierExists = this._isIdentifierExists
+    cloned._shakeForEngineHolderBuildPhase = this._shakeForEngineHolderBuildPhase
+    cloned._shakeForEnv = this._shakeForEnv
+    return cloned
+  }
 
-  private pruneFnsCache() {
+  private pruneMemory() {
+    const clonedAndStale = this.cloneAndMadeStale()
+    for (const point of this.points.values()) {
+      // point.pruneMemory()
+      point.file = clonedAndStale
+    }
+    this.points = new Set()
     this._parse = undefined
     this._mayContainPoints = undefined
     this._isIdentifierExists = {}
     this._shakeForEngineHolderBuildPhase = undefined
     this._shakeForEnv = undefined
+    this.allPointsWasCollected = false
+    this.modified = false
+  }
+
+  addPointToMemory(point: CompilerPoint) {
+    this.points.add(point)
+  }
+
+  getPointFormMemoryByLetsNodePath(letsNodePath: NodePath<Node>): CompilerPoint | undefined {
+    for (const point of this.points.values()) {
+      if (point.letsNodePath === letsNodePath) {
+        return point
+      }
+    }
+    return undefined
+  }
+
+  getCollectedPoints(): CompilerPoint[] {
+    return [...this.points.values()]
   }
 
   static async readAsync({
@@ -144,11 +202,11 @@ export class CompilerFile<THasContent extends boolean> {
     // })
     // this.walker.files.set(this.abs, cf)
     // return cf
+    this.pruneMemory()
     const result = this as CompilerFile<true>
     result.content = await nodeFs.readFile(this.abs, 'utf8')
     result.mtime = stats.mtimeMs
     result.rtime = new Date().getTime()
-    this.pruneFnsCache()
     return result
   }
   private readonly _readAsyncPendingPromises = new Map<string, Promise<CompilerFile<true>>>()
@@ -181,11 +239,11 @@ export class CompilerFile<THasContent extends boolean> {
     //   walker: this.walker,
     // })
     // this.walker.files.set(this.abs, cf)
+    this.pruneMemory()
     const result = this as CompilerFile<true>
     result.content = nodeFsSync.readFileSync(this.abs, 'utf8')
     result.mtime = stats.mtimeMs
     result.rtime = new Date().getTime()
-    this.pruneFnsCache()
     return result
   }
 

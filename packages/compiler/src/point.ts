@@ -10,13 +10,16 @@ import type { Walker } from './walker.js'
 
 export class CompilerPoint {
   readonly walker: Walker
-  readonly file: CompilerFile<true>
+  file: CompilerFile<true>
   readonly pointType: EndPointType
   readonly pointName: PointName
   readonly exportName: string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
+
+  parents: CompilerPoint[] | undefined
+  parent: CompilerPoint | null | undefined
 
   constructor({
     walker,
@@ -45,11 +48,27 @@ export class CompilerPoint {
     this.baseNodePath = baseNodePath
     this.letsNodePath = letsNodePath
     this.isBasePoint0 = isBasePoint0
+    this.parents = undefined
+    this.parent = undefined
+    file.addPointToMemory(this)
+  }
+
+  get stale(): boolean {
+    return this.file.stale
   }
 
   get strpos(): string {
     return `${this.file.abs}:${this.letsNodePath.node.loc?.start.line || 0}:${this.letsNodePath.node.loc?.start.column || 0}`
   }
+
+  static isSomeStale(points: CompilerPoint[]): boolean {
+    return points.some((point) => point.stale)
+  }
+
+  // pruneMemory() {
+  //   this.parents = undefined
+  //   this.parent = undefined
+  // }
 
   getEarliestParentOrSelf({ parents }: { parents: CompilerPoint[] }): CompilerPoint {
     if (parents.length > 0) {

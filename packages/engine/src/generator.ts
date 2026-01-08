@@ -216,7 +216,7 @@ export class FilesGenerator {
     await this.initRoutesInstances()
     const files = [...this.files]
     const chunks = FilesGenerator.chunk(files, chunkSize)
-    const walker = new Walker({ cwd: this.cwd, routes: this.routes })
+    const walker = new Walker({ routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(chunk.map(async (file) => await walker.collectPointsFromFile({ file })))
