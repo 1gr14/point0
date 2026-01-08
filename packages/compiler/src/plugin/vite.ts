@@ -14,10 +14,10 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
   return {
     name: 'point0-compiler',
     enforce: 'pre',
-    async transform(code, id, options) {
+    transform(code, id, options) {
       const [filepath] = id.split('?', 1)
       if (!compiler.filter.test(filepath)) return null
-      const result = await compiler.compile({
+      const result = compiler.compile({
         content: code,
         file: filepath,
       })

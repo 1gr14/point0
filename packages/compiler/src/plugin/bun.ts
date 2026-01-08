@@ -14,10 +14,10 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   return {
     name: 'point0-compiler',
     setup(build) {
-      build.onLoad({ filter: compiler.filter }, async (args) => {
+      build.onLoad({ filter: compiler.filter }, (args) => {
         const filepath = args.path
         try {
-          const result = await compiler.compile({
+          const result = compiler.compile({
             file: filepath,
           })
           if (!result.modified) {
