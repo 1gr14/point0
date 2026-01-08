@@ -679,7 +679,6 @@ export class CompilerPoint<TValid extends boolean = any> {
 
   private shakeMethodsForClient(): void {
     for (const method of this.getSelfRichMethods()) {
-      console.info(method.name)
       if (method.name === 'ctx') {
         this.removeMethodArgs({ nodePath: method.nodePath })
       }
@@ -711,7 +710,6 @@ export class CompilerPoint<TValid extends boolean = any> {
           'scrollRestore',
           'onPrefetch',
           'prefetchOnLinkHover',
-          'clientLoader',
           'query',
           'infiniteQuery',
           'mutation',
