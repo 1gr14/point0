@@ -165,14 +165,6 @@ export const envTarget = {
 
 // scope
 
-export type EnvScopeIs<TScopes extends string = string> = string extends TScopes
-  ? Record<string, boolean>
-  : {
-      [K in TScopes]: {
-        [P in TScopes]: P extends K ? true : false
-      }
-    }[TScopes]
-
 const getScopeName = (): string => {
   const scopeName = envVars.POINT0_SCOPE_NAME
   if (!scopeName || typeof scopeName !== 'string') {
@@ -182,20 +174,22 @@ const getScopeName = (): string => {
 }
 
 type ScopeDefineForce<TScopes extends string = string> = Record<TScopes, <T>(value: T) => T>
-type ScopeDefineWithHelpers<TScopes extends string = string> = {
-  // typeof scopeDefineUniversal
-  <TScopes extends string, TResult>(options: Record<TScopes, TResult>): TResult
-  <TScopes extends string, TResult>(options: Partial<Record<TScopes, TResult>>): TResult | undefined
-} & Record<TScopes, <T>(value: T) => T | undefined> & {
-    force: ScopeDefineForce<TScopes>
-  }
+type ScopeDefineWithHelpers<TScopes extends string = string> = string extends TScopes
+  ? {
+      <TResult>(options: Record<string, TResult>): TResult | undefined
+      <TResult>(options: Partial<Record<string, TResult>>): TResult | undefined
+    } & Record<string, <T>(value: T) => T | undefined> & {
+        force: Record<string, <T>(value: T) => T>
+      }
+  : {
+      <TResult>(options: Record<TScopes, TResult>): TResult
+      <TResult>(options: Partial<Record<TScopes, TResult>>): TResult | undefined
+    } & Record<TScopes, <T>(value: T) => T | undefined> & {
+        force: ScopeDefineForce<TScopes>
+      }
 
-function scopeDefineUniversal<TScopes extends string, TResult>(options: Record<TScopes, TResult>): TResult
-function scopeDefineUniversal<TScopes extends string, TResult>(
-  options: Partial<Record<TScopes, TResult>>,
-): TResult | undefined
-function scopeDefineUniversal<TScopes extends string, TResult>(options: Partial<Record<TScopes, TResult>>) {
-  return options[getScopeName() as TScopes]
+function scopeDefineUniversal(options: Record<string, any>) {
+  return options[getScopeName()]
 }
 
 const scopeDefineSpecific = (scope: string) => (value: any) => {
@@ -237,11 +231,27 @@ const scopeIs = new Proxy(
   },
 )
 
-export type EnvScope<TScopes extends string = string> = {
-  readonly name: TScopes
-  readonly is: EnvScopeIs<TScopes>
-  readonly define: ScopeDefineWithHelpers<TScopes>
-}
+// export type EnvScope<TScopes extends string = string> = {
+//   readonly name: TScopes
+//   readonly is: EnvScopeIs<TScopes>
+//   readonly define: ScopeDefineWithHelpers<TScopes>
+// }
+
+export type EnvScope<TScopes extends string = string> = string extends TScopes
+  ? {
+      readonly name: string
+      readonly is: Record<string, boolean>
+      readonly define: ScopeDefineWithHelpers<string>
+    }
+  : {
+      [K in TScopes]: {
+        readonly name: K
+        readonly is: {
+          [P in TScopes]: P extends K ? true : false
+        }
+        readonly define: ScopeDefineWithHelpers<TScopes>
+      }
+    }[TScopes]
 
 const envScope = Object.defineProperty(
   {
@@ -282,7 +292,7 @@ export type EnvMode =
       }
     }
   | {
-      readonly name: string
+      readonly name: Exclude<string, 'production' | 'development' | 'test'>
       readonly is: {
         readonly production: false
         readonly development: false

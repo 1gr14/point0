@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:t
 import type { Env } from '../src/index.js'
 
 const init = async <TEnv extends Env = Env>(options: {
-  vars?: Record<string, string>
+  vars?: Record<string, string | boolean | number>
   ssr?: 'prepass' | 'final' | boolean
   target: 'client' | 'server'
   scope?: string
@@ -54,7 +54,6 @@ describe('env', () => {
   describe('env.vars', () => {
     it('should expose environment variables', async () => {
       const env = await init({ vars: { CUSTOM_VAR: 'custom-value' }, target: 'server' })
-      // Note: env.vars is created at module load time, so we need to test with actual env
       expect(typeof env.vars).toBe('object')
       expect(env.vars.CUSTOM_VAR).toBe('custom-value')
     })
@@ -62,6 +61,20 @@ describe('env', () => {
     it('should have access to NODE_ENV', async () => {
       const env = await init({ target: 'server' })
       expect(env.vars.NODE_ENV).toBeDefined()
+    })
+
+    it('should have correct types when generic type provided', async () => {
+      const env = await init<Env<any, { CUSTOM_VAR: string; STRONG_VAR: 'strong'; X: number }>>({
+        target: 'server',
+        vars: { CUSTOM_VAR: 'custom-value', STRONG_VAR: 'strong', X: 1 },
+      })
+      expectTypeOf<typeof env.vars>().toEqualTypeOf<Readonly<{ CUSTOM_VAR: string; STRONG_VAR: 'strong'; X: number }>>()
+      expect(env.vars.CUSTOM_VAR).toBe('custom-value')
+      expectTypeOf<typeof env.vars.CUSTOM_VAR>().toEqualTypeOf<string>()
+      expect(env.vars.STRONG_VAR).toBe('strong')
+      expectTypeOf<typeof env.vars.STRONG_VAR>().toEqualTypeOf<'strong'>()
+      expect(env.vars.X).toBe(1)
+      expectTypeOf<typeof env.vars.X>().toEqualTypeOf<number>()
     })
   })
 
@@ -145,11 +158,12 @@ describe('env', () => {
           expectTypeOf<typeof env.target.is.client>().toEqualTypeOf<true>()
           expectTypeOf<typeof env.target.name>().toEqualTypeOf<'client'>()
         }
-        if (env.target.is.client) {
-          expectTypeOf<typeof env.target.name>().toEqualTypeOf<'client'>()
-        } else {
-          expectTypeOf<typeof env.target.name>().toEqualTypeOf<'server'>()
-        }
+        // It will not wrok, becouse TypeScript doesn't narrow discriminated unions based on nested property checks like env.target.is.client. Narrowing works when the discriminant is checked directly (e.g., env.target.name === 'server'), but not for nested properties.
+        // if (env.target.is.client) {
+        //   expectTypeOf<typeof env.target.name>().toEqualTypeOf<'client'>()
+        // } else {
+        //   expectTypeOf<typeof env.target.name>().toEqualTypeOf<'server'>()
+        // }
       })
     })
 
@@ -289,11 +303,6 @@ describe('env', () => {
 
   describe('env.scope', () => {
     describe('detection', () => {
-      it('should return scope name from POINT0_SCOPE_NAME', async () => {
-        const env = await init({ target: 'server', scope: 'test-scope' })
-        expect(env.scope.name).toBe('test-scope')
-      })
-
       it('should have scope.is object', async () => {
         const env = await init({ target: 'server', scope: 'test-scope' })
         expect(typeof env.scope.is).toBe('object')
@@ -310,7 +319,25 @@ describe('env', () => {
       })
     })
 
-    describe('scope.is', () => {
+    describe('env.scope.name', () => {
+      it('should return scope name from POINT0_SCOPE_NAME', async () => {
+        const env = await init({ target: 'server', scope: 'test-scope' })
+        expect(env.scope.name).toBe('test-scope')
+      })
+
+      it('should return be descriminated with scope types provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        expect(env.scope.name).toBe('x')
+        expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'x' | 'y'>()
+        if (env.scope.name === 'x') {
+          expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'x'>()
+        } else {
+          expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'y'>()
+        }
+      })
+    })
+
+    describe('env.scope.is', () => {
       it('should return true for current scope', async () => {
         const env = await init({ target: 'server', scope: 'x' })
         expect(env.scope.is.x).toBe(true)
@@ -344,66 +371,123 @@ describe('env', () => {
           expectTypeOf<typeof env.scope.is.x>().toEqualTypeOf<true>()
         }
       })
+
+      it('correlates in types with name if generic type provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'x' | 'y'>()
+        expectTypeOf<typeof env.scope.is.x>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.scope.is.y>().toEqualTypeOf<boolean>()
+        if (env.scope.name === 'y') {
+          expectTypeOf<typeof env.scope.is.y>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.scope.is.x>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'y'>()
+        } else {
+          expectTypeOf<typeof env.scope.is.y>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.scope.is.x>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'x'>()
+        }
+      })
     })
 
-    describe('scope.define', () => {
+    describe('env.scope.define()', () => {
       it('should return value for current scope', async () => {
-        const env = await init({ target: 'server', scope: 'test-scope' })
-        const currentScope = env.scope.name
+        const env = await init({ target: 'server', scope: 'x' })
         const result = env.scope.define({
-          [currentScope]: 'test-value',
-          'other-scope': 'other-value',
+          x: 'x-value' as const,
+          y: 'y-value' as const,
         })
-        expect(result).toBe('test-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'x-value' | 'y-value' | undefined>()
+        expect(result).toBe('x-value')
       })
 
       it('should return undefined when current scope not in options', async () => {
-        const env = await init({ target: 'server', scope: 'test-scope' })
-        const currentScope = env.scope.name
-        const otherScope = currentScope === 'scope1' ? 'scope2' : 'scope1'
+        const env = await init({ target: 'server', scope: 'x' })
         const result = env.scope.define({
-          [otherScope]: 'other-value',
+          y: 'y-value' as const,
         })
+        expectTypeOf<typeof result>().toEqualTypeOf<'y-value' | undefined>()
         expect(result).toBeUndefined()
       })
 
-      it('should work with partial options', async () => {
-        const env = await init({ target: 'server', scope: 'test-scope' })
-        const currentScope = env.scope.name
+      it('should return value for current scope, with correct type if generic type provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
         const result = env.scope.define({
-          [currentScope]: 'test-value',
+          x: 'x-value' as const,
+          y: 'y-value' as const,
         })
+        expectTypeOf<typeof result>().toEqualTypeOf<'x-value' | 'y-value'>()
+        expect(result).toBe('x-value')
+      })
+
+      it('should return undefined when current scope not in options, with correct type if generic type provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const result = env.scope.define({
+          y: 'y-value' as const,
+        })
+        expectTypeOf<typeof result>().toEqualTypeOf<'y-value' | undefined>()
+        expect(result).toBeUndefined()
+      })
+
+      it('should throw type when incorrect scope name provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const result = env.scope.define({
+          // @ts-expect-error - incorrect scope name
+          zzz: 'y-value' as const,
+        })
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe('env.scope.define.x()', () => {
+      it('on x return value, if x is current scope', async () => {
+        const env = await init({ target: 'server', scope: 'x' })
+        const result = env.scope.define.x('test-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'test-value' | undefined>()
+        expect(result).toBe('test-value')
+      })
+      it('on y return undefined, if x is current scope', async () => {
+        const env = await init({ target: 'server', scope: 'x' })
+        const result = env.scope.define.y('test-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'test-value' | undefined>()
+        expect(result).toBeUndefined()
+      })
+
+      it('should throw type when incorrect scope name provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        // @ts-expect-error - incorrect scope name
+        const result2 = env.scope.define.zzz('test-value')
+        expect(result2).toBeUndefined()
+      })
+    })
+
+    describe('env.scope.define.force.x()', () => {
+      it('on x return value, if x is current scope', async () => {
+        const env = await init({ target: 'server', scope: 'x' })
+        const result = env.scope.define.force.x('test-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBe('test-value')
       })
 
-      it('should work with scope.define[scopeName]', async () => {
-        const env = await init({ target: 'server', scope: 'test-scope' })
-        const currentScope = env.scope.name
-        const result = env.scope.define[currentScope]('test-value')
-        expect(result).toBe('test-value')
+      it('on y return undefined, if x is current scope', async () => {
+        const env = await init({ target: 'server', scope: 'x' })
+        const result = env.scope.define.force.y('test-value')
+        expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
+        expect(result).toBeUndefined()
       })
 
-      it('should work with scope.define.force[scopeName]', async () => {
-        const env = await init({ target: 'server', scope: 'test-scope' })
-        const currentScope = env.scope.name
-        const result = env.scope.define.force[currentScope]('test-value')
-        expect(result).toBe('test-value')
+      it('should throw type when incorrect scope name provided', async () => {
+        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        // @ts-expect-error - incorrect scope name
+        const result2 = env.scope.define.force.zzz('test-value')
+        expect(result2).toBeUndefined()
       })
     })
   })
 
   describe('env.mode', () => {
-    it('should have mode.name', async () => {
+    it('should have mode.name equal to NODE_ENV', async () => {
       const env = await init({ target: 'server', vars: { NODE_ENV: 'test' } })
-      expect(typeof env.mode.name).toBe('string')
-    })
-
-    it('should have mode.is object', async () => {
-      const env = await init({ target: 'server', vars: { NODE_ENV: 'test' } })
-      expect(typeof env.mode.is).toBe('object')
-      expect(typeof env.mode.is.production).toBe('boolean')
-      expect(typeof env.mode.is.development).toBe('boolean')
-      expect(typeof env.mode.is.test).toBe('boolean')
+      expect(env.mode.name).toBe('test')
     })
 
     it('should detect production mode', async () => {
@@ -411,6 +495,16 @@ describe('env', () => {
       expect(env.mode.is.production).toBe(true)
       expect(env.mode.is.development).toBe(false)
       expect(env.mode.is.test).toBe(false)
+      expectTypeOf<typeof env.mode.is.production>().toEqualTypeOf<boolean>()
+      if (env.mode.is.production) {
+        expectTypeOf<typeof env.mode.is.production>().toEqualTypeOf<true>()
+        expectTypeOf<typeof env.mode.is.development>().toEqualTypeOf<false>()
+        expectTypeOf<typeof env.mode.is.test>().toEqualTypeOf<false>()
+      } else {
+        expectTypeOf<typeof env.mode.is.production>().toEqualTypeOf<false>()
+        expectTypeOf<typeof env.mode.is.development>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.mode.is.test>().toEqualTypeOf<boolean>()
+      }
     })
 
     it('should detect development mode', async () => {
@@ -418,6 +512,17 @@ describe('env', () => {
       expect(env.mode.is.development).toBe(true)
       expect(env.mode.is.production).toBe(false)
       expect(env.mode.is.test).toBe(false)
+
+      // It is hard to achive, becouse mode can be any string in fact, so it is ok
+      // if (env.mode.name === 'development') {
+      //   expectTypeOf<typeof env.mode.is.production>().toEqualTypeOf<false>()
+      //   expectTypeOf<typeof env.mode.is.development>().toEqualTypeOf<true>()
+      //   expectTypeOf<typeof env.mode.is.test>().toEqualTypeOf<false>()
+      // } else {
+      //   expectTypeOf<typeof env.mode.is.production>().toEqualTypeOf<boolean>()
+      //   expectTypeOf<typeof env.mode.is.development>().toEqualTypeOf<boolean>()
+      //   expectTypeOf<typeof env.mode.is.test>().toEqualTypeOf<boolean>()
+      // }
     })
 
     it('should detect test mode', async () => {
@@ -425,14 +530,6 @@ describe('env', () => {
       expect(env.mode.is.test).toBe(true)
       expect(env.mode.is.production).toBe(false)
       expect(env.mode.is.development).toBe(false)
-    })
-
-    it('should have mutually exclusive mode flags', async () => {
-      const env = await init({ target: 'server', vars: { NODE_ENV: 'test' } })
-      // In any valid state, at most one should be true
-      const trueCount =
-        (env.mode.is.production ? 1 : 0) + (env.mode.is.development ? 1 : 0) + (env.mode.is.test ? 1 : 0)
-      expect(trueCount).toBeLessThanOrEqual(1)
     })
   })
 
@@ -444,12 +541,6 @@ describe('env', () => {
       expect(env.vars).toBeDefined()
       expect(env.target).toBeDefined()
       expect(env.scope).toBeDefined()
-    })
-
-    it('should match Env type', async () => {
-      const env = await init({ target: 'server', scope: 'test-scope' })
-      const testEnv: Env = env
-      expect(testEnv).toBeDefined()
     })
   })
 
