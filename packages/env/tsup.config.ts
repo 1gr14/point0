@@ -1,7 +1,7 @@
 import { defineConfig, type Options } from 'tsup'
 
 const general = {
-  entry: ['src/index.tsx'],
+  entry: ['src/index.ts'],
   clean: false,
   dts: true,
   sourcemap: true,

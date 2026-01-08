@@ -16,9 +16,8 @@ import {
   RouterContextProvider,
   useLocation,
   useRouterContext,
-  runtime,
-  SuperStore,
 } from '@point0/core'
+import { env } from 'node:process'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import {
@@ -305,7 +304,7 @@ export const Router = ({
   hook?: BaseLocationHook
 }): React.ReactElement => {
   const wouterRouterProps = useMemo(() => {
-    if (runtime.is.client) {
+    if (env.target.is.client) {
       return {}
     }
     if (!ssrLocation) {

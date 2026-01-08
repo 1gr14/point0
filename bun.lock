@@ -31,8 +31,8 @@
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
+        "@point0/env": "workspace:*",
         "@point0/react-dom": "workspace:*",
-        "@point0/runtime": "workspace:*",
         "@point0/wouter": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -61,8 +61,8 @@
         "@point0/core": "workspace:*",
         "@point0/elysia": "workspace:*",
         "@point0/engine": "workspace:*",
+        "@point0/env": "workspace:*",
         "@point0/react-dom": "workspace:*",
-        "@point0/runtime": "workspace:*",
         "@point0/wouter": "workspace:*",
         "elysia": "^1.4.16",
         "react": "^19.0.0",
@@ -91,8 +91,8 @@
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
         "@point0/engine": "workspace:*",
+        "@point0/env": "workspace:*",
         "@point0/react-dom": "workspace:*",
-        "@point0/runtime": "workspace:*",
         "@point0/wouter": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -159,7 +159,7 @@
       "peerDependencies": {
         "@devp0nt/error0": "catalog:",
         "@devp0nt/route0": "catalog:",
-        "@point0/runtime": "workspace:*",
+        "@point0/env": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@unhead/react": "catalog:",
         "react": "catalog:",
@@ -221,12 +221,23 @@
         "@devp0nt/route0": "catalog:",
         "@point0/compiler": "workspace:*",
         "@point0/core": "workspace:*",
-        "@point0/runtime": "workspace:*",
+        "@point0/env": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@unhead/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
         "zod": "catalog:",
+      },
+    },
+    "packages/env": {
+      "name": "@point0/env",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/bun": "^1.2.22",
+        "@types/node": "^20.0.0",
+        "esbuild-fix-imports-plugin": "^1.0.22",
+        "tsup": "^8.0.0",
+        "typescript": "^5.0.0",
       },
     },
     "packages/react-dom": {
@@ -243,17 +254,6 @@
         "@point0/core": "workspace:*",
         "react": "catalog:",
         "react-dom": "catalog:",
-      },
-    },
-    "packages/runtime": {
-      "name": "@point0/runtime",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@types/bun": "^1.2.22",
-        "@types/node": "^20.0.0",
-        "esbuild-fix-imports-plugin": "^1.0.22",
-        "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
       },
     },
     "packages/wouter": {
@@ -537,6 +537,8 @@
 
     "@point0/engine": ["@point0/engine@workspace:packages/engine"],
 
+    "@point0/env": ["@point0/env@workspace:packages/env"],
+
     "@point0/example-basic": ["@point0/example-basic@workspace:examples/basic"],
 
     "@point0/example-elysia": ["@point0/example-elysia@workspace:examples/elysia"],
@@ -544,8 +546,6 @@
     "@point0/example-vite": ["@point0/example-vite@workspace:examples/vite"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
-
-    "@point0/runtime": ["@point0/runtime@workspace:packages/runtime"],
 
     "@point0/wouter": ["@point0/wouter@workspace:packages/wouter"],
 

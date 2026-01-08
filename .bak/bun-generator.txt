@@ -10,9 +10,6 @@
 // import * as nodePath from 'node:path'
 // import type { EndPointType, PointName } from '../core/types.js'
 
-// // TODO: if no routes needed for this point: like layout or page then do not runtime
-// // TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
-
 // const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
 //   ? T
 //   : typeof traverseType

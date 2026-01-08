@@ -1,5 +1,5 @@
 {
-  "name": "@point0/runtime",
+  "name": "@point0/env",
   "version": "0.1.0",
   "license": "MIT",
   "author": {
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devp0nt/point0.git",
-    "directory": "packages/runtime"
+    "directory": "packages/env"
   },
   "bugs": {
     "url": "https://github.com/devp0nt/point0/issues"

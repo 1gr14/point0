@@ -1,9 +1,9 @@
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import { runtime } from '@point0/runtime'
+import { env } from '@point0/env'
 import type { DataTransformerExtended, IfAnyThenElse } from './types.js'
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
   (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||
-  (runtime.is.client
+  (env.target.is.client
     ? null
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
       (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>))
@@ -251,7 +251,7 @@ export class SuperStore {
   }
 
   static getState = (): SuperStoreState => {
-    if (runtime.is.client) {
+    if (env.target.is.client) {
       return SuperStore.clientState
     } else {
       const serverStorage = SuperStore.getServerStorage()

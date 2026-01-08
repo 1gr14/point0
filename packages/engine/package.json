@@ -100,7 +100,7 @@
   },
   "peerDependencies": {
     "@point0/core": "workspace:*",
-    "@point0/runtime": "workspace:*",
+    "@point0/env": "workspace:*",
     "@point0/compiler": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",

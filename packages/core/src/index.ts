@@ -172,7 +172,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { runtime } from '@point0/runtime'
+import { env } from '@point0/env'
 
 export class Point0<
   TPointType extends PointType,
@@ -4498,7 +4498,7 @@ export class Point0<
   ): Promise<
     ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   > {
-    if (runtime.is.server) {
+    if (env.target.is.server) {
       throw new Error0(
         'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
       )
@@ -5368,7 +5368,7 @@ export class Point0<
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
       try {
-        if (runtime.is.server) {
+        if (env.target.is.server) {
           throw new Error(
             'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
@@ -6811,4 +6811,3 @@ export * from './super-store.js'
 export type * from './types.js'
 export * from './unhead.js'
 export * from './utils.js'
-export * from '@point0/runtime'

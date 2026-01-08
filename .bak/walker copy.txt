@@ -22,8 +22,6 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
   ? T
   : typeof traverseType
 
-// TODO: if no routes needed for this point: like layout or page then do not runtime
-// TODO: collect in static known route definition if it is string and it was not changed also do not runtime generation
 
 export class Walker {
   readonly cwd: string

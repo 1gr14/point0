@@ -28,7 +28,8 @@ import type {
   UnknownData,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { PointsManager, Request0, Response0, runtime, SuperStore } from '@point0/core'
+import { PointsManager, Request0, Response0, SuperStore } from '@point0/core'
+import { env } from '@point0/env'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
@@ -129,7 +130,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   getQueryClient(): QueryClient {
-    return runtime.is.client
+    return env.target.is.client
       ? SuperStore.get('__POINT0_QUERY_CLIENT__')
       : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
@@ -139,7 +140,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setSsrLocation(ssrLocation: AnyLocation): void {
-    if (runtime.is.client) {
+    if (env.target.is.client) {
       // TODO: figure out, is Executor really can be called in client? I think, no
       SuperStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
       return
@@ -148,7 +149,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   setCurrentLocation(currentLocation: AnyLocation): void {
-    if (runtime.is.client) {
+    if (env.target.is.client) {
       SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
       return
     }

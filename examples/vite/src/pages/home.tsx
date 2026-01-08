@@ -9,7 +9,6 @@ import { routes } from '../lib/routes.js'
 // import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
 import { ExternalHelperComponent } from './home.helper.js'
 import Icon from '../assets/icon.svg?react'
-// import { runtime } from '@point0/runtime'
 
 // const something = SuperStore.define('something', () => {
 //   return {
