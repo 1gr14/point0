@@ -66,6 +66,7 @@
   },
   "devDependencies": {
     "@point0/env": "workspace:*",
+    "@point0/engine": "workspace:*",
     "@types/babel__traverse": "^7.28.0",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",

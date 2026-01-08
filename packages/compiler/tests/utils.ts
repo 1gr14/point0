@@ -1,12 +1,23 @@
-export const toText = (fn: string | (() => any)): string => {
-  if (typeof fn === 'string') return fn.trim()
+import prettier from 'prettier'
 
+export const toText = async (fn: string | (() => any)): Promise<string> => {
+  const code = typeof fn === 'string' ? fn.trim() : extractFunctionBody(fn)
+
+  return await prettier.format(code, {
+    parser: 'babel',
+    semi: false,
+    singleQuote: true,
+    trailingComma: 'all',
+  })
+}
+
+const extractFunctionBody = (fn: () => any): string => {
   const src = fn.toString().trim()
 
   // async () => { ... } | () => { ... } | function () { ... }
   const blockMatch = /^[^{]*{([\s\S]*)}$/.exec(src)
   if (blockMatch) {
-    return blockMatch[1].replace(/^\s+|\s+$/g, '')
+    return blockMatch[1].trim()
   }
 
   // () => expr

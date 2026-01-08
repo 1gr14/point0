@@ -4,6 +4,7 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File } from '@babel/types'
 import * as nodeFs from 'node:fs/promises'
+import prettier from 'prettier'
 import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
@@ -168,6 +169,21 @@ export class CompilerFile<THasContent extends boolean> {
     }
     const { code } = babelGenerator(this.ast, { retainLines: true })
     return code
+  }
+
+  async toPrettyCode(): Promise<string> {
+    const code = this.toCode()
+    return await prettier.format(code, {
+      parser: 'babel',
+      semi: false,
+      singleQuote: true,
+      trailingComma: 'all',
+    })
+  }
+
+  async toCompressedPrettyCode(): Promise<string> {
+    const prettyCode = await this.toPrettyCode()
+    return prettyCode.replace(/\n{2,}/g, '\n')
   }
 
   private _shakeForEngineHolderBuildPhase:
