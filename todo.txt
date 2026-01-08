@@ -104,6 +104,9 @@ cors plugin
 Плагин может запровайдить в том числе и рендер штучки, ему ничто не мешает быть внутри функции, которая использует запровайженные штучки (это позволит например целую форму регистрации замутить)
 
 ACTION
+add "parse" to options, like parse.input(), parse.body() etc
+? and myabe in ctx fns we also need parse, not parsed input
+we do not need THeaders as generic, it will be jsut in TSpecial
 request0.body.parsed/parse/wasRead/raw/json/text/validate/...
 !!! Before openapi endpoint we call only middlewares, and provide ({executeSelf}), when you call executeSelf() then input will be parsed, then will be called all previous loaders and ctx fns, and it will not be pased before
 if it is openapi request, then we do not manually parse body for input, else we just provide helpers in loader to get and parse input (search, body, params) from request
@@ -228,6 +231,7 @@ loader(() => {}, {cache: false | string})
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will shake all ctx and loaders already)
 
 COMPILER
+! Отрефачит стэйл и прочую ерунду в компилере
 ! При чтении файла также стейлить все файлы которым он является зависимостью, с указанием таймстемпа, когда происходит чтение
 (exprt) => xprt.cnst | xprt.dflt (to valid syntax in places in tests)
 ? Объединить все траверсы в одно месте, чтобы за раз всё проходить
