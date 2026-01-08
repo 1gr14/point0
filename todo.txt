@@ -49,6 +49,7 @@ displayName dynamic
 query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope
 point0 also separate file, index jsut reexport everything
 ssr can be not on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
+layout pruned .layout() transforms to .layout(() => this._layoutLoading)
 Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить
 allow .ssr() on any point
 Разрешить undefined () в тех конструкциях, где мы пруним, чтобы было понятно, что тип андефайнейд возможен (в исплементации под перегрузкой)
@@ -159,7 +160,7 @@ REFACTROING 1
 bin → cli
 Разрешить лэйоут передавать через метод, и сделать его автоматически провайдером (просто добавить проверку на инмут лэйоута, если сходится, то и норм)
 ? Квериклиент добавить в методы рута, и сделать его скоуп зависимым (да норм же иметь глобальный)
-refactor types names and order
+refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
 В оутпут тайп добавить хтмл
 try do EmptyData as {}
 remove default generic values it is unsafe, better add AnySomethingType for it
@@ -227,7 +228,9 @@ loader(() => {}, {cache: false | string})
 ? remove loaders and request from root. (do not remove, becouse for 'init', 'mcp' we will shake all ctx and loaders already)
 
 COMPILER
+! При чтении файла также стейлить все файлы которым он является зависимостью, с указанием таймстемпа, когда происходит чтение
 (exprt) => xprt.cnst | xprt.dflt (to valid syntax in places in tests)
+? Объединить все траверсы в одно месте, чтобы за раз всё проходить
 ? Походу надо отдельно прунить для сервера, клиента, и сср. Вот в чём фишка
 Убедиться, что компилер не ломает информацию о выведенных позициях, иделает нормальные соурсмапы
 walker cache for compiled files by settings and file timestemp
