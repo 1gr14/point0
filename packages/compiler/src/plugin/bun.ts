@@ -14,7 +14,7 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   return {
     name: 'point0-compiler',
     setup(build) {
-      build.onLoad({ filter: compiler.compilerFilepathFilter }, async (args) => {
+      build.onLoad({ filter: compiler.filter }, async (args) => {
         const filepath = args.path
         try {
           const result = await compiler.compile({

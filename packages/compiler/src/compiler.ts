@@ -4,40 +4,40 @@ import { Walker } from './walker.js'
 
 export type CompilerOptions = {
   target: 'client' | 'server'
-  compilerFilepathFilter?: RegExp
+  filter?: RegExp
   isEngineHolderBuildPhase?: boolean
   hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
 }
 
 export class Compiler {
-  compilerFilepathFilter: RegExp
+  filter: RegExp
   target: 'client' | 'server'
   isEngineHolderBuildPhase: boolean | undefined
   hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
 
-  static defaultCompilerFilepathFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
+  static defaultFilter = /^(?!.*node_modules\/(?!.*point0)).*\.[cm]?[jt]sx?$/
 
   constructor({
-    compilerFilepathFilter,
+    filter,
     target,
     isEngineHolderBuildPhase,
     hmrFixPolicy,
   }: {
-    compilerFilepathFilter: RegExp
+    filter: RegExp
     target: 'client' | 'server'
     isEngineHolderBuildPhase: boolean | undefined
     hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
   }) {
-    this.compilerFilepathFilter = compilerFilepathFilter
+    this.filter = filter
     this.target = target
     this.isEngineHolderBuildPhase = isEngineHolderBuildPhase
     this.hmrFixPolicy = hmrFixPolicy
   }
 
   static create(options: CompilerOptions) {
-    const { target, compilerFilepathFilter, isEngineHolderBuildPhase, hmrFixPolicy } = options
+    const { target, filter, isEngineHolderBuildPhase, hmrFixPolicy } = options
     return new Compiler({
-      compilerFilepathFilter: compilerFilepathFilter ?? Compiler.defaultCompilerFilepathFilter,
+      filter: filter ?? Compiler.defaultFilter,
       target,
       isEngineHolderBuildPhase,
       hmrFixPolicy,

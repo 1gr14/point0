@@ -16,7 +16,7 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
     enforce: 'pre',
     async transform(code, id, options) {
       const [filepath] = id.split('?', 1)
-      if (!compiler.compilerFilepathFilter.test(filepath)) return null
+      if (!compiler.filter.test(filepath)) return null
       const result = await compiler.compile({
         content: code,
         file: filepath,
