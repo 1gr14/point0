@@ -51,13 +51,7 @@ export class CompilerPoint<TValid extends boolean = any> {
 
   parents: CompilerPoint[]
   selfMethods: Array<{ nodePath: NodePath<Node>; name: string; index: number }>
-  chainMethods: Array<{
-    nodePath: NodePath<Node>
-    name: string
-    index: number
-    chainIndex: number
-    point: CompilerPoint
-  }>
+  chainMethods: CompilerPointChainMethod[]
 
   scope: TValid extends true ? PointsScope : PointsScope | undefined
   scopes: PointsScope[]
@@ -140,6 +134,38 @@ export class CompilerPoint<TValid extends boolean = any> {
       return this.parents[this.parents.length - 1]
     }
     return this
+  }
+
+  getFirstArgBooleanLiteral<TFallback>({
+    nodePath,
+    name,
+    fallback,
+  }: {
+    nodePath: NodePath<Node>
+    name: string
+    fallback: TFallback
+  }): TFallback | boolean {
+    if (nodePath.node.type !== 'CallExpression') {
+      return fallback
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return fallback
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return fallback
+    }
+    if (nodePath.node.callee.property.name !== name) {
+      return fallback
+    }
+    const args = nodePath.node.arguments
+    if (args.length === 0) {
+      return fallback
+    }
+    const firstArg = args[0]
+    if (firstArg.type !== 'BooleanLiteral') {
+      return fallback
+    }
+    return firstArg.value
   }
 
   getLetsPosition(): { file: string; line: number; column: number } | undefined {
@@ -536,35 +562,46 @@ export class CompilerPoint<TValid extends boolean = any> {
     return methods
   }
 
-  private _getChainMethods:
-    | Array<{ nodePath: NodePath<Node>; name: string; index: number; chainIndex: number; point: CompilerPoint }>
-    | undefined = undefined
-  getChainMethods(): Array<{
-    nodePath: NodePath<Node>
-    name: string
-    index: number
-    chainIndex: number
-    point: CompilerPoint
-  }> {
+  private _getChainMethods: CompilerPointChainMethod[] | undefined = undefined
+  getChainMethods(): CompilerPointChainMethod[] {
     if (this._getChainMethods) {
       return this._getChainMethods
     }
-    const chainMethods: Array<{
-      nodePath: NodePath<Node>
-      name: string
-      index: number
-      chainIndex: number
-      point: CompilerPoint
-    }> = []
+    const chainMethods: CompilerPointChainMethod[] = []
     let chainIndex = 0
+    let underSsr = false
+    let underClientLoader = false
     for (const point of [this, ...this.parents].reverse()) {
       const methods = point.getSelfMethods()
       for (const method of methods) {
+        if (method.name === 'ssr') {
+          underSsr = this.getFirstArgBooleanLiteral({ nodePath: method.nodePath, name: 'ssr', fallback: underSsr })
+        }
+        if (method.name === 'clientLoader') {
+          const firstArgBoolean = this.getFirstArgBooleanLiteral({
+            nodePath: method.nodePath,
+            name: 'clientLoader',
+            fallback: undefined,
+          })
+          if (firstArgBoolean !== undefined) {
+            // .clientLoader() | .clientLoader(() => ...)
+            underClientLoader = true
+          }
+          if (firstArgBoolean === false) {
+            // .clientLoader(false) we disables clientLoaders
+            underClientLoader = false
+          } else {
+            // .clientLoader(true) we enable clientLoaders
+            underClientLoader = true
+          }
+        }
         chainMethods.push({
           nodePath: method.nodePath,
           name: method.name,
           index: method.index,
           chainIndex,
+          underSsr,
+          underClientLoader,
           point,
         })
         chainIndex++
@@ -575,79 +612,141 @@ export class CompilerPoint<TValid extends boolean = any> {
     return chainMethods
   }
 
-  private removeMethodArgs({ name }: { name: string }): void {
-    // Find all method calls with the given name and remove their arguments
-    const methods = this.getSelfMethods()
-    for (const method of methods) {
-      if (method.name === name && method.nodePath.node.type === 'CallExpression') {
-        // Clear all arguments
-        method.nodePath.node.arguments = []
-        this.file.modified = true
-      }
-    }
+  getSelfRichMethods(): CompilerPointChainMethod[] {
+    return this.chainMethods.filter((m) => m.point === this)
   }
 
-  // private isMethodArgBooleanLiteral(name: string): boolean {
-  //   // Check if the method has a single boolean literal argument
-  //   const methods = this.methods
-  //   for (const method of methods) {
-  //     if (method.name === name && method.nodePath.node.type === 'CallExpression') {
-  //       const args = method.nodePath.node.arguments
-  //       if (args.length === 1 && args[0]?.type === 'BooleanLiteral') {
-  //         return true
-  //       }
-  //     }
-  //   }
-  //   return false
-  // }
+  private removeMethodArgs({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
+    nodePath.node.arguments = []
+    this.file.modified = true
+  }
 
-  private removeMethodArgsIfNotBooleanLiteral({ name }: { name: string }): void {
+  private removeArgsIfNotBooleanLiteral({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
     // Remove arguments from method calls if they're not boolean literals
-    const methods = this.getSelfMethods()
-    for (const method of methods) {
-      if (method.name === name && method.nodePath.node.type === 'CallExpression') {
-        const args = method.nodePath.node.arguments
-        // If there's exactly one argument and it's a boolean literal, keep it
-        // Otherwise, remove all arguments
-        if (!(args.length === 1 && args[0]?.type === 'BooleanLiteral')) {
-          method.nodePath.node.arguments = []
-          this.file.modified = true
-        }
-      }
+    const args = nodePath.node.arguments
+    // If there's exactly one argument and it's a boolean literal, keep it
+    // Otherwise, remove all arguments
+    if (!(args.length === 1 && args[0]?.type === 'BooleanLiteral')) {
+      nodePath.node.arguments = []
+      this.file.modified = true
     }
   }
 
-  // private replaceLastMethodArgWithArrowFnReturnNull(name: string): void {
-  //   // Replace the last argument of the method with an arrow function that returns null
-  //   const methods = this.methods
-  //   for (const method of methods) {
-  //     if (method.name === name && method.nodePath.node.type === 'CallExpression') {
-  //       const args = method.nodePath.node.arguments
-  //       if (args.length > 0) {
-  //         // Replace the last argument with an arrow function that returns null
-  //         args[args.length - 1] = {
-  //           type: 'ArrowFunctionExpression',
-  //           id: null,
-  //           generator: false,
-  //           async: false,
-  //           expression: true,
-  //           params: [],
-  //           body: {
-  //             type: 'NullLiteral',
-  //           },
-  //         } as any
-  //       }
-  //     }
-  //   }
-  // }
+  private replaceLastArgWithArrowFnReturnNull({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
+    if (nodePath.node.arguments.length === 0) {
+      return
+    }
+    nodePath.node.arguments[nodePath.node.arguments.length - 1] = {
+      type: 'ArrowFunctionExpression' as const,
+      id: null,
+      generator: false,
+      async: false,
+      expression: true,
+      params: [],
+      body: {
+        type: 'NullLiteral' as const,
+      },
+    } as any
+    this.file.modified = true
+  }
 
   private shakeMethodsForClient(): void {
-    this.removeMethodArgs({ name: 'ctx' })
-    this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader' })
+    for (const method of this.getSelfRichMethods()) {
+      console.info(method.name)
+      if (method.name === 'ctx') {
+        this.removeMethodArgs({ nodePath: method.nodePath })
+      }
+      if (method.name === 'loader') {
+        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
+    }
   }
 
   private shakeMethodsForServer(): void {
-    // Nothing here. For now we do not shake server side.
+    // TODO: add all pruners for server side
+    // when method underSsr, then we prune on nossr-server
+    // when method underClientLoader, then we prune it on nossr-server
+    for (const method of this.getSelfRichMethods()) {
+      if (method.name === 'clientLoader') {
+        this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
+      if (
+        [
+          'mutationOptions',
+          'queryOptions',
+          'infiniteQueryOptions',
+          'pageQueryOptions',
+          'componentQueryOptions',
+          'providerQueryOptions',
+          'layoutQueryOptions',
+          'fetchOptions',
+          'scrollPosition',
+          'scrollRestore',
+          'onPrefetch',
+          'prefetchOnLinkHover',
+          'clientLoader',
+          'query',
+          'infiniteQuery',
+          'mutation',
+        ].includes(method.name)
+      ) {
+        this.removeMethodArgs({ nodePath: method.nodePath })
+      } else if (method.underSsr) {
+        if (method.name === 'page') {
+          this.replaceLastArgWithArrowFnReturnNull({ nodePath: method.nodePath })
+        } else if (
+          [
+            'error',
+            'layoutError',
+            'pageError',
+            'componentError',
+            'layoutLoading',
+            'pageLoading',
+            'componentLoading',
+            'loading',
+            'wrapper',
+            'outer',
+            'component',
+            'layout',
+          ].includes(method.name)
+        ) {
+          this.removeMethodArgs({ nodePath: method.nodePath })
+        }
+      } else if (method.underClientLoader) {
+        if (method.name === 'page') {
+          this.replaceLastArgWithArrowFnReturnNull({ nodePath: method.nodePath })
+        } else if (['component', 'layout'].includes(method.name)) {
+          this.removeMethodArgs({ nodePath: method.nodePath })
+        }
+      }
+    }
   }
 
   private _shake = false
@@ -953,3 +1052,13 @@ export type CompilerPointSimplified = {
 export type CompilerPointExtraSimplified = Pick<CompilerPointSimplified, 'file' | 'name'>
 
 export type CompilerPointParsedPos = { file: string; line: number; column: number }
+
+export type CompilerPointChainMethod = {
+  nodePath: NodePath<Node>
+  name: string
+  index: number
+  chainIndex: number
+  underSsr: boolean
+  underClientLoader: boolean
+  point: CompilerPoint
+}
