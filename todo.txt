@@ -2,13 +2,18 @@
 ------ before start0 -----
 --------------------------
 
-ENVIRONMENT
-
 
 COMPILER
-addHmrFix → hmrFix
-Убедиться, что компилер не ломает информацию о выведенных позициях, иделает нормальные соурсмапы
 Экспортированным функциям _hmr давать хорошие имена с подчёркиванием и если такая функция есть то приписывать к ней цифорку
+Прунить для сервера клиент лоадеры и клиентИнпуты, и прочее клиентское
+Тесты с файлами писать как функции, а не как строки, чтобы проверять что мы используем реальный синтаксис
+Разрешить undefined () в тех конструкциях, где мы пруним, чтобы было понятно, что тип андефайнейд возможен (в исплементации под перегрузкой)
+
+Волекр скрестить с файлом, чтобы всегда в Волкер добавлялось
+И из компиль функции исключить переопределение таргетов и прочего
+
+? Походу надо отдельно прунить для сервера, клиента, и сср. Вот в чём фишка
+Убедиться, что компилер не ломает информацию о выведенных позициях, иделает нормальные соурсмапы
 walker cache for compiled files by settings and file timestemp
 readLimit, parseLimit
 walker persist on bun plugin and vite plugin during request, so lets refresh read files by timestamp
@@ -25,6 +30,7 @@ comiler is part of server and client, and in build pahes it should be getted fro
 В вайт мод и прочие конфиги добавить скоуп, то есть энв кастомер и скоуп, и добавить парс вайт мод, но и прикидывать это как аргументы
 Волкером анонимные функции заменять на название PageNewsPost внутри маунтаблов
 baseurl get from root point, and remove from engine config
+В префетч мод заменить на полиси
 auto port getter
 generate: {points:path, routes:path}
 server should get only its own points, and its already should include all points, so we do not need all-points-manager
@@ -39,36 +45,40 @@ fix compiler option name for node_modules prefixes
 тест билдера, что он прунит что надо реально удаляет дедкод
 
 INPUT
+Просто ввести клиентИнпут и всё будет ок
+Не надо инпут схему мержить в одну, просто парсить раз за разом
 Проверить расширяемость инпута на юниты
 Инпут может принять функцию, или принять просто генерик тогда в тсхема подставится функция
 standard schema
 Стейдж для сервер штук тоже нужен для порядка
 ? И тогда появляется серверинпут, который спрунится на клиенте (да норм иметь шаред инпут, пусть в лоадере валидируют, если хотят скрываться)
-Не надо инпут схему мержить в одну, просто парсить раз за разом
 Инпуту разрешить быть юнионом, и тогда можно при попытке объединить, инпут превратится в функцию
 ? Вероятно вырезать инпут исходя из того он уже на сервере или ещё на клиенте (ерунда какая-то)
 
 REFACTORING 0
-__POINT0_GET_SSR_PHASE__
+e2e tests via code
+browser test via running server
+hmr tests
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 Лоадер стейдж нужен, чтобы все в рядок стряли
 query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope
-e2e tests
-hmr tests
 point0 also separate file, index jsut reexport everything
-compiler self package
-ssr can not be on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
+ssr can be not on root point, but client still can be ssr if it has ssr point, so check ssr by any point has ssr option
+Если не сср поинт, то прунить ещё для сервера и компоненты до первого сср фалс, а значит нужно при компилинге уже всех парентов находить
 allow .ssr() on any point
+__POINT0_GET_SSR_PHASE__
 Заменить поинт на поинт ИНСТАНС а то путаница какая-то, и в поинте хранить только тайп и нэйм
 ЗАчем вообще нужен сет, пусть будет просто эффектс, а в них уже сет
 Вынести из супер стора сериалмзацию, перенести её в сср стор который такойже как кукисстор, и также устанавливается в эффекты
 Попробовать только супер стор объединить с индексом
-add ssr to queryKey and if it is false, then do not ssr when meet it
-На фронте в префетче добавить политику клиентЭндСерверНоСср, чтобы в случае квериклиентДегидрефтедСтейили эвересынг их дофетчить
+? add ssr to queryKey and if it is false, then do not ssr when meet it (what?)
+? На фронте в префетче добавить политику клиентЭндСерверНоСср, чтобы в случае квериклиентДегидрефтедСтейили эвересынг их дофетчить (what?)
 Экзекьют на сервере пусть не возвращает статус
-add browser test via light panda
 Не респонс0 а просто эффектс и эффектс вэлью
-На клиенте в кукисах хранить фром поинт0, и тогда запросы к бану мидлвару можно исходя из кукисов перенаправлять
+? На клиенте в кукисах хранить фром поинт0, и тогда запросы к бану мидлвару можно исходя из кукисов перенаправлять (we already use client url for client, and hmr persist, but for those who use server we can do it)
+
+
+
 
 
 ------
