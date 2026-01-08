@@ -3,10 +3,9 @@ import type { Node } from '@babel/types'
 import type { AnyRoute } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import type { EndPointType, PointName, PointsScope } from '@point0/core'
-import { dedupeSlashes } from '@point0/core'
+import { dedupeSlashes, toPascalCase } from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
-import { pascalCase } from './utils.js'
 import type { Walker } from './walker.js'
 
 export class CompilerPoint {
@@ -588,7 +587,7 @@ export class CompilerPoint {
             // Example: page + home → PageHome, component + myComponent → ComponentMyComponent
 
             // Check if name exists and generate unique name if needed
-            const functionName = this.generateUniqueIdentifier(pascalCase(this.pointType + '_' + this.pointName))
+            const functionName = this.generateUniqueIdentifier(toPascalCase(this.pointType + '_' + this.pointName))
 
             // Convert arrow function body to function body
             let body = arrowFn.body

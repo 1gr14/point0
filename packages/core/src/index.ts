@@ -167,7 +167,7 @@ import {
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   mergeHeaders,
-  toCapitalizedCamelCase,
+  toPascalCase,
   toExtendedTransformer,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
@@ -3827,7 +3827,7 @@ export class Point0<
     suffix?: string
   }): string {
     const { index, prefix, suffix } = options ?? {}
-    return toCapitalizedCamelCase([prefix, this.name, suffix, index].filter(Boolean).join('_'))
+    return toPascalCase([prefix, this.name, suffix, index].filter(Boolean).join('_'))
   }
 
   // private _applyComponentDisplayName<TComponent extends React.ComponentType<any>>(

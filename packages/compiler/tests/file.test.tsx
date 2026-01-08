@@ -2,13 +2,14 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { CompilerFile } from '../src/file.js'
+import { toText } from './utils.js'
 
 type TestFile = Bun.BunFile & {
   path: string
   basename: string
   importpath: string
   cf: CompilerFile<false>
-  wrp: (content: string) => Promise<CompilerFile<true>>
+  wrp: (content: string | (() => any)) => Promise<CompilerFile<true>>
 }
 
 const tempDir = nodePath.join(__dirname, 'temp/file')
@@ -20,8 +21,8 @@ const prepareRandomFile = (): TestFile => {
   const cf: CompilerFile<false> = CompilerFile.create(path)
   const bunFile = Bun.file(path)
   // write, read, parse
-  const wrp = async (content: string) => {
-    await bunFile.write(content)
+  const wrp = async (content: string | (() => any)) => {
+    await bunFile.write(toText(content))
     await cf.read()
     cf.assertRead()
     return cf
@@ -59,7 +60,10 @@ describe('CompilerFile', () => {
       it.concurrent(
         'env.target.is.server = true',
         helper(async ({ files: [file] }) => {
-          const cf = await file.wrp(`${prefix} if (env.target.is.server) console.info('server')`)
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/env')
+            if (env.target.is.server) console.info('server')
+          })
           cf.shakeForEnv({ target: 'server', scope: 'test' })
           expect(cf.toCode()).toMatchInlineSnapshot(
             `"const env = require('@point0/env');if (true) console.info('server');"`,

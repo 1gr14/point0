@@ -65,6 +65,7 @@
     "@devp0nt/route0": "catalog:"
   },
   "devDependencies": {
+    "@point0/env": "workspace:*",
     "@types/babel__traverse": "^7.28.0",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",

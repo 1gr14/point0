@@ -9,7 +9,7 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
       ? options
       : Compiler.create({
           ...options,
-          hmrFixPolicy: options.hmrFixPolicy ?? (process.env.NODE_ENV !== 'production' ? 'externalFunction' : 'none'),
+          hmrFix: options.hmrFix ?? (process.env.NODE_ENV !== 'production' ? 'externalFunction' : false),
         })
   return {
     name: 'point0-compiler',

@@ -174,14 +174,26 @@ export const toExtendedTransformer = (transformer: DataTransformer): DataTransfo
 
 export const blankDataTransformerExtended: DataTransformerExtended = toExtendedTransformer(blankDataTransformer)
 
-export const toCapitalized = (str: string) => {
-  return str.charAt(0).toUpperCase() + str.slice(1)
+const WORD_SEP = /[^a-zA-Z0-9]+/g
+
+export const toCapitalized = (str: string): string => (str ? str[0].toUpperCase() + str.slice(1) : '')
+
+export const toCamelCase = (str: string): string => {
+  const words = str.normalize('NFKD').replace(WORD_SEP, ' ').trim().split(/\s+/)
+
+  if (words.length === 0) return ''
+
+  return (
+    words[0].toLowerCase() +
+    words
+      .slice(1)
+      .map((w) => toCapitalized(w.toLowerCase()))
+      .join('')
+  )
 }
 
-export const toCamelCase = (str: string) => {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()).replace(/_/g, '')
-}
-
-export const toCapitalizedCamelCase = (str: string) => {
-  return toCapitalized(toCamelCase(str))
+export const toPascalCase = (str: string): string => {
+  const name = toCamelCase(str)
+  const pascal = toCapitalized(name)
+  return /^[A-Za-z_$]/.test(pascal) ? pascal : `_${pascal}`
 }
