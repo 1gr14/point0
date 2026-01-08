@@ -355,6 +355,6 @@ export type SuperStoreDefinedItem<TValue = any, TDehydratedValue = any> = {
   set: (value: TValue) => void
   config: SuperStoreConfigItem<TValue, TDehydratedValue>
 }
-;(globalThis as any).__GET_SSR_PHASE__ = () => {
+;(globalThis as any).__POINT0_GET_SSR_PHASE__ = () => {
   return SuperStore.getWeak<boolean | 'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__') ?? false
 }

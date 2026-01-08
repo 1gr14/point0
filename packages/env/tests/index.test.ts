@@ -14,7 +14,7 @@ const init = async <TVars = any, TScope extends string = string>(options: {
     ;(globalThis as any).navigator = {}
   }
   if (target === 'server') {
-    ;(globalThis as any).__GET_SSR_PHASE__ = () => ssr
+    ;(globalThis as any).__POINT0_GET_SSR_PHASE__ = () => ssr
   }
   Object.assign(process.env, vars)
   if (scope) {

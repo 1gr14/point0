@@ -44,7 +44,7 @@ const isTargetSsr = (): false | true | 'prepass' | 'final' => {
   if (isTargetClient) {
     return false
   }
-  const getSsrPhase: unknown = (globalThis as any).__GET_SSR_PHASE__
+  const getSsrPhase: unknown = (globalThis as any).__POINT0_GET_SSR_PHASE__
   // TODO: maybe check import.meta.env.SSR ot something like vite provides? We do not need it for point0, so I think it does not needed
   if (typeof getSsrPhase !== 'function') {
     return false

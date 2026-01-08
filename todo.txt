@@ -3,24 +3,7 @@
 --------------------------
 
 ENVIRONMENT
-@point0/env
-env.vars
-env.target
-env.scope
-Рантайм из продакшен, девелопмент, тест, и энв переменные
-runtime.is.scope
-runtime.scope.define, runtime.scope.define.expo()
-runtime.env variables
-runtime.is.ssr type
-runtime.is.browser (enugh for any desired case)
-__GET_SSR_PHASE__
-Энвы генериком передать в модуль
-Дефайнфорс
-Кол в энве не нужен
-рантай скоуп кол и дефайн, с возможностью определить типы скоупов
-Point0.ifScope({site: x, expo: y}) can be used to remove deadcode
-Point0.ifEnv({browser: x, mobile: y, electronRenderer: z, electronMain: w}) can be used to remove deadcode
-? Рантайм при объявлении объектом требует заполнить все варианты
+
 
 COMPILER
 addHmrFix → hmrFix
@@ -66,6 +49,7 @@ standard schema
 ? Вероятно вырезать инпут исходя из того он уже на сервере или ещё на клиенте (ерунда какая-то)
 
 REFACTORING 0
+__POINT0_GET_SSR_PHASE__
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 Лоадер стейдж нужен, чтобы все в рядок стряли
 query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope
