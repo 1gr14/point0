@@ -1,11 +1,8 @@
 // vars
 
-export type EnvVars<
-  TVars extends Record<string, string | undefined | boolean | number> = Record<
-    string,
-    string | undefined | boolean | number
-  >,
-> = TVars
+type AnyAnvVars = Record<string, string | undefined | boolean | number>
+
+export type EnvVars<TVars = any> = IsAny<TVars> extends true ? AnyAnvVars : TVars
 
 export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
@@ -301,13 +298,7 @@ const envMode = {
 // final
 
 type IsAny<T> = 0 extends 1 & T ? true : false
-export type Env<
-  TScope extends string = any,
-  TVars extends Record<string, string | undefined | boolean | number> = Record<
-    string,
-    string | undefined | boolean | number
-  >,
-> = {
+export type Env<TVars = any, TScope extends string = string> = {
   readonly mode: EnvMode
   readonly vars: Readonly<EnvVars<TVars>>
   readonly target: EnvTarget

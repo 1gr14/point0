@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'bun:test'
 import type { Env } from '../src/index.js'
 
-const init = async <TEnv extends Env = Env>(options: {
+const init = async <TVars = any, TScope extends string = string>(options: {
   vars?: Record<string, string | boolean | number>
   ssr?: 'prepass' | 'final' | boolean
   target: 'client' | 'server'
   scope?: string
-}): Promise<TEnv> => {
+}): Promise<Env<TVars, TScope>> => {
   const { vars, ssr, target, scope } = options
   if (target === 'client') {
     ;(globalThis as any).window = {}
@@ -63,8 +63,14 @@ describe('env', () => {
       expect(env.vars.NODE_ENV).toBeDefined()
     })
 
+    it('should have wide type if generic not provided', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const env = await init({ target: 'server' })
+      expectTypeOf<typeof env.vars>().toEqualTypeOf<Readonly<Record<string, string | boolean | number | undefined>>>()
+    })
+
     it('should have correct types when generic type provided', async () => {
-      const env = await init<Env<any, { CUSTOM_VAR: string; STRONG_VAR: 'strong'; X: number }>>({
+      const env = await init<{ CUSTOM_VAR: string; STRONG_VAR: 'strong'; X: number }, 'x' | 'y'>({
         target: 'server',
         vars: { CUSTOM_VAR: 'custom-value', STRONG_VAR: 'strong', X: 1 },
       })
@@ -326,7 +332,7 @@ describe('env', () => {
       })
 
       it('should return be descriminated with scope types provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         expect(env.scope.name).toBe('x')
         expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'x' | 'y'>()
         if (env.scope.name === 'x') {
@@ -358,7 +364,7 @@ describe('env', () => {
       })
 
       it('should have correct types if generic type provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         expect(env.scope.is.x).toBe(true)
         expect(env.scope.is.y).toBe(false)
         expectTypeOf<typeof env.scope.is.x>().toEqualTypeOf<boolean>()
@@ -373,7 +379,7 @@ describe('env', () => {
       })
 
       it('correlates in types with name if generic type provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         expectTypeOf<typeof env.scope.name>().toEqualTypeOf<'x' | 'y'>()
         expectTypeOf<typeof env.scope.is.x>().toEqualTypeOf<boolean>()
         expectTypeOf<typeof env.scope.is.y>().toEqualTypeOf<boolean>()
@@ -410,7 +416,7 @@ describe('env', () => {
       })
 
       it('should return value for current scope, with correct type if generic type provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         const result = env.scope.define({
           x: 'x-value' as const,
           y: 'y-value' as const,
@@ -420,7 +426,7 @@ describe('env', () => {
       })
 
       it('should return undefined when current scope not in options, with correct type if generic type provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         const result = env.scope.define({
           y: 'y-value' as const,
         })
@@ -429,7 +435,7 @@ describe('env', () => {
       })
 
       it('should throw type when incorrect scope name provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         const result = env.scope.define({
           // @ts-expect-error - incorrect scope name
           zzz: 'y-value' as const,
@@ -453,7 +459,7 @@ describe('env', () => {
       })
 
       it('should throw type when incorrect scope name provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         // @ts-expect-error - incorrect scope name
         const result2 = env.scope.define.zzz('test-value')
         expect(result2).toBeUndefined()
@@ -476,7 +482,7 @@ describe('env', () => {
       })
 
       it('should throw type when incorrect scope name provided', async () => {
-        const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
+        const env = await init<any, 'x' | 'y'>({ target: 'server', scope: 'x' })
         // @ts-expect-error - incorrect scope name
         const result2 = env.scope.define.unsafe.zzz('test-value')
         expect(result2).toBeUndefined()
