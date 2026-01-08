@@ -123,14 +123,14 @@ const targetDefine = Object.assign(targetDefineUniversal, {
 })
 
 type TargetIsClient = {
-  client: true
-  server: false
-  ssr: false
+  readonly client: true
+  readonly server: false
+  readonly ssr: false
 }
 type TargetIsServer = {
-  client: false
-  server: true
-  ssr: boolean | 'prepass' | 'final'
+  readonly client: false
+  readonly server: true
+  readonly ssr: boolean | 'prepass' | 'final'
 }
 const targetIs = Object.defineProperty(
   {
@@ -144,15 +144,15 @@ const targetIs = Object.defineProperty(
 ) as TargetIsClient | TargetIsServer
 
 export type EnvTargetClient = {
-  name: 'client'
-  is: TargetIsClient
-  define: TargetDefineWithHelpers
+  readonly name: 'client'
+  readonly is: TargetIsClient
+  readonly define: TargetDefineWithHelpers
 }
 
 export type EnvTargetServer = {
-  name: 'server'
-  is: TargetIsServer
-  define: TargetDefineWithHelpers
+  readonly name: 'server'
+  readonly is: TargetIsServer
+  readonly define: TargetDefineWithHelpers
 }
 
 export type EnvTarget = EnvTargetClient | EnvTargetServer
@@ -165,17 +165,13 @@ export const envTarget = {
 
 // scope
 
-export type IsAny<T> = 0 extends 1 & T ? true : false
-export type StringIfAny<T> = IsAny<T> extends true ? string : T
-export type EnvScopeIs<TScopes extends string = any> = [IsAny<TScopes>] extends [true]
+export type EnvScopeIs<TScopes extends string = string> = string extends TScopes
   ? Record<string, boolean>
   : {
       [K in TScopes]: {
         [P in TScopes]: P extends K ? true : false
       }
     }[TScopes]
-type X = EnvScopeIs<any>
-type Y = EnvScopeIs<'a' | 'b'>
 
 const getScopeName = (): string => {
   const scopeName = envVars.POINT0_SCOPE_NAME
@@ -186,21 +182,19 @@ const getScopeName = (): string => {
 }
 
 type ScopeDefineForce<TScopes extends string = string> = Record<TScopes, <T>(value: T) => T>
-type ScopeDefineWithHelpers<TScopes extends string = any> = {
+type ScopeDefineWithHelpers<TScopes extends string = string> = {
   // typeof scopeDefineUniversal
-  <TScopes extends string, TResult>(options: Record<StringIfAny<TScopes>, TResult>): TResult
-  <TScopes extends string, TResult>(options: Partial<Record<StringIfAny<TScopes>, TResult>>): TResult | undefined
-} & Record<StringIfAny<TScopes>, <T>(value: T) => T | undefined> & {
+  <TScopes extends string, TResult>(options: Record<TScopes, TResult>): TResult
+  <TScopes extends string, TResult>(options: Partial<Record<TScopes, TResult>>): TResult | undefined
+} & Record<TScopes, <T>(value: T) => T | undefined> & {
     force: ScopeDefineForce<TScopes>
   }
 
-function scopeDefineUniversal<TScopes extends string, TResult>(options: Record<StringIfAny<TScopes>, TResult>): TResult
+function scopeDefineUniversal<TScopes extends string, TResult>(options: Record<TScopes, TResult>): TResult
 function scopeDefineUniversal<TScopes extends string, TResult>(
-  options: Partial<Record<StringIfAny<TScopes>, TResult>>,
+  options: Partial<Record<TScopes, TResult>>,
 ): TResult | undefined
-function scopeDefineUniversal<TScopes extends string, TResult>(
-  options: Partial<Record<StringIfAny<TScopes>, TResult>>,
-) {
+function scopeDefineUniversal<TScopes extends string, TResult>(options: Partial<Record<TScopes, TResult>>) {
   return options[getScopeName() as TScopes]
 }
 
@@ -243,10 +237,10 @@ const scopeIs = new Proxy(
   },
 )
 
-export type EnvScope<TScopes extends string = any> = {
-  name: StringIfAny<TScopes>
-  is: EnvScopeIs<TScopes>
-  define: ScopeDefineWithHelpers<TScopes>
+export type EnvScope<TScopes extends string = string> = {
+  readonly name: TScopes
+  readonly is: EnvScopeIs<TScopes>
+  readonly define: ScopeDefineWithHelpers<TScopes>
 }
 
 const envScope = Object.defineProperty(
@@ -264,35 +258,35 @@ const envScope = Object.defineProperty(
 
 export type EnvMode =
   | {
-      name: 'production'
-      is: {
-        production: true
-        development: false
-        test: false
+      readonly name: 'production'
+      readonly is: {
+        readonly production: true
+        readonly development: false
+        readonly test: false
       }
     }
   | {
-      name: 'development'
-      is: {
-        production: false
-        development: true
-        test: false
+      readonly name: 'development'
+      readonly is: {
+        readonly production: false
+        readonly development: true
+        readonly test: false
       }
     }
   | {
-      name: 'test'
-      is: {
-        production: false
-        development: false
-        test: true
+      readonly name: 'test'
+      readonly is: {
+        readonly production: false
+        readonly development: false
+        readonly test: true
       }
     }
   | {
-      name: string
-      is: {
-        production: false
-        development: false
-        test: false
+      readonly name: string
+      readonly is: {
+        readonly production: false
+        readonly development: false
+        readonly test: false
       }
     }
 const envMode = {
@@ -306,6 +300,7 @@ const envMode = {
 
 // final
 
+type IsAny<T> = 0 extends 1 & T ? true : false
 export type Env<
   TScope extends string = any,
   TVars extends Record<string, string | undefined | boolean | number> = Record<
@@ -313,10 +308,10 @@ export type Env<
     string | undefined | boolean | number
   >,
 > = {
-  mode: EnvMode
-  vars: EnvVars<TVars>
-  target: EnvTarget
-  scope: EnvScope<TScope>
+  readonly mode: EnvMode
+  readonly vars: Readonly<EnvVars<TVars>>
+  readonly target: EnvTarget
+  readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
 }
 
 export const env: Env = {

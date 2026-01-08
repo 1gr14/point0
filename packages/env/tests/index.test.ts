@@ -118,6 +118,41 @@ describe('env', () => {
       })
     })
 
+    describe('env.target.is', () => {
+      it('on server is server', async () => {
+        const env = await init({ target: 'server' })
+        expect(env.target.is.server).toBe(true)
+        expect(env.target.is.client).toBe(false)
+      })
+
+      it('on client is client', async () => {
+        const env = await init({ target: 'client' })
+        expect(env.target.is.client).toBe(true)
+        expect(env.target.is.server).toBe(false)
+      })
+
+      it('correlates in types with name', async () => {
+        const env = await init({ target: 'server' })
+        expectTypeOf<typeof env.target.name>().toEqualTypeOf<'server' | 'client'>()
+        expectTypeOf<typeof env.target.is.server>().toEqualTypeOf<boolean>()
+        expectTypeOf<typeof env.target.is.client>().toEqualTypeOf<boolean>()
+        if (env.target.name === 'server') {
+          expectTypeOf<typeof env.target.is.server>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.target.is.client>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.target.name>().toEqualTypeOf<'server'>()
+        } else {
+          expectTypeOf<typeof env.target.is.server>().toEqualTypeOf<false>()
+          expectTypeOf<typeof env.target.is.client>().toEqualTypeOf<true>()
+          expectTypeOf<typeof env.target.name>().toEqualTypeOf<'client'>()
+        }
+        if (env.target.is.client) {
+          expectTypeOf<typeof env.target.name>().toEqualTypeOf<'client'>()
+        } else {
+          expectTypeOf<typeof env.target.name>().toEqualTypeOf<'server'>()
+        }
+      })
+    })
+
     describe('env.target.define()', () => {
       it('should return server value when on server', async () => {
         const env = await init({ target: 'server' })
