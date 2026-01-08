@@ -105,11 +105,11 @@ describe('env', () => {
         expect(typeof env.target.define.client).toBe('function')
       })
 
-      it('should have target.define.force', async () => {
+      it('should have target.define.unsafe', async () => {
         const env = await init({ target: 'server' })
-        expect(typeof env.target.define.force).toBe('object')
-        expect(typeof env.target.define.force.server).toBe('function')
-        expect(typeof env.target.define.force.client).toBe('function')
+        expect(typeof env.target.define.unsafe).toBe('object')
+        expect(typeof env.target.define.unsafe.server).toBe('function')
+        expect(typeof env.target.define.unsafe.client).toBe('function')
       })
     })
 
@@ -237,32 +237,32 @@ describe('env', () => {
       })
     })
 
-    describe('env.target.define.force.server()', () => {
+    describe('env.target.define.unsafe.server()', () => {
       it('on server return value', async () => {
         const env = await init({ target: 'server' })
-        const result = env.target.define.force.server('test-value')
+        const result = env.target.define.unsafe.server('test-value')
         expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBe('test-value')
       })
       it('on client return undefined', async () => {
         const env = await init({ target: 'client' })
-        const result = env.target.define.force.server('test-value')
+        const result = env.target.define.unsafe.server('test-value')
         expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBeUndefined()
       })
     })
 
-    describe('env.target.define.force.client()', () => {
+    describe('env.target.define.unsafe.client()', () => {
       it('on client return value', async () => {
         const env = await init({ target: 'client' })
-        const result = env.target.define.force.client('test-value')
+        const result = env.target.define.unsafe.client('test-value')
         expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBe('test-value')
       })
 
       it('on server return undefined', async () => {
         const env = await init({ target: 'server' })
-        const result = env.target.define.force.client('test-value')
+        const result = env.target.define.unsafe.client('test-value')
         expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBeUndefined()
       })
@@ -313,9 +313,9 @@ describe('env', () => {
         expect(typeof env.scope.define).toBe('function')
       })
 
-      it('should have scope.define.force', async () => {
+      it('should have scope.define.unsafe', async () => {
         const env = await init({ target: 'server', scope: 'test-scope' })
-        expect(typeof env.scope.define.force).toBe('object')
+        expect(typeof env.scope.define.unsafe).toBe('object')
       })
     })
 
@@ -460,17 +460,17 @@ describe('env', () => {
       })
     })
 
-    describe('env.scope.define.force.x()', () => {
+    describe('env.scope.define.unsafe.x()', () => {
       it('on x return value, if x is current scope', async () => {
         const env = await init({ target: 'server', scope: 'x' })
-        const result = env.scope.define.force.x('test-value')
+        const result = env.scope.define.unsafe.x('test-value')
         expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBe('test-value')
       })
 
       it('on y return undefined, if x is current scope', async () => {
         const env = await init({ target: 'server', scope: 'x' })
-        const result = env.scope.define.force.y('test-value')
+        const result = env.scope.define.unsafe.y('test-value')
         expectTypeOf<typeof result>().toEqualTypeOf<'test-value'>()
         expect(result).toBeUndefined()
       })
@@ -478,7 +478,7 @@ describe('env', () => {
       it('should throw type when incorrect scope name provided', async () => {
         const env = await init<Env<'x' | 'y'>>({ target: 'server', scope: 'x' })
         // @ts-expect-error - incorrect scope name
-        const result2 = env.scope.define.force.zzz('test-value')
+        const result2 = env.scope.define.unsafe.zzz('test-value')
         expect(result2).toBeUndefined()
       })
     })

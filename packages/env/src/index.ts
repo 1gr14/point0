@@ -1,13 +1,3 @@
-// general
-
-// function define<T>(value: T): T | undefined {
-//   return value
-// }
-
-// function defineForce<T>(value: T): T {
-//   return value
-// }
-
 // vars
 
 export type EnvVars<
@@ -91,14 +81,14 @@ function targetDefineUniversal<TClientResult, TServerResult>(options: {
   return options.server
 }
 
-type TargetDefineForce = {
+type TargetDefineUnsafe = {
   server: <T>(value: T) => T
   client: <T>(value: T) => T
 }
 type TargetDefineWithHelpers = typeof targetDefineUniversal & {
   server: <T>(value: T) => T | undefined
   client: <T>(value: T) => T | undefined
-  force: TargetDefineForce
+  unsafe: TargetDefineUnsafe
 }
 const defineServer = (value: any) => {
   if (isTargetClient) {
@@ -112,14 +102,14 @@ const defineClient = (value: any) => {
   }
   return value
 }
-const targetDefineForce = {
+const targetDefineUnsafe = {
   server: defineServer,
   client: defineClient,
 }
 const targetDefine = Object.assign(targetDefineUniversal, {
   server: defineServer,
   client: defineClient,
-  force: targetDefineForce,
+  unsafe: targetDefineUnsafe,
 })
 
 type TargetIsClient = {
@@ -173,19 +163,19 @@ const getScopeName = (): string => {
   return scopeName
 }
 
-type ScopeDefineForce<TScopes extends string = string> = Record<TScopes, <T>(value: T) => T>
+type ScopeDefineUnsafe<TScopes extends string = string> = Record<TScopes, <T>(value: T) => T>
 type ScopeDefineWithHelpers<TScopes extends string = string> = string extends TScopes
   ? {
       <TResult>(options: Record<string, TResult>): TResult | undefined
       <TResult>(options: Partial<Record<string, TResult>>): TResult | undefined
     } & Record<string, <T>(value: T) => T | undefined> & {
-        force: Record<string, <T>(value: T) => T>
+        unsafe: Record<string, <T>(value: T) => T>
       }
   : {
       <TResult>(options: Record<TScopes, TResult>): TResult
       <TResult>(options: Partial<Record<TScopes, TResult>>): TResult | undefined
     } & Record<TScopes, <T>(value: T) => T | undefined> & {
-        force: ScopeDefineForce<TScopes>
+        unsafe: ScopeDefineUnsafe<TScopes>
       }
 
 function scopeDefineUniversal(options: Record<string, any>) {
@@ -198,7 +188,7 @@ const scopeDefineSpecific = (scope: string) => (value: any) => {
   }
   return value
 }
-const scopeDefineForce = new Proxy(
+const scopeDefineUnsafe = new Proxy(
   {},
   {
     get(_, prop: string) {
@@ -215,8 +205,8 @@ const scopeDefine = new Proxy(scopeDefineUniversal, {
     if (Object.prototype.hasOwnProperty.call(scopeDefineUniversal, prop)) {
       return Reflect.get(scopeDefineUniversal, prop, receiver)
     }
-    if (prop === 'force') {
-      return scopeDefineForce
+    if (prop === 'unsafe') {
+      return scopeDefineUnsafe
     }
     return scopeDefineSpecific(prop)
   },
