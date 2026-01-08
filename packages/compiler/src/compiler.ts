@@ -1,9 +1,7 @@
 import type { CompilerFile } from './file.js'
 import type { CompilerPoint } from './point.js'
+import type { CompilerEnvConsts } from './utils.js'
 import { Walker } from './walker.js'
-
-export type CompilerEnvConstsItem = string | { [key: string]: string | number | boolean | null | undefined }
-export type CompilerEnvConsts = CompilerEnvConstsItem[]
 
 export type CompilerOptions = {
   target: 'client' | 'server'

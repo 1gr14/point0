@@ -11,6 +11,7 @@ const general = {
     'src/plugin/vite.ts',
     'src/point.ts',
     'src/resolver.ts',
+    'src/utils.ts',
   ],
   clean: false,
   dts: true,

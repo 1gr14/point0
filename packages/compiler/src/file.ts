@@ -4,7 +4,7 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File } from '@babel/types'
 import * as nodeFs from 'node:fs/promises'
-import type { CompilerEnvConsts } from './compiler.js'
+import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -244,15 +244,7 @@ export class CompilerFile<THasContent extends boolean> {
         modified: boolean
       }
     | false = false
-  shakeForEnv({
-    target,
-    scope,
-    consts = [],
-  }: {
-    target: 'client' | 'server'
-    scope: string
-    consts?: CompilerEnvConsts
-  }): {
+  shakeForEnv({ target, scope, consts }: { target: 'client' | 'server'; scope: string; consts?: CompilerEnvConsts }): {
     target: 'client' | 'server'
     scope: string
     consts: CompilerEnvConsts
@@ -261,8 +253,9 @@ export class CompilerFile<THasContent extends boolean> {
     modified: boolean
   } {
     const errors: unknown[] = []
-    consts.push('NODE_ENV', 'POINT0_SCOPE')
+    consts = normalizeEnvConsts(consts)
     consts = [...consts].reverse() // for winning last match
+    consts.unshift('NODE_ENV', 'POINT0_SCOPE')
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
