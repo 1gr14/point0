@@ -17,7 +17,7 @@ import {
   useLocation,
   useRouterContext,
 } from '@point0/core'
-import { env } from 'node:process'
+import { env } from '@point0/env'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import {

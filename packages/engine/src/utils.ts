@@ -471,7 +471,7 @@ export const createViteDevServer = async ({
     })
 
     const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-      module.compilerVitePlugin({ target }),
+      module.compilerVitePlugin({ target, scope }),
     )
 
     const hmr =

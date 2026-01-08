@@ -185,6 +185,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           await import('@point0/compiler/plugin/bun').then((module) =>
             module.compilerBunPlugin({
               target: 'server',
+              scope: this.scope,
             }),
           ),
         ]
@@ -620,7 +621,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
       const shakePlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-        module.compilerVitePlugin({ target: 'server' }),
+        module.compilerVitePlugin({ target: 'server', scope: this.scope }),
       )
 
       const config: ExtractedViteConfig = {

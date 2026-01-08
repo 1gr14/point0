@@ -100,9 +100,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects isEngineHolderBuildPhase option',
       helper(async ({ files: [file] }) => {
-        await file.write(
-          `const runtime=require('@point0/runtime'); shakeItOnEngineHolderBuildPhase(() => console.info('test'))`,
-        )
+        await file.write(`shakeItOnEngineHolderBuildPhase(() => console.info('test'))`)
         const compiler = Compiler.create({ target: 'client', scope: 'test', isEngineHolderBuildPhase: true })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
