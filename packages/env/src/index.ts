@@ -1,6 +1,6 @@
 // vars
 
-type AnyAnvVars = Record<string, string | undefined | boolean | number>
+type AnyAnvVars = Record<string, string | undefined | boolean | number | null>
 
 export type EnvVars<TVars = any> = IsAny<TVars> extends true ? AnyAnvVars : TVars
 
@@ -153,9 +153,9 @@ export const envTarget = {
 // scope
 
 const getScopeName = (): string => {
-  const scopeName = envVars.POINT0_SCOPE_NAME
+  const scopeName = envVars.POINT0_SCOPE
   if (!scopeName || typeof scopeName !== 'string') {
-    throw new Error('POINT0_SCOPE_NAME is not set in env vars')
+    throw new Error('POINT0_SCOPE is not set in env vars')
   }
   return scopeName
 }

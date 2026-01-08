@@ -398,6 +398,128 @@ describe('CompilerFile', () => {
           delete process.env.SOMETHING_B
         }),
       )
+
+      it(
+        'env.vars.X replaced with forced string value from object consts',
+        helper(async ({ files: [file] }) => {
+          process.env.CUSTOM_VAR = 'original-value'
+          const cf = await file.wrp(`${prefix} const x = env.vars.CUSTOM_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: [{ CUSTOM_VAR: 'forced-value' }] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = "forced-value";"`)
+          delete process.env.CUSTOM_VAR
+        }),
+      )
+
+      it(
+        'env.vars.X replaced with forced number value from object consts',
+        helper(async ({ files: [file] }) => {
+          process.env.NUM_VAR = '123'
+          const cf = await file.wrp(`${prefix} const x = env.vars.NUM_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: [{ NUM_VAR: 42 }] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = 42;"`)
+          delete process.env.NUM_VAR
+        }),
+      )
+
+      it(
+        'env.vars.X replaced with forced boolean value from object consts',
+        helper(async ({ files: [file] }) => {
+          process.env.BOOL_VAR = 'false'
+          const cf = await file.wrp(`${prefix} const x = env.vars.BOOL_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: [{ BOOL_VAR: true }] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = true;"`)
+          delete process.env.BOOL_VAR
+        }),
+      )
+
+      it(
+        'env.vars.X replaced with null from object consts',
+        helper(async ({ files: [file] }) => {
+          process.env.NULL_VAR = 'some-value'
+          const cf = await file.wrp(`${prefix} const x = env.vars.NULL_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: [{ NULL_VAR: null }] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = null;"`)
+          delete process.env.NULL_VAR
+        }),
+      )
+
+      it(
+        'env.vars.X replaced with undefined from object consts',
+        helper(async ({ files: [file] }) => {
+          process.env.UNDEFINED_VAR = 'some-value'
+          const cf = await file.wrp(`${prefix} const x = env.vars.UNDEFINED_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: [{ UNDEFINED_VAR: undefined }] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = undefined;"`)
+          delete process.env.UNDEFINED_VAR
+        }),
+      )
+
+      it(
+        'env.vars with multiple object consts - last match wins',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.vars.MULTI_VAR`)
+          cf.shakeForEnv({
+            target: 'server',
+            scope: 'test',
+            consts: [{ MULTI_VAR: 'first' }, { MULTI_VAR: 'second' }],
+          })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = "second";"`)
+        }),
+      )
+
+      it(
+        'env.vars with mixed string and object consts - object takes precedence if later',
+        helper(async ({ files: [file] }) => {
+          process.env.MIXED_VAR = 'from-env'
+          const cf = await file.wrp(`${prefix} const x = env.vars.MIXED_VAR`)
+          cf.shakeForEnv({
+            target: 'server',
+            scope: 'test',
+            consts: ['MIXED_VAR', { MIXED_VAR: 'from-object' }],
+          })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = "from-object";"`)
+          delete process.env.MIXED_VAR
+        }),
+      )
+
+      it(
+        'env.vars with mixed string and object consts - string takes precedence if later',
+        helper(async ({ files: [file] }) => {
+          const originalValue = process.env.MIXED_VAR2
+          process.env.MIXED_VAR2 = 'from-env'
+          const cf = await file.wrp(`${prefix} const x = env.vars.MIXED_VAR2`)
+          cf.shakeForEnv({
+            target: 'server',
+            scope: 'test',
+            consts: [{ MIXED_VAR2: 'from-object' }, 'MIXED_VAR2'],
+          })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = "from-env";"`)
+          if (originalValue) {
+            process.env.MIXED_VAR2 = originalValue
+          } else {
+            delete process.env.MIXED_VAR2
+          }
+        }),
+      )
+
+      it.concurrent(
+        'env.vars with multiple vars in single object const',
+        helper(async ({ files: [file] }) => {
+          process.env.STR_VAR = 'original-str'
+          process.env.NUM_VAR = 'original-num'
+          const cf = await file.wrp(`${prefix} const s = env.vars.STR_VAR; const n = env.vars.NUM_VAR`)
+          cf.shakeForEnv({
+            target: 'server',
+            scope: 'test',
+            consts: [{ STR_VAR: 'forced-str', NUM_VAR: 999 }],
+          })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const s = "forced-str";const n = 999;"`,
+          )
+          delete process.env.STR_VAR
+          delete process.env.NUM_VAR
+        }),
+      )
     })
 
     describe('env.mode', () => {

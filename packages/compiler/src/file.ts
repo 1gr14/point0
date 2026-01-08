@@ -4,6 +4,7 @@ import type traverseType from '@babel/traverse'
 import traverseModule from '@babel/traverse'
 import type { File } from '@babel/types'
 import * as nodeFs from 'node:fs/promises'
+import type { CompilerEnvConsts } from './compiler.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -235,22 +236,33 @@ export class CompilerFile<THasContent extends boolean> {
     | {
         target: 'client' | 'server'
         scope: string
-        consts: string[] // can be env name like NODE_ENV, or string SOMETHING_* then we should force value for all const started with SOMETHING_
+        // can be env name like NODE_ENV, or string SOMETHING_* then we should force value for all const started with SOMETHING_
+        // also object like { NODE_ENV: 'production', NUM: 1, BOOL: true, NULL: null, UNDEFINED: undefined } can be provided
+        consts: CompilerEnvConsts
         errors: unknown[]
         ok: boolean
         modified: boolean
       }
     | false = false
-  shakeForEnv({ target, scope, consts = [] }: { target: 'client' | 'server'; scope: string; consts?: string[] }): {
+  shakeForEnv({
+    target,
+    scope,
+    consts = [],
+  }: {
     target: 'client' | 'server'
     scope: string
-    consts: string[]
+    consts?: CompilerEnvConsts
+  }): {
+    target: 'client' | 'server'
+    scope: string
+    consts: CompilerEnvConsts
     errors: unknown[]
     ok: boolean
     modified: boolean
   } {
     const errors: unknown[] = []
-    consts.push('NODE_ENV', 'POINT0_SCOPE_NAME')
+    consts.push('NODE_ENV', 'POINT0_SCOPE')
+    consts = [...consts].reverse() // for winning last match
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
@@ -285,19 +297,62 @@ export class CompilerFile<THasContent extends boolean> {
           value,
         }) as any
 
+      const makeNumericLiteral = (value: number) =>
+        ({
+          type: 'NumericLiteral',
+          value,
+        }) as any
+
+      const makeNullLiteral = () =>
+        ({
+          type: 'NullLiteral',
+        }) as any
+
       // Helper to check if a var name matches consts (supports wildcard patterns like "SOMETHING_*")
-      const shouldReplaceVar = (varName: string): boolean => {
+      // const shouldReplaceVar = (varName: string): {forceValue: string | number | boolean | null | undefined, shouldReplace: boolean, shouldForce: boolean} => {
+      //   for (const constPattern of consts) {
+      //     if (typeof constPattern === 'string') {
+      //       if (constPattern.endsWith('*')) {
+      //         const prefix = constPattern.slice(0, -1)
+      //         if (varName.startsWith(prefix)) {
+      //           return { forceValue: undefined, shouldReplace: true, shouldForce: false }
+      //         }
+      //       } else if (varName === constPattern) {
+      //         return { forceValue: undefined, shouldReplace: true, shouldForce: false }
+      //       }
+      //     }
+      //     if (typeof constPattern === 'object') {
+      //       const forceValue = constPattern[varName]
+      //       if (forceValue !== undefined) {
+      //         return { forceValue, shouldReplace: true, shouldForce: true }
+      //       }
+      //     }
+      //   }
+      //   return { forceValue: undefined, shouldReplace: false, shouldForce: false }
+      // }
+      const checkReplaceVar = (
+        varName: string,
+        processEnvValue: string | number | boolean | null | undefined,
+      ): { desiredValue: string | number | boolean | null | undefined; shouldReplace: boolean } => {
         for (const constPattern of consts) {
-          if (constPattern.endsWith('*')) {
-            const prefix = constPattern.slice(0, -1)
-            if (varName.startsWith(prefix)) {
-              return true
+          if (typeof constPattern === 'string') {
+            if (constPattern.endsWith('*')) {
+              const prefix = constPattern.slice(0, -1)
+              if (varName.startsWith(prefix)) {
+                return { desiredValue: processEnvValue, shouldReplace: true }
+              }
+            } else if (varName === constPattern) {
+              return { desiredValue: processEnvValue, shouldReplace: true }
             }
-          } else if (varName === constPattern) {
-            return true
+          }
+          if (typeof constPattern === 'object') {
+            if (varName in constPattern) {
+              const desiredValue = constPattern[varName]
+              return { desiredValue, shouldReplace: true }
+            }
           }
         }
-        return false
+        return { desiredValue: undefined, shouldReplace: false }
       }
 
       // Get NODE_ENV value from process.env
@@ -404,16 +459,37 @@ export class CompilerFile<THasContent extends boolean> {
             node.property.type === 'Identifier'
           ) {
             const varName = node.property.name
-            if (shouldReplaceVar(varName)) {
-              const envValue = process.env[varName]
-              if (envValue === undefined) {
+            // if (shouldReplaceVar(varName)) {
+            //   const envValue = process.env[varName]
+            //   if (envValue === undefined) {
+            //     p.replaceWith(makeUndefined())
+            //   } else {
+            //     // Try to determine the type - for now, always use string literal
+            //     // Could be enhanced to detect number/boolean
+            //     p.replaceWith(makeStringLiteral(envValue))
+            //   }
+            //   modified = true
+            // }
+            const checkResult = checkReplaceVar(varName, process.env[varName])
+            if (checkResult.shouldReplace) {
+              const desiredValue = checkResult.desiredValue
+              if (typeof desiredValue === 'string') {
+                p.replaceWith(makeStringLiteral(desiredValue))
+                modified = true
+              } else if (typeof desiredValue === 'number') {
+                p.replaceWith(makeNumericLiteral(desiredValue))
+                modified = true
+              } else if (typeof desiredValue === 'boolean') {
+                p.replaceWith(makeBooleanLiteral(desiredValue))
+                modified = true
+              } else if (desiredValue === null) {
+                p.replaceWith(makeNullLiteral())
+                modified = true
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+              } else if (desiredValue === undefined) {
                 p.replaceWith(makeUndefined())
-              } else {
-                // Try to determine the type - for now, always use string literal
-                // Could be enhanced to detect number/boolean
-                p.replaceWith(makeStringLiteral(envValue))
+                modified = true
               }
-              modified = true
             }
           }
         },

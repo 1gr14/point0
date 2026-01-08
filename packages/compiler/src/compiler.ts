@@ -2,9 +2,13 @@ import type { CompilerFile } from './file.js'
 import type { CompilerPoint } from './point.js'
 import { Walker } from './walker.js'
 
+export type CompilerEnvConstsItem = string | { [key: string]: string | number | boolean | null | undefined }
+export type CompilerEnvConsts = CompilerEnvConstsItem[]
+
 export type CompilerOptions = {
   target: 'client' | 'server'
   scope: string
+  consts?: CompilerEnvConsts
   filter?: RegExp
   isEngineHolderBuildPhase?: boolean
   hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
@@ -14,6 +18,7 @@ export class Compiler {
   filter: RegExp
   scope: string
   target: 'client' | 'server'
+  consts: CompilerEnvConsts | undefined
   isEngineHolderBuildPhase: boolean | undefined
   hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
 
@@ -23,28 +28,32 @@ export class Compiler {
     filter,
     target,
     scope,
+    consts,
     isEngineHolderBuildPhase,
     hmrFixPolicy,
   }: {
     filter: RegExp
     target: 'client' | 'server'
     scope: string
+    consts: CompilerEnvConsts | undefined
     isEngineHolderBuildPhase: boolean | undefined
     hmrFixPolicy: 'function' | 'arrowFunction' | 'externalFunction' | 'none' | undefined
   }) {
     this.filter = filter
     this.target = target
     this.scope = scope
+    this.consts = consts
     this.isEngineHolderBuildPhase = isEngineHolderBuildPhase
     this.hmrFixPolicy = hmrFixPolicy
   }
 
   static create(options: CompilerOptions) {
-    const { filter, target, scope, isEngineHolderBuildPhase, hmrFixPolicy } = options
+    const { filter, target, scope, consts, isEngineHolderBuildPhase, hmrFixPolicy } = options
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       target,
       scope,
+      consts,
       isEngineHolderBuildPhase,
       hmrFixPolicy,
     })
@@ -54,6 +63,7 @@ export class Compiler {
     content,
     scope = this.scope,
     target = this.target,
+    consts = this.consts,
     file,
     isEngineHolderBuildPhase = this.isEngineHolderBuildPhase ??
       process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true',
@@ -62,6 +72,7 @@ export class Compiler {
     content?: string
     scope?: string
     target?: 'client' | 'server'
+    consts?: CompilerEnvConsts
     file: string
     isEngineHolderBuildPhase?: boolean
     hmrFixPolicy?: 'function' | 'arrowFunction' | 'externalFunction' | 'none'
@@ -87,7 +98,7 @@ export class Compiler {
       }
     }
     cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })
-    cf.shakeForEnv({ target })
+    cf.shakeForEnv({ target, scope, consts })
     return {
       file: cf,
       code: cf.modified ? cf.toCode() : cf.content,

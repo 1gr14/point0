@@ -135,10 +135,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       : this.serverGlobalState.__POINT0_QUERY_CLIENT__
   }
 
-  getScope(): PointsScope {
-    return this.serverGlobalState.__POINT0_SCOPE__
-  }
-
   setSsrLocation(ssrLocation: AnyLocation): void {
     if (env.target.is.client) {
       // TODO: figure out, is Executor really can be called in client? I think, no

@@ -18,9 +18,9 @@ const init = async <TVars = any, TScope extends string = string>(options: {
   }
   Object.assign(process.env, vars)
   if (scope) {
-    process.env.POINT0_SCOPE_NAME = scope
+    process.env.POINT0_SCOPE = scope
   } else {
-    process.env.POINT0_SCOPE_NAME ||= 'test'
+    process.env.POINT0_SCOPE ||= 'test'
   }
   process.env.NODE_ENV ||= 'test'
   return (await import('../src/index.js' + '?rand=' + Math.random())).env
@@ -326,7 +326,7 @@ describe('env', () => {
     })
 
     describe('env.scope.name', () => {
-      it('should return scope name from POINT0_SCOPE_NAME', async () => {
+      it('should return scope name from POINT0_SCOPE', async () => {
         const env = await init({ target: 'server', scope: 'test-scope' })
         expect(env.scope.name).toBe('test-scope')
       })

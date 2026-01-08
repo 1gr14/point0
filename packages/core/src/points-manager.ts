@@ -749,6 +749,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     return createdPoints
   }
   static getPointsManager = (scope?: PointsScope): PointsManager => {
+    // all this needed only for router, to know which routes and pages exists in current scope
+    // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
+    // and this code will be executed on server
     scope ??= SuperStore.getWeak<PointsScope>('__POINT0_SCOPE__')
     if (!scope) {
       throw new Error('Points scope not found if SuperStore. You should provide scope.')

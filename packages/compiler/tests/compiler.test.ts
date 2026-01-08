@@ -44,7 +44,7 @@ describe('Compiler', () => {
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(1)
@@ -56,8 +56,8 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects target option - client',
       helper(async ({ files: [file] }) => {
-        await file.write(`const runtime=require('@point0/runtime'); if (runtime.is.client) console.info('client')`)
-        const compiler = Compiler.create({ target: 'client' })
+        await file.write(`const env=require('@point0/env'); if (env.target.is.client) console.info('client')`)
+        const compiler = Compiler.create({ target: 'client', scope: 'test' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('if (true)')
@@ -67,8 +67,30 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects target option - server',
       helper(async ({ files: [file] }) => {
-        await file.write(`const runtime=require('@point0/runtime'); if (runtime.is.server) console.info('server')`)
-        const compiler = Compiler.create({ target: 'server' })
+        await file.write(`const env=require('@point0/env'); if (env.target.is.server) console.info('server')`)
+        const compiler = Compiler.create({ target: 'server', scope: 'test' })
+        const result = await compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain('if (true)')
+      }),
+    )
+
+    it.concurrent(
+      'respects scope option',
+      helper(async ({ files: [file] }) => {
+        await file.write(`const env=require('@point0/env'); if (env.scope.is.test) console.info('test')`)
+        const compiler = Compiler.create({ target: 'client', scope: 'test' })
+        const result = await compiler.compile({ file: file.path })
+        expect(result.errors).toHaveLength(0)
+        expect(result.code).toContain('if (true)')
+      }),
+    )
+
+    it.concurrent(
+      'respects consts option',
+      helper(async ({ files: [file] }) => {
+        await file.write(`const env=require('@point0/env'); if (env.vars.TEST_VAR) console.info('test')`)
+        const compiler = Compiler.create({ target: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('if (true)')
@@ -81,7 +103,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(
           `const runtime=require('@point0/runtime'); shakeItOnEngineHolderBuildPhase(() => console.info('test'))`,
         )
-        const compiler = Compiler.create({ target: 'client', isEngineHolderBuildPhase: true })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', isEngineHolderBuildPhase: true })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('throw new Error("Not available after build")')
@@ -94,7 +116,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'function' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFixPolicy: 'function' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._hmr(function X()')
@@ -107,7 +129,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'arrowFunction' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFixPolicy: 'arrowFunction' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).toContain('._hmr(() =>')
@@ -120,7 +142,7 @@ export const root = Point0.lets('root', 'root').root()
         await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
         `)
-        const compiler = Compiler.create({ target: 'client', hmrFixPolicy: 'none' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test', hmrFixPolicy: 'none' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.code).not.toContain('._hmr')
@@ -131,7 +153,7 @@ export const root = Point0.lets('root', 'root').root()
       'handles file with no points',
       helper(async ({ files: [file] }) => {
         await file.write(`console.info('hello')`)
-        const compiler = Compiler.create({ target: 'client' })
+        const compiler = Compiler.create({ target: 'client', scope: 'test' })
         const result = await compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
         expect(result.points).toHaveLength(0)

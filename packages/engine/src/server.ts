@@ -648,7 +648,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           ...loadedViteConfig.define,
           ...injectedEnvs,
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_CUSTOMER': JSON.stringify('server'),
+          'process.env.POINT0_TARGET': JSON.stringify('server'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       }

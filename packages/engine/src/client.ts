@@ -683,7 +683,7 @@ Bun.serve({
           ...thisBunBuildConfig.define,
           ...providedBunBuildConfig.define,
           ...(NODE_ENV ? { 'process.env.NODE_ENV': JSON.stringify(NODE_ENV) } : {}),
-          'process.env.POINT0_CUSTOMER': JSON.stringify('client'),
+          'process.env.POINT0_TARGET': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       })
@@ -768,7 +768,7 @@ Bun.serve({
             Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
           ),
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_CUSTOMER': JSON.stringify('client'),
+          'process.env.POINT0_TARGET': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       }
