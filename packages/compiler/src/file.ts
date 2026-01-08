@@ -378,6 +378,22 @@ export class CompilerFile<THasContent extends boolean> {
               }
             }
           }
+          // Handle env.scope.is.X - replace with true if scope matches, false otherwise
+          else if (
+            node.object.type === 'MemberExpression' &&
+            node.object.object.type === 'MemberExpression' &&
+            node.object.object.object.type === 'Identifier' &&
+            node.object.object.object.name === 'env' &&
+            node.object.object.property.type === 'Identifier' &&
+            node.object.object.property.name === 'scope' &&
+            node.object.property.type === 'Identifier' &&
+            node.object.property.name === 'is' &&
+            node.property.type === 'Identifier'
+          ) {
+            const scopeName = node.property.name
+            p.replaceWith(makeBooleanLiteral(scope === scopeName))
+            modified = true
+          }
           // Handle env.vars.X - replace if X is in consts
           else if (
             node.object.type === 'MemberExpression' &&
@@ -430,6 +446,92 @@ export class CompilerFile<THasContent extends boolean> {
               } else if (name === 'client' && target === 'server' && args.length > 0) {
                 args[0] = makeUndefined()
                 modified = true
+              }
+            }
+          }
+          // Handle env.target.define.unsafe.server(), env.target.define.unsafe.client()
+          else if (
+            callee.object.type === 'MemberExpression' &&
+            callee.object.object.type === 'MemberExpression' &&
+            callee.object.object.object.type === 'MemberExpression' &&
+            callee.object.object.object.object.type === 'Identifier' &&
+            callee.object.object.object.object.name === 'env' &&
+            callee.object.object.object.property.type === 'Identifier' &&
+            callee.object.object.object.property.name === 'target' &&
+            callee.object.object.property.type === 'Identifier' &&
+            callee.object.object.property.name === 'define' &&
+            callee.object.property.type === 'Identifier' &&
+            callee.object.property.name === 'unsafe'
+          ) {
+            if (callee.property.type === 'Identifier') {
+              const name = callee.property.name
+
+              if (name === 'server' && target === 'client' && args.length > 0) {
+                args[0] = makeUndefined()
+                modified = true
+              } else if (name === 'client' && target === 'server' && args.length > 0) {
+                args[0] = makeUndefined()
+                modified = true
+              }
+            }
+          }
+          // Handle env.scope.define.X() - replace with value if scope matches, undefined otherwise
+          else if (
+            callee.object.type === 'MemberExpression' &&
+            callee.object.object.type === 'MemberExpression' &&
+            callee.object.object.object.type === 'Identifier' &&
+            callee.object.object.object.name === 'env' &&
+            callee.object.object.property.type === 'Identifier' &&
+            callee.object.object.property.name === 'scope' &&
+            callee.object.property.type === 'Identifier' &&
+            callee.object.property.name === 'define' &&
+            callee.property.type === 'Identifier'
+          ) {
+            const scopeName = callee.property.name
+            if (scope !== scopeName && args.length > 0) {
+              args[0] = makeUndefined()
+              modified = true
+            }
+          }
+          // Handle env.scope.define.unsafe.X() - replace with value if scope matches, undefined otherwise
+          else if (
+            callee.object.type === 'MemberExpression' &&
+            callee.object.object.type === 'MemberExpression' &&
+            callee.object.object.object.type === 'MemberExpression' &&
+            callee.object.object.object.object.type === 'Identifier' &&
+            callee.object.object.object.object.name === 'env' &&
+            callee.object.object.object.property.type === 'Identifier' &&
+            callee.object.object.object.property.name === 'scope' &&
+            callee.object.object.property.type === 'Identifier' &&
+            callee.object.object.property.name === 'define' &&
+            callee.object.property.type === 'Identifier' &&
+            callee.object.property.name === 'unsafe' &&
+            callee.property.type === 'Identifier'
+          ) {
+            const scopeName = callee.property.name
+            if (scope !== scopeName && args.length > 0) {
+              args[0] = makeUndefined()
+              modified = true
+            }
+          }
+          // Handle env.scope.define() with options object
+          else if (
+            callee.object.type === 'MemberExpression' &&
+            callee.object.object.type === 'Identifier' &&
+            callee.object.object.name === 'env' &&
+            callee.object.property.type === 'Identifier' &&
+            callee.object.property.name === 'scope' &&
+            callee.property.type === 'Identifier' &&
+            callee.property.name === 'define'
+          ) {
+            if (args.length > 0 && args[0].type === 'ObjectExpression') {
+              const props = args[0].properties as any[]
+              // Replace all properties that don't match the current scope with undefined
+              for (const prop of props) {
+                if (prop.key.type === 'Identifier' && prop.key.name !== scope && prop.value) {
+                  prop.value = makeUndefined()
+                  modified = true
+                }
               }
             }
           }

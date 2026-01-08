@@ -193,6 +193,144 @@ describe('CompilerFile', () => {
           )
         }),
       )
+
+      it.concurrent(
+        'env.target.define.unsafe.server() - client target replaces value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.unsafe.server('server-value')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.unsafe.server(undefined);"`,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.target.define.unsafe.server() - server target keeps value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.unsafe.server('server-value')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.unsafe.server('server-value');"`,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.target.define.unsafe.client() - server target replaces value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.unsafe.client('client-value')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.unsafe.client(undefined);"`,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.target.define.unsafe.client() - client target keeps value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.unsafe.client('client-value')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.unsafe.client('client-value');"`,
+          )
+        }),
+      )
+    })
+
+    describe('env.scope', () => {
+      describe('env.scope.is', () => {
+        it.concurrent(
+          'env.scope.is.x = true when scope is x',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} if (env.scope.is.x) console.info('x')`)
+            cf.shakeForEnv({ target: 'server', scope: 'x' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');if (true) console.info('x');"`,
+            )
+          }),
+        )
+
+        it.concurrent(
+          'env.scope.is.x = false when scope is y',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} if (env.scope.is.x) console.info('x')`)
+            cf.shakeForEnv({ target: 'server', scope: 'y' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');if (false) console.info('x');"`,
+            )
+          }),
+        )
+      })
+
+      describe('env.scope.define', () => {
+        it.concurrent(
+          'env.scope.define.x() - scope y replaces value',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} const x = env.scope.define.x('x-value')`)
+            cf.shakeForEnv({ target: 'server', scope: 'y' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');const x = env.scope.define.x(undefined);"`,
+            )
+          }),
+        )
+
+        it.concurrent(
+          'env.scope.define.x() - scope x keeps value',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} const x = env.scope.define.x('x-value')`)
+            cf.shakeForEnv({ target: 'server', scope: 'x' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');const x = env.scope.define.x('x-value');"`,
+            )
+          }),
+        )
+
+        it.concurrent(
+          'env.scope.define() with x option - scope y replaces value',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} const x = env.scope.define({ x: 'x-value', y: 'y-value' })`)
+            cf.shakeForEnv({ target: 'server', scope: 'y' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');const x = env.scope.define({ x: undefined, y: 'y-value' });"`,
+            )
+          }),
+        )
+
+        it.concurrent(
+          'env.scope.define() with y option - scope x replaces value',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} const x = env.scope.define({ x: 'x-value', y: 'y-value' })`)
+            cf.shakeForEnv({ target: 'server', scope: 'x' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');const x = env.scope.define({ x: 'x-value', y: undefined });"`,
+            )
+          }),
+        )
+
+        it.concurrent(
+          'env.scope.define.unsafe.x() - scope y replaces value',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} const x = env.scope.define.unsafe.x('x-value')`)
+            cf.shakeForEnv({ target: 'server', scope: 'y' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');const x = env.scope.define.unsafe.x(undefined);"`,
+            )
+          }),
+        )
+
+        it.concurrent(
+          'env.scope.define.unsafe.x() - scope x keeps value',
+          helper(async ({ files: [file] }) => {
+            const cf = await file.wrp(`${prefix} const x = env.scope.define.unsafe.x('x-value')`)
+            cf.shakeForEnv({ target: 'server', scope: 'x' })
+            expect(cf.toCode()).toMatchInlineSnapshot(
+              `"const env = require('@point0/env');const x = env.scope.define.unsafe.x('x-value');"`,
+            )
+          }),
+        )
+      })
     })
 
     describe('env.vars', () => {
