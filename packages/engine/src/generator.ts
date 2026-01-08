@@ -6,18 +6,12 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineLogger, EngineOptionsRoutes } from './config.js'
 import { getDirByPaths, resolveTempDirPath } from './utils.js'
-import {
-  END_POINT_TYPES,
-  Walker,
-  CompilerPoint,
-  type CompilerPointParsed,
-  type CompilerPointParsedValid,
-} from '@point0/compiler'
+import { END_POINT_TYPES, Walker, CompilerPoint } from '@point0/compiler'
 
 type ChangeCollectedPointsEvent = {
-  deleted: CompilerPointParsed[]
-  added: CompilerPointParsed[]
-  points: CompilerPointParsed[]
+  deleted: CompilerPoint[]
+  added: CompilerPoint[]
+  points: CompilerPoint[]
   changed: boolean
   errors: unknown[]
 }
@@ -75,8 +69,8 @@ export class FilesGenerator {
   readonly pointsFilesChangeWatchers: FilesGeneratorPointsFilesChangeWatcher[] = []
 
   private readonly files = new Set<string>()
-  private readonly points: CompilerPointParsed[] = []
-  private readonly pointsByPaths = new Map<string, CompilerPointParsed[]>()
+  private readonly points: CompilerPoint[] = []
+  private readonly pointsByPaths = new Map<string, CompilerPoint[]>()
 
   // Map<outputAbs, content>
   private readonly lastEmittedContentMap = new Map<string, string>()
@@ -219,13 +213,19 @@ export class FilesGenerator {
     const walker = new Walker({ routes: this.routes })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
-        const pointsArrays = await Promise.all(chunk.map(async (file) => await walker.collectPointsFromFile({ file })))
+        const pointsArrays = await Promise.all(chunk.map(async (file) => walker.collectPointsFromFile({ file })))
         return pointsArrays.flat()
       }),
     )
     const errors = collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.errors))
     const collectedPoints = await Promise.all(
-      collectedChunks.flatMap((chunk) => chunk.flatMap((p) => p.points.map(async (point) => await point.parse()))),
+      collectedChunks.flatMap((chunk) =>
+        chunk.flatMap((p) =>
+          p.points.map(async (point) => {
+            return point.parse()
+          }),
+        ),
+      ),
     )
 
     const invalidPoints = collectedPoints.filter((p) => !p.valid)
@@ -429,12 +429,12 @@ export class FilesGenerator {
     outputAbs,
     target,
   }: {
-    points: CompilerPointParsedValid[]
+    points: Array<CompilerPoint<true>>
     outputAbs: string
     target: FilesGeneratorTarget
   }): {
     importLines: string[]
-    importedPoints: Array<CompilerPointParsedValid & { index: number; renamedExportName: string }>
+    importedPoints: Array<{ point: CompilerPoint; index: number; renamedExportName: string }>
     // rootSingleReexportLine: string // for lazy points file
     rootSingleImportLine: string | null // for lazy points file
     hasNotRootPoints: boolean
@@ -470,7 +470,7 @@ export class FilesGenerator {
         importPathsAndExportNames.push({ importPath, exports: [newItem], hasRoot: point.type === 'root' })
       }
       return {
-        ...point,
+        point,
         index,
         renamedExportName,
       }
@@ -492,7 +492,7 @@ export class FilesGenerator {
         rootSingleImportLine = `import { ${rootImportPathAndExportName.originalExportName} as ${rootImportPathAndExportName.renamedExportName} } from '${importPathAndExportNames.importPath}'`
       }
     }
-    const hasNotRootPoints = importedPoints.some((p) => p.type !== 'root')
+    const hasNotRootPoints = importedPoints.some((p) => p.point.type !== 'root')
     return { importLines, importedPoints, rootSingleImportLine, hasNotRootPoints }
   }
 
@@ -500,7 +500,7 @@ export class FilesGenerator {
     if (!target.outputPointsLazyAbs) {
       throw new Error('outputPointsLazyAbs is not set')
     }
-    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as CompilerPointParsedValid[]
+    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
     const lines: string[] = []
     if (target.banner) {
       lines.push(target.banner)
@@ -527,12 +527,12 @@ export class FilesGenerator {
     if (points.length === 0) {
       lines.push(`export {}`)
     } else {
-      for (const point of importedPoints) {
+      for (const { point, renamedExportName } of importedPoints) {
         if (point.type === 'root') {
-          lines.push(`export const _${point.renamedExportName} = root`)
+          lines.push(`export const _${renamedExportName} = root`)
           continue
         }
-        lines.push(`export const _${point.renamedExportName} = {`)
+        lines.push(`export const _${renamedExportName} = {`)
         lines.push(`  type: '${point.type}',`)
         lines.push(`  name: '${point.name}',`)
         if (point.route) {
@@ -563,7 +563,7 @@ export class FilesGenerator {
       throw new Error('outputReadyAbs is not set')
     }
 
-    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as CompilerPointParsedValid[]
+    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
 
     if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
       throw new Error(`Root point not found for target ${target.scope}`)
@@ -588,13 +588,11 @@ export class FilesGenerator {
       lines.push(`export {}`)
     } else {
       lines.push(``)
-      for (const point of importedPoints) {
+      for (const { point, renamedExportName } of importedPoints) {
         if (point.type === 'root') {
-          lines.push(`export const _${point.renamedExportName} = ${point.renamedExportName}`)
+          lines.push(`export const _${renamedExportName} = ${renamedExportName}`)
         } else {
-          lines.push(
-            `export const _${point.renamedExportName} = ${point.renamedExportName} as RawPointsCollectionRecord`,
-          )
+          lines.push(`export const _${renamedExportName} = ${renamedExportName} as RawPointsCollectionRecord`)
         }
         lines.push(``)
       }
@@ -749,15 +747,15 @@ export class FilesGenerator {
   // utils
 
   private static getCollectedPointsDiff(
-    prevPoints: CompilerPointParsed[],
-    newPoints: CompilerPointParsed[],
+    prevPoints: CompilerPoint[],
+    newPoints: CompilerPoint[],
   ): {
-    deleted: CompilerPointParsed[]
-    added: CompilerPointParsed[]
+    deleted: CompilerPoint[]
+    added: CompilerPoint[]
     changed: boolean
   } {
-    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => CompilerPoint.isSameParsedPoints(p, cp)))
-    const added = newPoints.filter((p) => !prevPoints.some((cp) => CompilerPoint.isSameParsedPoints(p, cp)))
+    const deleted = prevPoints.filter((p) => !newPoints.some((cp) => CompilerPoint.isGenerallySamePoint(p, cp)))
+    const added = newPoints.filter((p) => !prevPoints.some((cp) => CompilerPoint.isGenerallySamePoint(p, cp)))
     const changed = added.length > 0 || deleted.length > 0
     return { deleted, added, changed }
   }
@@ -782,13 +780,13 @@ export class FilesGenerator {
 
   // wathcer
 
-  getCollectedPointsRelatedToPath(path: string): CompilerPointParsed[] {
+  getCollectedPointsRelatedToPath(path: string): CompilerPoint[] {
     const exactPoints = this.pointsByPaths.get(path)
     if (exactPoints) {
       return exactPoints
     }
     const pointsPaths = Array.from(this.pointsByPaths.keys())
-    const result: CompilerPointParsed[] = []
+    const result: CompilerPoint[] = []
     for (const pointPath of pointsPaths) {
       if (pointPath.startsWith(path)) {
         const points = this.pointsByPaths.get(pointPath)

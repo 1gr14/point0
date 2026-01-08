@@ -169,7 +169,7 @@ export class Walker {
     })
 
     try {
-      const file = fileIdle.readSync(!content)
+      const file = fileIdle.readSync(!content) // we do not read fresh file if content was provided to not loose modifications
 
       if (file.allPointsWasCollected) {
         return { points: file.getCollectedPoints(), errors, file, ok: true }
@@ -276,15 +276,14 @@ export class Walker {
       // Example: In root.lets('page', 'mypage'), this returns false (base is "root", not "Point0")
       // Identifier: The base must be a simple identifier name (not a computed property or expression)
       // Also verify that Point0 was imported from '@point0/core' to ensure it's the real Point0
-      const isBasePoint0 =
-        baseNodePath.node.type === 'Identifier' &&
-        baseNodePath.node.name === 'Point0' &&
-        this.isIdentifierImportedNamedFromPackage({
-          identifierNodePath: baseNodePath,
-          file,
-          packageName: '@point0/core',
-          importedName: 'Point0',
-        })
+      const isBasePoint0 = baseNodePath.node.type === 'Identifier' && baseNodePath.node.name === 'Point0'
+      //  &&
+      // this.isIdentifierImportedNamedFromPackage({
+      //   identifierNodePath: baseNodePath,
+      //   file,
+      //   packageName: '@point0/core',
+      //   importedName: 'Point0',
+      // })
 
       // Extract how the point was exported (if it was exported)
       // Example: export const root = Point0.lets(...) → exportName = "root"
@@ -335,13 +334,14 @@ export class Walker {
       const point = new CompilerPoint({
         walker: this,
         file,
-        pointType,
-        pointName,
+        type: pointType,
+        name: pointName,
         exportName,
         baseNodePath,
         letsNodePath,
         isBasePoint0,
       })
+      point.parse()
 
       return { point, errors }
     } catch (e) {
@@ -623,54 +623,54 @@ export class Walker {
   // Example: import { anything } from 'any-package' → returns true for anything identifier
   // Example: const Point0 = something → returns false (not imported from package)
   // Because: We need to verify that an identifier is actually imported from a specific package and not just a variable with the same name
-  private isIdentifierImportedNamedFromPackage({
-    identifierNodePath,
-    file,
-    packageName,
-    importedName,
-  }: {
-    identifierNodePath: NodePath<Node>
-    file: CompilerFile<true>
-    packageName: string
-    importedName: string
-  }): boolean {
-    // Must be an Identifier node
-    if (identifierNodePath.node.type !== 'Identifier') {
-      return false
-    }
+  // private isIdentifierImportedNamedFromPackage({
+  //   identifierNodePath,
+  //   file,
+  //   packageName,
+  //   importedName,
+  // }: {
+  //   identifierNodePath: NodePath<Node>
+  //   file: CompilerFile<true>
+  //   packageName: string
+  //   importedName: string
+  // }): boolean {
+  //   // Must be an Identifier node
+  //   if (identifierNodePath.node.type !== 'Identifier') {
+  //     return false
+  //   }
 
-    const identifierName = identifierNodePath.node.name
+  //   const identifierName = identifierNodePath.node.name
 
-    // Search for ImportDeclaration nodes in the file's AST
-    let isImportedFromPackage = false
-    traverse(file.ast, {
-      ImportDeclaration: (p) => {
-        // Check if this import is from the specified package
-        const importSource = p.node.source.value
-        if (typeof importSource !== 'string' || importSource !== packageName) {
-          return
-        }
+  //   // Search for ImportDeclaration nodes in the file's AST
+  //   let isImportedFromPackage = false
+  //   traverse(file.ast, {
+  //     ImportDeclaration: (p) => {
+  //       // Check if this import is from the specified package
+  //       const importSource = p.node.source.value
+  //       if (typeof importSource !== 'string' || importSource !== packageName) {
+  //         return
+  //       }
 
-        // Check all import specifiers for named imports only
-        for (const spec of p.node.specifiers) {
-          // Named import - import { importedName } from 'packageName'
-          if (spec.type === 'ImportSpecifier') {
-            const specImportedName = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value
-            const localName = spec.local.name
+  //       // Check all import specifiers for named imports only
+  //       for (const spec of p.node.specifiers) {
+  //         // Named import - import { importedName } from 'packageName'
+  //         if (spec.type === 'ImportSpecifier') {
+  //           const specImportedName = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value
+  //           const localName = spec.local.name
 
-            // Check if the local name matches our identifier and it's imported with the expected name
-            if (localName === identifierName && specImportedName === importedName) {
-              isImportedFromPackage = true
-              p.stop() // Stop traversal once we found a match
-              return
-            }
-          }
-        }
-      },
-    })
+  //           // Check if the local name matches our identifier and it's imported with the expected name
+  //           if (localName === identifierName && specImportedName === importedName) {
+  //             isImportedFromPackage = true
+  //             p.stop() // Stop traversal once we found a match
+  //             return
+  //           }
+  //         }
+  //       }
+  //     },
+  //   })
 
-    return isImportedFromPackage
-  }
+  //   return isImportedFromPackage
+  // }
 
   // Helper: Check if a node is a .lets() call expression
   // Example: isLetsCallExpression({ node: Point0.lets('root', 'myroot') }) → true

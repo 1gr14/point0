@@ -58,8 +58,6 @@ describe('Walker', () => {
         expect(result.points[0].simplify()).toMatchObject({
           file: file.basename,
           exportName: 'myrootvariable',
-          baseNodePath: true,
-          letsNodePath: true,
           isBasePoint0: true,
         })
       }),
@@ -77,20 +75,16 @@ describe('Walker', () => {
         expect(result.points).toHaveLength(2)
         expect(result.points[0].simplify()).toMatchObject({
           file: file.basename,
-          pointType: 'root',
-          pointName: 'myroot',
+          type: 'root',
+          name: 'myroot',
           exportName: 'myrootvariable',
-          baseNodePath: true,
-          letsNodePath: true,
           isBasePoint0: true,
         })
         expect(result.points[1].simplify()).toMatchObject({
           file: file.basename,
-          pointType: 'page',
-          pointName: 'mypage',
+          type: 'page',
+          name: 'mypage',
           exportName: 'mypagevariable',
-          baseNodePath: true,
-          letsNodePath: true,
           isBasePoint0: false,
         })
 
@@ -98,7 +92,7 @@ describe('Walker', () => {
         expect(parents1.errors).toHaveLength(0)
         expect(parents1.parents).toHaveLength(1)
         expect(parents1.parents[0].simplify()).toMatchObject({
-          pointName: 'myroot',
+          name: 'myroot',
         })
       }),
     )
@@ -116,11 +110,9 @@ describe('Walker', () => {
         expect(result.points).toHaveLength(1)
         expect(result.points[0].simplify()).toMatchObject({
           file: file1.basename,
-          pointType: 'page',
-          pointName: 'mypage',
+          type: 'page',
+          name: 'mypage',
           exportName: 'mypagevariable',
-          baseNodePath: true,
-          letsNodePath: true,
           isBasePoint0: false,
         })
 
@@ -128,7 +120,7 @@ describe('Walker', () => {
         expect(parents2.errors).toHaveLength(0)
         expect(parents2.parents).toHaveLength(1)
         expect(parents2.parents[0].simplify()).toMatchObject({
-          pointName: 'myroot',
+          name: 'myroot',
         })
       }),
     )
@@ -168,8 +160,8 @@ describe('Walker', () => {
           },
           {
             exportName: 'componentV',
-            pointType: 'component',
-            pointName: 'componentN',
+            type: 'component',
+            name: 'componentN',
           },
           {
             exportName: 'mutationV',
@@ -196,19 +188,19 @@ describe('Walker', () => {
         expect(parents5.parents).toHaveLength(5)
         expect(parents5.parents.map((p) => p.extraSimplify())).toMatchObject([
           {
-            pointName: 'componentN',
+            name: 'componentN',
           },
           {
-            pointName: 'layoutN',
+            name: 'layoutN',
           },
           {
-            pointName: 'pageN',
+            name: 'pageN',
           },
           {
-            pointName: 'rootN2',
+            name: 'rootN2',
           },
           {
-            pointName: 'rootN',
+            name: 'rootN',
           },
         ])
       }),
@@ -257,8 +249,8 @@ describe('Walker', () => {
           {
             exportName: 'baseV',
             file: f9.basename,
-            pointType: 'base',
-            pointName: 'baseN',
+            type: 'base',
+            name: 'baseN',
           },
         ])
 
@@ -267,31 +259,31 @@ describe('Walker', () => {
         expect(parents0.parents).toHaveLength(9)
         expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
           {
-            pointName: 'providerN',
+            name: 'providerN',
           },
           {
-            pointName: 'infiniteQueryN',
+            name: 'infiniteQueryN',
           },
           {
-            pointName: 'queryN',
+            name: 'queryN',
           },
           {
-            pointName: 'mutationN',
+            name: 'mutationN',
           },
           {
-            pointName: 'componentN',
+            name: 'componentN',
           },
           {
-            pointName: 'layoutN',
+            name: 'layoutN',
           },
           {
-            pointName: 'pageN',
+            name: 'pageN',
           },
           {
-            pointName: 'rootN2',
+            name: 'rootN2',
           },
           {
-            pointName: 'rootN',
+            name: 'rootN',
           },
         ])
       }),
@@ -321,7 +313,7 @@ describe('Walker', () => {
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents[0].simplify()).toMatchObject({
-          pointName: 'root',
+          name: 'root',
         })
       }),
     )
@@ -351,7 +343,7 @@ describe('Walker', () => {
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
           {
-            pointName: 'root',
+            name: 'root',
           },
         ])
       }),
@@ -382,7 +374,7 @@ describe('Walker', () => {
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents[0].simplify()).toMatchObject({
-          pointName: 'root',
+          name: 'root',
         })
       }),
     )
@@ -391,14 +383,14 @@ describe('Walker', () => {
       'can recognize nested points in different files, when base was imported, renamed twice, exported',
       helper(async ({ files: [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
-                      export const root = Point0.lets('root', 'root').root()                      
+                      export const root = Point0.lets('root', 'root').ctx({}).loader(() => ({})).root()                      
         `)
         await f1.write(`import {root} from '${f0.importpath}'
                         export const root2 = root
                         export const root3 = root2
         `)
         await f2.write(`import {root3} from '${f1.importpath}'
-                      export const page = root3.lets('page', 'page').page(() => <div>Hello</div>)
+                      export const page = root3.lets('page', 'page').ctx({}).clientLoader(() => ({})).page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: f2.path })
         expect(result.errors).toHaveLength(0)
@@ -406,6 +398,58 @@ describe('Walker', () => {
         expect(result.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'page',
+            selfMethods: [
+              {
+                index: 0,
+                name: 'ctx',
+              },
+              {
+                index: 1,
+                name: 'clientLoader',
+              },
+              {
+                index: 2,
+                name: 'page',
+              },
+            ],
+            chainMethods: [
+              {
+                index: 0,
+                chainIndex: 0,
+                name: 'ctx',
+                point: 'root',
+              },
+              {
+                index: 1,
+                chainIndex: 1,
+                name: 'loader',
+                point: 'root',
+              },
+              {
+                index: 2,
+                chainIndex: 2,
+                name: 'root',
+                point: 'root',
+              },
+              {
+                index: 0,
+                chainIndex: 3,
+                name: 'ctx',
+                point: 'page',
+              },
+              {
+                index: 1,
+                chainIndex: 4,
+                name: 'clientLoader',
+                point: 'page',
+              },
+              {
+                index: 2,
+                chainIndex: 5,
+                name: 'page',
+                point: 'page',
+              },
+            ],
           },
         ])
 
@@ -413,7 +457,7 @@ describe('Walker', () => {
         expect(parents0.errors).toHaveLength(0)
         expect(parents0.parents).toHaveLength(1)
         expect(parents0.parents[0].extraSimplify()).toMatchObject({
-          pointName: 'root',
+          name: 'root',
         })
       }),
     )
@@ -505,8 +549,8 @@ describe('Walker', () => {
         expect(resultFirst.points.map((p) => p.simplify())).toMatchObject([
           {
             exportName: 'mutationV',
-            pointType: 'mutation',
-            pointName: 'mutationN',
+            type: 'mutation',
+            name: 'mutationN',
           },
         ])
         expect(resultFirst.points[0].simplify()).toMatchObject(resultLast.points[0].simplify())
@@ -516,19 +560,19 @@ describe('Walker', () => {
         expect(parents0.parents).toHaveLength(5)
         expect(parents0.parents.map((p) => p.extraSimplify())).toMatchObject([
           {
-            pointName: 'componentN',
+            name: 'componentN',
           },
           {
-            pointName: 'layoutN',
+            name: 'layoutN',
           },
           {
-            pointName: 'pageN',
+            name: 'pageN',
           },
           {
-            pointName: 'rootN2',
+            name: 'rootN2',
           },
           {
-            pointName: 'rootN',
+            name: 'rootN',
           },
         ])
       }),

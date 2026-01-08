@@ -2,9 +2,9 @@ import { Route0, Routes } from '@devp0nt/route0'
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import type { CompilerPointParsed } from '../src/point.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
+import type { CompilerPoint } from '../src/point.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
@@ -48,12 +48,9 @@ describe('CompilerPoint', () => {
   })
 
   describe.concurrent('#parse', () => {
-    const fix = (parsed: CompilerPointParsed) => {
-      const { file, original, route, ...rest } = parsed
-      return {
-        ...rest,
-        route: route ? route.definition : undefined,
-      }
+    const fix = (point: CompilerPoint) => {
+      const simplified = point.simplify()
+      return simplified
     }
     it.concurrent(
       'root point',
@@ -65,6 +62,7 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
         expect(result.errors).toHaveLength(0)
         const parsed = result.points[0].parse()
         expect(fix(parsed)).toMatchObject({
+          file: expect.any(String),
           valid: true,
           scope: 'myroot',
           scopes: ['myroot'],
@@ -78,6 +76,19 @@ export const myrootvariable = Point0.lets('root', 'myroot').root()
             line: 2,
             column: 30,
           },
+          chainMethods: [
+            {
+              index: 0,
+              name: 'root',
+              point: 'myroot',
+            },
+          ],
+          selfMethods: [
+            {
+              index: 0,
+              name: 'root',
+            },
+          ],
           errors: [],
         })
       }),
@@ -111,11 +122,12 @@ export const mypagevariable = myrootvariable.lets('page', 'mypage').z().x().c().
       }),
     )
 
-    const fix1 = (parsed: CompilerPointParsed) => {
+    const fix1 = (point: CompilerPoint) => {
+      const simplified = point.simplify()
       return {
-        valid: parsed.valid,
-        name: parsed.name,
-        route: parsed.route ? parsed.route.definition : undefined,
+        valid: simplified.valid,
+        name: simplified.name,
+        route: simplified.route,
       }
     }
 
@@ -144,7 +156,7 @@ export const p5 = myrootvariable.lets('page', 'p5', routes.r5).page(() => <div>H
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
+        const parsed = result.points.filter((p) => p.type === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -200,7 +212,7 @@ export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
+        const parsed = result.points.filter((p) => p.type === 'page').map((p) => fix1(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p1',
@@ -261,28 +273,29 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix1(p.parse()))
-        expect(parsed[0]).toMatchObject({
+        const parsed = result.points.filter((p) => p.type === 'page')
+        const fixed = parsed.map((p) => fix1(p))
+        expect(fixed[0]).toMatchObject({
           valid: true,
           name: 'p1',
           route: '/l3/o/k/l',
         })
-        expect(parsed[1]).toMatchObject({
+        expect(fixed[1]).toMatchObject({
           valid: true,
           name: 'p2',
           route: '/l3/o/k/l/r2',
         })
-        expect(parsed[2]).toMatchObject({
+        expect(fixed[2]).toMatchObject({
           valid: true,
           name: 'p3',
           route: '/l3/o/k/l/r3',
         })
-        expect(parsed[3]).toMatchObject({
+        expect(fixed[3]).toMatchObject({
           valid: true,
           name: 'p4',
           route: '/r4',
         })
-        expect(parsed[4]).toMatchObject({
+        expect(fixed[4]).toMatchObject({
           valid: true,
           name: 'p5',
           route: '/r5',
@@ -290,11 +303,11 @@ export const p5 = l6.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
       }),
     )
 
-    const fix2 = (parsed: CompilerPointParsed) => {
+    const fix2 = (point: CompilerPoint) => {
       return {
-        valid: parsed.valid,
-        name: parsed.name,
-        layouts: parsed.layouts,
+        valid: point.valid,
+        name: point.name,
+        layouts: point.layouts,
       }
     }
 
@@ -322,7 +335,7 @@ export const p3 = l3.lets('page', 'p3', '/r3').page(() => <div>Hello</div>)
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'page').map((p) => fix2(p.parse()))
+        const parsed = result.points.filter((p) => p.type === 'page').map((p) => fix2(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'p0',
@@ -366,7 +379,7 @@ export const l3 = b2.lets('layout', 'l3').layout()
         `)
         const result = walker.collectPointsFromFile({ file: file.path })
         expect(result.errors).toHaveLength(0)
-        const parsed = result.points.filter((p) => p.pointType === 'layout').map((p) => fix2(p.parse()))
+        const parsed = result.points.filter((p) => p.type === 'layout').map((p) => fix2(p.parse()))
         expect(parsed[0]).toMatchObject({
           valid: true,
           name: 'l1',
@@ -385,11 +398,11 @@ export const l3 = b2.lets('layout', 'l3').layout()
       }),
     )
 
-    const fix3 = (parsed: CompilerPointParsed) => {
+    const fix3 = (point: CompilerPoint) => {
       return {
-        valid: parsed.valid,
-        name: parsed.name,
-        polh: parsed.polh,
+        valid: point.valid,
+        name: point.name,
+        polh: point.polh,
       }
     }
 
@@ -472,12 +485,12 @@ export const root1 = Point0.lets('root', 'root1')
       }),
     )
 
-    const fix4 = (parsed: CompilerPointParsed) => {
+    const fix4 = (point: CompilerPoint) => {
       return {
-        valid: parsed.valid,
-        name: parsed.name,
-        scope: parsed.scope,
-        scopes: parsed.scopes,
+        valid: point.valid,
+        name: point.name,
+        scope: point.scope,
+        scopes: point.scopes,
       }
     }
 

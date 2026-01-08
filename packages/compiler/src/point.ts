@@ -8,24 +8,73 @@ import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
 
-export class CompilerPoint {
+// export type CompilerPointParsedValid = {
+//   scope: PointsScope
+//   scopes: PointsScope[]
+//   type: EndPointType
+//   name: PointName
+//   exportName: string
+//   route: AnyRoute | undefined
+//   polh: boolean | number
+//   layouts: string[]
+//   pos: CompilerPointParsedPos
+//   errors: unknown[]
+//   strpos: string
+//   valid: true
+//   file: CompilerFile<true>
+//   original: CompilerPoint
+// }
+// export type CompilerPointParsedInvalid = {
+//   scope: PointsScope | undefined
+//   scopes: PointsScope[]
+//   type: EndPointType
+//   name: PointName
+//   exportName: string | undefined
+//   route: AnyRoute | undefined
+//   polh: boolean | number | undefined
+//   layouts: string[]
+//   pos: CompilerPointParsedPos
+//   strpos: string | undefined
+//   errors: unknown[]
+//   valid: false
+//   file: CompilerFile<true>
+//   original: CompilerPoint
+// }
+
+export class CompilerPoint<TValid extends boolean = any> {
   readonly walker: Walker
   file: CompilerFile<true>
-  readonly pointType: EndPointType
-  readonly pointName: PointName
-  readonly exportName: string | undefined
+  readonly exportName: TValid extends true ? string : string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
 
-  parents: CompilerPoint[] | undefined
-  parent: CompilerPoint | null | undefined
+  parents: CompilerPoint[]
+  selfMethods: Array<{ nodePath: NodePath<Node>; name: string; index: number }>
+  chainMethods: Array<{
+    nodePath: NodePath<Node>
+    name: string
+    index: number
+    chainIndex: number
+    point: CompilerPoint
+  }>
+
+  scope: TValid extends true ? PointsScope : PointsScope | undefined
+  scopes: PointsScope[]
+  type: EndPointType
+  name: PointName
+  route: AnyRoute | undefined
+  polh: TValid extends true ? boolean | number : boolean | number | undefined
+  layouts: string[]
+  errors: unknown[]
+  valid: TValid extends true ? true : false
+  parsed: boolean
 
   constructor({
     walker,
     file,
-    pointType,
-    pointName,
+    type,
+    name,
     exportName,
     baseNodePath,
     letsNodePath,
@@ -33,8 +82,8 @@ export class CompilerPoint {
   }: {
     walker: Walker
     file: CompilerFile<true>
-    pointType: EndPointType
-    pointName: PointName
+    type: EndPointType
+    name: PointName
     exportName: string | undefined
     baseNodePath: NodePath<Node>
     letsNodePath: NodePath<Node>
@@ -42,19 +91,40 @@ export class CompilerPoint {
   }) {
     this.walker = walker
     this.file = file
-    this.pointType = pointType
-    this.pointName = pointName
-    this.exportName = exportName
+    this.exportName = exportName as TValid extends true ? string : string | undefined
     this.baseNodePath = baseNodePath
     this.letsNodePath = letsNodePath
     this.isBasePoint0 = isBasePoint0
-    this.parents = undefined
-    this.parent = undefined
+    this.parents = []
+
+    this.scope = undefined as TValid extends true ? PointsScope : PointsScope | undefined
+    this.scopes = []
+    this.type = type
+    this.name = name
+    this.route = undefined as AnyRoute | undefined
+    this.polh = undefined as TValid extends true ? boolean | number : boolean | number | undefined
+    this.layouts = []
+    this.errors = []
+    this.valid = false as TValid extends true ? true : false
+    this.parsed = false
+    this.selfMethods = []
+    this.chainMethods = []
+
     file.addPointToMemory(this)
   }
 
   get stale(): boolean {
     return this.file.stale
+  }
+
+  get pos(): TValid extends true ? CompilerPointParsedPos : CompilerPointParsedPos | undefined {
+    return this.letsNodePath.node.loc?.start
+      ? {
+          file: this.file.abs,
+          line: this.letsNodePath.node.loc.start.line,
+          column: this.letsNodePath.node.loc.start.column,
+        }
+      : (undefined as TValid extends true ? CompilerPointParsedPos : CompilerPointParsedPos | undefined)
   }
 
   get strpos(): string {
@@ -65,14 +135,9 @@ export class CompilerPoint {
     return points.some((point) => point.stale)
   }
 
-  // pruneMemory() {
-  //   this.parents = undefined
-  //   this.parent = undefined
-  // }
-
-  getEarliestParentOrSelf({ parents }: { parents: CompilerPoint[] }): CompilerPoint {
-    if (parents.length > 0) {
-      return parents[parents.length - 1]
+  getEarliestParentOrSelf(): CompilerPoint {
+    if (this.parents.length > 0) {
+      return this.parents[this.parents.length - 1]
     }
     return this
   }
@@ -97,40 +162,40 @@ export class CompilerPoint {
     return letsPosition
   }
 
-  getScopes({ parents }: { parents: CompilerPoint[] }): PointsScope[] {
+  getScopes(): PointsScope[] {
     const scopes: PointsScope[] = []
-    for (const point of [this, ...parents]) {
-      if (point.pointType === 'root') {
-        scopes.push(point.pointName)
+    for (const point of [this, ...this.parents]) {
+      if (point.type === 'root') {
+        scopes.push(point.name)
       }
     }
     return scopes.reverse()
   }
 
-  getRoute({ scope, parents }: { scope: string; parents: CompilerPoint[] }): {
+  getRoute({ scope }: { scope: string }): {
     errors: unknown[]
     route: AnyRoute | undefined
   } {
     const errors: unknown[] = []
-    if (!['page', 'layout'].includes(this.pointType)) {
+    if (!['page', 'layout'].includes(this.type)) {
       return { errors, route: undefined }
     }
 
     // Go through self and parents (from child to parent)
     // getSelfAndParents() returns [this, ...this.parents] (child first)
-    const points = [this, ...parents].reverse()
+    const points = [this, ...this.parents].reverse()
     const routeSegments: string[] = []
 
     // Process from child to parent (as returned by getSelfAndParents)
     for (const point of points) {
-      if (!['page', 'layout'].includes(point.pointType)) {
+      if (!['page', 'layout'].includes(point.type)) {
         continue
       }
 
       const routeInfo = this.extractRouteFromLetsCall({
         letsNodePath: point.letsNodePath,
-        pointType: point.pointType,
-        pointName: point.pointName,
+        pointType: point.type,
+        pointName: point.name,
         scope,
       })
       errors.push(...routeInfo.errors)
@@ -253,10 +318,10 @@ export class CompilerPoint {
     return { routeSegment: undefined, routeFull: undefined, errors }
   }
 
-  getPrefetchOnLinkHover({ parents }: { parents: CompilerPoint[] }): boolean | number {
+  getPrefetchOnLinkHover(): boolean | number {
     // Go through self and parents (from child to parent)
     // Return the first prefetchOnLinkHover value found, or undefined if none found
-    const points = [this, ...parents]
+    const points = [this, ...this.parents]
 
     for (const point of points) {
       const result = this.findPrefetchOnHoverInChain(point.letsNodePath)
@@ -308,11 +373,11 @@ export class CompilerPoint {
     return undefined
   }
 
-  getLayouts({ parents }: { parents: CompilerPoint[] }): string[] {
+  getLayouts(): string[] {
     const layouts: string[] = []
-    for (const point of [...parents]) {
-      if (point.pointType === 'layout') {
-        layouts.push(point.pointName)
+    for (const point of [...this.parents]) {
+      if (point.type === 'layout') {
+        layouts.push(point.name)
       }
     }
     return [...layouts].reverse()
@@ -321,85 +386,96 @@ export class CompilerPoint {
   simplify(): CompilerPointSimplified {
     return {
       file: nodeFsPath.basename(this.file.abs, nodeFsPath.extname(this.file.abs)),
-      pointType: this.pointType,
-      pointName: this.pointName,
+      route: this.route ? this.route.definition : undefined,
+      valid: this.valid,
+      type: this.type,
+      name: this.name,
+      scopes: this.scopes,
+      scope: this.scope,
+      pos: this.pos,
+      polh: this.polh,
+      layouts: this.layouts,
+      errors: this.errors.map((e: unknown) => (e instanceof Error ? e.message : String(e))),
       exportName: this.exportName,
-      baseNodePath: !!this.baseNodePath,
-      letsNodePath: !!this.letsNodePath,
       isBasePoint0: this.isBasePoint0,
+      parents: this.parents.map((p) => p.extraSimplify()),
+      selfMethods: this.selfMethods.map((m) => ({ name: m.name, index: m.index })),
+      chainMethods: this.chainMethods.map((m) => ({
+        name: m.name,
+        index: m.index,
+        chainIndex: m.chainIndex,
+        point: m.point.name,
+      })),
     }
   }
 
   extraSimplify(): CompilerPointExtraSimplified {
     return {
       file: this.file.abs,
-      pointName: this.pointName,
+      name: this.name,
     }
   }
 
-  private readonly _parse: CompilerPointParsed | undefined = undefined
-  parse(): CompilerPointParsed {
-    if (this._parse) {
-      return this._parse
+  parse(): CompilerPoint {
+    if (this.parsed) {
+      return this
     }
-    const errors: unknown[] = []
-    const parentsResult = this.walker.collectParentPointsByPoint({ point: this })
-    errors.push(...parentsResult.errors)
-    const parents = parentsResult.parents
-    const scopes = this.getScopes({ parents })
-    const scope = scopes.at(-1)
-    if (!scope) {
-      errors.push(new Error('Scope not found. Looks like point not attached to any scope.'))
-    }
-    const exportName = this.exportName
-    if (!exportName) {
-      errors.push(new Error('Point not exported. Please, add export to the point.'))
-    }
-    const pos = this.getLetsPosition()
-    if (!pos) {
-      errors.push(new Error('Point position not found. We do not know what to do...'))
-    }
-    const { route, errors: routeErrors } = scope ? this.getRoute({ scope, parents }) : { route: undefined, errors: [] }
-    errors.push(...routeErrors)
-    const polh = this.getPrefetchOnLinkHover({ parents })
-    const layouts = this.getLayouts({ parents })
-    const methods = this.getMethods()
-    const lastCalledMethodName = methods.at(-1)?.name
-    if (lastCalledMethodName !== this.pointType) {
-      errors.push(
-        new Error(
-          `Last called method name '${lastCalledMethodName || typeof lastCalledMethodName}' does not match point type '${this.pointType}'. Please, use .${this.pointType}() in end of point chain`,
-        ),
-      )
-    }
-    const earliestPoint = this.getEarliestParentOrSelf({ parents })
-    // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
-    if (!earliestPoint.isBasePoint0) {
-      errors.push(
-        new Error(`Earliest point is not related to Point0. It is strange. Check it please: ${earliestPoint.strpos}`),
-      )
-    }
-    const valid = !errors.length
+    try {
+      const parentsResult = this.walker.collectParentPointsByPoint({ point: this })
+      this.errors.push(...parentsResult.errors)
+      this.parents = parentsResult.parents
 
-    return {
-      scope,
-      scopes,
-      type: this.pointType,
-      name: this.pointName,
-      exportName,
-      route,
-      polh,
-      layouts,
-      pos,
-      strpos: this.strpos,
-      errors,
-      valid,
-      file: this.file,
-      original: this,
-    } as CompilerPointParsedValid | CompilerPointParsedInvalid
+      this.scopes = this.getScopes()
+      this.scope = this.scopes.at(-1) as TValid extends true ? PointsScope : PointsScope | undefined
+      if (!this.scope) {
+        this.errors.push(new Error('Scope not found. Looks like point not attached to any scope.'))
+      }
+      if (!this.exportName) {
+        this.errors.push(new Error('Point not exported. Please, add export to the point.'))
+      }
+
+      if (!this.pos) {
+        this.errors.push(new Error('Point position not found. We do not know what to do...'))
+      }
+
+      const { route, errors: routeErrors } = this.scope
+        ? this.getRoute({ scope: this.scope })
+        : { route: undefined, errors: [] }
+      this.route = route
+      this.errors.push(...routeErrors)
+      this.polh = this.getPrefetchOnLinkHover()
+      this.layouts = this.getLayouts()
+      this.selfMethods = this.getSelfMethods()
+
+      const lastCalledMethodName = this.selfMethods.at(-1)?.name
+      if (lastCalledMethodName !== this.type) {
+        this.errors.push(
+          new Error(
+            `Last called method name '${lastCalledMethodName || typeof lastCalledMethodName}' does not match point type '${this.type}'. Please, use .${this.type}() in end of point chain`,
+          ),
+        )
+      }
+
+      const earliestPoint = this.getEarliestParentOrSelf()
+      // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
+      if (!earliestPoint.isBasePoint0) {
+        this.errors.push(
+          new Error(`Earliest point is not related to Point0. It is strange. Check it please: ${earliestPoint.strpos}`),
+        )
+      }
+      this.chainMethods = this.getChainMethods()
+
+      this.valid = !this.errors.length as TValid extends true ? true : false
+      this.parsed = true
+    } catch (e) {
+      this.errors.push(e)
+      this.valid = false as TValid extends true ? true : false
+      this.parsed = true
+    }
+    return this
   }
 
-  static isSameParsedPoints(a: CompilerPointParsed, b: CompilerPointParsed): boolean {
+  static isGenerallySamePoint(a: CompilerPoint, b: CompilerPoint): boolean {
     return (
       a.scope === b.scope &&
       a.scopes.every((s) => b.scopes.includes(s)) &&
@@ -418,16 +494,17 @@ export class CompilerPoint {
 
   // shaker
 
-  _getMethods: Array<{ nodePath: NodePath<Node>; name: string }> | undefined = undefined
-  getMethods(): Array<{ nodePath: NodePath<Node>; name: string }> {
-    if (this._getMethods) {
-      return this._getMethods
+  private _getSelfMethods: Array<{ nodePath: NodePath<Node>; name: string; index: number }> | undefined = undefined
+  getSelfMethods(): Array<{ nodePath: NodePath<Node>; name: string; index: number }> {
+    if (this._getSelfMethods) {
+      return this._getSelfMethods
     }
     // Find all methods nodesPaths and this methods names inside this point
     // Traverse UP the AST tree (towards the ast root) to find all CallExpressions
     // Similar to getLastCalledMethodName(), but collect all methods in the chain
-    const methods: Array<{ nodePath: NodePath<Node>; name: string }> = []
+    const methods: Array<{ nodePath: NodePath<Node>; name: string; index: number }> = []
     let current: NodePath<Node> | null = this.letsNodePath.parentPath
+    let index = 0
 
     while (current) {
       // If we find a CallExpression, check if its callee is a MemberExpression
@@ -439,7 +516,9 @@ export class CompilerPoint {
           methods.push({
             nodePath: current,
             name: callee.property.name,
+            index,
           })
+          index++
         }
       }
       // Continue traversing UP the AST tree (towards the root)
@@ -452,13 +531,53 @@ export class CompilerPoint {
       }
     }
 
-    this._getMethods = methods
+    this._getSelfMethods = methods
+    this.selfMethods = methods
     return methods
+  }
+
+  private _getChainMethods:
+    | Array<{ nodePath: NodePath<Node>; name: string; index: number; chainIndex: number; point: CompilerPoint }>
+    | undefined = undefined
+  getChainMethods(): Array<{
+    nodePath: NodePath<Node>
+    name: string
+    index: number
+    chainIndex: number
+    point: CompilerPoint
+  }> {
+    if (this._getChainMethods) {
+      return this._getChainMethods
+    }
+    const chainMethods: Array<{
+      nodePath: NodePath<Node>
+      name: string
+      index: number
+      chainIndex: number
+      point: CompilerPoint
+    }> = []
+    let chainIndex = 0
+    for (const point of [this, ...this.parents].reverse()) {
+      const methods = point.getSelfMethods()
+      for (const method of methods) {
+        chainMethods.push({
+          nodePath: method.nodePath,
+          name: method.name,
+          index: method.index,
+          chainIndex,
+          point,
+        })
+        chainIndex++
+      }
+    }
+    this._getChainMethods = chainMethods
+    this.chainMethods = chainMethods
+    return chainMethods
   }
 
   private removeMethodArgs({ name }: { name: string }): void {
     // Find all method calls with the given name and remove their arguments
-    const methods = this.getMethods()
+    const methods = this.getSelfMethods()
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         // Clear all arguments
@@ -484,7 +603,7 @@ export class CompilerPoint {
 
   private removeMethodArgsIfNotBooleanLiteral({ name }: { name: string }): void {
     // Remove arguments from method calls if they're not boolean literals
-    const methods = this.getMethods()
+    const methods = this.getSelfMethods()
     for (const method of methods) {
       if (method.name === name && method.nodePath.node.type === 'CallExpression') {
         const args = method.nodePath.node.arguments
@@ -569,7 +688,7 @@ export class CompilerPoint {
     }
 
     // Get the last method call in the chain (the topmost/final CallExpression)
-    const methods = this.getMethods()
+    const methods = this.getSelfMethods()
     if (methods.length === 0) {
       this._addHmrFix = true
       return
@@ -583,8 +702,8 @@ export class CompilerPoint {
     }
 
     // Check if point type is component, layout, or page and has functional component
-    if (this.pointType === 'component' || this.pointType === 'layout' || this.pointType === 'page') {
-      const hasValidEnding = lastMethod.name === this.pointType
+    if (this.type === 'component' || this.type === 'layout' || this.type === 'page') {
+      const hasValidEnding = lastMethod.name === this.type
       const lastMethodCall = lastMethod.nodePath.node
       const firstArg = lastMethodCall.arguments.at(0)
       const alreadyHasFunctionalComponent = hasValidEnding && !!firstArg
@@ -606,7 +725,7 @@ export class CompilerPoint {
             // Example: page + home → PageHome, component + myComponent → ComponentMyComponent
 
             // Check if name exists and generate unique name if needed
-            const functionName = this.generateUniqueIdentifier(toPascalCase(this.pointType + '_' + this.pointName))
+            const functionName = this.generateUniqueIdentifier(toPascalCase(this.type + '_' + this.name))
 
             // Convert arrow function body to function body
             let body = arrowFn.body
@@ -814,47 +933,23 @@ export class CompilerPoint {
 
 export type CompilerPointSimplified = {
   file: string
-  pointType: EndPointType
-  pointName: PointName
-  exportName: string | undefined
-  baseNodePath: boolean
-  letsNodePath: boolean
-  isBasePoint0: boolean
-}
-
-export type CompilerPointExtraSimplified = Pick<CompilerPointSimplified, 'file' | 'pointName'>
-
-export type CompilerPointParsedPos = { file: string; line: number; column: number }
-export type CompilerPointParsedValid = {
-  scope: PointsScope
-  scopes: PointsScope[]
+  route: string | undefined
+  valid: boolean
   type: EndPointType
   name: PointName
-  exportName: string
-  route: AnyRoute | undefined
-  polh: boolean | number
-  layouts: string[]
-  pos: CompilerPointParsedPos
-  errors: unknown[]
-  strpos: string
-  valid: true
-  file: CompilerFile<true>
-  original: CompilerPoint
-}
-export type CompilerPointParsedInvalid = {
+  scopes: PointsScope[]
   scope: PointsScope | undefined
-  scopes: PointsScope[]
-  type: EndPointType
-  name: PointName
-  exportName: string | undefined
-  route: AnyRoute | undefined
+  pos: { column: number; line: number } | undefined
   polh: boolean | number | undefined
   layouts: string[]
-  pos: CompilerPointParsedPos
-  strpos: string | undefined
-  errors: unknown[]
-  valid: false
-  file: CompilerFile<true>
-  original: CompilerPoint
+  errors: string[]
+  exportName: string | undefined
+  isBasePoint0: boolean
+  parents: CompilerPointExtraSimplified[]
+  selfMethods: Array<{ name: string; index: number }>
+  chainMethods: Array<{ name: string; index: number; chainIndex: number; point: CompilerPointExtraSimplified['name'] }>
 }
-export type CompilerPointParsed = CompilerPointParsedValid | CompilerPointParsedInvalid
+
+export type CompilerPointExtraSimplified = Pick<CompilerPointSimplified, 'file' | 'name'>
+
+export type CompilerPointParsedPos = { file: string; line: number; column: number }
