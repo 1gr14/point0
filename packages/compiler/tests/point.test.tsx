@@ -1,9 +1,9 @@
+import { Route0, Routes } from '@devp0nt/route0'
 import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
-import { Walker } from '../src/walker.js'
-import { Route0, Routes } from '@devp0nt/route0'
 import type { CompilerPointParsed } from '../src/point.js'
+import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
@@ -236,7 +236,7 @@ export const p5 = l2.lets('page', 'p5', routes.r5).page(() => <div>Hello</div>)
     )
 
     it.concurrent(
-      'parse page point with very deep level route',
+      'page point with very deep level route',
       helper(async ({ files: [file] }) => {
         const walker = new Walker({
           cwd: tempDir,
@@ -582,8 +582,9 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).root()
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').ctx().root();"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').ctx().root()
+            "
           `)
         }),
       )
@@ -598,8 +599,9 @@ export const root = Point0.lets('root', 'root').loader(() => ({ b: 2 })).root()
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').loader().root();"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').loader().root()
+            "
           `)
         }),
       )
@@ -614,8 +616,9 @@ export const root = Point0.lets('root', 'root').loader(true).root()
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').loader(true).root();"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').loader(true).root()
+            "
           `)
         }),
       )
@@ -630,8 +633,9 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').ctx().loader().root();"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').ctx().loader().root()
+            "
           `)
         }),
       )
@@ -646,8 +650,9 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).ctx(() => 
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').ctx().ctx().root();"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').ctx().ctx().root()
+            "
           `)
         }),
       )
@@ -662,8 +667,9 @@ export const root = Point0.lets('root', 'root').loader(true).loader(() => ({ b: 
           const point = result.points[0]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').loader(true).loader().root();"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').loader(true).loader().root()
+            "
           `)
         }),
       )
@@ -676,12 +682,17 @@ export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>)
         `)
           const result = await walker.collectPointsFromFile({ file: file.path })
-          const point = result.points[0]
+          const point = result.points[1]
           point.shakeMethods({ target: 'client' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).page(() => <div>Hello</div>);"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const page = root
+              .lets('page', 'page', '/')
+              .ctx()
+              .loader()
+              .page(() => <div>Hello</div>)
+            "
           `)
         }),
       )
@@ -700,8 +711,13 @@ export const root = Point0.lets('root', 'root').root()
           const point = result.points[0]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .root()
+              ._hmr(function X() {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -716,8 +732,13 @@ export const root = Point0.lets('root', 'root').root()
           const point = result.points[0]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root()._hmr(() => {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .root()
+              ._hmr(() => {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -733,9 +754,15 @@ export const page = root.lets('page', 'page', '/').page()
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const page = root.lets('page', 'page', '/').page()._hmr(function X() {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const page = root
+              .lets('page', 'page', '/')
+              .page()
+              ._hmr(function X() {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -751,9 +778,10 @@ export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>);"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
+            "
           `)
           expect(point.file.modified).toBe(false)
         }),
@@ -770,9 +798,12 @@ export const page = root.lets('page', 'page', '/').page(function MyFunction() {r
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const page = root.lets('page', 'page', '/').page(function MyFunction() {return <div>Hello</div>;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const page = root.lets('page', 'page', '/').page(function MyFunction() {
+              return <div>Hello</div>
+            })
+            "
           `)
           expect(point.file.modified).toBe(false)
         }),
@@ -789,9 +820,12 @@ export const page = root.lets('page', 'page', '/').page(() => <div>Hello</div>)
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const page = root.lets('page', 'page', '/').page(function X() {return <div>Hello</div>;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const page = root.lets('page', 'page', '/').page(function X() {
+              return <div>Hello</div>
+            })
+            "
           `)
           expect(point.file.modified).toBe(true)
         }),
@@ -808,9 +842,12 @@ export const page = root.lets('page', 'page', '/').page(function MyFunction() {r
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const page = root.lets('page', 'page', '/').page(() => {return <div>Hello</div>;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const page = root.lets('page', 'page', '/').page(() => {
+              return <div>Hello</div>
+            })
+            "
           `)
           expect(point.file.modified).toBe(true)
         }),
@@ -827,9 +864,15 @@ export const layout = root.lets('layout', 'layout', '/').layout()
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const layout = root.lets('layout', 'layout', '/').layout()._hmr(() => {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const layout = root
+              .lets('layout', 'layout', '/')
+              .layout()
+              ._hmr(() => {
+                return null
+              })
+            "
           `)
           expect(point.file.modified).toBe(true)
         }),
@@ -846,9 +889,12 @@ export const layout = root.lets('layout', 'layout', '/').layout(() => <div>Layou
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const layout = root.lets('layout', 'layout', '/').layout(function X() {return <div>Layout</div>;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const layout = root.lets('layout', 'layout', '/').layout(function X() {
+              return <div>Layout</div>
+            })
+            "
           `)
           expect(point.file.modified).toBe(true)
         }),
@@ -865,9 +911,15 @@ export const component = root.lets('component', 'component', '/').component()
           const point = result.points[1]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const component = root.lets('component', 'component', '/').component()._hmr(function X() {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const component = root
+              .lets('component', 'component', '/')
+              .component()
+              ._hmr(function X() {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -883,9 +935,12 @@ export const component = root.lets('component', 'component', '/').component(() =
           const point = result.points[1]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root();
-            export const component = root.lets('component', 'component', '/').component(() => <div>Component</div>);"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root').root()
+            export const component = root
+              .lets('component', 'component', '/')
+              .component(() => <div>Component</div>)
+            "
           `)
           expect(point.file.modified).toBe(false)
         }),
@@ -903,9 +958,13 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              export const root = Point0.lets('root', 'root').root();function PageHome() {return (
-                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome);"
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root').root()
+              function PageHome() {
+                return <div>Hello</div>
+              }
+              export const page = root.lets('page', 'home', '/').page(PageHome)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -925,10 +984,17 @@ export const page1 = root.lets('page', 'home1', '/').page(() => <div>Hello1</div
             const point1 = result.points[2]
             point1.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              export const root = Point0.lets('root', 'root').root();function PageHome() {return (
-                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome);function PageHome1() {return (
-                  <div>Hello1</div>);}export const page1 = root.lets('page', 'home1', '/').page(PageHome1);"
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root').root()
+              function PageHome() {
+                return <div>Hello</div>
+              }
+              export const page = root.lets('page', 'home', '/').page(PageHome)
+              function PageHome1() {
+                return <div>Hello1</div>
+              }
+              export const page1 = root.lets('page', 'home1', '/').page(PageHome1)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -945,9 +1011,13 @@ export default root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              const root = Point0.lets('root', 'root').root();function PageHome() {return (
-                  <div>Hello</div>);}export default root.lets('page', 'home', '/').page(PageHome);"
+              "import { Point0 } from '@point0/core'
+              const root = Point0.lets('root', 'root').root()
+              function PageHome() {
+                return <div>Hello</div>
+              }
+              export default root.lets('page', 'home', '/').page(PageHome)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -964,9 +1034,13 @@ export const layout = root.lets('layout', 'main', '/').layout(() => <div>Layout<
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              export const root = Point0.lets('root', 'root').root();function LayoutMain() {return (
-                  <div>Layout</div>);}export const layout = root.lets('layout', 'main', '/').layout(LayoutMain);"
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root').root()
+              function LayoutMain() {
+                return <div>Layout</div>
+              }
+              export const layout = root.lets('layout', 'main', '/').layout(LayoutMain)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -983,9 +1057,15 @@ export const component = root.lets('component', 'myComponent', '/').component(()
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              export const root = Point0.lets('root', 'root').root();function ComponentMyComponent() {return (
-                  <div>Component</div>);}export const component = root.lets('component', 'myComponent', '/').component(ComponentMyComponent);"
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root').root()
+              function ComponentMycomponent() {
+                return <div>Component</div>
+              }
+              export const component = root
+                .lets('component', 'myComponent', '/')
+                .component(ComponentMycomponent)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -1002,9 +1082,15 @@ export const page = root.lets('page', 'home', '/').page()
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              export const root = Point0.lets('root', 'root').root();
-              export const page = root.lets('page', 'home', '/').page()._hmr(() => {return null;});"
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root').root()
+              export const page = root
+                .lets('page', 'home', '/')
+                .page()
+                ._hmr(() => {
+                  return null
+                })
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -1021,9 +1107,12 @@ export const page = root.lets('page', 'home', '/').page(function MyPage() {retur
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              export const root = Point0.lets('root', 'root').root();
-              export const page = root.lets('page', 'home', '/').page(function MyPage() {return <div>Hello</div>;});"
+              "import { Point0 } from '@point0/core'
+              export const root = Point0.lets('root', 'root').root()
+              export const page = root.lets('page', 'home', '/').page(function MyPage() {
+                return <div>Hello</div>
+              })
+              "
             `)
             expect(point.file.modified).toBe(false)
           }),
@@ -1041,10 +1130,16 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              function PageHome() {return null;}
-              export const root = Point0.lets('root', 'root').root();function PageHome0() {return (
-                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome0);"
+              "import { Point0 } from '@point0/core'
+              function PageHome() {
+                return null
+              }
+              export const root = Point0.lets('root', 'root').root()
+              function PageHome0() {
+                return <div>Hello</div>
+              }
+              export const page = root.lets('page', 'home', '/').page(PageHome0)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -1064,12 +1159,22 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              function PageHome() {return null;}
-              function PageHome0() {return null;}
-              function PageHome1() {return null;}
-              export const root = Point0.lets('root', 'root').root();function PageHome2() {return (
-                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome2);"
+              "import { Point0 } from '@point0/core'
+              function PageHome() {
+                return null
+              }
+              function PageHome0() {
+                return null
+              }
+              function PageHome1() {
+                return null
+              }
+              export const root = Point0.lets('root', 'root').root()
+              function PageHome2() {
+                return <div>Hello</div>
+              }
+              export const page = root.lets('page', 'home', '/').page(PageHome2)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -1087,10 +1192,14 @@ export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)
             const point = result.points[1]
             point.addHmrFix({ policy: 'externalFunction' })
             expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-              "import { Point0 } from '@point0/core';
-              const PageHome = () => null;
-              export const root = Point0.lets('root', 'root').root();function PageHome0() {return (
-                  <div>Hello</div>);}export const page = root.lets('page', 'home', '/').page(PageHome0);"
+              "import { Point0 } from '@point0/core'
+              const PageHome = () => null
+              export const root = Point0.lets('root', 'root').root()
+              function PageHome0() {
+                return <div>Hello</div>
+              }
+              export const page = root.lets('page', 'home', '/').page(PageHome0)
+              "
             `)
             expect(point.file.modified).toBe(true)
           }),
@@ -1107,8 +1216,15 @@ export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() 
           const point = result.points[0]
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').ctx(() => ({ a: 1 })).loader(() => ({ b: 2 })).root()._hmr(function X() {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .ctx(() => ({ a: 1 }))
+              .loader(() => ({ b: 2 }))
+              .root()
+              ._hmr(function X() {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -1124,8 +1240,13 @@ export const root = Point0.lets('root', 'root').root()
           point.addHmrFix({ policy: 'function' })
           point.addHmrFix({ policy: 'function' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .root()
+              ._hmr(function X() {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -1143,8 +1264,13 @@ export const root = Point0.lets('root', 'root').root()
           point.addHmrFix({ policy: 'arrowFunction' })
           // Should still have function since it was added first and is idempotent
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root()._hmr(function X() {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .root()
+              ._hmr(function X() {
+                return null
+              })
+            "
           `)
         }),
       )
@@ -1161,8 +1287,13 @@ export const root = Point0.lets('root', 'root').root()
           const point = result.points[0]
           point.addHmrFix({ policy: 'arrowFunction' })
           expect(await point.file.toCompressedPrettyCode()).toMatchInlineSnapshot(`
-            "import { Point0 } from '@point0/core';
-            export const root = Point0.lets('root', 'root').root()._hmr(() => {return null;});"
+            "import { Point0 } from '@point0/core'
+            export const root = Point0.lets('root', 'root')
+              .root()
+              ._hmr(() => {
+                return null
+              })
+            "
           `)
         }),
       )

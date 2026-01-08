@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Walker } from '../src/walker.js'
+import { toText } from './utils.js'
 
 type TestFile = Bun.BunFile & { path: string; basename: string; importpath: string }
 
@@ -11,7 +12,12 @@ const prepareRandomFile = () => {
   const basename = crypto.randomUUID()
   const path = nodePath.join(tempDir, basename + '.tsx')
   const importpath = './' + basename + '.js'
-  return Object.assign(Bun.file(path), { path, basename, importpath })
+  return Object.assign(Bun.file(path), {
+    path,
+    basename,
+    importpath,
+    write: async (content: string | (() => any)) => await Bun.write(path, await toText(content)),
+  })
 }
 
 const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, deleteFiles = true) => {

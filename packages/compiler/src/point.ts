@@ -504,6 +504,7 @@ export class CompilerPoint {
   // }
 
   private shakeMethodsForClient(): void {
+    console.log('shakeMethodsForClient', this.file.abs)
     this.removeMethodArgs({ name: 'ctx' })
     this.removeMethodArgsIfNotBooleanLiteral({ name: 'loader' })
   }

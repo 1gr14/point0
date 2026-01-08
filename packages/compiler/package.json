@@ -65,11 +65,12 @@
     "@devp0nt/route0": "catalog:"
   },
   "devDependencies": {
-    "@point0/env": "workspace:*",
     "@point0/engine": "workspace:*",
+    "@point0/env": "workspace:*",
     "@types/babel__traverse": "^7.28.0",
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
+    "dedent": "^1.7.1",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
