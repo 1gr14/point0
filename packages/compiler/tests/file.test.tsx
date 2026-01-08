@@ -52,203 +52,323 @@ describe('CompilerFile', () => {
     nodeFs.mkdirSync(tempDir, { recursive: true })
   })
 
-  const prefix = `const runtime=require('@point0/runtime');`
+  const prefix = `const env=require('@point0/env');`
 
-  describe('#shakeForRuntimeTarget', () => {
-    it.concurrent(
-      'runtime.is.server = true',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} if (runtime.is.server) console.info('server')`)
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');if (true) console.info('server');"`,
-        )
-      }),
-    )
+  describe('#shakeForEnv', () => {
+    describe('env.target.is', () => {
+      it.concurrent(
+        'env.target.is.server = true',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} if (env.target.is.server) console.info('server')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (true) console.info('server');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.is.server = false',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} if (runtime.is.server) console.info('server')`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');if (false) console.info('server');"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.is.server = false',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} if (env.target.is.server) console.info('server')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (false) console.info('server');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.is.client = true',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} if (runtime.is.client) console.info('client')`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');if (true) console.info('client');"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.is.client = true',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} if (env.target.is.client) console.info('client')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (true) console.info('client');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.is.client = false',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} if (runtime.is.client) console.info('client')`)
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');if (false) console.info('client');"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.is.client = false',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} if (env.target.is.client) console.info('client')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (false) console.info('client');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.is.ssr not changed',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} if (runtime.is.ssr) console.info('ssr')`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');if (runtime.is.ssr) console.info('ssr');"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.is.ssr = false when target is client',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} if (env.target.is.ssr) console.info('ssr')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (false) console.info('ssr');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.call.server() - client target replaces callback',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} runtime.call.server(() => console.info('server'))`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');runtime.call.server(() => {throw new Error("Call server function from client");});"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.is.ssr not changed when target is server',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} if (env.target.is.ssr) console.info('ssr')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (env.target.is.ssr) console.info('ssr');"`,
+          )
+        }),
+      )
+    })
 
-    it.concurrent(
-      'runtime.call.server() - server target keeps callback',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} runtime.call.server(() => console.info('server'))`)
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');runtime.call.server(() => console.info('server'));"`,
-        )
-      }),
-    )
+    describe('env.target.define', () => {
+      it.concurrent(
+        'env.target.define.server() - client target replaces value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.server('server-value')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.server(undefined);"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.call.client() - server target replaces callback',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} runtime.call.client(() => console.info('client'))`)
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');runtime.call.client(() => {throw new Error("Call client function from server");});"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.define.server() - server target keeps value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.server('server-value')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.server('server-value');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.call.client() - client target keeps callback',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} runtime.call.client(() => console.info('client'))`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');runtime.call.client(() => console.info('client'));"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.define.client() - server target replaces value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.client('client-value')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.client(undefined);"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.call() with server option - client target replaces callback',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(
-          `${prefix} runtime.call({ server: () => console.info('server'), client: () => console.info('client') })`,
-        )
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');runtime.call({ server: () => {throw new Error("Call server function from client");}, client: () => console.info('client') });"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.define.client() - client target keeps value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.target.define.client('client-value')`)
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define.client('client-value');"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.call() with client option - server target replaces callback',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(
-          `${prefix} runtime.call({ server: () => console.info('server'), client: () => console.info('client') })`,
-        )
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');runtime.call({ server: () => console.info('server'), client: () => {throw new Error("Call client function from server");} });"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.define() with server option - client target replaces value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(
+            `${prefix} const x = env.target.define({ server: 'server-value', client: 'client-value' })`,
+          )
+          cf.shakeForEnv({ target: 'client', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define({ server: undefined, client: 'client-value' });"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.define.server() - client target replaces value',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} const x = runtime.define.server('server-value')`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');const x = runtime.define.server(undefined);"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.target.define() with client option - server target replaces value',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(
+            `${prefix} const x = env.target.define({ server: 'server-value', client: 'client-value' })`,
+          )
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.target.define({ server: 'server-value', client: undefined });"`,
+          )
+        }),
+      )
+    })
 
-    it.concurrent(
-      'runtime.define.server() - server target keeps value',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} const x = runtime.define.server('server-value')`)
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');const x = runtime.define.server('server-value');"`,
-        )
-      }),
-    )
+    describe('env.vars', () => {
+      it.concurrent(
+        'env.vars.X replaced when X is in consts',
+        helper(async ({ files: [file] }) => {
+          process.env.CUSTOM_VAR = 'custom-value'
+          const cf = await file.wrp(`${prefix} const x = env.vars.CUSTOM_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: ['CUSTOM_VAR'] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = "custom-value";"`)
+          delete process.env.CUSTOM_VAR
+        }),
+      )
 
-    it.concurrent(
-      'runtime.define.client() - server target replaces value',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} const x = runtime.define.client('client-value')`)
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');const x = runtime.define.client(undefined);"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.vars.X not replaced when X is not in consts',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(`${prefix} const x = env.vars.OTHER_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: ['CUSTOM_VAR'] })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const x = env.vars.OTHER_VAR;"`,
+          )
+        }),
+      )
 
-    it.concurrent(
-      'runtime.define.client() - client target keeps value',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(`${prefix} const x = runtime.define.client('client-value')`)
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');const x = runtime.define.client('client-value');"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.vars.X replaced with undefined when not set in process.env',
+        helper(async ({ files: [file] }) => {
+          delete process.env.UNDEFINED_VAR
+          const cf = await file.wrp(`${prefix} const x = env.vars.UNDEFINED_VAR`)
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: ['UNDEFINED_VAR'] })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = undefined;"`)
+        }),
+      )
 
-    it.concurrent(
-      'runtime.define() with server option - client target replaces value',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(
-          `${prefix} const x = runtime.define({ server: 'server-value', client: 'client-value' })`,
-        )
-        cf.shakeForEnv({ target: 'client' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');const x = runtime.define({ server: undefined, client: 'client-value' });"`,
-        )
-      }),
-    )
+      it(
+        'env.vars.NODE_ENV always replaced (auto-added to consts)',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'production'
+          const cf = await file.wrp(`${prefix} const x = env.vars.NODE_ENV`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const x = "production";"`)
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
 
-    it.concurrent(
-      'runtime.define() with client option - server target replaces value',
-      helper(async ({ files: [file] }) => {
-        const cf = await file.wrp(
-          `${prefix} const x = runtime.define({ server: 'server-value', client: 'client-value' })`,
-        )
-        cf.shakeForEnv({ target: 'server' })
-        expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');const x = runtime.define({ server: 'server-value', client: undefined });"`,
-        )
-      }),
-    )
+      it.concurrent(
+        'env.vars with wildcard pattern SOMETHING_*',
+        helper(async ({ files: [file] }) => {
+          process.env.SOMETHING_A = 'value-a'
+          process.env.SOMETHING_B = 'value-b'
+          const cf = await file.wrp(
+            `${prefix} const a = env.vars.SOMETHING_A; const b = env.vars.SOMETHING_B; const c = env.vars.OTHER_VAR`,
+          )
+          cf.shakeForEnv({ target: 'server', scope: 'test', consts: ['SOMETHING_*'] })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');const a = "value-a";const b = "value-b";const c = env.vars.OTHER_VAR;"`,
+          )
+          delete process.env.SOMETHING_A
+          delete process.env.SOMETHING_B
+        }),
+      )
+    })
+
+    describe('env.mode', () => {
+      it(
+        'env.mode.name replaced with NODE_ENV',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'production'
+          const cf = await file.wrp(`${prefix} const mode = env.mode.name`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');const mode = "production";"`)
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
+
+      it(
+        'env.mode.is.production = true when NODE_ENV is production',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'production'
+          const cf = await file.wrp(`${prefix} if (env.mode.is.production) console.info('prod')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (true) console.info('prod');"`,
+          )
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
+
+      it(
+        'env.mode.is.production = false when NODE_ENV is development',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'development'
+          const cf = await file.wrp(`${prefix} if (env.mode.is.production) console.info('prod')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (false) console.info('prod');"`,
+          )
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
+
+      it(
+        'env.mode.is.development = true when NODE_ENV is development',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'development'
+          const cf = await file.wrp(`${prefix} if (env.mode.is.development) console.info('dev')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (true) console.info('dev');"`,
+          )
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
+
+      it(
+        'env.mode.is.test = true when NODE_ENV is test',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'test'
+          const cf = await file.wrp(`${prefix} if (env.mode.is.test) console.info('test')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (true) console.info('test');"`,
+          )
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
+
+      it(
+        'env.mode.is.test = false when NODE_ENV is production',
+        helper(async ({ files: [file] }) => {
+          const originalNodeEnv = process.env.NODE_ENV
+          process.env.NODE_ENV = 'production'
+          const cf = await file.wrp(`${prefix} if (env.mode.is.test) console.info('test')`)
+          cf.shakeForEnv({ target: 'server', scope: 'test' })
+          expect(cf.toCode()).toMatchInlineSnapshot(
+            `"const env = require('@point0/env');if (false) console.info('test');"`,
+          )
+          if (originalNodeEnv) {
+            process.env.NODE_ENV = originalNodeEnv
+          } else {
+            delete process.env.NODE_ENV
+          }
+        }),
+      )
+    })
   })
 
   describe('#shakeForEngineHolderBuildPhase', () => {
@@ -258,7 +378,7 @@ describe('CompilerFile', () => {
         const cf = await file.wrp(`${prefix} shakeItOnEngineHolderBuildPhase(() => console.info('test'))`)
         cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase: false })
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');shakeItOnEngineHolderBuildPhase(() => console.info('test'));"`,
+          `"const env = require('@point0/env');shakeItOnEngineHolderBuildPhase(() => console.info('test'));"`,
         )
       }),
     )
@@ -269,7 +389,7 @@ describe('CompilerFile', () => {
         const cf = await file.wrp(`${prefix} shakeItOnEngineHolderBuildPhase(() => console.info('test'))`)
         cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase: true })
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
+          `"const env = require('@point0/env');shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
         )
       }),
     )
@@ -279,7 +399,7 @@ describe('CompilerFile', () => {
       helper(async ({ files: [file] }) => {
         const cf = await file.wrp(`${prefix} console.info('test')`)
         cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase: true })
-        expect(cf.toCode()).toMatchInlineSnapshot(`"const runtime = require('@point0/runtime');console.info('test');"`)
+        expect(cf.toCode()).toMatchInlineSnapshot(`"const env = require('@point0/env');console.info('test');"`)
       }),
     )
 
@@ -291,7 +411,7 @@ describe('CompilerFile', () => {
         )
         cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase: true })
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
+          `"const env = require('@point0/env');shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
         )
       }),
     )
@@ -302,7 +422,7 @@ describe('CompilerFile', () => {
         const cf = await file.wrp(`${prefix} shakeItOnEngineHolderBuildPhase()`)
         cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase: true })
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');shakeItOnEngineHolderBuildPhase();"`,
+          `"const env = require('@point0/env');shakeItOnEngineHolderBuildPhase();"`,
         )
       }),
     )
@@ -313,7 +433,7 @@ describe('CompilerFile', () => {
         const cf = await file.wrp(`${prefix} shakeItOnEngineHolderBuildPhase(() => { const x = 1; return x + 2; })`)
         cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase: true })
         expect(cf.toCode()).toMatchInlineSnapshot(
-          `"const runtime = require('@point0/runtime');shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
+          `"const env = require('@point0/env');shakeItOnEngineHolderBuildPhase(() => {throw new Error("Not available after build");});"`,
         )
       }),
     )

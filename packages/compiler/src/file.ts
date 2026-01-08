@@ -250,7 +250,7 @@ export class CompilerFile<THasContent extends boolean> {
     modified: boolean
   } {
     const errors: unknown[] = []
-    consts.push('NODE_ENV', 'POINT0_SCOPE')
+    consts.push('NODE_ENV', 'POINT0_SCOPE_NAME')
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
@@ -262,66 +262,142 @@ export class CompilerFile<THasContent extends boolean> {
       return this._shakeForEnv
     }
     try {
-      if (!this.content.includes('@point0/runtime')) {
+      if (!this.content.includes('@point0/env')) {
         this._shakeForEnv = { target, scope, consts, errors, ok: true, modified }
         return this._shakeForEnv
       }
 
-      const makeThrow = (msg: string) => ({
-        type: 'ArrowFunctionExpression',
-        id: null,
-        generator: false,
-        async: false,
-        expression: false,
-        params: [],
-        body: {
-          type: 'BlockStatement',
-          body: [
-            {
-              type: 'ThrowStatement',
-              argument: {
-                type: 'NewExpression',
-                callee: { type: 'Identifier', name: 'Error' },
-                arguments: [{ type: 'StringLiteral', value: msg }],
-              },
-            },
-          ],
-        },
-      })
+      const makeUndefined = () =>
+        ({
+          type: 'Identifier',
+          name: 'undefined',
+        }) as any
 
-      const makeUndefined = () => ({
-        type: 'Identifier',
-        name: 'undefined',
-      })
+      const makeStringLiteral = (value: string) =>
+        ({
+          type: 'StringLiteral',
+          value,
+        }) as any
+
+      const makeBooleanLiteral = (value: boolean) =>
+        ({
+          type: 'BooleanLiteral',
+          value,
+        }) as any
+
+      // Helper to check if a var name matches consts (supports wildcard patterns like "SOMETHING_*")
+      const shouldReplaceVar = (varName: string): boolean => {
+        for (const constPattern of consts) {
+          if (constPattern.endsWith('*')) {
+            const prefix = constPattern.slice(0, -1)
+            if (varName.startsWith(prefix)) {
+              return true
+            }
+          } else if (varName === constPattern) {
+            return true
+          }
+        }
+        return false
+      }
+
+      // Get NODE_ENV value from process.env
+      const nodeEnv = process.env.NODE_ENV || 'development'
+      const isProduction = nodeEnv === 'production'
+      const isDevelopment = nodeEnv === 'development'
+      const isTest = nodeEnv === 'test'
 
       traverse(this.ast, {
         MemberExpression: (p) => {
           const node = p.node
 
-          // Handle runtime.is.client, runtime.is.server, runtime.is.ssr
+          // Handle env.target.is.client, env.target.is.server
           if (
             node.object.type === 'MemberExpression' &&
-            node.object.object.type === 'Identifier' &&
-            node.object.object.name === 'runtime'
+            node.object.object.type === 'MemberExpression' &&
+            node.object.object.object.type === 'Identifier' &&
+            node.object.object.object.name === 'env' &&
+            node.object.object.property.type === 'Identifier' &&
+            node.object.object.property.name === 'target' &&
+            node.object.property.type === 'Identifier' &&
+            node.object.property.name === 'is'
           ) {
-            if (node.object.property.type === 'Identifier' && node.object.property.name === 'is') {
-              if (node.property.type === 'Identifier') {
-                const name = node.property.name
-                if (name === 'client') {
-                  p.replaceWith({
-                    type: 'BooleanLiteral',
-                    value: target === 'client',
-                  })
-                  modified = true
-                } else if (name === 'server') {
-                  p.replaceWith({
-                    type: 'BooleanLiteral',
-                    value: target === 'server',
-                  })
+            if (node.property.type === 'Identifier') {
+              const name = node.property.name
+              if (name === 'client') {
+                p.replaceWith(makeBooleanLiteral(target === 'client'))
+                modified = true
+              } else if (name === 'server') {
+                p.replaceWith(makeBooleanLiteral(target === 'server'))
+                modified = true
+              } else if (name === 'ssr') {
+                // If target is client, ssr is always false
+                // If target is server, leave it as-is (it's a getter that returns SSR phase)
+                if (target === 'client') {
+                  p.replaceWith(makeBooleanLiteral(false))
                   modified = true
                 }
-                // Note: runtime.is.ssr is a getter that returns a function result, so we leave it as-is
+                // Note: For server target, env.target.is.ssr is a getter, so we leave it as-is
               }
+            }
+          }
+          // Handle env.mode.name
+          else if (
+            node.object.type === 'MemberExpression' &&
+            node.object.object.type === 'Identifier' &&
+            node.object.object.name === 'env' &&
+            node.object.property.type === 'Identifier' &&
+            node.object.property.name === 'mode' &&
+            node.property.type === 'Identifier' &&
+            node.property.name === 'name'
+          ) {
+            p.replaceWith(makeStringLiteral(nodeEnv))
+            modified = true
+          }
+          // Handle env.mode.is.production, env.mode.is.development, env.mode.is.test
+          else if (
+            node.object.type === 'MemberExpression' &&
+            node.object.object.type === 'MemberExpression' &&
+            node.object.object.object.type === 'Identifier' &&
+            node.object.object.object.name === 'env' &&
+            node.object.object.property.type === 'Identifier' &&
+            node.object.object.property.name === 'mode' &&
+            node.object.property.type === 'Identifier' &&
+            node.object.property.name === 'is'
+          ) {
+            if (node.property.type === 'Identifier') {
+              const name = node.property.name
+              if (name === 'production') {
+                p.replaceWith(makeBooleanLiteral(isProduction))
+                modified = true
+              } else if (name === 'development') {
+                p.replaceWith(makeBooleanLiteral(isDevelopment))
+                modified = true
+              } else if (name === 'test') {
+                p.replaceWith(makeBooleanLiteral(isTest))
+                modified = true
+              }
+            }
+          }
+          // Handle env.vars.X - replace if X is in consts
+          else if (
+            node.object.type === 'MemberExpression' &&
+            node.object.object.type === 'Identifier' &&
+            node.object.object.name === 'env' &&
+            node.object.property.type === 'Identifier' &&
+            node.object.property.name === 'vars' &&
+            node.property.type === 'Identifier'
+          ) {
+            const varName = node.property.name
+            if (shouldReplaceVar(varName)) {
+              const envValue = process.env[varName]
+              if (envValue === undefined) {
+                p.replaceWith(makeUndefined())
+              } else {
+                // Try to determine the type - for now, always use string literal
+                // Could be enhanced to detect number/boolean
+                p.replaceWith(makeStringLiteral(envValue))
+              }
+              modified = true
             }
           }
         },
@@ -334,59 +410,14 @@ export class CompilerFile<THasContent extends boolean> {
 
           const args = node.arguments as any[]
 
-          // Handle runtime.call.server(), runtime.call.client()
+          // Handle env.target.define.server(), env.target.define.client()
           if (
             callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            callee.object.object.name === 'runtime' &&
-            callee.object.property.type === 'Identifier' &&
-            callee.object.property.name === 'call'
-          ) {
-            if (callee.property.type === 'Identifier') {
-              const name = callee.property.name
-
-              if (name === 'server' && target === 'client' && args.length > 0) {
-                args[0] = makeThrow('Call server function from client')
-                modified = true
-              } else if (name === 'client' && target === 'server' && args.length > 0) {
-                args[0] = makeThrow('Call client function from server')
-                modified = true
-              }
-            }
-          }
-          // Handle runtime.call() with options object
-          else if (
-            callee.object.type === 'Identifier' &&
-            callee.object.name === 'runtime' &&
-            callee.property.type === 'Identifier' &&
-            callee.property.name === 'call'
-          ) {
-            if (args.length > 0 && args[0].type === 'ObjectExpression') {
-              const props = args[0].properties as any[]
-              if (target === 'client') {
-                // Find server property and replace with throw
-                for (const prop of props) {
-                  if (prop.key.type === 'Identifier' && prop.key.name === 'server' && prop.value) {
-                    prop.value = makeThrow('Call server function from client')
-                    modified = true
-                  }
-                }
-              } else {
-                // Find client property and replace with throw
-                for (const prop of props) {
-                  if (prop.key.type === 'Identifier' && prop.key.name === 'client' && prop.value) {
-                    prop.value = makeThrow('Call client function from server')
-                    modified = true
-                  }
-                }
-              }
-            }
-          }
-          // Handle runtime.define.server(), runtime.define.client()
-          else if (
-            callee.object.type === 'MemberExpression' &&
-            callee.object.object.type === 'Identifier' &&
-            callee.object.object.name === 'runtime' &&
+            callee.object.object.type === 'MemberExpression' &&
+            callee.object.object.object.type === 'Identifier' &&
+            callee.object.object.object.name === 'env' &&
+            callee.object.object.property.type === 'Identifier' &&
+            callee.object.object.property.name === 'target' &&
             callee.object.property.type === 'Identifier' &&
             callee.object.property.name === 'define'
           ) {
@@ -402,10 +433,13 @@ export class CompilerFile<THasContent extends boolean> {
               }
             }
           }
-          // Handle runtime.define() with options object
+          // Handle env.target.define() with options object
           else if (
-            callee.object.type === 'Identifier' &&
-            callee.object.name === 'runtime' &&
+            callee.object.type === 'MemberExpression' &&
+            callee.object.object.type === 'Identifier' &&
+            callee.object.object.name === 'env' &&
+            callee.object.property.type === 'Identifier' &&
+            callee.object.property.name === 'target' &&
             callee.property.type === 'Identifier' &&
             callee.property.name === 'define'
           ) {
