@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
-import type { TestProject, TestProjectFactoryCreateOptions } from './utils/project.js'
-import { TestProjectFactory } from './utils/project.js'
-import { waitForResponseStatus } from './utils/other.js'
 import type { Engine } from '../src/engine.js'
+import { waitForResponse } from './utils/other.js'
+import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
+import { TestProjectFactory } from './utils/project.js'
 
 setDefaultTimeout(5000)
 
@@ -15,7 +15,7 @@ type ItFn = (done: (err?: unknown) => any) => any
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: TestProjectFactoryCreateOptions & { deleteFiles?: boolean },
+  options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean },
   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
 ): ItFn
 function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
@@ -23,7 +23,7 @@ function wrp(
   ...args:
     | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
     | [
-        options: TestProjectFactoryCreateOptions & { deleteFiles?: boolean },
+        options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean },
         callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
       ]
 ): ItFn {
@@ -38,23 +38,31 @@ function wrp(
       await tp.init()
       const engine = await tp.importEngine()
       await callback({ tp, engine })
-      await tp.cleanup({ files: deleteFiles, ports: false, processes: true })
+      await tp.cleanup({ files: deleteFiles, ports: true, processes: true })
     } catch (error) {
-      await tp.cleanup({ files: deleteFiles, ports: false, processes: true })
+      await tp.cleanup({ files: deleteFiles, ports: true, processes: true })
       throw error
     }
   }
 }
 
 describe('dev', () => {
+  beforeAll(async () => {
+    await tpf.cleanup({ files: true, processes: true, ports: true })
+  })
+
+  afterAll(async () => {
+    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true })
+  })
+
   it.concurrent(
     'start ssr dev server',
-    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
+    wrp({ ssr: true }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      const result = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 3000)
+      const result = await waitForResponse(`http://localhost:${engine.server.port}`, 'ok')
       expect(result).toBeDefined()
       const html = await result.text()
       expect(html).toContain('<div>Page Not Found</div>')
@@ -66,21 +74,13 @@ describe('dev', () => {
     'start spa dev server',
     wrp({ ssr: false, deleteFiles: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
-      expect(engine.server.port).toBe(3002)
-      expect(engine.clients[0].port).toBe(3003)
+      expect(engine.server.port).toBe(3004)
+      expect(engine.clients[0].port).toBe(3005)
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      const response = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 3000)
+      const response = await waitForResponse(`http://localhost:${engine.server.port}`, 'ok')
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
     }),
   )
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true })
-  })
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true })
-  })
 })

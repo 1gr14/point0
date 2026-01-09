@@ -7,68 +7,45 @@ import { kill } from './kill.js'
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
 
-export type TestProjectOptions = {
-  ssr: boolean
-  superjson: boolean
-  tpf: TestProjectFactory
-  clientPort: 'auto' | number
-  serverPort: 'auto' | number
-}
-
 export class TestProject {
-  namespace: string
   dir: string
   name: string
-  id: string
+  index: number
   ssr: boolean
   superjson: boolean
-  serverPort: number | 'auto'
-  clientPort: number | 'auto'
+  serverPort: number
+  clientPort: number
+  serverHmrPort: number
+  clientHmrPort: number
   processes: TestProcess[] = []
   ports: number[] = []
+  tpf: TestProjectFactory
 
-  private constructor(options: {
-    namespace: string
-    dir: string
-    name: string
-    id: string
+  constructor(options: {
+    index: number
     ssr: boolean
     superjson: boolean
-    serverPort: 'auto' | number
-    clientPort: 'auto' | number
-    ports: number[]
+    serverPort: number
+    clientPort: number
+    serverHmrPort: number
+    clientHmrPort: number
+    tpf: TestProjectFactory
   }) {
-    this.namespace = options.namespace
-    this.dir = options.dir
-    this.name = options.name
-    this.id = options.id
+    this.name = 'test-' + options.index
+    this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
+    this.index = options.index
     this.ssr = options.ssr
     this.superjson = options.superjson
     this.serverPort = options.serverPort
     this.clientPort = options.clientPort
-    this.ports = options.ports
+    this.serverHmrPort = options.serverHmrPort
+    this.clientHmrPort = options.clientHmrPort
+    this.ports = [options.serverPort, options.clientPort, options.serverHmrPort, options.clientHmrPort]
+    this.tpf = options.tpf
   }
 
-  static create({ tpf, clientPort, serverPort, ssr, superjson }: TestProjectOptions) {
-    const id = crypto.randomUUID()
-    const name = 'test-' + id
-    const dir = nodePath.resolve(testsGeneralTempDir, tpf.namespace, name)
-    const ports = [serverPort, clientPort].filter((port): port is number => port !== 'auto')
-    return new TestProject({
-      namespace: tpf.namespace,
-      dir,
-      name,
-      id,
-      ssr,
-      superjson,
-      serverPort,
-      clientPort,
-      ports,
-    })
-  }
-
-  static async init(options: TestProjectOptions) {
-    return await TestProject.create(options).init()
+  static async init(options: TestProjectCreateOptions) {
+    return await new TestProject(options).init()
   }
 
   resolve(...paths: string[]) {
@@ -169,42 +146,67 @@ export class TestProject {
   }
 }
 
-export type TestProjectFactoryOptions = Partial<Omit<TestProjectOptions, 'tpf'>> & {
+export type TestProjectGeneralOptions = {
+  ssr: boolean
+  superjson: boolean
+}
+
+export type TestProjectCreateOptions = TestProjectGeneralOptions & {
+  index: number
+  tpf: TestProjectFactory
+  serverPort: number
+  clientPort: number
+  serverHmrPort: number
+  clientHmrPort: number
+}
+
+export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOptions> & {
   namespace: string
   portsRange: [number, number]
 }
-export type TestProjectFactoryCreateOptions = Partial<Omit<TestProjectOptions, 'tpf'>>
+
+export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
 
 export class TestProjectFactory {
-  defaultOptions: TestProjectFactoryOptions
+  defaultOptions: TestProjectGeneralOptions
   namespace: string
   instances: TestProject[] = []
   portsRange: [number, number]
 
-  private constructor(defaultOptions: TestProjectFactoryOptions) {
-    this.defaultOptions = defaultOptions
-    this.namespace = defaultOptions.namespace
-    this.portsRange = defaultOptions.portsRange
+  private constructor({
+    defaultOptions,
+    namespace,
+    portsRange,
+  }: {
+    defaultOptions: Partial<TestProjectGeneralOptions>
+    namespace: string
+    portsRange: [number, number]
+  }) {
+    this.defaultOptions = { ssr: true, superjson: true, ...defaultOptions }
+    this.namespace = namespace
+    this.portsRange = portsRange
   }
 
-  static create(defaultOptions: TestProjectFactoryOptions) {
-    return new TestProjectFactory(defaultOptions)
+  static create({ namespace, portsRange, ...defaultOptions }: TestProjectFactoryCreateSelfOptions) {
+    return new TestProjectFactory({ defaultOptions, namespace, portsRange })
   }
 
-  create(options: Partial<TestProjectFactoryCreateOptions> = {}) {
-    const tp = TestProject.create({
+  create(options: TestProjectFactoryCreateProjectOptions = {}) {
+    const tp = new TestProject({
       ...this.defaultOptions,
-      ssr: options.ssr ?? true,
-      superjson: options.superjson ?? true,
-      serverPort: options.serverPort === undefined ? this.getNextFreePort() : options.serverPort,
-      clientPort: options.clientPort === undefined ? this.getNextFreePort() : options.clientPort,
+      ...options,
+      serverPort: this.getNextFreePort(),
+      clientPort: this.getNextFreePort(),
+      serverHmrPort: this.getNextFreePort(),
+      clientHmrPort: this.getNextFreePort(),
+      index: this.instances.length,
       tpf: this,
     })
     this.instances.push(tp)
     return tp
   }
 
-  async init(options: Partial<TestProjectFactoryCreateOptions> = {}) {
+  async init(options: TestProjectFactoryCreateProjectOptions = {}) {
     return await this.create(options).init()
   }
 

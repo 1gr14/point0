@@ -4,6 +4,7 @@ import { TestProjectFactory } from './utils/project.js'
 
 const tpf = TestProjectFactory.create({
   namespace: 'dev',
+  portsRange: [0, Infinity], // will not run anything there
 })
 
 let preventFinalCleanup = false
@@ -11,19 +12,14 @@ const wrp = (callback: ({ tp }: { tp: TestProject }) => any, deleteFiles = true)
   if (!deleteFiles) {
     preventFinalCleanup = true
   }
+  const tp = tpf.create()
   return async () => {
-    let tp: TestProject | undefined
-    const cleanup = async () => {
-      if (!deleteFiles && tp) {
-        await tp.cleanup()
-      }
-    }
     try {
-      tp = await tpf.init()
+      await tp.init()
       await callback({ tp })
-      await cleanup()
+      await tp.cleanup({ files: deleteFiles, processes: true, ports: true })
     } catch (error) {
-      await cleanup()
+      await tp.cleanup({ files: deleteFiles, processes: true, ports: true })
       throw error
     }
   }
@@ -31,9 +27,7 @@ const wrp = (callback: ({ tp }: { tp: TestProject }) => any, deleteFiles = true)
 
 describe('template', () => {
   afterAll(async () => {
-    if (!preventFinalCleanup) {
-      await tpf.cleanup()
-    }
+    await tpf.cleanup({ files: !preventFinalCleanup, processes: true, ports: true })
   })
 
   it.concurrent(
