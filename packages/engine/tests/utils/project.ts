@@ -2,16 +2,17 @@ import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { Engine } from '../../src/engine.js'
 import { TestProcess } from './process.js'
+import { kill } from './kill.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
 
 export type TestProjectOptions = {
-  namespace: string
-  ssr?: boolean
-  superjson?: boolean
-  serverPort?: 'auto' | undefined
-  clientPort?: 'auto' | undefined
+  ssr: boolean
+  superjson: boolean
+  tpf: TestProjectFactory
+  clientPort: 'auto' | number
+  serverPort: 'auto' | number
 }
 
 export class TestProject {
@@ -25,19 +26,6 @@ export class TestProject {
   clientPort: number | 'auto'
   processes: TestProcess[] = []
   ports: number[] = []
-
-  static reservedPorts = new Set<number>()
-  static getNextFreePort(): number {
-    let port = 3000
-    while (this.reservedPorts.has(port)) {
-      port++
-    }
-    this.reservedPorts.add(port)
-    return port
-  }
-  static releasePort(port: number): void {
-    this.reservedPorts.delete(port)
-  }
 
   private constructor(options: {
     namespace: string
@@ -61,20 +49,18 @@ export class TestProject {
     this.ports = options.ports
   }
 
-  static create(options: TestProjectOptions) {
+  static create({ tpf, clientPort, serverPort, ssr, superjson }: TestProjectOptions) {
     const id = crypto.randomUUID()
     const name = 'test-' + id
-    const dir = nodePath.resolve(testsGeneralTempDir, options.namespace, name)
-    const serverPort = options.serverPort === 'auto' ? 'auto' : TestProject.getNextFreePort()
-    const clientPort = options.clientPort === 'auto' ? 'auto' : TestProject.getNextFreePort()
+    const dir = nodePath.resolve(testsGeneralTempDir, tpf.namespace, name)
     const ports = [serverPort, clientPort].filter((port): port is number => port !== 'auto')
     return new TestProject({
-      namespace: options.namespace,
+      namespace: tpf.namespace,
       dir,
       name,
       id,
-      ssr: options.ssr ?? true,
-      superjson: options.superjson ?? true,
+      ssr,
+      superjson,
       serverPort,
       clientPort,
       ports,
@@ -151,19 +137,17 @@ export class TestProject {
     return engine
   }
 
-  async cleanup(deleteFiles = true) {
-    await Promise.all(
-      this.processes.map(async (p) => {
-        await p.kill()
-      }),
-    )
-    if (this.serverPort !== 'auto') {
-      TestProject.releasePort(this.serverPort)
+  async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
+    console.log('TP clenaup', { files, processes, ports })
+    if (processes) {
+      for (const process of this.processes) {
+        process.kill()
+      }
     }
-    if (this.clientPort !== 'auto') {
-      TestProject.releasePort(this.clientPort)
+    if (ports) {
+      await kill(this.ports)
     }
-    if (deleteFiles) {
+    if (files) {
       await nodeFs.rm(this.dir, { recursive: true, force: true })
     }
   }
@@ -176,8 +160,9 @@ export class TestProject {
     await nodeFs.cp(testTemplateDir, this.dir, { recursive: true, force: true })
   }
 
-  async spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): Promise<TestProcess> {
-    const testProcess = await TestProcess.spawn(cmds, this.ports, {
+  spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
+    console.log('TP spawn', this.dir)
+    const testProcess = TestProcess.spawn(cmds, {
       cwd: this.dir,
       ...options,
     })
@@ -186,41 +171,71 @@ export class TestProject {
   }
 }
 
-export type TestProjectFactoryOptions = TestProjectOptions
-export type TestProjectFactoryCreateOptions = Omit<TestProjectOptions, 'namespace'>
+export type TestProjectFactoryOptions = Partial<Omit<TestProjectOptions, 'tpf'>> & {
+  namespace: string
+  portsRange: [number, number]
+}
+export type TestProjectFactoryCreateOptions = Partial<Omit<TestProjectOptions, 'tpf'>>
 
 export class TestProjectFactory {
   defaultOptions: TestProjectFactoryOptions
   namespace: string
   instances: TestProject[] = []
+  portsRange: [number, number]
 
   private constructor(defaultOptions: TestProjectFactoryOptions) {
     this.defaultOptions = defaultOptions
     this.namespace = defaultOptions.namespace
+    this.portsRange = defaultOptions.portsRange
   }
 
   static create(defaultOptions: TestProjectFactoryOptions) {
     return new TestProjectFactory(defaultOptions)
   }
 
-  create(options: TestProjectFactoryCreateOptions = {}) {
-    const tp = TestProject.create({ ...this.defaultOptions, ...options })
+  create(options: Partial<TestProjectFactoryCreateOptions> = {}) {
+    const tp = TestProject.create({
+      ...this.defaultOptions,
+      ssr: options.ssr ?? true,
+      superjson: options.superjson ?? true,
+      serverPort: options.serverPort === undefined ? this.getNextFreePort() : options.serverPort,
+      clientPort: options.clientPort === undefined ? this.getNextFreePort() : options.clientPort,
+      tpf: this,
+    })
     this.instances.push(tp)
     return tp
   }
 
-  async init(options: TestProjectFactoryCreateOptions = {}) {
-    const tp = await TestProject.init({ ...this.defaultOptions, ...options })
-    this.instances.push(tp)
-    return tp
+  async init(options: Partial<TestProjectFactoryCreateOptions> = {}) {
+    return await this.create(options).init()
   }
 
-  async cleanup() {
+  async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
+    console.log('TPF clenaup', { files, processes, ports })
     await Promise.all(
       this.instances.map(async (tp) => {
-        await tp.cleanup()
+        await tp.cleanup({ files, processes, ports })
       }),
     )
-    await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), { recursive: true, force: true })
+    if (files) {
+      await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), { recursive: true, force: true })
+    }
   }
+
+  private readonly reservedPorts = new Set<number>()
+  getNextFreePort(): number {
+    let port = this.portsRange[0]
+    while (this.reservedPorts.has(port)) {
+      port++
+    }
+    if (port > this.portsRange[1]) {
+      throw new Error(`No free ports in range ${this.portsRange[0]} - ${this.portsRange[1]}`)
+    }
+    this.reservedPorts.add(port)
+    console.log(`Reserved port ${port}`)
+    return port
+  }
+  // releasePort(port: number): void {
+  //   this.reservedPorts.delete(port)
+  // }
 }

@@ -4,15 +4,16 @@ import { TestProjectFactory } from './utils/project.js'
 import { waitForResponseStatus } from './utils/other.js'
 import type { Engine } from '../src/engine.js'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(5000)
 
 const tpf = TestProjectFactory.create({
   namespace: 'dev',
+  portsRange: [3000, 3099],
 })
 
 type ItFn = (done: (err?: unknown) => any) => any
 
-let preventFinalCleanup = false
+let preventFinalFilesCleanup = false
 function wrp(
   options: TestProjectFactoryCreateOptions & { deleteFiles?: boolean },
   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
@@ -29,63 +30,67 @@ function wrp(
   const [options, callback] = args.length === 1 ? [{}, args[0]] : args
   const { deleteFiles = true, ...tpOptions } = options
   if (!deleteFiles) {
-    preventFinalCleanup = true
+    preventFinalFilesCleanup = true
   }
   const tp = tpf.create(tpOptions)
   return async () => {
-    const cleanup = async () => {
-      if (!deleteFiles) {
-        await tp.cleanup(deleteFiles)
-      }
-    }
     try {
       await tp.init()
       const engine = await tp.importEngine()
       await callback({ tp, engine })
-      await cleanup()
+      await tp.cleanup({ files: deleteFiles, ports: false, processes: true })
     } catch (error) {
-      await cleanup()
+      await tp.cleanup({ files: deleteFiles, ports: false, processes: true })
       throw error
     }
   }
 }
 
 describe('dev', () => {
-  beforeAll(async () => {
-    await tpf.cleanup()
-  })
-
-  afterAll(async () => {
-    if (!preventFinalCleanup) {
-      await tpf.cleanup()
-    }
-  })
-
   it.concurrent(
     'start ssr dev server',
     wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
-      const process = await tp.spawn(['bun', 'run', 'dev'])
+      console.log('start ssr dev server')
+      const process = tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      const result = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 10000)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log('ssr', process.output)
+      const result = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 3000)
       expect(result).toBeDefined()
       const html = await result.text()
       expect(html).toContain('<div>Page Not Found</div>')
       expect(html).toContain('__POINT0_ENV__')
-      await process.kill()
+      // process.kill()
+      console.log('end ssr dev server')
     }),
   )
 
   it.concurrent(
     'start spa dev server',
     wrp({ ssr: false, deleteFiles: false }, async ({ tp, engine }) => {
-      const process = await tp.spawn(['bun', 'run', 'dev'])
+      console.log('start spa dev server')
+      const process = tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3002)
       expect(engine.clients[0].port).toBe(3003)
-      const response = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 10000)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log('spa', process.output)
+
+      const response = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 3000)
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
-      await process.kill()
+      expect(html).not.toContain('<div>Page Not Found</div>')
+      // process.kill()
+      console.log('end spa dev server')
     }),
   )
+
+  beforeAll(async () => {
+    await tpf.cleanup({ files: true, processes: true, ports: true })
+  })
+
+  afterAll(async () => {
+    console.log('afterAll', { preventFinalFilesCleanup })
+    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true })
+  })
 })

@@ -561,6 +561,7 @@ const parseEngineClientOptions = ({
 }): EngineClientOptionsParsed => {
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
+  console.log('client port', port)
   const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
   const outdir = toFinalPath({
     ...generalOptionsParsed,
