@@ -87,15 +87,15 @@ describe.concurrent('dev', () => {
     }),
   )
 
-  // it.concurrent(
-  //   'have hmr client updates',
-  //   wrp({ ssr: true }, async ({ tp, engine }) => {
-  //     tp.spawn(['bun', 'run', 'dev'])
-  //     const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
-  //     expect(result).toBeDefined()
-  //     const html = await result.text()
-  //     expect(html).toContain('<div>Page Not Found</div>')
-  //     expect(html).toContain('__POINT0_ENV__')
-  //   }),
-  // )
+  it.only(
+    'have hmr client updates',
+    wrp({ ssr: true }, async ({ tp, engine }) => {
+      tp.spawn(['bun', 'run', 'dev'])
+      const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
+      expect(result).toBeDefined()
+      const html = await result.text()
+      expect(html).toContain('<div>Page Not Found</div>')
+      expect(html).toContain('__POINT0_ENV__')
+    }),
+  )
 })
