@@ -138,7 +138,6 @@ export class TestProject {
   }
 
   async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
-    console.log('TP clenaup', { files, processes, ports })
     if (processes) {
       for (const process of this.processes) {
         process.kill()
@@ -211,7 +210,6 @@ export class TestProjectFactory {
   }
 
   async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
-    console.log('TPF clenaup', { files, processes, ports })
     await Promise.all(
       this.instances.map(async (tp) => {
         await tp.cleanup({ files, processes, ports })
