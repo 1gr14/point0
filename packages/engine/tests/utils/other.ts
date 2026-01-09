@@ -18,7 +18,7 @@ export const waitUntilFileChanged = async (file: Bun.BunFile | string, limit = 5
 
 export const waitForResponse = async (
   url: string,
-  status: number | number[] | 'ok' | 'bad' | undefined = undefined,
+  status: number | number[] | 'ok' | 'bad',
   limit = 3000,
   onError?: (error: unknown) => any,
 ): Promise<Response> => {
@@ -29,18 +29,14 @@ export const waitForResponse = async (
     ? status.join(', ')
     : typeof status === 'string'
       ? status
-      : typeof status === 'undefined'
-        ? undefined
-        : status.toString()
+      : status.toString()
   const statuses = Array.isArray(status)
     ? status
     : typeof status === 'string'
       ? status === 'ok'
         ? Array.from({ length: 100 }, (_, i) => 200 + i)
         : Array.from({ length: 200 }, (_, i) => 400 + i)
-      : typeof status === 'undefined'
-        ? undefined
-        : [status]
+      : [status]
   let response
   while (true) {
     if (isTimeout()) {
@@ -51,8 +47,16 @@ export const waitForResponse = async (
       throw err
     }
     try {
-      response = await fetch(url)
-      if (!statuses || statuses.includes(response.status)) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+      }, 500)
+      try {
+        response = await fetch(url, { signal: controller.signal })
+      } finally {
+        clearTimeout(timeoutId)
+      }
+      if (statuses.includes(response.status)) {
         return response
       }
     } catch (error) {
@@ -65,6 +69,6 @@ export const waitForResponse = async (
         throw err
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 100))
   }
 }

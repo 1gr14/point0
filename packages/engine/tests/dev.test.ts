@@ -61,8 +61,7 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      const result = await waitForResponse(`http://localhost:${engine.server.port}`, undefined, 7000)
+      const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
       expect(result).toBeDefined()
       const html = await result.text()
       expect(html).toContain('<div>Page Not Found</div>')
@@ -76,11 +75,22 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3004)
       expect(engine.clients[0].port).toBe(3005)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      const response = await waitForResponse(`http://localhost:${engine.server.port}`, undefined, 7000)
+      const response = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
     }),
   )
+
+  // it.concurrent(
+  //   'have hmr client updates',
+  //   wrp({ ssr: true }, async ({ tp, engine }) => {
+  //     tp.spawn(['bun', 'run', 'dev'])
+  //     const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
+  //     expect(result).toBeDefined()
+  //     const html = await result.text()
+  //     expect(html).toContain('<div>Page Not Found</div>')
+  //     expect(html).toContain('__POINT0_ENV__')
+  //   }),
+  // )
 })

@@ -7,6 +7,7 @@ export class TestProcess {
   readonly process: Bun.Subprocess
   private readonly stdoutChunks: Uint8Array[] = []
   private readonly stderrChunks: Uint8Array[] = []
+  private readonly allChunks: Uint8Array[] = []
 
   private constructor({ child }: { child: Bun.Subprocess }) {
     this.process = child
@@ -33,6 +34,7 @@ export class TestProcess {
         new WritableStream({
           write: (chunk) => {
             this.stdoutChunks.push(chunk)
+            this.allChunks.push(chunk)
           },
         }),
       )
@@ -43,6 +45,7 @@ export class TestProcess {
         new WritableStream({
           write: (chunk) => {
             this.stderrChunks.push(chunk)
+            this.allChunks.push(chunk)
           },
         }),
       )
@@ -76,27 +79,22 @@ export class TestProcess {
     }
   }
 
-  /**
-   * Get collected stdout output (current output, doesn't wait for process to exit)
-   */
   get stdout(): string {
     return new TextDecoder().decode(Buffer.concat(this.stdoutChunks))
   }
 
-  /**
-   * Get collected stderr output (current output, doesn't wait for process to exit)
-   */
   get stderr(): string {
     return new TextDecoder().decode(Buffer.concat(this.stderrChunks))
   }
 
-  /**
-   * Get both stdout and stderr output (current output, doesn't wait for process to exit)
-   */
-  get output(): TestProcessOutput {
-    return {
-      stdout: this.stdout,
-      stderr: this.stderr,
+  get output(): string {
+    return new TextDecoder().decode(Buffer.concat(this.allChunks))
+  }
+
+  logOutput() {
+    const lines = this.output.split('\n')
+    for (const line of lines) {
+      console.info(line)
     }
   }
 }

@@ -328,7 +328,7 @@ Bun.serve({
         NODE_ENV: process.env.NODE_ENV,
       },
     })
-    this.logger.info(`${this.scope} dev server started`)
+    this.logger.info(`${this.scope} client dev server started`)
     // ... I was trying to prevent console clearing on bun fullstack server hmr ...
     // const buffer = ''
     // function filterClearSequences(chunk: string) {
@@ -431,7 +431,7 @@ Bun.serve({
         return res
       },
     })
-    this.logger.info(`${this.scope} dev server started`)
+    this.logger.info(`${this.scope} client dev server started`)
     return { bunViteDevServer, viteDevServer }
   }
 

@@ -7,6 +7,8 @@ export const queryClient = Point0.defineQueryClient(() => new QueryClient())
 export const root = Point0.lets('root', 'root')
   .ssr(true)
   .transformer(superjson)
+  .loading(() => <div>Loading...</div>)
+  .error(({ error }) => <div>Error: {error.message}</div>)
   .queryOptions({
     retry: false,
     refetchOnMount: false,

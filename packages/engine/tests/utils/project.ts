@@ -88,10 +88,38 @@ export class TestProject {
       dotenv: Bun.file(this.paths.dotenv),
     }
   }
+
   async replace(file: Bun.BunFile | keyof typeof this.files, search: string, replace: string) {
     file = typeof file === 'string' ? this.files[file] : file
     const content = await file.text()
-    await file.write(content.replaceAll(search, replace))
+    const isSearchExists = content.includes(search)
+    if (!isSearchExists) {
+      throw new Error(`Search string ${search} not found in file ${file.name}`)
+    }
+    const newContent = content.replaceAll(search, replace)
+    await file.write(newContent)
+  }
+
+  async write(path: string | Bun.BunFile, content: string): Promise<Bun.BunFile> {
+    const file = typeof path === 'string' ? Bun.file(this.resolve('src', path)) : path
+    await file.write(content)
+    return file
+  }
+
+  get output() {
+    const firstProcess = this.processes.at(0)
+    if (!firstProcess) {
+      throw new Error('No processes found')
+    }
+    return firstProcess.output
+  }
+
+  logOutput() {
+    const firstProcess = this.processes.at(0)
+    if (!firstProcess) {
+      throw new Error('No processes found')
+    }
+    firstProcess.logOutput()
   }
 
   async init() {
