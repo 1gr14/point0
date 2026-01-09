@@ -56,7 +56,6 @@ describe.concurrent('dev', () => {
   })
 
   it.concurrent(
-    // it.only(
     'start ssr dev server',
     wrp({ ssr: true }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
@@ -72,8 +71,7 @@ describe.concurrent('dev', () => {
     }),
   )
 
-  // it.concurrent(
-  it.only(
+  it.concurrent(
     'start spa dev server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
@@ -84,7 +82,6 @@ describe.concurrent('dev', () => {
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
-      console.log(tp.output)
       expect(tp.output).toContain(`server started on ${engine.server.port}`)
       expect(tp.output).toContain(`client started on ${engine.clients[0].port}`)
     }),

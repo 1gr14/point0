@@ -271,7 +271,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     if (!this.engineFile) {
       throw new Error(`Engine file path is not provided for client "${this.scope}"`)
     }
-    const tempDir = resolveTempDirPath(['client-bun-dev-server', this.scope])
+    const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const pluginsStrings = await extractClientBunDevPluginsStrings({
       cwd: this.cwd,
       environment: process.env.NODE_ENV ?? 'development',
@@ -279,10 +279,10 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
     })
-    const scriptPath = nodePath.join(tempDir, `serve.${this.scope}.${this.port}.js`)
+    const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const bunfigTomlContent = `[serve.static]
-plugins = ["@point0/compiler/plugin/bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
+plugins = [${['@point0/compiler/plugin/bun-static', ...pluginsStrings].map((p) => `"${p}"`).join(', ')}]
 `
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
@@ -323,7 +323,6 @@ Bun.serve({
       stdin: 'inherit',
       env: {
         ...process.env,
-        PORT: this.port.toString(),
         // FORCE_COLOR: '1',
         POINT0_COMPILER_OPTIONS: JSON.stringify({ target: 'client' }),
         NODE_ENV: process.env.NODE_ENV,
