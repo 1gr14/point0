@@ -160,7 +160,6 @@ export class TestProject {
   }
 
   spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
-    console.log('TP spawn', this.dir)
     const testProcess = TestProcess.spawn(cmds, {
       cwd: this.dir,
       ...options,
@@ -230,7 +229,6 @@ export class TestProjectFactory {
       throw new Error(`No free ports in range ${this.portsRange[0]} - ${this.portsRange[1]}`)
     }
     this.reservedPorts.add(port)
-    console.log(`Reserved port ${port}`)
     return port
   }
   // releasePort(port: number): void {

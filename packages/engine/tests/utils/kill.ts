@@ -18,13 +18,13 @@ const excludePidFromArray = (array: Array<number | string>, pid: number | string
 const exec: Partial<
   Record<typeof platform, (port: string | number, silent?: boolean, excludeCurrentProcess?: boolean) => Promise<void>>
 > = {
-  darwin: async (port: string | number, silent = false, excludeCurrentProcess = true) => {
+  darwin: async (port: string | number, silent = true, excludeCurrentProcess = true) => {
     const portStr = String(port)
     const result = await Bun.$`lsof -ti :${portStr}`.nothrow().quiet()
 
     // lsof returns non-zero exit code when no process is found
     if (result.exitCode !== 0) {
-      if (!silent) console.log(`No process found using port ${portStr}`)
+      if (!silent) console.info(`No process found using port ${portStr}`)
       return
     }
 
@@ -39,25 +39,25 @@ const exec: Partial<
     }
 
     if (pids.length === 0) {
-      if (!silent) console.log(`No process found using port ${portStr}`)
+      if (!silent) console.info(`No process found using port ${portStr}`)
       return
     }
 
     for (const pid of pids) {
-      if (!silent) console.log(`Killing process ${pid} on port ${portStr}`)
+      if (!silent) console.info(`Killing process ${pid} on port ${portStr}`)
       const killResult = await Bun.$`kill -9 ${pid}`.nothrow().quiet()
       if (killResult.exitCode !== 0) {
         throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
       }
     }
   },
-  linux: async (port: string | number, silent = false, excludeCurrentProcess = true) => {
+  linux: async (port: string | number, silent = true, excludeCurrentProcess = true) => {
     const portStr = String(port)
     const result = await Bun.$`lsof -ti :${portStr}`.nothrow().quiet()
 
     // lsof returns non-zero exit code when no process is found
     if (result.exitCode !== 0) {
-      if (!silent) console.log(`No process found using port ${portStr}`)
+      if (!silent) console.info(`No process found using port ${portStr}`)
       return
     }
 
@@ -72,25 +72,25 @@ const exec: Partial<
     }
 
     if (pids.length === 0) {
-      if (!silent) console.log(`No process found using port ${portStr}`)
+      if (!silent) console.info(`No process found using port ${portStr}`)
       return
     }
 
     for (const pid of pids) {
-      if (!silent) console.log(`Killing process ${pid} on port ${portStr}`)
+      if (!silent) console.info(`Killing process ${pid} on port ${portStr}`)
       const killResult = await Bun.$`kill -9 ${pid}`.nothrow().quiet()
       if (killResult.exitCode !== 0) {
         throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
       }
     }
   },
-  win32: async (port: string | number, silent = false, excludeCurrentProcess = true) => {
+  win32: async (port: string | number, silent = true, excludeCurrentProcess = true) => {
     const portStr = String(port)
     const result = await Bun.$`netstat -ano|findstr ${portStr}`.nothrow().quiet()
 
     // findstr returns non-zero exit code when no match is found
     if (result.exitCode !== 0) {
-      if (!silent) console.log(`No process found using port ${portStr}`)
+      if (!silent) console.info(`No process found using port ${portStr}`)
       return
     }
 
@@ -108,12 +108,12 @@ const exec: Partial<
     }
 
     if (pids.length === 0) {
-      if (!silent) console.log(`No process found using port ${portStr}`)
+      if (!silent) console.info(`No process found using port ${portStr}`)
       return
     }
 
     for (const pid of pids) {
-      if (!silent) console.log(`Killing process ${pid} on port ${portStr}`)
+      if (!silent) console.info(`Killing process ${pid} on port ${portStr}`)
       const killResult = await Bun.$`taskkill /pid ${pid} -t -f`.nothrow().quiet()
       if (killResult.exitCode !== 0) {
         throw new Error(`Failed to kill process ${pid}: ${killResult.stderr.toString().trim()}`)
@@ -150,7 +150,7 @@ export async function kill(
   options?: { silent?: boolean; excludeCurrentProcess?: boolean; force?: boolean },
 ): Promise<void> {
   ports = Array.isArray(ports) ? ports : [ports]
-  const silent = options?.silent ?? false
+  const silent = options?.silent ?? true
   const excludeCurrentProcess = options?.excludeCurrentProcess ?? true
   const force = options?.force ?? true
   const run = exec[platform]

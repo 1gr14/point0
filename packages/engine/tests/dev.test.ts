@@ -50,38 +50,29 @@ describe('dev', () => {
   it.concurrent(
     'start ssr dev server',
     wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
-      console.log('start ssr dev server')
-      const process = tp.spawn(['bun', 'run', 'dev'])
+      tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log('ssr', process.output)
       const result = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 3000)
       expect(result).toBeDefined()
       const html = await result.text()
       expect(html).toContain('<div>Page Not Found</div>')
       expect(html).toContain('__POINT0_ENV__')
-      // process.kill()
-      console.log('end ssr dev server')
     }),
   )
 
   it.concurrent(
     'start spa dev server',
     wrp({ ssr: false, deleteFiles: false }, async ({ tp, engine }) => {
-      console.log('start spa dev server')
-      const process = tp.spawn(['bun', 'run', 'dev'])
+      tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3002)
       expect(engine.clients[0].port).toBe(3003)
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log('spa', process.output)
-
       const response = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 3000)
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
-      // process.kill()
-      console.log('end spa dev server')
     }),
   )
 
@@ -90,7 +81,6 @@ describe('dev', () => {
   })
 
   afterAll(async () => {
-    console.log('afterAll', { preventFinalFilesCleanup })
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true })
   })
 })

@@ -279,7 +279,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
     })
-    const scriptPath = nodePath.join(tempDir, 'serve.js')
+    const scriptPath = nodePath.join(tempDir, `serve.${this.scope}.${this.port}.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
     const bunfigTomlContent = `[serve.static]
 plugins = ["@point0/compiler/plugin/bun-static", ${pluginsStrings.map((p) => `"${p}"`).join(', ')}]
