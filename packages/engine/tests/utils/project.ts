@@ -1,5 +1,6 @@
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
+import type { Engine } from '../../src/engine.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -111,6 +112,11 @@ export class TestProject {
     return this
   }
 
+  async importEngine(): Promise<Engine> {
+    const { engine } = await import(this.paths.engine)
+    return engine
+  }
+
   async cleanup() {
     await nodeFs.rm(this.dir, { recursive: true, force: true })
   }
@@ -125,23 +131,30 @@ export class TestProject {
 }
 
 export type TestProjectFactoryOptions = TestProjectOptions
+export type TestProjectFactoryCreateOptions = Omit<TestProjectOptions, 'namespace'>
 
 export class TestProjectFactory {
   defaultOptions: TestProjectFactoryOptions
+  namespace: string
 
   private constructor(defaultOptions: TestProjectFactoryOptions) {
     this.defaultOptions = defaultOptions
+    this.namespace = defaultOptions.namespace
   }
 
   static create(defaultOptions: TestProjectFactoryOptions) {
     return new TestProjectFactory(defaultOptions)
   }
 
-  create(options: Partial<TestProjectOptions> = {}) {
+  create(options: TestProjectFactoryCreateOptions = {}) {
     return TestProject.create({ ...this.defaultOptions, ...options })
   }
 
-  async init(options: Partial<TestProjectOptions> = {}) {
+  async init(options: TestProjectFactoryCreateOptions = {}) {
     return await TestProject.init({ ...this.defaultOptions, ...options })
+  }
+
+  async cleanup() {
+    await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), { recursive: true, force: true })
   }
 }
