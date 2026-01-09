@@ -61,27 +61,18 @@ describe('dev', () => {
     }
   })
 
-  it.only(
+  it.concurrent(
     'start ssr dev server',
     wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
-      const startedAt = Date.now()
-      const getDuration = () => Date.now() - startedAt
-      console.log(1, getDuration())
       const process = await tp.spawn(['bun', 'run', 'dev'])
-      console.log(2, getDuration())
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      console.log(3, getDuration())
       const result = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 10000)
-      console.log(4, getDuration())
       expect(result).toBeDefined()
       const html = await result.text()
-      console.log(5, getDuration())
       expect(html).toContain('<div>Page Not Found</div>')
       expect(html).toContain('__POINT0_ENV__')
-      console.log('output', process.output)
       await process.kill()
-      console.log(6, getDuration())
     }),
   )
 
@@ -93,9 +84,7 @@ describe('dev', () => {
       expect(engine.clients[0].port).toBe(3003)
       const response = await waitForResponseStatus(`http://localhost:${engine.server.port}`, 200, 10000)
       const html = await response.text()
-      console.log('html', html)
       expect(html).toContain('__POINT0_ENV__')
-      console.log('output', process.output)
       await process.kill()
     }),
   )
