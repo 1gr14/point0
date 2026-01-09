@@ -44,8 +44,9 @@ export const waitForResponse = async (
   let response
   while (true) {
     if (isTimeout()) {
-      const text = await response?.text()
-      const err = new Error(`Expected ${loggableStatus} response, timed out after ${limit}ms, response: ${text}`)
+      const err = new Error(
+        `Expected ${loggableStatus} response, received ${response?.status}, timed out after ${limit}ms`,
+      )
       await onError?.(err)
       throw err
     }
@@ -56,7 +57,10 @@ export const waitForResponse = async (
       }
     } catch (error) {
       if (isTimeout()) {
-        const err = new Error(`Expected ${loggableStatus} response, timed out after ${limit}ms`, { cause: error })
+        const err = new Error(
+          `Expected ${loggableStatus} response, received ${response?.status}, timed out after ${limit}ms`,
+          { cause: error },
+        )
         await onError?.(err)
         throw err
       }

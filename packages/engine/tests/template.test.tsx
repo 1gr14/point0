@@ -1,25 +1,43 @@
 import { afterAll, describe, expect, it } from 'bun:test'
-import type { TestProject } from './utils/project.js'
+import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
+import type { Engine } from '../src/engine.js'
 
 const tpf = TestProjectFactory.create({
   namespace: 'dev',
   portsRange: [0, Infinity], // will not run anything there
 })
 
-let preventFinalCleanup = false
-const wrp = (callback: ({ tp }: { tp: TestProject }) => any, deleteFiles = true) => {
+type ItFn = (done: (err?: unknown) => any) => any
+
+let preventFinalFilesCleanup = false
+function wrp(
+  options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean },
+  callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+): ItFn
+function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
+function wrp(
+  ...args:
+    | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
+    | [
+        options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean },
+        callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+      ]
+): ItFn {
+  const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+  const { deleteFiles = true, ...tpOptions } = options
   if (!deleteFiles) {
-    preventFinalCleanup = true
+    preventFinalFilesCleanup = true
   }
-  const tp = tpf.create()
+  const tp = tpf.create(tpOptions)
   return async () => {
     try {
       await tp.init()
-      await callback({ tp })
-      await tp.cleanup({ files: deleteFiles, processes: true, ports: true })
+      const engine = await tp.importEngine()
+      await callback({ tp, engine })
+      await tp.cleanup({ files: deleteFiles, ports: true, processes: true })
     } catch (error) {
-      await tp.cleanup({ files: deleteFiles, processes: true, ports: true })
+      await tp.cleanup({ files: deleteFiles, ports: true, processes: true })
       throw error
     }
   }
@@ -27,7 +45,7 @@ const wrp = (callback: ({ tp }: { tp: TestProject }) => any, deleteFiles = true)
 
 describe('template', () => {
   afterAll(async () => {
-    await tpf.cleanup({ files: !preventFinalCleanup, processes: true, ports: true })
+    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: false })
   })
 
   it.concurrent(
@@ -49,12 +67,12 @@ describe('template', () => {
   it.concurrent(
     'set server and client ports',
     wrp(async ({ tp }) => {
-      tp.serverPort = 4000
-      tp.clientPort = 4001
       await tp.init()
       const engine = await tp.importEngine()
-      expect(engine.server.port).toBe(4000)
-      expect(engine.clients[0].port).toBe(4001)
+      expect(engine.server.port).toBe(8)
+      expect(engine.clients[0].port).toBe(9)
+      expect(engine.server.hmrPort).toBe(10)
+      expect(engine.clients[0].hmrPort).toBe(11)
     }),
   )
 })

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "point0 dev",
     "generate": "point0 generate",
-    "build": "point0 build",
+    "build": "cross-env NODE_ENV=production point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
     "clean": "rimraf dist",
     "types": "tsc --noEmit"

@@ -7,7 +7,8 @@ export const engine = Engine.create(import.meta.url, {
     points: async () => await import('./lib/points.server'),
     generatePointsReady: './lib/points.server.ts',
     outdir: '../dist/server',
-    // port: 3000,
+    // port: server,
+    // hmrPort: server,
   },
   clients: [
     {
@@ -21,7 +22,8 @@ export const engine = Engine.create(import.meta.url, {
       outdir: '../dist/client',
       publicdir: '../public',
       publicdirOutdir: '../dist/client',
-      // port: 3001,
+      // port: client,
+      // hmrPort: client,
     },
   ],
 })

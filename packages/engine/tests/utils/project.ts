@@ -98,8 +98,10 @@ export class TestProject {
     await this.createTempDir()
     await this.copyTemplateToTempDir()
     await this.replace(this.files.packageJson, 'test-project-name', this.name)
-    await this.replace(this.files.engine, '// port: 3000,', `port: ${this.serverPort},`)
-    await this.replace(this.files.engine, '// port: 3001,', `port: ${this.clientPort},`)
+    await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
+    await this.replace(this.files.engine, '// hmrPort: server,', `hmrPort: ${this.serverHmrPort},`)
+    await this.replace(this.files.engine, '// port: client,', `port: ${this.clientPort},`)
+    await this.replace(this.files.engine, '// hmrPort: client,', `hmrPort: ${this.clientHmrPort},`)
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }

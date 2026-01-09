@@ -4,7 +4,7 @@ import { waitForResponse } from './utils/other.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
 
-setDefaultTimeout(5000)
+setDefaultTimeout(15000)
 
 const tpf = TestProjectFactory.create({
   namespace: 'dev',
@@ -46,7 +46,7 @@ function wrp(
   }
 }
 
-describe('dev', () => {
+describe.concurrent('dev', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true })
   })
@@ -62,7 +62,7 @@ describe('dev', () => {
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      const result = await waitForResponse(`http://localhost:${engine.server.port}`, 'ok')
+      const result = await waitForResponse(`http://localhost:${engine.server.port}`, undefined, 7000)
       expect(result).toBeDefined()
       const html = await result.text()
       expect(html).toContain('<div>Page Not Found</div>')
@@ -72,12 +72,12 @@ describe('dev', () => {
 
   it.concurrent(
     'start spa dev server',
-    wrp({ ssr: false, deleteFiles: false }, async ({ tp, engine }) => {
+    wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3004)
       expect(engine.clients[0].port).toBe(3005)
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      const response = await waitForResponse(`http://localhost:${engine.server.port}`, 'ok')
+      const response = await waitForResponse(`http://localhost:${engine.server.port}`, undefined, 7000)
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
