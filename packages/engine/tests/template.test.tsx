@@ -29,7 +29,7 @@ const wrp = (callback: ({ tp }: { tp: TestProject }) => any, deleteFiles = true)
   }
 }
 
-describe('dev', () => {
+describe('template', () => {
   afterAll(async () => {
     console.log('preventFinalCleanup', preventFinalCleanup)
     if (!preventFinalCleanup) {
