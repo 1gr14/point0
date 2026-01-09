@@ -48,6 +48,10 @@ export class TestProject {
     })
   }
 
+  static async init(options: TestProjectOptions) {
+    return await TestProject.create(options).init()
+  }
+
   resolve(...paths: string[]) {
     return nodePath.resolve(this.dir, ...paths)
   }
@@ -66,6 +70,9 @@ export class TestProject {
       indexClient: this.resolve('src', 'index.client.ts'),
       indexServer: this.resolve('src', 'index.server.ts'),
       indexHtml: this.resolve('index.html'),
+      packageJson: this.resolve('package.json'),
+      tsconfigJson: this.resolve('tsconfig.json'),
+      dotenv: this.resolve('.env'),
     }
   }
 
@@ -80,6 +87,9 @@ export class TestProject {
       indexClient: Bun.file(this.paths.indexClient),
       indexServer: Bun.file(this.paths.indexServer),
       indexHtml: Bun.file(this.paths.indexHtml),
+      packageJson: Bun.file(this.paths.packageJson),
+      tsconfigJson: Bun.file(this.paths.tsconfigJson),
+      dotenv: Bun.file(this.paths.dotenv),
     }
   }
   async replace(file: Bun.BunFile | keyof typeof this.files, search: string, replace: string) {
@@ -91,6 +101,7 @@ export class TestProject {
   async init() {
     await this.createTempDir()
     await this.copyTemplateToTempDir()
+    await this.replace(this.files.packageJson, 'test-project-name', this.name)
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }
@@ -110,5 +121,27 @@ export class TestProject {
 
   private async copyTemplateToTempDir() {
     await nodeFs.cp(testTemplateDir, this.dir, { recursive: true, force: true })
+  }
+}
+
+export type TestProjectFactoryOptions = TestProjectOptions
+
+export class TestProjectFactory {
+  defaultOptions: TestProjectFactoryOptions
+
+  private constructor(defaultOptions: TestProjectFactoryOptions) {
+    this.defaultOptions = defaultOptions
+  }
+
+  static create(defaultOptions: TestProjectFactoryOptions) {
+    return new TestProjectFactory(defaultOptions)
+  }
+
+  create(options: Partial<TestProjectOptions> = {}) {
+    return TestProject.create({ ...this.defaultOptions, ...options })
+  }
+
+  async init(options: Partial<TestProjectOptions> = {}) {
+    return await TestProject.init({ ...this.defaultOptions, ...options })
   }
 }
