@@ -323,12 +323,16 @@ Bun.serve({
       stdin: 'inherit',
       env: {
         ...process.env,
+        PORT: this.port.toString(),
         // FORCE_COLOR: '1',
         POINT0_COMPILER_OPTIONS: JSON.stringify({ target: 'client' }),
         NODE_ENV: process.env.NODE_ENV,
       },
     })
     this.logger.info(`${this.scope} client dev server started`)
+    this.bunNativeDevServer = childProcess
+    return childProcess
+
     // ... I was trying to prevent console clearing on bun fullstack server hmr ...
     // const buffer = ''
     // function filterClearSequences(chunk: string) {
@@ -368,14 +372,13 @@ Bun.serve({
     //     },
     //   }),
     // )
-    this.bunNativeDevServer = childProcess
-    return childProcess
   }
 
   async startBunViteDevServer(): Promise<{
     bunViteDevServer: Bun.Server<unknown>
     viteDevServer: ViteDevServer
   }> {
+    console.log('startBunViteDevServer client', this.port)
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }

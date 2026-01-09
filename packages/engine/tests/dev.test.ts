@@ -56,29 +56,37 @@ describe.concurrent('dev', () => {
   })
 
   it.concurrent(
+    // it.only(
     'start ssr dev server',
     wrp({ ssr: true }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
-      expect(result).toBeDefined()
-      const html = await result.text()
+      const response = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
+      expect(response).toBeDefined()
+      const html = await response.text()
       expect(html).toContain('<div>Page Not Found</div>')
       expect(html).toContain('__POINT0_ENV__')
+      expect(tp.output).toContain(`server started on ${engine.server.port}`)
+      expect(tp.output).toContain(`client started on ${engine.clients[0].port}`)
     }),
   )
 
-  it.concurrent(
+  // it.concurrent(
+  it.only(
     'start spa dev server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3004)
       expect(engine.clients[0].port).toBe(3005)
       const response = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
+      expect(response).toBeDefined()
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
+      console.log(tp.output)
+      expect(tp.output).toContain(`server started on ${engine.server.port}`)
+      expect(tp.output).toContain(`client started on ${engine.clients[0].port}`)
     }),
   )
 

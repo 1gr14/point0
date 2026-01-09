@@ -225,6 +225,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
               .map((entryFile) => {
                 return Bun.spawn({
                   cmd: ['bun', 'run', ...(watch ? ['--watch'] : []), ...bunRunArgs, entryFile],
+                  // cmd: ['bun', 'run', ...bunRunArgs, entryFile],
+                  // cmd: ['bun', ...bunRunArgs, entryFile],
                   env: {
                     ...process.env,
                     POINT0_PREVENT_CLIENT_DEV_SERVER: 'true',
@@ -233,14 +235,17 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
                   stderr: 'inherit',
                 })
               })
-          let processes = start()
+
           // TODO:ASAP check if it is required, does not watch enough?
-          this.onPointFileChange((event, path, points) => {
-            processes.forEach((p) => {
-              p.kill('SIGKILL')
-            })
-            processes = start()
-          })
+
+          start()
+          // let processes = start()
+          // this.onPointFileChange((event, path, points) => {
+          //   processes.forEach((p) => {
+          //     p.kill('SIGKILL')
+          //   })
+          //   processes = start()
+          // })
           return []
         }
       })()
