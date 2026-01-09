@@ -10,6 +10,8 @@ export type TestProjectOptions = {
   namespace: string
   ssr?: boolean
   superjson?: boolean
+  serverPort?: 'auto' | undefined
+  clientPort?: 'auto' | undefined
 }
 
 export class TestProject {
@@ -19,7 +21,23 @@ export class TestProject {
   id: string
   ssr: boolean
   superjson: boolean
+  serverPort: number | 'auto'
+  clientPort: number | 'auto'
   processes: TestProcess[] = []
+  ports: number[] = []
+
+  static reservedPorts = new Set<number>()
+  static getNextFreePort(): number {
+    let port = 3000
+    while (this.reservedPorts.has(port)) {
+      port++
+    }
+    this.reservedPorts.add(port)
+    return port
+  }
+  static releasePort(port: number): void {
+    this.reservedPorts.delete(port)
+  }
 
   private constructor(options: {
     namespace: string
@@ -28,6 +46,9 @@ export class TestProject {
     id: string
     ssr: boolean
     superjson: boolean
+    serverPort: 'auto' | number
+    clientPort: 'auto' | number
+    ports: number[]
   }) {
     this.namespace = options.namespace
     this.dir = options.dir
@@ -35,12 +56,18 @@ export class TestProject {
     this.id = options.id
     this.ssr = options.ssr
     this.superjson = options.superjson
+    this.serverPort = options.serverPort
+    this.clientPort = options.clientPort
+    this.ports = options.ports
   }
 
   static create(options: TestProjectOptions) {
     const id = crypto.randomUUID()
     const name = 'test-' + id
     const dir = nodePath.resolve(testsGeneralTempDir, options.namespace, name)
+    const serverPort = options.serverPort === 'auto' ? 'auto' : TestProject.getNextFreePort()
+    const clientPort = options.clientPort === 'auto' ? 'auto' : TestProject.getNextFreePort()
+    const ports = [serverPort, clientPort].filter((port): port is number => port !== 'auto')
     return new TestProject({
       namespace: options.namespace,
       dir,
@@ -48,6 +75,9 @@ export class TestProject {
       id,
       ssr: options.ssr ?? true,
       superjson: options.superjson ?? true,
+      serverPort,
+      clientPort,
+      ports,
     })
   }
 
@@ -105,6 +135,8 @@ export class TestProject {
     await this.createTempDir()
     await this.copyTemplateToTempDir()
     await this.replace(this.files.packageJson, 'test-project-name', this.name)
+    await this.replace(this.files.engine, '// port: 3000,', `port: ${this.serverPort},`)
+    await this.replace(this.files.engine, '// port: 3001,', `port: ${this.clientPort},`)
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }
@@ -119,74 +151,21 @@ export class TestProject {
     return engine
   }
 
-  async cleanup() {
-    // Kill all processes and their children (process trees)
+  async cleanup(deleteFiles = true) {
     await Promise.all(
       this.processes.map(async (p) => {
-        try {
-          await p.killTree('SIGKILL')
-        } catch (error) {
-          // If killTree fails, try regular kill as fallback
-          try {
-            p.kill('SIGKILL')
-          } catch {
-            // Ignore errors if process already exited
-          }
-        }
+        await p.kill()
       }),
     )
-
-    // Also kill any orphaned processes that might be using ports from this test
-    // These are processes that were spawned but became orphaned (PPID = 1)
-    // We find them by looking for processes with our test directory in their command
-    if (process.platform !== 'win32') {
-      try {
-        // Find and kill processes that reference this test directory
-        // This catches orphaned child processes that are no longer tracked
-        const findProcesses = Bun.spawn({
-          cmd: [
-            'sh',
-            '-c',
-            `ps aux | grep -E "${this.dir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" | grep -v grep | awk '{print $2}' || true`,
-          ],
-          stdout: 'pipe',
-          stderr: 'pipe',
-        })
-
-        const output = await new Response(findProcesses.stdout).text()
-        const pids = output
-          .trim()
-          .split('\n')
-          .filter((line) => line.trim())
-          .map((line) => parseInt(line.trim(), 10))
-          .filter((p) => !isNaN(p) && p > 0)
-
-        // Kill all found processes
-        if (pids.length > 0) {
-          await Promise.all(
-            pids.map(async (pid) => {
-              try {
-                const killProcess = Bun.spawn({
-                  cmd: ['kill', '-SIGKILL', pid.toString()],
-                  stdout: 'pipe',
-                  stderr: 'pipe',
-                })
-                await killProcess.exited
-              } catch {
-                // Ignore errors if process already exited
-              }
-            }),
-          )
-        }
-      } catch {
-        // Ignore errors
-      }
+    if (this.serverPort !== 'auto') {
+      TestProject.releasePort(this.serverPort)
     }
-
-    // Wait a bit more to ensure ports are released
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    await nodeFs.rm(this.dir, { recursive: true, force: true })
+    if (this.clientPort !== 'auto') {
+      TestProject.releasePort(this.clientPort)
+    }
+    if (deleteFiles) {
+      await nodeFs.rm(this.dir, { recursive: true, force: true })
+    }
   }
 
   private async createTempDir() {
@@ -197,14 +176,11 @@ export class TestProject {
     await nodeFs.cp(testTemplateDir, this.dir, { recursive: true, force: true })
   }
 
-  spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
-    const child = Bun.spawn(cmds, {
+  async spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): Promise<TestProcess> {
+    const testProcess = await TestProcess.spawn(cmds, this.ports, {
       cwd: this.dir,
-      stdout: 'pipe' as never,
-      stderr: 'pipe' as never,
       ...options,
     })
-    const testProcess = TestProcess.create(child)
     this.processes.push(testProcess)
     return testProcess
   }

@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const killPort = require('kill-port') as (port: number, protocol?: 'tcp' | 'udp') => Promise<unknown>
+
 export type TestProcessOutput = {
   stdout: string
   stderr: string
@@ -5,16 +8,40 @@ export type TestProcessOutput = {
 
 export class TestProcess {
   readonly process: Bun.Subprocess
+  readonly ports: number[]
   private readonly stdoutChunks: Uint8Array[] = []
   private readonly stderrChunks: Uint8Array[] = []
 
-  private constructor(child: Bun.Subprocess) {
+  private constructor({ child, ports }: { child: Bun.Subprocess; ports: number[] }) {
     this.process = child
     this.setupOutputCollection()
+    this.ports = ports
   }
 
-  static create(child: Bun.Subprocess): TestProcess {
-    return new TestProcess(child)
+  /**
+   * Spawn a new process and wrap it in a TestProcess
+   * Automatically pipes stdout and stderr for output collection
+   */
+  static async spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): Promise<TestProcess>
+  static async spawn(cmds: string[], ports: number[], options?: Parameters<typeof Bun.spawn>[1]): Promise<TestProcess>
+  static async spawn(
+    ...args:
+      | [cmds: string[], options?: Parameters<typeof Bun.spawn>[1]]
+      | [cmds: string[], ports: number[], options?: Parameters<typeof Bun.spawn>[1]]
+  ): Promise<TestProcess> {
+    const [cmds, ports = [], options = {}] = (() => {
+      if (Array.isArray(args[1])) {
+        return [args[0], args[1], args[2]]
+      }
+      return [args[0], [], args[1]]
+    })()
+    await TestProcess.killPorts(ports)
+    const child = Bun.spawn(cmds, {
+      stdout: 'pipe' as never,
+      stderr: 'pipe' as never,
+      ...options,
+    })
+    return new TestProcess({ child, ports })
   }
 
   private setupOutputCollection() {
@@ -56,138 +83,63 @@ export class TestProcess {
   /**
    * Kill the process
    */
-  kill(signal?: number | NodeJS.Signals): void {
+  killSelf(signal?: number | NodeJS.Signals): void {
     this.process.kill(signal)
   }
 
+  static async killPorts(ports: number[]): Promise<void> {
+    await Promise.all(
+      ports.map(async (port) => {
+        try {
+          await killPort(port)
+        } catch {
+          // Ignore errors - port might not be in use
+        }
+      }),
+    )
+  }
+
+  async killPorts(): Promise<void> {
+    await TestProcess.killPorts(this.ports)
+  }
+
   /**
-   * Kill the process and all its children (process tree)
-   * This ensures child processes spawned by the dev server are also terminated
+   * Kill the current process and processes on tracked ports
    */
-  async killTree(signal: number | NodeJS.Signals = 'SIGKILL'): Promise<void> {
-    const pid = this.process.pid
-    if (!pid) {
-      // Process already exited or no PID available
-      return
-    }
-
-    if (process.platform === 'win32') {
-      // On Windows, just kill the process itself
-      // Windows handles child process cleanup differently
-      try {
-        this.process.kill(signal)
-      } catch {
-        // Ignore errors if process already exited
-      }
-      return
-    }
-
-    // On Unix systems, recursively find and kill all child processes
-    const killChildren = async (parentPid: number): Promise<void> => {
-      try {
-        // Find all direct children of this process
-        const pgrepProcess = Bun.spawn({
-          cmd: ['pgrep', '-P', parentPid.toString()],
-          stdout: 'pipe',
-          stderr: 'pipe',
-        })
-
-        const output = await new Response(pgrepProcess.stdout).text()
-        const childPids = output
-          .trim()
-          .split('\n')
-          .filter((line) => line.trim())
-          .map((line) => parseInt(line.trim(), 10))
-          .filter((p) => !isNaN(p))
-
-        // Recursively kill children first
-        await Promise.all(
-          childPids.map(async (childPid) => {
-            await killChildren(childPid)
-            try {
-              const killProcess = Bun.spawn({
-                cmd: ['kill', `-${signal}`, childPid.toString()],
-                stdout: 'pipe',
-                stderr: 'pipe',
-              })
-              await killProcess.exited
-            } catch {
-              // Ignore errors if process already exited
-            }
-          }),
-        )
-      } catch {
-        // Ignore errors (process might have no children or already exited)
-      }
-    }
-
+  async kill(signal: number | NodeJS.Signals = 'SIGKILL'): Promise<void> {
     try {
-      // First, try to kill the process group (if it exists)
-      // Negative PID kills the process group
-      try {
-        const killGroupProcess = Bun.spawn({
-          cmd: ['kill', `-${signal}`, `-${pid}`],
-          stdout: 'pipe',
-          stderr: 'pipe',
-        })
-        await killGroupProcess.exited
-      } catch {
-        // Process group might not exist, continue with individual killing
-      }
-
-      // Kill all children recursively
-      await killChildren(pid)
-
-      // Finally, kill the parent process itself
-      try {
-        this.process.kill(signal)
-      } catch {
-        // Ignore errors if process already exited
-      }
-    } catch (error) {
-      // Fallback: just kill the process directly
-      try {
-        this.process.kill(signal)
-      } catch {
-        // Ignore errors if process already exited
-      }
-    }
-
-    // Wait a bit for the process to fully exit
-    try {
-      await Promise.race([
-        this.process.exited,
-        new Promise((resolve) => setTimeout(resolve, 1000)), // Max 1 second wait
-      ])
+      this.killSelf(signal)
     } catch {
-      // Ignore errors
+      // Ignore errors - process might have already exited
+    }
+    try {
+      await this.killPorts()
+    } catch {
+      // Ignore errors - ports might not be in use
     }
   }
 
   /**
-   * Get collected stdout output (waits for process to exit)
+   * Get collected stdout output (current output, doesn't wait for process to exit)
    */
-  async getStdout(): Promise<string> {
-    await this.process.exited
+  get stdout(): string {
     return new TextDecoder().decode(Buffer.concat(this.stdoutChunks))
   }
 
   /**
-   * Get collected stderr output (waits for process to exit)
+   * Get collected stderr output (current output, doesn't wait for process to exit)
    */
-  async getStderr(): Promise<string> {
-    await this.process.exited
+  get stderr(): string {
     return new TextDecoder().decode(Buffer.concat(this.stderrChunks))
   }
 
   /**
-   * Get both stdout and stderr output (waits for process to exit)
+   * Get both stdout and stderr output (current output, doesn't wait for process to exit)
    */
-  async getOutput(): Promise<TestProcessOutput> {
-    await this.process.exited
+  get output(): TestProcessOutput {
     return {
-      stdout: new TextDecoder().decode(Buffer.concat(this.stdoutChunks)),
-      stderr: new TextDecoder().decode(Buffer.concat(this.stderrChunks)),
+      stdout: this.stdout,
+      stderr: this.stderr,
     }
   }
 }

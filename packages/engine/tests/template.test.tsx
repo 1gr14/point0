@@ -31,7 +31,6 @@ const wrp = (callback: ({ tp }: { tp: TestProject }) => any, deleteFiles = true)
 
 describe('template', () => {
   afterAll(async () => {
-    console.log('preventFinalCleanup', preventFinalCleanup)
     if (!preventFinalCleanup) {
       await tpf.cleanup()
     }
@@ -50,6 +49,18 @@ describe('template', () => {
       const engine = await tp.importEngine()
       expect(engine).toBeDefined()
       expect(engine.isInitialized()).toBe(false)
+    }),
+  )
+
+  it.concurrent(
+    'set server and client ports',
+    wrp(async ({ tp }) => {
+      tp.serverPort = 4000
+      tp.clientPort = 4001
+      await tp.init()
+      const engine = await tp.importEngine()
+      expect(engine.server.port).toBe(4000)
+      expect(engine.clients[0].port).toBe(4001)
     }),
   )
 })
