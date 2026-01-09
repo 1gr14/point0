@@ -49,6 +49,7 @@ e2e tests via code
 browser test via running server
 hmr tests
 displayName dynamic
+rmove LazyPointsCollectionRecord if not genreated points use it
 Точка инфо на поинте, просто показывает сразу все данные а там уже и имя и тайп
 Лоадер стейдж нужен, чтобы все в рядок стряли
 query client is special variable in special file, and it can be redefine and get ??? query client can be defined on any root, and will be attached to all requests from this client scope

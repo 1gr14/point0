@@ -9,6 +9,7 @@ export default defineConfig([
   {
     ignores: [
       '**/node_modules/**',
+      '**/engine/tests/template/**',
       '**/dist/**',
       '**/temp/**',
       '**/dist-test/**',

@@ -3,6 +3,7 @@ import { defineConfig, type Options } from 'tsup'
 const general = {
   entry: [
     'src/index.ts',
+    'src/engine.ts',
     'src/cli.ts',
     'src/client.ts',
     'src/config.ts',
