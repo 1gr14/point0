@@ -632,7 +632,7 @@ Bun.serve({
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+    if (env.built) {
       throw new Error('You can not build by built engine')
     } else {
       const { bunBuildConfig, clean = false } = options ?? {}
@@ -698,7 +698,7 @@ Bun.serve({
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+    if (env.built) {
       throw new Error('You can not build by built engine')
     } else {
       if (!this.viteConfig) {
@@ -777,7 +777,7 @@ Bun.serve({
             Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
           ),
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': JSON.stringify('true'),
+          'process.env.POINT0_BUILT': JSON.stringify('true'),
           'process.env.POINT0_TARGET': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },

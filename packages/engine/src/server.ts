@@ -160,9 +160,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       return this as ServerBun<true>
     }
     await Promise.all([
-      this.loadBunPlugins({ built: process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true' }).then(
-        async () => await this.initPointsManager(),
-      ),
+      this.loadBunPlugins({ built: env.built }).then(async () => await this.initPointsManager()),
       this.publicdir.init(),
     ])
     this.initialized = true as never
@@ -185,13 +183,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
-    console.log('extractBunPlugins', {
-      built,
-      'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT,
-    })
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
-      : process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true'
+      : env.built
         ? []
         : [
             await import('@point0/compiler/plugin/bun').then((module) =>
@@ -579,7 +573,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         ...providedBunBuildConfig.define,
         ...injectedEnvs,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': JSON.stringify('true'),
+        'process.env.POINT0_BUILT': JSON.stringify('true'),
         'process.env.POINT0_TARGET': JSON.stringify('server'),
         'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
       },
@@ -588,7 +582,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+    if (env.built) {
       throw new Error('You can not build by built engine')
     } else {
       if (!this.viteConfig) {
@@ -667,7 +661,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           ...loadedViteConfig.define,
           ...injectedEnvs,
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': JSON.stringify('true'),
+          'process.env.POINT0_BUILT': JSON.stringify('true'),
           'process.env.POINT0_TARGET': JSON.stringify('server'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },

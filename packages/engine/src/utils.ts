@@ -462,7 +462,7 @@ export const createViteDevServer = async ({
   hmrPort: number | null
   env?: EngineOptionsEnvParsed
 }): Promise<ViteDevServer> => {
-  if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+  if (env.built) {
     throw new Error('You can not serve by dev client with built engine')
   } else {
     if (!viteConfig) {
