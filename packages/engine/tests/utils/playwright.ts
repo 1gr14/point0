@@ -305,6 +305,11 @@ export class PlaywrightPage {
     }
   }
 
+  async logStory(): Promise<void> {
+    await this.stable
+    console.dir(this.story, { depth: null })
+  }
+
   async waitNoContent(search: string, timeout = 2000): Promise<void> {
     const startTime = Date.now()
     while (true) {
