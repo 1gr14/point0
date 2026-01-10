@@ -9,6 +9,7 @@ import type {
 import { appendSlash, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type {
   ClientBunBuildConfigDefinition,
   ClientBunPluginsDefinition,
@@ -47,12 +48,12 @@ export type EngineOptionsRoutes = () => Promise<
 >
 
 export type EngineGeneralOptions = {
+  file: string
   fallbackScope?: PointsScope
   logger?: EngineLogger
   itWasBuilt?: boolean
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
-  engineFile?: string
   autoFixBuiltPaths?: boolean
   clientsOutdir?: string | null
   pointsGlob?: string | string[]
@@ -156,7 +157,7 @@ export type EngineGeneralOptionsParsed = {
   itWasBuilt: boolean
   cwdAfterBuild: string
   cwdBeforeBuild: string
-  engineFile: string | null
+  engineFile: string
   cwd: string
   autoFixBuiltPaths: boolean
   clientsOutdir: string | null
@@ -166,7 +167,7 @@ export type EngineGeneralOptionsParsed = {
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
-  engineFile: string | null
+  engineFile: string
   pointsProvided: EngineOptionsPoints
   generatePointsLazy: string | null
   generatePointsReady: string | null
@@ -201,7 +202,7 @@ export type EngineServerOptionsParsed = {
   entry: Record<string, string> | null
   outdir: string | null
   publicdirOutdir: string | null
-  engineFile: string | null
+  engineFile: string
   cwdBeforeBuild: string
   itWasBuilt: boolean
   fallbackScope: PointsScope
@@ -267,6 +268,21 @@ const parseEnv = (input: EngineOptionsEnv): EngineOptionsEnvParsed => {
   return result
 }
 
+const isFileURL = (str: string): boolean => {
+  try {
+    // Check if it starts with a URL scheme (file://, http://, https://, etc.)
+    if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(str)) {
+      // Validate it's a proper URL
+      const url = new URL(str)
+      // fileURLToPath specifically works with file:// URLs
+      return url.protocol === 'file:'
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 const parseEngineGeneralOptions = ({
   generalOptions,
   serverOptions,
@@ -276,14 +292,17 @@ const parseEngineGeneralOptions = ({
   serverOptions: EngineServerOptions
   clientsOptions: EngineClientOptions[] | undefined
 }): EngineGeneralOptionsParsed => {
+  if (!generalOptions.file) {
+    throw new Error('You should provide engine file path via file: import.meta.url, it is critical for engine to work')
+  }
+  // Convert file URL to path if needed, since we'll use it with nodePath functions
+  const engineFile = isFileURL(generalOptions.file) ? fileURLToPath(generalOptions.file) : generalOptions.file
   const itWasBuilt = generalOptions.itWasBuilt ?? process.env.POINT0_ENGINE_WAS_BUILT === 'true'
   const { cwdAfterBuild, cwdBeforeBuild, cwd } = (() => {
     generalOptions.itWasBuilt ??= process.env.POINT0_ENGINE_WAS_BUILT === 'true'
 
     if (!itWasBuilt) {
-      if (generalOptions.engineFile) {
-        generalOptions.cwdBeforeBuild ??= nodePath.dirname(generalOptions.engineFile)
-      }
+      generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
       if (!generalOptions.cwdAfterBuild && generalOptions.cwdBeforeBuild && serverOptions.outdir) {
         if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
           throw new Error(
@@ -296,16 +315,12 @@ const parseEngineGeneralOptions = ({
       if (!generalOptions.cwdBeforeBuild || !generalOptions.cwdAfterBuild) {
         const POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED = process.env.POINT0_ENGINE_CWD_BEFORE_BUILD ?? null
         const POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED = process.env.POINT0_ENGINE_CWD_AFTER_BUILD ?? null
-        if (
-          !POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED ||
-          !POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED ||
-          !generalOptions.engineFile
-        ) {
+        if (!POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED || !POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED || !engineFile) {
           throw new Error(
             `You should provide POINT0_ENGINE_CWD_BEFORE_BUILD and POINT0_ENGINE_CWD_AFTER_BUILD and engineFile if itWasBuilt is true and cwdBeforeBuild and cwdAfterBuild are not provided`,
           )
         }
-        const CWD_AFTER_BUILD_CURRENT = nodePath.dirname(generalOptions.engineFile)
+        const CWD_AFTER_BUILD_CURRENT = nodePath.dirname(engineFile)
         if (!CWD_AFTER_BUILD_CURRENT.endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)) {
           throw new Error(
             `POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED "${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}" is not a subdirectory of CWD_AFTER_BUILD_CURRENT "${CWD_AFTER_BUILD_CURRENT}"`,
@@ -355,7 +370,7 @@ const parseEngineGeneralOptions = ({
     itWasBuilt,
     cwdAfterBuild,
     cwdBeforeBuild,
-    engineFile: generalOptions.engineFile || null,
+    engineFile,
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
     banner: generalOptions.banner ?? null,

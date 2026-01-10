@@ -59,10 +59,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   // ): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-  static create(options: EngineOptions, fileUrl?: string): Engine {
-    if (fileUrl) {
-      options.engineFile ??= fileURLToPath(fileUrl)
-    }
+  static create(options: EngineOptions): Engine {
     const parsedOptions = parseEngineOptions(options)
     const allPointsManagers = AllPointsManagers.create()
 

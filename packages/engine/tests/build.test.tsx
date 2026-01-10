@@ -46,8 +46,7 @@ function wrp(
   }
 }
 
-// const bundlers = ['bun', 'vite']
-const bundlers = ['bun']
+const bundlers = ['bun', 'vite']
 
 describe('build', () => {
   beforeAll(async () => {
@@ -57,13 +56,13 @@ describe('build', () => {
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    // throwOnBundlersLengthNot2(bundlers)
+    throwOnBundlersLengthNot2(bundlers)
   })
 
-  describe.concurrent.each(bundlers)('%s', (bundler) => {
+  describe.each(bundlers)('%s', (bundler) => {
     it.concurrent(
       'build and start ssr server',
-      wrp({ ssr: true, vite: bundler === 'vite', preserve: true }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -72,6 +71,7 @@ describe('build', () => {
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
+
         const serverFilesContent = await tp.getDistServerFilesContent()
         const clientFilesContent = await tp.getDistClientFilesContent()
         expect(serverFilesContent).toContain('My Cool Page')
@@ -94,7 +94,7 @@ describe('build', () => {
       `)
       }),
       {
-        retry: 3,
+        // retry: 3,
       },
     )
 
@@ -207,7 +207,7 @@ describe('build', () => {
 
   it.concurrent(
     'prune vite config from engine',
-    wrp({ ssr: true, vite: true, preserve: true }, async ({ tp, engine }) => {
+    wrp({ ssr: true, vite: true }, async ({ tp, engine }) => {
       await tp.write(
         'src/page.tsx',
         `import { root } from './lib/root.js'
