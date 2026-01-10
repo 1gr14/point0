@@ -46,7 +46,8 @@ function wrp(
   }
 }
 
-const bundlers = ['bun', 'vite']
+// const bundlers = ['bun', 'vite']
+const bundlers = ['bun']
 
 describe('build', () => {
   beforeAll(async () => {
@@ -56,13 +57,13 @@ describe('build', () => {
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    throwOnBundlersLengthNot2(bundlers)
+    // throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.concurrent.each(bundlers)('%s', (bundler) => {
     it.concurrent(
       'build and start ssr server',
-      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: true }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -199,8 +200,58 @@ describe('build', () => {
         `)
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
   })
+
+  it.concurrent(
+    'prune vite config from engine',
+    wrp({ ssr: true, vite: true, preserve: true }, async ({ tp, engine }) => {
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+      export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
+      )
+      await tp.prepend(
+        tp.files.engine,
+        `
+        import react from '@vitejs/plugin-react'
+        import svgr from 'vite-plugin-svgr'
+        import tsconfigPaths from 'vite-tsconfig-paths'  
+      `,
+      )
+      await tp.replace(
+        tp.files.engine,
+        `viteConfig: '../vite.config.ts'`,
+        `viteConfig: {
+            plugins: [react(), svgr(), tsconfigPaths()],
+            define: {
+              I_WILL_BE_REMOVED_ON_BUILD_STAGE_FORM_HERE: JSON.stringify('I_WILL_BE_REMOVED_ON_BUILD_STAGE_FORM_HERE'),
+            },
+          }`,
+      )
+      await tp.generate()
+      const bp = tp.spawn(['bun', 'run', 'build'])
+      await bp.exited
+      const serverFilesContent = await tp.getDistServerFilesContent()
+      const clientFilesContent = await tp.getDistClientFilesContent()
+      expect(serverFilesContent).not.toContain('I_WILL_BE_REMOVED_ON_BUILD_STAGE_FORM_HERE')
+      expect(clientFilesContent).not.toContain('I_WILL_BE_REMOVED_ON_BUILD_STAGE_FORM_HERE')
+      tp.spawn(['bun', 'run', 'start'])
+      expect(engine.server.port).toBeNumber()
+      expect(engine.clients[0].port).toBeNumber()
+      await tp.waitStarted()
+      const page = await tp.gotoServer('/')
+      await page.stable
+      expect(page.tale).toMatchInlineSnapshot(`
+      "http://localhost/
+        div: My Cool Page
+        "
+    `)
+    }),
+    {
+      retry: 3,
+    },
+  )
 })

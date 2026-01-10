@@ -12,7 +12,7 @@ import nodePath from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
-import type { EngineLogger, EngineOptions, RequiredCtxByEngineOptions } from './config.js'
+import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
 import { Executor } from './executor.js'
 import type {
@@ -59,14 +59,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   // ): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-  static create<TOptions extends EngineOptions>(
-    fileUrl: string,
-    options: TOptions,
-  ): Engine<RequiredCtxByEngineOptions<TOptions>, false>
-  static create<TOptions extends EngineOptions>(options: TOptions): Engine<RequiredCtxByEngineOptions<TOptions>, false>
-  static create(...args: [string, EngineOptions] | [EngineOptions]): Engine {
-    const options = args.length === 2 ? args[1] : args[0]
-    const fileUrl = args.length === 2 ? args[0] : undefined
+  static create(options: EngineOptions, fileUrl?: string): Engine {
     if (fileUrl) {
       options.engineFile ??= fileURLToPath(fileUrl)
     }

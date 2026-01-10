@@ -1008,4 +1008,285 @@ describe('CompilerFile', () => {
       )
     })
   })
+
+  describe('#shakeForBuiltEngine', () => {
+    it.concurrent(
+      'keeps port and hmrPort properties unchanged',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              port: 3000,
+              hmrPort: 3001,
+            },
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              port: 3000,
+              hmrPort: 3001,
+            },
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'replaces viteConfig with empty object',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(`
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              viteConfig: '../vite.config.ts',
+            },
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              viteConfig: {},
+            },
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'replaces bunBuildConfig with empty object',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              bunBuildConfig: { target: 'bun' },
+            },
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              bunBuildConfig: {},
+            },
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'replaces bunPlugins with empty array',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              bunPlugins: [() => {}],
+            },
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              bunPlugins: [],
+            },
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'handles multiple properties in server config',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              port: 3000,
+              viteConfig: {define: {x: 1}},
+              bunPlugins: ['plugin'],
+            },
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              port: 3000,
+              viteConfig: {},
+              bunPlugins: [],
+            },
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'handles properties in client config',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            clients: [
+              {
+                port: 3000,
+                viteConfig: '../vite.config.ts',
+              },
+            ],
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            clients: [
+              {
+                port: 3000,
+                viteConfig: {},
+              },
+            ],
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'adds import.meta.url as second argument if missing',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {},
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {},
+          })
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'does not add import.meta.url if second argument already exists',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create(
+            {
+              server: {},
+            },
+            'custom-url',
+          )
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create(
+            {
+              server: {},
+            },
+            'custom-url',
+          )
+          "
+        `,
+        )
+      }),
+    )
+
+    it.concurrent(
+      'does not modify files without Engine.create',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          console.info('no Engine.create here')
+        `)
+        const originalContent = cf.content
+        cf.shakeForBuiltEngine()
+        expect(cf.content).toBe(originalContent)
+        expect(cf.modified).toBe(false)
+      }),
+    )
+
+    it.concurrent(
+      'handles all properties together',
+      helper(async ({ files: [file] }) => {
+        const cf = await file.wrp(` 
+          const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              port: 3000,
+              hmrPort: 3001,
+              viteConfig: '../vite.config.ts',
+              bunBuildConfig: { target: 'bun' },
+              bunPlugins: [() => {}],
+            },
+            clients: [
+              {
+                port: 4000,
+                hmrPort: 4001,
+                viteConfig: '../vite.config.client.ts',
+              },
+            ],
+          })
+        `)
+        cf.shakeForBuiltEngine()
+        expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+          `
+          "const { Engine } = await import('@point0/engine')
+          Engine.create({
+            server: {
+              port: 3000,
+              hmrPort: 3001,
+              viteConfig: {},
+              bunBuildConfig: {},
+              bunPlugins: [],
+            },
+            clients: [
+              {
+                port: 4000,
+                hmrPort: 4001,
+                viteConfig: {},
+              },
+            ],
+          })
+          "
+        `,
+        )
+      }),
+    )
+  })
 })

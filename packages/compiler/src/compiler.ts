@@ -103,6 +103,9 @@ export class Compiler {
       }
     }
     cf.shakeForEnv({ target, scope, consts, built })
+    if (built) {
+      cf.shakeForBuiltEngine()
+    }
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
       if (tryIndex >= 10) {

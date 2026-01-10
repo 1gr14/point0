@@ -125,6 +125,13 @@ export class TestProject {
     return file
   }
 
+  async prepend(path: string | Bun.BunFile, content: string): Promise<Bun.BunFile> {
+    const file = typeof path === 'string' ? Bun.file(this.resolve(path)) : path
+    const existingContent = await file.text()
+    await file.write(content + existingContent)
+    return file
+  }
+
   async generate(): Promise<FileGeneratorProcessResult> {
     const engine = await this.importEngine()
     return await engine.generate({ silent: true })

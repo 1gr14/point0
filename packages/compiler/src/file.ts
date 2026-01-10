@@ -758,4 +758,111 @@ export class CompilerFile<THasContent extends boolean> {
       return this._shakeForEnv
     }
   }
+
+  private _shakeForBuiltEngine:
+    | {
+        errors: unknown[]
+        ok: boolean
+        modified: boolean
+      }
+    | undefined = undefined
+  shakeForBuiltEngine(): {
+    errors: unknown[]
+    ok: boolean
+    modified: boolean
+  } {
+    const errors: unknown[] = []
+    let modified = false
+    if (!this.content) {
+      throw new Error(`File ${this.abs} is not read yet`)
+    }
+    if (this._shakeForBuiltEngine) {
+      return this._shakeForBuiltEngine
+    }
+    if (!this.content.includes('Engine.create')) {
+      this._shakeForBuiltEngine = { errors, ok: true, modified }
+      return this._shakeForBuiltEngine
+    }
+
+    try {
+      const makeObjectExpression = () =>
+        ({
+          type: 'ObjectExpression',
+          properties: [],
+        }) as any
+
+      const makeArrayExpression = () =>
+        ({
+          type: 'ArrayExpression',
+          elements: [],
+        }) as any
+
+      const processObjectExpression = (objExpr: any): void => {
+        if (objExpr.type !== 'ObjectExpression') return
+
+        const propertiesToReplace = [
+          { name: 'viteConfig', value: makeObjectExpression() },
+          { name: 'bunBuildConfig', value: makeObjectExpression() },
+          { name: 'bunPlugins', value: makeArrayExpression() },
+        ]
+
+        // Process properties in this object
+        for (const propToReplace of propertiesToReplace) {
+          const propIndex = objExpr.properties.findIndex(
+            (prop: any) =>
+              prop.type === 'ObjectProperty' && prop.key.type === 'Identifier' && prop.key.name === propToReplace.name,
+          )
+
+          if (propIndex !== -1 && propToReplace.value) {
+            objExpr.properties[propIndex].value = propToReplace.value
+            modified = true
+          }
+        }
+
+        // Recursively process nested objects (server, clients array elements, etc.)
+        for (const prop of objExpr.properties) {
+          if (prop.type === 'ObjectProperty' && prop.value) {
+            if (prop.value.type === 'ObjectExpression') {
+              processObjectExpression(prop.value)
+            } else if (prop.value.type === 'ArrayExpression') {
+              // Process array elements (like clients array)
+              for (const element of prop.value.elements) {
+                if (element?.type === 'ObjectExpression') {
+                  processObjectExpression(element)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      traverse(this.ast, {
+        CallExpression: (p) => {
+          const node = p.node
+          // Check if this is Engine.create(...)
+          if (
+            node.callee.type === 'MemberExpression' &&
+            node.callee.object.type === 'Identifier' &&
+            node.callee.object.name === 'Engine' &&
+            node.callee.property.type === 'Identifier' &&
+            node.callee.property.name === 'create'
+          ) {
+            // Handle first argument - should be an object expression
+            if (node.arguments.length > 0 && node.arguments[0].type === 'ObjectExpression') {
+              processObjectExpression(node.arguments[0])
+            }
+            // Do NOT touch the second argument
+          }
+        },
+      })
+
+      this._shakeForBuiltEngine = { errors, ok: true, modified }
+      this.modified ||= modified
+      return this._shakeForBuiltEngine
+    } catch (e) {
+      errors.push(e)
+      this._shakeForBuiltEngine = { errors, ok: false, modified }
+      return this._shakeForBuiltEngine
+    }
+  }
 }
