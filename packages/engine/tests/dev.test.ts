@@ -89,7 +89,7 @@ describe.concurrent('dev', () => {
 
   it.concurrent(
     'have hmr client updates',
-    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
+    wrp({ ssr: true }, async ({ tp, engine }) => {
       await tp.write(
         'src/page.tsx',
         `import { root } from './lib/root.js'

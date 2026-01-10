@@ -140,7 +140,7 @@ export class TestProject {
   }
 
   async importEngine(): Promise<Engine> {
-    const { engine } = await import(this.paths.engine)
+    const { engine } = await import(this.paths.engine + '?random=' + Math.random())
     return engine
   }
 
