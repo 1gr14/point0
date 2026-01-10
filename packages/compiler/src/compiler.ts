@@ -96,13 +96,13 @@ export class Compiler {
       }
     }
     const cf = collectResult.file
-    cf.shakeForEnv({ target, scope, consts, built })
     for (const point of collectResult.points) {
       point.shakeMethods({ target })
       if (hmrFix) {
         point.addHmrFix({ policy: hmrFix })
       }
     }
+    cf.shakeForEnv({ target, scope, consts, built })
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
       if (tryIndex >= 10) {

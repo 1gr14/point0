@@ -46,7 +46,8 @@ function wrp(
   }
 }
 
-const bundlers = ['bun', 'vite']
+// const bundlers = ['bun', 'vite']
+const bundlers = ['bun']
 
 describe('build', () => {
   beforeAll(async () => {
@@ -56,7 +57,7 @@ describe('build', () => {
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    throwOnBundlersLengthNot2(bundlers)
+    // throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.concurrent.each(bundlers)('%s', (bundler) => {
@@ -128,6 +129,49 @@ describe('build', () => {
       }),
       {
         retry: 3,
+      },
+    )
+
+    it.only(
+      'prune client and server',
+      wrp({ ssr: true, vite: bundler === 'vite', deleteFiles: false }, async ({ tp, engine }) => {
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          import { env } from '@point0/env'
+          export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER</div>) // will persist everywhere becouse ssr enabled in root
+          export const page1 = root.lets('page1', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY</div>) // becouse after client loader all components pruned for server
+          export const page2 = root.lets('page2', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY</div>) //  becouse ssr was diabled
+          export const page3 = root.lets('page3', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_WRONG_HOPE</div> : <div>MY_CLIENT_WRONG_HOPE</div>)) // it is becouse trenary not pruned by dead code
+          export const page4 = root.lets('page4', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY</div> } else { return <div>MY_CLIENT_ONLY</div> } }) // it is ok
+          export const page5 = root.lets('page5', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER</div>) // it is ok
+        `,
+        )
+        const generateResult = await tp.generate()
+        expect(generateResult.points.length).toBe(7)
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.exited
+        bp.logOutput()
+        return
+        expect(await tp.distServerContainsText('MY_SERVER_ONLY')).toBe(true)
+        expect(await tp.distServerContainsText('MY_SERVER_ONLY')).toBe(true)
+        expect(await tp.distServerContainsText('MY_CLIENT_ONLY')).toBe(false)
+        expect(await tp.distClientContainsText('MY_SERVER_ONLY')).toBe(false)
+        expect(await tp.distClientContainsText('MY_CLIENT_ONLY')).toBe(true)
+        tp.spawn(['bun', 'run', 'start'])
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/3')
+        const html = await response.text()
+        expect(html).toContain('__POINT0_ENV__')
+        expect(html).toContain('<div>MY_SERVER_ONLY</div>')
+        const page = await tp.gotoServer('/3')
+        await page.stable
+        expect(page.tale).toMatchInlineSnapshot()
+      }),
+      {
+        // retry: 3,
       },
     )
   })

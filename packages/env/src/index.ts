@@ -10,6 +10,17 @@ export const getEnvVars = (): EnvVars => {
   if (typeof process !== 'undefined' && process.env) {
     Object.assign(env, process.env)
   }
+  try {
+    Object.assign(env, {
+      // NODE_ENV: process.env.NODE_ENV,
+      POINT0_TARGET: process.env.POINT0_TARGET,
+      POINT0_SCOPE: process.env.POINT0_SCOPE,
+      POINT0_BUILT: process.env.POINT0_BUILT,
+      // in case if this vars was dfined by compiler
+    })
+  } catch {
+    // do nothing
+  }
   return env as EnvVars
 }
 
