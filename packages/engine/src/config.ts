@@ -17,6 +17,7 @@ import type {
   ServerBunPluginsDefinition,
 } from './utils.js'
 import { toAbsPath, toJsExtension } from './utils.js'
+import type { POINT0_NODE_ENV } from '@point0/env'
 
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
@@ -39,7 +40,16 @@ export type EngineOptionsEnv = string | Record<string, any> | Array<string | Rec
 export type EngineOptionsEnvParsed = Record<string, any>
 
 export type ExtractedViteConfig = import('vite').UserConfig
-export type EngineOptionsViteConfig = ExtractedViteConfig | ReturnType<typeof import('vite').defineConfig> | string
+export type ExtractViteConfigFn = (options: {
+  command: 'serve' | 'build'
+  target: 'client' | 'server'
+  mode: POINT0_NODE_ENV
+}) => Promise<ExtractedViteConfig> | ExtractedViteConfig
+export type EngineOptionsViteConfig =
+  | ExtractedViteConfig
+  | ReturnType<typeof import('vite').defineConfig>
+  | string
+  | ExtractViteConfigFn
 
 export type EngineOptionsAppComponent = () => Promise<AppComponent | AppComponentModule>
 export type EngineOptionsPoints<TPointsModule extends AnyPointsModule = AnyPointsModule> = () => Promise<TPointsModule>

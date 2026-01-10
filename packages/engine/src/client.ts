@@ -387,6 +387,7 @@ Bun.serve({
       scope: this.scope,
       target: 'client',
       hmrPort: this.hmrPort,
+      mode: normalizeAndValidateNodeEnv('development'),
       env: this.env,
     })
     this.viteDevServer = viteDevServer
@@ -688,7 +689,7 @@ Bun.serve({
         define: {
           ...thisBunBuildConfig.define,
           ...providedBunBuildConfig.define,
-          ...(NODE_ENV ? { 'process.env.NODE_ENV': JSON.stringify(NODE_ENV) } : {}),
+          'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
           'process.env.POINT0_TARGET': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
@@ -719,11 +720,12 @@ Bun.serve({
         await this.cleanClient()
       }
 
-      const NODE_ENV = process.env.NODE_ENV || 'production'
+      const NODE_ENV = normalizeAndValidateNodeEnv('production')
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
         target: 'client',
+        mode: NODE_ENV,
       })
 
       if (!(await Bun.file(buildPaths.indexHtml).exists())) {

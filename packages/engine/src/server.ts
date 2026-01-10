@@ -219,6 +219,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       scope: this.scope,
       target: 'server',
       hmrPort: this.hmrPort,
+      mode: normalizeAndValidateNodeEnv('development'),
     })
     this.viteDevServer = viteDevServer
     return viteDevServer
@@ -603,12 +604,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         await this.cleanServer()
       }
 
-      const NODE_ENV = process.env.NODE_ENV || 'production'
+      const NODE_ENV = normalizeAndValidateNodeEnv('production')
 
       const loadedViteConfig = await extractViteConfig({
         viteConfig: this.viteConfig,
         command: 'build',
         target: 'server',
+        mode: NODE_ENV,
       })
 
       const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
