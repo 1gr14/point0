@@ -7,6 +7,8 @@ import type { PlaywrightBrowser, PlaywrightPage } from './playwright.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
+// const localhost = `http://localhost`
+const localhost = `http://127.0.0.1`
 
 export class TestProject {
   dir: string
@@ -111,7 +113,7 @@ export class TestProject {
   }
 
   async fetchServer(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
-    return await fetch(`http://localhost:${this.serverPort}${path}`, options)
+    return await fetch(`${localhost}:${this.serverPort}${path}`, options)
   }
 
   async fetchServerHtml(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
@@ -120,7 +122,7 @@ export class TestProject {
   }
 
   async fetchClient(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
-    return await fetch(`http://localhost:${this.clientPort}${path}`, options)
+    return await fetch(`${localhost}:${this.clientPort}${path}`, options)
   }
 
   async fetchClientHtml(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
@@ -133,12 +135,12 @@ export class TestProject {
   async gotoServer(...args: [path: string] | [page: PlaywrightPage, path: string]): Promise<PlaywrightPage> {
     const [page, path] = args.length === 1 ? [undefined, args[0]] : args
     if (page) {
-      return await page.goto(`http://localhost:${this.serverPort}${path}`)
+      return await page.goto(`${localhost}:${this.serverPort}${path}`)
     }
     if (!this.tpf.browser) {
       throw new Error('Browser not defined')
     }
-    return await this.tpf.browser.goto(`http://localhost:${this.serverPort}${path}`)
+    return await this.tpf.browser.goto(`${localhost}:${this.serverPort}${path}`)
   }
 
   async gotoClient(page: PlaywrightPage, path: string): Promise<PlaywrightPage>
@@ -146,12 +148,12 @@ export class TestProject {
   async gotoClient(...args: [path: string] | [page: PlaywrightPage, path: string]): Promise<PlaywrightPage> {
     const [page, path] = args.length === 1 ? [undefined, args[0]] : args
     if (page) {
-      return await page.goto(`http://localhost:${this.clientPort}${path}`)
+      return await page.goto(`${localhost}:${this.clientPort}${path}`)
     }
     if (!this.tpf.browser) {
       throw new Error('Browser not defined')
     }
-    return await this.tpf.browser.goto(`http://localhost:${this.clientPort}${path}`)
+    return await this.tpf.browser.goto(`${localhost}:${this.clientPort}${path}`)
   }
 
   get output() {
@@ -179,6 +181,26 @@ export class TestProject {
     await this.waitOutput([`server started http://localhost:${this.serverPort}`, '!Failed to start server'])
     await this.waitOutput([`client started http://localhost:${this.clientPort}`, '!Failed to start server'])
   }
+
+  // async waitWSReady(timeout = 2000) {
+  //   const url = `ws://localhost:${this.clientPort}/_bun/hmr`
+  //   const start = Date.now()
+  //   while (Date.now() - start < timeout) {
+  //     try {
+  //       const ws = new WebSocket(url)
+  //       return await new Promise((resolve, reject) => {
+  //         ws.onopen = () => {
+  //           ws.close()
+  //           resolve(true)
+  //         }
+  //         ws.onerror = reject
+  //       })
+  //     } catch (e) {
+  //       await new Promise((resolve) => setTimeout(resolve, 50)) // Non-blocking wait
+  //     }
+  //   }
+  //   throw new Error('WebSocket failed to become ready')
+  // }
 
   async init() {
     await this.createTempDir()

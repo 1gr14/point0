@@ -243,12 +243,14 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
           let processes = start()
           this.onPointFileChange((event, path, points) => {
+            console.log('onPointFileChange', event, path, points)
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
-            void killPort(this.server.port).finally(() => {
-              processes = start()
-            })
+            // void killPort(this.server.port).finally(() => {
+            //   processes = start()
+            // })
+            processes = start()
           })
           return []
         }

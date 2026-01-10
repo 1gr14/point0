@@ -237,6 +237,9 @@ export class PlaywrightPage {
     if (url.startsWith('http://localhost:')) {
       return url.replace(/:(\d+)/, '')
     }
+    if (url.startsWith('http://127.0.0.1:')) {
+      return url.replace(/:(\d+)/, '').replace('127.0.0.1', 'localhost')
+    }
     return url
   }
 
@@ -285,6 +288,24 @@ export class PlaywrightPage {
     return lastHtml
   }
 
+  // async waitForHmrReady(timeout = 5000): Promise<void> {
+  //   const startTime = Date.now()
+  //   while (Date.now() - startTime < timeout) {
+  //     // Check your logs array for the "connected" message
+  //     // but ensure it's the LAST message (not followed by a disconnect)
+  //     const logs = [...this.logs].reverse()
+  //     const lastHmrIndex = logs.findIndex((l) => l.text.includes('Hot-module-reloading socket connected'))
+  //     const lastErrorIndex = logs.findIndex((l) => l.text.includes('socket disconnected') || l.text.includes('failed'))
+
+  //     if (lastHmrIndex !== -1 && lastHmrIndex > lastErrorIndex) {
+  //       return // HMR is connected and stable
+  //     }
+
+  //     await new Promise((resolve) => setTimeout(resolve, 100))
+  //   }
+  //   throw new Error('HMR failed to stabilize in time')
+  // }
+
   async waitContent(search: string, timeout = 2000): Promise<void> {
     if (search.startsWith('!')) {
       await this.waitNoContent(search.slice(1), timeout)
@@ -304,7 +325,7 @@ export class PlaywrightPage {
     }
   }
 
-  async logStory(): Promise<void> {
+  logStory(): void {
     console.dir(this.story, { depth: null })
   }
 
