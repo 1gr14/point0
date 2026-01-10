@@ -62,7 +62,7 @@ export interface PlaywrightPageConstructorOptions {
 
 export type PageHistoryItem = {
   url: string
-  htmls: HtmlView[]
+  htmls: Array<HtmlView<true>>
   logs: PlaywrightPageLogEntry[]
 }
 
@@ -192,10 +192,10 @@ export class PlaywrightPage {
       throw new Error('No history item found')
     }
     const previews = lastHistoryItem.htmls.map((html) => html.preview)
-    if (previews.some((p) => p === undefined)) {
-      throw new Error('Previews not yet parsed, call await page.finished first')
-    }
-    return previews as string[]
+    // if (previews.some((p) => p === undefined)) {
+    //   throw new Error('Previews not yet parsed, call await page.finished first')
+    // }
+    return previews
   }
 
   get url(): string {
@@ -224,9 +224,9 @@ export class PlaywrightPage {
       previews: item.htmls.map((html) => html.preview),
       logs: item.logs.map((l) => PlaywrightPage.prettifyLogEntry(l)),
     }))
-    if (story.some((s) => s.previews.some((p) => p === undefined))) {
-      throw new Error('Previews not yet parsed, call await page.finished first')
-    }
+    // if (story.some((s) => s.previews.some((p) => p === undefined))) {
+    //   throw new Error('Previews not yet parsed, call await page.finished first')
+    // }
     return story as PageStoryItem[]
   }
 
@@ -264,14 +264,14 @@ export class PlaywrightPage {
   get stable(): Promise<PageStoryItem[]> {
     return (async () => {
       await this.waitFinishMutations()
-      await this.parseAllHtmlViews()
+      // await this.parseAllHtmlViews()
       return this.story
     })()
   }
 
-  private async parseAllHtmlViews(): Promise<HtmlView[]> {
-    return await HtmlView.parseMany(this.history.flatMap((item) => item.htmls))
-  }
+  // private async parseAllHtmlViews(): Promise<Array<HtmlView<true>>> {
+  //   return await HtmlView.parseMany(this.history.flatMap((item) => item.htmls))
+  // }
 
   private async getLastHtmlView(): Promise<HtmlView<true> | undefined> {
     const lastHistoryItem = this.history.at(-1)
@@ -298,7 +298,7 @@ export class PlaywrightPage {
       }
       const htmlView = await this.getLastHtmlView()
       if (htmlView?.hasContent(search)) {
-        await this.parseAllHtmlViews()
+        // await this.parseAllHtmlViews()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, 30))
@@ -318,7 +318,7 @@ export class PlaywrightPage {
       }
       const htmlView = await this.getLastHtmlView()
       if (!htmlView || htmlView.hasNoContent(search)) {
-        await this.parseAllHtmlViews()
+        // await this.parseAllHtmlViews()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, 30))
@@ -413,7 +413,8 @@ export class PlaywrightPage {
       const currentItem = this.history.at(-1)
       if (currentItem) {
         // We do not await here to keep the bridge loop fast
-        currentItem.htmls.push(HtmlView.create(html))
+        // currentItem.htmls.push(HtmlView.create(html))
+        void HtmlView.parse(html).then((htmlView) => currentItem.htmls.push(htmlView))
       }
     })
     await this.original.exposeFunction('log', (...args: any[]) => {
