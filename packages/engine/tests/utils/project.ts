@@ -253,6 +253,7 @@ export class TestProject {
     }
     if (this.vite) {
       await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
+      await this.replace(this.files.packageJson, './dist/server/index.server.js', './dist/server/main.js')
     }
     return this
   }

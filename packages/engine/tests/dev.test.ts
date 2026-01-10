@@ -3,6 +3,7 @@ import type { Engine } from '../src/engine.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
+import { throwOnBundlersLengthNot2 } from './utils/other.js'
 
 setDefaultTimeout(15000)
 
@@ -47,6 +48,8 @@ function wrp(
   }
 }
 
+const bundlers = ['bun', 'vite']
+
 describe('dev', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
@@ -55,9 +58,10 @@ describe('dev', () => {
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
+    throwOnBundlersLengthNot2(bundlers)
   })
 
-  describe.each(['bun', 'vite'])('%s', (bundler) => {
+  describe.each(bundlers)('%s', (bundler) => {
     it(
       'start ssr dev server',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bu
 import type { Engine } from '../src/engine.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
+import { throwOnBundlersLengthNot2 } from './utils/other.js'
 
 setDefaultTimeout(15000)
 
@@ -45,6 +46,8 @@ function wrp(
   }
 }
 
+const bundlers = ['bun', 'vite']
+
 describe('build', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
@@ -53,76 +56,79 @@ describe('build', () => {
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
+    throwOnBundlersLengthNot2(bundlers)
   })
 
-  it.concurrent(
-    'build and start ssr server',
-    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
-      await tp.write(
-        'src/page.tsx',
-        `import { root } from './lib/root.js'
+  describe.concurrent.each(bundlers)('%s', (bundler) => {
+    it.concurrent(
+      'build and start ssr server',
+      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
         export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
-      )
-      await tp.generate()
-      const bp = tp.spawn(['bun', 'run', 'build'])
-      await bp.exited
-      expect(await tp.distServerContainsText('My Cool Page')).toBe(true)
-      expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
-      tp.spawn(['bun', 'run', 'start'])
-      expect(engine.server.port).toBe(3100)
-      expect(engine.clients[0].port).toBe(3101)
-      await tp.waitStarted()
-      const response = await tp.fetchServer('/')
-      expect(response).toBeDefined()
-      const html = await response.text()
-      expect(html).toContain('<div>My Cool Page</div>')
-      expect(html).toContain('__POINT0_ENV__')
-      const page = await tp.gotoServer('/')
-      await page.stable
-      expect(page.tale).toMatchInlineSnapshot(`
+        )
+        await tp.generate()
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.exited
+        expect(await tp.distServerContainsText('My Cool Page')).toBe(true)
+        expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
+        tp.spawn(['bun', 'run', 'start'])
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/')
+        expect(response).toBeDefined()
+        const html = await response.text()
+        expect(html).toContain('<div>My Cool Page</div>')
+        expect(html).toContain('__POINT0_ENV__')
+        const page = await tp.gotoServer('/')
+        await page.stable
+        expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           div: My Cool Page
           "
       `)
-    }),
-    {
-      retry: 3,
-    },
-  )
+      }),
+      {
+        retry: 3,
+      },
+    )
 
-  it.concurrent(
-    'build and start spa server',
-    wrp({ ssr: false }, async ({ tp, engine }) => {
-      await tp.write(
-        'src/page.tsx',
-        `import { root } from './lib/root.js'
+    it.concurrent(
+      'build and start spa server',
+      wrp({ ssr: false, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
         export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
-      )
-      await tp.generate()
-      const bp = tp.spawn(['bun', 'run', 'build'])
-      await bp.exited
-      expect(await tp.distServerContainsText('My Cool Page')).toBe(false)
-      expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
-      tp.spawn(['bun', 'run', 'start'])
-      expect(engine.server.port).toBe(3102)
-      expect(engine.clients[0].port).toBe(3103)
-      await tp.waitStarted()
-      const response = await tp.fetchServer('/')
-      const html = await response.text()
-      expect(html).toContain('__POINT0_ENV__')
-      expect(html).not.toContain('<div>My Cool Page</div>')
-      const page = await tp.gotoServer('/')
-      await page.stable
-      expect(page.tale).toMatchInlineSnapshot(`
+        )
+        await tp.generate()
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.exited
+        expect(await tp.distServerContainsText('My Cool Page')).toBe(false)
+        expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
+        tp.spawn(['bun', 'run', 'start'])
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/')
+        const html = await response.text()
+        expect(html).toContain('__POINT0_ENV__')
+        expect(html).not.toContain('<div>My Cool Page</div>')
+        const page = await tp.gotoServer('/')
+        await page.stable
+        expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           (Empty)
 
           div: My Cool Page
           "
       `)
-    }),
-    {
-      retry: 3,
-    },
-  )
+      }),
+      {
+        retry: 3,
+      },
+    )
+  })
 })

@@ -119,13 +119,23 @@ export const throwOnHelperLogFnCalling = () => {
   }
 }
 
+export const throwOnBundlersLengthNot2 = (bundlers: string[]) => {
+  if (bundlers.length !== 2) {
+    throw new Error('bundlers length is not 2. Forgot uncommenting bundlers in the test file?')
+  }
+}
+
 export const dirContainsText = async (dir: string, text: string | string[]): Promise<boolean> => {
   const texts = Array.isArray(text) ? text : [text]
   const files = await nodeFs.readdir(dir, { recursive: true })
+  const isMapFile = (file: string) => file.endsWith('.map')
 
   // Map every file to a promise that checks its content
   const searchPromises = files.map(async (file) => {
     try {
+      if (isMapFile(file)) {
+        return false
+      }
       const path = nodePath.join(dir, file)
       const contents = await Bun.file(path).text()
       if (texts.some((text) => contents.includes(text))) {
