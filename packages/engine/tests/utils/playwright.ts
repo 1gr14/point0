@@ -79,21 +79,68 @@ export class PlaywrightPage {
     this.original = options.original
     this.browser = options.browser
 
-    // Handle navigation events
-    this.original.on('framenavigated', async (frame) => {
+    // Listen for navigation to start a new history bucket
+    this.original.on('framenavigated', (frame) => {
       if (frame !== this.original.mainFrame()) return
-
-      const url = this.original.url()
-      this.history.push({ url, htmls: [] })
-
-      // Re-inject the observer on the new document
-      await this.startHtmlWatcher()
+      this.history.push({ url: this.original.url(), htmls: [] })
     })
   }
 
   static async create(options: PlaywrightPageConstructorOptions): Promise<PlaywrightPage> {
     const page = new PlaywrightPage(options)
+
     await page.setupBridge()
+
+    await page.original.addInitScript(() => {
+      let timeout: NodeJS.Timeout
+      let lastHtml = undefined as string | undefined
+
+      const notify = () => {
+        // Check if documentElement is available yet
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!document.documentElement) return
+
+        const currentHtml = document.documentElement.outerHTML
+        if (currentHtml !== lastHtml) {
+          lastHtml = currentHtml
+          // @ts-expect-error - exposed via Playwright
+          window.onDomChanged(currentHtml)
+        }
+      }
+
+      const observer = new MutationObserver(() => {
+        clearTimeout(timeout)
+        timeout = setTimeout(notify, 20)
+      })
+
+      const start = () => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (document.documentElement) {
+          // 1. Start observing immediately
+          observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true,
+          })
+          // 2. Send the initial "empty" or "early" state
+          notify()
+        } else {
+          // If not ready, check again on the next animation frame
+          requestAnimationFrame(start)
+        }
+      }
+
+      // Handle both initial load and potential race conditions
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start)
+        // Also try RAF in case DOMContentLoaded has already passed or takes too long
+        requestAnimationFrame(start)
+      } else {
+        start()
+      }
+    })
+
     return page
   }
 
@@ -158,7 +205,7 @@ export class PlaywrightPage {
 
   private async waitForFinishMutations(): Promise<void> {
     const maxWaitTime = this.browser.timeout
-    const notChangedDuringMsIsStable = 200
+    const notChangedDuringMsIsStable = 90
 
     // Wait for network idle first
     try {
@@ -175,7 +222,7 @@ export class PlaywrightPage {
       if (lastChangeTimestamp <= Date.now() - notChangedDuringMsIsStable) {
         break
       }
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 30))
     }
   }
 
@@ -187,60 +234,18 @@ export class PlaywrightPage {
   /**
    * Sets up the bridge from Browser -> Node.js
    * This only needs to be called once when the page is first created.
+   * exposeFunction is persistent across navigations.
    */
   async setupBridge(): Promise<void> {
-    await this.original.exposeFunction('onDomChanged', async (html: string) => {
+    await this.original.exposeFunction('onDomChanged', (html: string) => {
       const currentItem = this.history.at(-1)
-      if (!currentItem) return
-
-      const lastRecord = currentItem.htmls.at(-1)
-      // Only add if the HTML content has actually changed
-      if (lastRecord?.html !== html) {
+      if (currentItem) {
+        // We do not await here to keep the bridge loop fast
         currentItem.htmls.push(HtmlView.create(html))
       }
     })
-  }
-
-  private async startHtmlWatcher(): Promise<void> {
-    const currentItem = this.history.at(-1)
-    if (!currentItem) return
-
-    try {
-      // 1. Single round-trip to get initial HTML and set up observer
-      const initialHtml = await this.original.evaluate(() => {
-        // Cleanup old observer if it exists
-        if ((window as any).__pwObserver) {
-          ;(window as any).__pwObserver.disconnect()
-        }
-
-        let timeout: any
-        const observer = new MutationObserver(() => {
-          clearTimeout(timeout)
-          timeout = setTimeout(() => {
-            if ((window as any).onDomChanged) {
-              ;(window as any).onDomChanged(document.documentElement.outerHTML)
-            }
-          }, 50)
-        })
-
-        observer.observe(document.documentElement, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          characterData: true,
-        })
-        ;(window as any).__pwObserver = observer
-
-        // Return the current state immediately so we don't need to call .content()
-        return document.documentElement.outerHTML
-      })
-
-      // 2. Add the initial state captured from the evaluate call
-      if (initialHtml) {
-        currentItem.htmls.push(HtmlView.create(initialHtml))
-      }
-    } catch (e) {
-      // Ignore errors if page/context was closed during injection
-    }
+    await this.original.exposeFunction('log', (...args: any[]) => {
+      console.info('log', ...args)
+    })
   }
 }
