@@ -14,7 +14,7 @@ const prepareRandomFile = () => {
   return Object.assign(Bun.file(path), { path, basename, importpath })
 }
 
-const helper = (callback: ({ files }: { files: TestFile[] }) => any, deleteFiles = true) => {
+const helper = (callback: ({ files }: { files: TestFile[] }) => any, preserve = false) => {
   return async () => {
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
@@ -24,7 +24,7 @@ const helper = (callback: ({ files }: { files: TestFile[] }) => any, deleteFiles
     } finally {
       await Promise.allSettled(
         files.map(async (file) => {
-          if (deleteFiles) await file.delete()
+          if (!preserve) await file.delete()
         }),
       )
     }

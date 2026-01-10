@@ -42,7 +42,7 @@ const helper = (
     getLastLog: () => unknown[]
     getLastLogFirstArg: () => unknown
   }) => any,
-  deleteFiles = true,
+  preserve = false,
 ) => {
   return async () => {
     const dir = prepareRandomTempDir()
@@ -84,7 +84,7 @@ const helper = (
         getLastLogFirstArg,
       })
     } finally {
-      if (deleteFiles) {
+      if (!preserve) {
         await Promise.allSettled(
           files.map(async (file) => {
             try {

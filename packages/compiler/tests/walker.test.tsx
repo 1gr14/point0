@@ -20,7 +20,7 @@ const prepareRandomFile = () => {
   })
 }
 
-const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, deleteFiles = true) => {
+const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walker }) => any, preserve = false) => {
   return async () => {
     const walker = new Walker({ routes: undefined })
     const files = Array.from({ length: 11 }, prepareRandomFile)
@@ -32,7 +32,7 @@ const helper = (callback: ({ files, walker }: { files: TestFile[]; walker: Walke
     } finally {
       await Promise.allSettled(
         files.map(async (file) => {
-          if (deleteFiles) await file.delete()
+          if (!preserve) await file.delete()
         }),
       )
     }
