@@ -377,7 +377,6 @@ Bun.serve({
     bunViteDevServer: Bun.Server<unknown>
     viteDevServer: ViteDevServer
   }> {
-    console.log('startBunViteDevServer client', this.port)
     if (!this.viteConfig) {
       throw new Error(`Vite config not found for client "${this.scope}"`)
     }
