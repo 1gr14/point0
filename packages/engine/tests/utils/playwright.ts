@@ -63,11 +63,19 @@ export interface PlaywrightPageConstructorOptions {
 export type PageHistoryItem = {
   url: string
   htmls: HtmlView[]
+  logs: PlaywrightPageLogEntry[]
 }
 
 export type PageStoryItem = {
   url: string
   previews: string[]
+  logs: string[]
+}
+
+export type PlaywrightPageLogEntry = {
+  timestamp: number
+  type: string
+  text: string
 }
 
 export class PlaywrightPage {
@@ -103,7 +111,7 @@ export class PlaywrightPage {
     // Listen for navigation to start a new history bucket
     this.original.on('framenavigated', (frame) => {
       if (frame !== this.original.mainFrame()) return
-      this.history.push({ url: this.original.url(), htmls: [] })
+      this.history.push({ url: this.original.url(), htmls: [], logs: [] })
     })
   }
 
@@ -202,10 +210,19 @@ export class PlaywrightPage {
     return this.history.map((item) => item.url)
   }
 
+  get strlogs(): string[] {
+    return this.history.flatMap((item) => item.logs.map((l) => PlaywrightPage.prettifyLogEntry(l)))
+  }
+
+  get logs(): PlaywrightPageLogEntry[] {
+    return this.history.flatMap((item) => item.logs)
+  }
+
   get story(): PageStoryItem[] {
     const story = this.history.map((item) => ({
       url: item.url,
       previews: item.htmls.map((html) => html.preview),
+      logs: item.logs.map((l) => PlaywrightPage.prettifyLogEntry(l)),
     }))
     if (story.some((s) => s.previews.some((p) => p === undefined))) {
       throw new Error('Previews not yet parsed, call await page.finished first')
@@ -246,7 +263,7 @@ export class PlaywrightPage {
 
   get stable(): Promise<PageStoryItem[]> {
     return (async () => {
-      await this.waitForFinishMutations()
+      await this.waitFinishMutations()
       await this.parseAllHtmlViews()
       return this.story
     })()
@@ -269,9 +286,9 @@ export class PlaywrightPage {
     return parsedHtml
   }
 
-  async waitForContent(search: string, timeout = 2000): Promise<void> {
+  async waitContent(search: string, timeout = 2000): Promise<void> {
     if (search.startsWith('!')) {
-      await this.waitForNoContent(search.slice(1), timeout)
+      await this.waitNoContent(search.slice(1), timeout)
       return
     }
     const startTime = Date.now()
@@ -288,7 +305,7 @@ export class PlaywrightPage {
     }
   }
 
-  async waitForNoContent(search: string, timeout = 2000): Promise<void> {
+  async waitNoContent(search: string, timeout = 2000): Promise<void> {
     const startTime = Date.now()
     while (true) {
       if (Date.now() - startTime > timeout) {
@@ -303,13 +320,46 @@ export class PlaywrightPage {
     }
   }
 
-  async waitForSequence(searches: string[], timeout = 2000): Promise<void> {
-    for (const search of searches) {
-      await this.waitForContent(search, timeout)
+  async waitLog(search: string, timeout = 2000, fromNow = false): Promise<void> {
+    const startTime = Date.now()
+    while (true) {
+      if (Date.now() - startTime > timeout) {
+        throw new Error(`Timeout waiting for log: ${search} within ${timeout}ms`)
+      }
+      const logs = this.logs.filter((l) => {
+        if (fromNow) {
+          return l.timestamp > startTime && l.text.includes(search)
+        }
+        return l.text.includes(search)
+      })
+      if (logs.length > 0) {
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 30))
     }
   }
 
-  private async waitForFinishMutations(): Promise<void> {
+  // async waitForNoLog(search: string, duration = 2000, timeout = 4000): Promise<void> {
+  //   const startTime = Date.now()
+  //   while (true) {
+  //     if (Date.now() - startTime > timeout) {
+  //       throw new Error(`Timeout waiting for log disappear: ${search} within ${timeout}ms`)
+  //     }
+  //     const logs = this.logs.filter((l) => l.text.includes(search) )
+  //     if (logs.length > 0) {
+  //       return
+  //     }
+  //     await new Promise((resolve) => setTimeout(resolve, 30))
+  //   }
+  // }
+
+  async waitContentSequence(searches: string[], timeout = 2000): Promise<void> {
+    for (const search of searches) {
+      await this.waitContent(search, timeout)
+    }
+  }
+
+  private async waitFinishMutations(): Promise<void> {
     const maxWaitTime = this.browser.timeout
     const notChangedDuringMsIsStable = 90
 
@@ -337,6 +387,17 @@ export class PlaywrightPage {
     this.browser.pages.delete(this)
   }
 
+  private addLogToLastHistoryItem(logEntry: PlaywrightPageLogEntry): void {
+    const lastHistoryItem = this.history.at(-1)
+    if (lastHistoryItem) {
+      lastHistoryItem.logs.push(logEntry)
+    }
+  }
+
+  private static prettifyLogEntry(logEntry: PlaywrightPageLogEntry): string {
+    return `[${logEntry.timestamp}] [${logEntry.type.toUpperCase()}] ${logEntry.text}`
+  }
+
   /**
    * Sets up the bridge from Browser -> Node.js
    * This only needs to be called once when the page is first created.
@@ -352,6 +413,20 @@ export class PlaywrightPage {
     })
     await this.original.exposeFunction('log', (...args: any[]) => {
       console.info('log', ...args)
+    })
+
+    // Capture all browser console logs persistently across navigations
+    this.original.on('console', (msg) => {
+      const timestamp = Date.now()
+      const type = msg.type()
+      const text = msg.text()
+      this.addLogToLastHistoryItem({ timestamp, type, text })
+    })
+
+    // Capture uncaught exceptions (often missed by 'console')
+    this.original.on('pageerror', (exception) => {
+      const timestamp = Date.now()
+      this.addLogToLastHistoryItem({ timestamp, type: 'error', text: exception.message })
     })
   }
 }

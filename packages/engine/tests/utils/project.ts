@@ -162,12 +162,12 @@ export class TestProject {
     return lastProcess.output
   }
 
-  async waitForOutput(text: string | string[], timeout?: number): Promise<string> {
+  async waitOutput(text: string | string[], timeout?: number): Promise<string> {
     const lastProcess = this.processes.at(-1)
     if (!lastProcess) {
       throw new Error('No processes found')
     }
-    return await lastProcess.waitForOutput(text, timeout)
+    return await lastProcess.waitOutput(text, timeout)
   }
 
   async waitMomentAndLogOutput(timeout = 2000) {
@@ -175,9 +175,9 @@ export class TestProject {
     console.info(this.output)
   }
 
-  async waitForStarted() {
-    await this.waitForOutput([`server started http://localhost:${this.serverPort}`, '!Failed to start server'])
-    await this.waitForOutput([`client started http://localhost:${this.clientPort}`, '!Failed to start server'])
+  async waitStarted() {
+    await this.waitOutput([`server started http://localhost:${this.serverPort}`, '!Failed to start server'])
+    await this.waitOutput([`client started http://localhost:${this.clientPort}`, '!Failed to start server'])
   }
 
   async init() {

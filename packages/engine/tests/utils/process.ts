@@ -91,7 +91,7 @@ export class TestProcess {
     return new TextDecoder().decode(Buffer.concat(this.allChunks))
   }
 
-  async waitForOutput(text: string | string[], timeout = 5000): Promise<string> {
+  async waitOutput(text: string | string[], timeout = 5000): Promise<string> {
     const startTime = Date.now()
     const texts = Array.isArray(text) ? text : [text]
     while (true) {

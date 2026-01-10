@@ -62,7 +62,7 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      await tp.waitForStarted()
+      await tp.waitStarted()
       const response = await tp.fetchServer('/')
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
@@ -83,7 +83,7 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(tp.serverPort)
       expect(engine.clients[0].port).toBe(tp.clientPort)
-      await tp.waitForStarted()
+      await tp.waitStarted()
       const html = await tp.fetchServerHtml('/')
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
@@ -108,15 +108,12 @@ describe.concurrent('dev', () => {
         export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
       )
       tp.spawn(['bun', 'run', 'dev'])
-      await tp.waitMomentAndLogOutput()
-      await tp.waitForStarted()
-
+      await tp.waitStarted()
       const page = await tp.gotoClient('/')
-      await page.stable
-      console.dir(page.story, { depth: null })
-      await page.waitForContent('Hello')
+      await page.waitContent('Hello')
+      await page.waitLog('Hot-module-reloading socket connected, waiting for changes', 2000, true)
       await tp.replace('src/page.tsx', 'Hello', 'Ciao')
-      await page.waitForContent('Ciao')
+      await page.waitContent('Ciao')
       console.dir(page.story, { depth: null })
       expect(page.history.length).toBe(1)
       expect(page.tale).toMatchInlineSnapshot(`

@@ -430,7 +430,7 @@ describe('playwright', () => {
     })
   })
 
-  describe.concurrent('waitForContent', () => {
+  describe.concurrent('waitContent', () => {
     it.concurrent(
       'should wait for content that appears after delay',
       wrp(async (page) => {
@@ -452,8 +452,8 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        // await page.waitForContent('Initial', 1000)
-        await page.waitForContent('Changed', 1000)
+        // await page.waitContent('Initial', 1000)
+        await page.waitContent('Changed', 1000)
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
             #status: Initial
@@ -479,9 +479,9 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await page.waitForContent('Never Changes', 300)
+        await page.waitContent('Never Changes', 300)
         // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
-        await expect(page.waitForContent('But Maybe Changes', 300)).rejects.toThrow()
+        await expect(page.waitContent('But Maybe Changes', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
             div: Never Changes
@@ -491,7 +491,7 @@ describe('playwright', () => {
     )
   })
 
-  describe.concurrent('waitForNoContent', () => {
+  describe.concurrent('waitNoContent', () => {
     it.concurrent(
       'should wait for content that disappears after delay',
       wrp(async (page) => {
@@ -513,7 +513,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await page.waitForNoContent('Will Disappear', 300)
+        await page.waitNoContent('Will Disappear', 300)
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
             #status: Will Disappear
@@ -540,7 +540,7 @@ describe('playwright', () => {
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
-        await expect(page.waitForNoContent('Always Present', 300)).rejects.toThrow()
+        await expect(page.waitNoContent('Always Present', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
             div: Always Present
@@ -550,7 +550,7 @@ describe('playwright', () => {
     )
   })
 
-  describe.concurrent('waitForSequence', () => {
+  describe.concurrent('waitContentSequence', () => {
     it.concurrent(
       'should wait for sequence of content and no content',
       wrp(async (page) => {
@@ -577,7 +577,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await page.waitForSequence(['Changed', '!Will Disappear'])
+        await page.waitContentSequence(['Changed', '!Will Disappear'])
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
             #status: Initial
@@ -609,7 +609,7 @@ describe('playwright', () => {
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
-        await expect(page.waitForSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
+        await expect(page.waitContentSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
             #status: Initial

@@ -16,7 +16,7 @@ export const waitUntilFileChanged = async (file: Bun.BunFile | string, limit = 5
   }
 }
 
-export const waitForResponse = async (
+export const waitResponse = async (
   url: string,
   status: number | number[] | 'ok' | 'bad',
   limit = 3000,
