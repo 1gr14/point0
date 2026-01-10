@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
+import { PlaywrightBrowser } from './utils/playwright.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
-import { PlaywrightBrowser } from './utils/playwright.js'
 
 setDefaultTimeout(15000)
 
@@ -35,6 +35,7 @@ function wrp(
   const tp = tpf.create({ ...tpOptions })
   return async () => {
     try {
+      await tp.cleanup('ports')
       await tp.init()
       const engine = await tp.importEngine()
       await callback({ tp, engine })
@@ -56,83 +57,91 @@ describe.concurrent('dev', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  it.concurrent(
-    'start ssr dev server',
-    wrp({ ssr: true }, async ({ tp, engine }) => {
-      tp.spawn(['bun', 'run', 'dev'])
-      expect(engine.server.port).toBe(3000)
-      expect(engine.clients[0].port).toBe(3001)
-      expect(engine.server.hmrPort).toBe(null)
-      expect(engine.clients[0].hmrPort).toBe(null)
-      await tp.waitStarted()
-      const response = await tp.fetchServer('/')
-      const html = await response.text()
-      expect(html).toContain('__POINT0_ENV__')
-      expect(html).toContain('<div>Page Not Found</div>')
-      const page = await tp.gotoServer('/')
-      expect(page.tale).toMatchInlineSnapshot(`
+  describe.concurrent.each(['bun', 'vite'])('%s', (bundler) => {
+    it.concurrent(
+      'start ssr dev server',
+      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          expect(engine.server.viteConfig).toBeString()
+        } else {
+          expect(engine.server.viteConfig).toBeNull()
+        }
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeNull()
+        expect(engine.clients[0].hmrPort).toBeNull()
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const response = await tp.fetchServer('/')
+        const html = await response.text()
+        expect(html).toContain('__POINT0_ENV__')
+        expect(html).toContain('<div>Page Not Found</div>')
+        const page = await tp.gotoServer('/')
+        expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           div: Page Not Found
           "
       `)
-    }),
-    {
-      retry: 3,
-    },
-  )
+      }),
+      {
+        retry: 3,
+      },
+    )
 
-  it.concurrent(
-    'start spa dev server',
-    wrp({ ssr: false }, async ({ tp, engine }) => {
-      tp.spawn(['bun', 'run', 'dev'])
-      expect(engine.server.port).toBe(3002)
-      expect(engine.clients[0].port).toBe(3003)
-      expect(engine.server.hmrPort).toBe(null)
-      expect(engine.clients[0].hmrPort).toBe(null)
-      await tp.waitStarted()
-      const html = await tp.fetchServerHtml('/')
-      expect(html).toContain('__POINT0_ENV__')
-      expect(html).not.toContain('<div>Page Not Found</div>')
-      const page = await tp.gotoServer('/')
-      expect(page.tale).toMatchInlineSnapshot(`
+    it.concurrent(
+      'start spa dev server',
+      wrp({ ssr: false, vite: bundler === 'vite', deleteFiles: false }, async ({ tp, engine }) => {
+        expect(engine.server.port).toBeNumber()
+        expect(engine.clients[0].port).toBeNumber()
+        expect(engine.server.hmrPort).toBeNull()
+        expect(engine.clients[0].hmrPort).toBeNull()
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        const html = await tp.fetchServerHtml('/')
+        expect(html).toContain('__POINT0_ENV__')
+        expect(html).not.toContain('<div>Page Not Found</div>')
+        const page = await tp.gotoServer('/')
+        await page.stable
+        expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           (Empty)
 
           div: Page Not Found
           "
       `)
-    }),
-    {
-      retry: 3,
-    },
-  )
+      }),
+      {
+        retry: 3,
+      },
+    )
 
-  // Sad, becouse it is main thing and sometimes failed... But in real it works
-  it.concurrent(
-    'have hmr client updates',
-    wrp({ ssr: true, clientHmr: true }, async ({ tp, engine }) => {
-      await new Promise((resolve) => setTimeout(resolve, 200)) // wait for port to be released by previous test
-      await tp.write(
-        'src/page.tsx',
-        `import { root } from './lib/root.js'
+    // Sad, becouse it is main thing and sometimes failed... But in real it works
+    it(
+      'have hmr client updates',
+      wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        await tp.waitPortsFree()
+        expect(engine.server.hmrPort).toBeNull()
+        expect(engine.clients[0].hmrPort).toBeNumber()
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
         export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
-      )
-      expect(engine.server.hmrPort).toBeNull()
-      expect(engine.clients[0].hmrPort).toBeNumber()
-      tp.spawn(['bun', 'run', 'dev'])
-      await tp.waitStarted()
-      await new Promise((resolve) => setTimeout(resolve, 700))
-      const page = await tp.gotoClient('/')
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      await page.waitContent('Hello')
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      await tp.replace('src/page.tsx', 'Hello', 'Ciao')
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      await page.waitContent('Ciao', 3000)
-      expect(page.history.length).toBe(1)
-    }),
-    {
-      retry: 10,
-    },
-  )
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+        await new Promise((resolve) => setTimeout(resolve, 700))
+        const page = await tp.gotoClient('/')
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        await page.waitContent('Hello')
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        await tp.replace('src/page.tsx', 'Hello', 'Ciao')
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        await page.waitContent('Ciao', 3000)
+        expect(page.history.length).toBe(1)
+      }),
+      {
+        retry: 10,
+      },
+    )
+  })
 })

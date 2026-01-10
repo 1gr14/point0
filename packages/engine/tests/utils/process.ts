@@ -101,9 +101,11 @@ export class TestProcess {
         return result.ok
       }
       if (result.bad) {
+        console.error(this.output)
         throw new Error(`Output does match negative pattern: ${result.bad}`)
       }
       if (Date.now() - startTime > timeout) {
+        console.error(this.output)
         throw new Error(`Timeout waiting for output: ${texts.join(', ')} within ${timeout}ms`)
       }
       await new Promise((resolve) => setTimeout(resolve, 100))

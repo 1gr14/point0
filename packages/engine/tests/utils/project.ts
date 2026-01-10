@@ -4,6 +4,7 @@ import type { Engine } from '../../src/engine.js'
 import { TestProcess } from './process.js'
 import { killPort } from '../../src/kill-port.js'
 import type { PlaywrightBrowser, PlaywrightPage } from './playwright.js'
+import { waitPortFree } from './other.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -17,6 +18,7 @@ export class TestProject {
   id: string
   ssr: boolean
   superjson: boolean
+  vite: boolean
   serverPort: number
   clientPort: number
   serverHmrPort: number | null
@@ -29,6 +31,7 @@ export class TestProject {
     // index: number
     ssr: boolean
     superjson: boolean
+    vite: boolean
     serverPort: number
     clientPort: number
     serverHmrPort: number | null
@@ -42,6 +45,7 @@ export class TestProject {
     // this.index = options.index
     this.ssr = options.ssr
     this.superjson = options.superjson
+    this.vite = options.vite
     this.serverPort = options.serverPort
     this.clientPort = options.clientPort
     this.serverHmrPort = options.serverHmrPort
@@ -77,6 +81,7 @@ export class TestProject {
       packageJson: this.resolve('package.json'),
       tsconfigJson: this.resolve('tsconfig.json'),
       dotenv: this.resolve('.env'),
+      viteConfig: this.resolve('vite.config.ts'),
     }
   }
 
@@ -94,6 +99,7 @@ export class TestProject {
       packageJson: Bun.file(this.paths.packageJson),
       tsconfigJson: Bun.file(this.paths.tsconfigJson),
       dotenv: Bun.file(this.paths.dotenv),
+      viteConfig: Bun.file(this.paths.viteConfig),
     }
   }
 
@@ -130,6 +136,10 @@ export class TestProject {
   async fetchClientHtml(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
     const response = await this.fetchClient(path, options)
     return await response.text()
+  }
+
+  async waitPortsFree() {
+    await waitPortFree(this.ports)
   }
 
   async gotoServer(page: PlaywrightPage, path: string): Promise<PlaywrightPage>
@@ -218,6 +228,9 @@ export class TestProject {
     if (!this.superjson) {
       await this.replace(this.files.root, '.transformer(superjson)', '// .transformer(superjson)')
     }
+    if (this.vite) {
+      await this.replace(this.files.engine, `// viteConfig: '../vite.config.ts',`, `viteConfig: '../vite.config.ts',`)
+    }
     return this
   }
 
@@ -226,7 +239,18 @@ export class TestProject {
     return engine
   }
 
-  async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
+  async cleanup(
+    options: { files: boolean; processes: boolean; ports: boolean } | 'processes' | 'ports' | 'files',
+  ): Promise<void> {
+    if (typeof options === 'string') {
+      await this.cleanup({
+        files: options === 'files',
+        processes: options === 'processes',
+        ports: options === 'ports',
+      })
+      return
+    }
+    const { files, processes, ports } = options
     if (processes) {
       for (const process of this.processes) {
         process.kill()
@@ -234,6 +258,7 @@ export class TestProject {
     }
     if (ports) {
       await killPort(this.ports)
+      await this.waitPortsFree()
     }
     if (files) {
       await nodeFs.rm(this.dir, { recursive: true, force: true })
@@ -261,8 +286,9 @@ export class TestProject {
 export type TestProjectGeneralOptions = {
   ssr: boolean
   superjson: boolean
-  serverHmr?: boolean
-  clientHmr?: boolean
+  vite: boolean
+  serverHmr: boolean
+  clientHmr: boolean
 }
 
 export type TestProjectCreateOptions = TestProjectGeneralOptions & {
@@ -284,7 +310,7 @@ export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOpti
 export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
 
 export class TestProjectFactory {
-  defaultOptions: Required<TestProjectGeneralOptions>
+  defaultOptions: TestProjectGeneralOptions
   namespace: string
   instances: TestProject[] = []
   portsRange: [number, number]
@@ -301,7 +327,14 @@ export class TestProjectFactory {
     portsRange: [number, number]
     browser: PlaywrightBrowser | undefined
   }) {
-    this.defaultOptions = { ssr: true, superjson: true, serverHmr: false, clientHmr: false, ...defaultOptions }
+    this.defaultOptions = {
+      ssr: true,
+      superjson: true,
+      vite: false,
+      serverHmr: false,
+      clientHmr: false,
+      ...defaultOptions,
+    }
     this.namespace = namespace
     this.portsRange = portsRange
     this.browser = browser

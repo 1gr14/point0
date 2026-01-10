@@ -247,10 +247,10 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
-            void killPort(this.server.port).finally(() => {
-              processes = start()
-            })
-            // processes = start()
+            // void killPort(this.server.port).finally(() => {
+            //   processes = start()
+            // })
+            processes = start()
           })
           return []
         }

@@ -72,3 +72,40 @@ export const waitResponse = async (
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
 }
+
+const _waitPortFree = async (port: number, timeout = 1000) => {
+  const start = Date.now()
+  let wasBusy = false
+
+  while (Date.now() - start < timeout) {
+    try {
+      // Try to connect to the port
+      const socket = await Bun.connect({
+        hostname: '127.0.0.1',
+        port,
+        socket: {},
+      })
+
+      // If we reach here, the port is STILL OCCUPIED.
+      wasBusy = true
+      socket.end() // Close our successful connection
+      await new Promise((resolve) => setTimeout(resolve, 50)) // Wait and try again
+    } catch (e) {
+      // If it throws, the port is likely free!
+      if (wasBusy) {
+        await new Promise((resolve) => setTimeout(resolve, 50)) // Wait a little for lucky chance
+      }
+      return
+    }
+  }
+  throw new Error(`Port ${port} did not clear in time.`)
+}
+
+export const waitPortFree = async (port: number | number[], timeout = 1000) => {
+  const ports = Array.isArray(port) ? port : [port]
+  await Promise.all(
+    ports.map(async (port) => {
+      await _waitPortFree(port, timeout)
+    }),
+  )
+}

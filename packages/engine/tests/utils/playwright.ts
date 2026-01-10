@@ -385,7 +385,7 @@ export class PlaywrightPage {
 
   private async waitFinishMutations(): Promise<void> {
     const maxWaitTime = this.browser.timeout
-    const notChangedDuringMsIsStable = 90
+    const notChangedDuringMsIsStable = 150
 
     // Wait for network idle first
     try {

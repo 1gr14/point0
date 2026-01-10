@@ -5,6 +5,8 @@ import * as nodePath from 'node:path'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
 import type { PointsScope } from '@point0/core'
 import type { ViteDevServer } from 'vite'
+import pRetry from 'p-retry'
+import type { Options, Options as RetryOptions } from 'p-retry'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -543,4 +545,92 @@ export const readableStreamToString = async (readableStream: ReadableStream): Pr
     chunks.push(value)
   }
   return new TextDecoder().decode(Buffer.concat(chunks))
+}
+
+type WithRetriesFn = {
+  <T extends (...args: any[]) => any>(count: number, filter: string[], fn: T): T
+  <T extends (...args: any[]) => any>(count: number, fn: T): T
+}
+export const withRetries: WithRetriesFn = <T extends (...args: any[]) => any>(
+  ...args: [count: number, filter: string[], fn: T] | [count: number, fn: T]
+): T => {
+  const [count, filter, fn] = args.length === 3 ? [args[0], args[1], args[2]] : [args[0], undefined, args[1]]
+
+  // We return a new function that mimics the original function's signature
+  return ((...innerArgs: Parameters<T>): ReturnType<T> => {
+    let retryIndex = 0
+
+    const attempt = (): any => {
+      try {
+        const result = fn(...innerArgs)
+
+        // Check if the result is a Promise (Async case)
+        if (result instanceof Promise) {
+          return result.catch((error: unknown) => {
+            handleError(error)
+            return attempt()
+          })
+        }
+
+        // Sync case success
+        return result
+      } catch (error) {
+        // Sync case error
+        handleError(error)
+        return attempt()
+      }
+    }
+
+    const handleError = (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const isFiltered = filter && !filter.some((f) => errorMessage.includes(f))
+
+      if (isFiltered || retryIndex >= count) {
+        throw error
+      }
+      retryIndex++
+    }
+
+    return attempt()
+  }) as T
+}
+
+type WithAsyncRetriesFn = {
+  <T extends (...args: any[]) => any>(
+    options: RetryOptions,
+    fn: T,
+  ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+  <T extends (...args: any[]) => any>(count: number, fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+  <T extends (...args: any[]) => any>(
+    count: number,
+    minTimeout: number,
+    fn: T,
+  ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>>
+}
+export const withAsyncRetries: WithAsyncRetriesFn = (
+  ...args:
+    | [options: RetryOptions, fn: (...args: any[]) => any]
+    | [count: number, fn: (...args: any[]) => any]
+    | [count: number, minTimeout: number, fn: (...args: any[]) => any]
+): any => {
+  const { options, fn } = ((): {
+    options: RetryOptions
+    fn: (...args: any[]) => any
+  } => {
+    if (typeof args[0] === 'object') {
+      return { options: args[0], fn: args[1] as (...args: any[]) => any }
+    } else if (typeof args[1] === 'function') {
+      return { options: { retries: args[0] }, fn: args[1] }
+    } else {
+      return { options: { retries: args[0], minTimeout: args[1] }, fn: args[2] as (...args: any[]) => any }
+    }
+  })()
+  return async (...args: any[]) => {
+    return await pRetry(async () => await Promise.resolve(fn(...args)), {
+      randomize: true,
+      factor: 1.7,
+      minTimeout: 200,
+      ...options,
+    })
+  }
 }

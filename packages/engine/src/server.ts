@@ -24,6 +24,7 @@ import {
   loadBunPlugins,
   shakeItOnEngineHolderBuildPhase,
   validateEntrypoints,
+  withRetries,
 } from './utils.js'
 import { Fetcher } from './fetcher.js'
 
@@ -277,121 +278,123 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (!this.isInitialized()) {
       throw new Error('Server is not initialized')
     }
-    this.bunServer = Bun.serve({
-      port: this.port,
-      fetch: async (request, bunServer) => {
-        const response = await this.fetch({ request, requiredCtx, bunServer })
+    this.bunServer = withRetries(process.env.NODE_ENV === 'test' ? 99 : 5, () =>
+      Bun.serve({
+        port: this.port,
+        fetch: async (request, bunServer) => {
+          const response = await this.fetch({ request, requiredCtx, bunServer })
 
-        // in case of dev upgrade proxy websocket
-        if (!response) {
+          // in case of dev upgrade proxy websocket
+          if (!response) {
+            return response
+          }
+
+          // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
+          // TODO: remove it, we now just forward from client to server
+          // if (process.env.NODE_ENV !== 'production') {
+          //   const origin = request.headers.get('origin')
+          //   if (origin) {
+          //     const originUrl = new URL(origin)
+          //     // Check if origin is localhost and port matches any client port
+          //     const isLocalhostClient =
+          //       originUrl.hostname === 'localhost' &&
+          //       this.clients.some((client) => originUrl.port === String(client.port))
+
+          //     if (isLocalhostClient) {
+          //       // Handle preflight OPTIONS requests
+          //       if (request.method === 'OPTIONS') {
+          //         const requestedHeaders = request.headers.get('Access-Control-Request-Headers')
+          //         return new Response(null, {
+          //           status: 204,
+          //           headers: {
+          //             'Access-Control-Allow-Origin': origin,
+          //             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+          //             'Access-Control-Allow-Headers': requestedHeaders || '*',
+          //             'Access-Control-Allow-Credentials': 'true',
+          //             'Access-Control-Max-Age': '86400',
+          //           },
+          //         })
+          //       }
+
+          //       // Add CORS headers to the response
+          //       const newHeaders = new Headers(response.headers)
+          //       newHeaders.set('Access-Control-Allow-Origin', origin)
+          //       newHeaders.set('Access-Control-Allow-Credentials', 'true')
+          //       // Expose all response headers (can't use * with credentials, so list them)
+          //       const exposedHeaders: string[] = []
+          //       response.headers.forEach((_, key) => {
+          //         exposedHeaders.push(key)
+          //       })
+          //       if (exposedHeaders.length > 0) {
+          //         newHeaders.set('Access-Control-Expose-Headers', exposedHeaders.join(', '))
+          //       }
+
+          //       return new Response(response.body, {
+          //         status: response.status,
+          //         statusText: response.statusText,
+          //         headers: newHeaders,
+          //       })
+          //     }
+          //   }
+          // }
+
           return response
-        }
+        },
+        websocket: {
+          open(ws) {
+            if (process.env.NODE_ENV !== 'production') {
+              // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
+              const data = ws.data as unknown as { wsUrl?: string; upstream?: WebSocket }
+              if (!data.wsUrl) {
+                return
+              }
 
-        // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
-        // TODO: remove it, we now just forward from client to server
-        // if (process.env.NODE_ENV !== 'production') {
-        //   const origin = request.headers.get('origin')
-        //   if (origin) {
-        //     const originUrl = new URL(origin)
-        //     // Check if origin is localhost and port matches any client port
-        //     const isLocalhostClient =
-        //       originUrl.hostname === 'localhost' &&
-        //       this.clients.some((client) => originUrl.port === String(client.port))
+              // Connect to upstream WebSocket when client connects
+              const upstream = new WebSocket(data.wsUrl)
 
-        //     if (isLocalhostClient) {
-        //       // Handle preflight OPTIONS requests
-        //       if (request.method === 'OPTIONS') {
-        //         const requestedHeaders = request.headers.get('Access-Control-Request-Headers')
-        //         return new Response(null, {
-        //           status: 204,
-        //           headers: {
-        //             'Access-Control-Allow-Origin': origin,
-        //             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-        //             'Access-Control-Allow-Headers': requestedHeaders || '*',
-        //             'Access-Control-Allow-Credentials': 'true',
-        //             'Access-Control-Max-Age': '86400',
-        //           },
-        //         })
-        //       }
+              upstream.onopen = () => {
+                // Store upstream reference in ws data
+                data.upstream = upstream
+              }
 
-        //       // Add CORS headers to the response
-        //       const newHeaders = new Headers(response.headers)
-        //       newHeaders.set('Access-Control-Allow-Origin', origin)
-        //       newHeaders.set('Access-Control-Allow-Credentials', 'true')
-        //       // Expose all response headers (can't use * with credentials, so list them)
-        //       const exposedHeaders: string[] = []
-        //       response.headers.forEach((_, key) => {
-        //         exposedHeaders.push(key)
-        //       })
-        //       if (exposedHeaders.length > 0) {
-        //         newHeaders.set('Access-Control-Expose-Headers', exposedHeaders.join(', '))
-        //       }
+              upstream.onmessage = (event) => {
+                // Forward messages from upstream to client
+                ws.send(event.data)
+              }
 
-        //       return new Response(response.body, {
-        //         status: response.status,
-        //         statusText: response.statusText,
-        //         headers: newHeaders,
-        //       })
-        //     }
-        //   }
-        // }
+              upstream.onclose = () => {
+                ws.close()
+              }
 
-        return response
-      },
-      websocket: {
-        open(ws) {
-          if (process.env.NODE_ENV !== 'production') {
-            // Only proxy WebSocket connections that have a wsUrl (Bun dev server connections)
-            const data = ws.data as { wsUrl?: string; upstream?: WebSocket }
-            if (!data.wsUrl) {
-              return
-            }
+              upstream.onerror = () => {
+                ws.close()
+              }
 
-            // Connect to upstream WebSocket when client connects
-            const upstream = new WebSocket(data.wsUrl)
-
-            upstream.onopen = () => {
-              // Store upstream reference in ws data
+              // Store upstream for later use
               data.upstream = upstream
             }
-
-            upstream.onmessage = (event) => {
-              // Forward messages from upstream to client
-              ws.send(event.data)
+          },
+          message(ws, message) {
+            // Forward messages from client to upstream (only for proxied connections)
+            if (process.env.NODE_ENV !== 'production') {
+              const data = ws.data as unknown as { upstream?: WebSocket }
+              if (data.upstream && data.upstream.readyState === WebSocket.OPEN) {
+                data.upstream.send(message)
+              }
             }
-
-            upstream.onclose = () => {
-              ws.close()
+          },
+          close(ws) {
+            if (process.env.NODE_ENV !== 'production') {
+              // Clean up upstream connection when client disconnects
+              const data = ws.data as unknown as { upstream?: WebSocket }
+              if (data.upstream) {
+                data.upstream.close()
+              }
             }
-
-            upstream.onerror = () => {
-              ws.close()
-            }
-
-            // Store upstream for later use
-            data.upstream = upstream
-          }
+          },
         },
-        message(ws, message) {
-          // Forward messages from client to upstream (only for proxied connections)
-          if (process.env.NODE_ENV !== 'production') {
-            const data = ws.data as { upstream?: WebSocket }
-            if (data.upstream && data.upstream.readyState === WebSocket.OPEN) {
-              data.upstream.send(message)
-            }
-          }
-        },
-        close(ws) {
-          if (process.env.NODE_ENV !== 'production') {
-            // Clean up upstream connection when client disconnects
-            const data = ws.data as { upstream?: WebSocket }
-            if (data.upstream) {
-              data.upstream.close()
-            }
-          }
-        },
-      },
-    })
+      }),
+    )()
   }
 
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {

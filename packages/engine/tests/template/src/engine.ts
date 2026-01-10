@@ -9,6 +9,7 @@ export const engine = Engine.create(import.meta.url, {
     outdir: '../dist/server',
     // port: server,
     // hmrPort: server,
+    // viteConfig: '../vite.config.ts',
   },
   clients: [
     {
@@ -24,6 +25,7 @@ export const engine = Engine.create(import.meta.url, {
       publicdirOutdir: '../dist/client',
       // port: client,
       // hmrPort: client,
+      // viteConfig: '../vite.config.ts',
     },
   ],
 })
