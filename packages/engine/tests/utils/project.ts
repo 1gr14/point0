@@ -7,6 +7,7 @@ import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
 import { dirContainsText, waitPortFree } from './other.js'
 import type { FileGeneratorProcessResult } from '../../src/generator.js'
+import type { Options as ExecaOptions } from 'execa'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -296,13 +297,27 @@ export class TestProject {
     await nodeFs.cp(testTemplateDir, this.dir, { recursive: true, force: true })
   }
 
-  spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
+  spawnBun(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
     const testProcess = TestProcess.spawn(cmds, {
       cwd: this.dir,
       ...options,
     })
     this.processes.push(testProcess)
     return testProcess
+  }
+
+  spawnExeca(cmds: string[], options?: ExecaOptions): TestProcess {
+    const testProcess = TestProcess.spawnExeca(cmds, {
+      cwd: this.dir,
+      ...options,
+    })
+    this.processes.push(testProcess)
+    return testProcess
+  }
+
+  spawn(cmds: string[]): TestProcess {
+    // return this.spawnBun(cmds)
+    return this.spawnExeca(cmds)
   }
 }
 

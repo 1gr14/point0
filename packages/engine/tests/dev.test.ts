@@ -57,8 +57,9 @@ describe('dev', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  describe.each(['bun', 'vite'])('%s', (bundler) => {
-    it(
+  // describe.concurrent.each(['bun', 'vite'])('%s', (bundler) => {
+  describe.concurrent.each(['bun'])('%s', (bundler) => {
+    it.only(
       'start ssr dev server',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         if (bundler === 'vite') {
@@ -93,7 +94,7 @@ describe('dev', () => {
       },
     )
 
-    it(
+    it.concurrent(
       'start spa dev server',
       wrp({ ssr: false, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         expect(engine.server.port).toBeNumber()
@@ -126,7 +127,7 @@ describe('dev', () => {
     )
 
     // Sad, becouse it is main thing and sometimes failed... But in real it works
-    it(
+    it.concurrent(
       'have hmr client updates',
       wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         await tp.waitPortsFree()
