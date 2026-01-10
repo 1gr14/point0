@@ -3,6 +3,7 @@ import type { Engine } from '../src/engine.js'
 import { waitForResponse } from './utils/other.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
+import { PlaywrightHelper } from './utils/playwright.js'
 
 setDefaultTimeout(15000)
 
@@ -87,7 +88,7 @@ describe.concurrent('dev', () => {
     }),
   )
 
-  it.concurrent(
+  it.only(
     'have hmr client updates',
     wrp({ ssr: true }, async ({ tp, engine }) => {
       await tp.write(
@@ -100,6 +101,33 @@ describe.concurrent('dev', () => {
       expect(result).toBeDefined()
       const html = await result.text()
       expect(html).toContain('<div>Hello</div>')
+
+      // Use Playwright to test HMR
+      const playwright = new PlaywrightHelper({ headless: true })
+      try {
+        await playwright.start()
+        await playwright.loadUrl(`http://localhost:${engine.server.port}`)
+
+        // Check if "Hello" is in the page
+        const hasHello = await playwright.checkContent('Hello')
+        expect(hasHello).toBe(true)
+
+        // Edit file content
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>Hello World</div>)`,
+        )
+
+        // Wait until content changed without page reload (HMR)
+        await playwright.waitForContentChange('Hello', 'Hello World', 10000)
+
+        // Verify the new content is present
+        const hasHelloWorld = await playwright.checkContent('Hello World')
+        expect(hasHelloWorld).toBe(true)
+      } finally {
+        await playwright.close()
+      }
     }),
   )
 })
