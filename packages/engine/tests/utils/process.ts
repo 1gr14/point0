@@ -1,3 +1,5 @@
+import { throwOnHelperLogFnCalling } from './other.js'
+
 export type TestProcessOutput = {
   stdout: string
   stderr: string
@@ -89,6 +91,21 @@ export class TestProcess {
 
   get output(): string {
     return new TextDecoder().decode(Buffer.concat(this.allChunks))
+  }
+
+  logOutput(): void {
+    throwOnHelperLogFnCalling()
+    console.info(this.output)
+  }
+
+  hasOutput(text: string | string[]): boolean {
+    const texts = Array.isArray(text) ? text : [text]
+    for (const text of texts) {
+      if (this.output.includes(text)) {
+        return true
+      }
+    }
+    return false
   }
 
   async waitOutput(text: string | string[], timeout = 5000): Promise<string> {

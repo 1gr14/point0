@@ -15,11 +15,14 @@ import { ClientBun } from './client.js'
 import type { EngineLogger, EngineOptions, RequiredCtxByEngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
 import { Executor } from './executor.js'
-import type { FilesGeneratorPointsFilesChangeWatcher, FilesGeneratorTargetOptions } from './generator.js'
+import type {
+  FileGeneratorProcessResult,
+  FilesGeneratorPointsFilesChangeWatcher,
+  FilesGeneratorTargetOptions,
+} from './generator.js'
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { ServerBun } from './server.js'
-import { killPort } from './kill-port.js'
 
 export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
@@ -243,7 +246,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
 
           let processes = start()
           this.onPointFileChange((event, path, points) => {
-            console.log('onPointFileChange', event, path, points)
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
@@ -420,8 +422,11 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     return { clients, server }
   }
 
-  async generate({ logOnNotWritten = true }: { logOnNotWritten?: boolean } = {}): Promise<void> {
-    await this.generator.sync({ logOnNotWritten })
+  async generate({
+    logOnNotWritten = true,
+    silent,
+  }: { logOnNotWritten?: boolean; silent?: boolean } = {}): Promise<FileGeneratorProcessResult> {
+    return await this.generator.sync({ logOnNotWritten, silent })
   }
 
   async generateWatch({

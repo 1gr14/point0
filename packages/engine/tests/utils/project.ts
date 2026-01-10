@@ -3,8 +3,10 @@ import * as nodePath from 'node:path'
 import type { Engine } from '../../src/engine.js'
 import { TestProcess } from './process.js'
 import { killPort } from '../../src/kill-port.js'
-import type { PlaywrightBrowser, PlaywrightPage } from './playwright.js'
-import { waitPortFree } from './other.js'
+import type { PlaywrightPage } from './playwright.js'
+import { PlaywrightBrowser } from './playwright.js'
+import { dirContainsText, waitPortFree } from './other.js'
+import type { FileGeneratorProcessResult } from '../../src/generator.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -14,7 +16,7 @@ const localhost = `http://localhost`
 export class TestProject {
   dir: string
   name: string
-  // index: number
+  index: number
   id: string
   ssr: boolean
   superjson: boolean
@@ -28,7 +30,7 @@ export class TestProject {
   tpf: TestProjectFactory
 
   constructor(options: {
-    // index: number
+    index: number
     ssr: boolean
     superjson: boolean
     vite: boolean
@@ -37,12 +39,13 @@ export class TestProject {
     serverHmrPort: number | null
     clientHmrPort: number | null
     tpf: TestProjectFactory
+    fixedId: boolean
   }) {
-    this.id = crypto.randomUUID()
+    this.index = options.index
+    this.id = options.fixedId ? options.index.toString() : crypto.randomUUID()
     // this.name = 'test-' + options.index
     this.name = 'test-' + this.id
     this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
-    // this.index = options.index
     this.ssr = options.ssr
     this.superjson = options.superjson
     this.vite = options.vite
@@ -82,6 +85,8 @@ export class TestProject {
       tsconfigJson: this.resolve('tsconfig.json'),
       dotenv: this.resolve('.env'),
       viteConfig: this.resolve('vite.config.ts'),
+      distServer: this.resolve('dist', 'server'),
+      distClient: this.resolve('dist', 'client'),
     }
   }
 
@@ -120,6 +125,11 @@ export class TestProject {
     return file
   }
 
+  async generate(): Promise<FileGeneratorProcessResult> {
+    const engine = await this.importEngine()
+    return await engine.generate({ silent: true })
+  }
+
   async fetchServer(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
     return await fetch(`${localhost}:${this.serverPort}${path}`, options)
   }
@@ -140,6 +150,14 @@ export class TestProject {
 
   async waitPortsFree() {
     await waitPortFree(this.ports)
+  }
+
+  async distServerContainsText(text: string | string[]): Promise<boolean> {
+    return await dirContainsText(this.paths.distServer, text)
+  }
+
+  async distClientContainsText(text: string | string[]): Promise<boolean> {
+    return await dirContainsText(this.paths.distClient, text)
   }
 
   async gotoServer(page: PlaywrightPage, path: string): Promise<PlaywrightPage>
@@ -234,8 +252,13 @@ export class TestProject {
     return this
   }
 
-  async importEngine(): Promise<Engine> {
+  private _engine: Engine | undefined
+  async importEngine(fresh = false): Promise<Engine> {
+    if (this._engine && !fresh) {
+      return this._engine
+    }
     const { engine } = await import(this.paths.engine + '?random=' + Math.random())
+    this._engine = engine
     return engine
   }
 
@@ -289,10 +312,11 @@ export type TestProjectGeneralOptions = {
   vite: boolean
   serverHmr: boolean
   clientHmr: boolean
+  fixedId: boolean
 }
 
-export type TestProjectCreateOptions = TestProjectGeneralOptions & {
-  // index: number
+export type TestProjectCreateOptions = Omit<TestProjectGeneralOptions, 'serverHmr' | 'clientHmr'> & {
+  index: number
   tpf: TestProjectFactory
   serverPort: number
   clientPort: number
@@ -333,6 +357,7 @@ export class TestProjectFactory {
       vite: false,
       serverHmr: false,
       clientHmr: false,
+      fixedId: false,
       ...defaultOptions,
     }
     this.namespace = namespace
@@ -370,7 +395,7 @@ export class TestProjectFactory {
       clientPort,
       serverHmrPort,
       clientHmrPort,
-      // index: this.instances.length,
+      index: this.instances.length,
       tpf: this,
     })
     this.instances.push(tp)
@@ -379,6 +404,10 @@ export class TestProjectFactory {
 
   setBrowser(browser: PlaywrightBrowser) {
     this.browser = browser
+  }
+
+  async initBrowser() {
+    this.browser = await PlaywrightBrowser.init()
   }
 
   async init(options: TestProjectFactoryCreateProjectOptions = {}) {

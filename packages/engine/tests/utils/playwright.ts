@@ -1,5 +1,6 @@
 import { chromium, type Browser, type Page } from 'playwright'
 import { HtmlView } from './html-view.js'
+import { throwOnHelperLogFnCalling } from './other.js'
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean
@@ -92,7 +93,6 @@ export class PlaywrightPage {
     // this.original.on('response', async (response) => {
     //   const isMainFrame = response.request().frame() === this.original.mainFrame()
     //   const isNavigation = response.request().resourceType() === 'document'
-    //   console.log('response', response.url(), isMainFrame, isNavigation)
 
     //   if (isMainFrame && isNavigation) {
     //     try {
@@ -326,6 +326,7 @@ export class PlaywrightPage {
   }
 
   logStory(): void {
+    throwOnHelperLogFnCalling()
     console.dir(this.story, { depth: null })
   }
 
@@ -436,9 +437,9 @@ export class PlaywrightPage {
         void HtmlView.parse(html).then((htmlView) => currentItem.htmls.push(htmlView))
       }
     })
-    await this.original.exposeFunction('log', (...args: any[]) => {
-      console.info('log', ...args)
-    })
+    // await this.original.exposeFunction('log', (...args: any[]) => {
+    //   console.info('log', ...args)
+    // })
 
     // Capture all browser console logs persistently across navigations
     this.original.on('console', (msg) => {

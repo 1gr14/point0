@@ -32,7 +32,7 @@ function wrp(
   if (!deleteFiles) {
     preventFinalFilesCleanup = true
   }
-  const tp = tpf.create({ ...tpOptions })
+  const tp = tpf.create({ ...tpOptions, fixedId: !deleteFiles })
   return async () => {
     try {
       await tp.cleanup('ports')
@@ -47,7 +47,7 @@ function wrp(
   }
 }
 
-describe.concurrent('dev', () => {
+describe('dev', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
     tpf.setBrowser(await PlaywrightBrowser.init())
@@ -57,8 +57,8 @@ describe.concurrent('dev', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  describe.concurrent.each(['bun', 'vite'])('%s', (bundler) => {
-    it.concurrent(
+  describe.each(['bun', 'vite'])('%s', (bundler) => {
+    it(
       'start ssr dev server',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         if (bundler === 'vite') {
@@ -70,16 +70,21 @@ describe.concurrent('dev', () => {
         expect(engine.clients[0].port).toBeNumber()
         expect(engine.server.hmrPort).toBeNull()
         expect(engine.clients[0].hmrPort).toBeNull()
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+        )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         const response = await tp.fetchServer('/')
         const html = await response.text()
         expect(html).toContain('__POINT0_ENV__')
-        expect(html).toContain('<div>Page Not Found</div>')
+        expect(html).toContain('<div>Hello</div>')
         const page = await tp.gotoServer('/')
         expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
-          div: Page Not Found
+          div: Hello
           "
       `)
       }),
@@ -88,25 +93,30 @@ describe.concurrent('dev', () => {
       },
     )
 
-    it.concurrent(
+    it(
       'start spa dev server',
-      wrp({ ssr: false, vite: bundler === 'vite', deleteFiles: false }, async ({ tp, engine }) => {
+      wrp({ ssr: false, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
         expect(engine.server.hmrPort).toBeNull()
         expect(engine.clients[0].hmrPort).toBeNull()
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+        )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         const html = await tp.fetchServerHtml('/')
         expect(html).toContain('__POINT0_ENV__')
-        expect(html).not.toContain('<div>Page Not Found</div>')
+        expect(html).not.toContain('<div>Hello</div>')
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           (Empty)
 
-          div: Page Not Found
+          div: Hello
           "
       `)
       }),

@@ -31,7 +31,7 @@ function wrp(
   if (!deleteFiles) {
     preventFinalFilesCleanup = true
   }
-  const tp = tpf.create(tpOptions)
+  const tp = tpf.create({ ...tpOptions, fixedId: !deleteFiles })
   return async () => {
     try {
       await tp.init()
@@ -45,20 +45,29 @@ function wrp(
   }
 }
 
-describe.concurrent('build', () => {
+describe('build', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
+    await tpf.initBrowser()
   })
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  it.concurrent(
+  it(
     'build and start ssr server',
-    wrp({ ssr: true }, async ({ tp, engine }) => {
+    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
+      )
+      await tp.generate()
       const bp = tp.spawn(['bun', 'run', 'build'])
       await bp.exited
+      expect(await tp.distServerContainsText('My Cool Page')).toBe(true)
+      expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
       tp.spawn(['bun', 'run', 'start'])
       expect(engine.server.port).toBe(3100)
       expect(engine.clients[0].port).toBe(3101)
@@ -66,19 +75,34 @@ describe.concurrent('build', () => {
       const response = await tp.fetchServer('/')
       expect(response).toBeDefined()
       const html = await response.text()
-      expect(html).toContain('<div>Page Not Found</div>')
+      expect(html).toContain('<div>My Cool Page</div>')
       expect(html).toContain('__POINT0_ENV__')
+      const page = await tp.gotoServer('/')
+      await page.stable
+      expect(page.tale).toMatchInlineSnapshot(`
+        "http://localhost/
+          div: My Cool Page
+          "
+      `)
     }),
     {
       retry: 3,
     },
   )
 
-  it.concurrent(
+  it(
     'build and start spa server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>My Cool Page</div>)`,
+      )
+      await tp.generate()
       const bp = tp.spawn(['bun', 'run', 'build'])
       await bp.exited
+      expect(await tp.distServerContainsText('My Cool Page')).toBe(false)
+      expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
       tp.spawn(['bun', 'run', 'start'])
       expect(engine.server.port).toBe(3102)
       expect(engine.clients[0].port).toBe(3103)
@@ -86,7 +110,16 @@ describe.concurrent('build', () => {
       const response = await tp.fetchServer('/')
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
-      expect(html).not.toContain('<div>Page Not Found</div>')
+      expect(html).not.toContain('<div>My Cool Page</div>')
+      const page = await tp.gotoServer('/')
+      await page.stable
+      expect(page.tale).toMatchInlineSnapshot(`
+        "http://localhost/
+          (Empty)
+
+          div: My Cool Page
+          "
+      `)
     }),
     {
       retry: 3,

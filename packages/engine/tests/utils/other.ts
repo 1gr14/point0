@@ -1,3 +1,6 @@
+import nodeFs from 'node:fs/promises'
+import nodePath from 'node:path'
+
 export const waitUntilFileChanged = async (file: Bun.BunFile | string, limit = 500, interval = 10): Promise<void> => {
   const startTime = Date.now()
   const bunFile = typeof file === 'string' ? Bun.file(file) : file
@@ -108,4 +111,46 @@ export const waitPortFree = async (port: number | number[], timeout = 1000) => {
       await _waitPortFree(port, timeout)
     }),
   )
+}
+
+export const throwOnHelperLogFnCalling = () => {
+  if (process.env.THROW_ON_HELPER_LOG_FN_CALLING === 'true') {
+    throw new Error('Please, remove helper log fn calling')
+  }
+}
+
+export const dirContainsText = async (dir: string, text: string | string[]): Promise<boolean> => {
+  const texts = Array.isArray(text) ? text : [text]
+  const files = await nodeFs.readdir(dir, { recursive: true })
+
+  // Map every file to a promise that checks its content
+  const searchPromises = files.map(async (file) => {
+    try {
+      const path = nodePath.join(dir, file)
+      const contents = await Bun.file(path).text()
+      if (texts.some((text) => contents.includes(text))) {
+        throw new Error('Found')
+      }
+      return false
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Found') {
+        throw error
+      }
+      // Handle cases where "file" is a subdirectory or unreadable
+      return false
+    }
+  })
+
+  // Race through the files: as soon as one returns true, we're done
+  // Note: Promise.all is used here, but for "true" early exit on the first match,
+  // you can use a loop with await if the directory is massive.
+  try {
+    await Promise.all(searchPromises)
+    return false
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Found') {
+      return true
+    }
+    throw error
+  }
 }

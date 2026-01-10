@@ -49,6 +49,8 @@ export type FilesGeneratorPointsFilesChangeWatcher = (
   pointsEvent: ChangeCollectedPointsEvent,
 ) => Promise<void> | void
 
+export type FileGeneratorProcessResult = ChangeCollectedPointsEvent & { written: boolean }
+
 export class FilesGenerator {
   readonly banner: string | undefined
   readonly globInclude: string[]
@@ -114,14 +116,18 @@ export class FilesGenerator {
     return new FilesGenerator(opts)
   }
 
-  async sync(options?: { logOnNotWritten?: boolean }) {
+  async sync(options?: { logOnNotWritten?: boolean; silent?: boolean }): Promise<FileGeneratorProcessResult> {
     await this.collectFiles()
-    const { errors, points, written } = await this.process()
-    if (!options?.logOnNotWritten && !written) {
-      return
+    const result = await this.process(undefined, { silent: options?.silent })
+    if (options?.silent) {
+      return result
     }
-    const [loggerMethod, emoji] = errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
-    this.logger[loggerMethod]([emoji, `${points.length} points processed`].filter(Boolean).join(' '))
+    if (!options?.logOnNotWritten && !result.written) {
+      return result
+    }
+    const [loggerMethod, emoji] = result.errors.length > 0 ? ['warn' as const, '🟡'] : ['info' as const, '']
+    this.logger[loggerMethod]([emoji, `${result.points.length} points processed`].filter(Boolean).join(' '))
+    return result
   }
 
   // files
@@ -206,7 +212,7 @@ export class FilesGenerator {
   // processing
 
   // TODO: not chunk size, but max in same time processing files
-  async process(chunkSize = 30): Promise<ChangeCollectedPointsEvent & { written: boolean }> {
+  async process(chunkSize = 30, options?: { silent?: boolean }): Promise<FileGeneratorProcessResult> {
     await this.initRoutesInstances()
     const files = [...this.files]
     const chunks = FilesGenerator.chunk(files, chunkSize)
@@ -232,7 +238,9 @@ export class FilesGenerator {
     for (const point of invalidPoints) {
       const errorsMessages = point.errors.map((e) => (e instanceof Error ? e.message : String(e))).join(', ')
       const message = `${point.type}.${point.name}: ${errorsMessages} in ${point.strpos}`
-      this.logger.error(message)
+      if (!options?.silent) {
+        this.logger.error(message)
+      }
     }
     const prevPoints = [...this.points]
     const newPoints = collectedPoints.filter((p) => p.valid)
@@ -240,8 +248,10 @@ export class FilesGenerator {
     this.points.splice(0, this.points.length, ...newPoints)
     this.sortPoints()
     const { written } = diff.changed ? await this.writeOutputs() : { written: false }
-    for (const error of errors) {
-      this.logger.error(error instanceof Error ? error.message : String(error))
+    if (!options?.silent) {
+      for (const error of errors) {
+        this.logger.error(error instanceof Error ? error.message : String(error))
+      }
     }
     this.actualizePointsByPaths()
     return {
@@ -798,13 +808,15 @@ export class FilesGenerator {
     return result
   }
 
-  async watch() {
+  async watch(options?: { silent?: boolean }) {
     const { subscribe } = await import('@parcel/watcher')
     const subscription = await subscribe(
       this.watchDir,
       async (err, events) => {
         if (err) {
-          this.logger.error(`🔴 generator error: ${err.message}`)
+          if (!options?.silent) {
+            this.logger.error(`🔴 generator error: ${err.message}`)
+          }
           return
         }
         for (const event of events) {
@@ -853,15 +865,21 @@ export class FilesGenerator {
             if (evt.changed) {
               if (evt.deleted.length > 0) {
                 const deletedTypesAndNames = evt.deleted.map((p) => `${p.type}.${p.name}`).join(' ')
-                this.logger.info(`➖ ${deletedTypesAndNames}`)
+                if (!options?.silent) {
+                  this.logger.info(`➖ ${deletedTypesAndNames}`)
+                }
               }
               if (evt.added.length > 0) {
                 const addedTypesAndNames = evt.added.map((p) => `${p.type}.${p.name}`).join(' ')
-                this.logger.info(`➕ ${addedTypesAndNames}`)
+                if (!options?.silent) {
+                  this.logger.info(`➕ ${addedTypesAndNames}`)
+                }
               }
             }
           } catch (e) {
-            this.logger.error(`🔴 ${(e as Error).message}`)
+            if (!options?.silent) {
+              this.logger.error(`🔴 ${(e as Error).message}`)
+            }
           }
         }
       },
@@ -870,7 +888,9 @@ export class FilesGenerator {
       },
     )
 
-    this.logger.info('generator watcher started')
+    if (!options?.silent) {
+      this.logger.info('generator watcher started')
+    }
 
     // Store subscription for potential cleanup
     this.watchSubscription = subscription

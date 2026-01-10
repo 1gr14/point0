@@ -182,14 +182,16 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     })
     const shakePlugin = this.viteConfig // we inject vite shake plugin in vite config
       ? []
-      : [
-          await import('@point0/compiler/plugin/bun').then((module) =>
-            module.compilerBunPlugin({
-              target: 'server',
-              scope: this.scope,
-            }),
-          ),
-        ]
+      : process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true'
+        ? []
+        : [
+            await import('@point0/compiler/plugin/bun').then((module) =>
+              module.compilerBunPlugin({
+                target: 'server',
+                scope: this.scope,
+              }),
+            ),
+          ]
     const extractedBunPlugins = [...extractedPlugins, ...shakePlugin]
     return extractedBunPlugins
   }
@@ -537,6 +539,11 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
     const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
 
+    const plugins = [
+      ...(thisBunBuildConfig.plugins ?? []),
+      ...(providedBunBuildConfig.plugins ?? []),
+      ...(await this.extractBunPlugins()),
+    ]
     process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'true'
     const buildOutput = await Bun.build({
       target: 'bun',
@@ -545,11 +552,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       splitting: true,
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
-      plugins: [
-        ...(thisBunBuildConfig.plugins ?? []),
-        ...(providedBunBuildConfig.plugins ?? []),
-        ...(await this.extractBunPlugins()),
-      ],
+      plugins,
       banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
       entrypoints: validateEntrypoints([
         ...buildPaths.entryFiles,
@@ -568,6 +571,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         ...providedBunBuildConfig.define,
         ...injectedEnvs,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+        'process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE': JSON.stringify('true'),
       },
     })
     process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'false'
