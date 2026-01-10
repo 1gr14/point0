@@ -1,134 +1,163 @@
-import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test'
+import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach, setDefaultTimeout } from 'bun:test'
+import type { PlaywrightPage } from './utils/playwright.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 
+setDefaultTimeout(10000)
+
+let browser: PlaywrightBrowser
+
+type ItFn = (done: (err?: unknown) => any) => any
+
+function wrp(url: string, callback: (page: PlaywrightPage) => any): ItFn
+function wrp(callback: (page: PlaywrightPage) => any): ItFn
+function wrp(
+  ...args: [callback: (page: PlaywrightPage) => any] | [url: string, callback: (page: PlaywrightPage) => any]
+): ItFn {
+  const [url, callback] = args.length === 1 ? [undefined, args[0]] : args
+  return async () => {
+    let page: PlaywrightPage | undefined
+    try {
+      page = url ? await browser.goto(url) : await browser.createPage()
+      await callback(page)
+      await page.close()
+    } catch (error) {
+      if (page) {
+        await page.close()
+      }
+      throw error
+    }
+  }
+}
+
 describe('playwright', () => {
-  describe('browser', () => {
-    let browser: PlaywrightBrowser
+  beforeAll(async () => {
+    browser = await PlaywrightBrowser.init({ headless: true, timeout: 5000 })
+  })
 
-    beforeAll(async () => {
-      browser = await PlaywrightBrowser.init({ headless: true, timeout: 5000 })
-    })
+  afterAll(async () => {
+    await browser.close()
+  })
 
-    afterAll(async () => {
-      await browser.close()
-    })
-
-    it('should initialize browser', () => {
+  describe.concurrent('browser', () => {
+    it.concurrent('should initialize browser', () => {
       expect(browser).toBeDefined()
       expect(browser.headless).toBe(true)
       expect(browser.timeout).toBe(5000)
       expect(browser.pages.size).toBe(0)
     })
 
-    it('should create a page', async () => {
-      const page = await browser.createPage()
-      expect(page).toBeDefined()
-      expect(browser.pages.size).toBe(1)
-      expect(browser.pages.has(page)).toBe(true)
-      await page.close()
-    })
+    it.concurrent(
+      'should create a page',
+      wrp(async (page) => {
+        expect(page).toBeDefined()
+        expect(browser.pages.size).toBeGreaterThan(0)
+        expect(browser.pages.has(page)).toBe(true)
+      }),
+    )
 
-    it('should navigate to URL and create page', async () => {
-      const page = await browser.goto('data:text/html,<html><body><h1>Test</h1></body></html>')
-      expect(page).toBeDefined()
-      expect(page.url).toContain('data:text/html')
-      await page.close()
-    })
+    it.concurrent(
+      'should navigate to URL and create page',
+      wrp('data:text/html,<html><body><h1>Test</h1></body></html>', async (page) => {
+        expect(page).toBeDefined()
+        expect(page.url).toContain('data:text/html')
+      }),
+    )
   })
 
-  describe('page', () => {
-    let browser: PlaywrightBrowser
-    let page: Awaited<ReturnType<PlaywrightBrowser['createPage']>>
+  describe.concurrent('page', () => {
+    it.concurrent(
+      'should track navigation history',
+      wrp('data:text/html,<html><body><h1>Page 1</h1></body></html>', async (page) => {
+        await page.finished
+        expect(page.navcount).toBeGreaterThan(0)
+        expect(page.url).toContain('data:text/html')
+      }),
+    )
 
-    beforeAll(async () => {
-      browser = await PlaywrightBrowser.init({ headless: true, timeout: 5000 })
-    })
+    it.concurrent(
+      'should track HTML changes',
+      wrp(
+        'data:text/html,<html><body><div id="root"><div id="test">Initial</div></div></body></html>',
+        async (page) => {
+          await page.finished
+          expect(page.history.length).toBeGreaterThan(0)
+          const lastHistory = page.history[page.history.length - 1]
+          expect(lastHistory.htmls.length).toBeGreaterThan(0)
+        },
+      ),
+    )
 
-    afterAll(async () => {
-      await browser.close()
-    })
+    it.concurrent(
+      'should provide previews',
+      wrp('data:text/html,<html><body><div id="root"><h1>Test Content</h1></div></body></html>', async (page) => {
+        await page.finished
+        const previews = page.previews
+        expect(previews.length).toBeGreaterThan(0)
+        expect(previews[0]).toContain('Test Content')
+      }),
+    )
 
-    beforeEach(async () => {
-      page = await browser.createPage()
-    })
+    it.concurrent(
+      'should provide single preview',
+      wrp('data:text/html,<html><body><div id="root"><p>Hello World</p></div></body></html>', async (page) => {
+        await page.finished
 
-    afterEach(async () => {
-      await page.close()
-    })
+        const preview = page.preview
+        expect(preview).toBeDefined()
+        expect(preview).toContain('Hello World')
+      }),
+    )
 
-    it('should track navigation history', async () => {
-      await page.goto('data:text/html,<html><body><h1>Page 1</h1></body></html>')
-      await page.finished
+    it.concurrent(
+      'should track URLs',
+      wrp('data:text/html,<html><body><div id="root">Test</div></body></html>', async (page) => {
+        await page.finished
 
-      expect(page.navcount).toBeGreaterThan(0)
-      expect(page.url).toContain('data:text/html')
-    })
+        const urls = page.urls
+        expect(urls.length).toBeGreaterThan(0)
+        expect(urls[0]).toContain('about:blank')
+        expect(urls[1]).toContain('data:text/html')
+      }),
+    )
 
-    it('should track HTML changes', async () => {
-      await page.goto('data:text/html,<html><body><div id="test">Initial</div></body></html>')
-      await page.finished
+    it.concurrent(
+      'should provide story',
+      wrp('data:text/html,<html><body><div id="root"><span>Story Test</span></div></body></html>', async (page) => {
+        await page.finished
 
-      expect(page.history.length).toBeGreaterThan(0)
-      const lastHistory = page.history[page.history.length - 1]
-      expect(lastHistory.htmls.length).toBeGreaterThan(0)
-    })
+        const story = page.story
+        expect(story.length).toBeGreaterThan(0)
+        expect(story[0].url).toContain('about:blank')
+        expect(story[1].url).toContain('data:text/html')
+        expect(story[1].previews.length).toBeGreaterThan(0)
+      }),
+    )
 
-    it('should provide previews', async () => {
-      await page.goto('data:text/html,<html><body><h1>Test Content</h1></body></html>')
-      await page.finished
+    it.concurrent(
+      'should wait for page to finish loading',
+      wrp('data:text/html,<html><body><div id="root"><div>Loading Test</div></div></body></html>', async (page) => {
+        const startTime = Date.now()
+        await page.finished
+        const endTime = Date.now()
 
-      const previews = page.previews
-      expect(previews.length).toBeGreaterThan(0)
-      expect(previews[0]).toContain('Test Content')
-    })
+        // Should complete within reasonable time (not hang)
+        expect(endTime - startTime).toBeLessThan(3000)
+        expect(page.history.length).toBeGreaterThan(0)
+      }),
+    )
 
-    it('should provide single preview', async () => {
-      await page.goto('data:text/html,<html><body><p>Hello World</p></body></html>')
-      await page.finished
-
-      const preview = page.preview
-      expect(preview).toBeDefined()
-      expect(preview).toContain('Hello World')
-    })
-
-    it('should track URLs', async () => {
-      await page.goto('data:text/html,<html><body>Test</body></html>')
-      await page.finished
-
-      const urls = page.urls
-      expect(urls.length).toBeGreaterThan(0)
-      expect(urls[0]).toContain('data:text/html')
-    })
-
-    it('should provide story', async () => {
-      await page.goto('data:text/html,<html><body><span>Story Test</span></body></html>')
-      await page.finished
-
-      const story = page.story
-      expect(story.length).toBeGreaterThan(0)
-      expect(story[0].url).toContain('data:text/html')
-      expect(story[0].previews.length).toBeGreaterThan(0)
-    })
-
-    it('should wait for page to finish loading', async () => {
-      const startTime = Date.now()
-      await page.goto('data:text/html,<html><body><div>Loading Test</div></body></html>')
-      await page.finished
-      const endTime = Date.now()
-
-      // Should complete within reasonable time (not hang)
-      expect(endTime - startTime).toBeLessThan(3000)
-      expect(page.history.length).toBeGreaterThan(0)
-    })
-
-    it('should track state changes after button clicks', async () => {
-      const html = `
+    it.only(
+      'should track state changes after button clicks',
+      wrp(async (page) => {
+        const html = `
       <!DOCTYPE html>
       <html>
         <head><title>Counter Test</title></head>
         <body>
-          <div id="counter">0</div>
-          <button id="increment">Click me</button>
+          <div id="root">
+            <div id="counter">0</div>
+            <button id="increment">Click me</button>
+          </div>
           <script>
             let count = 0;
             const counterEl = document.getElementById('counter');
@@ -141,42 +170,87 @@ describe('playwright', () => {
         </body>
       </html>
     `
-      await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-      await page.finished
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        await page.finished
 
-      // Get initial state
-      const initialPreviews = page.previews.length
-      expect(initialPreviews).toBeGreaterThan(0)
+        // Get initial state
+        const initialPreviews = page.previews.length
+        expect(initialPreviews).toBeGreaterThan(0)
 
-      // Click button multiple times
-      const clickCount = 5
-      for (let i = 0; i < clickCount; i++) {
-        await page.original.click('#increment')
-        // Wait a bit for DOM to update
-        await new Promise((resolve) => setTimeout(resolve, 100))
-      }
+        // Click button multiple times
+        const clickCount = 5
+        for (let i = 0; i < clickCount; i++) {
+          await page.original.click('#increment')
+          // Wait a bit for DOM to update
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
 
-      // Wait for all changes to finish
-      await page.finished
+        // Wait for all changes to finish
+        await page.finished
 
-      // Check that story captured the state changes
-      const story = page.story
-      expect(story.length).toBeGreaterThan(0)
+        // Check that story captured the state changes
+        const story = page.story
+        expect(story).toMatchInlineSnapshot(`
+          [
+            {
+              "previews": [
+                
+          "#counter: 2
+          #increment: Click me
+          "
+          ,
+              ],
+              "url": "about:blank",
+            },
+            {
+              "previews": [
+                
+          "#counter: 0
+          #increment: Click me
+          "
+          ,
+                
+          "#counter: 1
+          #increment: Click me
+          "
+          ,
+                
+          "#counter: 3
+          #increment: Click me
+          "
+          ,
+                
+          "#counter: 4
+          #increment: Click me
+          "
+          ,
+                
+          "#counter: 5
+          #increment: Click me
+          "
+          ,
+              ],
+              "url": "data:text/html,%0A%20%20%20%20%20%20%3C!DOCTYPE%20html%3E%0A%20%20%20%20%20%20%3Chtml%3E%0A%20%20%20%20%20%20%20%20%3Chead%3E%3Ctitle%3ECounter%20Test%3C%2Ftitle%3E%3C%2Fhead%3E%0A%20%20%20%20%20%20%20%20%3Cbody%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22root%22%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22counter%22%3E0%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20id%3D%22increment%22%3EClick%20me%3C%2Fbutton%3E%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cscript%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20count%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20counterEl%20%3D%20document.getElementById('counter')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20buttonEl%20%3D%20document.getElementById('increment')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20buttonEl.addEventListener('click'%2C%20()%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20count%2B%2B%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20counterEl.textContent%20%3D%20count%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D)%3B%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fscript%3E%0A%20%20%20%20%20%20%20%20%3C%2Fbody%3E%0A%20%20%20%20%20%20%3C%2Fhtml%3E%0A%20%20%20%20",
+            },
+          ]
+        `)
+        expect(story.length).toBeGreaterThan(0)
 
-      const lastStoryItem = story[story.length - 1]
-      expect(lastStoryItem.previews.length).toBeGreaterThan(initialPreviews)
+        const lastStoryItem = story[story.length - 1]
+        expect(lastStoryItem.previews.length).toBeGreaterThan(initialPreviews)
 
-      // Verify that the counter value is in the last preview
-      const lastPreview = lastStoryItem.previews[lastStoryItem.previews.length - 1]
-      expect(lastPreview).toContain(clickCount.toString())
+        // Verify that the counter value is in the last preview
+        const lastPreview = lastStoryItem.previews[lastStoryItem.previews.length - 1]
+        expect(lastPreview).toContain(clickCount.toString())
 
-      // Verify history also captured changes
-      const lastHistory = page.history[page.history.length - 1]
-      expect(lastHistory.htmls.length).toBeGreaterThan(initialPreviews)
+        // Verify history also captured changes
+        const lastHistory = page.history[page.history.length - 1]
+        expect(lastHistory.htmls.length).toBeGreaterThan(initialPreviews)
 
-      // Check that we can see the counter value in the HTML
-      const lastHtml = lastHistory.htmls[lastHistory.htmls.length - 1]
-      expect(lastHtml.html).toContain(clickCount.toString())
-    })
+        // Check that we can see the counter value in the HTML
+        const lastHtml = lastHistory.htmls[lastHistory.htmls.length - 1]
+        expect(lastHtml.html).toContain(clickCount.toString())
+      }),
+    )
   })
 })

@@ -176,6 +176,7 @@ export class PlaywrightPage {
     }
 
     // If we've waited the max time, resolve anyway (implicit return)
+    // console.error('Page stability check timed out')
     await Promise.resolve()
   }
 
@@ -227,11 +228,13 @@ export class PlaywrightPage {
       const initialHtml = await this.original.content()
       this.history[currentHistoryIndex].htmls.push(await HtmlView.create(initialHtml))
     } catch (error) {
+      // console.error('Error capturing initial HTML', error)
       // Ignore errors if page is not ready
     }
 
     // Inject MutationObserver to watch for DOM changes
-    await this.original.evaluate(() => {
+
+    const evaulating = this.original.evaluate(() => {
       // Remove any existing watcher
       if ((window as any).__playwrightHtmlWatcher) {
         ;(window as any).__playwrightHtmlWatcher.observer.disconnect()
@@ -272,6 +275,14 @@ export class PlaywrightPage {
       }
     })
 
+    try {
+      await evaulating
+    } catch (error) {
+      // Ignore errors if page was closed earlier
+      // console.error('Error evaluating HTML watcher', error)
+      return
+    }
+
     // Poll for changes and capture HTML when it changes
     const checkInterval = setInterval(() => {
       void (async () => {
@@ -297,6 +308,7 @@ export class PlaywrightPage {
           }
         } catch (error) {
           // Page might be closed or navigated away
+          // console.error('Error checking for HTML changes', error)
           clearInterval(checkInterval)
         }
       })()

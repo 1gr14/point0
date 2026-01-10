@@ -82,7 +82,9 @@ export class HtmlView {
 
     const response = rewriter.transform(new Response(html))
     await response.text()
-    if (!root) throw new Error('div#root not found')
+    if (!root) {
+      return []
+    }
 
     return root.children
   }

@@ -279,15 +279,10 @@ describe('html-viewer', () => {
     `)
     })
 
-    it('should throw error if div#root is not found', async () => {
+    it('should return empty array if div#root is not found', async () => {
       const html = '<div><p>No root</p></div>'
-      try {
-        await HtmlView.create(html)
-        expect(false).toBe(true) // Should not reach here
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error)
-        expect((error as Error).message).toBe('div#root not found')
-      }
+      const { tree } = await HtmlView.create(html)
+      expect(tree).toEqual([])
     })
 
     it('should ignore elements outside of root', async () => {
