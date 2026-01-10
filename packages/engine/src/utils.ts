@@ -7,6 +7,7 @@ import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
+import type { POINT0_NODE_ENV } from '@point0/env'
 import { env } from '@point0/env'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
@@ -632,4 +633,16 @@ export const withAsyncRetries: WithAsyncRetriesFn = (
       ...options,
     })
   }
+}
+
+export const normalizeAndValidateNodeEnv = (fallback: POINT0_NODE_ENV): POINT0_NODE_ENV => {
+  const validValues: POINT0_NODE_ENV[] = ['production', 'development', 'test']
+  const nodeEnv = process.env.NODE_ENV
+  if (!nodeEnv) {
+    return fallback
+  }
+  if (!validValues.includes(nodeEnv as POINT0_NODE_ENV)) {
+    throw new Error(`Invalid process.env.NODE_ENV: ${nodeEnv}`)
+  }
+  return nodeEnv as POINT0_NODE_ENV
 }

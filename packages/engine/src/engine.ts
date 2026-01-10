@@ -9,7 +9,7 @@ import type {
 } from '@point0/core'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'

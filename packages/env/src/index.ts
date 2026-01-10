@@ -1,5 +1,7 @@
 // vars
 
+export type POINT0_NODE_ENV = 'production' | 'development' | 'test'
+
 type AnyAnvVars = Record<string, string | undefined | boolean | number | null>
 
 export type EnvVars<TVars = any> = IsAny<TVars> extends true ? AnyAnvVars : TVars
