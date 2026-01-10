@@ -23,6 +23,7 @@ import type {
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { ServerBun } from './server.js'
+import { normalizeAndValidateNodeEnv } from './utils.js'
 
 export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
@@ -194,7 +195,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       watch = true,
       cwd = process.cwd(),
     } = options
-    process.env.NODE_ENV ??= 'development'
+    normalizeAndValidateNodeEnv('development')
     // const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
     if (generateFiles) {
       await this.generate({ logOnNotWritten: false })

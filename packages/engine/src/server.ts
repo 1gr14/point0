@@ -22,6 +22,7 @@ import {
   extractViteConfig,
   getDirByPaths,
   loadBunPlugins,
+  normalizeAndValidateNodeEnv,
   validateEntrypoints,
   withRetries,
 } from './utils.js'
@@ -179,7 +180,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
   async extractBunPlugins({ built }: { built: boolean }): Promise<BunPlugin[]> {
     const extractedPlugins = await extractServerBunPlugins({
-      environment: process.env.NODE_ENV ?? 'development',
+      mode: normalizeAndValidateNodeEnv('development'),
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
@@ -525,17 +526,16 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       await this.cleanServer()
     }
 
-    const NODE_ENV = process.env.NODE_ENV || 'production'
-    process.env.NODE_ENV = NODE_ENV
+    const NODE_ENV = normalizeAndValidateNodeEnv('production')
 
     const thisBunBuildConfig = await executeServerBunBuildConfig({
-      environment: NODE_ENV,
+      mode: NODE_ENV,
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
     })
     const providedBunBuildConfig = bunBuildConfig
       ? await executeServerBunBuildConfig({
-          environment: NODE_ENV,
+          mode: NODE_ENV,
           bunBuildConfig,
           bunPlugins: [],
         })

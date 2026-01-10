@@ -26,6 +26,7 @@ import {
   extractClientBunBuildConfig,
   extractClientBunDevPluginsStrings,
   extractViteConfig,
+  normalizeAndValidateNodeEnv,
   resolveTempDirPath,
   withRetries,
 } from './utils.js'
@@ -275,7 +276,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const tempDir = resolveTempDirPath(['client-bun-dev-server', `${this.scope}-${this.port}`])
     const pluginsStrings = await extractClientBunDevPluginsStrings({
       cwd: this.cwd,
-      environment: process.env.NODE_ENV ?? 'development',
+      mode: normalizeAndValidateNodeEnv('development'),
       command: 'serve',
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
@@ -649,17 +650,16 @@ Bun.serve({
         await this.cleanClient()
       }
 
-      const NODE_ENV = process.env.NODE_ENV ?? 'production'
-      process.env.NODE_ENV = NODE_ENV
+      const NODE_ENV = normalizeAndValidateNodeEnv('production')
 
       const thisBunBuildConfig = await extractClientBunBuildConfig({
-        environment: NODE_ENV,
+        mode: NODE_ENV,
         bunBuildConfig: this.bunBuildConfig,
         bunPlugins: this.bunPlugins,
       })
       const providedBunBuildConfig = bunBuildConfig
         ? await extractClientBunBuildConfig({
-            environment: NODE_ENV,
+            mode: NODE_ENV,
             bunBuildConfig,
             bunPlugins: [],
           })
