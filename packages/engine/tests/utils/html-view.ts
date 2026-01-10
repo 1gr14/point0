@@ -73,15 +73,57 @@ export class HtmlView<TParsed extends boolean = any> {
     // starts with # check id
     // starts with . check classNames
     // else check content
-    if (search.startsWith('#')) {
-      const id = search.slice(1)
-      return item.id === id
+    // also, if : is present, check content after L
+    const { selector, content, negative } = (() => {
+      let negative = false as boolean
+      let selector = undefined as string | undefined
+      let content = undefined as string | undefined
+      let srch = search
+      if (srch.startsWith('!')) {
+        negative = true
+        srch = srch.slice(1)
+      }
+      if (!srch.includes(':')) {
+        if (srch.startsWith('#') || srch.startsWith('.')) {
+          selector = srch
+        } else {
+          content = srch
+        }
+      } else {
+        const pair = srch.split(':')
+        selector = pair[0]
+        content = pair[1]
+      }
+      return { negative, selector, content }
+    })()
+    const foundBySelector = (() => {
+      if (selector === undefined) {
+        return true
+      }
+      if (selector.startsWith('#')) {
+        const id = selector.slice(1)
+        return item.id === id
+      }
+      if (selector.startsWith('.')) {
+        const classNames = selector.slice(1).split('.')
+        return classNames.every((className) => item.classNames.includes(className))
+      }
+      throw new Error(`Invalid selector: ${selector}`)
+    })()
+    if (content === undefined) {
+      const result = foundBySelector
+      return negative ? !result : result
     }
-    if (search.startsWith('.')) {
-      const classNames = search.slice(1).split('.')
-      return classNames.every((className) => item.classNames.includes(className))
+    if (content === '') {
+      // Empty content means element has no content and no children
+      const hasEmptyContent = item.content === '' || (item.content === undefined && item.children.length === 0)
+      const result = foundBySelector && hasEmptyContent
+      return negative ? !result : result
     }
-    return !!item.content?.includes(search)
+    // Both selector and content must match
+    const foundByContent = !!item.content?.includes(content)
+    const result = foundBySelector && foundByContent
+    return negative ? !result : result
   }
 
   private static async htmlToTree(html: string): Promise<HtmlTree> {
