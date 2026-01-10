@@ -3,6 +3,7 @@ import * as nodePath from 'node:path'
 import type { Engine } from '../../src/engine.js'
 import { TestProcess } from './process.js'
 import { kill } from './kill.js'
+import type { PlaywrightBrowser, PlaywrightPage } from './playwright.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -20,6 +21,7 @@ export class TestProject {
   processes: TestProcess[] = []
   ports: number[] = []
   tpf: TestProjectFactory
+  browser: PlaywrightBrowser | undefined
 
   constructor(options: {
     index: number
@@ -30,6 +32,7 @@ export class TestProject {
     serverHmrPort: number
     clientHmrPort: number
     tpf: TestProjectFactory
+    browser: PlaywrightBrowser | undefined
   }) {
     this.name = 'test-' + options.index
     this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
@@ -42,6 +45,7 @@ export class TestProject {
     this.clientHmrPort = options.clientHmrPort
     this.ports = [options.serverPort, options.clientPort, options.serverHmrPort, options.clientHmrPort]
     this.tpf = options.tpf
+    this.browser = options.browser
   }
 
   static async init(options: TestProjectCreateOptions) {
@@ -124,6 +128,32 @@ export class TestProject {
     return await response.text()
   }
 
+  async gotoServer(page: PlaywrightPage, path: string): Promise<PlaywrightPage>
+  async gotoServer(path: string): Promise<PlaywrightPage>
+  async gotoServer(...args: [path: string] | [page: PlaywrightPage, path: string]): Promise<PlaywrightPage> {
+    const [page, path] = args.length === 1 ? [undefined, args[0]] : args
+    if (page) {
+      return await page.goto(`http://localhost:${this.serverPort}${path}`)
+    }
+    if (!this.browser) {
+      throw new Error('Browser not defined')
+    }
+    return await this.browser.goto(`http://localhost:${this.serverPort}${path}`)
+  }
+
+  async gotoClient(page: PlaywrightPage, path: string): Promise<PlaywrightPage>
+  async gotoClient(path: string): Promise<PlaywrightPage>
+  async gotoClient(...args: [path: string] | [page: PlaywrightPage, path: string]): Promise<PlaywrightPage> {
+    const [page, path] = args.length === 1 ? [undefined, args[0]] : args
+    if (page) {
+      return await page.goto(`http://localhost:${this.clientPort}${path}`)
+    }
+    if (!this.browser) {
+      throw new Error('Browser not defined')
+    }
+    return await this.browser.goto(`http://localhost:${this.clientPort}${path}`)
+  }
+
   get output() {
     const lastProcess = this.processes.at(-1)
     if (!lastProcess) {
@@ -132,7 +162,7 @@ export class TestProject {
     return lastProcess.output
   }
 
-  async waitForOutput(text: string, timeout?: number): Promise<string> {
+  async waitForOutput(text: string | string[], timeout?: number): Promise<string> {
     const lastProcess = this.processes.at(-1)
     if (!lastProcess) {
       throw new Error('No processes found')
@@ -140,9 +170,14 @@ export class TestProject {
     return await lastProcess.waitForOutput(text, timeout)
   }
 
+  async waitMomentAndLogOutput(timeout = 2000) {
+    await new Promise((resolve) => setTimeout(resolve, timeout))
+    console.info(this.output)
+  }
+
   async waitForStarted() {
-    await this.waitForOutput(`server started http://localhost:${this.serverPort}`)
-    await this.waitForOutput(`client started http://localhost:${this.clientPort}`)
+    await this.waitForOutput([`server started http://localhost:${this.serverPort}`, '!Failed to start server'])
+    await this.waitForOutput([`client started http://localhost:${this.clientPort}`, '!Failed to start server'])
   }
 
   async init() {
@@ -167,7 +202,17 @@ export class TestProject {
     return engine
   }
 
-  async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
+  async cleanup({
+    files,
+    processes,
+    ports,
+    browser,
+  }: {
+    files: boolean
+    processes: boolean
+    ports: boolean
+    browser: boolean
+  }) {
     if (processes) {
       for (const process of this.processes) {
         process.kill()
@@ -202,6 +247,7 @@ export class TestProject {
 export type TestProjectGeneralOptions = {
   ssr: boolean
   superjson: boolean
+  browser: PlaywrightBrowser | undefined
 }
 
 export type TestProjectCreateOptions = TestProjectGeneralOptions & {
@@ -216,6 +262,7 @@ export type TestProjectCreateOptions = TestProjectGeneralOptions & {
 export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOptions> & {
   namespace: string
   portsRange: [number, number]
+  browser?: PlaywrightBrowser
 }
 
 export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
@@ -225,23 +272,27 @@ export class TestProjectFactory {
   namespace: string
   instances: TestProject[] = []
   portsRange: [number, number]
+  browser: PlaywrightBrowser | undefined
 
   private constructor({
     defaultOptions,
     namespace,
     portsRange,
+    browser,
   }: {
     defaultOptions: Partial<TestProjectGeneralOptions>
     namespace: string
     portsRange: [number, number]
+    browser: PlaywrightBrowser | undefined
   }) {
-    this.defaultOptions = { ssr: true, superjson: true, ...defaultOptions }
+    this.defaultOptions = { ssr: true, superjson: true, browser, ...defaultOptions }
     this.namespace = namespace
     this.portsRange = portsRange
+    this.browser = browser
   }
 
-  static create({ namespace, portsRange, ...defaultOptions }: TestProjectFactoryCreateSelfOptions) {
-    return new TestProjectFactory({ defaultOptions, namespace, portsRange })
+  static create({ namespace, portsRange, browser, ...defaultOptions }: TestProjectFactoryCreateSelfOptions) {
+    return new TestProjectFactory({ defaultOptions, namespace, portsRange, browser })
   }
 
   create(options: TestProjectFactoryCreateProjectOptions = {}) {
@@ -259,16 +310,33 @@ export class TestProjectFactory {
     return tp
   }
 
+  setBrowser(browser: PlaywrightBrowser) {
+    this.defaultOptions.browser = browser
+  }
+
   async init(options: TestProjectFactoryCreateProjectOptions = {}) {
     return await this.create(options).init()
   }
 
-  async cleanup({ files, processes, ports }: { files: boolean; processes: boolean; ports: boolean }) {
+  async cleanup({
+    files,
+    processes,
+    ports,
+    browser,
+  }: {
+    files: boolean
+    processes: boolean
+    ports: boolean
+    browser: boolean
+  }) {
     await Promise.all(
       this.instances.map(async (tp) => {
-        await tp.cleanup({ files, processes, ports })
+        await tp.cleanup({ files, processes, ports, browser })
       }),
     )
+    if (browser) {
+      await this.browser?.close()
+    }
     if (files) {
       await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), { recursive: true, force: true })
     }

@@ -144,8 +144,9 @@ export class PlaywrightPage {
     return page
   }
 
-  async goto(url: string): Promise<void> {
+  async goto(url: string): Promise<this> {
     await this.original.goto(url, { waitUntil: 'networkidle' })
+    return this
   }
 
   get preview(): string {

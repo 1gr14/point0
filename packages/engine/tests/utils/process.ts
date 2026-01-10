@@ -91,17 +91,41 @@ export class TestProcess {
     return new TextDecoder().decode(Buffer.concat(this.allChunks))
   }
 
-  async waitForOutput(text: string, timeout = 5000): Promise<string> {
+  async waitForOutput(text: string | string[], timeout = 5000): Promise<string> {
     const startTime = Date.now()
+    const texts = Array.isArray(text) ? text : [text]
     while (true) {
       const output = this.output
-      if (output.includes(text)) {
-        return output
+      const result = TestProcess.isOutputMatchesMany(output, texts)
+      if (result.ok) {
+        return result.ok
+      }
+      if (result.bad) {
+        throw new Error(`Output does match negative pattern: ${result.bad}`)
       }
       if (Date.now() - startTime > timeout) {
-        throw new Error(`Timeout waiting for output: ${text} within ${timeout}ms`)
+        throw new Error(`Timeout waiting for output: ${texts.join(', ')} within ${timeout}ms`)
       }
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
+  }
+
+  private static isOutputMatchesMany(
+    output: string,
+    text: string | string[],
+  ): { ok: false | string; bad: false | string } {
+    const texts = Array.isArray(text) ? text : [text]
+    for (const text of texts) {
+      if (text.startsWith('!')) {
+        if (output.includes(text.slice(1))) {
+          return { ok: false, bad: text }
+        }
+      } else {
+        if (output.includes(text)) {
+          return { ok: text, bad: false }
+        }
+      }
+    }
+    return { ok: false, bad: false }
   }
 }
