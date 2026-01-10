@@ -77,7 +77,7 @@ describe.concurrent('dev', () => {
     }),
   )
 
-  it.only(
+  it.concurrent(
     'start spa dev server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
@@ -89,64 +89,43 @@ describe.concurrent('dev', () => {
       expect(html).not.toContain('<div>Page Not Found</div>')
       const page = await tp.gotoServer('/')
       await page.stable
-      console.log(page.story)
       expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
-          
-          
+          (Empty)
+
           div: Page Not Found
           "
       `)
     }),
   )
 
-  // it.concurrent(
-  //   'have hmr client updates',
-  //   wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
-  //     await tp.write(
-  //       'src/page.tsx',
-  //       `import { root } from './lib/root.js'
-  //       export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
-  //     )
-  //     tp.spawn(['bun', 'run', 'dev'])
-  //     await tp.waitForStarted()
-  //     const html = await tp.fetchServerHtml('/')
-  //     expect(html).toContain('<div>Hello</div>')
+  it.concurrent(
+    'have hmr client updates',
+    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+      )
+      tp.spawn(['bun', 'run', 'dev'])
+      await tp.waitMomentAndLogOutput()
+      await tp.waitForStarted()
 
-  //     // Use Playwright to test HMR
-  //     const playwright = new PlaywrightHelper({ headless: true })
-  //     try {
-  //       await playwright.start()
-  //       await playwright.loadUrl(`http://localhost:${engine.server.port}`)
-
-  //       // Check if "Hello" is in the page
-  //       const hasHello = await playwright.checkContent('Hello')
-  //       expect(hasHello).toBe(true)
-
-  //       // Verify initial navigation count (should be 1 after initial load)
-  //       expect(playwright.getNavigationCount()).toBe(1)
-
-  //       // Edit file content
-  //       await tp.write(
-  //         'src/page.tsx',
-  //         `import { root } from './lib/root.js'
-  //       export const page = root.lets('page', 'home', '/').page(() => <div>Hello World</div>)`,
-  //       )
-
-  //       // Wait until content changed without page reload (HMR)
-  //       // This will throw if a page reload is detected
-  //       await playwright.waitForContentChange('Hello', 'Hello World', 10000)
-
-  //       // Verify the new content is present
-  //       const hasHelloWorld = await playwright.checkContent('Hello World')
-  //       expect(hasHelloWorld).toBe(true)
-
-  //       // Explicitly verify no page reload occurred (HMR should update without reload)
-  //       expect(playwright.verifyNoReload()).toBe(true)
-  //       expect(playwright.getNavigationCount()).toBe(1)
-  //     } finally {
-  //       await playwright.close()
-  //     }
-  //   }),
-  // )
+      const page = await tp.gotoClient('/')
+      await page.stable
+      console.dir(page.story, { depth: null })
+      await page.waitForContent('Hello')
+      await tp.replace('src/page.tsx', 'Hello', 'Ciao')
+      await page.waitForContent('Ciao')
+      console.dir(page.story, { depth: null })
+      expect(page.history.length).toBe(1)
+      expect(page.tale).toMatchInlineSnapshot(`
+        "http://localhost/
+          div: Hello
+          
+          div: Ciao
+          "
+      `)
+    }),
+  )
 })

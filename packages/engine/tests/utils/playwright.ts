@@ -1,5 +1,5 @@
 import { chromium, type Browser, type Page } from 'playwright'
-import { HtmlTree, HtmlView } from './html-view.js'
+import { HtmlView } from './html-view.js'
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean
@@ -78,6 +78,27 @@ export class PlaywrightPage {
   private constructor(options: PlaywrightPageConstructorOptions) {
     this.original = options.original
     this.browser = options.browser
+
+    // INTERCEPT SSR HTML
+    // Everything already ok
+    // this.original.on('response', async (response) => {
+    //   const isMainFrame = response.request().frame() === this.original.mainFrame()
+    //   const isNavigation = response.request().resourceType() === 'document'
+    //   console.log('response', response.url(), isMainFrame, isNavigation)
+
+    //   if (isMainFrame && isNavigation) {
+    //     try {
+    //       const ssrHtml = await response.text()
+    //       const currentItem = this.history.at(-1)
+    //       if (currentItem) {
+    //         // Push SSR HTML as the very first item
+    //         currentItem.htmls.push(HtmlView.create(ssrHtml))
+    //       }
+    //     } catch (e) {
+    //       // Response body might be unavailable for some reason
+    //     }
+    //   }
+    // })
 
     // Listen for navigation to start a new history bucket
     this.original.on('framenavigated', (frame) => {
@@ -207,12 +228,16 @@ export class PlaywrightPage {
     for (const item of this.story) {
       const pair: [string, string[]] = [PlaywrightPage.prettifyUrl(item.url), []]
       for (const preview of item.previews) {
-        pair[1].push(
-          preview
-            .split('\n')
-            .map((line) => `  ${line}`)
-            .join('\n'),
-        )
+        if (preview === '' || preview === '\n') {
+          pair[1].push('  (Empty)\n')
+        } else {
+          pair[1].push(
+            preview
+              .split('\n')
+              .map((line) => `  ${line}`)
+              .join('\n'),
+          )
+        }
       }
       pairs.push(pair)
     }

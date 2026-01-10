@@ -11,7 +11,8 @@ const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
 export class TestProject {
   dir: string
   name: string
-  index: number
+  // index: number
+  id: string
   ssr: boolean
   superjson: boolean
   serverPort: number
@@ -23,7 +24,7 @@ export class TestProject {
   tpf: TestProjectFactory
 
   constructor(options: {
-    index: number
+    // index: number
     ssr: boolean
     superjson: boolean
     serverPort: number
@@ -32,9 +33,11 @@ export class TestProject {
     clientHmrPort: number
     tpf: TestProjectFactory
   }) {
-    this.name = 'test-' + options.index
+    this.id = crypto.randomUUID()
+    // this.name = 'test-' + options.index
+    this.name = 'test-' + this.id
     this.dir = nodePath.resolve(testsGeneralTempDir, options.tpf.namespace, this.name)
-    this.index = options.index
+    // this.index = options.index
     this.ssr = options.ssr
     this.superjson = options.superjson
     this.serverPort = options.serverPort
@@ -90,8 +93,8 @@ export class TestProject {
     }
   }
 
-  async replace(file: Bun.BunFile | keyof typeof this.files, search: string, replace: string) {
-    file = typeof file === 'string' ? this.files[file] : file
+  async replace(file: string | Bun.BunFile, search: string, replace: string) {
+    file = typeof file === 'string' ? Bun.file(this.resolve(file)) : file
     const content = await file.text()
     const isSearchExists = content.includes(search)
     if (!isSearchExists) {
@@ -237,7 +240,7 @@ export type TestProjectGeneralOptions = {
 }
 
 export type TestProjectCreateOptions = TestProjectGeneralOptions & {
-  index: number
+  // index: number
   tpf: TestProjectFactory
   serverPort: number
   clientPort: number
@@ -290,7 +293,7 @@ export class TestProjectFactory {
       clientPort: this.getNextFreePort(),
       serverHmrPort: this.getNextFreePort(),
       clientHmrPort: this.getNextFreePort(),
-      index: this.instances.length,
+      // index: this.instances.length,
       tpf: this,
     })
     this.instances.push(tp)

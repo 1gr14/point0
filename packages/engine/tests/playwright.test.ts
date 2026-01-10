@@ -619,4 +619,33 @@ describe('playwright', () => {
       }),
     )
   })
+
+  // describe.concurrent('ssr like behavior', () => {
+  //   it.only(
+  //     'should notice changes in the page right after loading',
+  //     wrp(async (page) => {
+  //       const html = `
+  //               <!DOCTYPE html>
+  //               <html>
+  //                 <body>
+  //                   <div id="root">
+  //                     <div id="status2">Will Be Changed Right Now</div>
+  //                   </div>
+  //                   <script>
+  //                       const statusEl = document.getElementById('status2');
+  //                       statusEl.textContent = 'Done';
+  //                   </script>
+  //                 </body>
+  //               </html>
+  //             `
+  //       await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+  //       await page.stable
+  //       expect(page.tale).toMatchInlineSnapshot(`
+  //         "data:...
+  //           #status2: Done
+  //           "
+  //       `)
+  //     }),
+  //   )
+  // })
 })

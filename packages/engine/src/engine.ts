@@ -202,11 +202,11 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       cwd = process.cwd(),
     } = options
     process.env.NODE_ENV ??= 'development'
-    const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
-    // if (generateFiles) {
-    //   await this.generate({ logOnNotWritten: false })
-    // }
-    // const generatorWatchProcess = generateFiles && watch ? this.generateWatch() : null
+    // const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
+    if (generateFiles) {
+      await this.generate({ logOnNotWritten: false })
+    }
+    const generatorWatchProcess = generateFiles && watch ? this.generateWatch() : null
     const withServer = clientDevServersOnly !== true && !!this.server.entry
     const entriesFiles =
       entries && entries.length > 0
@@ -255,10 +255,10 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       })()
       // and here we run one instance of client dev servers per each client
       const clientsDevSevers = this.serveClientDevServers()
-      await Promise.all([generatorProcess, ...serverEntryProcesses, clientsDevSevers])
+      await Promise.all([generatorWatchProcess, ...serverEntryProcesses, clientsDevSevers])
     } else {
       // when we init, we create also start clientDevServers
-      await Promise.all([generatorProcess, this.init()])
+      await Promise.all([generatorWatchProcess, this.init()])
     }
   }
 
