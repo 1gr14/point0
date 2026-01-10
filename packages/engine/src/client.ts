@@ -26,10 +26,10 @@ import {
   extractClientBunBuildConfig,
   extractClientBunDevPluginsStrings,
   extractViteConfig,
-  shakeItOnEngineHolderBuildPhase,
   resolveTempDirPath,
   withRetries,
 } from './utils.js'
+import { env } from '@point0/env'
 
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
@@ -632,7 +632,9 @@ Bun.serve({
     bunBuildConfig?: ClientBunBuildConfigDefinition
     clean?: boolean
   }): Promise<string[] | null> {
-    return await shakeItOnEngineHolderBuildPhase(async () => {
+    if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+      throw new Error('You can not build by built engine')
+    } else {
       const { bunBuildConfig, clean = false } = options ?? {}
 
       const buildPaths = this.getBuildPaths()
@@ -664,7 +666,7 @@ Bun.serve({
         : {}
 
       const compilerPlugin = await import('@point0/compiler/plugin/bun').then((module) =>
-        module.compilerBunPlugin({ target: 'client', scope: this.scope }),
+        module.compilerBunPlugin({ target: 'client', scope: this.scope, built: true }),
       )
 
       const buildOutput = await Bun.build({
@@ -692,14 +694,17 @@ Bun.serve({
         },
       })
       return buildOutput.outputs.map((output) => output.path)
-    })
+    }
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    return await shakeItOnEngineHolderBuildPhase(async () => {
+    if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+      throw new Error('You can not build by built engine')
+    } else {
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for client "${this.scope}"`)
       }
+
       const { build: viteBuild } = await import('vite')
       const buildPaths = this.getBuildPaths()
       if (!buildPaths.indexHtml) {
@@ -743,7 +748,7 @@ Bun.serve({
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
       const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-        module.compilerVitePlugin({ target: 'client', scope: this.scope }),
+        module.compilerVitePlugin({ target: 'client', scope: this.scope, built: true }),
       )
 
       const config: ExtractedViteConfig = {
@@ -772,6 +777,7 @@ Bun.serve({
             Object.entries(this.env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
           ),
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+          'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': JSON.stringify('true'),
           'process.env.POINT0_TARGET': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
@@ -792,7 +798,7 @@ Bun.serve({
         }
       }
       return outputFiles
-    })
+    }
   }
 
   async cleanClient(): Promise<boolean> {

@@ -111,7 +111,6 @@ export class CompilerFile<THasContent extends boolean> {
     cloned._parse = this._parse
     cloned._mayContainPoints = this._mayContainPoints
     cloned._isIdentifierExists = this._isIdentifierExists
-    cloned._shakeForEngineHolderBuildPhase = this._shakeForEngineHolderBuildPhase
     cloned._shakeForEnv = this._shakeForEnv
     return cloned
   }
@@ -126,7 +125,6 @@ export class CompilerFile<THasContent extends boolean> {
     this._parse = undefined
     this._mayContainPoints = undefined
     this._isIdentifierExists = {}
-    this._shakeForEngineHolderBuildPhase = undefined
     this._shakeForEnv = undefined
     this.allPointsWasCollected = false
     this.modified = false
@@ -343,85 +341,6 @@ export class CompilerFile<THasContent extends boolean> {
   async toCompressedPrettyCode(): Promise<string> {
     const prettyCode = await this.toPrettyCode()
     return prettyCode.replace(/\n{2,}/g, '\n')
-  }
-
-  private _shakeForEngineHolderBuildPhase:
-    | {
-        errors: unknown[]
-        ok: boolean
-        modified: boolean
-      }
-    | undefined = undefined
-  shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase }: { isEngineHolderBuildPhase: boolean }): {
-    errors: unknown[]
-    ok: boolean
-    modified: boolean
-  } {
-    const errors: unknown[] = []
-    let modified = false
-    if (!this.content) {
-      throw new Error(`File ${this.abs} is not read yet`)
-    }
-    if (this._shakeForEngineHolderBuildPhase) {
-      return this._shakeForEngineHolderBuildPhase
-    }
-    try {
-      if (!isEngineHolderBuildPhase) {
-        this._shakeForEngineHolderBuildPhase = { errors, ok: true, modified }
-        return this._shakeForEngineHolderBuildPhase
-      }
-      if (!this.content.includes('shakeItOnEngineHolderBuildPhase')) {
-        this._shakeForEngineHolderBuildPhase = { errors, ok: true, modified }
-        return this._shakeForEngineHolderBuildPhase
-      }
-
-      const makeThrow = () => ({
-        type: 'ArrowFunctionExpression',
-        id: null,
-        generator: false,
-        async: false,
-        expression: false,
-        params: [],
-        body: {
-          type: 'BlockStatement',
-          body: [
-            {
-              type: 'ThrowStatement',
-              argument: {
-                type: 'NewExpression',
-                callee: { type: 'Identifier', name: 'Error' },
-                arguments: [{ type: 'StringLiteral', value: 'Not available after build' }],
-              },
-            },
-          ],
-        },
-      })
-
-      traverse(this.ast, {
-        CallExpression: (p) => {
-          const node = p.node
-          const callee = node.callee
-
-          // Check if callee is an Identifier named 'shakeItOnEngineHolderBuildPhase'
-          if (callee.type === 'Identifier' && callee.name === 'shakeItOnEngineHolderBuildPhase') {
-            const args = node.arguments as any[]
-            // Replace the first argument (callback) with the throw function
-            if (args.length > 0) {
-              args[0] = makeThrow()
-              modified = true
-            }
-          }
-        },
-      })
-
-      this.modified ||= modified
-      this._shakeForEngineHolderBuildPhase = { errors, ok: true, modified }
-      return this._shakeForEngineHolderBuildPhase
-    } catch (e) {
-      errors.push(e)
-      this._shakeForEngineHolderBuildPhase = { errors, ok: false, modified }
-      return this._shakeForEngineHolderBuildPhase
-    }
   }
 
   private _shakeForEnv:

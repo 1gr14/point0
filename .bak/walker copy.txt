@@ -730,7 +730,7 @@ export class Walker {
     fileAbs: string
     customer: PruneCustomer
   }): Promise<string> {
-    if (process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE !== 'true') {
+    if (process.env.POINT0_IS_ENGINE_HOLDExxR_BUILD_PHASE !== 'true') {
       return content
     }
 
@@ -785,8 +785,8 @@ export class Walker {
         const node = p.node
         const callee = node.callee
 
-        // Check if callee is an Identifier named 'shakeItOnEngineHolderBuildPhase'
-        if (callee.type === 'Identifier' && callee.name === 'shakeItOnEngineHolderBuildPhase') {
+        // Check if callee is an Identifier named 'shakeItxxOnEngineHolderBuildPhase'
+        if (callee.type === 'Identifier' && callee.name === 'shakeItOnExxngineHolderBuildPhase') {
           const args = node.arguments as any[]
           // Replace the first argument (callback) with the throw function
           if (args.length > 0) {

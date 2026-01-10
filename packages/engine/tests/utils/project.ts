@@ -5,7 +5,7 @@ import { TestProcess } from './process.js'
 import { killPort } from '../../src/kill-port.js'
 import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
-import { dirContainsText, waitPortFree } from './other.js'
+import { dirContainsText, throwOnHelperLogFnCalling, waitPortFree } from './other.js'
 import type { FileGeneratorProcessResult } from '../../src/generator.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
@@ -192,6 +192,11 @@ export class TestProject {
       throw new Error('No processes found')
     }
     return lastProcess.output
+  }
+
+  logOutput() {
+    throwOnHelperLogFnCalling()
+    console.info(this.output)
   }
 
   async waitOutput(text: string | string[], timeout?: number): Promise<string> {

@@ -1,12 +1,13 @@
+import type { PointsScope } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
 import * as nodePath from 'node:path'
-import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
-import type { PointsScope } from '@point0/core'
-import type { ViteDevServer } from 'vite'
+import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
-import type { Options, Options as RetryOptions } from 'p-retry'
+import type { ViteDevServer } from 'vite'
+import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
+import { env } from '@point0/env'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -453,7 +454,7 @@ export const createViteDevServer = async ({
   scope,
   target,
   hmrPort,
-  env,
+  env: envParsed,
 }: {
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
@@ -461,7 +462,9 @@ export const createViteDevServer = async ({
   hmrPort: number | null
   env?: EngineOptionsEnvParsed
 }): Promise<ViteDevServer> => {
-  return await shakeItOnEngineHolderBuildPhase(async () => {
+  if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+    throw new Error('You can not serve by dev client with built engine')
+  } else {
     if (!viteConfig) {
       throw new Error(`Vite config not found for client "${scope}"`)
     }
@@ -500,14 +503,14 @@ export const createViteDevServer = async ({
       define: {
         ...loadedViteConfig.define,
         ...Object.fromEntries(
-          Object.entries(env ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
+          Object.entries(envParsed ?? {}).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]),
         ),
         ...Object.fromEntries(
-          Object.entries(env ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+          Object.entries(envParsed ?? {}).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
         ),
       },
     })
-  })
+  }
 }
 
 // export const getDevPathInsideImportFn = (
@@ -531,10 +534,6 @@ export const createViteDevServer = async ({
 // }
 
 // build helpers
-
-export const shakeItOnEngineHolderBuildPhase = <T>(callback: () => T): T => {
-  return callback()
-}
 
 export const readableStreamToString = async (readableStream: ReadableStream): Promise<string> => {
   const chunks: Uint8Array[] = []

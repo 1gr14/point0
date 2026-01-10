@@ -55,7 +55,7 @@ describe('build', () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  it(
+  it.only(
     'build and start ssr server',
     wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
       await tp.write(
@@ -66,6 +66,7 @@ describe('build', () => {
       await tp.generate()
       const bp = tp.spawn(['bun', 'run', 'build'])
       await bp.exited
+      bp.logOutput()
       expect(await tp.distServerContainsText('My Cool Page')).toBe(true)
       expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
       tp.spawn(['bun', 'run', 'start'])
@@ -86,7 +87,7 @@ describe('build', () => {
       `)
     }),
     {
-      retry: 3,
+      // retry: 3,
     },
   )
 

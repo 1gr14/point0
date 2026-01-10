@@ -98,17 +98,6 @@ export const root = Point0.lets('root', 'root').root()
     )
 
     it.concurrent(
-      'respects isEngineHolderBuildPhase option',
-      helper(async ({ files: [file] }) => {
-        await file.write(`shakeItOnEngineHolderBuildPhase(() => console.info('test'))`)
-        const compiler = Compiler.create({ target: 'client', scope: 'test', isEngineHolderBuildPhase: true })
-        const result = compiler.compile({ file: file.path })
-        expect(result.errors).toHaveLength(0)
-        expect(result.code).toContain('throw new Error("Not available after build")')
-      }),
-    )
-
-    it.concurrent(
       'respects hmrFix option - function',
       helper(async ({ files: [file] }) => {
         await file.write(`import {Point0} from '@point0/core'

@@ -11,7 +11,6 @@ export type CompilerOptions = {
   built?: boolean
   consts?: CompilerEnvConsts
   filter?: RegExp
-  isEngineHolderBuildPhase?: boolean
   hmrFix?: 'function' | 'arrowFunction' | 'externalFunction' | false
 }
 
@@ -21,7 +20,6 @@ export class Compiler {
   built: boolean
   target: 'client' | 'server'
   consts: CompilerEnvConsts | undefined
-  isEngineHolderBuildPhase: boolean | undefined
   hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
   walker: Walker
   routes: Record<string, RoutesPretty<any>> | undefined
@@ -33,7 +31,6 @@ export class Compiler {
     target,
     scope,
     consts,
-    isEngineHolderBuildPhase,
     hmrFix,
     walker,
     routes,
@@ -43,7 +40,6 @@ export class Compiler {
     target: 'client' | 'server'
     scope: string
     consts: CompilerEnvConsts | undefined
-    isEngineHolderBuildPhase: boolean | undefined
     hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
     walker: Walker
     routes: Record<string, RoutesPretty<any>> | undefined
@@ -53,7 +49,6 @@ export class Compiler {
     this.target = target
     this.scope = scope
     this.consts = consts
-    this.isEngineHolderBuildPhase = isEngineHolderBuildPhase
     this.hmrFix = hmrFix
     this.walker = walker
     this.routes = routes
@@ -61,13 +56,12 @@ export class Compiler {
   }
 
   static create(options: CompilerOptions) {
-    const { filter, target, scope, consts, isEngineHolderBuildPhase, hmrFix, routes, built } = options
+    const { filter, target, scope, consts, hmrFix, routes, built } = options
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       target,
       scope,
       consts,
-      isEngineHolderBuildPhase,
       hmrFix: hmrFix ?? false,
       walker: new Walker({ routes }),
       routes,
@@ -86,8 +80,6 @@ export class Compiler {
     const target = this.target
     const scope = this.scope
     const consts = this.consts
-    const isEngineHolderBuildPhase =
-      this.isEngineHolderBuildPhase ?? process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true'
     const hmrFix = this.hmrFix
     const built = this.built
     const errors: unknown[] = []
@@ -111,7 +103,6 @@ export class Compiler {
         point.addHmrFix({ policy: hmrFix })
       }
     }
-    cf.shakeForEngineHolderBuildPhase({ isEngineHolderBuildPhase })
     const isSomeStale = CompilerPoint.isSomeStale(collectResult.points)
     if (isSomeStale) {
       if (tryIndex >= 10) {

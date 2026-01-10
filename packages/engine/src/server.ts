@@ -22,11 +22,11 @@ import {
   extractViteConfig,
   getDirByPaths,
   loadBunPlugins,
-  shakeItOnEngineHolderBuildPhase,
   validateEntrypoints,
   withRetries,
 } from './utils.js'
 import { Fetcher } from './fetcher.js'
+import { env } from '@point0/env'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
@@ -159,7 +159,12 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (this.isInitialized()) {
       return this as ServerBun<true>
     }
-    await Promise.all([this.loadBunPlugins().then(async () => await this.initPointsManager()), this.publicdir.init()])
+    await Promise.all([
+      this.loadBunPlugins({ built: process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true' }).then(
+        async () => await this.initPointsManager(),
+      ),
+      this.publicdir.init(),
+    ])
     this.initialized = true as never
     this.fetcher = Fetcher.create({ server: this as ServerBun<true> }) as TInitialized extends true ? Fetcher : null
     return this as ServerBun<true>
@@ -174,33 +179,38 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return pointsManager
   }
 
-  async extractBunPlugins(): Promise<BunPlugin[]> {
+  async extractBunPlugins({ built }: { built: boolean }): Promise<BunPlugin[]> {
     const extractedPlugins = await extractServerBunPlugins({
       environment: process.env.NODE_ENV ?? 'development',
       command: 'serve',
       bunPlugins: this.bunPlugins,
     })
-    const shakePlugin = this.viteConfig // we inject vite shake plugin in vite config
+    console.log('extractBunPlugins', {
+      built,
+      'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT,
+    })
+    const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
-      : process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE === 'true'
+      : process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true'
         ? []
         : [
             await import('@point0/compiler/plugin/bun').then((module) =>
               module.compilerBunPlugin({
                 target: 'server',
                 scope: this.scope,
+                built,
               }),
             ),
           ]
-    const extractedBunPlugins = [...extractedPlugins, ...shakePlugin]
+    const extractedBunPlugins = [...extractedPlugins, ...compilerPlugin]
     return extractedBunPlugins
   }
 
-  async loadBunPlugins(): Promise<void> {
+  async loadBunPlugins({ built }: { built: boolean }): Promise<void> {
     if (this.bunPluginsLoaded) {
       return
     }
-    const extractedBunPlugins = await this.extractBunPlugins()
+    const extractedBunPlugins = await this.extractBunPlugins({ built })
     await loadBunPlugins({ extractedBunPlugins })
     this.bunPluginsLoaded = true
   }
@@ -539,12 +549,6 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
     const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
 
-    const plugins = [
-      ...(thisBunBuildConfig.plugins ?? []),
-      ...(providedBunBuildConfig.plugins ?? []),
-      ...(await this.extractBunPlugins()),
-    ]
-    process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'true'
     const buildOutput = await Bun.build({
       target: 'bun',
       sourcemap: 'linked',
@@ -552,7 +556,11 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       splitting: true,
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
-      plugins,
+      plugins: [
+        ...(thisBunBuildConfig.plugins ?? []),
+        ...(providedBunBuildConfig.plugins ?? []),
+        ...(await this.extractBunPlugins({ built: true })),
+      ],
       banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
       entrypoints: validateEntrypoints([
         ...buildPaths.entryFiles,
@@ -571,15 +579,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         ...providedBunBuildConfig.define,
         ...injectedEnvs,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-        'process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE': JSON.stringify('true'),
+        'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': JSON.stringify('true'),
+        'process.env.POINT0_TARGET': JSON.stringify('server'),
+        'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
       },
     })
-    process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'false'
     return buildOutput.outputs.map((output) => output.path)
   }
 
   async buildByVite(options?: { clean?: boolean }): Promise<string[] | null> {
-    return await shakeItOnEngineHolderBuildPhase(async () => {
+    if (process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT === 'true') {
+      throw new Error('You can not build by built engine')
+    } else {
       if (!this.viteConfig) {
         throw new Error(`viteConfig not provided for server`)
       }
@@ -627,13 +638,13 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const viteRoot =
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-      const shakePlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-        module.compilerVitePlugin({ target: 'server', scope: this.scope }),
+      const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
+        module.compilerVitePlugin({ target: 'server', scope: this.scope, built: true }),
       )
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...(loadedViteConfig.plugins ?? []), shakePlugin],
+        plugins: [...(loadedViteConfig.plugins ?? []), compilerPlugin],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,
@@ -656,13 +667,12 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           ...loadedViteConfig.define,
           ...injectedEnvs,
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
+          'process.env.POINT0_BUILD_IN_PROGRESS_OR_ALREADY_BUILT': JSON.stringify('true'),
           'process.env.POINT0_TARGET': JSON.stringify('server'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       }
-      process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'true'
       const buildResult = await viteBuild(config)
-      process.env.POINT0_IS_ENGINE_HOLDER_BUILD_PHASE = 'false'
 
       const rollupOutputs = Array.isArray(buildResult) ? buildResult : [buildResult]
       const outputFiles: string[] = []
@@ -677,7 +687,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         }
       }
       return outputFiles
-    })
+    }
   }
 
   async buildServer(options?: {
