@@ -38,9 +38,9 @@ function wrp(
       await tp.init()
       const engine = await tp.importEngine()
       await callback({ tp, engine })
-      await tp.cleanup({ files: deleteFiles, ports: true, processes: true, browser: false })
+      await tp.cleanup({ files: deleteFiles, ports: true, processes: true })
     } catch (error) {
-      await tp.cleanup({ files: deleteFiles, ports: true, processes: true, browser: false })
+      await tp.cleanup({ files: deleteFiles, ports: true, processes: true })
       throw error
     }
   }
@@ -49,29 +49,35 @@ function wrp(
 describe.concurrent('dev', () => {
   beforeAll(async () => {
     await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    // tpf.setBrowser(await PlaywrightBrowser.init())
+    tpf.setBrowser(await PlaywrightBrowser.init())
   })
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
   })
 
-  it.only(
+  it.concurrent(
     'start ssr dev server',
     wrp({ ssr: true }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      await tp.waitMomentAndLogOutput()
       await tp.waitForStarted()
       const response = await tp.fetchServer('/')
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
       expect(html).toContain('<div>Page Not Found</div>')
+      const page = await tp.gotoServer('/')
+      await page.stable
+      expect(page.tale).toMatchInlineSnapshot(`
+        "http://localhost/
+          div: Page Not Found
+          "
+      `)
     }),
   )
 
-  it.concurrent(
+  it.only(
     'start spa dev server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
@@ -81,6 +87,16 @@ describe.concurrent('dev', () => {
       const html = await tp.fetchServerHtml('/')
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
+      const page = await tp.gotoServer('/')
+      await page.stable
+      console.log(page.story)
+      expect(page.tale).toMatchInlineSnapshot(`
+        "http://localhost/
+          
+          
+          div: Page Not Found
+          "
+      `)
     }),
   )
 

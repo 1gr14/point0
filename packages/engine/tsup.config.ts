@@ -16,6 +16,7 @@ const general = {
     'src/utils.ts',
     'src/executor.ts',
     'src/all-points-managers.ts',
+    'src/kill-port.ts',
   ],
   clean: false,
   dts: true,

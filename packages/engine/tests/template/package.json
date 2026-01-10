@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "point0 dev",
+    "dev": "cross-env NODE_ENV=development point0 dev --no-generate",
     "generate": "point0 generate",
     "build": "cross-env NODE_ENV=production point0 build",
     "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",

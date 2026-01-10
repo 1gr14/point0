@@ -19,6 +19,7 @@ import type { FilesGeneratorPointsFilesChangeWatcher, FilesGeneratorTargetOption
 import { FilesGenerator } from './generator.js'
 import type { Publicdir } from './publicdir.js'
 import { ServerBun } from './server.js'
+import { killPort } from './kill-port.js'
 
 export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized extends boolean = boolean> {
   clients: TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
@@ -202,6 +203,10 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     } = options
     process.env.NODE_ENV ??= 'development'
     const generatorProcess = generateFiles ? (watch ? this.generateWatch() : this.generate()) : null
+    // if (generateFiles) {
+    //   await this.generate({ logOnNotWritten: false })
+    // }
+    // const generatorWatchProcess = generateFiles && watch ? this.generateWatch() : null
     const withServer = clientDevServersOnly !== true && !!this.server.entry
     const entriesFiles =
       entries && entries.length > 0
@@ -241,7 +246,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
             processes.forEach((p) => {
               p.kill('SIGKILL')
             })
-            processes = start()
+            void killPort(this.server.port).finally(() => {
+              processes = start()
+            })
           })
           return []
         }
@@ -411,14 +418,19 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     return { clients, server }
   }
 
-  async generate(): Promise<void> {
-    await this.generator.sync({ logOnNotWritten: true })
+  async generate({ logOnNotWritten = true }: { logOnNotWritten?: boolean } = {}): Promise<void> {
+    await this.generator.sync({ logOnNotWritten })
   }
 
-  async generateWatch(): Promise<void> {
-    void this.generator.sync({ logOnNotWritten: false }).catch((error: unknown) => {
-      console.error(error)
-    })
+  async generateWatch({
+    logOnNotWritten = false,
+    sync = true,
+  }: { logOnNotWritten?: boolean; sync?: boolean } = {}): Promise<void> {
+    if (sync) {
+      void this.generator.sync({ logOnNotWritten }).catch((error: unknown) => {
+        console.error(error)
+      })
+    }
     await this.generator.watch()
   }
 

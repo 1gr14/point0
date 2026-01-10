@@ -69,6 +69,10 @@
     "./all-points-managers": {
       "types": "./dist/all-points-managers.d.ts",
       "import": "./dist/all-points-managers.js"
+    },
+    "./kill-port": {
+      "types": "./dist/kill-port.d.ts",
+      "import": "./dist/kill-port.js"
     }
   },
   "files": [

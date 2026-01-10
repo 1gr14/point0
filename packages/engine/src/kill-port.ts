@@ -141,11 +141,9 @@ const exec: Partial<
  * // Kill process silently
  * await kill(8080, { silent: true })
  *
- * // Kill process but exclude specific PIDs
- * await kill(3000, { excludePids: new Set([1234, 5678]) })
  * ```
  */
-export async function kill(
+export async function killPort(
   ports: number[] | number,
   options?: { silent?: boolean; excludeCurrentProcess?: boolean; force?: boolean },
 ): Promise<void> {
