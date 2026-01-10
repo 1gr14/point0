@@ -182,7 +182,7 @@ describe('playwright', () => {
         for (let i = 0; i < clickCount; i++) {
           await page.original.click('#increment')
           // Wait a bit for DOM to update
-          await new Promise((resolve) => setTimeout(resolve, 10))
+          await new Promise((resolve) => setTimeout(resolve, 30))
         }
 
         // Wait for all changes to finish
@@ -190,28 +190,40 @@ describe('playwright', () => {
 
         // Check that story captured the state changes
         const story = page.story
-        expect(story).toMatchInlineSnapshot(`
+        expect(story.map((s) => s.previews)).toMatchInlineSnapshot(`
           [
-            {
-              "previews": [
-                
+            [
+              
           "#counter: 0
           #increment: Click me
           "
           ,
-                
+              
           "#counter: 1
           #increment: Click me
           "
           ,
-                
+              
+          "#counter: 2
+          #increment: Click me
+          "
+          ,
+              
+          "#counter: 3
+          #increment: Click me
+          "
+          ,
+              
+          "#counter: 4
+          #increment: Click me
+          "
+          ,
+              
           "#counter: 5
           #increment: Click me
           "
           ,
-              ],
-              "url": "data:text/html,%0A%20%20%20%20%20%20%3C!DOCTYPE%20html%3E%0A%20%20%20%20%20%20%3Chtml%3E%0A%20%20%20%20%20%20%20%20%3Chead%3E%3Ctitle%3ECounter%20Test%3C%2Ftitle%3E%3C%2Fhead%3E%0A%20%20%20%20%20%20%20%20%3Cbody%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22root%22%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22counter%22%3E0%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20id%3D%22increment%22%3EClick%20me%3C%2Fbutton%3E%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cscript%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20count%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20counterEl%20%3D%20document.getElementById('counter')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20buttonEl%20%3D%20document.getElementById('increment')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20buttonEl.addEventListener('click'%2C%20()%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20count%2B%2B%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20counterEl.textContent%20%3D%20count%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D)%3B%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fscript%3E%0A%20%20%20%20%20%20%20%20%3C%2Fbody%3E%0A%20%20%20%20%20%20%3C%2Fhtml%3E%0A%20%20%20%20",
-            },
+            ],
           ]
         `)
         expect(story.length).toBeGreaterThan(0)

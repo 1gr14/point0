@@ -118,7 +118,11 @@ export class PlaywrightPage {
     if (lastHistoryItem === undefined) {
       throw new Error('No history item found')
     }
-    return lastHistoryItem.htmls.map((html) => html.preview)
+    const previews = lastHistoryItem.htmls.map((html) => html.preview)
+    if (previews.some((p) => p === undefined)) {
+      throw new Error('Previews not yet parsed, call await page.finished first')
+    }
+    return previews as string[]
   }
 
   get url(): string {
@@ -134,14 +138,22 @@ export class PlaywrightPage {
   }
 
   get story(): PageStoryItem[] {
-    return this.history.map((item) => ({
+    const story = this.history.map((item) => ({
       url: item.url,
       previews: item.htmls.map((html) => html.preview),
     }))
+    if (story.some((s) => s.previews.some((p) => p === undefined))) {
+      throw new Error('Previews not yet parsed, call await page.finished first')
+    }
+    return story as PageStoryItem[]
   }
 
-  get finished(): Promise<void> {
-    return this.waitForFinishMutations()
+  get finished(): Promise<PageStoryItem[]> {
+    return (async () => {
+      await this.waitForFinishMutations()
+      await HtmlView.parseMany(this.history.flatMap((item) => item.htmls))
+      return this.story
+    })()
   }
 
   private async waitForFinishMutations(): Promise<void> {
