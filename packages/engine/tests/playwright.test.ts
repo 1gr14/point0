@@ -623,7 +623,6 @@ describe('playwright', () => {
   //               </html>
   //             `
   //       await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-  //       await page.stable
   //       expect(page.tale).toMatchInlineSnapshot(`
   //         "data:...
   //           #status2: Done

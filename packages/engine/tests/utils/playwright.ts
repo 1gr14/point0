@@ -273,7 +273,7 @@ export class PlaywrightPage {
   //   return await HtmlView.parseMany(this.history.flatMap((item) => item.htmls))
   // }
 
-  private async getLastHtmlView(): Promise<HtmlView<true> | undefined> {
+  private getLastHtmlView(): HtmlView<true> | undefined {
     const lastHistoryItem = this.history.at(-1)
     if (lastHistoryItem === undefined) {
       return undefined
@@ -282,8 +282,7 @@ export class PlaywrightPage {
     if (lastHtml === undefined) {
       return undefined
     }
-    const parsedHtml = await HtmlView.parse(lastHtml)
-    return parsedHtml
+    return lastHtml
   }
 
   async waitContent(search: string, timeout = 2000): Promise<void> {
@@ -296,7 +295,7 @@ export class PlaywrightPage {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms`)
       }
-      const htmlView = await this.getLastHtmlView()
+      const htmlView = this.getLastHtmlView()
       if (htmlView?.hasContent(search)) {
         // await this.parseAllHtmlViews()
         return
@@ -315,7 +314,7 @@ export class PlaywrightPage {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for no content: ${search} within ${timeout}ms`)
       }
-      const htmlView = await this.getLastHtmlView()
+      const htmlView = this.getLastHtmlView()
       if (!htmlView || htmlView.hasNoContent(search)) {
         // await this.parseAllHtmlViews()
         return
