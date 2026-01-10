@@ -533,3 +533,14 @@ export const createViteDevServer = async ({
 export const shakeItOnEngineHolderBuildPhase = <T>(callback: () => T): T => {
   return callback()
 }
+
+export const readableStreamToString = async (readableStream: ReadableStream): Promise<string> => {
+  const chunks: Uint8Array[] = []
+  const reader = readableStream.getReader()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks))
+}

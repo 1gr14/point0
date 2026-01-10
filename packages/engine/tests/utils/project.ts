@@ -101,7 +101,7 @@ export class TestProject {
   }
 
   async write(path: string | Bun.BunFile, content: string): Promise<Bun.BunFile> {
-    const file = typeof path === 'string' ? Bun.file(this.resolve('src', path)) : path
+    const file = typeof path === 'string' ? Bun.file(this.resolve(path)) : path
     await file.write(content)
     return file
   }

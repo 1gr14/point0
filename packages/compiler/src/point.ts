@@ -716,7 +716,7 @@ export class CompilerPoint<TValid extends boolean = any> {
         ].includes(method.name)
       ) {
         this.removeMethodArgs({ nodePath: method.nodePath })
-      } else if (method.underSsr) {
+      } else if (!method.underSsr) {
         if (method.name === 'page') {
           this.replaceLastArgWithArrowFnReturnNull({ nodePath: method.nodePath })
         } else if (

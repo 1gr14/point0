@@ -87,15 +87,19 @@ describe.concurrent('dev', () => {
     }),
   )
 
-  it.only(
+  it.concurrent(
     'have hmr client updates',
-    wrp({ ssr: true }, async ({ tp, engine }) => {
+    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+      )
       tp.spawn(['bun', 'run', 'dev'])
       const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
       expect(result).toBeDefined()
       const html = await result.text()
-      expect(html).toContain('<div>Page Not Found</div>')
-      expect(html).toContain('__POINT0_ENV__')
+      expect(html).toContain('<div>Hello</div>')
     }),
   )
 })
