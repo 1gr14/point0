@@ -125,17 +125,17 @@ describe('Walker', () => {
       }),
     )
 
-    it.only(
+    it.concurrent(
       'can recognize flat points in same file with single parent',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
           export const root = Point0.lets('root', 'root').root()
           export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER</div>)
-          export const page1 = root.lets('page1', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY</div>)
-          export const page2 = root.lets('page2', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY</div>)
-          export const page3 = root.lets('page3', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_WRONG_HOPE</div> : <div>MY_CLIENT_WRONG_HOPE</div>))
-          export const page4 = root.lets('page4', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY</div> } else { return <div>MY_CLIENT_ONLY</div> } })
-          export const page5 = root.lets('page5', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER</div>)
+          export const page1 = root.lets('page', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY</div>)
+          export const page2 = root.lets('page', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY</div>)
+          export const page3 = root.lets('page', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_WRONG_HOPE</div> : <div>MY_CLIENT_WRONG_HOPE</div>))
+          export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY</div> } else { return <div>MY_CLIENT_ONLY</div> } })
+          export const page5 = root.lets('page', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER</div>)
         `)
         const result = walker.collectPointsFromFile({ file: f0.path })
         expect(result.errors).toHaveLength(0)

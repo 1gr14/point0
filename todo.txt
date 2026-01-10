@@ -3,7 +3,6 @@
 --------------------------
 
 TEST
-Проверить что в билд папку не попадает серверный код
 Вырезка банконфига и вайта из энжины
 deleteFiles → preserve
 
@@ -225,6 +224,7 @@ fix what can be .lets from each point type, restrict where lets can be used, lik
 Поправить типы в поинтс менеджере, чтобы все коллекции были верные, и не роутед, а нормалайзед (и вообще отрефачить там всё проверить что там нужно)
 Вайт конфиг авто, дефаулт, или путь, или импорт, и при билде пруном из энжины это вырезать, в отм числе и бан плагины вырезать из конфига энжины прунером при билде
 find TODO in code
+throwOnBundlersLengthNot2 → to eslintplugin
 ? Сделать тюзед для скрытия использованных методов
 add point self to loader and to ctx and to loadrCtx options, and everywhere where can be point, add point
 on fetch error maybe no json, then if it is thore, do res.text()

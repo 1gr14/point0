@@ -1,12 +1,12 @@
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { Engine } from '../../src/engine.js'
-import { TestProcess } from './process.js'
+import type { FileGeneratorProcessResult } from '../../src/generator.js'
 import { killPort } from '../../src/kill-port.js'
+import { getDirFilesContent, throwOnHelperLogFnCalling, waitPortFree } from './other.js'
 import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
-import { dirContainsText, throwOnHelperLogFnCalling, waitPortFree } from './other.js'
-import type { FileGeneratorProcessResult } from '../../src/generator.js'
+import { TestProcess } from './process.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
@@ -152,12 +152,12 @@ export class TestProject {
     await waitPortFree(this.ports)
   }
 
-  async distServerContainsText(text: string | string[]): Promise<boolean> {
-    return await dirContainsText(this.paths.distServer, text)
+  async getDistServerFilesContent(): Promise<string> {
+    return await getDirFilesContent(this.paths.distServer)
   }
 
-  async distClientContainsText(text: string | string[]): Promise<boolean> {
-    return await dirContainsText(this.paths.distClient, text)
+  async getDistClientFilesContent(): Promise<string> {
+    return await getDirFilesContent(this.paths.distClient)
   }
 
   async gotoServer(page: PlaywrightPage, path: string): Promise<PlaywrightPage>

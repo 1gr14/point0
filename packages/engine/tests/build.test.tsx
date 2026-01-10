@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
+import { throwOnBundlersLengthNot2 } from './utils/other.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
-import { throwOnBundlersLengthNot2 } from './utils/other.js'
 
 setDefaultTimeout(15000)
 
@@ -46,8 +46,7 @@ function wrp(
   }
 }
 
-// const bundlers = ['bun', 'vite']
-const bundlers = ['bun']
+const bundlers = ['bun', 'vite']
 
 describe('build', () => {
   beforeAll(async () => {
@@ -57,7 +56,7 @@ describe('build', () => {
 
   afterAll(async () => {
     await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: true, browser: true })
-    // throwOnBundlersLengthNot2(bundlers)
+    throwOnBundlersLengthNot2(bundlers)
   })
 
   describe.concurrent.each(bundlers)('%s', (bundler) => {
@@ -72,8 +71,10 @@ describe('build', () => {
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
-        expect(await tp.distServerContainsText('My Cool Page')).toBe(true)
-        expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
+        const serverFilesContent = await tp.getDistServerFilesContent()
+        const clientFilesContent = await tp.getDistClientFilesContent()
+        expect(serverFilesContent).toContain('My Cool Page')
+        expect(clientFilesContent).toContain('My Cool Page')
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
@@ -107,8 +108,10 @@ describe('build', () => {
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
-        expect(await tp.distServerContainsText('My Cool Page')).toBe(false)
-        expect(await tp.distClientContainsText('My Cool Page')).toBe(true)
+        const clientFilesContent = await tp.getDistClientFilesContent()
+        const serverFilesContent = await tp.getDistServerFilesContent()
+        expect(serverFilesContent).not.toContain('My Cool Page')
+        expect(clientFilesContent).toContain('My Cool Page')
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
@@ -132,43 +135,68 @@ describe('build', () => {
       },
     )
 
-    it.only(
+    it.concurrent(
       'prune client and server',
       wrp({ ssr: true, vite: bundler === 'vite', deleteFiles: false }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
           import { env } from '@point0/env'
-          export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER</div>) // will persist everywhere becouse ssr enabled in root
-          export const page1 = root.lets('page1', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY</div>) // becouse after client loader all components pruned for server
-          export const page2 = root.lets('page2', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY</div>) //  becouse ssr was diabled
-          export const page3 = root.lets('page3', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_WRONG_HOPE</div> : <div>MY_CLIENT_WRONG_HOPE</div>)) // it is becouse trenary not pruned by dead code
-          export const page4 = root.lets('page4', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY</div> } else { return <div>MY_CLIENT_ONLY</div> } }) // it is ok
-          export const page5 = root.lets('page5', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER</div>) // it is ok
+          export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER1</div>) // will persist everywhere becouse ssr enabled in root
+          export const page1 = root.lets('page', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY2</div>) // becouse after client loader all components pruned for server
+          export const page2 = root.lets('page', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY3</div>) //  becouse ssr was diabled
+          export const page3 = root.lets('page', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_ONLY4</div> : <div>MY_CLIENT_ONLY5</div>)) 
+          export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY6</div> } else { return <div>MY_CLIENT_ONLY7</div> } }) 
+          export const page5 = root.lets('page', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY8'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER9</div>) // it is ok
         `,
         )
         const generateResult = await tp.generate()
         expect(generateResult.points.length).toBe(7)
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
-        bp.logOutput()
-        return
-        expect(await tp.distServerContainsText('MY_SERVER_ONLY')).toBe(true)
-        expect(await tp.distServerContainsText('MY_SERVER_ONLY')).toBe(true)
-        expect(await tp.distServerContainsText('MY_CLIENT_ONLY')).toBe(false)
-        expect(await tp.distClientContainsText('MY_SERVER_ONLY')).toBe(false)
-        expect(await tp.distClientContainsText('MY_CLIENT_ONLY')).toBe(true)
+        const clientFilesContent = await tp.getDistClientFilesContent()
+        const serverFilesContent = await tp.getDistServerFilesContent()
+        expect(clientFilesContent).toContain('MY_CLIENT_SERVER9')
+        expect(clientFilesContent).toContain('MY_CLIENT_SERVER1')
+        expect(clientFilesContent).toContain('MY_CLIENT_ONLY5')
+
+        expect(clientFilesContent).toContain('MY_CLIENT_ONLY2')
+        expect(clientFilesContent).toContain('MY_CLIENT_ONLY3')
+        expect(clientFilesContent).toContain('MY_CLIENT_ONLY7')
+
+        expect(clientFilesContent).not.toContain('MY_SERVER_ONLY4')
+        expect(clientFilesContent).not.toContain('MY_SERVER_ONLY8')
+        expect(clientFilesContent).not.toContain('MY_SERVER_ONLY6')
+
+        expect(serverFilesContent).toContain('MY_CLIENT_SERVER9')
+        expect(serverFilesContent).toContain('MY_CLIENT_SERVER1')
+        expect(serverFilesContent).toContain('MY_SERVER_ONLY4')
+
+        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY5')
+        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY2')
+        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY3')
+        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY7')
+
+        expect(serverFilesContent).toContain('MY_SERVER_ONLY8')
+        expect(serverFilesContent).toContain('MY_SERVER_ONLY6')
+
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
         await tp.waitStarted()
-        const response = await tp.fetchServer('/3')
+        const response = await tp.fetchServer('/4')
         const html = await response.text()
         expect(html).toContain('__POINT0_ENV__')
-        expect(html).toContain('<div>MY_SERVER_ONLY</div>')
+        expect(html).toContain('<div>MY_SERVER_ONLY6</div>')
         const page = await tp.gotoServer('/3')
         await page.stable
-        expect(page.tale).toMatchInlineSnapshot()
+        expect(page.tale).toMatchInlineSnapshot(`
+          "http://localhost/3
+            div: MY_SERVER_ONLY4
+            
+            div: MY_CLIENT_ONLY5
+            "
+        `)
       }),
       {
         // retry: 3,

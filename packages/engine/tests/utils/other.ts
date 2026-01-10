@@ -125,42 +125,21 @@ export const throwOnBundlersLengthNot2 = (bundlers: string[]) => {
   }
 }
 
-export const dirContainsText = async (dir: string, text: string | string[]): Promise<boolean> => {
-  const texts = Array.isArray(text) ? text : [text]
+export const getDirFilesContent = async (dir: string): Promise<string> => {
   const files = await nodeFs.readdir(dir, { recursive: true })
   const isMapFile = (file: string) => file.endsWith('.map')
-
-  // Map every file to a promise that checks its content
-  const searchPromises = files.map(async (file) => {
-    try {
+  const filesContent = await Promise.all(
+    files.map(async (file) => {
       if (isMapFile(file)) {
-        return false
+        return ''
       }
-      const path = nodePath.join(dir, file)
-      const contents = await Bun.file(path).text()
-      if (texts.some((text) => contents.includes(text))) {
-        throw new Error('Found')
+      try {
+        const contents = await Bun.file(nodePath.join(dir, file)).text()
+        return contents
+      } catch (error) {
+        return ''
       }
-      return false
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Found') {
-        throw error
-      }
-      // Handle cases where "file" is a subdirectory or unreadable
-      return false
-    }
-  })
-
-  // Race through the files: as soon as one returns true, we're done
-  // Note: Promise.all is used here, but for "true" early exit on the first match,
-  // you can use a loop with await if the directory is massive.
-  try {
-    await Promise.all(searchPromises)
-    return false
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Found') {
-      return true
-    }
-    throw error
-  }
+    }),
+  )
+  return filesContent.filter(Boolean).join('\n')
 }
