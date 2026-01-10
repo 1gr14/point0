@@ -8,20 +8,46 @@ export type HtmlTreeItem = {
 
 export type HtmlTree = HtmlTreeItem[]
 
-export class HtmlView {
+export class HtmlView<TParsed extends boolean = any> {
   html: string
-  tree: HtmlTree
-  preview: string
-  private constructor({ html, tree, preview }: { html: string; tree: HtmlTree; preview: string }) {
+  tree: TParsed extends true ? HtmlTree : undefined
+  preview: TParsed extends true ? string : undefined
+  timestamp: number
+  parsed: TParsed extends true ? true : false
+
+  private constructor({ html }: { html: string }) {
     this.html = html
-    this.tree = tree
-    this.preview = preview
+    this.tree = undefined as TParsed extends true ? HtmlTree : undefined
+    this.preview = undefined as TParsed extends true ? string : undefined
+    this.timestamp = Date.now()
+    this.parsed = false as TParsed extends true ? true : false
   }
 
-  static async create(html: string): Promise<HtmlView> {
-    const tree = await HtmlView.htmlToTree(html)
-    const preview = await HtmlView.htmlToPreview(html)
-    return new HtmlView({ html, tree, preview })
+  static create(html: string): HtmlView<false> {
+    return new HtmlView({ html })
+  }
+
+  static async parse(html: string | HtmlView): Promise<HtmlView<true>> {
+    if (html instanceof HtmlView) {
+      return await html.parse()
+    }
+    const instance = new HtmlView({ html })
+    await instance.parse()
+    return instance
+  }
+
+  static async parseMany(htmls: string[] | HtmlView[]): Promise<Array<HtmlView<true>>> {
+    return await Promise.all(htmls.map(async (h) => await HtmlView.parse(h)))
+  }
+
+  async parse(): Promise<HtmlView<true>> {
+    if (this.parsed) {
+      return this as HtmlView<true>
+    }
+    this.tree = (await HtmlView.htmlToTree(this.html)) as TParsed extends true ? HtmlTree : undefined
+    this.preview = (await HtmlView.htmlToPreview(this.html)) as TParsed extends true ? string : undefined
+    this.parsed = true
+    return this as HtmlView<true>
   }
 
   private static async htmlToTree(html: string): Promise<HtmlTree> {

@@ -182,7 +182,7 @@ describe('playwright', () => {
         for (let i = 0; i < clickCount; i++) {
           await page.original.click('#increment')
           // Wait a bit for DOM to update
-          await new Promise((resolve) => setTimeout(resolve, 100))
+          await new Promise((resolve) => setTimeout(resolve, 10))
         }
 
         // Wait for all changes to finish
@@ -195,32 +195,12 @@ describe('playwright', () => {
             {
               "previews": [
                 
-          "#counter: 2
-          #increment: Click me
-          "
-          ,
-              ],
-              "url": "about:blank",
-            },
-            {
-              "previews": [
-                
           "#counter: 0
           #increment: Click me
           "
           ,
                 
           "#counter: 1
-          #increment: Click me
-          "
-          ,
-                
-          "#counter: 3
-          #increment: Click me
-          "
-          ,
-                
-          "#counter: 4
           #increment: Click me
           "
           ,

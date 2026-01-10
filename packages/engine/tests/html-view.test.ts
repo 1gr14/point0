@@ -5,7 +5,7 @@ describe('html-viewer', () => {
   describe('tree', () => {
     it('should parse simple HTML structure', async () => {
       const html = '<div id="root"><p>Hello</p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -21,7 +21,7 @@ describe('html-viewer', () => {
 
     it('should parse nested HTML structure', async () => {
       const html = '<div id="root"><div><span>Nested</span></div></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -45,7 +45,7 @@ describe('html-viewer', () => {
 
     it('should handle elements with IDs', async () => {
       const html = '<div id="root"><div id="container">Content</div></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -61,7 +61,7 @@ describe('html-viewer', () => {
 
     it('should handle elements with classes', async () => {
       const html = '<div id="root"><div class="foo bar">Content</div></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -80,7 +80,7 @@ describe('html-viewer', () => {
 
     it('should handle elements with both ID and classes', async () => {
       const html = '<div id="root"><div id="main" class="container wrapper">Content</div></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -99,7 +99,7 @@ describe('html-viewer', () => {
 
     it('should handle multiple siblings', async () => {
       const html = '<div id="root"><p>First</p><p>Second</p><p>Third</p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -129,7 +129,7 @@ describe('html-viewer', () => {
 
     it('should trim whitespace from text content', async () => {
       const html = '<div id="root"><p>   Trimmed   </p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -145,7 +145,7 @@ describe('html-viewer', () => {
 
     it('should ignore empty text nodes', async () => {
       const html = '<div id="root"><p></p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -175,7 +175,7 @@ describe('html-viewer', () => {
         </main>
       </div>
     `
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -245,7 +245,7 @@ describe('html-viewer', () => {
 
     it('should handle elements without ID or classes', async () => {
       const html = '<div id="root"><section>Plain element</section></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -261,7 +261,7 @@ describe('html-viewer', () => {
 
     it('should handle multiple classes with extra spaces', async () => {
       const html = '<div id="root"><div class="foo   bar   baz">Content</div></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -281,13 +281,13 @@ describe('html-viewer', () => {
 
     it('should return empty array if div#root is not found', async () => {
       const html = '<div><p>No root</p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toEqual([])
     })
 
     it('should ignore elements outside of root', async () => {
       const html = '<div>Outside</div><div id="root"><p>Inside</p></div><div>Also outside</div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -303,7 +303,7 @@ describe('html-viewer', () => {
 
     it('should handle text nodes with multiple spaces', async () => {
       const html = '<div id="root"><p>Text   with   spaces</p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -319,13 +319,13 @@ describe('html-viewer', () => {
 
     it('should handle empty root', async () => {
       const html = '<div id="root"></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`[]`)
     })
 
     it('should handle self-closing tags', async () => {
       const html = '<div id="root"><br/><hr/><img src="test.jpg"/></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -355,7 +355,7 @@ describe('html-viewer', () => {
 
     it('should handle mixed content with text and elements', async () => {
       const html = '<div id="root"><p>Start<span>Middle</span>End</p></div>'
-      const { tree } = await HtmlView.create(html)
+      const { tree } = await HtmlView.parse(html)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -381,7 +381,7 @@ describe('html-viewer', () => {
   describe('preview', () => {
     it('should convert simple HTML to YAML', async () => {
       const html = '<div id="root"><p>Hello</p></div>'
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
       "p: Hello
       "
@@ -390,7 +390,7 @@ describe('html-viewer', () => {
 
     it('should convert HTML with IDs and classes to YAML', async () => {
       const html = '<div id="root"><div id="container" class="foo bar">Content</div></div>'
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
         "#container: Content
@@ -401,7 +401,7 @@ describe('html-viewer', () => {
 
     it('should convert nested HTML structure to YAML', async () => {
       const html = '<div id="root"><div><span>Nested</span></div></div>'
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
         "div:
@@ -413,7 +413,7 @@ describe('html-viewer', () => {
 
     it('should convert multiple siblings to YAML', async () => {
       const html = '<div id="root"><p>First</p><p>Second</p><p>Third</p></div>'
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
         "p: First
@@ -440,7 +440,7 @@ describe('html-viewer', () => {
         </main>
       </div>
     `
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(
         `
         "#header:
@@ -457,7 +457,7 @@ describe('html-viewer', () => {
 
     it('should convert empty root to YAML', async () => {
       const html = '<div id="root"></div>'
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
       "
       "
@@ -466,12 +466,36 @@ describe('html-viewer', () => {
 
     it('should produce preview format with correct structure', async () => {
       const html = '<div id="root"><p id="test" class="foo bar">Hello World</p></div>'
-      const { preview } = await HtmlView.create(html)
+      const { preview } = await HtmlView.parse(html)
 
       // Verify the format structure (this is a preview format, not standard YAML)
       expect(preview).toContain('#test: Hello World')
       expect(preview).toContain('\n')
       expect(preview.trim().length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('parseMany', () => {
+    it('should parse multiple HTML strings', async () => {
+      const htmls = ['<div id="root"><p>Hello</p></div>', '<div id="root"><p>World</p></div>']
+      const views = await HtmlView.parseMany(htmls)
+      expect(views).toHaveLength(2)
+      expect(views[0].parsed).toBe(true)
+      expect(views[0].html).toBeString()
+      expect(views[0].tree).toBeDefined()
+      expect(views[0].preview).toBeString()
+    })
+
+    it('should parse multiple HTML views', async () => {
+      const views = await HtmlView.parseMany([
+        HtmlView.create('<div id="root"><p>Hello</p></div>'),
+        HtmlView.create('<div id="root"><p>World</p></div>'),
+      ])
+      expect(views).toHaveLength(2)
+      expect(views[0].parsed).toBe(true)
+      expect(views[0].html).toBeString()
+      expect(views[0].tree).toBeDefined()
+      expect(views[0].preview).toBeString()
     })
   })
 })

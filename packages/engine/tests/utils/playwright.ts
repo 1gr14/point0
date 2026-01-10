@@ -33,7 +33,7 @@ export class PlaywrightBrowser {
 
   async createPage(): Promise<PlaywrightPage> {
     const pageOriginal = await this.original.newPage()
-    const page = new PlaywrightPage({ original: pageOriginal, browser: this })
+    const page = await PlaywrightPage.create({ original: pageOriginal, browser: this })
     this.pages.add(page)
     return page
   }
@@ -46,8 +46,8 @@ export class PlaywrightBrowser {
 
   async close(): Promise<void> {
     await Promise.all(
-      Array.from(this.pages).map(async (page) => {
-        await page.close()
+      Array.from(this.pages).map(async (p) => {
+        await p.close()
       }),
     )
     this.pages.clear()
@@ -74,7 +74,28 @@ export class PlaywrightPage {
   original: Page
   browser: PlaywrightBrowser
   history: PageHistoryItem[] = []
-  private htmlWatcherCleanup: (() => Promise<void>) | null = null
+
+  private constructor(options: PlaywrightPageConstructorOptions) {
+    this.original = options.original
+    this.browser = options.browser
+
+    // Handle navigation events
+    this.original.on('framenavigated', async (frame) => {
+      if (frame !== this.original.mainFrame()) return
+
+      const url = this.original.url()
+      this.history.push({ url, htmls: [] })
+
+      // Re-inject the observer on the new document
+      await this.startHtmlWatcher()
+    })
+  }
+
+  static async create(options: PlaywrightPageConstructorOptions): Promise<PlaywrightPage> {
+    const page = new PlaywrightPage(options)
+    await page.setupBridge()
+    return page
+  }
 
   async goto(url: string): Promise<void> {
     await this.original.goto(url, { waitUntil: 'networkidle' })
@@ -120,209 +141,97 @@ export class PlaywrightPage {
   }
 
   get finished(): Promise<void> {
-    return this.waitForStability()
+    return this.waitForFinishMutations()
   }
 
-  private async waitForStability(): Promise<void> {
-    const stabilityPeriod = 200 // Wait 200ms with no changes
-    const checkInterval = 50 // Check every 50ms
+  private async waitForFinishMutations(): Promise<void> {
     const maxWaitTime = this.browser.timeout
+    const notChangedDuringMsIsStable = 200
 
-    const startTime = Date.now()
-
-    // First, wait for network idle
+    // Wait for network idle first
     try {
       await this.original.waitForLoadState('networkidle', { timeout: maxWaitTime })
-    } catch (error) {
-      // Network idle might timeout, continue anyway
-    }
+    } catch (e) {}
 
-    // Then wait for DOM changes to stop
-    let lastChangeDetected = Date.now()
-    let consecutiveStableChecks = 0
-    const requiredStableChecks = Math.ceil(stabilityPeriod / checkInterval)
-
-    while (Date.now() - startTime < maxWaitTime) {
-      try {
-        const hasChanged = await this.original.evaluate(() => {
-          const watcher = (window as any).__playwrightHtmlWatcher
-          if (!watcher) return false
-          return watcher.hasChanged
-        })
-
-        if (hasChanged) {
-          lastChangeDetected = Date.now()
-          consecutiveStableChecks = 0
-          // Reset the change flag
-          await this.original.evaluate(() => {
-            const watcher = (window as any).__playwrightHtmlWatcher
-            if (watcher) {
-              watcher.reset()
-            }
-          })
-        } else {
-          consecutiveStableChecks++
-          // If we've had enough consecutive stable checks, and enough time has passed since last change
-          if (consecutiveStableChecks >= requiredStableChecks && Date.now() - lastChangeDetected >= stabilityPeriod) {
-            return // Page is stable
-          }
-        }
-      } catch (error) {
-        // Page might be closed or navigated away
-        return
+    const startTimestamp = Date.now()
+    while (true) {
+      const elapsed = Date.now() - startTimestamp
+      if (elapsed > maxWaitTime) {
+        throw new Error('Timeout waiting for stability')
       }
-
-      await new Promise((resolve) => setTimeout(resolve, checkInterval))
+      const lastChangeTimestamp = this.history.at(-1)?.htmls.at(-1)?.timestamp ?? startTimestamp
+      if (lastChangeTimestamp <= Date.now() - notChangedDuringMsIsStable) {
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
     }
-
-    // If we've waited the max time, resolve anyway (implicit return)
-    // console.error('Page stability check timed out')
-    await Promise.resolve()
   }
 
   async close(): Promise<void> {
-    if (this.htmlWatcherCleanup) {
-      await this.htmlWatcherCleanup()
-      this.htmlWatcherCleanup = null
-    }
     await this.original.close()
     this.browser.pages.delete(this)
   }
 
-  constructor(options: PlaywrightPageConstructorOptions) {
-    this.original = options.original
-    this.browser = options.browser
+  /**
+   * Sets up the bridge from Browser -> Node.js
+   * This only needs to be called once when the page is first created.
+   */
+  async setupBridge(): Promise<void> {
+    await this.original.exposeFunction('onDomChanged', async (html: string) => {
+      const currentItem = this.history.at(-1)
+      if (!currentItem) return
 
-    // Track initial URL
-    const initialUrl = this.original.url()
-    if (initialUrl) {
-      this.history.push({ url: initialUrl, htmls: [] })
-      void this.startHtmlWatcher()
-    }
-
-    // Watch for navigation events (both programmatic and user-initiated)
-    this.original.on('framenavigated', async () => {
-      const url = this.original.url()
-      if (url) {
-        // Clean up previous watcher
-        if (this.htmlWatcherCleanup) {
-          await this.htmlWatcherCleanup()
-          this.htmlWatcherCleanup = null
-        }
-
-        // Add new history item
-        this.history.push({ url, htmls: [] })
-
-        // Start watching HTML changes for this navigation
-        void this.startHtmlWatcher()
+      const lastRecord = currentItem.htmls.at(-1)
+      // Only add if the HTML content has actually changed
+      if (lastRecord?.html !== html) {
+        currentItem.htmls.push(HtmlView.create(html))
       }
     })
   }
 
   private async startHtmlWatcher(): Promise<void> {
-    const currentHistoryIndex = this.history.length - 1
-    if (currentHistoryIndex < 0) return
-
-    // Capture initial HTML after navigation
+    // Capture the very first state of the new page
     try {
-      const initialHtml = await this.original.content()
-      this.history[currentHistoryIndex].htmls.push(await HtmlView.create(initialHtml))
-    } catch (error) {
-      // console.error('Error capturing initial HTML', error)
-      // Ignore errors if page is not ready
-    }
-
-    // Inject MutationObserver to watch for DOM changes
-
-    const evaulating = this.original.evaluate(() => {
-      // Remove any existing watcher
-      if ((window as any).__playwrightHtmlWatcher) {
-        ;(window as any).__playwrightHtmlWatcher.observer.disconnect()
+      const content = await this.original.content()
+      const currentItem = this.history.at(-1)
+      if (currentItem) {
+        currentItem.htmls.push(HtmlView.create(content))
       }
-
-      let hasChanged = false
-      let lastHtml = document.documentElement.outerHTML
-
-      const observer = new MutationObserver(() => {
-        const currentHtml = document.documentElement.outerHTML
-        // Check if HTML actually changed (any symbol difference)
-        if (currentHtml !== lastHtml) {
-          hasChanged = true
-          lastHtml = currentHtml
-        }
-      })
-
-      // Start observing
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        characterData: true,
-        attributeOldValue: false,
-        characterDataOldValue: false,
-      })
-      ;(window as any).__playwrightHtmlWatcher = {
-        observer,
-        get hasChanged() {
-          return hasChanged
-        },
-        reset() {
-          hasChanged = false
-        },
-        get currentHtml() {
-          return document.documentElement.outerHTML
-        },
-      }
-    })
-
-    try {
-      await evaulating
-    } catch (error) {
-      // Ignore errors if page was closed earlier
-      // console.error('Error evaluating HTML watcher', error)
-      return
+    } catch (e) {
+      /* Page might be closed */
     }
 
-    // Poll for changes and capture HTML when it changes
-    const checkInterval = setInterval(() => {
-      void (async () => {
-        try {
-          const hasChanged = await this.original.evaluate(() => {
-            const watcher = (window as any).__playwrightHtmlWatcher
-            if (!watcher) return false
-            const changed = watcher.hasChanged
-            if (changed) {
-              watcher.reset()
-            }
-            return changed
-          })
-
-          if (hasChanged) {
-            const html = await this.original.content()
-            // Only add if different from last recorded HTML
-            const currentItem = this.history[currentHistoryIndex]
-            const lastHtml = currentItem.htmls[currentItem.htmls.length - 1]
-            if (html !== lastHtml.html) {
-              currentItem.htmls.push(await HtmlView.create(html))
-            }
-          }
-        } catch (error) {
-          // Page might be closed or navigated away
-          // console.error('Error checking for HTML changes', error)
-          clearInterval(checkInterval)
+    // Inject the MutationObserver
+    await this.original
+      .evaluate(() => {
+        // Cleanup old observer if it exists
+        if ((window as any).__pwObserver) {
+          ;(window as any).__pwObserver.disconnect()
         }
-      })()
-    }, 50) // Check every 50ms
 
-    // Store cleanup function
-    this.htmlWatcherCleanup = async () => {
-      clearInterval(checkInterval)
-      await this.original.evaluate(() => {
-        if ((window as any).__playwrightHtmlWatcher) {
-          ;(window as any).__playwrightHtmlWatcher.observer.disconnect()
-          delete (window as any).__playwrightHtmlWatcher
+        let timeout: any
+        const observer = new MutationObserver(() => {
+          // Debounce: Wait for 50ms of "silence" before sending HTML
+          // This prevents freezing the bridge during massive DOM injections
+          clearTimeout(timeout)
+          timeout = setTimeout(() => {
+            if ((window as any).onDomChanged) {
+              ;(window as any).onDomChanged(document.documentElement.outerHTML)
+            }
+          }, 50)
+        })
+
+        const observeOptions = {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          characterData: true,
         }
+        observer.observe(document.documentElement, observeOptions)
+        ;(window as any).__pwObserver = observer
       })
-    }
+      .catch(() => {
+        // Ignore errors if page was closed
+      })
   }
 }
