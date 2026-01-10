@@ -61,7 +61,7 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      await tp.waitForReady()
+      await tp.waitForStarted()
       const response = await tp.fetchServer('/')
       const html = await response.text()
       expect(html).toContain('__POINT0_ENV__')
@@ -75,7 +75,7 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(tp.serverPort)
       expect(engine.clients[0].port).toBe(tp.clientPort)
-      await tp.waitForReady()
+      await tp.waitForStarted()
       const html = await tp.fetchServerHtml('/')
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
@@ -91,7 +91,7 @@ describe.concurrent('dev', () => {
         export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
       )
       tp.spawn(['bun', 'run', 'dev'])
-      await tp.waitForReady()
+      await tp.waitForStarted()
       const html = await tp.fetchServerHtml('/')
       expect(html).toContain('<div>Hello</div>')
 

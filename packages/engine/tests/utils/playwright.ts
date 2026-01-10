@@ -1,5 +1,5 @@
 import { chromium, type Browser, type Page } from 'playwright'
-import { HtmlView } from './html-view.js'
+import { HtmlTree, HtmlView } from './html-view.js'
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean
@@ -148,10 +148,6 @@ export class PlaywrightPage {
     await this.original.goto(url, { waitUntil: 'networkidle' })
   }
 
-  get navcount(): number {
-    return this.history.length
-  }
-
   get preview(): string {
     const lastPreview = this.previews.at(-1)
     if (lastPreview === undefined) {
@@ -195,12 +191,96 @@ export class PlaywrightPage {
     return story as PageStoryItem[]
   }
 
-  get finished(): Promise<PageStoryItem[]> {
+  static prettifyUrl(url: string): string {
+    if (url.startsWith('data:')) {
+      return 'data:...'
+    }
+    if (url.startsWith('http://localhost:')) {
+      return url.replace(/:(\d+)/, '')
+    }
+    return url
+  }
+
+  get tale(): string {
+    const pairs: Array<[string, string[]]> = []
+    for (const item of this.story) {
+      const pair: [string, string[]] = [PlaywrightPage.prettifyUrl(item.url), []]
+      for (const preview of item.previews) {
+        pair[1].push(
+          preview
+            .split('\n')
+            .map((line) => `  ${line}`)
+            .join('\n'),
+        )
+      }
+      pairs.push(pair)
+    }
+    return pairs.map(([url, previews]) => `${url}\n${previews.join('\n')}`).join('\n')
+  }
+
+  get stable(): Promise<PageStoryItem[]> {
     return (async () => {
       await this.waitForFinishMutations()
-      await HtmlView.parseMany(this.history.flatMap((item) => item.htmls))
+      await this.parseAllHtmlViews()
       return this.story
     })()
+  }
+
+  private async parseAllHtmlViews(): Promise<HtmlView[]> {
+    return await HtmlView.parseMany(this.history.flatMap((item) => item.htmls))
+  }
+
+  private async getLastHtmlView(): Promise<HtmlView<true> | undefined> {
+    const lastHistoryItem = this.history.at(-1)
+    if (lastHistoryItem === undefined) {
+      return undefined
+    }
+    const lastHtml = lastHistoryItem.htmls.at(-1)
+    if (lastHtml === undefined) {
+      return undefined
+    }
+    const parsedHtml = await HtmlView.parse(lastHtml)
+    return parsedHtml
+  }
+
+  async waitForContent(search: string, timeout = 2000): Promise<void> {
+    if (search.startsWith('!')) {
+      await this.waitForNoContent(search.slice(1), timeout)
+      return
+    }
+    const startTime = Date.now()
+    while (true) {
+      if (Date.now() - startTime > timeout) {
+        throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms`)
+      }
+      const htmlView = await this.getLastHtmlView()
+      if (htmlView?.hasContent(search)) {
+        await this.parseAllHtmlViews()
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    }
+  }
+
+  async waitForNoContent(search: string, timeout = 2000): Promise<void> {
+    const startTime = Date.now()
+    while (true) {
+      if (Date.now() - startTime > timeout) {
+        throw new Error(`Timeout waiting for no content: ${search} within ${timeout}ms`)
+      }
+      const htmlView = await this.getLastHtmlView()
+      if (!htmlView || htmlView.hasNoContent(search)) {
+        await this.parseAllHtmlViews()
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    }
+  }
+
+  async waitForSequence(searches: string[], timeout = 2000): Promise<void> {
+    for (const search of searches) {
+      await this.waitForContent(search, timeout)
+    }
   }
 
   private async waitForFinishMutations(): Promise<void> {

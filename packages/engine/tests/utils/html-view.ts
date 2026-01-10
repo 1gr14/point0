@@ -46,8 +46,42 @@ export class HtmlView<TParsed extends boolean = any> {
     }
     this.tree = (await HtmlView.htmlToTree(this.html)) as TParsed extends true ? HtmlTree : undefined
     this.preview = (await HtmlView.htmlToPreview(this.html)) as TParsed extends true ? string : undefined
-    this.parsed = true
+    this.parsed = true as TParsed extends true ? true : false
     return this as HtmlView<true>
+  }
+
+  hasContent(search: string): boolean {
+    if (!this.tree) {
+      throw new Error('HtmlView not parsed')
+    }
+    return HtmlView.searchTree(this.tree, search)
+  }
+
+  hasNoContent(search: string): boolean {
+    return !this.hasContent(search)
+  }
+
+  private static searchTree(tree: HtmlTree, search: string): boolean {
+    for (const item of tree) {
+      if (HtmlView.isTreeItemSuitableForContent(item, search)) return true
+      if (HtmlView.searchTree(item.children, search)) return true
+    }
+    return false
+  }
+
+  private static isTreeItemSuitableForContent(item: HtmlTreeItem, search: string): boolean {
+    // starts with # check id
+    // starts with . check classNames
+    // else check content
+    if (search.startsWith('#')) {
+      const id = search.slice(1)
+      return item.id === id
+    }
+    if (search.startsWith('.')) {
+      const classNames = search.slice(1).split('.')
+      return classNames.every((className) => item.classNames.includes(className))
+    }
+    return !!item.content?.includes(search)
   }
 
   private static async htmlToTree(html: string): Promise<HtmlTree> {

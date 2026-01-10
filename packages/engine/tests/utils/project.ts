@@ -140,7 +140,7 @@ export class TestProject {
     return await lastProcess.waitForOutput(text, timeout)
   }
 
-  async waitForReady() {
+  async waitForStarted() {
     await this.waitForOutput(`server started http://localhost:${this.serverPort}`)
     await this.waitForOutput(`client started http://localhost:${this.clientPort}`)
   }

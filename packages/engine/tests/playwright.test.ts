@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeAll, afterAll, beforeEach, afterEach, setDefaultTimeout } from 'bun:test'
-import type { PlaywrightPage } from './utils/playwright.js'
-import { PlaywrightBrowser } from './utils/playwright.js'
+import { describe, expect, it, beforeAll, afterAll, setDefaultTimeout } from 'bun:test'
+import { PlaywrightBrowser, PlaywrightPage } from './utils/playwright.js'
+import { HtmlView } from './utils/html-view.js'
 
 setDefaultTimeout(10000)
 
@@ -68,8 +68,8 @@ describe('playwright', () => {
     it.concurrent(
       'should track navigation history',
       wrp('data:text/html,<html><body><h1>Page 1</h1></body></html>', async (page) => {
-        await page.finished
-        expect(page.navcount).toBeGreaterThan(0)
+        await page.stable
+        expect(page.history.length).toBeGreaterThan(0)
         expect(page.url).toContain('data:text/html')
       }),
     )
@@ -79,7 +79,7 @@ describe('playwright', () => {
       wrp(
         'data:text/html,<html><body><div id="root"><div id="test">Initial</div></div></body></html>',
         async (page) => {
-          await page.finished
+          await page.stable
           expect(page.history.length).toBeGreaterThan(0)
           const lastHistory = page.history[page.history.length - 1]
           expect(lastHistory.htmls.length).toBeGreaterThan(0)
@@ -90,7 +90,7 @@ describe('playwright', () => {
     it.concurrent(
       'should provide previews',
       wrp('data:text/html,<html><body><div id="root"><h1>Test Content</h1></div></body></html>', async (page) => {
-        await page.finished
+        await page.stable
         const previews = page.previews
         expect(previews.length).toBeGreaterThan(0)
         expect(previews[0]).toContain('Test Content')
@@ -100,7 +100,7 @@ describe('playwright', () => {
     it.concurrent(
       'should provide single preview',
       wrp('data:text/html,<html><body><div id="root"><p>Hello World</p></div></body></html>', async (page) => {
-        await page.finished
+        await page.stable
 
         const preview = page.preview
         expect(preview).toBeDefined()
@@ -111,7 +111,7 @@ describe('playwright', () => {
     it.concurrent(
       'should track URLs',
       wrp('data:text/html,<html><body><div id="root">Test</div></body></html>', async (page) => {
-        await page.finished
+        await page.stable
 
         const urls = page.urls
         expect(urls.length).toBeGreaterThan(0)
@@ -122,7 +122,7 @@ describe('playwright', () => {
     it.concurrent(
       'should provide story',
       wrp('data:text/html,<html><body><div id="root"><span>Story Test</span></div></body></html>', async (page) => {
-        await page.finished
+        await page.stable
 
         const story = page.story
         expect(story.length).toBeGreaterThan(0)
@@ -135,7 +135,7 @@ describe('playwright', () => {
       'should wait for page to finish loading',
       wrp('data:text/html,<html><body><div id="root"><div>Loading Test</div></div></body></html>', async (page) => {
         const startTime = Date.now()
-        await page.finished
+        await page.stable
         const endTime = Date.now()
 
         // Should complete within reasonable time (not hang)
@@ -169,7 +169,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await page.finished
+        await page.stable
 
         // Get initial state
         const initialPreviews = page.previews.length
@@ -180,49 +180,34 @@ describe('playwright', () => {
         for (let i = 0; i < clickCount; i++) {
           await page.original.click('#increment')
           // Wait a bit for DOM to update
-          await new Promise((resolve) => setTimeout(resolve, 30))
+          await new Promise((resolve) => setTimeout(resolve, 70))
         }
 
         // Wait for all changes to finish
-        await page.finished
+        await page.stable
 
         // Check that story captured the state changes
         const story = page.story
-        expect(story.map((s) => s.previews)).toMatchInlineSnapshot(`
-          [
-            [
-              
-          "#counter: 0
-          #increment: Click me
-          "
-          ,
-              
-          "#counter: 1
-          #increment: Click me
-          "
-          ,
-              
-          "#counter: 2
-          #increment: Click me
-          "
-          ,
-              
-          "#counter: 3
-          #increment: Click me
-          "
-          ,
-              
-          "#counter: 4
-          #increment: Click me
-          "
-          ,
-              
-          "#counter: 5
-          #increment: Click me
-          "
-          ,
-            ],
-          ]
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            #counter: 0
+            #increment: Click me
+            
+            #counter: 1
+            #increment: Click me
+            
+            #counter: 2
+            #increment: Click me
+            
+            #counter: 3
+            #increment: Click me
+            
+            #counter: 4
+            #increment: Click me
+            
+            #counter: 5
+            #increment: Click me
+            "
         `)
         expect(story.length).toBeGreaterThan(0)
 
@@ -243,7 +228,7 @@ describe('playwright', () => {
       }),
     )
 
-    it.only(
+    it.concurrent(
       'should track state changes after button clicks across multiple pages',
       wrp(async (page) => {
         const html1 = `
@@ -268,7 +253,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html1)}`)
-        await page.finished
+        await page.stable
 
         // Get initial state
         const initialPreviews = page.previews.length
@@ -283,7 +268,7 @@ describe('playwright', () => {
         }
 
         // Wait for all changes to finish
-        await page.finished
+        await page.stable
 
         // Verify first page state
         const story1 = page.story
@@ -315,7 +300,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html2)}`)
-        await page.finished
+        await page.stable
 
         // Get initial state of second page
         const initialPreviews2 = page.previews.length
@@ -330,7 +315,7 @@ describe('playwright', () => {
         }
 
         // Wait for all changes to finish
-        await page.finished
+        await page.stable
 
         // Verify that story captured state changes from both pages
         const story = page.story
@@ -359,64 +344,278 @@ describe('playwright', () => {
         const lastHtml = lastHistory.htmls[lastHistory.htmls.length - 1]
         expect(lastHtml.html).toContain(clickCount2.toString())
 
-        expect(story).toMatchInlineSnapshot(`
-          [
-            {
-              "previews": [
-                
-          "#counter: 0
-          #increment: Click me
-          "
-          ,
-                
-          "#counter: 1
-          #increment: Click me
-          "
-          ,
-                
-          "#counter: 2
-          #increment: Click me
-          "
-          ,
-                
-          "#counter: 3
-          #increment: Click me
-          "
-          ,
-              ],
-              "url": "data:text/html,%0A%20%20%20%20%20%20%3C!DOCTYPE%20html%3E%0A%20%20%20%20%20%20%3Chtml%3E%0A%20%20%20%20%20%20%20%20%3Chead%3E%3Ctitle%3ECounter%20Test%20Page%201%3C%2Ftitle%3E%3C%2Fhead%3E%0A%20%20%20%20%20%20%20%20%3Cbody%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22root%22%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22counter%22%3E0%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20id%3D%22increment%22%3EClick%20me%3C%2Fbutton%3E%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cscript%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20count%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20counterEl%20%3D%20document.getElementById('counter')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20buttonEl%20%3D%20document.getElementById('increment')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20buttonEl.addEventListener('click'%2C%20()%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20count%2B%2B%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20counterEl.textContent%20%3D%20count%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D)%3B%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fscript%3E%0A%20%20%20%20%20%20%20%20%3C%2Fbody%3E%0A%20%20%20%20%20%20%3C%2Fhtml%3E%0A%20%20%20%20",
-            },
-            {
-              "previews": [
-                
-          "#counter: 0
-          #increment2: Click me too
-          "
-          ,
-                
-          "#counter: 1
-          #increment2: Click me too
-          "
-          ,
-                
-          "#counter: 2
-          #increment2: Click me too
-          "
-          ,
-                
-          "#counter: 3
-          #increment2: Click me too
-          "
-          ,
-                
-          "#counter: 4
-          #increment2: Click me too
-          "
-          ,
-              ],
-              "url": "data:text/html,%0A%20%20%20%20%20%20%3C!DOCTYPE%20html%3E%0A%20%20%20%20%20%20%3Chtml%3E%0A%20%20%20%20%20%20%20%20%3Chead%3E%3Ctitle%3ECounter%20Test%20Page%202%3C%2Ftitle%3E%3C%2Fhead%3E%0A%20%20%20%20%20%20%20%20%3Cbody%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22root%22%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cdiv%20id%3D%22counter%22%3E0%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20id%3D%22increment2%22%3EClick%20me%20too%3C%2Fbutton%3E%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fdiv%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cscript%3E%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20count%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20counterEl%20%3D%20document.getElementById('counter')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20buttonEl%20%3D%20document.getElementById('increment2')%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20buttonEl.addEventListener('click'%2C%20()%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20count%2B%2B%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20counterEl.textContent%20%3D%20count%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D)%3B%0A%20%20%20%20%20%20%20%20%20%20%3C%2Fscript%3E%0A%20%20%20%20%20%20%20%20%3C%2Fbody%3E%0A%20%20%20%20%20%20%3C%2Fhtml%3E%0A%20%20%20%20",
-            },
-          ]
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            #counter: 0
+            #increment: Click me
+            
+            #counter: 1
+            #increment: Click me
+            
+            #counter: 2
+            #increment: Click me
+            
+            #counter: 3
+            #increment: Click me
+            
+          data:...
+            #counter: 0
+            #increment2: Click me too
+            
+            #counter: 1
+            #increment2: Click me too
+            
+            #counter: 2
+            #increment2: Click me too
+            
+            #counter: 3
+            #increment2: Click me too
+            
+            #counter: 4
+            #increment2: Click me too
+            "
+        `)
+      }),
+    )
+  })
+
+  describe.concurrent('prettifyUrl', () => {
+    it.concurrent('should prettify data: URLs by replacing content after comma', () => {
+      const url = 'data:,<html><body>Test</body></html>'
+      const result = PlaywrightPage.prettifyUrl(url)
+      expect(result).toBe('data:...')
+    })
+
+    it.concurrent('should prettify data: URLs with encoded content', () => {
+      const url = 'data:,%3Chtml%3E%3Cbody%3ETest%3C%2Fbody%3E%3C%2Fhtml%3E'
+      const result = PlaywrightPage.prettifyUrl(url)
+      expect(result).toBe('data:...')
+    })
+
+    it.concurrent('should prettify http://localhost: URLs by removing port number', () => {
+      const url = 'http://localhost:3000'
+      const result = PlaywrightPage.prettifyUrl(url)
+      expect(result).toBe('http://localhost')
+    })
+
+    it.concurrent('should prettify http://localhost: URLs with path', () => {
+      const url = 'http://localhost:8080/path/to/page'
+      const result = PlaywrightPage.prettifyUrl(url)
+      expect(result).toBe('http://localhost/path/to/page')
+    })
+
+    it.concurrent('should prettify http://localhost: URLs with different port numbers', () => {
+      expect(PlaywrightPage.prettifyUrl('http://localhost:1234')).toBe('http://localhost')
+      expect(PlaywrightPage.prettifyUrl('http://localhost:9999')).toBe('http://localhost')
+      expect(PlaywrightPage.prettifyUrl('http://localhost:80')).toBe('http://localhost')
+    })
+
+    it.concurrent('should return other URLs unchanged', () => {
+      expect(PlaywrightPage.prettifyUrl('https://example.com')).toBe('https://example.com')
+      expect(PlaywrightPage.prettifyUrl('http://example.com')).toBe('http://example.com')
+      expect(PlaywrightPage.prettifyUrl('file:///path/to/file')).toBe('file:///path/to/file')
+      expect(PlaywrightPage.prettifyUrl('about:blank')).toBe('about:blank')
+    })
+
+    it.concurrent('should handle data:text/html URLs (not starting with data:,)', () => {
+      const url = 'data:text/html,<html></html>'
+      const result = PlaywrightPage.prettifyUrl(url)
+      // Should not match data:, pattern, so returns unchanged
+      expect(result).toBe('data:...')
+    })
+
+    it.concurrent('should handle http://localhost without port', () => {
+      const url = 'http://localhost'
+      const result = PlaywrightPage.prettifyUrl(url)
+      expect(result).toBe('http://localhost')
+    })
+  })
+
+  describe.concurrent('waitForContent', () => {
+    it.concurrent(
+      'should wait for content that appears after delay',
+      wrp(async (page) => {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Wait For Content Test</title></head>
+        <body>
+          <div id="root">
+            <div id="status">Initial</div>
+          </div>
+          <script>
+            setTimeout(() => {
+              const statusEl = document.getElementById('status');
+              statusEl.textContent = 'Changed';
+            }, 300);
+          </script>
+        </body>
+      </html>
+    `
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        // await page.waitForContent('Initial', 1000)
+        await page.waitForContent('Changed', 1000)
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            #status: Initial
+            
+            #status: Changed
+            "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'should throw timeout error if content does not appear',
+      wrp(async (page) => {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Wait For Content Timeout Test</title></head>
+        <body>
+          <div id="root">
+            <div>Never Changes</div>
+          </div>
+        </body>
+      </html>
+    `
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        await page.waitForContent('Never Changes', 300)
+        // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+        await expect(page.waitForContent('But Maybe Changes', 300)).rejects.toThrow()
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            div: Never Changes
+            "
+        `)
+      }),
+    )
+  })
+
+  describe.concurrent('waitForNoContent', () => {
+    it.concurrent(
+      'should wait for content that disappears after delay',
+      wrp(async (page) => {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Wait For No Content Test</title></head>
+        <body>
+          <div id="root">
+            <div id="status">Will Disappear</div>
+          </div>
+          <script>
+            setTimeout(() => {
+              const statusEl = document.getElementById('status');
+              statusEl.remove();
+            }, 300);
+          </script>
+        </body>
+      </html>
+    `
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        await page.waitForNoContent('Will Disappear', 300)
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            #status: Will Disappear
+            
+            
+            "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'should throw timeout error if content does not disappear',
+      wrp(async (page) => {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Wait For No Content Timeout Test</title></head>
+        <body>
+          <div id="root">
+            <div>Always Present</div>
+          </div>
+        </body>
+      </html>
+    `
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+        await expect(page.waitForNoContent('Always Present', 300)).rejects.toThrow()
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            div: Always Present
+            "
+        `)
+      }),
+    )
+  })
+
+  describe.concurrent('waitForSequence', () => {
+    it.concurrent(
+      'should wait for sequence of content and no content',
+      wrp(async (page) => {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Wait For Sequence Test</title></head>
+        <body>
+          <div id="root">
+            <div id="status">Initial</div>
+            <div id="status2">Will Disappear</div>
+          </div>
+          <script>
+            setTimeout(() => {
+              const statusEl = document.getElementById('status');
+              statusEl.textContent = 'Changed';
+            }, 300);
+            setTimeout(() => {
+              const status2El = document.getElementById('status2');
+              status2El.remove();
+            }, 600);
+          </script>
+        </body>
+      </html>
+    `
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        await page.waitForSequence(['Changed', '!Will Disappear'])
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            #status: Initial
+            #status2: Will Disappear
+            
+            #status: Changed
+            #status2: Will Disappear
+            
+            #status: Changed
+            "
+        `)
+      }),
+    )
+
+    it.concurrent(
+      'should throw timeout error if sequence is not found',
+      wrp(async (page) => {
+        const html = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Wait For Sequence Timeout Test</title></head>
+        <body>
+          <div id="root">
+            <div id="status">Initial</div>
+            <div id="status2">Will Not Disappear</div>
+          </div>
+        </body>
+      </html>
+    `
+        await page.goto(`data:text/html,${encodeURIComponent(html)}`)
+        // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+        await expect(page.waitForSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
+        expect(page.tale).toMatchInlineSnapshot(`
+          "data:...
+            #status: Initial
+            #status2: Will Not Disappear
+            "
         `)
       }),
     )

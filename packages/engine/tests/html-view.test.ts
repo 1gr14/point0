@@ -498,4 +498,203 @@ describe('html-viewer', () => {
       expect(views[0].preview).toBeString()
     })
   })
+
+  describe('hasContent', () => {
+    it('should throw error if view is not parsed', () => {
+      const view = HtmlView.create('<div id="root"><p>Hello</p></div>')
+      expect(() => view.hasContent('Hello')).toThrow('HtmlView not parsed')
+    })
+
+    it('should find content by plain text search', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello World</p></div>')
+      expect(view.hasContent('Hello')).toBe(true)
+      expect(view.hasContent('World')).toBe(true)
+      expect(view.hasContent('Hello World')).toBe(true)
+    })
+
+    it('should not find content that does not exist', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello World</p></div>')
+      expect(view.hasContent('Goodbye')).toBe(false)
+      expect(view.hasContent('Not here')).toBe(false)
+    })
+
+    it('should find content by ID selector', async () => {
+      const view = await HtmlView.parse('<div id="root"><div id="container">Content</div></div>')
+      expect(view.hasContent('#container')).toBe(true)
+      expect(view.hasContent('#nonexistent')).toBe(false)
+    })
+
+    it('should find content by single class selector', async () => {
+      const view = await HtmlView.parse('<div id="root"><div class="foo bar">Content</div></div>')
+      expect(view.hasContent('.foo')).toBe(true)
+      expect(view.hasContent('.bar')).toBe(true)
+      expect(view.hasContent('.baz')).toBe(false)
+    })
+
+    it('should find content by multiple class selector', async () => {
+      const view = await HtmlView.parse('<div id="root"><div class="foo bar baz">Content</div></div>')
+      expect(view.hasContent('.foo.bar')).toBe(true)
+      expect(view.hasContent('.bar.baz')).toBe(true)
+      expect(view.hasContent('.foo.baz')).toBe(true)
+      expect(view.hasContent('.foo.bar.baz')).toBe(true)
+      expect(view.hasContent('.foo.qux')).toBe(false)
+    })
+
+    it('should find content in nested elements', async () => {
+      const view = await HtmlView.parse('<div id="root"><div><span>Nested content</span></div></div>')
+      expect(view.hasContent('Nested content')).toBe(true)
+      expect(view.hasContent('Nested')).toBe(true)
+      expect(view.hasContent('content')).toBe(true)
+    })
+
+    it('should find content by ID in nested elements', async () => {
+      const html = `
+        <div id="root">
+          <div id="outer">
+            <div id="inner">Content</div>
+          </div>
+        </div>
+      `
+      const view = await HtmlView.parse(html)
+      expect(view.hasContent('#outer')).toBe(true)
+      expect(view.hasContent('#inner')).toBe(true)
+      expect(view.hasContent('#nonexistent')).toBe(false)
+    })
+
+    it('should find content by class in nested elements', async () => {
+      const html = `
+        <div id="root">
+          <div class="outer">
+            <div class="inner">Content</div>
+          </div>
+        </div>
+      `
+      const view = await HtmlView.parse(html)
+      expect(view.hasContent('.outer')).toBe(true)
+      expect(view.hasContent('.inner')).toBe(true)
+      expect(view.hasContent('.outer.inner')).toBe(false) // This checks if an element has both classes
+    })
+
+    it('should find content in multiple siblings', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>First</p><p>Second</p><p>Third</p></div>')
+      expect(view.hasContent('First')).toBe(true)
+      expect(view.hasContent('Second')).toBe(true)
+      expect(view.hasContent('Third')).toBe(true)
+      expect(view.hasContent('Fourth')).toBe(false)
+    })
+
+    it('should handle case-sensitive content search', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello World</p></div>')
+      expect(view.hasContent('Hello')).toBe(true)
+      expect(view.hasContent('hello')).toBe(false) // Case sensitive
+      expect(view.hasContent('World')).toBe(true)
+      expect(view.hasContent('world')).toBe(false) // Case sensitive
+    })
+
+    it('should handle partial content matches', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello World</p></div>')
+      expect(view.hasContent('ello')).toBe(true) // Partial match
+      expect(view.hasContent('lo Wo')).toBe(true) // Partial match
+    })
+
+    it('should handle empty content search', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello</p></div>')
+      // Empty string matches any element with content (since every string includes empty string)
+      expect(view.hasContent('')).toBe(true)
+      const emptyView = await HtmlView.parse('<div id="root"><div></div></div>')
+      expect(emptyView.hasContent('')).toBe(false) // No content, so empty string doesn't match
+    })
+
+    it('should handle elements without content', async () => {
+      const view = await HtmlView.parse('<div id="root"><div id="empty"></div></div>')
+      expect(view.hasContent('#empty')).toBe(true) // ID exists
+      expect(view.hasContent('some text')).toBe(false) // No content
+    })
+
+    it('should handle complex nested structure with multiple search types', async () => {
+      const html = `
+        <div id="root">
+          <header id="header" class="site-header">
+            <nav class="nav">
+              <a href="/">Home</a>
+            </nav>
+          </header>
+          <main id="content" class="main">
+            <article class="post">
+              <h1>Title</h1>
+              <p>Body text</p>
+            </article>
+          </main>
+        </div>
+      `
+      const view = await HtmlView.parse(html)
+      // Test ID search
+      expect(view.hasContent('#header')).toBe(true)
+      expect(view.hasContent('#content')).toBe(true)
+      // Test class search
+      expect(view.hasContent('.site-header')).toBe(true)
+      expect(view.hasContent('.nav')).toBe(true)
+      expect(view.hasContent('.main')).toBe(true)
+      expect(view.hasContent('.post')).toBe(true)
+      // Test content search
+      expect(view.hasContent('Home')).toBe(true)
+      expect(view.hasContent('Title')).toBe(true)
+      expect(view.hasContent('Body text')).toBe(true)
+      // Test non-existent
+      expect(view.hasContent('#footer')).toBe(false)
+      expect(view.hasContent('.sidebar')).toBe(false)
+      expect(view.hasContent('Not found')).toBe(false)
+    })
+
+    it('should handle ID selector without hash', async () => {
+      const view = await HtmlView.parse('<div id="root"><div id="container">Content</div></div>')
+      expect(view.hasContent('container')).toBe(false) // Without #, it searches content
+      expect(view.hasContent('Content')).toBe(true) // This matches content
+    })
+
+    it('should handle class selector with multiple dots', async () => {
+      const view = await HtmlView.parse('<div id="root"><div class="foo bar baz">Content</div></div>')
+      expect(view.hasContent('.foo.bar.baz')).toBe(true)
+      expect(view.hasContent('...foo')).toBe(false) // Invalid format
+    })
+  })
+
+  describe('hasNoContent', () => {
+    it('should throw error if view is not parsed', () => {
+      const view = HtmlView.create('<div id="root"><p>Hello</p></div>')
+      expect(() => view.hasNoContent('Hello')).toThrow('HtmlView not parsed')
+    })
+
+    it('should return true when content does not exist', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello World</p></div>')
+      expect(view.hasNoContent('Goodbye')).toBe(true)
+      expect(view.hasNoContent('Not here')).toBe(true)
+    })
+
+    it('should return false when content exists', async () => {
+      const view = await HtmlView.parse('<div id="root"><p>Hello World</p></div>')
+      expect(view.hasNoContent('Hello')).toBe(false)
+      expect(view.hasNoContent('World')).toBe(false)
+    })
+
+    it('should work with ID selector', async () => {
+      const view = await HtmlView.parse('<div id="root"><div id="container">Content</div></div>')
+      expect(view.hasNoContent('#container')).toBe(false)
+      expect(view.hasNoContent('#nonexistent')).toBe(true)
+    })
+
+    it('should work with class selector', async () => {
+      const view = await HtmlView.parse('<div id="root"><div class="foo bar">Content</div></div>')
+      expect(view.hasNoContent('.foo')).toBe(false)
+      expect(view.hasNoContent('.baz')).toBe(true)
+    })
+
+    it('should be the inverse of hasContent', async () => {
+      const view = await HtmlView.parse('<div id="root"><p id="test" class="foo">Hello</p></div>')
+      expect(view.hasNoContent('Hello')).toBe(!view.hasContent('Hello'))
+      expect(view.hasNoContent('#test')).toBe(!view.hasContent('#test'))
+      expect(view.hasNoContent('.foo')).toBe(!view.hasContent('.foo'))
+      expect(view.hasNoContent('Goodbye')).toBe(!view.hasContent('Goodbye'))
+    })
+  })
 })
