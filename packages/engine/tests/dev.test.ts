@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
-import { waitForResponse } from './utils/other.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
 import { PlaywrightHelper } from './utils/playwright.js'
@@ -62,13 +61,11 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
-      const response = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
-      expect(response).toBeDefined()
+      await tp.waitForReady()
+      const response = await tp.fetchServer('/')
       const html = await response.text()
-      expect(html).toContain('<div>Page Not Found</div>')
       expect(html).toContain('__POINT0_ENV__')
-      expect(tp.output).toContain(`server started on ${engine.server.port}`)
-      expect(tp.output).toContain(`client started on ${engine.clients[0].port}`)
+      expect(html).toContain('<div>Page Not Found</div>')
     }),
   )
 
@@ -76,30 +73,26 @@ describe.concurrent('dev', () => {
     'start spa dev server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
-      expect(engine.server.port).toBe(3004)
-      expect(engine.clients[0].port).toBe(3005)
-      const response = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
-      expect(response).toBeDefined()
-      const html = await response.text()
+      expect(engine.server.port).toBe(tp.serverPort)
+      expect(engine.clients[0].port).toBe(tp.clientPort)
+      await tp.waitForReady()
+      const html = await tp.fetchServerHtml('/')
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
-      expect(tp.output).toContain(`server started on ${engine.server.port}`)
-      expect(tp.output).toContain(`client started on ${engine.clients[0].port}`)
     }),
   )
 
-  it.only(
+  it.concurrent(
     'have hmr client updates',
-    wrp({ ssr: true }, async ({ tp, engine }) => {
+    wrp({ ssr: true, deleteFiles: false }, async ({ tp, engine }) => {
       await tp.write(
         'src/page.tsx',
         `import { root } from './lib/root.js'
         export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
       )
       tp.spawn(['bun', 'run', 'dev'])
-      const result = await waitForResponse(`http://localhost:${engine.server.port}`, 200, 7000)
-      expect(result).toBeDefined()
-      const html = await result.text()
+      await tp.waitForReady()
+      const html = await tp.fetchServerHtml('/')
       expect(html).toContain('<div>Hello</div>')
 
       // Use Playwright to test HMR
@@ -112,6 +105,9 @@ describe.concurrent('dev', () => {
         const hasHello = await playwright.checkContent('Hello')
         expect(hasHello).toBe(true)
 
+        // Verify initial navigation count (should be 1 after initial load)
+        expect(playwright.getNavigationCount()).toBe(1)
+
         // Edit file content
         await tp.write(
           'src/page.tsx',
@@ -120,11 +116,16 @@ describe.concurrent('dev', () => {
         )
 
         // Wait until content changed without page reload (HMR)
+        // This will throw if a page reload is detected
         await playwright.waitForContentChange('Hello', 'Hello World', 10000)
 
         // Verify the new content is present
         const hasHelloWorld = await playwright.checkContent('Hello World')
         expect(hasHelloWorld).toBe(true)
+
+        // Explicitly verify no page reload occurred (HMR should update without reload)
+        expect(playwright.verifyNoReload()).toBe(true)
+        expect(playwright.getNavigationCount()).toBe(1)
       } finally {
         await playwright.close()
       }

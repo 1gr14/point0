@@ -236,16 +236,13 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
                 })
               })
 
-          // TODO:ASAP check if it is required, does not watch enough?
-
-          start()
-          // let processes = start()
-          // this.onPointFileChange((event, path, points) => {
-          //   processes.forEach((p) => {
-          //     p.kill('SIGKILL')
-          //   })
-          //   processes = start()
-          // })
+          let processes = start()
+          this.onPointFileChange((event, path, points) => {
+            processes.forEach((p) => {
+              p.kill('SIGKILL')
+            })
+            processes = start()
+          })
           return []
         }
       })()

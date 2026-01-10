@@ -91,10 +91,17 @@ export class TestProcess {
     return new TextDecoder().decode(Buffer.concat(this.allChunks))
   }
 
-  logOutput() {
-    const lines = this.output.split('\n')
-    for (const line of lines) {
-      console.info(line)
+  async waitForOutput(text: string, timeout = 5000): Promise<string> {
+    const startTime = Date.now()
+    while (true) {
+      const output = this.output
+      if (output.includes(text)) {
+        return output
+      }
+      if (Date.now() - startTime > timeout) {
+        throw new Error(`Timeout waiting for output: ${text} within ${timeout}ms`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
   }
 }

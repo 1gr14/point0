@@ -9,6 +9,8 @@ export class PlaywrightHelper {
   private browser: Browser | null = null
   private page: Page | null = null
   private readonly options: Required<PlaywrightHelperOptions>
+  private navigationCount = 0
+  private initialLoadTimestamp: number | null = null
 
   constructor(options: PlaywrightHelperOptions = {}) {
     this.options = {
@@ -23,13 +25,41 @@ export class PlaywrightHelper {
     })
     this.page = await this.browser.newPage()
     this.page.setDefaultTimeout(this.options.timeout)
+
+    // Track navigation events to detect page reloads
+    this.navigationCount = 0
+    this.page.on('framenavigated', () => {
+      this.navigationCount++
+    })
   }
 
   async loadUrl(url: string): Promise<void> {
     if (!this.page) {
       throw new Error('PlaywrightHelper not started. Call start() first.')
     }
+    this.navigationCount = 0
+    this.initialLoadTimestamp = Date.now()
     await this.page.goto(url, { waitUntil: 'networkidle' })
+    // After initial load, navigationCount should be 1
+    this.navigationCount = 1
+  }
+
+  getNavigationCount(): number {
+    return this.navigationCount
+  }
+
+  getInitialLoadTimestamp(): number | null {
+    return this.initialLoadTimestamp
+  }
+
+  /**
+   * Verifies that no page reload occurred since the initial load.
+   * Returns true if no reload happened, false otherwise.
+   */
+  verifyNoReload(): boolean {
+    // After initial load, navigationCount should remain at 1
+    // If it increased, a reload occurred
+    return this.navigationCount === 1
   }
 
   async checkContent(text: string): Promise<boolean> {
@@ -44,6 +74,9 @@ export class PlaywrightHelper {
     if (!this.page) {
       throw new Error('PlaywrightHelper not started. Call start() first.')
     }
+
+    // Store navigation count before the change
+    const navigationCountBefore = this.navigationCount
 
     // First, verify initial content is present
     const initialContent = await this.page.textContent('body')
@@ -73,6 +106,14 @@ export class PlaywrightHelper {
         { cause: error },
       )
     }
+
+    // Verify no page reload occurred (HMR should update without reload)
+    const navigationCountAfter = this.navigationCount
+    if (navigationCountAfter > navigationCountBefore) {
+      throw new Error(
+        `Page reload detected! Navigation count increased from ${navigationCountBefore} to ${navigationCountAfter}. This indicates a full page reload occurred instead of HMR.`,
+      )
+    }
   }
 
   async waitForContent(text: string, timeout = 10000): Promise<void> {
@@ -81,7 +122,7 @@ export class PlaywrightHelper {
     }
 
     try {
-      await this.page.waitForFunction((searchText) => document.body.textContent?.includes(searchText) ?? false, text, {
+      await this.page.waitForFunction((searchText) => (document.body.textContent || '').includes(searchText), text, {
         timeout,
       })
     } catch (error) {

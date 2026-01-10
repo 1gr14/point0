@@ -106,20 +106,43 @@ export class TestProject {
     return file
   }
 
-  get output() {
-    const firstProcess = this.processes.at(0)
-    if (!firstProcess) {
-      throw new Error('No processes found')
-    }
-    return firstProcess.output
+  async fetchServer(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
+    return await fetch(`http://localhost:${this.serverPort}${path}`, options)
   }
 
-  logOutput() {
-    const firstProcess = this.processes.at(0)
-    if (!firstProcess) {
+  async fetchServerHtml(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
+    const response = await this.fetchServer(path, options)
+    return await response.text()
+  }
+
+  async fetchClient(path: string, options?: Parameters<typeof fetch>[1]): Promise<Response> {
+    return await fetch(`http://localhost:${this.clientPort}${path}`, options)
+  }
+
+  async fetchClientHtml(path: string, options?: Parameters<typeof fetch>[1]): Promise<string> {
+    const response = await this.fetchClient(path, options)
+    return await response.text()
+  }
+
+  get output() {
+    const lastProcess = this.processes.at(-1)
+    if (!lastProcess) {
       throw new Error('No processes found')
     }
-    firstProcess.logOutput()
+    return lastProcess.output
+  }
+
+  async waitForOutput(text: string, timeout?: number): Promise<string> {
+    const lastProcess = this.processes.at(-1)
+    if (!lastProcess) {
+      throw new Error('No processes found')
+    }
+    return await lastProcess.waitForOutput(text, timeout)
+  }
+
+  async waitForReady() {
+    await this.waitForOutput(`server started http://localhost:${this.serverPort}`)
+    await this.waitForOutput(`client started http://localhost:${this.clientPort}`)
   }
 
   async init() {
