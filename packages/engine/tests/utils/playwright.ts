@@ -202,20 +202,12 @@ export class PlaywrightPage {
   }
 
   private async startHtmlWatcher(): Promise<void> {
-    // Capture the very first state of the new page
-    try {
-      const content = await this.original.content()
-      const currentItem = this.history.at(-1)
-      if (currentItem) {
-        currentItem.htmls.push(HtmlView.create(content))
-      }
-    } catch (e) {
-      /* Page might be closed */
-    }
+    const currentItem = this.history.at(-1)
+    if (!currentItem) return
 
-    // Inject the MutationObserver
-    await this.original
-      .evaluate(() => {
+    try {
+      // 1. Single round-trip to get initial HTML and set up observer
+      const initialHtml = await this.original.evaluate(() => {
         // Cleanup old observer if it exists
         if ((window as any).__pwObserver) {
           ;(window as any).__pwObserver.disconnect()
@@ -223,8 +215,6 @@ export class PlaywrightPage {
 
         let timeout: any
         const observer = new MutationObserver(() => {
-          // Debounce: Wait for 50ms of "silence" before sending HTML
-          // This prevents freezing the bridge during massive DOM injections
           clearTimeout(timeout)
           timeout = setTimeout(() => {
             if ((window as any).onDomChanged) {
@@ -233,17 +223,24 @@ export class PlaywrightPage {
           }, 50)
         })
 
-        const observeOptions = {
+        observer.observe(document.documentElement, {
           childList: true,
           subtree: true,
           attributes: true,
           characterData: true,
-        }
-        observer.observe(document.documentElement, observeOptions)
+        })
         ;(window as any).__pwObserver = observer
+
+        // Return the current state immediately so we don't need to call .content()
+        return document.documentElement.outerHTML
       })
-      .catch(() => {
-        // Ignore errors if page was closed
-      })
+
+      // 2. Add the initial state captured from the evaluate call
+      if (initialHtml) {
+        currentItem.htmls.push(HtmlView.create(initialHtml))
+      }
+    } catch (e) {
+      // Ignore errors if page/context was closed during injection
+    }
   }
 }

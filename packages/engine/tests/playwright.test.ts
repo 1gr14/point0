@@ -182,7 +182,7 @@ describe('playwright', () => {
         for (let i = 0; i < clickCount; i++) {
           await page.original.click('#increment')
           // Wait a bit for DOM to update
-          await new Promise((resolve) => setTimeout(resolve, 30))
+          await new Promise((resolve) => setTimeout(resolve, 60))
         }
 
         // Wait for all changes to finish
