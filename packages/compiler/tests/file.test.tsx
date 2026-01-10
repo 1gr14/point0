@@ -174,6 +174,44 @@ describe('CompilerFile', () => {
       )
     })
 
+    describe('env.built', () => {
+      it.concurrent(
+        'env.built = true',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/env')
+            if (env.built) console.info('built')
+          })
+          cf.shakeForEnv({ target: 'client', scope: 'test', built: true })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/env')
+              if (true) console.info('built')
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.built = false',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { env } = await import('@point0/env')
+            if (env.built) console.info('built')
+          })
+          cf.shakeForEnv({ target: 'client', scope: 'test', built: false })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { env } = await import('@point0/env')
+              if (false) console.info('built')
+              "
+            `,
+          )
+        }),
+      )
+    })
+
     describe('env.target.define', () => {
       it.concurrent(
         'env.target.define.server() - client target replaces value',

@@ -303,6 +303,7 @@ export type Env<TVars = any, TScope extends string = string> = {
   readonly vars: Readonly<EnvVars<TVars>>
   readonly target: EnvTarget
   readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
+  readonly built: boolean
 }
 
 export const env: Env = {
@@ -310,4 +311,5 @@ export const env: Env = {
   vars: envVars,
   target: envTarget,
   scope: envScope,
+  built: false, // will be overridden by compiler in build phase
 }

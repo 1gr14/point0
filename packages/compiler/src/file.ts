@@ -427,6 +427,7 @@ export class CompilerFile<THasContent extends boolean> {
   private _shakeForEnv:
     | {
         target: 'client' | 'server'
+        built: boolean
         scope: string
         // can be env name like NODE_ENV, or string SOMETHING_* then we should force value for all const started with SOMETHING_
         // also object like { NODE_ENV: 'production', NUM: 1, BOOL: true, NULL: null, UNDEFINED: undefined } can be provided
@@ -436,8 +437,19 @@ export class CompilerFile<THasContent extends boolean> {
         modified: boolean
       }
     | undefined = undefined
-  shakeForEnv({ target, scope, consts }: { target: 'client' | 'server'; scope: string; consts?: CompilerEnvConsts }): {
+  shakeForEnv({
+    target,
+    scope,
+    consts = undefined,
+    built = false,
+  }: {
     target: 'client' | 'server'
+    scope: string
+    consts?: CompilerEnvConsts | undefined
+    built?: boolean | undefined
+  }): {
+    target: 'client' | 'server'
+    built: boolean
     scope: string
     consts: CompilerEnvConsts
     errors: unknown[]
@@ -460,7 +472,7 @@ export class CompilerFile<THasContent extends boolean> {
     }
     try {
       if (!this.content.includes('@point0/env')) {
-        this._shakeForEnv = { target, scope, consts, errors, ok: true, modified }
+        this._shakeForEnv = { target, scope, consts, built, errors, ok: true, modified }
         return this._shakeForEnv
       }
 
@@ -569,6 +581,16 @@ export class CompilerFile<THasContent extends boolean> {
             node.property.name === 'name'
           ) {
             p.replaceWith(makeStringLiteral(nodeEnv))
+            modified = true
+          }
+          // Handle env.built
+          else if (
+            node.object.type === 'Identifier' &&
+            node.object.name === 'env' &&
+            node.property.type === 'Identifier' &&
+            node.property.name === 'built'
+          ) {
+            p.replaceWith(makeBooleanLiteral(built))
             modified = true
           }
           // Handle env.mode.is.production, env.mode.is.development, env.mode.is.test
@@ -808,12 +830,12 @@ export class CompilerFile<THasContent extends boolean> {
         },
       })
 
-      this._shakeForEnv = { target, scope, consts, errors, ok: true, modified }
+      this._shakeForEnv = { target, scope, consts, built, errors, ok: true, modified }
       this.modified ||= modified
       return this._shakeForEnv
     } catch (e) {
       errors.push(e)
-      this._shakeForEnv = { target, scope, consts, errors, ok: false, modified }
+      this._shakeForEnv = { target, scope, consts, built, errors, ok: false, modified }
       return this._shakeForEnv
     }
   }

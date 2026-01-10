@@ -541,6 +541,13 @@ describe('env', () => {
     })
   })
 
+  describe('env.built', () => {
+    it('should be false by default', async () => {
+      const env = await init({ target: 'server' })
+      expect(env.built).toBe(false)
+    })
+  })
+
   describe('env object structure', () => {
     it('should export env object with all required properties', async () => {
       const env = await init({ target: 'server', scope: 'test-scope' })
