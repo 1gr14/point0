@@ -45,7 +45,7 @@ function wrp(
 
 describe('template', () => {
   afterAll(async () => {
-    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: false })
+    await tpf.cleanup({ files: !preventFinalFilesCleanup, processes: true, ports: false, browser: false })
   })
 
   it.concurrent(
@@ -69,10 +69,8 @@ describe('template', () => {
     wrp(async ({ tp }) => {
       await tp.init()
       const engine = await tp.importEngine()
-      expect(engine.server.port).toBe(8)
-      expect(engine.clients[0].port).toBe(9)
-      expect(engine.server.hmrPort).toBe(10)
-      expect(engine.clients[0].hmrPort).toBe(11)
+      expect(engine.server.port).toBe(4)
+      expect(engine.clients[0].port).toBe(5)
     }),
   )
 })

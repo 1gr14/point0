@@ -180,7 +180,7 @@ export type EngineClientOptionsParsed = {
   env: EngineOptionsEnvParsed
   domRootElementId: string
   port: number
-  hmrPort: number
+  hmrPort: number | null
   index: number
   viteConfig: EngineOptionsViteConfig | null
   outdir: string | null
@@ -491,7 +491,12 @@ export const parseEngineServerOptions = ({
   generalOptionsParsed: EngineGeneralOptionsParsed
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
-  const hmrPort = typeof serverOptions.hmrPort !== 'undefined' ? Number(serverOptions.hmrPort) : port + 100
+  const hmrPort =
+    serverOptions.hmrPort === null
+      ? null
+      : typeof serverOptions.hmrPort !== 'undefined'
+        ? Number(serverOptions.hmrPort)
+        : port + 100
   const entriesRecordInput =
     typeof serverOptions.entry === 'string' ? { main: serverOptions.entry } : serverOptions.entry
   const outdir = toFinalPath({
@@ -561,7 +566,12 @@ const parseEngineClientOptions = ({
 }): EngineClientOptionsParsed => {
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
-  const hmrPort = typeof clientOptions.hmrPort !== 'undefined' ? Number(clientOptions.hmrPort) : port + 100
+  const hmrPort =
+    clientOptions.hmrPort === null
+      ? null
+      : typeof clientOptions.hmrPort !== 'undefined'
+        ? Number(clientOptions.hmrPort)
+        : port + 100
   const outdir = toFinalPath({
     ...generalOptionsParsed,
     cwdIfWasBuilt: null,

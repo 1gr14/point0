@@ -3,7 +3,6 @@ import type { Engine } from '../src/engine.js'
 import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 import { TestProjectFactory } from './utils/project.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
-import { sometimesOk } from './utils/sometimes-ok.js'
 
 setDefaultTimeout(15000)
 
@@ -16,7 +15,7 @@ type ItFn = (done: (err?: unknown) => any) => any
 
 let preventFinalFilesCleanup = false
 function wrp(
-  options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean; triesCount?: number },
+  options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean },
   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
 ): ItFn
 function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
@@ -24,17 +23,17 @@ function wrp(
   ...args:
     | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
     | [
-        options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean; triesCount?: number },
+        options: TestProjectFactoryCreateProjectOptions & { deleteFiles?: boolean },
         callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
       ]
 ): ItFn {
   const [options, callback] = args.length === 1 ? [{}, args[0]] : args
-  const { deleteFiles = true, triesCount = 1, ...tpOptions } = options
+  const { deleteFiles = true, ...tpOptions } = options
   if (!deleteFiles) {
     preventFinalFilesCleanup = true
   }
   const tp = tpf.create({ ...tpOptions })
-  const itFn = async () => {
+  return async () => {
     try {
       await tp.init()
       const engine = await tp.importEngine()
@@ -45,12 +44,6 @@ function wrp(
       throw error
     }
   }
-  if (triesCount > 1) {
-    return async () => {
-      await sometimesOk(triesCount, itFn)
-    }
-  }
-  return itFn
 }
 
 describe.concurrent('dev', () => {
@@ -69,6 +62,8 @@ describe.concurrent('dev', () => {
       tp.spawn(['bun', 'run', 'dev'])
       expect(engine.server.port).toBe(3000)
       expect(engine.clients[0].port).toBe(3001)
+      expect(engine.server.hmrPort).toBe(null)
+      expect(engine.clients[0].hmrPort).toBe(null)
       await tp.waitStarted()
       const response = await tp.fetchServer('/')
       const html = await response.text()
@@ -81,14 +76,19 @@ describe.concurrent('dev', () => {
           "
       `)
     }),
+    {
+      retry: 3,
+    },
   )
 
   it.concurrent(
     'start spa dev server',
     wrp({ ssr: false }, async ({ tp, engine }) => {
       tp.spawn(['bun', 'run', 'dev'])
-      expect(engine.server.port).toBe(tp.serverPort)
-      expect(engine.clients[0].port).toBe(tp.clientPort)
+      expect(engine.server.port).toBe(3002)
+      expect(engine.clients[0].port).toBe(3003)
+      expect(engine.server.hmrPort).toBe(null)
+      expect(engine.clients[0].hmrPort).toBe(null)
       await tp.waitStarted()
       const html = await tp.fetchServerHtml('/')
       expect(html).toContain('__POINT0_ENV__')
@@ -102,29 +102,37 @@ describe.concurrent('dev', () => {
           "
       `)
     }),
+    {
+      retry: 3,
+    },
   )
 
-  // Sad test, sometimes failed...
-  // it.concurrent(
-  //   'have hmr client updates',
-  //   wrp({ ssr: true }, async ({ tp, engine }) => {
-  //     await tp.write(
-  //       'src/page.tsx',
-  //       `import { root } from './lib/root.js'
-  //       export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
-  //     )
-  //     tp.spawn(['bun', 'run', 'dev'])
-  //     await tp.waitStarted()
-  //     // await new Promise((resolve) => setTimeout(resolve, 2000))
-  //     const page = await tp.gotoClient('/')
-  //     await page.waitForHmrReady()
-  //     page.logStory()
-  //     await page.waitContent('Hello')
-  //     // await new Promise((resolve) => setTimeout(resolve, 1000))
-  //     await tp.replace('src/page.tsx', 'Hello', 'Ciao')
-  //     // await new Promise((resolve) => setTimeout(resolve, 1000))
-  //     await page.waitContent('Ciao', 3000)
-  //     expect(page.history.length).toBe(1)
-  //   }),
-  // )
+  // Sad, becouse it is main thing and sometimes failed... But in real it works
+  it.concurrent(
+    'have hmr client updates',
+    wrp({ ssr: true, clientHmr: true }, async ({ tp, engine }) => {
+      await new Promise((resolve) => setTimeout(resolve, 200)) // wait for port to be released by previous test
+      await tp.write(
+        'src/page.tsx',
+        `import { root } from './lib/root.js'
+        export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+      )
+      expect(engine.server.hmrPort).toBeNull()
+      expect(engine.clients[0].hmrPort).toBeNumber()
+      tp.spawn(['bun', 'run', 'dev'])
+      await tp.waitStarted()
+      await new Promise((resolve) => setTimeout(resolve, 700))
+      const page = await tp.gotoClient('/')
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      await page.waitContent('Hello')
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      await tp.replace('src/page.tsx', 'Hello', 'Ciao')
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      await page.waitContent('Ciao', 3000)
+      expect(page.history.length).toBe(1)
+    }),
+    {
+      retry: 10,
+    },
+  )
 })

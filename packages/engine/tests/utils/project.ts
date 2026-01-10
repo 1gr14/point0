@@ -7,8 +7,8 @@ import type { PlaywrightBrowser, PlaywrightPage } from './playwright.js'
 
 const testTemplateDir = nodePath.resolve(__dirname, '..', 'template')
 const testsGeneralTempDir = nodePath.resolve(__dirname, '..', 'temp')
-// const localhost = `http://localhost`
-const localhost = `http://127.0.0.1`
+const localhost = `http://localhost`
+// const localhost = `http://127.0.0.1`
 
 export class TestProject {
   dir: string
@@ -19,8 +19,8 @@ export class TestProject {
   superjson: boolean
   serverPort: number
   clientPort: number
-  serverHmrPort: number
-  clientHmrPort: number
+  serverHmrPort: number | null
+  clientHmrPort: number | null
   processes: TestProcess[] = []
   ports: number[] = []
   tpf: TestProjectFactory
@@ -31,8 +31,8 @@ export class TestProject {
     superjson: boolean
     serverPort: number
     clientPort: number
-    serverHmrPort: number
-    clientHmrPort: number
+    serverHmrPort: number | null
+    clientHmrPort: number | null
     tpf: TestProjectFactory
   }) {
     this.id = crypto.randomUUID()
@@ -46,7 +46,9 @@ export class TestProject {
     this.clientPort = options.clientPort
     this.serverHmrPort = options.serverHmrPort
     this.clientHmrPort = options.clientHmrPort
-    this.ports = [options.serverPort, options.clientPort, options.serverHmrPort, options.clientHmrPort]
+    this.ports = [options.serverPort, options.clientPort, options.serverHmrPort, options.clientHmrPort].filter(
+      (p) => p !== null,
+    )
     this.tpf = options.tpf
   }
 
@@ -207,9 +209,9 @@ export class TestProject {
     await this.copyTemplateToTempDir()
     await this.replace(this.files.packageJson, 'test-project-name', this.name)
     await this.replace(this.files.engine, '// port: server,', `port: ${this.serverPort},`)
-    await this.replace(this.files.engine, '// hmrPort: server,', `hmrPort: ${this.serverHmrPort},`)
+    await this.replace(this.files.engine, '// hmrPort: server,', `hmrPort: ${this.serverHmrPort ?? 'null'},`)
     await this.replace(this.files.engine, '// port: client,', `port: ${this.clientPort},`)
-    await this.replace(this.files.engine, '// hmrPort: client,', `hmrPort: ${this.clientHmrPort},`)
+    await this.replace(this.files.engine, '// hmrPort: client,', `hmrPort: ${this.clientHmrPort ?? 'null'},`)
     if (!this.ssr) {
       await this.replace(this.files.root, '.ssr(true)', '// .ssr(true)')
     }
@@ -259,6 +261,8 @@ export class TestProject {
 export type TestProjectGeneralOptions = {
   ssr: boolean
   superjson: boolean
+  serverHmr?: boolean
+  clientHmr?: boolean
 }
 
 export type TestProjectCreateOptions = TestProjectGeneralOptions & {
@@ -266,8 +270,8 @@ export type TestProjectCreateOptions = TestProjectGeneralOptions & {
   tpf: TestProjectFactory
   serverPort: number
   clientPort: number
-  serverHmrPort: number
-  clientHmrPort: number
+  serverHmrPort: number | null
+  clientHmrPort: number | null
   browser: PlaywrightBrowser | undefined
 }
 
@@ -280,7 +284,7 @@ export type TestProjectFactoryCreateSelfOptions = Partial<TestProjectGeneralOpti
 export type TestProjectFactoryCreateProjectOptions = Partial<TestProjectGeneralOptions>
 
 export class TestProjectFactory {
-  defaultOptions: TestProjectGeneralOptions
+  defaultOptions: Required<TestProjectGeneralOptions>
   namespace: string
   instances: TestProject[] = []
   portsRange: [number, number]
@@ -297,7 +301,7 @@ export class TestProjectFactory {
     portsRange: [number, number]
     browser: PlaywrightBrowser | undefined
   }) {
-    this.defaultOptions = { ssr: true, superjson: true, ...defaultOptions }
+    this.defaultOptions = { ssr: true, superjson: true, serverHmr: false, clientHmr: false, ...defaultOptions }
     this.namespace = namespace
     this.portsRange = portsRange
     this.browser = browser
@@ -308,13 +312,31 @@ export class TestProjectFactory {
   }
 
   create(options: TestProjectFactoryCreateProjectOptions = {}) {
+    const serverPort = this.getNextFreePort()
+    const serverHmrPort =
+      options.serverHmr === false
+        ? null
+        : options.serverHmr === true
+          ? this.getNextFreePort()
+          : this.defaultOptions.serverHmr
+            ? this.getNextFreePort()
+            : null
+    const clientPort = this.getNextFreePort()
+    const clientHmrPort =
+      options.clientHmr === false
+        ? null
+        : options.clientHmr === true
+          ? this.getNextFreePort()
+          : this.defaultOptions.clientHmr
+            ? this.getNextFreePort()
+            : null
     const tp = new TestProject({
       ...this.defaultOptions,
       ...options,
-      serverPort: this.getNextFreePort(),
-      clientPort: this.getNextFreePort(),
-      serverHmrPort: this.getNextFreePort(),
-      clientHmrPort: this.getNextFreePort(),
+      serverPort,
+      clientPort,
+      serverHmrPort,
+      clientHmrPort,
       // index: this.instances.length,
       tpf: this,
     })
