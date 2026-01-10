@@ -306,7 +306,6 @@ export class PlaywrightPage {
   }
 
   async logStory(): Promise<void> {
-    await this.stable
     console.dir(this.story, { depth: null })
   }
 

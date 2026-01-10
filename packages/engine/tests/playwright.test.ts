@@ -67,7 +67,6 @@ describe('playwright', () => {
     it.concurrent(
       'should track navigation history',
       wrp('data:text/html,<html><body><h1>Page 1</h1></body></html>', async (page) => {
-        await page.stable
         expect(page.history.length).toBeGreaterThan(0)
         expect(page.url).toContain('data:text/html')
       }),
@@ -78,7 +77,6 @@ describe('playwright', () => {
       wrp(
         'data:text/html,<html><body><div id="root"><div id="test">Initial</div></div></body></html>',
         async (page) => {
-          await page.stable
           expect(page.history.length).toBeGreaterThan(0)
           const lastHistory = page.history[page.history.length - 1]
           expect(lastHistory.htmls.length).toBeGreaterThan(0)
@@ -89,7 +87,6 @@ describe('playwright', () => {
     it.concurrent(
       'should provide previews',
       wrp('data:text/html,<html><body><div id="root"><h1>Test Content</h1></div></body></html>', async (page) => {
-        await page.stable
         const previews = page.previews
         expect(previews.length).toBeGreaterThan(0)
         expect(previews[0]).toContain('Test Content')
@@ -99,8 +96,6 @@ describe('playwright', () => {
     it.concurrent(
       'should provide single preview',
       wrp('data:text/html,<html><body><div id="root"><p>Hello World</p></div></body></html>', async (page) => {
-        await page.stable
-
         const preview = page.preview
         expect(preview).toBeDefined()
         expect(preview).toContain('Hello World')
@@ -110,8 +105,6 @@ describe('playwright', () => {
     it.concurrent(
       'should track URLs',
       wrp('data:text/html,<html><body><div id="root">Test</div></body></html>', async (page) => {
-        await page.stable
-
         const urls = page.urls
         expect(urls.length).toBeGreaterThan(0)
         expect(urls[0]).toContain('data:text/html')
@@ -121,8 +114,6 @@ describe('playwright', () => {
     it.concurrent(
       'should provide story',
       wrp('data:text/html,<html><body><div id="root"><span>Story Test</span></div></body></html>', async (page) => {
-        await page.stable
-
         const story = page.story
         expect(story.length).toBeGreaterThan(0)
         expect(story[0].url).toContain('data:text/html')
@@ -134,7 +125,6 @@ describe('playwright', () => {
       'should wait for page to finish loading',
       wrp('data:text/html,<html><body><div id="root"><div>Loading Test</div></div></body></html>', async (page) => {
         const startTime = Date.now()
-        await page.stable
         const endTime = Date.now()
 
         // Should complete within reasonable time (not hang)
@@ -168,7 +158,6 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await page.stable
 
         // Get initial state
         const initialPreviews = page.previews.length
@@ -183,7 +172,6 @@ describe('playwright', () => {
         }
 
         // Wait for all changes to finish
-        await page.stable
 
         // Check that story captured the state changes
         const story = page.story
@@ -252,7 +240,6 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html1)}`)
-        await page.stable
 
         // Get initial state
         const initialPreviews = page.previews.length
@@ -267,7 +254,6 @@ describe('playwright', () => {
         }
 
         // Wait for all changes to finish
-        await page.stable
 
         // Verify first page state
         const story1 = page.story
@@ -299,7 +285,6 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html2)}`)
-        await page.stable
 
         // Get initial state of second page
         const initialPreviews2 = page.previews.length
@@ -314,7 +299,6 @@ describe('playwright', () => {
         }
 
         // Wait for all changes to finish
-        await page.stable
 
         // Verify that story captured state changes from both pages
         const story = page.story

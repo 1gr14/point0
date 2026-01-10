@@ -68,7 +68,6 @@ describe.concurrent('dev', () => {
       expect(html).toContain('__POINT0_ENV__')
       expect(html).toContain('<div>Page Not Found</div>')
       const page = await tp.gotoServer('/')
-      await page.stable
       expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           div: Page Not Found
@@ -88,7 +87,6 @@ describe.concurrent('dev', () => {
       expect(html).toContain('__POINT0_ENV__')
       expect(html).not.toContain('<div>Page Not Found</div>')
       const page = await tp.gotoServer('/')
-      await page.stable
       expect(page.tale).toMatchInlineSnapshot(`
         "http://localhost/
           (Empty)
@@ -119,7 +117,6 @@ describe.concurrent('dev', () => {
       await new Promise((resolve) => setTimeout(resolve, 300))
       await tp.replace('src/page.tsx', 'Ciao', 'Wow')
       await new Promise((resolve) => setTimeout(resolve, 300))
-      await page.stable
       await page.waitContent('Wow', 3000)
       console.dir(page.story, { depth: null })
       expect(page.history.length).toBeLessThan(3) // maybe on first bun con connected yet, but in second change evrything should work
