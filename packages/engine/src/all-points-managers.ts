@@ -37,6 +37,19 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     )
   }
 
+  getFirstScope(): PointsScope | undefined {
+    return this.pointsManagers.at(0)?.scope
+  }
+
+  getFirstServerurl(): string | undefined {
+    for (const pointsManager of this.pointsManagers) {
+      if (pointsManager.root._serverurl) {
+        return pointsManager.root._serverurl
+      }
+    }
+    return undefined
+  }
+
   getSuitable({
     scope,
     fallbackScope,

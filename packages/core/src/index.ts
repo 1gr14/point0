@@ -9,6 +9,7 @@ import type {
   KnownLocation,
 } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
+import { env } from '@point0/env'
 import type {
   DehydratedState,
   InfiniteData,
@@ -69,6 +70,7 @@ import type {
   ErrorHeadFn,
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
+  FetchConfig,
   FetchDetailedOutput,
   FetchFn,
   FetchOptions,
@@ -168,12 +170,11 @@ import {
   getWindowScrollPositionSetterBySelector,
   isContainsBinary,
   mergeHeaders,
-  toPascalCase,
   toExtendedTransformer,
+  toPascalCase,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
-import { env } from '@point0/env'
 
 // known stage fns
 
@@ -286,14 +287,14 @@ export class Point0<
 
   private readonly _base: BasePoint | LayoutPoint | undefined
   readonly _root: RootPoint | undefined
-  private readonly _serverurl: string | undefined
+  _serverurl: string | undefined
   readonly _baseurl: string | null | undefined
   readonly type: TPointType
   private readonly _letsEndPointType: TLetsEndPointType
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
   readonly _tranformer: DataTransformerExtended
-  readonly _fetcher: FetchFn
+  _fetcher: FetchConfig
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
@@ -476,7 +477,7 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | undefined
-    _fetcher?: FetchFn | undefined
+    _fetcher?: FetchConfig | undefined
     _ssr?: boolean
     scope: PointsScope
     scopes: PointsScope[]
@@ -647,7 +648,7 @@ export class Point0<
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
     this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
-    this._fetcher = options._fetcher ?? fetch
+    this._fetcher = options._fetcher ?? { fetch }
     this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
@@ -825,7 +826,7 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | null
-    _fetcher?: FetchFn | undefined
+    _fetcher?: FetchConfig | undefined
     _ssr?: boolean
     _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
@@ -2228,7 +2229,7 @@ export class Point0<
   // fetch
 
   fetcher(
-    fetchFn: FetchFn,
+    fetcher: FetchFn | FetchConfig,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2245,7 +2246,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      _fetcher: fetchFn,
+      _fetcher: typeof fetcher === 'function' ? { fetch: fetcher } : fetcher,
     }) as never
   }
 
@@ -4489,7 +4490,7 @@ export class Point0<
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const fromScope = SuperStore.getWeak('__POINT0_SCOPE__')
+    const fromScope = this._fetcher.scope ?? SuperStore.getWeak('__POINT0_SCOPE__')
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
@@ -4553,7 +4554,7 @@ export class Point0<
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const fetchOptions = this.getFetchOptions(...args)
-    const res = await this._fetcher(fetchOptions.request)
+    const res = await this._fetcher.fetch(fetchOptions.request)
     CookiesStore.refresh()
     if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
       return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
@@ -4606,9 +4607,10 @@ export class Point0<
     ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   > {
     if (env.target.is.server) {
-      throw new Error0(
-        'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
-      )
+      // throw new Error0(
+      //   'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
+      // )
+      // lets not throw to be able fullstack tests
     }
     const [input = {}, fetchOptions] = args
     const { serverData, serverResponse, serverOutput } = await (async () => {

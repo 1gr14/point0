@@ -60,7 +60,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   // ): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
-  static create(options: EngineOptions): Engine {
+  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false> {
     const parsedOptions = parseEngineOptions(options)
     const allPointsManagers = AllPointsManagers.create()
 
@@ -126,6 +126,13 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       generator,
       publicdirs,
     })
+  }
+
+  static async init<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+    options: EngineOptions,
+  ): Promise<Engine<TRequiredCtx, true>> {
+    const engine = Engine.create(options)
+    return await engine.init()
   }
 
   // async init(): Promise<Engine<true>> {

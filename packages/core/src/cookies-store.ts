@@ -196,7 +196,9 @@ export class CookiesStore {
 
   static refresh(): void {
     if (env.target.is.server) {
-      throw new Error('refresh() is only available on the client')
+      return
+      // lets not throw to be able fullstack tests
+      // throw new Error('refresh() is only available on the client')
     }
     this.items.forEach((item) => {
       // Skip httpOnly cookies as they are server-only
@@ -300,7 +302,9 @@ class CookiesStoreItem<TValue, TFallback, THttpOnly extends boolean> {
    */
   refresh(): void {
     if (env.target.is.server) {
-      throw new Error('refresh() is only available on the client')
+      return
+      // lets not throw to be able fullstack tests
+      // throw new Error('refresh() is only available on the client')
     }
     if (this.cookieDefineOptions.httpOnly) {
       throw new Error(

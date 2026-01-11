@@ -19,7 +19,7 @@ const general = {
   dts: true,
   sourcemap: true,
   splitting: false,
-  minify: true,
+  minify: false,
   target: 'es2022',
   external: ['bun:test'],
   treeshake: true,
@@ -33,4 +33,8 @@ export default defineConfig({
   ...general,
   format: 'esm',
   outDir: 'dist',
+  esbuildOptions(options) {
+    // Ensure source content is included in source maps so Bun can show original TS files
+    options.sourcesContent = true
+  },
 })

@@ -354,8 +354,6 @@ const parseEngineGeneralOptions = ({
       }
     }
 
-    console.log('generalOptions', generalOptions)
-
     if (!generalOptions.cwdBeforeBuild && !generalOptions.cwdAfterBuild) {
       return { cwdAfterBuild: process.cwd(), cwdBeforeBuild: process.cwd(), cwd: process.cwd() }
     }

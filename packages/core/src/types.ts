@@ -554,6 +554,11 @@ export type OmitUnnamedKeys<T> = {
 }
 
 export type FetchFn = (input: RequestInfo, init?: RequestInit) => Promise<Response>
+export type FetchConfig = {
+  scope?: string
+  serverurl?: string
+  fetch: FetchFn
+}
 
 export type ShowError<Message extends string> = {
   readonly __error__: Message
