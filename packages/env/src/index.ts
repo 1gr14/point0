@@ -30,7 +30,7 @@ const envVars = getEnvVars()
 
 // target
 
-const isTargetClient = ((): boolean => {
+const isTargetClient = (): boolean => {
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 
@@ -43,18 +43,20 @@ const isTargetClient = ((): boolean => {
 
   // TODO: Electron main process in fact is client also (Yes it is client in point0 terminology, becouse it can send requests to server!)
   return false // Node.js, Bun, Deno, or other server runtimes
-})()
+}
 
 // in server it becomes const true, in client it becomes const false
-const isTargetServer = ((): boolean => {
-  return !isTargetClient
-})()
+const isTargetServer = (): boolean => {
+  return !isTargetClient()
+}
 
-const targetName = isTargetClient ? 'client' : 'server'
+const getTargetName = (): 'client' | 'server' => {
+  return isTargetClient() ? 'client' : 'server'
+}
 
 const isTargetSsr = (): false | true | 'prepass' | 'final' => {
   // const ssr = SuperStore.getWeak<'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__')
-  if (isTargetClient) {
+  if (isTargetClient()) {
     return false
   }
   const getSsrPhase: unknown = (globalThis as any).__POINT0_GET_SSR_PHASE__
@@ -85,7 +87,7 @@ function targetDefineUniversal<TClientResult, TServerResult>(options: {
   client?: TClientResult
   server?: TServerResult
 }): TClientResult | TServerResult | undefined {
-  if (isTargetClient) {
+  if (isTargetClient()) {
     return options.client
   }
   return options.server
@@ -101,13 +103,13 @@ type TargetDefineWithHelpers = typeof targetDefineUniversal & {
   unsafe: TargetDefineUnsafe
 }
 const defineServer = (value: any) => {
-  if (isTargetClient) {
+  if (isTargetClient()) {
     return undefined
   }
   return value
 }
 const defineClient = (value: any) => {
-  if (isTargetServer) {
+  if (isTargetServer()) {
     return undefined
   }
   return value
@@ -132,14 +134,12 @@ type TargetIsServer = {
   readonly server: true
   readonly ssr: boolean | 'prepass' | 'final'
 }
-const targetIs = Object.defineProperty(
+const targetIs = Object.defineProperties(
+  {},
   {
-    client: isTargetClient,
-    server: isTargetServer,
-  },
-  'ssr',
-  {
-    get: isTargetSsr,
+    client: { get: isTargetClient },
+    server: { get: isTargetServer },
+    ssr: { get: isTargetSsr },
   },
 ) as TargetIsClient | TargetIsServer
 
@@ -157,11 +157,15 @@ export type EnvTargetServer = {
 
 export type EnvTarget = EnvTargetClient | EnvTargetServer
 
-export const envTarget = {
-  name: targetName,
-  is: targetIs,
-  define: targetDefine,
-} as EnvTarget
+export const envTarget = Object.defineProperties(
+  {
+    is: targetIs,
+    define: targetDefine,
+  },
+  {
+    name: { get: getTargetName },
+  },
+) as EnvTarget
 
 // scope
 
