@@ -312,7 +312,19 @@ const parseEngineGeneralOptions = ({
     generalOptions.itWasBuilt ??= process.env.POINT0_ENGINE_WAS_BUILT === 'true'
 
     if (!itWasBuilt) {
+      // first
+      // if (engineFile) {
+      //   generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
+      // }
+
+      // second
+      // generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
+      // now
+
+      // now
       generalOptions.cwdBeforeBuild ??= nodePath.dirname(engineFile)
+      serverOptions.outdir ||= 'dist'
+
       if (!generalOptions.cwdAfterBuild && generalOptions.cwdBeforeBuild && serverOptions.outdir) {
         if (!nodePath.isAbsolute(generalOptions.cwdBeforeBuild)) {
           throw new Error(
@@ -341,6 +353,8 @@ const parseEngineGeneralOptions = ({
         generalOptions.cwdAfterBuild = nodePath.join(localDir, POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)
       }
     }
+
+    console.log('generalOptions', generalOptions)
 
     if (!generalOptions.cwdBeforeBuild && !generalOptions.cwdAfterBuild) {
       return { cwdAfterBuild: process.cwd(), cwdBeforeBuild: process.cwd(), cwd: process.cwd() }

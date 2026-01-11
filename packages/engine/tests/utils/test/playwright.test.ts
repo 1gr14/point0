@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll, setDefaultTimeout } from 'bun:test'
-import { PlaywrightBrowser, PlaywrightPage } from './utils/playwright.js'
+import { PlaywrightBrowser, PlaywrightPage } from '../playwright.js'
 
 setDefaultTimeout(10000)
 

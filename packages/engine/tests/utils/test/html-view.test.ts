@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { HtmlView } from './utils/html-view.js'
+import { HtmlView } from '../html-view.js'
 
 describe('html-viewer', () => {
   describe('tree', () => {

@@ -553,6 +553,8 @@ export type OmitUnnamedKeys<T> = {
   [K in keyof T as string extends K ? never : K]: T[K]
 }
 
+export type FetchFn = (input: RequestInfo, init?: RequestInit) => Promise<Response>
+
 export type ShowError<Message extends string> = {
   readonly __error__: Message
 }
@@ -1595,6 +1597,7 @@ export type NiceRootStagePoint<
   | 'root'
   | 'ssr'
   | 'transformer'
+  | 'fetcher'
   | 'requireCtx'
   | 'serverurl'
   | 'baseurl'
@@ -2305,7 +2308,7 @@ export type NiceBaseEndPoint<
 export type WithFetchIfHasServerLoader<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TLiteral extends string,
-> = TServerLoaderOutput extends LoaderOutput ? TLiteral | 'fetch' | 'fetchDetailed' : TLiteral
+> = TServerLoaderOutput extends LoaderOutput ? TLiteral | 'getFetchOptions' | 'fetch' | 'fetchDetailed' : TLiteral
 export type WithExecuteEndLiteralsIfSuitable<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,

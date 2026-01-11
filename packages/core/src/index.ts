@@ -70,6 +70,7 @@ import type {
   ExtraUseInfiniteQueryOptions,
   ExtraUseQueryOptions,
   FetchDetailedOutput,
+  FetchFn,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
@@ -292,6 +293,7 @@ export class Point0<
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
   readonly _tranformer: DataTransformerExtended
+  readonly _fetcher: FetchFn
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
@@ -474,6 +476,7 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | undefined
+    _fetcher?: FetchFn | undefined
     _ssr?: boolean
     scope: PointsScope
     scopes: PointsScope[]
@@ -644,6 +647,7 @@ export class Point0<
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
     this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
+    this._fetcher = options._fetcher ?? fetch
     this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
@@ -821,6 +825,7 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | null
+    _fetcher?: FetchFn | undefined
     _ssr?: boolean
     _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
@@ -1026,6 +1031,7 @@ export class Point0<
       inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
       _serverInputSchema: overrides._serverInputSchema ?? this._serverInputSchema,
       _tranformer: overrides._tranformer ?? this._tranformer,
+      _fetcher: overrides._fetcher ?? this._fetcher,
       _ssr: overrides._ssr ?? this._ssr,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _outers: overrides._outers ?? this._outers,
@@ -2216,6 +2222,30 @@ export class Point0<
   > {
     return this._continue({
       _tranformer: toExtendedTransformer(transformer),
+    }) as never
+  }
+
+  // fetch
+
+  fetcher(
+    fetchFn: FetchFn,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _fetcher: fetchFn,
     }) as never
   }
 
@@ -4452,11 +4482,11 @@ export class Point0<
     return result as never
   }
 
-  async fetchDetailed(
+  getFetchOptions(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
-  ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
+  ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
     const fromScope = SuperStore.getWeak('__POINT0_SCOPE__')
@@ -4468,7 +4498,7 @@ export class Point0<
       'X-Point0-From-Scope': fromScope,
     })
     if (!this._serverurl) {
-      return { error: new Error0('Server URL is not set'), response: undefined, data: undefined, output: undefined }
+      throw new Error('Server URL is not set')
     }
     const url = new URL('/_point0', this._serverurl)
     const method = 'post'
@@ -4501,13 +4531,29 @@ export class Point0<
       }
     })()
 
-    const res = await fetch(url.toString(), {
+    const fetchUrl = url.toString()
+    const fetchInit = {
       ...this._fetchOptions?.(),
       ...fetchOptions,
       headers,
       method,
       body,
-    })
+    }
+    const fetchRequest = new Request(fetchUrl, fetchInit)
+    return {
+      url: fetchUrl,
+      init: fetchInit,
+      request: fetchRequest,
+    }
+  }
+
+  async fetchDetailed(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
+  ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
+    const fetchOptions = this.getFetchOptions(...args)
+    const res = await this._fetcher(fetchOptions.request)
     CookiesStore.refresh()
     if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
       return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
