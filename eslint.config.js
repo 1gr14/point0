@@ -43,6 +43,7 @@ export default defineConfig([
       curly: ['error', 'all'],
 
       // disable
+      '@typescript-eslint/no-confusing-void-expression': 'off',
       '@typescript-eslint/no-extraneous-class': 'off',
       '@typescript-eslint/non-nullable-type-assertion-style': 'off',
       'eslint-comments/no-unlimited-disable': 'off',
