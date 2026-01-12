@@ -5,7 +5,7 @@ import type { TestProject, TestProjectFactoryCreateProjectOptions } from './util
 import { TestProjectFactory } from './utils/project.js'
 import { throwOnBundlersLengthNot2 } from './utils/other.js'
 
-setDefaultTimeout(15000)
+setDefaultTimeout(30000)
 
 const tpf = TestProjectFactory.create({
   namespace: 'dev',

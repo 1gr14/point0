@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import superjson from 'superjson'
-import { superstore } from '../src/super-store.js'
+import { ss } from '../src/super-store.js'
 
 // type ItFn = (done: (err?: unknown) => any) => any
 // const withFakeClient = (fn: () => any): ItFn => {
@@ -20,14 +20,13 @@ import { superstore } from '../src/super-store.js'
 
 const originalWindow = globalThis.window
 const originalDocument = globalThis.document
-let ss: typeof superstore
 
 describe('SuperStore', () => {
   describe('client', () => {
     beforeEach(() => {
       ;(globalThis as any).window = {}
       ;(globalThis as any).document = {}
-      ss = superstore._reset()
+      ss.reset()
     })
 
     afterEach(() => {
@@ -84,7 +83,7 @@ describe('SuperStore', () => {
       })
 
       it('prepare from string, define, get', () => {
-        ss.prepareFromString('{"item":"value3"}')
+        ss.prepare('{"item":"value3"}')
         const item = ss.define('item', () => 'value')
         expect(item.get()).toBe('value3')
       })
@@ -148,7 +147,7 @@ describe('SuperStore', () => {
           date: new Date('2017-01-01T00:00:00.000Z'),
           string: 'value_1',
         })
-        ss.clearState()
+        ss.reset.clientState()
         const value = ss.getValue('string')
         expect(value).toBe('value_1_2')
       })
@@ -190,7 +189,7 @@ describe('SuperStore', () => {
 
   describe('server', () => {
     beforeEach(() => {
-      ss = superstore._reset()
+      ss.reset()
     })
 
     it('created', () => {

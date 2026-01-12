@@ -1,25 +1,17 @@
 /* eslint-disable import/first */
 import { env } from '@point0/env'
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
-;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
-  (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||
-  (env.target.is.client
-    ? null
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>))
+;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= env.target.is.client
+  ? null
+  : // eslint-disable-next-line @typescript-eslint/no-require-imports
+    (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
 
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export class SuperStore {
-  static instance: SuperStore = new SuperStore()
-
-  _reset(): SuperStore {
-    const newInstance = new SuperStore()
-    SuperStore.instance = newInstance
-    return newInstance
-  }
+  static instance: SuperStore = (globalThis as any).__POINT0_SUPER_STORE_INSTANCE__ || new SuperStore()
 
   prepared = new Map<string, unknown>()
 
@@ -36,6 +28,52 @@ export class SuperStore {
   private constructor() {
     if (env.target.is.server) {
       this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
+    }
+  }
+
+  reset: {
+    (): void
+    prepared: () => void
+    touched: () => void
+    items: () => void
+    serverStorage: () => void
+    clientState: () => void
+    transformer: () => void
+  } = Object.assign(
+    () => {
+      this.prepared.clear()
+      this.touched.clear()
+      this.items.clear()
+      this.transformer = undefined
+      this.resetClientState()
+      this.resetServerStorage()
+    },
+    {
+      prepared: () => this.prepared.clear(),
+      touched: () => this.touched.clear(),
+      items: () => this.items.clear(),
+      transformer: () => (this.transformer = undefined),
+      serverStorage: () => {
+        this.resetServerStorage()
+      },
+      clientState: () => {
+        this.resetClientState()
+      },
+    },
+  )
+
+  private resetClientState(): void {
+    for (const key of Object.keys(this.clientState)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete this.clientState[key]
+    }
+  }
+
+  private resetServerStorage(): void {
+    if (env.target.is.server) {
+      this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
+    } else {
+      this.serverStorage = undefined
     }
   }
 
@@ -244,19 +282,6 @@ export class SuperStore {
     }
   }
 
-  clearState(): void {
-    const state = this.getState()
-    for (const itemName of Object.keys(state)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete state[itemName as keyof SuperStoreState]
-    }
-    this.touched.clear()
-  }
-
-  clearPrepared(): void {
-    this.prepared.clear()
-  }
-
   dehydrate(): Record<string, unknown> {
     const dehydrated: Record<string, unknown> = {}
     for (const item of this.items.values()) {
@@ -276,14 +301,15 @@ export class SuperStore {
     return this.getSuitableTransformer(transformer).parse(dehydratedString)
   }
 
-  prepare(dehydrated: Record<string, unknown>): void {
+  prepare(dehydrated: string): void
+  prepare(dehydrated: Record<string, unknown>): void
+  prepare(dehydrated: Record<string, unknown> | string): void {
+    if (typeof dehydrated === 'string') {
+      dehydrated = this.parse(dehydrated)
+    }
     for (const [itemName, dehydratedValue] of Object.entries(dehydrated)) {
       this.prepared.set(itemName, dehydratedValue)
     }
-  }
-
-  prepareFromString(dehydratedString: string, transformer?: DataTransformerExtended | false | undefined): void {
-    this.prepare(this.parse(dehydratedString, transformer))
   }
 }
 
