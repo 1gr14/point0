@@ -136,7 +136,7 @@ describe('build', () => {
       },
     )
 
-    it.only(
+    it.concurrent(
       'prune client and server',
       wrp({ ssr: true, vite: bundler === 'vite', preserve: true }, async ({ tp, engine }) => {
         await tp.write(

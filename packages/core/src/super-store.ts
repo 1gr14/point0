@@ -1,5 +1,14 @@
+/* eslint-disable import/first */
 import { env } from '@point0/env'
-import { AsyncLocalStorage } from 'node:async_hooks'
+// I do not know why, but it is only way to do it to work in bun and vite at the same time
+;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ =
+  (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||
+  (env.target.is.client
+    ? null
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>))
+
+import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
@@ -26,7 +35,7 @@ export class SuperStore {
 
   private constructor() {
     if (env.target.is.server) {
-      this.serverStorage = new AsyncLocalStorage()
+      this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
     }
   }
 
@@ -276,54 +285,7 @@ export class SuperStore {
   prepareFromString(dehydratedString: string, transformer?: DataTransformerExtended | false | undefined): void {
     this.prepare(this.parse(dehydratedString, transformer))
   }
-
-  // dehydrateToRecordOfStrings(): Record<string, string> {
-  //   const dehydrated: Record<string, string> = {}
-  //   for (const item of this.items.values()) {
-  //     if (!item.ssr) {
-  //       continue
-  //     }
-  //     const stringifiedValue = item.stringify()
-  //     if (stringifiedValue !== undefined) {
-  //       dehydrated[item.name] = stringifiedValue
-  //     }
-  //   }
-  //   return dehydrated
-  // }
-
-  // dehydrateToString(): string {
-  //   return JSON.stringify(this.dehydrateToRecordOfStrings())
-  // }
-
-  // prepareFromRecordOfStrings(recordOfStrings: Record<string, string>): void {
-  //   for (const [itemName, itemStringifiedValue] of Object.entries(recordOfStrings)) {
-  //     this.dehydrated.set(itemName, itemStringifiedValue)
-  //   }
-  // }
-
-  // static parseToRecordOfStrings(dehydratedString: string): Record<string, string> {
-  //   const recordOfStrings = JSON.parse(dehydratedString) as unknown
-  //   if (!recordOfStrings || typeof recordOfStrings !== 'object') {
-  //     throw new Error(`Invalid dehydrated string, expected parsed to object, got ${typeof recordOfStrings}`)
-  //   }
-  //   for (const [itemName, itemStringifiedValue] of Object.entries(recordOfStrings)) {
-  //     if (typeof itemStringifiedValue !== 'string') {
-  //       throw new Error(
-  //         `Invalid dehydrated string for item "${itemName}", expected parsed to string, got ${typeof itemStringifiedValue}`,
-  //       )
-  //     }
-  //   }
-  //   return recordOfStrings as Record<string, string>
-  // }
-
-  // prepareFromString(dehydratedString: string): void {
-  //   const recordOfStrings = SuperStore.parseToRecordOfStrings(dehydratedString)
-  //   this.prepareFromRecordOfStrings(recordOfStrings)
-  // }
 }
-
-export const superstore = SuperStore.instance
-export const ss = SuperStore.instance
 
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   superstore: SuperStore
@@ -380,29 +342,12 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   }
 }
 
+export const superstore = SuperStore.instance
+export const ss = SuperStore.instance
+
 export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 
 export type SuperStoreState = { [key: string]: unknown }
-
-// export type ProxyResult<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
-//   [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
-//     ? TValue
-//     : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
-//       ? TValue
-//       : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
-//         ? TValue
-//         : never
-// }
-
-// export type SuperStoreItemsValues<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
-//   [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
-//     ? TValue
-//     : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
-//       ? TValue
-//       : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
-//         ? TValue
-//         : never
-// }
 
 export type ProxyResult<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
   [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue : never
