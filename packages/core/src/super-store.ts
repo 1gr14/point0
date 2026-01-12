@@ -1,5 +1,5 @@
 import { env } from '@point0/env'
-import type { AsyncLocalStorage } from 'node:async_hooks'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
@@ -26,8 +26,7 @@ export class SuperStore {
 
   private constructor() {
     if (env.target.is.server) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      this.serverStorage = new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>
+      this.serverStorage = new AsyncLocalStorage()
     }
   }
 

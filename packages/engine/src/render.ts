@@ -139,7 +139,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
     domRootElementId,
   })
-  html = await transformHtmlTemplate(executor.serverGlobalState.__POINT0_UNHEAD_HEAD__, html)
+  html = await transformHtmlTemplate(executor.serverStorageState.__POINT0_UNHEAD_HEAD__, html)
   html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
     content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',

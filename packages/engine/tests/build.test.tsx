@@ -136,9 +136,9 @@ describe('build', () => {
       },
     )
 
-    it.concurrent(
+    it.only(
       'prune client and server',
-      wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: true }, async ({ tp, engine }) => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'

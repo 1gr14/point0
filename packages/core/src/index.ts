@@ -642,7 +642,7 @@ export class Point0<
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
     this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
-    this._fetcher = options._fetcher ?? { fetch }
+    this._fetcher = options._fetcher ?? { fetch: async (...args: Parameters<FetchFn>) => await fetch(...args) }
     this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined

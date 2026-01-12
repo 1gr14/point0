@@ -415,41 +415,41 @@ export class Fetcher {
       bunServer,
     })
 
-    const notExistsInMiddlewareCall = new Error(
-      'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
-    )
+    // const notExistsInMiddlewareCall = new Error(
+    //   'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
+    // )
 
-    return await _ssRunWithServerStorageState(
-      {
-        __POINT0_REQUEST0__: prepareFetchResult.request,
-        __POINT0_RESPONSE0__: response0,
-        __POINT0_SCOPE__: notExistsInMiddlewareCall,
-        __POINT0_QUERY_CLIENT__: notExistsInMiddlewareCall,
-        __POINT0_SSR_LOCATION__: notExistsInMiddlewareCall,
-        __POINT0_CURRENT_LOCATION__: notExistsInMiddlewareCall,
-        __POINT0_UNHEAD_HEAD__: notExistsInMiddlewareCall,
-      },
-      async () => {
-        if (prepareFetchResult.devClientsProxyResult) {
-          return prepareFetchResult.devClientsProxyResult.response
-        }
+    // return await _ssRunWithServerStorageState(
+    //   {
+    //     __POINT0_REQUEST0__: prepareFetchResult.request,
+    //     __POINT0_RESPONSE0__: response0,
+    //     __POINT0_SCOPE__: notExistsInMiddlewareCall,
+    //     __POINT0_QUERY_CLIENT__: notExistsInMiddlewareCall,
+    //     __POINT0_SSR_LOCATION__: notExistsInMiddlewareCall,
+    //     __POINT0_CURRENT_LOCATION__: notExistsInMiddlewareCall,
+    //     __POINT0_UNHEAD_HEAD__: notExistsInMiddlewareCall,
+    //   },
+    //   async () => {
+    if (prepareFetchResult.devClientsProxyResult) {
+      return prepareFetchResult.devClientsProxyResult.response
+    }
 
-        if (prepareFetchResult.publicdirResult) {
-          return response0.apply(prepareFetchResult.publicdirResult.response)
-        }
+    if (prepareFetchResult.publicdirResult) {
+      return response0.apply(prepareFetchResult.publicdirResult.response)
+    }
 
-        const fetchPointResponse = await this.fetchPoint({
-          request: prepareFetchResult.request,
-          suitable: prepareFetchResult.pointResult.suitable,
-          task: prepareFetchResult.pointResult.task,
-          requiredCtx,
-          scope,
-          response0,
-        })
+    const fetchPointResponse = await this.fetchPoint({
+      request: prepareFetchResult.request,
+      suitable: prepareFetchResult.pointResult.suitable,
+      task: prepareFetchResult.pointResult.task,
+      requiredCtx,
+      scope,
+      response0,
+    })
 
-        return response0.apply(fetchPointResponse)
-      },
-    )
+    return response0.apply(fetchPointResponse)
+    //   },
+    // )
   }
 }
 

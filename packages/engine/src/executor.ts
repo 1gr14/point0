@@ -44,7 +44,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
-  serverGlobalState: SuperStoreInternalValues
+  serverStorageState: SuperStoreInternalValues
 
   private constructor({
     request,
@@ -52,7 +52,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation,
     requiredCtx,
     serverExecuteActionsWithOutput,
-    serverGlobalState,
+    serverStorageState,
     response0,
   }: {
     request: Request0
@@ -60,7 +60,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
-    serverGlobalState: {
+    serverStorageState: {
       __POINT0_REQUEST0__: Request0
       __POINT0_RESPONSE0__: Response0
       __POINT0_SCOPE__: PointsScope
@@ -77,7 +77,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
-    this.serverGlobalState = serverGlobalState
+    this.serverStorageState = serverStorageState
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
@@ -108,7 +108,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         requiredCtx,
         serverExecuteActionsWithOutput: [],
         response0,
-        serverGlobalState: {
+        serverStorageState: {
           __POINT0_REQUEST0__: request0,
           __POINT0_RESPONSE0__: response0,
           __POINT0_SCOPE__: pointsManager.scope,
@@ -122,7 +122,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
-    return await _ssRunWithServerStorageState(this.serverGlobalState, callback)
+    return await _ssRunWithServerStorageState(this.serverStorageState, callback)
   }
 
   static createRequestByPointAndInput<TPoint extends EndPoint>({
@@ -559,8 +559,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     level?: number
   }): Promise<void> {
     if (level === 0) {
-      _ssItems.__POINT0_CURRENT_LOCATION__.set(pageLocation)
-      _ssItems.__POINT0_SSR_LOCATION__.set(pageLocation)
+      this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
+      this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
     }
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(

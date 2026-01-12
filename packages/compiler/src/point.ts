@@ -698,20 +698,20 @@ export class CompilerPoint<TValid extends boolean = any> {
       }
       if (
         [
-          'mutationOptions',
-          'queryOptions',
-          'infiniteQueryOptions',
-          'pageQueryOptions',
-          'componentQueryOptions',
-          'providerQueryOptions',
-          'layoutQueryOptions',
-          'fetchOptions',
+          // 'mutationOptions',
+          // 'queryOptions',
+          // 'infiniteQueryOptions',
+          // 'pageQueryOptions',
+          // 'componentQueryOptions',
+          // 'providerQueryOptions',
+          // 'layoutQueryOptions',
+          // 'fetchOptions',
           'scrollPosition',
           'scrollRestore',
           'onPrefetch',
           'prefetchOnLinkHover',
-          'query',
-          'infiniteQuery',
+          // 'query',
+          // 'infiniteQuery',
           'mutation',
         ].includes(method.name)
       ) {
