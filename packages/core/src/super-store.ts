@@ -140,7 +140,27 @@ export class SuperStore {
     return item
   }
 
-  defineMany(items: Record<string, any>): void {}
+  proxy(items: Record<string, NiceSuperStoreItem>): Record<string, unknown> {
+    const proxy = new Proxy(
+      {},
+      {
+        get(target, prop) {
+          if (typeof prop !== 'string') {
+            return undefined
+          }
+          return items[prop].get()
+        },
+        set(target, prop, value) {
+          if (typeof prop !== 'string') {
+            return false
+          }
+          items[prop].set(value)
+          return true
+        },
+      },
+    )
+    return proxy
+  }
 
   getItem<TValue = unknown>(name: string): SuperStoreItem<TValue> | undefined {
     return this.items.get(name)
@@ -334,13 +354,6 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
 export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 
 export type SuperStoreState = { [key: string]: unknown }
-
-export type SuperStoreDefineItemConfig<TValue = any, TDehydratedValue = any> = {
-  init: () => TValue
-  ssr: TDehydratedValue extends undefined ? false : true
-  dehydrate: (value: TValue) => TDehydratedValue
-  hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
-}
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
