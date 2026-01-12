@@ -140,7 +140,7 @@ export class SuperStore {
     return item
   }
 
-  proxy(items: Record<string, NiceSuperStoreItem>): Record<string, unknown> {
+  proxy<TItems extends Record<string, NiceSuperStoreItem>>(items: TItems): ProxyResult<TItems> {
     const proxy = new Proxy(
       {},
       {
@@ -158,8 +158,24 @@ export class SuperStore {
           return true
         },
       },
-    )
+    ) as ProxyResult<TItems>
     return proxy
+  }
+
+  createTypedRunWithServerStorageState<TItems extends Record<string, NiceSuperStoreItem>>(): <TResult>(
+    serverStorageState: {
+      [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any> ? TValue : never
+    },
+    callback: () => TResult,
+  ) => TResult {
+    return <TResult>(
+      serverStorageState: {
+        [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any> ? TValue : never
+      },
+      callback: () => TResult,
+    ): TResult => {
+      return this.runWithServerStorageState(serverStorageState, callback)
+    }
   }
 
   getItem<TValue = unknown>(name: string): SuperStoreItem<TValue> | undefined {
@@ -359,6 +375,10 @@ export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'set' | 'config'
 >
+
+export type ProxyResult<TItems extends Record<string, NiceSuperStoreItem>> = {
+  [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any> ? TValue : never
+}
 export type NiceUnsettableRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'redefine' | 'config'

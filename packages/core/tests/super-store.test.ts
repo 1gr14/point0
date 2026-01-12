@@ -172,6 +172,20 @@ describe('SuperStore', () => {
         )
       })
     })
+
+    describe('proxy', () => {
+      it('ok', () => {
+        const first = ss.define('first', () => 'string')
+        const second = ss.define('second', () => 123)
+        const third = ss.define<number | string>('third', () => 123)
+        const proxy = ss.proxy({ first, second, third })
+        expect(proxy.first).toBe('string')
+        expect(proxy.second).toBe(123)
+        expect(proxy.third).toBe(123)
+        proxy.third = 'x'
+        expect(proxy.third).toBe('x')
+      })
+    })
   })
 
   describe('server', () => {
@@ -230,6 +244,22 @@ describe('SuperStore', () => {
         ss.runWithServerStorageState({}, () => {
           const x = ss.getValue('item')
           expect(x).toBe('value')
+        })
+      })
+    })
+
+    describe('createTypedRunWithServerStorageState', () => {
+      it('ok', () => {
+        const first = ss.define('first', () => 'string')
+        const second = ss.define('second', () => 123)
+        const third = ss.define<number | string | undefined>('third', () => 123)
+        const items = { first, second, third }
+        const proxy = ss.proxy(items)
+        const run = ss.createTypedRunWithServerStorageState<typeof items>()
+        run({ first: 'string2', second: 456, third: undefined }, () => {
+          expect(proxy.first).toBe('string2')
+          expect(proxy.second).toBe(456)
+          expect(proxy.third).toBeUndefined()
         })
       })
     })
