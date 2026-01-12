@@ -62,6 +62,7 @@
     "@types/bun": "^1.2.22",
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",
+    "superjson": "^2.2.6",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
   },

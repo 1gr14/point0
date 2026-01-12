@@ -4,11 +4,9 @@ import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export class SuperStore {
-  private static readonly instances = new Map<string, SuperStore>()
-
   name: string
 
-  prepared = new Map<string, string>()
+  prepared = new Map<string, unknown>()
 
   touched = new Set<string>()
 
@@ -18,7 +16,7 @@ export class SuperStore {
 
   clientState: SuperStoreState = {}
 
-  transformer: DataTransformerExtended = blankDataTransformerExtended
+  transformer: DataTransformerExtended
 
   constructor(options: { name: string; transformer?: DataTransformer }) {
     if (env.target.is.server) {
@@ -129,26 +127,29 @@ export class SuperStore {
   }
 
   getValue<TValue = unknown>(name: string): TValue | undefined {
-    if (this.prepared.has(name)) {
-      const preparedValue = this.prepared.get(name)
-      if (preparedValue === undefined) {
-        throw new Error(`Prepared value for store "${this.name}" for item "${name}" is undefined`)
-      }
-      const parsedValue = this.transformer.parse(preparedValue)
-      this.prepared.delete(name)
-      this.touched.add(name)
-      return parsedValue as TValue
-    }
-    if (this.touched.has(name)) {
-      const state = this.getState()
+    const state = this.getState()
+    if (name in state) {
       return state[name] as TValue | undefined
     }
+
     const item = this.getItem(name)
     if (item) {
+      if (this.prepared.has(name)) {
+        const dehydratedValue = this.prepared.get(name)
+        const hydratedValue = item.hydrate(dehydratedValue)
+        this.prepared.delete(name)
+        this.touched.add(name)
+        state[name] = hydratedValue
+        return hydratedValue as TValue
+      }
       const initialValue = item.init()
       this.touched.add(name)
+      state[name] = initialValue
       return initialValue as TValue
     }
+
+    this.touched.add(name)
+    state[name] = undefined
     return undefined
   }
 
@@ -159,10 +160,7 @@ export class SuperStore {
     state[name] = value
   }
 
-  runWithServerStorageProvider<TResult>(
-    serverStorageState: Partial<SuperStoreState>,
-    callback: () => TResult,
-  ): TResult {
+  runWithServerStorageState<TResult>(serverStorageState: Partial<SuperStoreState>, callback: () => TResult): TResult {
     if (this.serverStorage) {
       return this.serverStorage.run(serverStorageState, callback)
     } else {
@@ -170,131 +168,91 @@ export class SuperStore {
     }
   }
 
-  // hydration / prepareing
+  clearState(): void {
+    const state = this.getState()
+    for (const itemName of Object.keys(state)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete state[itemName as keyof SuperStoreState]
+    }
+    this.touched.clear()
+  }
 
-  dehydrateToRecordOfStrings(): Record<string, string> {
-    const dehydrated: Record<string, string> = {}
+  clearPrepared(): void {
+    this.prepared.clear()
+  }
+
+  dehydrate(): Record<string, unknown> {
+    const dehydrated: Record<string, unknown> = {}
     for (const item of this.items.values()) {
       if (!item.ssr) {
         continue
       }
-      const stringifiedValue = item.stringify()
-      if (stringifiedValue !== undefined) {
-        dehydrated[item.name] = stringifiedValue
-      }
+      dehydrated[item.name] = item.dehydrate()
     }
     return dehydrated
   }
 
-  static dehydrateToRecordOfRecordsOfStrings({
-    superstores = new Set<SuperStore>(),
-    withGlobalInstances = true,
-  }: {
-    superstores: Set<SuperStore>
-    withGlobalInstances: boolean
-  }): Record<string, Record<string, string>> {
-    const dehydrated: Record<string, Record<string, string>> = {}
-    if (withGlobalInstances) {
-      for (const instance of superstores) {
-        superstores.add(instance)
-      }
-    }
-    for (const superstore of superstores) {
-      dehydrated[superstore.name] = superstore.dehydrateToRecordOfStrings()
-    }
-    return dehydrated
+  stringify(): string {
+    return this.transformer.stringify(this.dehydrate()) as string
   }
 
-  static dehydrateToString({
-    superstores = new Set<SuperStore>(),
-    withGlobalInstances = true,
-  }: {
-    superstores: Set<SuperStore>
-    withGlobalInstances: boolean
-  }): string {
-    const dehydrated = SuperStore.dehydrateToRecordOfRecordsOfStrings({ superstores, withGlobalInstances })
-    return JSON.stringify(dehydrated)
+  parse(dehydratedString: string): Record<string, unknown> {
+    return this.transformer.parse(dehydratedString)
   }
 
-  static prepareFromRecordOfRecordsOfStrings({
-    recordOfRecordsOfStrings,
-    superstores = [],
-    withGlobalInstances = true,
-  }: {
-    recordOfRecordsOfStrings: Record<string, Record<string, string>>
-    superstores: SuperStore[]
-    withGlobalInstances: boolean
-  }): void {
-    const instances = new Map<string, SuperStore>()
-    if (withGlobalInstances) {
-      for (const instance of SuperStore.instances.values()) {
-        instances.set(instance.name, instance)
-      }
-    }
-    for (const superstore of superstores) {
-      instances.set(superstore.name, superstore)
-    }
-    for (const [superstoreName, recordOfStrings] of Object.entries(recordOfRecordsOfStrings)) {
-      for (const [itemName, itemStringifiedValue] of Object.entries(recordOfStrings)) {
-        const superstore = instances.get(superstoreName)
-        if (!superstore) {
-          throw new Error(`Superstore "${superstoreName}" not found`)
-        }
-        superstore.prepared.set(itemName, itemStringifiedValue)
-      }
+  prepare(dehydrated: Record<string, unknown>): void {
+    for (const [itemName, dehydratedValue] of Object.entries(dehydrated)) {
+      this.prepared.set(itemName, dehydratedValue)
     }
   }
 
-  static parseToRecordOfRecordsOfStrings(dehydratedString: string): Record<string, Record<string, string>> {
-    const recordOfRecordsOfStrings = JSON.parse(dehydratedString)
-    if (!recordOfRecordsOfStrings || typeof recordOfRecordsOfStrings !== 'object') {
-      throw new Error(`Invalid dehydrated string, expected parsed to object, got ${typeof recordOfRecordsOfStrings}`)
-    }
-    for (const value of Object.values(recordOfRecordsOfStrings)) {
-      if (!value || typeof value !== 'object') {
-        throw new Error(`Invalid dehydrated string, expected parsed to object, got ${typeof value}`)
-      }
-      for (const item of Object.values(value)) {
-        if (typeof item !== 'string') {
-          throw new Error(`Invalid dehydrated string, expected parsed to object, got ${typeof item}`)
-        }
-      }
-    }
-    return recordOfRecordsOfStrings
+  prepareFromString(dehydratedString: string): void {
+    this.prepare(this.parse(dehydratedString))
   }
 
-  static prepareFromString({
-    dehydratedString,
-    superstores = [],
-    withGlobalInstances = true,
-  }: {
-    dehydratedString: string
-    superstores: SuperStore[]
-    withGlobalInstances: boolean
-  }): void {
-    const recordOfRecordsOfStrings = SuperStore.parseToRecordOfRecordsOfStrings(dehydratedString)
-    SuperStore.prepareFromRecordOfRecordsOfStrings({
-      recordOfRecordsOfStrings,
-      superstores,
-      withGlobalInstances,
-    })
-  }
+  // dehydrateToRecordOfStrings(): Record<string, string> {
+  //   const dehydrated: Record<string, string> = {}
+  //   for (const item of this.items.values()) {
+  //     if (!item.ssr) {
+  //       continue
+  //     }
+  //     const stringifiedValue = item.stringify()
+  //     if (stringifiedValue !== undefined) {
+  //       dehydrated[item.name] = stringifiedValue
+  //     }
+  //   }
+  //   return dehydrated
+  // }
 
-  static prepareFromWindow({
-    superstores = [],
-    withGlobalInstances = true,
-  }: {
-    superstores: SuperStore[]
-    withGlobalInstances: boolean
-  }): void {
-    if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-      SuperStore.prepareFromString({
-        dehydratedString: (window as any).__POINT0_DEHYDRATED_SUPER_STORE__,
-        superstores,
-        withGlobalInstances,
-      })
-    }
-  }
+  // dehydrateToString(): string {
+  //   return JSON.stringify(this.dehydrateToRecordOfStrings())
+  // }
+
+  // prepareFromRecordOfStrings(recordOfStrings: Record<string, string>): void {
+  //   for (const [itemName, itemStringifiedValue] of Object.entries(recordOfStrings)) {
+  //     this.dehydrated.set(itemName, itemStringifiedValue)
+  //   }
+  // }
+
+  // static parseToRecordOfStrings(dehydratedString: string): Record<string, string> {
+  //   const recordOfStrings = JSON.parse(dehydratedString) as unknown
+  //   if (!recordOfStrings || typeof recordOfStrings !== 'object') {
+  //     throw new Error(`Invalid dehydrated string, expected parsed to object, got ${typeof recordOfStrings}`)
+  //   }
+  //   for (const [itemName, itemStringifiedValue] of Object.entries(recordOfStrings)) {
+  //     if (typeof itemStringifiedValue !== 'string') {
+  //       throw new Error(
+  //         `Invalid dehydrated string for item "${itemName}", expected parsed to string, got ${typeof itemStringifiedValue}`,
+  //       )
+  //     }
+  //   }
+  //   return recordOfStrings as Record<string, string>
+  // }
+
+  // prepareFromString(dehydratedString: string): void {
+  //   const recordOfStrings = SuperStore.parseToRecordOfStrings(dehydratedString)
+  //   this.prepareFromRecordOfStrings(recordOfStrings)
+  // }
 }
 
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
@@ -302,8 +260,8 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   name: string
   init: () => TValue
   ssr: TDehydratedValue extends undefined ? false : true
-  dehydrate: (value: TValue) => TDehydratedValue
-  hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
+  dehydrate: () => TDehydratedValue
+  hydrate: (dehydratedValue: TDehydratedValue) => TValue
 
   constructor({
     name,
@@ -324,8 +282,8 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     this.name = name
     this.init = init
     this.ssr = ssr
-    this.dehydrate = dehydrate
-    this.hydrate = hydrate
+    this.dehydrate = () => dehydrate(this.get())
+    this.hydrate = (dehydratedValue: TDehydratedValue) => hydrate(dehydratedValue, init)
   }
 
   get = (): TValue => {
@@ -338,24 +296,6 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
 
   redefine = (init: () => TValue): void => {
     this.init = init
-  }
-
-  stringify = (): string | undefined => {
-    try {
-      const dehydrated = this.dehydrate(this.get())
-      return this.superstore.transformer.stringify(dehydrated)
-    } catch (error: unknown) {
-      throw new Error(`Error stringifying store "${this.superstore.name}" for item "${this.name}"`, { cause: error })
-    }
-  }
-
-  parse = (dehydratedString: string): TValue => {
-    try {
-      const dehydrated = this.superstore.transformer.parse(dehydratedString)
-      return this.hydrate(dehydrated as never, this.init)
-    } catch (error: unknown) {
-      throw new Error(`Error parsing store "${this.superstore.name}" for item "${this.name}"`, { cause: error })
-    }
   }
 
   get config() {
@@ -375,9 +315,9 @@ export type SuperStoreState = { [key: string]: unknown }
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'set' | 'redefine' | 'config'
+  'get' | 'set' | 'config'
 >
-export type NiceUnsettableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
+export type NiceUnsettableRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'redefine' | 'config'
 >
@@ -386,47 +326,9 @@ export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = P
   'get' | 'config'
 >
 
-// type SuperStoreConfigItemInternal = {
-//   name: string
-//   init: () => any
-//   ssr: boolean
-//   dehydrate: (value: any) => any
-//   hydrate: (dehydratedValue: any, init: () => any) => any
-// }
-
-// export type SuperStoreConfigItem<TValue = any, TDehydratedValue = any> = {
-//   name: string
-//   init: () => TValue
-//   ssr: TDehydratedValue extends undefined ? false : true
-//   dehydrate: (value: TValue) => TDehydratedValue
-//   hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
-// }
-
-// export type SuperStoreConfigItem<TValue = any, TDehydratedValue = any> = {
-//   name: string
-//   init: () => TValue
-//   ssr: TDehydratedValue extends undefined ? false : true
-// } & TDehydratedValue extends undefined
-//   ? never
-//   : {
-//       dehydrate: IfAnyThenElse<
-//         TDehydratedValue,
-//         undefined | ((value: TValue) => TDehydratedValue),
-//         (value: TValue) => TDehydratedValue
-//       >
-//       hydrate: IfAnyThenElse<
-//         TDehydratedValue,
-//         undefined | ((dehydratedValue: TDehydratedValue, init: () => TValue) => TValue),
-//         (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
-//       >
-//     }
-// export type SuperStoreConfig = Record<string, SuperStoreConfigItem>
-
-// export type SuperStoreDefinedItem<TValue = any, TDehydratedValue = any> = {
-//   get: () => TValue
-//   set: (value: TValue) => void
-//   config: SuperStoreConfigItem<TValue, TDehydratedValue>
-// }
-// ;(globalThis as any).__POINT0_GET_SSR_PHASE__ = () => {
-//   return SuperStore.getWeak<boolean | 'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__') ?? false
-// }
+export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<TSuperStorItem, 'get' | 'set' | 'config'>
+export type ToNiceUnsettableRedefinableSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
+  TSuperStorItem,
+  'get' | 'redefine' | 'config'
+>
+export type ToNiceReadonlySuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<TSuperStorItem, 'get' | 'config'>
