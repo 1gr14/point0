@@ -7,7 +7,7 @@ import { PointsManager } from '../src/points-manager.js'
 
 const getFC = () => () => React.createElement('div', { children: 'X' })
 
-describe('points', () => {
+describe('PointsManager', () => {
   describe('pagesTree', () => {
     it('no layout pages', () => {
       const base = Point0.lets('root', 'base').root()
