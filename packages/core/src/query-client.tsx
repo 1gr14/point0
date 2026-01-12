@@ -1,4 +1,9 @@
-import { QueryClient, dehydrate, hydrate } from '@tanstack/react-query'
+import {
+  QueryClient,
+  dehydrate,
+  hydrate,
+  QueryClientProvider as QueryClientProviderOriginal,
+} from '@tanstack/react-query'
 import type { NiceUnsettableRedefinableSuperStoreItem } from './super-store.js'
 import { ss } from './super-store.js'
 import type { DehydratedState } from '@tanstack/react-query'
@@ -33,3 +38,7 @@ export const queryClient = ss.define<QueryClient, DehydratedState>('__POINT0_QUE
     return queryClient
   },
 }) as unknown as NiceUnsettableRedefinableSuperStoreItem<QueryClient, DehydratedState>
+
+export const QueryClientProvider = ({ children }: { children: React.ReactNode }) => {
+  return <QueryClientProviderOriginal client={queryClient.get()}>{children}</QueryClientProviderOriginal>
+}

@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { AppComponent, InputRaw, PagePoint } from '@point0/core'
-import { SuperStore } from '@point0/core'
+import { superstore } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'
 import { createElement } from 'react'
 import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
@@ -193,9 +193,7 @@ export async function getReadableStreamWithWrapper({
     )
 
     // Snapshot AFTER render started, in the same state scope
-    const escapedJS = escapeForInlineJSON(
-      SuperStore.dehydrateToString({ transformer: executor.pointsManager.transformer }),
-    )
+    const escapedJS = escapeForInlineJSON(superstore.stringify(executor.pointsManager.transformer))
     const compiledPrefix = (prefix ?? '').replace(
       '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
       `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">

@@ -19,6 +19,7 @@ fix all tests CompilerFile, why it brokes
 vitest check
 
 SUPERSTORE
+pointsmanager store in superstore
 Инит суперстора в энжине
 У инит есть вэлью и таргет, и плоское вэлью, которое при проверке таргет будет определено однозначно
 Энв должен также говорить нам клиент фейковый или нет

@@ -1,7 +1,7 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
-import type { EndPointType, InputRawUnknown, PointName, PointsScope, RequiredCtx, PagePoint } from '@point0/core'
-import { Request0, Response0, SuperStore } from '@point0/core'
+import type { EndPointType, InputRawUnknown, PagePoint, PointName, PointsScope, RequiredCtx } from '@point0/core'
+import { _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import { toJsonErrorResponse } from './error.js'
@@ -415,10 +415,19 @@ export class Fetcher {
       bunServer,
     })
 
-    return await SuperStore.runWithServerStorageProvider(
+    const notExistsInMiddlewareCall = new Error(
+      'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
+    )
+
+    return await _ssRunWithServerStorageState(
       {
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_RESPONSE0__: response0,
+        __POINT0_SCOPE__: notExistsInMiddlewareCall,
+        __POINT0_QUERY_CLIENT__: notExistsInMiddlewareCall,
+        __POINT0_SSR_LOCATION__: notExistsInMiddlewareCall,
+        __POINT0_CURRENT_LOCATION__: notExistsInMiddlewareCall,
+        __POINT0_UNHEAD_HEAD__: notExistsInMiddlewareCall,
       },
       async () => {
         if (prepareFetchResult.devClientsProxyResult) {

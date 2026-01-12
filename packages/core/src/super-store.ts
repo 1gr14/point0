@@ -170,10 +170,10 @@ export class SuperStore {
   }
 
   createTypedRunWithServerStorageState<TItems extends Record<string, AnyNiceSuperStoreItem>>(): <TResult>(
-    serverStorageState: SuperStoreItemsValues<TItems>,
+    serverStorageState: SuperStoreItemsValuesOrErrors<TItems>,
     callback: () => TResult,
   ) => TResult {
-    return <TResult>(serverStorageState: SuperStoreItemsValues<TItems>, callback: () => TResult): TResult => {
+    return <TResult>(serverStorageState: SuperStoreItemsValuesOrErrors<TItems>, callback: () => TResult): TResult => {
       return this.runWithServerStorageState(serverStorageState, callback)
     }
   }
@@ -182,10 +182,22 @@ export class SuperStore {
     return this.items.get(name)
   }
 
-  getValue<TValue = unknown>(name: string): TValue | undefined {
+  private static returnValueOrError<TValue = unknown>(value: TValue | Error, allowError = false): TValue | Error {
+    if (value instanceof Error) {
+      if (allowError) {
+        return value
+      }
+      throw value
+    }
+    return value
+  }
+
+  getValue<TValue = unknown>(name: string): TValue | undefined
+  getValue<TValue = unknown>(name: string, allowError: true): TValue | Error | undefined
+  getValue(name: string, allowError?: boolean) {
     const state = this.getState()
     if (name in state) {
-      return state[name] as TValue | undefined
+      return SuperStore.returnValueOrError(state[name], allowError)
     }
 
     const item = this.getItem(name)
@@ -196,12 +208,12 @@ export class SuperStore {
         this.prepared.delete(name)
         this.touched.add(name)
         state[name] = hydratedValue
-        return hydratedValue as TValue
+        return SuperStore.returnValueOrError(hydratedValue, allowError)
       }
       const initialValue = item.init()
       this.touched.add(name)
       state[name] = initialValue
-      return initialValue as TValue
+      return SuperStore.returnValueOrError(initialValue, allowError)
     }
 
     this.touched.add(name)
@@ -373,24 +385,36 @@ export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 
 export type SuperStoreState = { [key: string]: unknown }
 
+// export type ProxyResult<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+//   [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
+//     ? TValue
+//     : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
+//       ? TValue
+//       : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
+//         ? TValue
+//         : never
+// }
+
+// export type SuperStoreItemsValues<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+//   [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
+//     ? TValue
+//     : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
+//       ? TValue
+//       : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
+//         ? TValue
+//         : never
+// }
+
 export type ProxyResult<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
-  [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
-    ? TValue
-    : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
-      ? TValue
-      : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
-        ? TValue
-        : never
+  [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue : never
 }
 
 export type SuperStoreItemsValues<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
-  [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
-    ? TValue
-    : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
-      ? TValue
-      : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
-        ? TValue
-        : never
+  [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue : never
+}
+
+export type SuperStoreItemsValuesOrErrors<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+  [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue | Error : never
 }
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<

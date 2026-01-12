@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { LazyPointsModule, ReadyPointsModule } from '@point0/core'
-import { PointsManager, SuperStore } from '@point0/core'
+import { PointsManager, superstore, SuperStore } from '@point0/core'
 
 let reactRoot: Root | null = null
 
@@ -26,10 +26,7 @@ export function mount(
 
   const pointsManager = PointsManager.create(points)
   if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-    SuperStore.hydrateFromString({
-      dehydratedString: (window as any).__POINT0_DEHYDRATED_SUPER_STORE__,
-      transformer: pointsManager.transformer,
-    })
+    superstore.prepareFromString((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, pointsManager.transformer)
   }
   const appElement = createElement(App, {
     points: pointsManager,

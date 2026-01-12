@@ -4,7 +4,7 @@ import { Route0 } from '@devp0nt/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PointsManager } from './points-manager.js'
-import { SuperStore } from './super-store.js'
+import { _ssItems } from './internals.js'
 
 export type UseAdapterLocationFn = () => AnyLocation
 
@@ -66,7 +66,7 @@ export function RouterContextProvider({
   const [error, setError] = useState<Error | null>(null)
   const currentLocation = useAdapterLocation()
   useEffect(() => {
-    SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
+    _ssItems.__POINT0_CURRENT_LOCATION__.set(currentLocation)
   }, [currentLocation])
 
   // const [isSsr, setIsSsr] = useState(!!ssrLocation)

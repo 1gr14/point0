@@ -1,5 +1,5 @@
 import { Link } from '@/lib/navigate'
-import { Point0 } from '@point0/core'
+import { superstore } from '@point0/core'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
@@ -25,10 +25,10 @@ import { clientFnMutation } from './idea-create.js'
 //     var: 0,
 //   }
 // })
-const someRandom = Point0.define('someRandom', () => Math.random(), true)
-const someDate = Point0.define('someDate', () => new Date(), true)
-const someStable = Point0.define('someStable', () => 123, true)
-const someVar = Point0.define('someVar', () => 0, true)
+const someRandom = superstore.define('someRandom', () => Math.random(), true)
+const someDate = superstore.define('someDate', () => new Date(), true)
+const someStable = superstore.define('someStable', () => 123, true)
+const someVar = superstore.define('someVar', () => 0, true)
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?

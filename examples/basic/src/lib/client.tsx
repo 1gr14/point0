@@ -1,9 +1,6 @@
 import { Point0 } from '@point0/core'
-import { prisma } from './prisma.js'
-import { QueryClient } from '@tanstack/react-query'
 import superjson from 'superjson'
-
-export const queryClient = Point0.defineQueryClient(() => new QueryClient())
+import { prisma } from './prisma.js'
 
 export const client = Point0.lets('root', 'client')
   .ssr(true)

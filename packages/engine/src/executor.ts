@@ -22,14 +22,14 @@ import type {
   RequiredCtx,
   ServerExecuteAction,
   ServerExecuteResult,
+  SuperStoreInternalValues,
   UndefinedData,
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { PointsManager, Request0, Response0, SuperStore } from '@point0/core'
-import { env } from '@point0/env'
+import { _ssItems, _ssRunWithServerStorageState, PointsManager, Request0, Response0 } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
@@ -44,15 +44,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
-  serverGlobalState: {
-    __POINT0_REQUEST0__: Request0
-    __POINT0_RESPONSE0__: Response0
-    __POINT0_SCOPE__: PointsScope
-    __POINT0_QUERY_CLIENT__: QueryClient
-    __POINT0_SSR_LOCATION__: AnyLocation | undefined
-    __POINT0_CURRENT_LOCATION__: AnyLocation
-    __POINT0_UNHEAD_HEAD__: Unhead<ResolvableHead>
-  }
+  serverGlobalState: SuperStoreInternalValues
 
   private constructor({
     request,
@@ -103,11 +95,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pageLocation: AnyLocation | undefined
     response0?: Response0
   }): Promise<Executor<TRequiredCtx>> {
-    const serverGlobalState = {}
+    const serverStorageState = {}
     response0 ??= Response0.create()
     const request0 = Request0.create(request)
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
-    return await SuperStore.runWithServerStorageProvider(serverGlobalState, async () => {
+    // TODO:ASAP try remove wrapper
+    return await _ssRunWithServerStorageState(serverStorageState as never, async () => {
       return new Executor<TRequiredCtx>({
         request: request0,
         pointsManager,
@@ -119,41 +112,17 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           __POINT0_REQUEST0__: request0,
           __POINT0_RESPONSE0__: response0,
           __POINT0_SCOPE__: pointsManager.scope,
-          __POINT0_QUERY_CLIENT__: SuperStore.get<QueryClient>('__POINT0_QUERY_CLIENT__'),
+          __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.get(),
           __POINT0_SSR_LOCATION__: undefined,
           __POINT0_CURRENT_LOCATION__: currentLocation,
           __POINT0_UNHEAD_HEAD__: createHead(),
-          ...serverGlobalState,
         },
       })
     })
   }
 
-  getQueryClient(): QueryClient {
-    return env.target.is.client
-      ? SuperStore.get('__POINT0_QUERY_CLIENT__')
-      : this.serverGlobalState.__POINT0_QUERY_CLIENT__
-  }
-
-  setSsrLocation(ssrLocation: AnyLocation): void {
-    if (env.target.is.client) {
-      // TODO: figure out, is Executor really can be called in client? I think, no
-      SuperStore.set('__POINT0_SSR_LOCATION__', ssrLocation)
-      return
-    }
-    this.serverGlobalState.__POINT0_SSR_LOCATION__ = ssrLocation
-  }
-
-  setCurrentLocation(currentLocation: AnyLocation): void {
-    if (env.target.is.client) {
-      SuperStore.set('__POINT0_CURRENT_LOCATION__', currentLocation)
-      return
-    }
-    this.serverGlobalState.__POINT0_CURRENT_LOCATION__ = currentLocation
-  }
-
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
-    return await SuperStore.runWithServerStorageProvider(this.serverGlobalState, callback)
+    return await _ssRunWithServerStorageState(this.serverGlobalState, callback)
   }
 
   static createRequestByPointAndInput<TPoint extends EndPoint>({
@@ -590,8 +559,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     level?: number
   }): Promise<void> {
     if (level === 0) {
-      this.setCurrentLocation(pageLocation)
-      this.setSsrLocation(pageLocation)
+      _ssItems.__POINT0_CURRENT_LOCATION__.set(pageLocation)
+      _ssItems.__POINT0_SSR_LOCATION__.set(pageLocation)
     }
     await this.withServerGlobalState(async () => {
       const stream = await renderToReadableStream(
@@ -600,7 +569,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }),
       )
       await stream.allReady
-      const queryClientState = this.getQueryClient().getQueryCache().findAll()
+      const queryClientState = _ssItems.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
         const hash = query.queryHash
         if (seenQueryHashes.has(hash)) {
@@ -686,9 +655,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           input,
           isInfiniteQuery: point._queryResultType === 'infiniteQuery',
         })
-        const query = this.getQueryClient()
+        const query = _ssItems.__POINT0_QUERY_CLIENT__
+          .get()
           .getQueryCache()
-          .build(this.getQueryClient(), { queryKey, queryHash: hashKey(queryKey) })
+          .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
         if (error) {
           query.setState({
             data: undefined,
@@ -697,9 +667,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             fetchStatus: 'idle',
           })
         } else {
-          const query = this.getQueryClient()
+          const query = _ssItems.__POINT0_QUERY_CLIENT__
+            .get()
             .getQueryCache()
-            .build(this.getQueryClient(), { queryKey, queryHash: hashKey(queryKey) })
+            .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
           if (point._queryResultType === 'infiniteQuery') {
             const pageParam =
               (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
@@ -728,7 +699,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   async getQueryClientDehydratedState(): Promise<DehydratedState> {
     return await this.withServerGlobalState(async () => {
-      const dehydratedState = dehydrate(this.getQueryClient(), {
+      const dehydratedState = dehydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), {
         shouldDehydrateQuery: (query) => {
           // This will include all queries, including failed ones
           return true
@@ -753,7 +724,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const prefetchPageQueryOptions = pagePoint._getServerQueryOptions({
         input,
         // location: this.pageLocation as AnyLocation,
-        // queryClient: this.getQueryClient(),
+        // queryClient: _ssItems.__POINT0_QUERY_CLIENT__.get(),
         queryOptions: undefined,
         fetchOptions: undefined,
         outputType: 'queryClientDehydratedState',
@@ -762,7 +733,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
 
       // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = SuperStore.getConfig('__POINT0_QUERY_CLIENT__')?.init()
+      const tempQueryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
       if (!tempQueryClient) {
         throw new Error('Query client not found')
       }
@@ -775,7 +746,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
       const tempDehydratedState = dehydrate(tempQueryClient)
 
-      hydrate(this.getQueryClient(), tempDehydratedState)
+      hydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), tempDehydratedState)
     })
   }
 }

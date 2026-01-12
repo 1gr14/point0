@@ -14,20 +14,13 @@ import type {
   DehydratedState,
   InfiniteData,
   MutationOptions,
+  QueryClient,
   UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import {
-  QueryClient,
-  dehydrate,
-  hydrate,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
@@ -36,10 +29,10 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
+import { _ssItems } from './internals.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
-import type { SuperStoreDefinedItem } from './super-store.js'
-import { SuperStore } from './super-store.js'
+import { superstore } from './super-store.js'
 import type {
   AnyPoint,
   AnyUseLoaderResult,
@@ -293,6 +286,7 @@ export class Point0<
   private readonly _letsEndPointType: TLetsEndPointType
   inputSchema: TInputSchema
   private readonly _serverInputSchema: InputSchema | undefined
+  // TODO:ASAP it is false or undefined
   readonly _tranformer: DataTransformerExtended
   _fetcher: FetchConfig
   readonly _ssr: boolean
@@ -4041,7 +4035,7 @@ export class Point0<
     location ??=
       this.type === 'page' || this.type === 'layout'
         ? this._getSelfLocationByAnotherLocationOrInput(location, input)
-        : Point0._currentLocation.get()
+        : _ssItems.__POINT0_CURRENT_LOCATION__.get()
     for (const clientExecuteAction of this._clientExecuteActions) {
       switch (clientExecuteAction.type) {
         case 'input': {
@@ -4130,7 +4124,7 @@ export class Point0<
   //   location ??=
   //     this.type === 'page' || this.type === 'layout'
   //       ? this._getSelfLocationByAnotherLocationOrInput(location, input)
-  //       : Point0._currentLocation.get()
+  //       : _ssItems.currentLocation.get()
   //   for (const clientExecuteAction of this._clientExecuteActions) {
   //     switch (clientExecuteAction.type) {
   //       case 'input': {
@@ -4215,7 +4209,7 @@ export class Point0<
   private _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
     const route = this._route
     if (!route) {
-      return Point0._currentLocation.get()
+      return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
     return route.getLocation(route.flat({ ...location.searchParams, ...location.params })) as KnownLocation<
       CurrentRouteDefinition<TRouteDefinition>
@@ -4228,10 +4222,10 @@ export class Point0<
   ): AnyLocation {
     const route = this._route
     if (!route) {
-      return location ?? Point0._currentLocation.get()
+      return location ?? _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
     if (!input && !location) {
-      return Point0._currentLocation.get()
+      return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
     if (location) {
       return route.getLocation(route.flat({ ...location.searchParams, ...location.params, ...input }))
@@ -4490,7 +4484,7 @@ export class Point0<
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const fromScope = this._fetcher.scope ?? SuperStore.getWeak('__POINT0_SCOPE__')
+    const fromScope = this._fetcher.scope ?? _ssItems.__POINT0_SCOPE__.get()
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
@@ -4882,7 +4876,7 @@ export class Point0<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
-    queryClient ??= Point0.getQueryClient()
+    queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
     const queryFn = async () => {
       const serverData = await (async () => {
@@ -5135,7 +5129,7 @@ export class Point0<
       try {
         const pageParam = ctx.pageParam ?? this._infiniteQueryOptions.initialPageParam
         const serverData = await (async () => {
-          queryClient ??= Point0.getQueryClient()
+          queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
           const infiniteServerKey = this._getServerQueryKey({ input, outputType: 'data', isInfiniteQuery: true })
           const infiniteCachedServerData = queryClient.getQueryData(infiniteServerKey)
           if (infiniteCachedServerData) {
@@ -5291,7 +5285,7 @@ export class Point0<
   //   if (isAsyncQueryFn) {
   //     return
   //   }
-  //   queryClient ??= Point0.getQueryClient()
+  //   queryClient ??= _ssItems.queryClient.get()
   //   const cache = queryClient.getQueryCache()
   //   const exQuery = cache.find({ queryKey: queryOptions.queryKey as never, stale: false })
   //   if (exQuery) {
@@ -5620,7 +5614,7 @@ export class Point0<
     if (!suitablePointTypes.includes(this.type)) {
       return
     }
-    const queryClient = providedQueryClient ?? Point0.getQueryClient()
+    const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
     const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, {
       location,
       queryClient,
@@ -5707,7 +5701,7 @@ export class Point0<
     if (!suitablePointTypes.includes(this.type)) {
       return
     }
-    const queryClient = providedQueryClient ?? Point0.getQueryClient()
+    const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
     const queryOptions = this.getInfiniteQueryOptions(input as never, infiniteQueryOptions, {
       location,
       queryClient,
@@ -5743,7 +5737,7 @@ export class Point0<
     if (this.type !== 'page') {
       throw new Error('Point type is not page')
     }
-    queryClient ??= Point0.getQueryClient()
+    queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
     const _queryOptions = this._getServerQueryOptions({
       input,
       queryOptions,
@@ -5855,7 +5849,6 @@ export class Point0<
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>(pageWithLayouts.flatMap((p) => p._onPrefetchFns))]
     const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
-        // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
         return await fn()
       }),
     )
@@ -6690,7 +6683,7 @@ export class Point0<
   getValue(
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> {
-    const value = SuperStore.getWeak<
+    const value = superstore.getValue<
       FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
     >(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`)
     if (!value) {
@@ -6706,7 +6699,7 @@ export class Point0<
   ):
     | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
     | undefined {
-    const value = SuperStore.getWeak<
+    const value = superstore.getValue<
       FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
     >(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`)
     return value
@@ -6764,7 +6757,7 @@ export class Point0<
     //   })
     // }
     const value = result.data
-    SuperStore.setWeak(
+    superstore.setValue(
       `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
       value,
     )
@@ -6854,65 +6847,13 @@ export class Point0<
 
   // super store
 
-  static define = SuperStore.define.bind(SuperStore)
-
-  static defineQueryClient(init: () => QueryClient): SuperStoreDefinedItem<QueryClient, DehydratedState> {
-    Point0._queryClient.config.init = init
-    return Point0._queryClient
-  }
-
-  static getQueryClient(): QueryClient {
-    return Point0._queryClient.get()
-  }
-
-  static readonly _ssrLocation = SuperStore.define<AnyLocation | undefined, true>(
-    '__POINT0_SSR_LOCATION__',
-    () => undefined,
-    true,
-  )
-  private static readonly _currentLocation = SuperStore.define<AnyLocation, true>(
-    '__POINT0_CURRENT_LOCATION__',
-    () => Route0.getLocation('/'),
-    true,
-  )
-  private static readonly _queryClient = SuperStore.define<QueryClient, DehydratedState>(
-    '__POINT0_QUERY_CLIENT__',
-    () => new QueryClient(),
-    (queryClient) =>
-      dehydrate(queryClient, {
-        shouldDehydrateQuery: () => {
-          // This will include all queries, including failed ones
-          return true
-        },
-      }),
-    (dehydratedState, createQueryClient) => {
-      const queryClient = createQueryClient()
-      hydrate(queryClient, dehydratedState)
-
-      const prefetchPageQuery = queryClient
-        .getQueryCache()
-        .getAll()
-        .find(
-          (q: any) => q.state?.data && typeof q.state.data === 'object' && 'queryClientDehydratedState' in q.state.data,
-        )
-
-      if (!prefetchPageQuery) {
-        return queryClient
-      }
-
-      const relatedQueriesDehydratedState = (prefetchPageQuery.state.data as { dehydratedState: DehydratedState })
-        .dehydratedState
-      hydrate(queryClient, relatedQueriesDehydratedState)
-
-      return queryClient
-    },
-  )
-
   static getPointsManager = PointsManager.getPointsManager.bind(PointsManager)
 }
 
 export * from './cookies-store.js'
+export * from './internals.js'
 export * from './points-manager.js'
+export * from './query-client.js'
 export * from './request0.js'
 export * from './response0.js'
 export * from './router.js'

@@ -1,5 +1,5 @@
 import { Link } from '@/lib/navigate'
-import { Point0 } from '@point0/core'
+import { superstore } from '@point0/core'
 import { useEffect, useState } from 'react'
 import * as z from 'zod'
 import { generalLayout } from '../layouts/general.js'
@@ -7,8 +7,8 @@ import { clientCtx1, clientCtx2 } from '../lib/client-ctx.js'
 import { client } from '../lib/client.js'
 import { routes } from '../lib/routes.js'
 // import { ExternalHelperComponent, ExternalHelperComponent2 } from './home.helper.js'
-import { ExternalHelperComponent } from './home.helper.js'
 import Icon from '../assets/icon.svg?react'
+import { ExternalHelperComponent } from './home.helper.js'
 
 // const something = SuperStore.define('something', () => {
 //   return {
@@ -19,9 +19,9 @@ import Icon from '../assets/icon.svg?react'
 //   }
 // })
 // const someRandom = Point0.define('someRandom', () => Math.random(), true)
-const someDate = Point0.define('someDate', () => new Date(), true)
-const someStable = Point0.define('someStable', () => 123, true)
-const someVar = Point0.define('someVar', () => 0, true)
+const someDate = superstore.define('someDate', () => new Date(), true)
+const someStable = superstore.define('someStable', () => 123, true)
+const someVar = superstore.define('someVar', () => 0, true)
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?

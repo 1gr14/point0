@@ -1,6 +1,6 @@
 import { env } from '@point0/env'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
-import { SuperStore } from './super-store.js'
+import { _ssItems } from './internals.js'
 
 export type ResponseHeaders = Record<string, string>
 export type ResponseCookies = Record<string, CookieOptions>
@@ -234,12 +234,7 @@ export class Response0 {
         'You can not get respnse0 not in server. Please call Respons0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )
     }
-    const response0 = SuperStore.getWeak<Response0 | undefined>('__POINT0_RESPONSE0__')
-    if (!response0) {
-      throw new Error(
-        'Response0 is undefined while try to get it from server. Please call Respons0.get() only inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
-      )
-    }
+    const response0 = _ssItems.__POINT0_RESPONSE0__.get()
     return response0
   }
 }

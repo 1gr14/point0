@@ -1,9 +1,9 @@
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
+import { env } from '@point0/env'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { env } from '@point0/env'
-import { SuperStore } from './super-store.js'
+import { _ssItems } from './internals.js'
 import type {
   DataTransformerExtended,
   EndPoint,
@@ -82,8 +82,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.ssr = this.root._ssr
     PointsManager.setPointsManager(this)
     if (env.target.is.client) {
-      SuperStore.setWeak('__POINT0_SCOPE__', this.scope)
-      SuperStore.setWeak('__POINT0_TRANSFORMER__', this.transformer)
+      _ssItems.__POINT0_SCOPE__.set(this.scope)
     }
   }
 
@@ -752,7 +751,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     // all this needed only for router, to know which routes and pages exists in current scope
     // we can not here use env.scope, because for server it can be 'root' while for client it can be 'site' for example
     // and this code will be executed on server
-    scope ??= SuperStore.getWeak<PointsScope>('__POINT0_SCOPE__')
+    scope ??= _ssItems.__POINT0_SCOPE__.get()
     if (!scope) {
       throw new Error('Points scope not found if SuperStore. You should provide scope.')
     }

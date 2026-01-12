@@ -2,19 +2,20 @@ import { defineConfig, type Options } from 'tsup'
 import { fixImportsPlugin } from 'esbuild-fix-imports-plugin'
 
 const general = {
-  entry: ['src/index.ts'],
-  // entry: [
-  //   'src/cookies-store.ts',
-  //   'src/index.ts',
-  //   'src/points-manager.ts',
-  //   'src/request0.ts',
-  //   'src/response0.ts',
-  //   'src/router.tsx',
-  //   'src/super-store.ts',
-  //   'src/types.ts',
-  //   'src/unhead.ts',
-  //   'src/utils.ts',
-  // ],
+  entry: [
+    'src/cookies-store.ts',
+    'src/index.ts',
+    'src/internals.ts',
+    'src/points-manager.ts',
+    'src/query-client.tsx',
+    'src/request0.ts',
+    'src/response0.ts',
+    'src/router.tsx',
+    'src/super-store.ts',
+    'src/types.ts',
+    'src/unhead.ts',
+    'src/utils.ts',
+  ],
   clean: false,
   dts: true,
   sourcemap: true,
@@ -23,7 +24,7 @@ const general = {
   target: 'es2022',
   external: ['bun:test'],
   treeshake: true,
-  bundle: true, // DO NOT DISABLE BUNDLE!!! IT WILL BREAKE SUPER STORE!!!
+  bundle: false,
   esbuildPlugins: [fixImportsPlugin()],
   platform: 'node',
   tsconfig: './tsconfig.json',

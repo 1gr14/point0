@@ -10,6 +10,7 @@ import type {
 } from '@devp0nt/route0'
 import type { PagesTree, RouterStatus, UseAdapterLocationFn } from '@point0/core'
 import {
+  _ssItems,
   _wrapNavigate,
   _wrapUseNavigate,
   Point0,
@@ -285,7 +286,7 @@ export const createLink0 = <
 }
 
 export const Router = ({
-  ssrLocation = Point0._ssrLocation.get(),
+  ssrLocation = _ssItems.__POINT0_SSR_LOCATION__.get(),
   addHashToLocation,
   routes = Point0.getPointsManager().routes,
   status,
