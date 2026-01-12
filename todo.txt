@@ -228,6 +228,7 @@ LAYOUT
 REFACTROING 1
 route0, error0 → point0?
 bin → cli
+Он саксес квери и прочее дополнительно надо вызывать при Дип шмип фетре
 Разрешить лэйоут передавать через метод, и сделать его автоматически провайдером (просто добавить проверку на инмут лэйоута, если сходится, то и норм)
 ? Квериклиент добавить в методы рута, и сделать его скоуп зависимым (да норм же иметь глобальный)
 refactor types names and order and any points, etc any things. Поправляя эни попробовать отказаться от ифэни в пользу стринг экстендс
@@ -356,10 +357,11 @@ MDX
 ??? .lets('multiPage', '/xxx/:module').modules({routePart1: () => import(./xxx.mdx), routePart2: () => import(./yyy.mdx)}).multiPage(({module})); prefetch needed module on page visit in mount fn
 
 FILEROUTING
-Функция файлроут, которая автоматически вставляет в себя строку текущего файла по отношению к файлу .файлроут или текущей папке. И к ней даже к строка можно дописать плюсики или как стринглитерал заиспользовать
-() => '' → will be rewritten to () => 'currentfilepath'
-() => '+zxc' → will be rewritten () => 'currentfilepath+zxc'
-() => Route0.create('+zxc') → will be rewritten () => Route0.create('currentfilepath+zxc')
+Просто > ставить в строку, чтобы файловый роутинг получить
+> файлроут, которая автоматически вставляет в себя строку текущего файла по отношению к файлу .файлроут или текущей папке. И к ней даже к строка можно дописать плюсики или как стринглитерал заиспользовать
+'>' → will be rewritten to () => '>currentfilepath'
+'>+zxc' → will be rewritten () => '>currentfilepath+zxc'
+Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepath+zxc')
 
 STATIC
 static site generator; 

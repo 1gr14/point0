@@ -23,6 +23,7 @@ import type {
   ServerExecuteAction,
   ServerExecuteResult,
   SuperStoreInternalValues,
+  SuperStoreInternalValuesOrErrors,
   UndefinedData,
   UndefinedLoaderOutput,
   UnknownCtx,
@@ -87,6 +88,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     currentLocation,
     requiredCtx,
     response0,
+    serverStorageState: providedServerStorageState,
   }: {
     request: Request | Request0
     points: PointsManager<boolean, TRequiredCtx> | ReadyPointsModule<TRequiredCtx> | LazyPointsModule<TRequiredCtx>
@@ -94,31 +96,48 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
     response0?: Response0
+    serverStorageState?: SuperStoreInternalValuesOrErrors
   }): Promise<Executor<TRequiredCtx>> {
-    const serverStorageState = {}
     response0 ??= Response0.create()
     const request0 = Request0.create(request)
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
-    // TODO:ASAP try remove wrapper
-    return await _ssRunWithServerStorageState(serverStorageState as never, async () => {
-      return new Executor<TRequiredCtx>({
-        request: request0,
-        pointsManager,
-        pageLocation,
-        requiredCtx,
-        serverExecuteActionsWithOutput: [],
-        response0,
-        serverStorageState: {
-          __POINT0_REQUEST0__: request0,
-          __POINT0_RESPONSE0__: response0,
-          __POINT0_SCOPE__: pointsManager.scope,
-          __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.get(),
-          __POINT0_SSR_LOCATION__: undefined,
-          __POINT0_CURRENT_LOCATION__: currentLocation,
-          __POINT0_UNHEAD_HEAD__: createHead(),
-        },
-      })
+    const serverStorageState = Object.assign(providedServerStorageState || {}, {
+      __POINT0_REQUEST0__: request0,
+      __POINT0_RESPONSE0__: response0,
+      __POINT0_SCOPE__: pointsManager.scope,
+      __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
+      __POINT0_SSR_LOCATION__: undefined,
+      __POINT0_CURRENT_LOCATION__: currentLocation,
+      __POINT0_UNHEAD_HEAD__: createHead(),
+    } as SuperStoreInternalValues)
+    return new Executor<TRequiredCtx>({
+      request: request0,
+      pointsManager,
+      pageLocation,
+      requiredCtx,
+      serverExecuteActionsWithOutput: [],
+      response0,
+      serverStorageState,
     })
+    // return await _ssRunWithServerStorageState(serverStorageState as never, async () => {
+    //   return new Executor<TRequiredCtx>({
+    //     request: request0,
+    //     pointsManager,
+    //     pageLocation,
+    //     requiredCtx,
+    //     serverExecuteActionsWithOutput: [],
+    //     response0,
+    //     serverStorageState: {
+    //       __POINT0_REQUEST0__: request0,
+    //       __POINT0_RESPONSE0__: response0,
+    //       __POINT0_SCOPE__: pointsManager.scope,
+    //       __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.get(),
+    //       __POINT0_SSR_LOCATION__: undefined,
+    //       __POINT0_CURRENT_LOCATION__: currentLocation,
+    //       __POINT0_UNHEAD_HEAD__: createHead(),
+    //     },
+    //   })
+    // })
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {

@@ -5,11 +5,11 @@ import type { TestProject, TestProjectFactoryCreateProjectOptions } from './util
 import { TestProjectFactory } from './utils/project.js'
 import { throwOnBundlersLengthNot2 } from './utils/other.js'
 
-setDefaultTimeout(30000)
+setDefaultTimeout(20000)
 
 const tpf = TestProjectFactory.create({
   namespace: 'dev',
-  portsRange: [3000, 3099],
+  portsRange: [3200, 3299],
 })
 
 type ItFn = (done: (err?: unknown) => any) => any

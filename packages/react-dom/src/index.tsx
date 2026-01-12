@@ -26,7 +26,7 @@ export function mount(
 
   const pointsManager = PointsManager.create(points)
   if (typeof window !== 'undefined' && typeof (window as any)?.__POINT0_DEHYDRATED_SUPER_STORE__ !== 'undefined') {
-    superstore.parse((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, pointsManager.transformer)
+    superstore.prepare((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, pointsManager.transformer)
   }
   const appElement = createElement(App, {
     points: pointsManager,

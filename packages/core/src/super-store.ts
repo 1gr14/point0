@@ -5,6 +5,7 @@ import { env } from '@point0/env'
   ? null
   : // eslint-disable-next-line @typescript-eslint/no-require-imports
     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
+;(globalThis as any).__POINT0_SUPER_STORE_CLIENT_STATE__ ||= {}
 
 import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
@@ -21,7 +22,7 @@ export class SuperStore {
 
   serverStorage: SuperStoreServerStorage | undefined
 
-  clientState: SuperStoreState = {}
+  clientState: SuperStoreState
 
   transformer: DataTransformerExtended | undefined | false
 
@@ -29,6 +30,7 @@ export class SuperStore {
     if (env.target.is.server) {
       this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
     }
+    this.clientState = (globalThis as any).__POINT0_SUPER_STORE_CLIENT_STATE__
   }
 
   reset: {
@@ -301,11 +303,14 @@ export class SuperStore {
     return this.getSuitableTransformer(transformer).parse(dehydratedString)
   }
 
-  prepare(dehydrated: string): void
-  prepare(dehydrated: Record<string, unknown>): void
-  prepare(dehydrated: Record<string, unknown> | string): void {
+  prepare(dehydrated: string, transformer?: DataTransformerExtended | false | undefined): void
+  prepare(dehydrated: Record<string, unknown>, transformer?: DataTransformerExtended | false | undefined): void
+  prepare(
+    dehydrated: Record<string, unknown> | string,
+    transformer?: DataTransformerExtended | false | undefined,
+  ): void {
     if (typeof dehydrated === 'string') {
-      dehydrated = this.parse(dehydrated)
+      dehydrated = this.parse(dehydrated, transformer)
     }
     for (const [itemName, dehydratedValue] of Object.entries(dehydrated)) {
       this.prepared.set(itemName, dehydratedValue)

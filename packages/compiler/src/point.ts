@@ -696,25 +696,7 @@ export class CompilerPoint<TValid extends boolean = any> {
       if (method.name === 'clientLoader') {
         this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
       }
-      if (
-        [
-          // 'mutationOptions',
-          // 'queryOptions',
-          // 'infiniteQueryOptions',
-          // 'pageQueryOptions',
-          // 'componentQueryOptions',
-          // 'providerQueryOptions',
-          // 'layoutQueryOptions',
-          // 'fetchOptions',
-          'scrollPosition',
-          'scrollRestore',
-          'onPrefetch',
-          'prefetchOnLinkHover',
-          // 'query',
-          // 'infiniteQuery',
-          'mutation',
-        ].includes(method.name)
-      ) {
+      if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchOnLinkHover', 'mutation'].includes(method.name)) {
         this.removeMethodArgs({ nodePath: method.nodePath })
       } else if (!method.underSsr) {
         if (method.name === 'page') {
@@ -733,6 +715,16 @@ export class CompilerPoint<TValid extends boolean = any> {
             'outer',
             'component',
             'layout',
+            // 'query',
+            // 'infiniteQuery',
+            // 'mutationOptions',
+            // 'queryOptions',
+            // 'infiniteQueryOptions',
+            // 'pageQueryOptions',
+            // 'componentQueryOptions',
+            // 'providerQueryOptions',
+            // 'layoutQueryOptions',
+            // 'fetchOptions',
           ].includes(method.name)
         ) {
           this.removeMethodArgs({ nodePath: method.nodePath })

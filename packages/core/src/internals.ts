@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import type { ResolvableHead, Unhead } from 'unhead/types'
-import type { Request0, Response0, SuperStoreItemsValues } from './index.js'
+import type { Request0, Response0, SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './index.js'
 import { queryClient } from './query-client.js'
 import { ss } from './super-store.js'
 import type { PointsScope } from './types.js'
@@ -19,3 +19,4 @@ export const _ssItems = {
 export const _ssProxy = ss.proxy(_ssItems)
 export const _ssRunWithServerStorageState = ss.createTypedRunWithServerStorageState<typeof _ssItems>()
 export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ssItems>
+export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ssItems>
