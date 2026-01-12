@@ -140,7 +140,7 @@ export class SuperStore {
     return item
   }
 
-  proxy<TItems extends Record<string, NiceSuperStoreItem>>(items: TItems): ProxyResult<TItems> {
+  proxy<TItems extends Record<string, AnyNiceSuperStoreItem>>(items: TItems): ProxyResult<TItems> {
     const proxy = new Proxy(
       {},
       {
@@ -154,26 +154,26 @@ export class SuperStore {
           if (typeof prop !== 'string') {
             return false
           }
-          items[prop].set(value)
-          return true
+          const item = items[prop]
+          if ('readonly' in item && item.readonly) {
+            throw new Error(`Cannot set value to readonly item "${prop}"`)
+          }
+          if ('set' in item && typeof item.set === 'function') {
+            item.set(value)
+            return true
+          }
+          throw new Error(`Cannot set value to item "${prop}"`)
         },
       },
     ) as ProxyResult<TItems>
     return proxy
   }
 
-  createTypedRunWithServerStorageState<TItems extends Record<string, NiceSuperStoreItem>>(): <TResult>(
-    serverStorageState: {
-      [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any> ? TValue : never
-    },
+  createTypedRunWithServerStorageState<TItems extends Record<string, AnyNiceSuperStoreItem>>(): <TResult>(
+    serverStorageState: SuperStoreItemsValues<TItems>,
     callback: () => TResult,
   ) => TResult {
-    return <TResult>(
-      serverStorageState: {
-        [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any> ? TValue : never
-      },
-      callback: () => TResult,
-    ): TResult => {
+    return <TResult>(serverStorageState: SuperStoreItemsValues<TItems>, callback: () => TResult): TResult => {
       return this.runWithServerStorageState(serverStorageState, callback)
     }
   }
@@ -312,6 +312,7 @@ export class SuperStore {
 }
 
 export const superstore = SuperStore.instance
+export const ss = SuperStore.instance
 
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   superstore: SuperStore
@@ -320,6 +321,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   ssr: TDehydratedValue extends undefined ? false : true
   dehydrate: () => TDehydratedValue
   hydrate: (dehydratedValue: TDehydratedValue) => TValue
+  readonly = false
 
   constructor({
     name,
@@ -371,14 +373,30 @@ export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 
 export type SuperStoreState = { [key: string]: unknown }
 
+export type ProxyResult<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+  [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
+    ? TValue
+    : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
+      ? TValue
+      : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
+        ? TValue
+        : never
+}
+
+export type SuperStoreItemsValues<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
+  [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any>
+    ? TValue
+    : TItems[K] extends NiceUnsettableRedefinableSuperStoreItem<infer TValue, any>
+      ? TValue
+      : TItems[K] extends NiceReadonlySuperStoreItem<infer TValue, any>
+        ? TValue
+        : never
+}
+
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'set' | 'config'
 >
-
-export type ProxyResult<TItems extends Record<string, NiceSuperStoreItem>> = {
-  [K in keyof TItems]: TItems[K] extends NiceSuperStoreItem<infer TValue, any> ? TValue : never
-}
 export type NiceUnsettableRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'redefine' | 'config'
@@ -387,6 +405,10 @@ export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = P
   SuperStoreItem<TValue, TDehydratedValue>,
   'get' | 'config'
 >
+export type AnyNiceSuperStoreItem<TValue = any, TDehydratedValue = any> =
+  | NiceSuperStoreItem<TValue, TDehydratedValue>
+  | NiceUnsettableRedefinableSuperStoreItem<TValue, TDehydratedValue>
+  | NiceReadonlySuperStoreItem<TValue, TDehydratedValue>
 
 export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<TSuperStorItem, 'get' | 'set' | 'config'>
 export type ToNiceUnsettableRedefinableSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
