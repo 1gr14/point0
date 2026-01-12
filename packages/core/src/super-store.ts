@@ -3,8 +3,14 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
-export class SuperStore {
-  name: string
+class SuperStore {
+  static instance: SuperStore = new SuperStore()
+
+  _reset(): SuperStore {
+    const newInstance = new SuperStore()
+    SuperStore.instance = newInstance
+    return newInstance
+  }
 
   prepared = new Map<string, unknown>()
 
@@ -16,15 +22,27 @@ export class SuperStore {
 
   clientState: SuperStoreState = {}
 
-  transformer: DataTransformerExtended
+  transformer: DataTransformerExtended | undefined | false
 
-  constructor(options: { name: string; transformer?: DataTransformer }) {
+  private constructor() {
     if (env.target.is.server) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       this.serverStorage = new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>
     }
-    this.transformer = options.transformer ? toExtendedTransformer(options.transformer) : blankDataTransformerExtended
-    this.name = options.name
+  }
+
+  setTransformer(transformer: DataTransformer | false): void {
+    this.transformer = transformer === false ? false : toExtendedTransformer(transformer)
+  }
+
+  getSuitableTransformer(providedTransformer: DataTransformerExtended | false | undefined): DataTransformerExtended {
+    if (providedTransformer === false) {
+      return blankDataTransformerExtended
+    }
+    if (this.transformer === false) {
+      return blankDataTransformerExtended
+    }
+    return providedTransformer ?? this.transformer ?? blankDataTransformerExtended
   }
 
   init() {
@@ -192,12 +210,12 @@ export class SuperStore {
     return dehydrated
   }
 
-  stringify(): string {
-    return this.transformer.stringify(this.dehydrate()) as string
+  stringify(transformer?: DataTransformerExtended | false | undefined): string {
+    return this.getSuitableTransformer(transformer).stringify(this.dehydrate()) as string
   }
 
-  parse(dehydratedString: string): Record<string, unknown> {
-    return this.transformer.parse(dehydratedString)
+  parse(dehydratedString: string, transformer?: DataTransformerExtended | false | undefined): Record<string, unknown> {
+    return this.getSuitableTransformer(transformer).parse(dehydratedString)
   }
 
   prepare(dehydrated: Record<string, unknown>): void {
@@ -206,8 +224,8 @@ export class SuperStore {
     }
   }
 
-  prepareFromString(dehydratedString: string): void {
-    this.prepare(this.parse(dehydratedString))
+  prepareFromString(dehydratedString: string, transformer?: DataTransformerExtended | false | undefined): void {
+    this.prepare(this.parse(dehydratedString, transformer))
   }
 
   // dehydrateToRecordOfStrings(): Record<string, string> {
@@ -254,6 +272,8 @@ export class SuperStore {
   //   this.prepareFromRecordOfStrings(recordOfStrings)
   // }
 }
+
+export const superstore = SuperStore.instance
 
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   superstore: SuperStore
