@@ -3,7 +3,7 @@ import type { AsyncLocalStorage } from 'node:async_hooks'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
-class SuperStore {
+export class SuperStore {
   static instance: SuperStore = new SuperStore()
 
   _reset(): SuperStore {
@@ -139,6 +139,8 @@ class SuperStore {
     this.items.set(name, item)
     return item
   }
+
+  defineMany(items: Record<string, any>): void {}
 
   getItem<TValue = unknown>(name: string): SuperStoreItem<TValue> | undefined {
     return this.items.get(name)
@@ -332,6 +334,13 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
 export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 
 export type SuperStoreState = { [key: string]: unknown }
+
+export type SuperStoreDefineItemConfig<TValue = any, TDehydratedValue = any> = {
+  init: () => TValue
+  ssr: TDehydratedValue extends undefined ? false : true
+  dehydrate: (value: TValue) => TDehydratedValue
+  hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
+}
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
