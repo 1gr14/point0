@@ -37,7 +37,9 @@ function setupFakeBrowser() {
     // Bun / fast path
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Window } = require('happy-dom')
-    const window = new Window()
+    const window = new Window({
+      url: 'http://localhost/',
+    })
 
     globalThis.window = window
     globalThis.document = window.document
@@ -49,7 +51,9 @@ function setupFakeBrowser() {
     // Node / Jest fallback
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { JSDOM } = require('jsdom')
-    const dom = new JSDOM('<!doctype html><html><body></body></html>')
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'http://localhost/',
+    })
 
     globalThis.window = dom.window
     globalThis.document = dom.window.document

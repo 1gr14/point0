@@ -138,8 +138,9 @@ export class PlaywrightPage {
       }
 
       const observer = new MutationObserver(() => {
-        clearTimeout(timeout)
-        timeout = setTimeout(notify, 20)
+        // clearTimeout(timeout)
+        // timeout = setTimeout(notify, 20)
+        notify()
       })
 
       const start = () => {
