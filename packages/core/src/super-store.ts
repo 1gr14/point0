@@ -20,18 +20,11 @@ export class SuperStore {
 
   items = new Map<string, SuperStoreItem>()
 
-  serverStorage: SuperStoreServerStorage | undefined
+  serverStorage: SuperStoreServerStorage | undefined = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
 
-  clientState: SuperStoreState
+  clientState: SuperStoreState = (globalThis as any).__POINT0_SUPER_STORE_CLIENT_STATE__
 
   transformer: DataTransformerExtended | undefined | false
-
-  private constructor() {
-    if (env.target.is.server) {
-      this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
-    }
-    this.clientState = (globalThis as any).__POINT0_SUPER_STORE_CLIENT_STATE__
-  }
 
   reset: {
     (): void
@@ -77,6 +70,11 @@ export class SuperStore {
     } else {
       this.serverStorage = undefined
     }
+  }
+
+  fixServerStorage(AsyncLocalStorageClass: typeof AsyncLocalStorage): void {
+    ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= new AsyncLocalStorageClass()
+    this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
   }
 
   setTransformer(transformer: DataTransformer | false): void {

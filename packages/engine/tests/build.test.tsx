@@ -94,7 +94,7 @@ describe('build', () => {
       `)
       }),
       {
-        // retry: 3,
+        retry: 3,
       },
     )
 

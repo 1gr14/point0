@@ -321,10 +321,12 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     }
     const request = args[0]
     const { requiredCtx } = args[1] ?? {}
-    return await this.server.fetch({
+    const result = await this.server.fetchDetailed({
       request,
       requiredCtx,
     })
+    // TODO:ASAP if FetchRecorder then pass it there
+    return result.response
   }
 
   async execute<TPoint extends EndPoint>({

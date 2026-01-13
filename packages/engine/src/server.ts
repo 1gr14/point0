@@ -15,6 +15,7 @@ import type {
   ExtractedViteConfig,
   EngineOptionsCompilerParsed,
 } from './config.js'
+import type { FetcherFetchDetailedResult } from './fetcher.js'
 import { Fetcher } from './fetcher.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBunBuildConfigDefinition, ServerBunPluginsDefinition } from './utils.js'
@@ -750,6 +751,23 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return { server, publicdir: publicdirBuildOutput }
   }
 
+  async fetchDetailed({
+    request,
+    requiredCtx,
+    scope,
+    bunServer,
+  }: {
+    request: Request
+    requiredCtx: RequiredCtx
+    scope?: PointsScope
+    bunServer?: Bun.Server<unknown>
+  }): Promise<FetcherFetchDetailedResult> {
+    if (!this.isInitialized()) {
+      throw new Error('Server is not initialized')
+    }
+    return await this.fetcher.fetchDetailed({ request, requiredCtx, scope, bunServer })
+  }
+
   async fetch({
     request,
     requiredCtx,
@@ -761,9 +779,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<Response | undefined> {
-    if (!this.isInitialized()) {
-      throw new Error('Server is not initialized')
-    }
-    return await this.fetcher.fetch({ request, requiredCtx, scope, bunServer })
+    const result = await this.fetchDetailed({ request, requiredCtx, scope, bunServer })
+    return result.response
   }
 }
