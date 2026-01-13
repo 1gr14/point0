@@ -3,12 +3,14 @@
 --------------------------
 
 TEST
-superstore clientonly and if there and fake client add to special {[id]: {}} store part → __POINT0_CLIENT_SCOPE__: this.scope, it is here for example
+getFakeClient remove from internals, use from superstore
+executor do not need pointsManager, it needs fromScope
+clientServerTransferred → ssr
 fix points so it should not define by itslef __POINT0_CLIENT_SCOPE__ it should be done via superstore in mount
 fix init and create engine input types
-Суперстор: визбраузер (скоуп, фейк клиент) - фетч (реквест, эффектс) - экзекьютор всё прочее
-
 Помечать оригинальный ли мы фетч используем, то есть пусть он просто будет андефайнед, и только если андефайнед мы требуем сервер урл
+superstore getStates just return all states, but everywhere we can just use getState(policy)
+
 Хранить экзекьютед лоадеры и ктксы в суперсторе, и фетч пусть на сервере всегда заменяется на энжин фетч
 TestEngne - Энжина как энжина, просто разрешает вместо настроек клиента или сервера передать прямо массив поинтов, где первый это также типизированный рут
 Энжина не должна требовать скоуп передать если есть поинты
