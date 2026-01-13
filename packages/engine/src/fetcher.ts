@@ -1,6 +1,8 @@
 import { Error0 } from '@devp0nt/error0'
 import { Route0 } from '@devp0nt/route0'
 import type {
+  Data,
+  EndPoint,
   EndPointType,
   InputRawUnknown,
   PagePoint,
@@ -9,7 +11,7 @@ import type {
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
+import { _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import { toJsonErrorResponse } from './error.js'
@@ -279,10 +281,19 @@ export class Fetcher {
     requiredCtx: RequiredCtx
     response0: Response0
     serverStorageState?: SuperStoreInternalValuesOrErrors
-  }): Promise<Response> => {
+  }): Promise<FetcherFetchPointResult> => {
     const meta: Record<string, any> = {
       url: request.original.url,
       scope,
+    }
+    const partialResult = {
+      request,
+      scope: suitable.pointsManager.scope,
+      task,
+      point: suitable.point,
+      variant: 'point' as const,
+      data: undefined,
+      error: null,
     }
 
     try {
@@ -291,9 +302,13 @@ export class Fetcher {
 
       if (request.original.method === 'OPTIONS') {
         // TODO: when we will have headers midlewares, remove this
-        return new Response(null, {
+        const response = new Response(null, {
           status: 204,
         })
+        return {
+          ...partialResult,
+          response,
+        }
       }
 
       const executor = await Executor.create({
@@ -332,26 +347,39 @@ export class Fetcher {
               pageLocation: suitable.pageLocation,
               input,
             })
-            return new Response(readableStream, {
+            const response = new Response(readableStream, {
               headers: { 'Content-Type': 'text/html' },
             })
+            return {
+              ...partialResult,
+              response,
+            }
           } catch (error) {
             // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
             if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
               const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
-              return new Response(indexHtml, {
+              const response = new Response(indexHtml, {
                 headers: { 'Content-Type': 'text/html' },
                 status: 500,
               })
+              return {
+                ...partialResult,
+                response,
+                error: Error0.from(error),
+              }
             }
             throw error
           }
         } else if (!relatedClient.ssr && outputType === 'html' && pointType === 'page' && relatedClient.indexHtml) {
           const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
-          return new Response(indexHtml, {
+          const response = new Response(indexHtml, {
             headers: { 'Content-Type': 'text/html' },
             status: 200,
           })
+          return {
+            ...partialResult,
+            response,
+          }
         } else if (outputType === 'queryClientDehydratedState' && pointType === 'page') {
           if (!suitable.pageLocation) {
             // I think it will never throw, but who knows
@@ -364,10 +392,15 @@ export class Fetcher {
             input: await this.getPointInput({ suitable, task, request }),
           })
           const dehydratedState = await executor.getQueryClientDehydratedState()
-          return new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
+          const response = new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
             headers: { 'Content-Type': 'application/json' },
             status: 200,
           })
+          return {
+            ...partialResult,
+            response,
+            data: { dehydratedState },
+          }
         }
       } else if (outputType === 'html' && pointType === 'page') {
         throw new Error(`Client not found for point "${suitable.point?.name ?? 'unknown'}" while requested page html`)
@@ -384,30 +417,55 @@ export class Fetcher {
       }
 
       if (executeResult.error) {
-        return toJsonErrorResponse(executeResult.error, executeResult.status)
+        const response = toJsonErrorResponse(executeResult.error, executeResult.status)
+        return {
+          ...partialResult,
+          response,
+          error: executeResult.error,
+        }
       }
 
       if (executeResult.output instanceof Response) {
         executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
-        return executeResult.output
+        return {
+          ...partialResult,
+          response: executeResult.output,
+        }
       }
 
       if (!executeResult.output) {
-        return toJsonErrorResponse(new Error0('No output'), 404)
+        const error = new Error0('No output')
+        const response = toJsonErrorResponse(error, 404)
+        return {
+          ...partialResult,
+          response,
+          error,
+        }
       }
 
       // else we try to get endpoint json
-      return new Response(executor.pointsManager.transformer.stringify(executeResult.output), {
+      const response = new Response(executor.pointsManager.transformer.stringify(executeResult.output), {
         headers: { 'Content-Type': 'application/json' },
         status: executeResult.status,
       })
+      return {
+        ...partialResult,
+        response,
+        data: executeResult.output,
+      }
     } catch (error) {
       this.server.logger.error(error, meta)
-      return toJsonErrorResponse(error)
+      const error0 = Error0.from(error)
+      const response = toJsonErrorResponse(error0)
+      return {
+        ...partialResult,
+        response,
+        error: error0,
+      }
     }
   }
 
-  async fetch({
+  async fetchDetailed({
     request,
     requiredCtx,
     scope,
@@ -417,7 +475,7 @@ export class Fetcher {
     requiredCtx: RequiredCtx
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
-  }): Promise<Response | undefined> {
+  }): Promise<FetcherFetchDetailedResult> {
     const response0 = Response0.create()
 
     const prepareFetchResult = await this.prepareFetch({
@@ -441,14 +499,27 @@ export class Fetcher {
 
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
       if (prepareFetchResult.devClientsProxyResult) {
-        return prepareFetchResult.devClientsProxyResult.response
+        const response = prepareFetchResult.devClientsProxyResult.response
+        return {
+          request: prepareFetchResult.request,
+          response,
+          variant: 'devClientsProxy',
+          error: null,
+        }
       }
 
       if (prepareFetchResult.publicdirResult) {
-        return response0.apply(prepareFetchResult.publicdirResult.response)
+        const response = response0.apply(prepareFetchResult.publicdirResult.response)
+        return {
+          request: prepareFetchResult.request,
+          publicdir: prepareFetchResult.publicdirResult.publicdir,
+          response,
+          variant: 'publicdir',
+          error: null,
+        }
       }
 
-      const fetchPointResponse = await this.fetchPoint({
+      const fetchPointResult = await this.fetchPoint({
         request: prepareFetchResult.request,
         suitable: prepareFetchResult.pointResult.suitable,
         task: prepareFetchResult.pointResult.task,
@@ -458,8 +529,27 @@ export class Fetcher {
         serverStorageState,
       })
 
-      return response0.apply(fetchPointResponse)
+      const response = response0.apply(fetchPointResult.response)
+      return {
+        ...fetchPointResult,
+        response,
+      }
     })
+  }
+
+  async fetch({
+    request,
+    requiredCtx,
+    scope,
+    bunServer,
+  }: {
+    request: Request
+    requiredCtx: RequiredCtx
+    scope?: PointsScope
+    bunServer?: Bun.Server<unknown>
+  }): Promise<Response | undefined> {
+    const fetchDetailedResult = await this.fetchDetailed({ request, requiredCtx, scope, bunServer })
+    return fetchDetailedResult.response
   }
 }
 
@@ -483,6 +573,41 @@ export type PrepareFetchResult =
       pointResult: { suitable: GetSuitableResult; task: FetchTask | undefined }
     }
 
+export type FetcherFetchDetailedResultGeneral = {
+  response: Response | undefined
+  request: Request0
+  error: Error0 | null
+}
+export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
+  variant: 'point'
+  point: EndPoint | undefined
+  scope: PointsScope
+  task: FetchTask | undefined
+  data: Data | undefined
+}
+export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGeneral & {
+  variant: 'publicdir'
+  publicdir: Publicdir<true> | undefined
+}
+export type FetcherFetchDetailedResultDevClientsProxy = FetcherFetchDetailedResultGeneral & {
+  variant: 'devClientsProxy'
+}
+export type FetcherFetchDetailedResult =
+  | FetcherFetchDetailedResultPoint
+  | FetcherFetchDetailedResultPublicdir
+  | FetcherFetchDetailedResultDevClientsProxy
+
+export type FetcherFetchPointResult = Omit<FetcherFetchDetailedResultGeneral, 'response'> & {
+  response: Response
+} & {
+  variant: 'point'
+  point: EndPoint | undefined
+  scope: PointsScope
+  task: FetchTask | undefined
+  data: Data | undefined
+}
+
+// TODO:ASAP simplify names
 export type FetchTask = {
   pointType: EndPointType
   outputType: 'data' | 'queryClientDehydratedState'
