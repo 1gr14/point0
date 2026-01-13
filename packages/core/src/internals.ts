@@ -9,13 +9,13 @@ const initUndefined = () => undefined as never
 
 export const _ssItems = {
   __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined),
-  __POINT0_TEST_CLIENT__: ss.define<{ id: string; scope: PointsScope; fetch: FetchFn } | undefined>(
-    '__POINT0_TEST_CLIENT__',
+  __POINT0_FAKE_CLIENT__: ss.define<{ id: string; scope: PointsScope; fetch: FetchFn } | undefined>(
+    '__POINT0_FAKE_CLIENT__',
     initUndefined,
   ),
   __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined),
   __POINT0_RESPONSE0__: ss.define<Response0>('__POINT0_RESPONSE0__', initUndefined),
-  __POINT0_SCOPE__: ss.define<PointsScope>('__POINT0_SCOPE__', initUndefined),
+  __POINT0_CLIENT_SCOPE__: ss.define<PointsScope | undefined>('__POINT0_CLIENT_SCOPE__', initUndefined),
   __POINT0_QUERY_CLIENT__: queryClient,
   __POINT0_SSR_LOCATION__: ss.define<AnyLocation | undefined>('__POINT0_SSR_LOCATION__', initUndefined),
   __POINT0_CURRENT_LOCATION__: ss.define<AnyLocation>('__POINT0_CURRENT_LOCATION__', initUndefined),
@@ -31,6 +31,7 @@ export const _getSsItemsWithRestErrors = (
   errorMessage = 'This value is not yet accessible, maybe it is bug',
 ): SuperStoreInternalValuesOrErrors => {
   const notDefinedKeys = knownKeys.filter((key) => !(key in ssItems))
-  Object.assign(ssItems, Object.fromEntries(notDefinedKeys.map((key) => [key, errorMessage])))
+  const error = new Error(errorMessage)
+  Object.assign(ssItems, Object.fromEntries(notDefinedKeys.map((key) => [key, error])))
   return ssItems as SuperStoreInternalValuesOrErrors
 }

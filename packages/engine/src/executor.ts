@@ -99,14 +99,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     response0 ??= Response0.create()
     const request0 = Request0.create(request)
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
-    const testClient = _ssItems.__POINT0_TEST_CLIENT__.getWeak()
-    const fetchFn = testClient ? testClient.fetch.bind(testClient) : engine.fetchSimple.bind(engine)
+    const fakeClient = _ssItems.__POINT0_FAKE_CLIENT__.getWeak()
+    const fetchFn = fakeClient ? fakeClient.fetch.bind(fakeClient) : engine.fetchSimple.bind(engine)
+    const clientScope = fakeClient?.scope ?? _ssItems.__POINT0_CLIENT_SCOPE__.getWeak()
     const serverStorageState = Object.assign(providedServerStorageState || {}, {
       __POINT0_FETCH_FN__: fetchFn,
-      __POINT0_TEST_CLIENT__: testClient,
+      __POINT0_FAKE_CLIENT__: fakeClient,
       __POINT0_REQUEST0__: request0,
       __POINT0_RESPONSE0__: response0,
-      __POINT0_SCOPE__: pointsManager.scope,
+      __POINT0_CLIENT_SCOPE__: clientScope,
       __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_CURRENT_LOCATION__: currentLocation,

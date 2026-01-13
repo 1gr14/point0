@@ -140,14 +140,6 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return result
   }
 
-  replacePointsFetchFn(fetchFn: FetchFn): void {
-    for (const pm of this.pointsManagers) {
-      for (const point of pm.collection) {
-        point.point._fetchFn = fetchFn
-      }
-    }
-  }
-
   // async prepareExecutorByRequest({
   //   request,
   //   parsedUrl,

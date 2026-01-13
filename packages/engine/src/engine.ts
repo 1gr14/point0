@@ -1,7 +1,6 @@
 import { Route0 } from '@devp0nt/route0'
 import type {
   EndPoint,
-  FetchFn,
   PointsScope,
   RequiredCtx,
   ServerExecuteResult,
@@ -40,7 +39,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   generator: FilesGenerator
   allPointsManagers: AllPointsManagers
   initialized: TInitialized
-  replaceFetch: boolean | FetchFn
   fetchRecorder: boolean | number
 
   private readonly __POINT0_ENGINE__ = true as const
@@ -53,7 +51,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     initialized: TInitialized
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
-    replaceFetch: boolean | FetchFn
     fetchRecorder: boolean | number
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
@@ -63,7 +60,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.initialized = input.initialized
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
-    this.replaceFetch = input.replaceFetch
     this.fetchRecorder = input.fetchRecorder
   }
 
@@ -145,7 +141,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       initialized: false,
       generator,
       publicdirs,
-      replaceFetch: parsedOptions.general.replaceFetch,
       fetchRecorder: parsedOptions.general.fetchRecorder,
     })
   }
@@ -179,11 +174,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       ...(intializedServer.pointsManager ? [intializedServer.pointsManager] : []),
       ...intializedClients.map((client) => client.pointsManager),
     )
-    // if (this.replaceFetch) {
-    //   const fetchFn =
-    //     typeof this.replaceFetch === 'function' ? this.replaceFetch : (this.fetch as unknown as FetchFn).bind(this)
-    //   this.allPointsManagers.replacePointsFetchFn(fetchFn)
-    // }
     this.initialized = true as never
 
     return this as Engine<TRequiredCtx, true>

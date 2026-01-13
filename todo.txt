@@ -3,7 +3,11 @@
 --------------------------
 
 TEST
+superstore clientonly and if there and fake client add to special {[id]: {}} store part → __POINT0_CLIENT_SCOPE__: this.scope, it is here for example
+fix points so it should not define by itslef __POINT0_CLIENT_SCOPE__ it should be done via superstore in mount
+fix init and create engine input types
 Суперстор: визбраузер (скоуп, фейк клиент) - фетч (реквест, эффектс) - экзекьютор всё прочее
+
 Помечать оригинальный ли мы фетч используем, то есть пусть он просто будет андефайнед, и только если андефайнед мы требуем сервер урл
 Хранить экзекьютед лоадеры и ктксы в суперсторе, и фетч пусть на сервере всегда заменяется на энжин фетч
 TestEngne - Энжина как энжина, просто разрешает вместо настроек клиента или сервера передать прямо массив поинтов, где первый это также типизированный рут
@@ -73,6 +77,7 @@ mutation error type should be error0
 × Просто пейджес три это отдельный класс и поинтс менеджер хранит сет из этих тришек по скоупу (↑)
 
 ENGINE
+allow define only one client
 Config as class and mutable and presettable
 Вайт конфиг должен считать рутом место нахождения энжин файла
 Компилер в плагины всегда вставлять на самое первое место

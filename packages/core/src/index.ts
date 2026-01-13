@@ -287,7 +287,6 @@ export class Point0<
   private readonly _serverInputSchema: InputSchema | undefined
   // TODO:ASAP it is false or undefined
   readonly _tranformer: DataTransformerExtended
-  _fetchFn: FetchFn
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
@@ -470,7 +469,6 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | undefined
-    _fetchFn?: FetchFn | undefined
     _ssr?: boolean
     scope: PointsScope
     scopes: PointsScope[]
@@ -641,7 +639,6 @@ export class Point0<
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
     this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
-    this._fetchFn = options._fetchFn ?? ((async (...args) => await fetch(...args)) as FetchFn)
     this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
@@ -819,7 +816,6 @@ export class Point0<
     inputSchema?: TInputSchema
     _serverInputSchema?: InputSchema | undefined
     _tranformer?: DataTransformerExtended | null
-    _fetchFn?: FetchFn | undefined
     _ssr?: boolean
     _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
@@ -1025,7 +1021,6 @@ export class Point0<
       inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
       _serverInputSchema: overrides._serverInputSchema ?? this._serverInputSchema,
       _tranformer: overrides._tranformer ?? this._tranformer,
-      _fetchFn: overrides._fetchFn ?? this._fetchFn,
       _ssr: overrides._ssr ?? this._ssr,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _outers: overrides._outers ?? this._outers,
@@ -2216,30 +2211,6 @@ export class Point0<
   > {
     return this._continue({
       _tranformer: toExtendedTransformer(transformer),
-    }) as never
-  }
-
-  // fetch
-
-  fetcher(
-    fetcher: FetchFn,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    TProps
-  > {
-    return this._continue({
-      _fetchFn: fetcher,
     }) as never
   }
 
@@ -4483,7 +4454,7 @@ export class Point0<
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const fromScope = _ssItems.__POINT0_SCOPE__.getWeak() ?? _ssItems.__POINT0_TEST_CLIENT__.getWeak()?.scope
+    const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? _ssItems.__POINT0_FAKE_CLIENT__.getWeak()?.scope
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
@@ -4547,7 +4518,11 @@ export class Point0<
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const fetchOptions = this.getFetchOptions(...args)
-    const fetchFn = _ssItems.__POINT0_FETCH_FN__.getWeak() ?? ((async (...args) => await fetch(...args)) as FetchFn)
+    const serverFetchFn = _ssItems.__POINT0_FETCH_FN__.getWeak()
+    if (env.target.is.server && !serverFetchFn) {
+      throw new Error('Server fetch function is not set, it is a critical bug, please report it')
+    }
+    const fetchFn = serverFetchFn ?? ((async (req) => await fetch(req)) as FetchFn)
     const res = await fetchFn(fetchOptions.request)
     CookiesStore.refresh()
     if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
