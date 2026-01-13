@@ -10,7 +10,7 @@ import { Fetch0 } from '../src/fetch0.js'
 import { withFakeBrowser } from './utils/fake-browser.js'
 
 describe('fetch0', () => {
-  it.only('should fetch page with loader', async () => {
+  it('should fetch page with loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
