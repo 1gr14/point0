@@ -29,6 +29,7 @@ import {
   validateEntrypoints,
   withRetries,
 } from './utils.js'
+import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
@@ -183,6 +184,20 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return pointsManager
   }
 
+  getCompilerOptions(): CompilerOptions | false {
+    if (!this.compiler) {
+      return false
+    }
+    return {
+      scope: this.compiler.scope ? this.scope : false,
+      target: this.compiler.target ? 'server' : false,
+      mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
+      // TODO:ASAP add env varsconsts here from engine options
+      consts: this.compiler.consts,
+      filter: this.compiler.filter,
+    }
+  }
+
   async extractBunPlugins({
     built,
     extraPlugins = [],
@@ -196,16 +211,16 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       bunPlugins: this.bunPlugins,
       scope: this.scope,
     })
+    const compilerOptions = this.getCompilerOptions()
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
-      : env.built
+      : env.built || !compilerOptions
         ? []
         : [
             await import('@point0/compiler/plugin/bun').then((module) =>
               module.compilerBunPlugin({
-                target: 'server',
-                scope: this.scope,
                 built,
+                ...compilerOptions,
               }),
             ),
           ]
@@ -650,13 +665,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       const viteRoot =
         loadedViteConfig.root || (typeof this.viteConfig === 'string' && nodePath.dirname(this.viteConfig)) || this.cwd
 
-      const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-        module.compilerVitePlugin({ target: 'server', scope: this.scope, built: true }),
-      )
+      const compilerOptions = this.getCompilerOptions()
+      const compilerPlugin = compilerOptions
+        ? [
+            await import('@point0/compiler/plugin/vite').then((module) =>
+              module.compilerVitePlugin({ ...compilerOptions, built: true }),
+            ),
+          ]
+        : []
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
+        plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

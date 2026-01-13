@@ -32,6 +32,7 @@ import {
   withRetries,
 } from './utils.js'
 import { env } from '@point0/env'
+import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
@@ -271,6 +272,20 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     ])
   }
 
+  getCompilerOptions(): CompilerOptions | false {
+    if (!this.compiler) {
+      return false
+    }
+    return {
+      scope: this.compiler.scope ? this.scope : false,
+      target: this.compiler.target ? 'client' : false,
+      mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
+      // TODO:ASAP add env varsconsts here from engine options
+      consts: this.compiler.consts,
+      filter: this.compiler.filter,
+    }
+  }
+
   async startBunNativeDevServer(): Promise<Bun.Subprocess> {
     if (!this.indexHtml) {
       throw new Error(`Index HTML file path is not provided for client "${this.scope}"`)
@@ -286,10 +301,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       bunPlugins: this.bunPlugins,
       errorOnNotString: `Bun dev server plugins for client "${this.scope}" shpuld be strings`,
     })
+    const compilerOptions = this.getCompilerOptions()
     const scriptPath = nodePath.join(tempDir, `serve.js`)
     const bunfigTomlPath = nodePath.join(tempDir, 'bunfig.toml')
+    const combinedPluginsStrings = compilerOptions
+      ? ['@point0/compiler/plugin/bun-static', ...pluginsStrings]
+      : pluginsStrings
     const bunfigTomlContent = `[serve.static]
-plugins = [${['@point0/compiler/plugin/bun-static', ...pluginsStrings].map((p) => `"${p}"`).join(', ')}]
+plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
@@ -331,7 +350,7 @@ Bun.serve({
       env: {
         ...process.env,
         // FORCE_COLOR: '1',
-        POINT0_COMPILER_OPTIONS: JSON.stringify({ target: 'client' }),
+        ...(compilerOptions ? { POINT0_COMPILER_OPTIONS: JSON.stringify(compilerOptions) } : {}),
         NODE_ENV: process.env.NODE_ENV,
       },
     })
@@ -673,9 +692,14 @@ Bun.serve({
           })
         : {}
 
-      const compilerPlugin = await import('@point0/compiler/plugin/bun').then((module) =>
-        module.compilerBunPlugin({ target: 'client', scope: this.scope, built: true }),
-      )
+      const compilerOptions = this.getCompilerOptions()
+      const compilerPlugin = compilerOptions
+        ? [
+            await import('@point0/compiler/plugin/bun').then((module) =>
+              module.compilerBunPlugin({ ...compilerOptions, built: true }),
+            ),
+          ]
+        : []
 
       const buildOutput = await Bun.build({
         target: 'browser',
@@ -686,7 +710,7 @@ Bun.serve({
         minify: NODE_ENV === 'production',
         ...thisBunBuildConfig,
         ...providedBunBuildConfig,
-        plugins: [...(thisBunBuildConfig.plugins ?? []), compilerPlugin],
+        plugins: [...compilerPlugin, ...(thisBunBuildConfig.plugins ?? [])],
         entrypoints: [
           buildPaths.indexHtml,
           ...(thisBunBuildConfig.entrypoints ?? []),
@@ -757,13 +781,18 @@ Bun.serve({
 
       const viteRoot = loadedViteConfig.root || nodePath.dirname(buildPaths.indexHtml) || this.cwd
 
-      const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
-        module.compilerVitePlugin({ target: 'client', scope: this.scope, built: true }),
-      )
+      const compilerOptions = this.getCompilerOptions()
+      const compilerPlugin = compilerOptions
+        ? [
+            await import('@point0/compiler/plugin/vite').then((module) =>
+              module.compilerVitePlugin({ ...compilerOptions, built: true }),
+            ),
+          ]
+        : []
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
+        plugins: [...compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

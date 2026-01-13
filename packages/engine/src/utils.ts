@@ -662,14 +662,14 @@ export const withAsyncRetries: WithAsyncRetriesFn = (
   }
 }
 
-export const normalizeAndValidateNodeEnv = (fallback: POINT0_NODE_ENV): POINT0_NODE_ENV => {
+export const normalizeAndValidateNodeEnv = (fallback?: POINT0_NODE_ENV): POINT0_NODE_ENV => {
   const validValues: POINT0_NODE_ENV[] = ['production', 'development', 'test']
   const nodeEnv = process.env.NODE_ENV
-  if (!nodeEnv) {
+  if (!nodeEnv && fallback) {
     process.env.NODE_ENV = fallback
     return fallback
   }
-  if (!validValues.includes(nodeEnv as POINT0_NODE_ENV)) {
+  if (!nodeEnv || !validValues.includes(nodeEnv as POINT0_NODE_ENV)) {
     throw new Error(`Invalid process.env.NODE_ENV: ${nodeEnv}. Allowed values: ${validValues.join(', ')}`)
   }
   process.env.NODE_ENV = nodeEnv

@@ -64,6 +64,7 @@ export type EngineOptionsRoutes = () => Promise<
 export type EngineOptionsCompiler = {
   target?: boolean
   scope?: boolean
+  mode?: boolean
   consts?: CompilerEnvConsts
   filter?: RegExp
 }
@@ -71,6 +72,7 @@ export type EngineOptionsCompilerParsed = {
   target: boolean
   scope: boolean
   consts: CompilerEnvConsts | undefined
+  mode: boolean
   filter: RegExp | undefined
 }
 
@@ -626,12 +628,14 @@ export const parseEngineServerOptions = ({
         ? {
             target: true,
             scope: true,
+            mode: true,
             consts: undefined,
             filter: undefined,
           }
         : {
             target: true,
             scope: true,
+            mode: true,
             filter: undefined,
             ...mergedCompilerRecord,
           }
@@ -729,12 +733,14 @@ const parseEngineClientOptions = ({
         ? {
             target: true,
             scope: true,
+            mode: true,
             consts: undefined,
             filter: undefined,
           }
         : {
             target: true,
             scope: true,
+            mode: true,
             filter: undefined,
             ...mergedCompilerRecord,
           }
