@@ -4,6 +4,9 @@ import type {
   AppComponent,
   AppComponentModule,
   PointsScope,
+  RawPointsDefinition,
+  ReadyPointsModule,
+  RequiredCtxByPointsDefinitions,
   RequiredCtxByPointsModules,
 } from '@point0/core'
 import { appendSlash, prependAndDeappendSlash } from '@point0/core'
@@ -154,6 +157,19 @@ export type EngineOptions<
         EngineClientOptions<TClient3PointsModule>,
       ]
 }
+export type EngineShortOptions<
+  TServerPointsDefinition extends RawPointsDefinition = RawPointsDefinition,
+  TClient1PointsDefinition extends RawPointsDefinition = RawPointsDefinition,
+  TClient2PointsDefinition extends RawPointsDefinition = RawPointsDefinition,
+  TClient3PointsDefinition extends RawPointsDefinition = RawPointsDefinition,
+> = EngineGeneralOptions & {
+  server: TServerPointsDefinition
+  clients?:
+    | []
+    | [TClient1PointsDefinition]
+    | [TClient1PointsDefinition, TClient2PointsDefinition]
+    | [TClient1PointsDefinition, TClient2PointsDefinition, TClient3PointsDefinition]
+}
 
 export type RequiredCtxByEngineOptions<TOptions extends EngineOptions> = TOptions extends {
   server: EngineServerOptions<infer TServerPointsModule>
@@ -183,6 +199,40 @@ export type RequiredCtxByEngineOptions<TOptions extends EngineOptions> = TOption
             TClient1PointsModule,
             TClient2PointsModule,
             TClient3PointsModule
+          >
+        : never
+
+export type RequiredCtxByEngineShortOptions<TOptions extends EngineShortOptions> = TOptions extends {
+  server: infer TServerPointsDefinition extends RawPointsDefinition
+  clients: []
+}
+  ? RequiredCtxByPointsDefinitions<TServerPointsDefinition>
+  : TOptions extends {
+        server: infer TServerPointsDefinition extends RawPointsDefinition
+        clients: [infer TClient1PointsDefinition extends RawPointsDefinition]
+      }
+    ? RequiredCtxByPointsDefinitions<TServerPointsDefinition, TClient1PointsDefinition>
+    : TOptions extends {
+          server: infer TServerPointsDefinition extends RawPointsDefinition
+          clients: [
+            infer TClient1PointsDefinition extends RawPointsDefinition,
+            infer TClient2PointsDefinition extends RawPointsDefinition,
+          ]
+        }
+      ? RequiredCtxByPointsDefinitions<TServerPointsDefinition, TClient1PointsDefinition, TClient2PointsDefinition>
+      : TOptions extends {
+            server: infer TServerPointsDefinition extends RawPointsDefinition
+            clients: [
+              infer TClient1PointsDefinition extends RawPointsDefinition,
+              infer TClient2PointsDefinition extends RawPointsDefinition,
+              infer TClient3PointsDefinition extends RawPointsDefinition,
+            ]
+          }
+        ? RequiredCtxByPointsDefinitions<
+            TServerPointsDefinition,
+            TClient1PointsDefinition,
+            TClient2PointsDefinition,
+            TClient3PointsDefinition
           >
         : never
 
@@ -814,8 +864,59 @@ const parseEngineClientOptions = ({
     engineFile: generalOptionsParsed.engineFile,
   }
 }
-export const parseEngineOptions = (options: EngineOptions): EngineOptionsParsed => {
-  const { server: serverOptions, clients: clientsOptionsRaw, ...generalOptions } = options
+
+const rawPointsDefintiionToReadyPointsModuleAndScope = (
+  definition: RawPointsDefinition,
+): {
+  module: ReadyPointsModule
+  scope: PointsScope
+} => {
+  const [_root, ...rest] = definition
+  if (!_root) {
+    throw new Error('Root point not found')
+  }
+  return {
+    module: {
+      _root,
+      ...Object.fromEntries(rest.map((p, index) => [`${p.point.type}_${p.point.name}_${index}`, { point: p.point }])),
+    },
+    scope: _root.point.scope,
+  }
+}
+
+const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineOptions): EngineOptions => {
+  if (Array.isArray(options.server)) {
+    const { module, scope } = rawPointsDefintiionToReadyPointsModuleAndScope(options.server)
+    options.server = {
+      scope,
+      points: async () => module,
+    }
+  }
+  if (!Array.isArray(options.clients)) {
+    return options as EngineOptions
+  }
+  const clients = options.clients.flatMap((client) => {
+    if (Array.isArray(client)) {
+      const { module, scope } = rawPointsDefintiionToReadyPointsModuleAndScope(client)
+      return {
+        scope,
+        points: async () => module,
+      }
+    }
+    return client
+  })
+  return {
+    ...options,
+    clients,
+  } as EngineOptions
+}
+
+export const parseEngineOptions = (options: EngineOptions | EngineShortOptions): EngineOptionsParsed => {
+  const {
+    server: serverOptions,
+    clients: clientsOptionsRaw,
+    ...generalOptions
+  } = shortEngineOptionsToEngineOptions(options)
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const clientsOptions = clientsOptionsRaw?.flatMap((clientOptions) => (clientOptions ? [clientOptions] : [])) ?? []
   const generalOptionsParsed = parseEngineGeneralOptions({

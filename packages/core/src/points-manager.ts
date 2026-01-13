@@ -828,6 +828,11 @@ export type AnyPointsModule<TRequiredCtx extends RequiredCtx = any> =
   | ReadyPointsModule<TRequiredCtx>
   | LazyPointsModule<TRequiredCtx>
 
+export type RawPointsDefinition<TRequiredCtx extends RequiredCtx = RequiredCtx> = [
+  { point: RootPoint<TRequiredCtx> },
+  ...Array<{ point: EndPoint }>,
+]
+
 // pages tree
 
 export type PagesTreeSourceRecord = {
@@ -873,6 +878,21 @@ export type RequiredCtxByPointsModules<
     RequiredCtxByPointsModule<T2>,
     RequiredCtxByPointsModule<T3>,
     RequiredCtxByPointsModule<T4>
+  >
+>
+export type RequiredCtxByPointsDefinition<TDefinition extends RawPointsDefinition> =
+  TDefinition[0]['point']['Infer']['RequiredCtx']
+export type RequiredCtxByPointsDefinitions<
+  T1 extends RawPointsDefinition = RawPointsDefinition,
+  T2 extends RawPointsDefinition = RawPointsDefinition,
+  T3 extends RawPointsDefinition = RawPointsDefinition,
+  T4 extends RawPointsDefinition = RawPointsDefinition,
+> = PrettifyOrUndefined<
+  MergeOmitAnyMany<
+    RequiredCtxByPointsDefinition<T1>,
+    RequiredCtxByPointsDefinition<T2>,
+    RequiredCtxByPointsDefinition<T3>,
+    RequiredCtxByPointsDefinition<T4>
   >
 >
 
