@@ -1,74 +1,88 @@
 /* eslint-disable import/first */
+import type { POINT0_CLIENT_PLATFORM } from '@point0/env'
 import { env } from '@point0/env'
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= env.target.is.client
   ? null
   : // eslint-disable-next-line @typescript-eslint/no-require-imports
     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
-;(globalThis as any).__POINT0_SUPER_STORE_CLIENT_STATE__ ||= {}
+;(globalThis as any).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ ||= {}
+;(globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import type { DataTransformer, DataTransformerExtended } from './types.js'
+import type { DataTransformer, DataTransformerExtended, PointsScope } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export class SuperStore {
   static instance: SuperStore = (globalThis as any).__POINT0_SUPER_STORE_INSTANCE__ || new SuperStore()
 
-  prepared = new Map<string, unknown>()
+  // per client
+  private readonly _prepared = new Map<string, Map<string, unknown>>()
 
-  touched = new Set<string>()
+  get prepared(): Map<string, unknown> {
+    const clientId = this.getFakeClient()?.id || 'default'
+    const prepared = this._prepared.get(clientId) ?? new Map<string, unknown>()
+    if (!this._prepared.has(clientId)) {
+      this._prepared.set(clientId, prepared)
+    }
+    return prepared
+  }
+
+  // per client
+  // touched = new Map<string, Set<string>>()
 
   items = new Map<string, SuperStoreItem>()
 
   serverStorage: SuperStoreServerStorage | undefined = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
 
-  clientState: SuperStoreState = (globalThis as any).__POINT0_SUPER_STORE_CLIENT_STATE__
+  clientGlobalState: SuperStoreState = (globalThis as any).__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__
+
+  serverGlobalState: SuperStoreState = (globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__
 
   transformer: DataTransformerExtended | undefined | false
 
   reset: {
     (): void
     prepared: () => void
-    touched: () => void
+    // touched: () => void
     items: () => void
-    serverStorage: () => void
-    clientState: () => void
+    clientGlobalState: () => void
+    serverGlobalState: () => void
     transformer: () => void
   } = Object.assign(
     () => {
-      this.prepared.clear()
-      this.touched.clear()
+      this._prepared.clear()
+      // this.touched.clear()
       this.items.clear()
       this.transformer = undefined
-      this.resetClientState()
-      this.resetServerStorage()
+      this.resetClientGlobalState()
+      this.resetServerGlobalState()
     },
     {
-      prepared: () => this.prepared.clear(),
-      touched: () => this.touched.clear(),
+      prepared: () => this._prepared.clear(),
+      // touched: () => this.touched.clear(),
       items: () => this.items.clear(),
       transformer: () => (this.transformer = undefined),
-      serverStorage: () => {
-        this.resetServerStorage()
+      clientGlobalState: () => {
+        this.resetClientGlobalState()
       },
-      clientState: () => {
-        this.resetClientState()
+      serverGlobalState: () => {
+        this.resetServerGlobalState()
       },
     },
   )
 
-  private resetClientState(): void {
-    for (const key of Object.keys(this.clientState)) {
+  private resetClientGlobalState(): void {
+    for (const key of Object.keys(this.clientGlobalState)) {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete this.clientState[key]
+      delete this.clientGlobalState[key]
     }
   }
 
-  private resetServerStorage(): void {
-    if (env.target.is.server) {
-      this.serverStorage = (globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__
-    } else {
-      this.serverStorage = undefined
+  private resetServerGlobalState(): void {
+    for (const key of Object.keys(this.serverGlobalState)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete this.serverGlobalState[key]
     }
   }
 
@@ -97,9 +111,38 @@ export class SuperStore {
     }
   }
 
-  getState(): SuperStoreState {
-    if (env.target.is.client) {
-      return this.clientState
+  getStates():
+    | {
+        variant: 'client'
+        clientState: SuperStoreState
+        fakeClientState: undefined
+        serverStorageState: undefined
+        serverGlobalState: undefined
+      }
+    | {
+        variant: 'server'
+        clientState: undefined
+        fakeClientState: undefined
+        serverStorageState: SuperStoreState
+        serverGlobalState: SuperStoreState
+      }
+    | {
+        variant: 'fakeClient'
+        clientState: undefined
+        fakeClientState: SuperStoreState
+        // serverStorageState: SuperStoreState
+        serverStorageState: undefined
+        serverGlobalState: undefined
+      } {
+    const fakeClient = this.getFakeClient()
+    if (env.target.is.client && !fakeClient) {
+      return {
+        variant: 'client',
+        clientState: this.clientGlobalState,
+        fakeClientState: undefined,
+        serverStorageState: undefined,
+        serverGlobalState: undefined,
+      }
     } else {
       const serverStorage = this.serverStorage
       if (!serverStorage) {
@@ -113,13 +156,72 @@ export class SuperStore {
           'Server store not found. You should call this function on server only inside server context wrapped in superstore.runWithServerStorageProvider(serverStorageState, callback). So call it in hooks, components, functions, not in top of files without wrappers',
         )
       }
-      return serverStorageState
+      if (!fakeClient) {
+        return {
+          variant: 'server',
+          clientState: undefined,
+          fakeClientState: undefined,
+          serverStorageState,
+          serverGlobalState: this.serverGlobalState,
+        }
+      }
+      serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ ||= {}
+      ;(serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id] ||= {}
+      return {
+        variant: 'fakeClient',
+        clientState: undefined,
+        fakeClientState: (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[
+          fakeClient.id
+        ] as SuperStoreState,
+        // serverStorageState,
+        serverStorageState: undefined,
+        serverGlobalState: undefined,
+      }
     }
   }
 
+  // getState(): SuperStoreState {
+  //   const { clientState, fakeClientState, serverStorageState } = this.getStates()
+  //   if (clientState) {
+  //     return clientState
+  //   }
+  //   if (fakeClientState) {
+  //     return fakeClientState
+  //   }
+  //   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  //   if (serverStorageState) {
+  //     return serverStorageState
+  //   }
+  //   throw new Error('State not found. It is a critical bug, please report it')
+  // }
+
+  // getState(): SuperStoreState {
+  //   const fakeClient = this.getFakeClient()
+  //   if (env.target.is.client && !fakeClient) {
+  //     return this.clientState
+  //   } else {
+  //     const serverStorage = this.serverStorage
+  //     if (!serverStorage) {
+  //       throw new Error(
+  //         'Server storage is not initialized. We do not know how it is possible. Please, report this issue to the developers',
+  //       )
+  //     }
+  //     const serverStorageState = serverStorage.getStore()
+  //     if (!serverStorageState) {
+  //       throw new Error(
+  //         'Server store not found. You should call this function on server only inside server context wrapped in superstore.runWithServerStorageProvider(serverStorageState, callback). So call it in hooks, components, functions, not in top of files without wrappers',
+  //       )
+  //     }
+  //     if (!fakeClient) {
+  //       return serverStorageState
+  //     }
+  //     serverStorageState[fakeClient.id] ||= {}
+  //     return serverStorageState[fakeClient.id] as SuperStoreState
+  //   }
+  // }
+
   private _parseDefineArgs(
     ...args:
-      | [name: string, init: () => any, ssr?: boolean]
       | [
           name: string,
           init: () => any,
@@ -128,45 +230,35 @@ export class SuperStore {
             hydrate: (dehydratedValue: any, init: () => any) => any
           },
         ]
+      | [name: string, init: () => any, policy: SuperStoreItemPolicy]
   ): {
     name: string
     init: () => any
-    ssr: boolean
+    policy: SuperStoreItemPolicy
     dehydrate: (value: any) => any
     hydrate: (dehydratedValue: any, init: () => any) => any
   } {
-    if (typeof args[2] === 'undefined') {
+    if (typeof args[2] === 'string') {
       return {
         name: args[0],
         init: args[1],
         dehydrate: (value: any) => value,
         hydrate: (value: any) => value,
-        ssr: false,
+        policy: args[2],
       }
     }
-    if (typeof args[2] === 'boolean') {
+    if (typeof args[2] === 'object' && 'dehydrate' in args[2] && 'hydrate' in args[2]) {
       return {
         name: args[0],
         init: args[1],
-        dehydrate: (value: any) => value,
-        hydrate: (value: any) => value,
-        ssr: args[2],
+        dehydrate: args[2].dehydrate,
+        hydrate: args[2].hydrate,
+        policy: 'clientServerTransferred',
       }
     }
-    return {
-      name: args[0],
-      init: args[1],
-      dehydrate: args[2].dehydrate,
-      hydrate: args[2].hydrate,
-      ssr: true,
-    }
+    throw new Error(`Invalid arguments`)
   }
 
-  define<TValue, TSsr extends boolean = false>(
-    name: string,
-    init: () => TValue,
-    ssr?: TSsr,
-  ): NiceSuperStoreItem<TValue, TSsr extends false ? undefined : TValue>
   define<TValue, TDehydratedValue>(
     key: string,
     init: () => TValue,
@@ -175,13 +267,14 @@ export class SuperStore {
       hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
     },
   ): NiceSuperStoreItem<TValue, TDehydratedValue>
+  define<TValue>(key: string, init: () => TValue, policy: SuperStoreItemPolicy): NiceSuperStoreItem<TValue, TValue>
   define(...args: Parameters<typeof this._parseDefineArgs>): any {
-    const { name, init, ssr, dehydrate, hydrate } = this._parseDefineArgs(...args)
+    const { name, init, policy, dehydrate, hydrate } = this._parseDefineArgs(...args)
     const exItem = this.items.get(name)
     if (exItem) {
       throw new Error(`Item with name "${name}" already defined`)
     }
-    const item: SuperStoreItem = new SuperStoreItem({ name, init, dehydrate, hydrate, ssr, superstore: this })
+    const item: SuperStoreItem = new SuperStoreItem({ name, init, dehydrate, hydrate, policy, superstore: this })
     this.items.set(name, item)
     return item
   }
@@ -201,9 +294,6 @@ export class SuperStore {
             return false
           }
           const item = items[prop]
-          if ('readonly' in item && item.readonly) {
-            throw new Error(`Cannot set value to readonly item "${prop}"`)
-          }
           if ('set' in item && typeof item.set === 'function') {
             item.set(value)
             return true
@@ -238,47 +328,143 @@ export class SuperStore {
     return value
   }
 
-  getValue<TValue = unknown>(name: string): TValue | undefined
-  getValue<TValue = unknown>(name: string, allowError: true): TValue | Error | undefined
-  getValue(name: string, allowError?: boolean) {
-    const state = this.getState()
-    if (name in state) {
-      return SuperStore.returnValueOrError(state[name], allowError)
+  private getStateByItemPolicy(
+    name: string,
+    policy: SuperStoreItemPolicy,
+    states: ReturnType<typeof this.getStates>,
+  ): SuperStoreState {
+    // if (policy === 'clientOnly' && states.variant === 'server') {
+    //   throw new Error(`Cannot access clientOnly item "${name}" from server`)
+    // }
+    // if (policy === 'serverOnlyGlobal' && states.variant === 'client') {
+    //   throw new Error(`Cannot access serverOnlyGlobal item "${name}" from client`)
+    // }
+    // if (policy === 'serverOnlyStorage' && states.variant === 'client') {
+    //   throw new Error(`Cannot access serverOnlyStorage item "${name}" from client`)
+    // }
+    const result = (() => {
+      // if (policy === 'clientonly') {
+      //   return states.clientState || states.fakeClientState
+      // }
+      // if (policy === 'ssr') {
+      //   return states.clientState || states.fakeClientState || states.serverStorageState
+      // }
+      // // server only
+      // return states.serverStorageState
+      switch (policy) {
+        case 'clientOnly': {
+          if (states.variant === 'server') {
+            throw new Error(`Cannot access clientOnly item "${name}" from server`)
+          }
+          return states.clientState || states.fakeClientState
+        }
+        case 'clientServerTransferred': {
+          return states.clientState || states.fakeClientState || states.serverStorageState
+        }
+        case 'clientServerIsolated': {
+          return states.clientState || states.fakeClientState || states.serverStorageState
+        }
+        case 'serverOnlyStorage': {
+          // if (states.variant === 'client') {
+          if (states.variant !== 'server') {
+            throw new Error(`Cannot access serverOnlyStorage item "${name}" from client`)
+          }
+          return states.serverStorageState
+        }
+        case 'serverOnlyGlobal': {
+          // if (states.variant === 'client') {
+          if (states.variant !== 'server') {
+            throw new Error(`Cannot access serverOnlyGlobal item "${name}" from client`)
+          }
+          return states.serverGlobalState
+        }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+        default:
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+          throw new Error(`Invalid policy: ${policy}`)
+      }
+    })()
+    if (!result) {
+      throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
     }
+    return result
+  }
+
+  // private validateItemAction(
+  //   item: SuperStoreItem,
+  //   action: 'get' | 'set',
+  //   states: ReturnType<typeof this.getStates>,
+  // ): void {
+  //   if (item.readonly && action === 'set') {
+  //     throw new Error(`Cannot set value to readonly item "${item.name}"`)
+  //   }
+  //   if (item.policy === 'clientonly' && states.variant === 'server') {
+  //     throw new Error(`Cannot access clientonly item "${item.name}" from server`)
+  //   }
+  //   if (item.policy === 'serveronly' && states.variant === 'client') {
+  //     throw new Error(`Cannot access serveronly item "${item.name}" from client`)
+  //   }
+  // }
+
+  getValue<TValue = unknown>(name: string, policy: SuperStoreItemPolicy): TValue | undefined
+  getValue<TValue = unknown>(name: string, policy: SuperStoreItemPolicy, allowError: true): TValue | Error | undefined
+  getValue(name: string, policy: SuperStoreItemPolicy, allowError?: boolean) {
+    const states = this.getStates()
 
     const item = this.getItem(name)
     if (item) {
-      if (this.prepared.has(name)) {
-        const dehydratedValue = this.prepared.get(name)
+      if (item.policy !== policy) {
+        throw new Error(`Cannot access item "${name}" with policy "${policy}" from policy "${item.policy}"`)
+      }
+      const state = this.getStateByItemPolicy(item.name, item.policy, states)
+      const prepared = this.prepared
+      if (prepared.has(name)) {
+        const dehydratedValue = prepared.get(name)
         const hydratedValue = item.hydrate(dehydratedValue)
-        this.prepared.delete(name)
-        this.touched.add(name)
+        prepared.delete(name)
+        // this.touched.add(name)
         state[name] = hydratedValue
         return SuperStore.returnValueOrError(hydratedValue, allowError)
       }
+      if (name in state) {
+        return SuperStore.returnValueOrError(state[name], allowError)
+      }
       const initialValue = item.init()
-      this.touched.add(name)
+      // this.touched.add(name)
       state[name] = initialValue
       return SuperStore.returnValueOrError(initialValue, allowError)
     }
 
-    this.touched.add(name)
+    const state = this.getStateByItemPolicy(name, policy, states)
+    if (name in state) {
+      return SuperStore.returnValueOrError(state[name], allowError)
+    }
+
+    // this.touched.add(name)
     state[name] = undefined
     return undefined
   }
 
-  getValueWeak<TValue = unknown>(name: string): TValue | undefined {
+  getValueWeak<TValue = unknown>(name: string, policy: SuperStoreItemPolicy): TValue | undefined {
     try {
-      return this.getValue(name)
+      return this.getValue(name, policy)
     } catch {
       return undefined
     }
   }
 
-  setValue<TValue = unknown>(name: string, value: TValue): void {
-    this.touched.add(name)
+  setValue<TValue = unknown>(name: string, value: TValue, policy: SuperStoreItemPolicy): void {
+    // this.touched.add(name)
     this.prepared.delete(name)
-    const state = this.getState()
+    const states = this.getStates()
+    const item = this.getItem(name)
+    if (item && item.policy !== policy) {
+      throw new Error(`Cannot set value to item "${name}" with policy "${policy}" from policy "${item.policy}"`)
+    }
+    if (item?.readonly) {
+      throw new Error(`Cannot set value to readonly item "${name}"`)
+    }
+    const state = this.getStateByItemPolicy(name, policy, states)
     state[name] = value
   }
 
@@ -293,7 +479,7 @@ export class SuperStore {
   dehydrate(): Record<string, unknown> {
     const dehydrated: Record<string, unknown> = {}
     for (const item of this.items.values()) {
-      if (!item.ssr) {
+      if (item.policy !== 'clientServerTransferred') {
         continue
       }
       dehydrated[item.name] = item.dehydrate()
@@ -322,13 +508,28 @@ export class SuperStore {
       this.prepared.set(itemName, dehydratedValue)
     }
   }
+
+  getFakeClient(): { id: string; scope: PointsScope; platform: POINT0_CLIENT_PLATFORM } | undefined {
+    if (!this.serverStorage) {
+      return undefined
+    }
+    const serverStorageState = this.serverStorage.getStore()
+    if (!serverStorageState) {
+      return undefined
+    }
+    return serverStorageState.__POINT0_FAKE_CLIENT__ as never
+  }
+
+  isFakeClient(): boolean {
+    return this.getFakeClient() !== undefined
+  }
 }
 
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   superstore: SuperStore
   name: string
   init: () => TValue
-  ssr: TDehydratedValue extends undefined ? false : true
+  policy: SuperStoreItemPolicy
   dehydrate: () => TDehydratedValue
   hydrate: (dehydratedValue: TDehydratedValue) => TValue
   readonly = false
@@ -336,7 +537,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
   constructor({
     name,
     init,
-    ssr,
+    policy,
     dehydrate,
     hydrate,
     superstore,
@@ -344,28 +545,28 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     superstore: SuperStore
     name: string
     init: () => TValue
-    ssr: TDehydratedValue extends undefined ? false : true
+    policy: SuperStoreItemPolicy
     dehydrate: (value: TValue) => TDehydratedValue
     hydrate: (dehydratedValue: TDehydratedValue, init: () => TValue) => TValue
   }) {
     this.superstore = superstore
     this.name = name
     this.init = init
-    this.ssr = ssr
+    this.policy = policy
     this.dehydrate = () => dehydrate(this.get())
     this.hydrate = (dehydratedValue: TDehydratedValue) => hydrate(dehydratedValue, init)
   }
 
   get = (): TValue => {
-    return this.superstore.getValue(this.name) as TValue
+    return this.superstore.getValue(this.name, this.policy) as TValue
   }
 
   getWeak = (): TValue | undefined => {
-    return this.superstore.getValueWeak(this.name)
+    return this.superstore.getValueWeak(this.name, this.policy)
   }
 
   set = (value: TValue): void => {
-    this.superstore.setValue(this.name, value)
+    this.superstore.setValue(this.name, value, this.policy)
   }
 
   redefine = (init: () => TValue): void => {
@@ -376,7 +577,7 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     return {
       name: this.name,
       init: this.init,
-      ssr: this.ssr,
+      policy: this.policy,
       dehydrate: this.dehydrate,
       hydrate: this.hydrate,
     }
@@ -385,6 +586,13 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
 
 export const superstore = SuperStore.instance
 export const ss = SuperStore.instance
+
+export type SuperStoreItemPolicy =
+  | 'clientServerIsolated'
+  | 'clientServerTransferred'
+  | 'clientOnly'
+  | 'serverOnlyStorage'
+  | 'serverOnlyGlobal'
 
 export type SuperStoreServerStorage = AsyncLocalStorage<SuperStoreState>
 

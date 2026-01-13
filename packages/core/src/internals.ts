@@ -7,20 +7,38 @@ import type { FetchFn, PointsScope } from './types.js'
 
 const initUndefined = () => undefined as never
 
+type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn } | undefined
 export const _ssItems = {
-  __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined),
-  __POINT0_FAKE_CLIENT__: ss.define<{ id: string; scope: PointsScope; fetch: FetchFn } | undefined>(
-    '__POINT0_FAKE_CLIENT__',
+  __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
+  __POINT0_FAKE_CLIENT__: ss.define<LikeFakeClient>('__POINT0_FAKE_CLIENT__', initUndefined, 'serverOnlyStorage'),
+  __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
+  __POINT0_RESPONSE0__: ss.define<Response0>('__POINT0_RESPONSE0__', initUndefined, 'serverOnlyStorage'),
+  __POINT0_CLIENT_SCOPE__: ss.define<PointsScope | undefined>(
+    '__POINT0_CLIENT_SCOPE__',
     initUndefined,
+    'clientServerIsolated',
   ),
-  __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined),
-  __POINT0_RESPONSE0__: ss.define<Response0>('__POINT0_RESPONSE0__', initUndefined),
-  __POINT0_CLIENT_SCOPE__: ss.define<PointsScope | undefined>('__POINT0_CLIENT_SCOPE__', initUndefined),
   __POINT0_QUERY_CLIENT__: queryClient,
-  __POINT0_SSR_LOCATION__: ss.define<AnyLocation | undefined>('__POINT0_SSR_LOCATION__', initUndefined),
-  __POINT0_CURRENT_LOCATION__: ss.define<AnyLocation>('__POINT0_CURRENT_LOCATION__', initUndefined),
-  __POINT0_UNHEAD_HEAD__: ss.define<Unhead<ResolvableHead>>('__POINT0_UNHEAD_HEAD__', initUndefined),
+  __POINT0_SSR_LOCATION__: ss.define<AnyLocation | undefined>(
+    '__POINT0_SSR_LOCATION__',
+    initUndefined,
+    'clientServerTransferred',
+  ),
+  __POINT0_CURRENT_LOCATION__: ss.define<AnyLocation>(
+    '__POINT0_CURRENT_LOCATION__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_UNHEAD_HEAD__: ss.define<Unhead<ResolvableHead>>(
+    '__POINT0_UNHEAD_HEAD__',
+    initUndefined,
+    'serverOnlyStorage',
+  ),
 }
+export const getFakeClient = (): LikeFakeClient | undefined => {
+  return ss.serverStorage?.getStore()?.__POINT0_FAKE_CLIENT__ as LikeFakeClient | undefined
+}
+
 const knownKeys = Object.keys(_ssItems)
 export const _ssProxy = ss.proxy(_ssItems)
 export const _ssRunWithServerStorageState = ss.createTypedRunWithServerStorageState<typeof _ssItems>()

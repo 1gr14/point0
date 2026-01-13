@@ -370,6 +370,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     const executor = await Executor.create({
       engine: this,
       request: Executor.createRequestByPointAndInput({ point, input }),
+      // TODO:ASAP we do not need points manager here, we need fromScope here
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
       currentLocation: location,

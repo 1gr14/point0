@@ -29,7 +29,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
-import { _ssItems } from './internals.js'
+import { _ssItems, getFakeClient } from './internals.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
 import { superstore } from './super-store.js'
@@ -4454,7 +4454,7 @@ export class Point0<
   ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
-    const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? _ssItems.__POINT0_FAKE_CLIENT__.getWeak()?.scope
+    const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? getFakeClient()?.scope
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
@@ -4518,7 +4518,17 @@ export class Point0<
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const fetchOptions = this.getFetchOptions(...args)
-    const serverFetchFn = _ssItems.__POINT0_FETCH_FN__.getWeak()
+    const serverFetchFn = (() => {
+      const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
+      if (__POINT0_FETCH_FN__) {
+        return __POINT0_FETCH_FN__
+      }
+      const fakeClient = getFakeClient()
+      if (fakeClient) {
+        return fakeClient.fetch.bind(fakeClient)
+      }
+      return undefined
+    })()
     if (env.target.is.server && !serverFetchFn) {
       throw new Error('Server fetch function is not set, it is a critical bug, please report it')
     }
@@ -6660,7 +6670,10 @@ export class Point0<
   ): FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> {
     const value = superstore.getValue<
       FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-    >(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`)
+    >(
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
+      'clientServerIsolated',
+    )
     if (!value) {
       throw new Error(
         `Provider value not found on point: provider.${this.name}. You should call getValue only after Provider component is mounted and loaded.`,
@@ -6676,7 +6689,10 @@ export class Point0<
     | undefined {
     const value = superstore.getValue<
       FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-    >(`__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`)
+    >(
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
+      'clientServerIsolated',
+    )
     return value
   }
 
@@ -6735,6 +6751,7 @@ export class Point0<
     superstore.setValue(
       `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
       value,
+      'clientServerIsolated',
     )
     return this._withWrappers({
       children: React.createElement(this._ProviderReactContext.Provider, {

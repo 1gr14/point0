@@ -24,10 +24,10 @@ import { Svg } from '../lib/svg.js'
 //     var: 0,
 //   }
 // })
-const someRandom = superstore.define('someRandom', () => Math.random(), true)
-const someDate = superstore.define('someDate', () => new Date(), true)
-const someStable = superstore.define('someStable', () => 123, true)
-const someVar = superstore.define('someVar', () => 0, true)
+const someRandom = superstore.define('someRandom', () => Math.random(), 'clientServerTransferred')
+const someDate = superstore.define('someDate', () => new Date(), 'clientServerTransferred')
+const someStable = superstore.define('someStable', () => 123, 'clientServerTransferred')
+const someVar = superstore.define('someVar', () => 0, 'clientServerTransferred')
 
 export const BestIdeaComponent = client
   .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?

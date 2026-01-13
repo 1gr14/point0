@@ -1,6 +1,8 @@
 // vars
 
 export type POINT0_NODE_ENV = 'production' | 'development' | 'test'
+export type POINT0_TARGET = 'client' | 'server'
+export type POINT0_CLIENT_PLATFORM = 'browser' | 'react-native'
 
 type AnyAnvVars = Record<string, string | undefined | boolean | number | null>
 
@@ -30,7 +32,7 @@ const envVars = getEnvVars()
 
 // target
 
-const isTargetClient = (): boolean => {
+export const _isTargetClient = (): boolean => {
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 
@@ -47,16 +49,16 @@ const isTargetClient = (): boolean => {
 
 // in server it becomes const true, in client it becomes const false
 const isTargetServer = (): boolean => {
-  return !isTargetClient()
+  return !_isTargetClient()
 }
 
 const getTargetName = (): 'client' | 'server' => {
-  return isTargetClient() ? 'client' : 'server'
+  return _isTargetClient() ? 'client' : 'server'
 }
 
 const isTargetSsr = (): false | true | 'prepass' | 'final' => {
   // const ssr = SuperStore.getWeak<'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__')
-  if (isTargetClient()) {
+  if (_isTargetClient()) {
     return false
   }
   const getSsrPhase: unknown = (globalThis as any).__POINT0_GET_SSR_PHASE__
@@ -87,7 +89,7 @@ function targetDefineUniversal<TClientResult, TServerResult>(options: {
   client?: TClientResult
   server?: TServerResult
 }): TClientResult | TServerResult | undefined {
-  if (isTargetClient()) {
+  if (_isTargetClient()) {
     return options.client
   }
   return options.server
@@ -103,7 +105,7 @@ type TargetDefineWithHelpers = typeof targetDefineUniversal & {
   unsafe: TargetDefineUnsafe
 }
 const defineServer = (value: any) => {
-  if (isTargetClient()) {
+  if (_isTargetClient()) {
     return undefined
   }
   return value
@@ -137,7 +139,7 @@ type TargetIsServer = {
 const targetIs = Object.defineProperties(
   {},
   {
-    client: { get: isTargetClient },
+    client: { get: _isTargetClient },
     server: { get: isTargetServer },
     ssr: { get: isTargetSsr },
   },
