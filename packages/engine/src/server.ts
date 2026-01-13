@@ -31,7 +31,9 @@ import {
   withRetries,
 } from './utils.js'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
+import type { Engine } from './engine.js'
 
+// TODO:ASAP rename to EngineServer
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
   cwd: string
@@ -163,7 +165,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return !!this.initialized
   }
 
-  async init(): Promise<ServerBun<true>> {
+  async init({ engine }: { engine: Engine }): Promise<ServerBun<true>> {
     if (this.isInitialized()) {
       return this as ServerBun<true>
     }
@@ -172,7 +174,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       this.publicdir.init(),
     ])
     this.initialized = true as never
-    this.fetcher = Fetcher.create({ server: this as ServerBun<true> }) as TInitialized extends true ? Fetcher : null
+    this.fetcher = Fetcher.create({ engine, server: this as ServerBun<true> }) as TInitialized extends true
+      ? Fetcher
+      : null
     return this as ServerBun<true>
   }
 

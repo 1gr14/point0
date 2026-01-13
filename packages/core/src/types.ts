@@ -553,12 +553,7 @@ export type OmitUnnamedKeys<T> = {
   [K in keyof T as string extends K ? never : K]: T[K]
 }
 
-export type FetchFn = (input: RequestInfo, init?: RequestInit) => Promise<Response>
-export type FetchConfig = {
-  scope?: string
-  serverurl?: string
-  fetch: FetchFn
-}
+export type FetchFn = (request: Request) => Promise<Response>
 
 export type ShowError<Message extends string> = {
   readonly __error__: Message
@@ -1602,7 +1597,7 @@ export type NiceRootStagePoint<
   | 'root'
   | 'ssr'
   | 'transformer'
-  | 'fetcher'
+  // | 'fetchFn'
   | 'requireCtx'
   | 'serverurl'
   | 'baseurl'

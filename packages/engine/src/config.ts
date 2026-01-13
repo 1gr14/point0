@@ -3,6 +3,7 @@ import type {
   AnyPointsModule,
   AppComponent,
   AppComponentModule,
+  FetchFn,
   PointsScope,
   RawPointsDefinition,
   RequiredCtxByPointsDefinitions,
@@ -93,6 +94,8 @@ export type EngineGeneralOptions = {
   clientsOutdir?: string
   pointsGlob?: string | string[]
   buildWatchGlob?: string | string[]
+  replaceFetch?: boolean | FetchFn
+  fetchRecorder?: boolean | number
   banner?: string
   bunBuildConfig?: BunBuildConfigDefinition
   bunPlugins?: BunPluginsDefinition
@@ -166,7 +169,7 @@ export type EngineShortOptions<
   TClient2PointsDefinition extends RawPointsDefinition = RawPointsDefinition,
   TClient3PointsDefinition extends RawPointsDefinition = RawPointsDefinition,
 > = EngineGeneralOptions & {
-  server: TServerPointsDefinition
+  server?: TServerPointsDefinition
   clients?:
     | []
     | [TClient1PointsDefinition]
@@ -251,6 +254,8 @@ export type EngineGeneralOptionsParsed = {
   clientsOutdir: string | null
   pointsGlob: string[]
   buildWatchGlob: string[]
+  replaceFetch: boolean | FetchFn
+  fetchRecorder: boolean | number
   banner: string | null
   compiler: EngineOptionsCompiler | boolean | null
   bunBuildConfig: BunBuildConfigDefinition | null
@@ -492,6 +497,8 @@ const parseEngineGeneralOptions = ({
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
     banner: generalOptions.banner ?? null,
+    replaceFetch: generalOptions.replaceFetch ?? true,
+    fetchRecorder: generalOptions.fetchRecorder ?? false,
     compiler,
   }
   return {
@@ -881,10 +888,7 @@ const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineO
       points: async () => module,
     }
   }
-  if (!Array.isArray(options.clients)) {
-    return options as EngineOptions
-  }
-  const clients = options.clients.flatMap((client) => {
+  const clients = options.clients?.flatMap((client) => {
     if (Array.isArray(client)) {
       const module = PointsManager.rawPointsDefinitionToReadyPointsModule(client)
       const scope = module._root.point.point.scope
@@ -895,6 +899,13 @@ const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineO
     }
     return client as EngineClientOptions
   })
+  if (!options.server) {
+    const scope = clients?.at(0)?.scope
+    if (!scope) {
+      throw new Error('No scope found in clients and no server points provided')
+    }
+    options.server = { scope }
+  }
   return {
     ...options,
     clients,

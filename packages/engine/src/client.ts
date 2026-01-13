@@ -34,6 +34,7 @@ import {
 import { env } from '@point0/env'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 
+// TODO:ASAP rename to EngineClient
 export class ClientBun<TInitialized extends boolean = boolean> {
   cwd: string
   scope: PointsScope

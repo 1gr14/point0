@@ -31,14 +31,15 @@ import type {
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
 import { _ssItems, _ssRunWithServerStorageState, PointsManager, Request0, Response0 } from '@point0/core'
-import type { DehydratedState, QueryKey as OriginalQueryKey, QueryClient } from '@tanstack/react-query'
+import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
-import type { ResolvableHead, Unhead } from 'unhead/types'
+import type { Engine } from './engine.js'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
+  engine: Engine
   request: Request0
   response0: Response0
   pointsManager: PointsManager<true, TRequiredCtx>
@@ -48,6 +49,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   serverStorageState: SuperStoreInternalValues
 
   private constructor({
+    engine,
     request,
     pointsManager,
     pageLocation,
@@ -56,22 +58,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     serverStorageState,
     response0,
   }: {
+    engine: Engine
     request: Request0
     pointsManager: PointsManager<true, TRequiredCtx>
     serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
-    serverStorageState: {
-      __POINT0_REQUEST0__: Request0
-      __POINT0_RESPONSE0__: Response0
-      __POINT0_SCOPE__: PointsScope
-      __POINT0_QUERY_CLIENT__: QueryClient
-      __POINT0_SSR_LOCATION__: AnyLocation | undefined
-      __POINT0_CURRENT_LOCATION__: AnyLocation
-      __POINT0_UNHEAD_HEAD__: Unhead<ResolvableHead>
-    }
+    serverStorageState: SuperStoreInternalValues
     response0: Response0
   }) {
+    this.engine = engine
     this.request = request
     this.response0 = response0
     this.pointsManager = pointsManager
@@ -82,6 +78,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static async create<TRequiredCtx extends RequiredCtx = RequiredCtx>({
+    engine,
     request,
     points,
     pageLocation,
@@ -90,6 +87,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     response0,
     serverStorageState: providedServerStorageState,
   }: {
+    engine: Engine
     request: Request | Request0
     points: PointsManager<boolean, TRequiredCtx> | ReadyPointsModule<TRequiredCtx> | LazyPointsModule<TRequiredCtx>
     currentLocation: AnyLocation
@@ -101,7 +99,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     response0 ??= Response0.create()
     const request0 = Request0.create(request)
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
+    const testClient = _ssItems.__POINT0_TEST_CLIENT__.getWeak()
+    const fetchFn = testClient ? testClient.fetch.bind(testClient) : engine.fetchSimple.bind(engine)
     const serverStorageState = Object.assign(providedServerStorageState || {}, {
+      __POINT0_FETCH_FN__: fetchFn,
+      __POINT0_TEST_CLIENT__: testClient,
       __POINT0_REQUEST0__: request0,
       __POINT0_RESPONSE0__: response0,
       __POINT0_SCOPE__: pointsManager.scope,
@@ -109,8 +111,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_CURRENT_LOCATION__: currentLocation,
       __POINT0_UNHEAD_HEAD__: createHead(),
-    } as SuperStoreInternalValues)
+    } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx>({
+      engine,
       request: request0,
       pointsManager,
       pageLocation,
@@ -171,6 +174,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }
 
   static async execute<TPoint extends EndPoint>({
+    engine,
     executor,
     point,
     input,
@@ -178,6 +182,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     withLayouts,
     response0,
   }: {
+    engine: Engine
     point: TPoint
     input: TPoint['Infer']['InputRaw']
     executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
@@ -192,6 +197,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
     executor ??= await Executor.create({
+      engine,
       request: Executor.createRequestByPointAndInput({ point, input }),
       points: { _root: point._root, point, ...layoutsObject },
       currentLocation: location,
@@ -753,6 +759,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
       // register per-key options (retry, gcTime, etc.)
       const tempQueryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!tempQueryClient) {
         throw new Error('Query client not found')
       }

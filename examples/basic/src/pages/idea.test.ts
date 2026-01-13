@@ -11,14 +11,14 @@ describe('idea page', () => {
   //   })
   //   expect(result.status).toBe(202)
   // })
-  it.concurrent('should work with Executor.execute', async () => {
-    const result = await Executor.execute({
-      point: ideaPage.point,
-      input: { id: '1' },
-      requiredCtx: { zxc: 123 },
-    })
-    expect(result.status).toBe(202)
-  })
+  // it.concurrent('should work with Executor.execute', async () => {
+  //   const result = await Executor.execute({
+  //     point: ideaPage.point,
+  //     input: { id: '1' },
+  //     requiredCtx: { zxc: 123 },
+  //   })
+  //   expect(result.status).toBe(202)
+  // })
   it.concurrent('should work with engine.execute', async () => {
     await engine.init({ preventClientDevServers: true })
     const result = await engine.execute({

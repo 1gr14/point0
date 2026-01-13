@@ -267,6 +267,14 @@ export class SuperStore {
     return undefined
   }
 
+  getValueWeak<TValue = unknown>(name: string): TValue | undefined {
+    try {
+      return this.getValue(name)
+    } catch {
+      return undefined
+    }
+  }
+
   setValue<TValue = unknown>(name: string, value: TValue): void {
     this.touched.add(name)
     this.prepared.delete(name)
@@ -352,6 +360,10 @@ export class SuperStoreItem<TValue = any, TDehydratedValue = any> {
     return this.superstore.getValue(this.name) as TValue
   }
 
+  getWeak = (): TValue | undefined => {
+    return this.superstore.getValueWeak(this.name)
+  }
+
   set = (value: TValue): void => {
     this.superstore.setValue(this.name, value)
   }
@@ -392,24 +404,30 @@ export type SuperStoreItemsValuesOrErrors<TItems extends Record<string, AnyNiceS
 
 export type NiceSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'set' | 'config'
+  'get' | 'getWeak' | 'set' | 'config'
 >
 export type NiceUnsettableRedefinableSuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'redefine' | 'config'
+  'get' | 'getWeak' | 'redefine' | 'config'
 >
 export type NiceReadonlySuperStoreItem<TValue = any, TDehydratedValue = any> = Pick<
   SuperStoreItem<TValue, TDehydratedValue>,
-  'get' | 'config'
+  'get' | 'getWeak' | 'config'
 >
 export type AnyNiceSuperStoreItem<TValue = any, TDehydratedValue = any> =
   | NiceSuperStoreItem<TValue, TDehydratedValue>
   | NiceUnsettableRedefinableSuperStoreItem<TValue, TDehydratedValue>
   | NiceReadonlySuperStoreItem<TValue, TDehydratedValue>
 
-export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<TSuperStorItem, 'get' | 'set' | 'config'>
+export type ToNiceSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
+  TSuperStorItem,
+  'get' | 'getWeak' | 'set' | 'config'
+>
 export type ToNiceUnsettableRedefinableSuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
   TSuperStorItem,
-  'get' | 'redefine' | 'config'
+  'get' | 'getWeak' | 'redefine' | 'config'
 >
-export type ToNiceReadonlySuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<TSuperStorItem, 'get' | 'config'>
+export type ToNiceReadonlySuperStoreItem<TSuperStorItem extends SuperStoreItem> = Pick<
+  TSuperStorItem,
+  'get' | 'getWeak' | 'config'
+>

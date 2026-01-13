@@ -3,11 +3,16 @@ import type { ResolvableHead, Unhead } from 'unhead/types'
 import type { Request0, Response0, SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './index.js'
 import { queryClient } from './query-client.js'
 import { ss } from './super-store.js'
-import type { PointsScope } from './types.js'
+import type { FetchFn, PointsScope } from './types.js'
 
 const initUndefined = () => undefined as never
 
 export const _ssItems = {
+  __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined),
+  __POINT0_TEST_CLIENT__: ss.define<{ id: string; scope: PointsScope; fetch: FetchFn } | undefined>(
+    '__POINT0_TEST_CLIENT__',
+    initUndefined,
+  ),
   __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined),
   __POINT0_RESPONSE0__: ss.define<Response0>('__POINT0_RESPONSE0__', initUndefined),
   __POINT0_SCOPE__: ss.define<PointsScope>('__POINT0_SCOPE__', initUndefined),
@@ -16,7 +21,16 @@ export const _ssItems = {
   __POINT0_CURRENT_LOCATION__: ss.define<AnyLocation>('__POINT0_CURRENT_LOCATION__', initUndefined),
   __POINT0_UNHEAD_HEAD__: ss.define<Unhead<ResolvableHead>>('__POINT0_UNHEAD_HEAD__', initUndefined),
 }
+const knownKeys = Object.keys(_ssItems)
 export const _ssProxy = ss.proxy(_ssItems)
 export const _ssRunWithServerStorageState = ss.createTypedRunWithServerStorageState<typeof _ssItems>()
 export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ssItems>
 export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ssItems>
+export const _getSsItemsWithRestErrors = (
+  ssItems: Partial<SuperStoreInternalValues>,
+  errorMessage = 'This value is not yet accessible, maybe it is bug',
+): SuperStoreInternalValuesOrErrors => {
+  const notDefinedKeys = knownKeys.filter((key) => !(key in ssItems))
+  Object.assign(ssItems, Object.fromEntries(notDefinedKeys.map((key) => [key, errorMessage])))
+  return ssItems as SuperStoreInternalValuesOrErrors
+}

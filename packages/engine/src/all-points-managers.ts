@@ -9,6 +9,7 @@ import type {
   PointsScope,
   RequiredCtx,
   DataTransformerExtended,
+  FetchFn,
 } from '@point0/core'
 
 export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
@@ -137,6 +138,14 @@ export class AllPointsManagers<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       throw new Error(`No transformer found for scope "${scope}" or fallback scope "${fallbackScope}"`)
     }
     return result
+  }
+
+  replacePointsFetchFn(fetchFn: FetchFn): void {
+    for (const pm of this.pointsManagers) {
+      for (const point of pm.collection) {
+        point.point._fetchFn = fetchFn
+      }
+    }
   }
 
   // async prepareExecutorByRequest({

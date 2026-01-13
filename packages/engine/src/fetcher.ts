@@ -11,23 +11,26 @@ import type {
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import { _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
+import { _getSsItemsWithRestErrors, _ssItems, _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import { toJsonErrorResponse } from './error.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
+import type { Engine } from './engine.js'
 
 export class Fetcher {
+  engine: Engine
   server: ServerBun<true>
 
-  private constructor({ server }: { server: ServerBun<true> }) {
+  private constructor({ engine, server }: { engine: Engine; server: ServerBun<true> }) {
+    this.engine = engine
     this.server = server
   }
 
-  static create({ server }: { server: ServerBun<true> }): Fetcher {
-    return new Fetcher({ server })
+  static create({ engine, server }: { engine: Engine; server: ServerBun<true> }): Fetcher {
+    return new Fetcher({ engine, server })
   }
 
   static fetchAbsFilePathOnDevServer = async ({ request }: { request: Request0 }): Promise<Response | undefined> => {
@@ -312,6 +315,7 @@ export class Fetcher {
       }
 
       const executor = await Executor.create({
+        engine: this.engine,
         request,
         points: suitable.pointsManager,
         pageLocation: suitable.pageLocation,
@@ -484,18 +488,14 @@ export class Fetcher {
       bunServer,
     })
 
-    const notExistsInMiddlewareCall = new Error(
+    const serverStorageState = _getSsItemsWithRestErrors(
+      {
+        __POINT0_TEST_CLIENT__: _ssItems.__POINT0_TEST_CLIENT__.getWeak(),
+        __POINT0_REQUEST0__: prepareFetchResult.request,
+        __POINT0_RESPONSE0__: response0,
+      },
       'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )
-    const serverStorageState: SuperStoreInternalValuesOrErrors = {
-      __POINT0_REQUEST0__: prepareFetchResult.request,
-      __POINT0_RESPONSE0__: response0,
-      __POINT0_SCOPE__: notExistsInMiddlewareCall,
-      __POINT0_QUERY_CLIENT__: notExistsInMiddlewareCall,
-      __POINT0_SSR_LOCATION__: notExistsInMiddlewareCall,
-      __POINT0_CURRENT_LOCATION__: notExistsInMiddlewareCall,
-      __POINT0_UNHEAD_HEAD__: notExistsInMiddlewareCall,
-    }
 
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
       if (prepareFetchResult.devClientsProxyResult) {

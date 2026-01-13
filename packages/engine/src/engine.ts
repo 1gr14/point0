@@ -1,6 +1,7 @@
 import { Route0 } from '@devp0nt/route0'
 import type {
   EndPoint,
+  FetchFn,
   PointsScope,
   RequiredCtx,
   ServerExecuteResult,
@@ -39,6 +40,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   generator: FilesGenerator
   allPointsManagers: AllPointsManagers
   initialized: TInitialized
+  replaceFetch: boolean | FetchFn
+  fetchRecorder: boolean | number
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -50,6 +53,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     initialized: TInitialized
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
+    replaceFetch: boolean | FetchFn
+    fetchRecorder: boolean | number
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
@@ -58,6 +63,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.initialized = input.initialized
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
+    this.replaceFetch = input.replaceFetch
+    this.fetchRecorder = input.fetchRecorder
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -138,6 +145,8 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       initialized: false,
       generator,
       publicdirs,
+      replaceFetch: parsedOptions.general.replaceFetch,
+      fetchRecorder: parsedOptions.general.fetchRecorder,
     })
   }
   static async init<TEngineOptions extends EngineOptions>(
@@ -158,7 +167,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       return this as Engine<TRequiredCtx, true>
     }
 
-    const intializedServer = await this.server.init()
+    const intializedServer = await this.server.init({ engine: this })
     const intializedClients = await Promise.all(
       this.clients.map(async (client) => {
         return await client.init({
@@ -170,6 +179,11 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       ...(intializedServer.pointsManager ? [intializedServer.pointsManager] : []),
       ...intializedClients.map((client) => client.pointsManager),
     )
+    // if (this.replaceFetch) {
+    //   const fetchFn =
+    //     typeof this.replaceFetch === 'function' ? this.replaceFetch : (this.fetch as unknown as FetchFn).bind(this)
+    //   this.allPointsManagers.replacePointsFetchFn(fetchFn)
+    // }
     this.initialized = true as never
 
     return this as Engine<TRequiredCtx, true>
@@ -329,6 +343,14 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     return result.response
   }
 
+  async fetchSimple(request: Request): Promise<Response> {
+    const response = await (this.fetch as any)(request)
+    if (!response) {
+      return new Response('Empty response', { status: 404 })
+    }
+    return response
+  }
+
   async execute<TPoint extends EndPoint>({
     point,
     input,
@@ -356,6 +378,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       fallbackScope: point.scope,
     })
     const executor = await Executor.create({
+      engine: this,
       request: Executor.createRequestByPointAndInput({ point, input }),
       points: suitable.pointsManager,
       pageLocation: suitable.pageLocation,
