@@ -140,11 +140,14 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       publicdirs,
     })
   }
-
   static async init<TEngineOptions extends EngineOptions>(
     options: TEngineOptions,
-  ): Promise<Engine<RequiredCtxByEngineOptions<TEngineOptions>, true>> {
-    const engine = Engine.create(options)
+  ): Promise<Engine<RequiredCtxByEngineOptions<TEngineOptions>, true>>
+  static async init<TEngineShortOptions extends EngineShortOptions>(
+    options: TEngineShortOptions,
+  ): Promise<Engine<RequiredCtxByEngineShortOptions<TEngineShortOptions>, true>>
+  static async init(options: EngineOptions | EngineShortOptions) {
+    const engine = Engine.create(options as never)
     return await engine.init()
   }
 

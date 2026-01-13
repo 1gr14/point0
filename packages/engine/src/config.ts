@@ -5,14 +5,15 @@ import type {
   AppComponentModule,
   PointsScope,
   RawPointsDefinition,
-  ReadyPointsModule,
   RequiredCtxByPointsDefinitions,
   RequiredCtxByPointsModules,
 } from '@point0/core'
-import { appendSlash, prependAndDeappendSlash } from '@point0/core'
+import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
+import type { POINT0_NODE_ENV } from '@point0/env'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
 import type {
   BunBuildConfigDefinition,
   BunPluginsDefinition,
@@ -22,8 +23,10 @@ import type {
   ServerBunPluginsDefinition,
 } from './utils.js'
 import { toAbsPath, toJsExtension } from './utils.js'
-import type { POINT0_NODE_ENV } from '@point0/env'
-import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
+
+// TODO:ASAP transform to class
+// TODO:ASAP allow predefined config mutable, which can be pased to Engine.create or in EngineOptions
+// TODO:ASAP add tests
 
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
@@ -656,6 +659,10 @@ export const parseEngineServerOptions = ({
       : {}
   const serverOptionsCompilerRecord = typeof serverOptions.compiler === 'object' ? serverOptions.compiler : {}
   const mergedCompilerRecord = {
+    target: true,
+    scope: true,
+    mode: true,
+    filter: undefined,
     ...generalOptionsParsedCompilerRecord,
     ...serverOptionsCompilerRecord,
     consts: [
@@ -682,13 +689,11 @@ export const parseEngineServerOptions = ({
             consts: undefined,
             filter: undefined,
           }
-        : {
-            target: true,
-            scope: true,
-            mode: true,
-            filter: undefined,
-            ...mergedCompilerRecord,
-          }
+        : serverOptions.compiler !== undefined
+          ? mergedCompilerRecord
+          : generalOptionsParsed.compiler === false
+            ? false
+            : mergedCompilerRecord
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,
@@ -761,6 +766,10 @@ const parseEngineClientOptions = ({
       : {}
   const clientOptionsCompilerRecord = typeof clientOptions.compiler === 'object' ? clientOptions.compiler : {}
   const mergedCompilerRecord = {
+    target: true,
+    scope: true,
+    mode: true,
+    filter: undefined,
     ...generalOptionsParsedCompilerRecord,
     ...clientOptionsCompilerRecord,
     consts: [
@@ -787,13 +796,11 @@ const parseEngineClientOptions = ({
             consts: undefined,
             filter: undefined,
           }
-        : {
-            target: true,
-            scope: true,
-            mode: true,
-            filter: undefined,
-            ...mergedCompilerRecord,
-          }
+        : clientOptions.compiler !== undefined
+          ? mergedCompilerRecord
+          : generalOptionsParsed.compiler === false
+            ? false
+            : mergedCompilerRecord
   return {
     scope: clientOptions.scope,
     compiler,
@@ -865,28 +872,10 @@ const parseEngineClientOptions = ({
   }
 }
 
-const rawPointsDefintiionToReadyPointsModuleAndScope = (
-  definition: RawPointsDefinition,
-): {
-  module: ReadyPointsModule
-  scope: PointsScope
-} => {
-  const [_root, ...rest] = definition
-  if (!_root) {
-    throw new Error('Root point not found')
-  }
-  return {
-    module: {
-      _root,
-      ...Object.fromEntries(rest.map((p, index) => [`${p.point.type}_${p.point.name}_${index}`, { point: p.point }])),
-    },
-    scope: _root.point.scope,
-  }
-}
-
 const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineOptions): EngineOptions => {
   if (Array.isArray(options.server)) {
-    const { module, scope } = rawPointsDefintiionToReadyPointsModuleAndScope(options.server)
+    const module = PointsManager.rawPointsDefinitionToReadyPointsModule(options.server)
+    const scope = module._root.point.point.scope
     options.server = {
       scope,
       points: async () => module,
@@ -897,13 +886,14 @@ const shortEngineOptionsToEngineOptions = (options: EngineShortOptions | EngineO
   }
   const clients = options.clients.flatMap((client) => {
     if (Array.isArray(client)) {
-      const { module, scope } = rawPointsDefintiionToReadyPointsModuleAndScope(client)
+      const module = PointsManager.rawPointsDefinitionToReadyPointsModule(client)
+      const scope = module._root.point.point.scope
       return {
         scope,
         points: async () => module,
       }
     }
-    return client
+    return client as EngineClientOptions
   })
   return {
     ...options,

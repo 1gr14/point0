@@ -10,21 +10,16 @@ import { Fetch0 } from '../src/fetch0.js'
 import { withFakeBrowser } from './utils/fake-browser.js'
 
 describe('fetch0', () => {
-  it('should fetch page with loader', async () => {
-    const _root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
-    const page = _root
+  it.only('should fetch page with loader', async () => {
+    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+    const page = root
       .lets('page', 'page')
       .loader(() => ({ x: 1 }))
       .page(({ data }) => <div>Hello {data.x}</div>)
     const engine = await Engine.init({
+      compiler: false,
       file: import.meta.url,
-      server: {
-        scope: 'root',
-        points: async () => ({
-          _root,
-          page,
-        }),
-      },
+      server: [root, page],
     })
     Fetch0.apply(engine)
     const data = await page.fetch()
@@ -32,8 +27,8 @@ describe('fetch0', () => {
   })
 
   it('should execute page with loader and client loader', async () => {
-    const _root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
-    const page = _root
+    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+    const page = root
       .lets('page', 'page')
       .loader(() => ({ x: 1 }))
       .clientLoader(({ data }) => ({ ...data, y: 2 }))
@@ -43,14 +38,9 @@ describe('fetch0', () => {
         </div>
       ))
     const engine = await Engine.init({
+      compiler: false,
       file: import.meta.url,
-      server: {
-        scope: 'root',
-        points: async () => ({
-          _root,
-          page,
-        }),
-      },
+      server: [root, page],
     })
     Fetch0.apply(engine)
     const data = await page.execute()
@@ -159,14 +149,14 @@ describe('fetch0', () => {
   //   }
   // })
 
-  it.only('should render page with loader and client loader', async () => {
-    const _root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+  it('should render page with loader and client loader', async () => {
+    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     let counter = 0
-    const mutation = _root
+    const mutation = root
       .lets('mutation', 'mutation')
       .loader(() => ({ index: counter++ }))
       .mutation()
-    const page = _root
+    const page = root
       .lets('page', 'page', '/')
       .loader(() => ({ x: 1 }))
       .clientLoader(({ data }) => ({ ...data, y: 2 }))
@@ -187,17 +177,11 @@ describe('fetch0', () => {
           </div>
         )
       })
-    const points = {
-      _root,
-      page,
-      mutation,
-    }
+    const points = [root, page, mutation] as const
     const engine = await Engine.init({
+      compiler: false,
       file: import.meta.url,
-      server: {
-        scope: 'root',
-        points: async () => points,
-      },
+      server: points,
     })
     Fetch0.apply(engine)
 

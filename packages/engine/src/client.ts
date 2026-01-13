@@ -310,6 +310,11 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     const bunfigTomlContent = `[serve.static]
 plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
+
+    // This broke everything, I do not know why, so hmr will be always enabled for now
+    // development: {
+    //   hmr: ${this.hmrPort ? 'true' : 'false'},
+    // },
     const scriptContent = `
 import indexHtml from '${this.indexHtml}';
 Bun.serve({
@@ -424,7 +429,7 @@ Bun.serve({
         port: this.port,
         development: {
           console: false,
-          hmr: false,
+          hmr: false, // vite provides it own hmr
         },
         fetch: async (originalRequest) => {
           const location = Route0.getLocation(originalRequest.url)

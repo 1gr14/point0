@@ -142,14 +142,14 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     })
   }
 
-  static readonly create = <TPoints extends ReadyPointsModule | LazyPointsModule | PointsManager>(
+  static readonly create = <TPoints extends RawPointsDefinition | ReadyPointsModule | LazyPointsModule | PointsManager>(
     points: TPoints,
     options?: {
       absPath?: string
       readFn?: PointsReadFn
     },
   ): PointsManager<
-    TPoints extends ReadyPointsModule
+    TPoints extends ReadyPointsModule | RawPointsDefinition
       ? true
       : TPoints extends LazyPointsModule
         ? false
@@ -162,7 +162,9 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         ? TPoints['_root']['point']['point']['Infer']['RequiredCtx']
         : TPoints extends LazyPointsModule
           ? TPoints['_root']['point']['point']['Infer']['RequiredCtx']
-          : RequiredCtx
+          : TPoints extends RawPointsDefinition
+            ? TPoints[0]['point']['Infer']['RequiredCtx']
+            : RequiredCtx
   > => {
     const { absPath, readFn } = options ?? {}
     if (points instanceof PointsManager) {
@@ -175,6 +177,12 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     }
     if (PointsManager.isLazyPointsModule(points)) {
       return PointsManager.lazy(points, { absPath, readFn }) as never
+    }
+    if (PointsManager.isRawPointsDefinition(points)) {
+      return PointsManager.ready(PointsManager.rawPointsDefinitionToReadyPointsModule(points), {
+        absPath,
+        readFn,
+      }) as never
     }
     throw new Error('Invalid points input')
   }
@@ -264,6 +272,15 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     )
   }
 
+  private static isRawPointsDefinition(points: unknown): points is RawPointsDefinition {
+    return (
+      Array.isArray(points) &&
+      points.length > 0 &&
+      points[0].type === 'root' &&
+      points.every((p: any) => p?.point?.__POINT0_INSTANCE__ === true)
+    )
+  }
+
   static isNormalizedLazyPointsCollection(points: any): points is NormalizedLazyPointsCollection {
     if (!Array.isArray(points)) {
       return false
@@ -339,6 +356,18 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
                   : undefined,
       }
     })
+  }
+
+  static readonly rawPointsDefinitionToReadyPointsModule = (definition: RawPointsDefinition): ReadyPointsModule => {
+    const [_root, ...rest] = definition
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!_root) {
+      throw new Error('Root point not found')
+    }
+    return {
+      _root,
+      ...Object.fromEntries(rest.map((p, index) => [`${p.point.type}_${p.point.name}_${index}`, { point: p.point }])),
+    }
   }
 
   static readonly toRoutes = ({
@@ -828,10 +857,9 @@ export type AnyPointsModule<TRequiredCtx extends RequiredCtx = any> =
   | ReadyPointsModule<TRequiredCtx>
   | LazyPointsModule<TRequiredCtx>
 
-export type RawPointsDefinition<TRequiredCtx extends RequiredCtx = RequiredCtx> = [
-  { point: RootPoint<TRequiredCtx> },
-  ...Array<{ point: EndPoint }>,
-]
+export type RawPointsDefinition<TRequiredCtx extends RequiredCtx = RequiredCtx> =
+  | [{ point: RootPoint<TRequiredCtx> }, ...Array<{ point: EndPoint }>]
+  | readonly [{ point: RootPoint<TRequiredCtx> }, ...Array<{ point: EndPoint }>]
 
 // pages tree
 
