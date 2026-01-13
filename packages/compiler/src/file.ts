@@ -10,6 +10,7 @@ import prettier from 'prettier'
 import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 import type { CompilerPoint } from './point.js'
+import type { POINT0_NODE_ENV } from '@point0/env'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -345,9 +346,10 @@ export class CompilerFile<THasContent extends boolean> {
 
   private _shakeForEnv:
     | {
-        target: 'client' | 'server'
+        target: 'client' | 'server' | false
+        mode: POINT0_NODE_ENV | false
         built: boolean
-        scope: string
+        scope: string | false
         // can be env name like NODE_ENV, or string SOMETHING_* then we should force value for all const started with SOMETHING_
         // also object like { NODE_ENV: 'production', NUM: 1, BOOL: true, NULL: null, UNDEFINED: undefined } can be provided
         consts: CompilerEnvConsts
@@ -361,15 +363,18 @@ export class CompilerFile<THasContent extends boolean> {
     scope,
     consts = undefined,
     built = false,
+    mode,
   }: {
-    target: 'client' | 'server'
-    scope: string
+    target: 'client' | 'server' | false
+    scope: string | false
+    mode: POINT0_NODE_ENV | false
     consts?: CompilerEnvConsts | undefined
     built?: boolean | undefined
   }): {
-    target: 'client' | 'server'
+    target: 'client' | 'server' | false
     built: boolean
-    scope: string
+    scope: string | false
+    mode: POINT0_NODE_ENV | false
     consts: CompilerEnvConsts
     errors: unknown[]
     ok: boolean
@@ -378,20 +383,45 @@ export class CompilerFile<THasContent extends boolean> {
     const errors: unknown[] = []
     consts = normalizeEnvConsts(consts)
     consts = [...consts].reverse() // for winning last match
-    consts.unshift('NODE_ENV', 'POINT0_SCOPE')
+    if (mode !== false) {
+      consts.unshift({ NODE_ENV: mode })
+    }
+    if (scope !== false) {
+      consts.unshift({ POINT0_SCOPE: scope })
+    }
+    if (target !== false) {
+      consts.unshift({ POINT0_TARGET: target })
+    }
     let modified = false
     if (!this.content) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
     if (this._shakeForEnv) {
-      if (this._shakeForEnv.target !== target) {
+      if (target !== false && this._shakeForEnv.target !== target) {
         throw new Error(`Already shaked for target ${this._shakeForEnv.target}`)
+      }
+      if (scope !== false && this._shakeForEnv.scope !== scope) {
+        throw new Error(`Already shaked for scope ${this._shakeForEnv.scope}`)
+      }
+      if (mode !== false && this._shakeForEnv.mode !== mode) {
+        throw new Error(`Already shaked for mode ${this._shakeForEnv.mode}`)
       }
       return this._shakeForEnv
     }
     try {
       if (!this.content.includes('@point0/env')) {
-        this._shakeForEnv = { target, scope, consts, built, errors, ok: true, modified }
+        const resultTarget = target !== false ? target : 'client'
+        const resultScope = scope !== false ? scope : ''
+        this._shakeForEnv = {
+          target: resultTarget,
+          scope: resultScope,
+          mode,
+          consts,
+          built,
+          errors,
+          ok: true,
+          modified,
+        }
         return this._shakeForEnv
       }
 
@@ -450,10 +480,9 @@ export class CompilerFile<THasContent extends boolean> {
       }
 
       // Get NODE_ENV value from process.env
-      const nodeEnv = process.env.NODE_ENV || 'development'
-      const isProduction = nodeEnv === 'production'
-      const isDevelopment = nodeEnv === 'development'
-      const isTest = nodeEnv === 'test'
+      const isProduction = mode !== false && mode === 'production'
+      const isDevelopment = mode !== false && mode === 'development'
+      const isTest = mode !== false && mode === 'test'
 
       traverse(this.ast, {
         MemberExpression: (p) => {
@@ -461,6 +490,7 @@ export class CompilerFile<THasContent extends boolean> {
 
           // Handle env.target.is.client, env.target.is.server
           if (
+            target !== false &&
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
@@ -491,6 +521,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.mode.name
           else if (
+            mode !== false &&
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'Identifier' &&
             node.object.object.name === 'env' &&
@@ -499,7 +530,7 @@ export class CompilerFile<THasContent extends boolean> {
             node.property.type === 'Identifier' &&
             node.property.name === 'name'
           ) {
-            p.replaceWith(makeStringLiteral(nodeEnv))
+            p.replaceWith(makeStringLiteral(mode))
             modified = true
           }
           // Handle env.built
@@ -514,6 +545,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.mode.is.production, env.mode.is.development, env.mode.is.test
           else if (
+            mode !== false &&
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
@@ -539,6 +571,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.scope.is.X - replace with true if scope matches, false otherwise
           else if (
+            scope !== false &&
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
@@ -608,6 +641,7 @@ export class CompilerFile<THasContent extends boolean> {
 
           // Handle env.target.define.server(), env.target.define.client()
           if (
+            target !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'Identifier' &&
@@ -631,6 +665,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.target.define.unsafe.server(), env.target.define.unsafe.client()
           else if (
+            target !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'MemberExpression' &&
@@ -657,6 +692,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.scope.define.X() - replace with value if scope matches, undefined otherwise
           else if (
+            scope !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'Identifier' &&
@@ -675,6 +711,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.scope.define.unsafe.X() - replace with value if scope matches, undefined otherwise
           else if (
+            scope !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'MemberExpression' &&
@@ -696,6 +733,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.scope.define() with options object
           else if (
+            scope !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'Identifier' &&
             callee.object.object.name === 'env' &&
@@ -717,6 +755,7 @@ export class CompilerFile<THasContent extends boolean> {
           }
           // Handle env.target.define() with options object
           else if (
+            target !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'Identifier' &&
             callee.object.object.name === 'env' &&
@@ -749,12 +788,12 @@ export class CompilerFile<THasContent extends boolean> {
         },
       })
 
-      this._shakeForEnv = { target, scope, consts, built, errors, ok: true, modified }
+      this._shakeForEnv = { target, scope, mode, consts, built, errors, ok: true, modified }
       this.modified ||= modified
       return this._shakeForEnv
     } catch (e) {
       errors.push(e)
-      this._shakeForEnv = { target, scope, consts, built, errors, ok: false, modified }
+      this._shakeForEnv = { target, scope, mode, consts, built, errors, ok: false, modified }
       return this._shakeForEnv
     }
   }

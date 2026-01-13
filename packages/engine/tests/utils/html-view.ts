@@ -160,6 +160,13 @@ export class HtmlView<TParsed extends boolean = any> {
             stack.push(node)
             el.onEndTag(() => {
               if (!insideRoot || !stack.length) return
+              // Trim the final content to remove leading/trailing whitespace
+              // but preserve spaces between text nodes
+              const current = stack[stack.length - 1]
+              if (current.content !== undefined) {
+                const trimmed = current.content.trim()
+                current.content = trimmed || undefined
+              }
               // Pop the current element from stack (but keep root in stack)
               if (stack.length > 1) {
                 stack.pop()
@@ -169,7 +176,10 @@ export class HtmlView<TParsed extends boolean = any> {
         },
         text(t) {
           if (!insideRoot || !stack.length) return
-          const text = t.text.trim()
+          // Don't trim individual chunks - preserve spaces between text nodes
+          // We'll trim the final result when the element closes
+          const text = t.text
+          // Skip empty text chunks (but keep spaces)
           if (!text) return
 
           const current = stack[stack.length - 1]

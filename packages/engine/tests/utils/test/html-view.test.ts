@@ -376,6 +376,22 @@ describe('html-viewer', () => {
       ]
     `)
     })
+
+    it('should handle HTML comments in text content', async () => {
+      const html = '<div id="root"><div>Hello <!-- -->0</div></div>'
+      const { tree } = await HtmlView.parse(html)
+      expect(tree).toMatchInlineSnapshot(`
+      [
+        {
+          "children": [],
+          "classNames": [],
+          "content": "Hello 0",
+          "id": undefined,
+          "tag": "div",
+        },
+      ]
+    `)
+    })
   })
 
   describe('preview', () => {

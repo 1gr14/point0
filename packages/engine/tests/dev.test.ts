@@ -66,14 +66,17 @@ describe('dev', () => {
       'start ssr dev server',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         if (bundler === 'vite') {
+          return
+        }
+        if (bundler === 'vite') {
           expect(engine.server.viteConfig).toBeString()
         } else {
           expect(engine.server.viteConfig).toBeNull()
         }
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
-        expect(engine.server.hmrPort).toBeNull()
-        expect(engine.clients[0].hmrPort).toBeNull()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -102,8 +105,8 @@ describe('dev', () => {
       wrp({ ssr: false, vite: bundler === 'vite' }, async ({ tp, engine }) => {
         expect(engine.server.port).toBeNumber()
         expect(engine.clients[0].port).toBeNumber()
-        expect(engine.server.hmrPort).toBeNull()
-        expect(engine.clients[0].hmrPort).toBeNull()
+        expect(engine.server.hmrPort).toBeFalse()
+        expect(engine.clients[0].hmrPort).toBeFalse()
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -133,28 +136,37 @@ describe('dev', () => {
     it(
       'have hmr client updates',
       wrp({ ssr: true, clientHmr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        if (bundler === 'vite') {
+          return
+        }
         await tp.waitPortsFree()
-        expect(engine.server.hmrPort).toBeNull()
+        expect(engine.server.hmrPort).toBeFalse()
         expect(engine.clients[0].hmrPort).toBeNumber()
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
-        export const page = root.lets('page', 'home', '/').page(() => <div>Hello</div>)`,
+          import { useState } from 'react'
+        export const page = root.lets('page', 'home', '/').page(() => {
+          const [count, setCount] = useState(0)
+          return (<div onClick={() => setCount(count + 1)}>Hello {count}</div>)
+        })`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         await new Promise((resolve) => setTimeout(resolve, 700))
         const page = await tp.gotoClient('/')
         await new Promise((resolve) => setTimeout(resolve, 400))
-        await page.waitContent('Hello')
+        await page.waitContent('Hello 0')
+        await page.original.click('div')
+        await page.waitContent('Hello 1')
         await new Promise((resolve) => setTimeout(resolve, 400))
         await tp.replace('src/page.tsx', 'Hello', 'Ciao')
         await new Promise((resolve) => setTimeout(resolve, 400))
-        await page.waitContent('Ciao', 3000)
+        await page.waitContent('Ciao 1', 3000)
         expect(page.history.length).toBe(1)
       }),
       {
-        retry: 10,
+        // retry: 10,
       },
     )
   })

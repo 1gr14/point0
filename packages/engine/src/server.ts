@@ -1,5 +1,6 @@
 import type { PointsScope, RequiredCtx } from '@point0/core'
 import { PointsManager, prependAndDeappendSlash } from '@point0/core'
+import { env } from '@point0/env'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -12,7 +13,9 @@ import type {
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
+  EngineOptionsCompilerParsed,
 } from './config.js'
+import { Fetcher } from './fetcher.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBunBuildConfigDefinition, ServerBunPluginsDefinition } from './utils.js'
 import {
@@ -26,8 +29,6 @@ import {
   validateEntrypoints,
   withRetries,
 } from './utils.js'
-import { Fetcher } from './fetcher.js'
-import { env } from '@point0/env'
 
 export class ServerBun<TInitialized extends boolean = boolean> {
   scope: PointsScope
@@ -54,8 +55,9 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   bunServer: Bun.Server<unknown> | undefined
   viteConfig: EngineOptionsViteConfig | null
   viteDevServer: ViteDevServer | null
-  hmrPort: number | null
+  hmrPort: number | false
   fetcher: TInitialized extends true ? Fetcher : null
+  compiler: EngineOptionsCompilerParsed | false
 
   private constructor(input: {
     initialized: TInitialized
@@ -78,7 +80,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
-    hmrPort: number | null
+    hmrPort: number | false
+    compiler: EngineOptionsCompilerParsed | false
   }) {
     this.cwd = input.cwd
     this.allPointsManagers = input.allPointsManagers
@@ -107,6 +110,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
     this.hmrPort = input.hmrPort
+    this.compiler = input.compiler
     this.fetcher = null as TInitialized extends true ? Fetcher : null
   }
 
@@ -129,7 +133,8 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     logger: EngineLogger
     clients: ClientBun[]
     viteConfig: EngineOptionsViteConfig | null
-    hmrPort: number | null
+    hmrPort: number | false
+    compiler: EngineOptionsCompilerParsed | false
   }): ServerBun<false> {
     const publicdir = Publicdir.create({
       hostname: null,
@@ -178,11 +183,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return pointsManager
   }
 
-  async extractBunPlugins({ built }: { built: boolean }): Promise<BunPlugin[]> {
+  async extractBunPlugins({
+    built,
+    extraPlugins = [],
+  }: {
+    built: boolean
+    extraPlugins?: BunPlugin[]
+  }): Promise<BunPlugin[]> {
     const extractedPlugins = await extractServerBunPlugins({
       mode: normalizeAndValidateNodeEnv('development'),
       command: 'serve',
       bunPlugins: this.bunPlugins,
+      scope: this.scope,
     })
     const compilerPlugin = this.viteConfig // we inject vite compiler plugin in vite config
       ? []
@@ -197,15 +209,15 @@ export class ServerBun<TInitialized extends boolean = boolean> {
               }),
             ),
           ]
-    const extractedBunPlugins = [...extractedPlugins, ...compilerPlugin]
+    const extractedBunPlugins = [...compilerPlugin, ...extraPlugins, ...extractedPlugins]
     return extractedBunPlugins
   }
 
-  async loadBunPlugins({ built }: { built: boolean }): Promise<void> {
+  async loadBunPlugins({ built, extraPlugins = [] }: { built: boolean; extraPlugins?: BunPlugin[] }): Promise<void> {
     if (this.bunPluginsLoaded) {
       return
     }
-    const extractedBunPlugins = await this.extractBunPlugins({ built })
+    const extractedBunPlugins = await this.extractBunPlugins({ built, extraPlugins })
     await loadBunPlugins({ extractedBunPlugins })
     this.bunPluginsLoaded = true
   }
@@ -533,12 +545,14 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       mode: NODE_ENV,
       bunBuildConfig: this.bunBuildConfig,
       bunPlugins: this.bunPlugins,
+      scope: this.scope,
     })
     const providedBunBuildConfig = bunBuildConfig
       ? await executeServerBunBuildConfig({
           mode: NODE_ENV,
           bunBuildConfig,
           bunPlugins: [],
+          scope: this.scope,
         })
       : {}
 
@@ -552,9 +566,10 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       ...thisBunBuildConfig,
       ...providedBunBuildConfig,
       plugins: [
-        ...(thisBunBuildConfig.plugins ?? []),
-        ...(providedBunBuildConfig.plugins ?? []),
-        ...(await this.extractBunPlugins({ built: true })),
+        ...(await this.extractBunPlugins({
+          built: true,
+          extraPlugins: [...(thisBunBuildConfig.plugins ?? []), ...(providedBunBuildConfig.plugins ?? [])],
+        })),
       ],
       banner: [injectEnvsScript, thisBunBuildConfig.banner, providedBunBuildConfig.banner].filter(Boolean).join('\n'),
       entrypoints: validateEntrypoints([
@@ -611,6 +626,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         command: 'build',
         target: 'server',
         mode: NODE_ENV,
+        scope: this.scope,
       })
 
       const { injectedEnvs, injectEnvsScript } = this.getBuildInjectedEnvs()
@@ -640,7 +656,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...(loadedViteConfig.plugins ?? []), compilerPlugin],
+        plugins: [compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

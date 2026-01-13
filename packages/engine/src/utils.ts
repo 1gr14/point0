@@ -215,6 +215,7 @@ export type ClientBunBuildConfigDefinition = ClientBunBuildConfigDefinitionFn | 
 export type BunBuildConfigDefinitionFnOptions = {
   mode: POINT0_NODE_ENV
   target: 'client' | 'server'
+  scope: PointsScope
 }
 export type BunBuildConfigDefinitionFn = (
   options: BunBuildConfigDefinitionFnOptions,
@@ -225,16 +226,19 @@ export const executeServerBunBuildConfig = async ({
   mode,
   bunBuildConfig,
   bunPlugins,
+  scope,
 }: {
   mode: POINT0_NODE_ENV
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
+  scope: PointsScope
 }): Promise<Partial<BuildConfig>> => {
   return await extractBunBuildConfig({
     mode,
     bunBuildConfig: bunBuildConfig as BunBuildConfigDefinition,
     bunPlugins: bunPlugins as BunPluginsDefinition,
     target: 'server',
+    scope,
   })
 }
 
@@ -242,16 +246,19 @@ export const extractClientBunBuildConfig = async ({
   mode,
   bunBuildConfig,
   bunPlugins,
+  scope,
 }: {
   mode: POINT0_NODE_ENV
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
+  scope: PointsScope
 }): Promise<Partial<BuildConfig>> => {
   return await extractBunBuildConfig({
     mode,
     bunBuildConfig: bunBuildConfig as BunBuildConfigDefinition,
     bunPlugins: bunPlugins as BunPluginsDefinition,
     target: 'client',
+    scope,
   })
 }
 
@@ -260,15 +267,17 @@ export const extractBunBuildConfig = async ({
   target,
   bunBuildConfig,
   bunPlugins,
+  scope,
 }: {
   mode: POINT0_NODE_ENV
   target: 'client' | 'server'
   bunBuildConfig: BunBuildConfigDefinition
   bunPlugins: BunPluginsDefinition
+  scope: PointsScope
 }): Promise<Partial<BuildConfig>> => {
   const executedBunConfig =
-    typeof bunBuildConfig === 'function' ? await bunBuildConfig({ mode, target }) : bunBuildConfig
-  const extractedBunPlugins = await extractBunPlugins({ mode, command: 'build', bunPlugins, target })
+    typeof bunBuildConfig === 'function' ? await bunBuildConfig({ mode, target, scope }) : bunBuildConfig
+  const extractedBunPlugins = await extractBunPlugins({ mode, command: 'build', bunPlugins, target, scope })
   return {
     ...executedBunConfig,
     plugins: [...extractedBunPlugins, ...(executedBunConfig.plugins ?? [])],
@@ -301,6 +310,7 @@ export type BunPluginsDefinitionFnOptions = {
   mode: POINT0_NODE_ENV
   command: 'serve' | 'build'
   target: 'client' | 'server'
+  scope: PointsScope
 }
 export type BunPluginsDefinitionFn = (
   options: BunPluginsDefinitionFnOptions,
@@ -311,16 +321,19 @@ export const extractServerBunPlugins = async ({
   mode,
   command,
   bunPlugins,
+  scope,
 }: {
   mode: POINT0_NODE_ENV
   command: 'serve' | 'build'
   bunPlugins: ServerBunPluginsDefinition
+  scope: PointsScope
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
     mode,
     command,
     bunPlugins: bunPlugins as BunPluginsDefinition,
     target: 'server',
+    scope,
   })
 }
 
@@ -328,16 +341,19 @@ export const extractClientBunPlugins = async ({
   mode,
   command,
   bunPlugins,
+  scope,
 }: {
   mode: POINT0_NODE_ENV
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
+  scope: PointsScope
 }): Promise<BunPlugin[]> => {
   return await extractBunPlugins({
     mode,
     command,
     bunPlugins: bunPlugins as BunPluginsDefinition,
     target: 'client',
+    scope,
   })
 }
 
@@ -346,13 +362,16 @@ export const extractBunPlugins = async ({
   command,
   bunPlugins,
   target,
+  scope,
 }: {
   mode: POINT0_NODE_ENV
   command: 'serve' | 'build'
   bunPlugins: BunPluginsDefinition
   target: 'client' | 'server'
+  scope: PointsScope
 }): Promise<BunPlugin[]> => {
-  const bunPluginsArray = typeof bunPlugins === 'function' ? await bunPlugins({ mode, command, target }) : bunPlugins
+  const bunPluginsArray =
+    typeof bunPlugins === 'function' ? await bunPlugins({ mode, command, target, scope }) : bunPlugins
   return await Promise.all(
     bunPluginsArray.map(async (p) => {
       if (typeof p === 'string') {
@@ -431,21 +450,23 @@ export const extractViteConfig = async ({
   command,
   target,
   mode,
+  scope,
 }: {
   viteConfig: EngineOptionsViteConfig
   command: 'serve' | 'build'
   target: 'client' | 'server'
   mode: POINT0_NODE_ENV
+  scope: PointsScope
 }): Promise<ExtractedViteConfig> => {
   return typeof viteConfig === 'function'
-    ? await viteConfig({ mode, command, target })
+    ? await viteConfig({ mode, command, target, scope })
     : typeof viteConfig === 'string'
       ? await (async () => {
           const importedViteConfig = await import(/* @vite-ignore */ viteConfig).then(
             (module) => module.default || module,
           )
           if (typeof importedViteConfig === 'function') {
-            return await importedViteConfig({ mode, command, target })
+            return await importedViteConfig({ mode, command, target, scope })
           }
           return importedViteConfig
         })()
@@ -463,7 +484,7 @@ export const createViteDevServer = async ({
   viteConfig: EngineOptionsViteConfig | null
   scope: PointsScope
   target: 'client' | 'server'
-  hmrPort: number | null
+  hmrPort: number | false
   env?: EngineOptionsEnvParsed
   mode: POINT0_NODE_ENV
 }): Promise<ViteDevServer> => {
@@ -479,6 +500,7 @@ export const createViteDevServer = async ({
       command: 'serve',
       target,
       mode,
+      scope,
     })
 
     const compilerPlugin = await import('@point0/compiler/plugin/vite').then((module) =>
@@ -488,7 +510,7 @@ export const createViteDevServer = async ({
     const hmr =
       loadedViteConfig.server?.hmr === false
         ? false
-        : hmrPort === null
+        : hmrPort === false
           ? false
           : {
               ...(typeof loadedViteConfig.server?.hmr === 'object' ? loadedViteConfig.server.hmr : {}),

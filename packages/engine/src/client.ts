@@ -10,6 +10,7 @@ import type { AllPointsManagers } from './all-points-managers.js'
 import type {
   EngineLogger,
   EngineOptionsAppComponent,
+  EngineOptionsCompilerParsed,
   EngineOptionsEnvParsed,
   EngineOptionsPoints,
   EngineOptionsPublicdirParsed,
@@ -50,7 +51,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   // indexHtmlDistFile: string | null
   domRootElementId: string
   port: number
-  hmrPort: number | null
+  hmrPort: number | false
+  compiler: EngineOptionsCompilerParsed | false
   viteConfig: EngineOptionsViteConfig | null
   index: number
   logger: EngineLogger
@@ -88,7 +90,8 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     distIndexHtmlContent: string | null
     domRootElementId: string
     port: number
-    hmrPort: number | null
+    hmrPort: number | false
+    compiler: EngineOptionsCompilerParsed | false
     viteConfig: EngineOptionsViteConfig | null
     index: number
     logger: EngineLogger
@@ -115,6 +118,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     this.domRootElementId = input.domRootElementId
     this.port = input.port
     this.hmrPort = input.hmrPort
+    this.compiler = input.compiler
     this.viteConfig = input.viteConfig
     this.index = input.index
     this.logger = input.logger
@@ -153,13 +157,14 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     // indexHtmlDistFile: string | null
     domRootElementId: string
     port: number
-    hmrPort: number | null
+    hmrPort: number | false
     index: number
     logger: EngineLogger
     env: EngineOptionsEnvParsed
     engineFile: string | null
     allPointsManagers: AllPointsManagers
     viteConfig: EngineOptionsViteConfig | null
+    compiler: EngineOptionsCompilerParsed | false
     server: ServerBun
   }): ClientBun<false> {
     const viteDevServer = null
@@ -657,12 +662,14 @@ Bun.serve({
         mode: NODE_ENV,
         bunBuildConfig: this.bunBuildConfig,
         bunPlugins: this.bunPlugins,
+        scope: this.scope,
       })
       const providedBunBuildConfig = bunBuildConfig
         ? await extractClientBunBuildConfig({
             mode: NODE_ENV,
             bunBuildConfig,
             bunPlugins: [],
+            scope: this.scope,
           })
         : {}
 
@@ -726,6 +733,7 @@ Bun.serve({
         command: 'build',
         target: 'client',
         mode: NODE_ENV,
+        scope: this.scope,
       })
 
       if (!(await Bun.file(buildPaths.indexHtml).exists())) {
@@ -755,7 +763,7 @@ Bun.serve({
 
       const config: ExtractedViteConfig = {
         ...loadedViteConfig,
-        plugins: [...(loadedViteConfig.plugins ?? []), compilerPlugin],
+        plugins: [compilerPlugin, ...(loadedViteConfig.plugins ?? [])],
         root: viteRoot,
         build: {
           ...loadedViteConfig.build,

@@ -11,6 +11,8 @@ import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type {
+  BunBuildConfigDefinition,
+  BunPluginsDefinition,
   ClientBunBuildConfigDefinition,
   ClientBunPluginsDefinition,
   ServerBunBuildConfigDefinition,
@@ -18,6 +20,7 @@ import type {
 } from './utils.js'
 import { toAbsPath, toJsExtension } from './utils.js'
 import type { POINT0_NODE_ENV } from '@point0/env'
+import type { CompilerEnvConsts } from '../../compiler/dist/utils.js'
 
 export type EngineLogger = {
   info: (message: string, meta?: Record<string, any>) => any
@@ -44,6 +47,7 @@ export type ExtractViteConfigFn = (options: {
   command: 'serve' | 'build'
   target: 'client' | 'server'
   mode: POINT0_NODE_ENV
+  scope: PointsScope
 }) => Promise<ExtractedViteConfig> | ExtractedViteConfig
 export type EngineOptionsViteConfig =
   | ExtractedViteConfig
@@ -57,6 +61,19 @@ export type EngineOptionsRoutes = () => Promise<
   RoutesPretty<any> | { routes: RoutesPretty<any> } | { default: RoutesPretty<any> }
 >
 
+export type EngineOptionsCompiler = {
+  target?: boolean
+  scope?: boolean
+  consts?: CompilerEnvConsts
+  filter?: RegExp
+}
+export type EngineOptionsCompilerParsed = {
+  target: boolean
+  scope: boolean
+  consts: CompilerEnvConsts | undefined
+  filter: RegExp | undefined
+}
+
 export type EngineGeneralOptions = {
   file: string
   fallbackScope?: PointsScope
@@ -65,52 +82,58 @@ export type EngineGeneralOptions = {
   cwdAfterBuild?: string
   cwdBeforeBuild?: string
   autoFixBuiltPaths?: boolean
-  clientsOutdir?: string | null
+  clientsOutdir?: string
   pointsGlob?: string | string[]
   buildWatchGlob?: string | string[]
-  banner?: string | null
+  banner?: string
+  bunBuildConfig?: BunBuildConfigDefinition
+  bunPlugins?: BunPluginsDefinition
+  viteConfig?: EngineOptionsViteConfig
+  compiler?: EngineOptionsCompiler | boolean
 }
 export type EngineServerOptions<TPointsModule extends AnyPointsModule = AnyPointsModule> = {
   scope: PointsScope
   points?: EngineOptionsPoints<TPointsModule>
-  generatePointsLazy?: string | null
-  generatePointsReady?: string | null
+  generatePointsLazy?: string
+  generatePointsReady?: string
   publicdir?: EngineOptionsPublicdir
-  port?: number | string | null
-  outdir?: string | null
-  entry?: string | Record<string, string> | null
-  publicdirOutdir?: string | null
+  port?: number | string
+  outdir?: string
+  entry?: string | Record<string, string>
+  publicdirOutdir?: string
   bunBuildConfig?: ServerBunBuildConfigDefinition
   bunPlugins?: ServerBunPluginsDefinition
-  routes?: EngineOptionsRoutes | null
-  generateRoutes?: string | null
-  banner?: string | null
-  viteConfig?: EngineOptionsViteConfig | null
-  hmrPort?: number | string | null
+  viteConfig?: EngineOptionsViteConfig
+  compiler?: EngineOptionsCompiler | boolean
+  routes?: EngineOptionsRoutes
+  generateRoutes?: string
+  banner?: string
+  hmrPort?: number | string | boolean
 }
 export type EngineClientOptions<TPointsModule extends AnyPointsModule = AnyPointsModule> = {
   scope: PointsScope
   // TODO: allow empty points
   // TODO: allow points collection
   points: EngineOptionsPoints<TPointsModule>
-  generatePointsLazy?: string | null
-  generatePointsReady?: string | null
-  app?: EngineOptionsAppComponent | null
-  baseurl?: string | null
-  publicdir?: EngineOptionsPublicdir | null
-  indexHtml?: string | null
+  generatePointsLazy?: string
+  generatePointsReady?: string
+  app?: EngineOptionsAppComponent
+  baseurl?: string
+  publicdir?: EngineOptionsPublicdir
+  indexHtml?: string
   domRootElementId?: string
-  env?: EngineOptionsEnv | null
-  port?: number | string | null
-  hmrPort?: number | string | null
-  viteConfig?: EngineOptionsViteConfig | null
+  env?: EngineOptionsEnv
+  port?: number | string
+  hmrPort?: number | string | boolean
   bunBuildConfig?: ClientBunBuildConfigDefinition
   bunPlugins?: ClientBunPluginsDefinition
-  outdir?: string | null
-  publicdirOutdir?: string | null
-  routes?: EngineOptionsRoutes | null
-  generateRoutes?: string | null
-  banner?: string | null
+  viteConfig?: EngineOptionsViteConfig
+  compiler?: EngineOptionsCompiler | boolean
+  outdir?: string
+  publicdirOutdir?: string
+  routes?: EngineOptionsRoutes
+  generateRoutes?: string
+  banner?: string
 }
 export type EngineOptions<
   TServerPointsModule extends AnyPointsModule = AnyPointsModule,
@@ -174,6 +197,9 @@ export type EngineGeneralOptionsParsed = {
   pointsGlob: string[]
   buildWatchGlob: string[]
   banner: string | null
+  compiler: EngineOptionsCompiler | boolean | null
+  bunBuildConfig: BunBuildConfigDefinition | null
+  bunPlugins: BunPluginsDefinition | null
 }
 export type EngineClientOptionsParsed = {
   scope: PointsScope
@@ -191,12 +217,13 @@ export type EngineClientOptionsParsed = {
   env: EngineOptionsEnvParsed
   domRootElementId: string
   port: number
-  hmrPort: number | null
+  hmrPort: number | false
   index: number
-  viteConfig: EngineOptionsViteConfig | null
   outdir: string | null
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
+  viteConfig: EngineOptionsViteConfig | null
+  compiler: EngineOptionsCompilerParsed | false
   publicdirOutdir: string | null
   routesInstance: EngineOptionsRoutes | null
   routesFile: string | null
@@ -218,11 +245,12 @@ export type EngineServerOptionsParsed = {
   fallbackScope: PointsScope
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
+  viteConfig: EngineOptionsViteConfig | null
+  compiler: EngineOptionsCompilerParsed | false
   routesInstance: EngineOptionsRoutes | null
   routesFile: string | null
   banner: string | null
-  viteConfig: EngineOptionsViteConfig | null
-  hmrPort: number | null
+  hmrPort: number | false
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -381,6 +409,19 @@ const parseEngineGeneralOptions = ({
     const cwd = cwdBeforeBuild
     return { cwdAfterBuild, cwdBeforeBuild, cwd }
   })()
+  const compiler =
+    generalOptions.compiler === undefined
+      ? null
+      : generalOptions.compiler === false
+        ? false
+        : generalOptions.compiler === true
+          ? true
+          : {
+              ...(generalOptions.compiler.consts ? { consts: generalOptions.compiler.consts } : {}),
+              ...(generalOptions.compiler.filter ? { filter: generalOptions.compiler.filter } : {}),
+              ...(generalOptions.compiler.scope !== undefined ? { scope: generalOptions.compiler.scope } : {}),
+              ...(generalOptions.compiler.target !== undefined ? { target: generalOptions.compiler.target } : {}),
+            }
   const result = {
     fallbackScope: generalOptions.fallbackScope || clientsOptions?.at(0)?.scope || serverOptions.scope,
     logger: generalOptions.logger || {
@@ -396,9 +437,12 @@ const parseEngineGeneralOptions = ({
     cwd,
     autoFixBuiltPaths: generalOptions.autoFixBuiltPaths ?? true,
     banner: generalOptions.banner ?? null,
+    compiler,
   }
   return {
     ...result,
+    bunBuildConfig: generalOptions.bunBuildConfig ?? null,
+    bunPlugins: generalOptions.bunPlugins ?? null,
     clientsOutdir: toFinalPath({
       ...result,
       cwdIfWasBuilt: null,
@@ -529,9 +573,9 @@ export const parseEngineServerOptions = ({
 }): EngineServerOptionsParsed => {
   const port = typeof serverOptions.port !== 'undefined' ? Number(serverOptions.port) : 3000
   const hmrPort =
-    serverOptions.hmrPort === null
-      ? null
-      : typeof serverOptions.hmrPort !== 'undefined'
+    serverOptions.hmrPort === false
+      ? false
+      : typeof serverOptions.hmrPort !== 'undefined' && serverOptions.hmrPort !== true
         ? Number(serverOptions.hmrPort)
         : port + 100
   const entriesRecordInput =
@@ -554,6 +598,43 @@ export const parseEngineServerOptions = ({
         ]),
       )
     : null
+  const generalOptionsParsedCompilerRecord =
+    typeof generalOptionsParsed.compiler === 'object' && generalOptionsParsed.compiler !== null
+      ? generalOptionsParsed.compiler
+      : {}
+  const serverOptionsCompilerRecord = typeof serverOptions.compiler === 'object' ? serverOptions.compiler : {}
+  const mergedCompilerRecord = {
+    ...generalOptionsParsedCompilerRecord,
+    ...serverOptionsCompilerRecord,
+    consts: [
+      ...(generalOptionsParsedCompilerRecord.consts
+        ? Array.isArray(generalOptionsParsedCompilerRecord.consts)
+          ? generalOptionsParsedCompilerRecord.consts
+          : [generalOptionsParsedCompilerRecord.consts]
+        : []),
+      ...(serverOptionsCompilerRecord.consts
+        ? Array.isArray(serverOptionsCompilerRecord.consts)
+          ? serverOptionsCompilerRecord.consts
+          : [serverOptionsCompilerRecord.consts]
+        : []),
+    ],
+  }
+  const compiler =
+    serverOptions.compiler === false
+      ? false
+      : serverOptions.compiler === true
+        ? {
+            target: true,
+            scope: true,
+            consts: undefined,
+            filter: undefined,
+          }
+        : {
+            target: true,
+            scope: true,
+            filter: undefined,
+            ...mergedCompilerRecord,
+          }
   return {
     scope: serverOptions.scope,
     pointsProvided: serverOptions.points ?? null,
@@ -574,6 +655,7 @@ export const parseEngineServerOptions = ({
     fallbackScope: generalOptionsParsed.fallbackScope,
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
+    compiler,
     routesInstance: serverOptions.routes ?? null,
     routesFile: serverOptions.generateRoutes ?? null,
     generatePointsLazy: serverOptions.generatePointsLazy ?? null,
@@ -604,9 +686,9 @@ const parseEngineClientOptions = ({
   const port =
     typeof clientOptions.port !== 'undefined' ? Number(clientOptions.port) : serverOptionsParsed.port + index + 1
   const hmrPort =
-    clientOptions.hmrPort === null
-      ? null
-      : typeof clientOptions.hmrPort !== 'undefined'
+    clientOptions.hmrPort === false
+      ? false
+      : typeof clientOptions.hmrPort !== 'undefined' && clientOptions.hmrPort !== true
         ? Number(clientOptions.hmrPort)
         : port + 100
   const outdir = toFinalPath({
@@ -619,8 +701,46 @@ const parseEngineClientOptions = ({
     cwdIfWasBuilt: null,
     path: clientOptions.publicdirOutdir ?? (outdir && clientOptions.publicdir ? nodePath.join(outdir, 'public') : null),
   })
+  const generalOptionsParsedCompilerRecord =
+    typeof generalOptionsParsed.compiler === 'object' && generalOptionsParsed.compiler !== null
+      ? generalOptionsParsed.compiler
+      : {}
+  const clientOptionsCompilerRecord = typeof clientOptions.compiler === 'object' ? clientOptions.compiler : {}
+  const mergedCompilerRecord = {
+    ...generalOptionsParsedCompilerRecord,
+    ...clientOptionsCompilerRecord,
+    consts: [
+      ...(generalOptionsParsedCompilerRecord.consts
+        ? Array.isArray(generalOptionsParsedCompilerRecord.consts)
+          ? generalOptionsParsedCompilerRecord.consts
+          : [generalOptionsParsedCompilerRecord.consts]
+        : []),
+      ...(clientOptionsCompilerRecord.consts
+        ? Array.isArray(clientOptionsCompilerRecord.consts)
+          ? clientOptionsCompilerRecord.consts
+          : [clientOptionsCompilerRecord.consts]
+        : []),
+    ],
+  }
+  const compiler =
+    clientOptions.compiler === false
+      ? false
+      : clientOptions.compiler === true
+        ? {
+            target: true,
+            scope: true,
+            consts: undefined,
+            filter: undefined,
+          }
+        : {
+            target: true,
+            scope: true,
+            filter: undefined,
+            ...mergedCompilerRecord,
+          }
   return {
     scope: clientOptions.scope,
+    compiler,
     pointsProvided: clientOptions.points,
     // pointsDistFile:
     //   typeof clientOptions.points === 'string'

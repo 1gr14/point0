@@ -1,4 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
+import type { POINT0_NODE_ENV } from '@point0/env'
 import type { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'
@@ -6,8 +7,9 @@ import { Walker } from './walker.js'
 
 export type CompilerOptions = {
   routes?: Record<string, RoutesPretty<any>> | undefined
-  target: 'client' | 'server'
-  scope: string
+  mode?: POINT0_NODE_ENV | false
+  target: 'client' | 'server' | false
+  scope: string | false
   built?: boolean
   consts?: CompilerEnvConsts
   filter?: RegExp
@@ -16,9 +18,10 @@ export type CompilerOptions = {
 
 export class Compiler {
   filter: RegExp
-  scope: string
+  scope: string | false
   built: boolean
-  target: 'client' | 'server'
+  mode: POINT0_NODE_ENV | false
+  target: 'client' | 'server' | false
   consts: CompilerEnvConsts | undefined
   hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
   walker: Walker
@@ -35,15 +38,17 @@ export class Compiler {
     walker,
     routes,
     built,
+    mode,
   }: {
     filter: RegExp
-    target: 'client' | 'server'
-    scope: string
+    target: 'client' | 'server' | false
+    scope: string | false
     consts: CompilerEnvConsts | undefined
     hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
     walker: Walker
     routes: Record<string, RoutesPretty<any>> | undefined
     built: boolean
+    mode: POINT0_NODE_ENV | false
   }) {
     this.filter = filter
     this.target = target
@@ -53,10 +58,14 @@ export class Compiler {
     this.walker = walker
     this.routes = routes
     this.built = built
+    this.mode = mode
   }
 
   static create(options: CompilerOptions) {
-    const { filter, target, scope, consts, hmrFix, routes, built } = options
+    const { filter, target, scope, consts, hmrFix, routes, built, mode = process.env.NODE_ENV } = options
+    if (mode !== false && (!mode || !['production', 'development', 'test'].includes(mode))) {
+      throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
+    }
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       target,
@@ -66,6 +75,7 @@ export class Compiler {
       walker: new Walker({ routes }),
       routes,
       built: built ?? false,
+      mode: mode as POINT0_NODE_ENV | false,
     })
   }
 
@@ -82,6 +92,7 @@ export class Compiler {
     const consts = this.consts
     const hmrFix = this.hmrFix
     const built = this.built
+    const mode = this.mode
     const errors: unknown[] = []
     const collectResult = this.walker.collectPointsFromFile({ file, content })
     errors.push(...collectResult.errors)
@@ -97,12 +108,14 @@ export class Compiler {
     }
     const cf = collectResult.file
     for (const point of collectResult.points) {
-      point.shakeMethods({ target })
+      if (target) {
+        point.shakeMethods({ target })
+      }
       if (hmrFix) {
         point.addHmrFix({ policy: hmrFix })
       }
     }
-    cf.shakeForEnv({ target, scope, consts, built })
+    cf.shakeForEnv({ target, scope, consts, built, mode })
     if (built) {
       cf.shakeForBuiltEngine()
     }
