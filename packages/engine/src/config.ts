@@ -3,14 +3,13 @@ import type {
   AnyPointsModule,
   AppComponent,
   AppComponentModule,
-  FetchFn,
+  NormalNodeEnv,
   PointsScope,
   RawPointsDefinition,
   RequiredCtxByPointsDefinitions,
   RequiredCtxByPointsModules,
 } from '@point0/core'
 import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
-import type { NormalNodeEnv } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'

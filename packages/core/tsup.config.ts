@@ -5,6 +5,8 @@ const general = {
   entry: [
     'src/cookies-store.ts',
     'src/env.ts',
+    'src/env.types.ts',
+    'src/env.utils.ts',
     'src/index.ts',
     'src/internals.ts',
     'src/points-manager.ts',

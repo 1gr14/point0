@@ -1,16 +1,12 @@
+import type { EnvVars, NormalNodeEnv } from './env.types.js'
+import { _isTargetClient } from './env.utils.js'
 import { superstore } from './super-store.js'
 
-export type NormalNodeEnv = 'production' | 'development' | 'test'
-export type Target = 'client' | 'server'
-export type ClientPlatform = 'browser' | 'react-native'
+export type * from './env.types.js'
 
 export const normalNodeEnvs: NormalNodeEnv[] = ['production', 'development', 'test']
 
 // vars
-
-type AnyAnvVars = Record<string, string | undefined | boolean | number | null>
-
-export type EnvVars<TVars = any> = IsAny<TVars> extends true ? AnyAnvVars : TVars
 
 export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
@@ -32,12 +28,6 @@ export const getEnvVars = (): EnvVars => {
   return env as EnvVars
 }
 
-// const isFakeClient = (): boolean | undefined => {
-//   return superstore.isFakeClient()
-// }
-// const isRealServerOverFakeClient = (): boolean | undefined => {
-//   return superStore.isRealServerOverFakeClient()
-// }
 const isFakeClientOrRealServerOverFakeClient = (): 'fakeClient' | 'realServerOverFakeClient' | undefined => {
   const fakeClient = superstore.isFakeClient()
   const realServerOverFakeClient = superstore.isRealServerOverFakeClient()
@@ -51,7 +41,7 @@ const isFakeClientOrRealServerOverFakeClient = (): 'fakeClient' | 'realServerOve
 }
 // target
 
-export const isTargetClient = (): boolean => {
+const isTargetClient = (): boolean => {
   const fakeClientOrRealServerOverFakeClient = isFakeClientOrRealServerOverFakeClient()
   if (fakeClientOrRealServerOverFakeClient === 'fakeClient') {
     return true
@@ -59,19 +49,7 @@ export const isTargetClient = (): boolean => {
   if (fakeClientOrRealServerOverFakeClient === 'realServerOverFakeClient') {
     return false
   }
-
-  // Browser-like (DOM available)
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
-
-  // React Native
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') return true
-
-  // Electron renderer process
-  if (typeof process !== 'undefined' && (process as any).type === 'renderer') return true
-
-  // TODO: Electron main process in fact is client also (Yes it is client in point0 terminology, becouse it can send requests to server!)
-  return false // Node.js, Bun, Deno, or other server runtimes
+  return _isTargetClient()
 }
 
 // in server it becomes const true, in client it becomes const false

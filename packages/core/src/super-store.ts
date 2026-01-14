@@ -1,24 +1,9 @@
 /* eslint-disable import/first */
-import type { ClientPlatform } from './env.js'
-
-// it is full copy of @point0/core, but we need avoid circulare dependency, all __POINT0_IS_TARGET_CLIENT__() will be also hardocded via compiler if target provided
-const __POINT0_IS_TARGET_CLIENT__ = (): boolean => {
-  // Browser-like (DOM available)
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
-
-  // React Native
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') return true
-
-  // Electron renderer process
-  if (typeof process !== 'undefined' && (process as any).type === 'renderer') return true
-
-  // TODO: Electron main process in fact is client also (Yes it is client in point0 terminology, becouse it can send requests to server!)
-  return false // Node.js, Bun, Deno, or other server runtimes
-}
+import type { ClientPlatform } from './env.types.js'
+import { _isTargetClient } from './env.utils.js'
 
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
-;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= __POINT0_IS_TARGET_CLIENT__()
+;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= _isTargetClient()
   ? null
   : // eslint-disable-next-line @typescript-eslint/no-require-imports
     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
@@ -151,7 +136,7 @@ export class SuperStore {
         serverGlobalState: undefined
       } {
     const fakeClient = this.getFakeClient()
-    if (__POINT0_IS_TARGET_CLIENT__() && !fakeClient) {
+    if (_isTargetClient() && !fakeClient) {
       return {
         variant: 'client',
         clientState: this.clientGlobalState,
