@@ -1,4 +1,5 @@
 // vars
+import { superstore } from '@point0/superstore'
 
 export type POINT0_NODE_ENV = 'production' | 'development' | 'test'
 export type POINT0_TARGET = 'client' | 'server'
@@ -30,9 +31,35 @@ export const getEnvVars = (): EnvVars => {
 
 const envVars = getEnvVars()
 
+// const isFakeClient = (): boolean | undefined => {
+//   return superstore.isFakeClient()
+// }
+// const isRealServerOverFakeClient = (): boolean | undefined => {
+//   return superStore.isRealServerOverFakeClient()
+// }
+const isFakeClientOrRealServerOverFakeClient = (): 'fakeClient' | 'realServerOverFakeClient' | undefined => {
+  const superstore = (globalThis as any).__POINT0_SUPER_STORE_INSTANCE__ as SuperStore
+  const fakeClient = superstore.isFakeClient()
+  const realServerOverFakeClient = superstore.isRealServerOverFakeClient()
+  if (fakeClient === true && realServerOverFakeClient === false) {
+    return 'fakeClient'
+  }
+  if (fakeClient === true && realServerOverFakeClient === true) {
+    return 'realServerOverFakeClient'
+  }
+  return undefined
+}
 // target
 
-export const _isTargetClient = (): boolean => {
+export const isTargetClient = (): boolean => {
+  const fakeClientOrRealServerOverFakeClient = isFakeClientOrRealServerOverFakeClient()
+  if (fakeClientOrRealServerOverFakeClient === 'fakeClient') {
+    return true
+  }
+  if (fakeClientOrRealServerOverFakeClient === 'realServerOverFakeClient') {
+    return false
+  }
+
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
 
@@ -49,16 +76,16 @@ export const _isTargetClient = (): boolean => {
 
 // in server it becomes const true, in client it becomes const false
 const isTargetServer = (): boolean => {
-  return !_isTargetClient()
+  return !isTargetClient()
 }
 
 const getTargetName = (): 'client' | 'server' => {
-  return _isTargetClient() ? 'client' : 'server'
+  return isTargetClient() ? 'client' : 'server'
 }
 
 const isTargetSsr = (): false | true | 'prepass' | 'final' => {
   // const ssr = SuperStore.getWeak<'prepass' | 'final' | undefined>('__POINT0_SSR_PHASE__')
-  if (_isTargetClient()) {
+  if (isTargetClient()) {
     return false
   }
   const getSsrPhase: unknown = (globalThis as any).__POINT0_GET_SSR_PHASE__
@@ -89,7 +116,7 @@ function targetDefineUniversal<TClientResult, TServerResult>(options: {
   client?: TClientResult
   server?: TServerResult
 }): TClientResult | TServerResult | undefined {
-  if (_isTargetClient()) {
+  if (isTargetClient()) {
     return options.client
   }
   return options.server
@@ -105,7 +132,7 @@ type TargetDefineWithHelpers = typeof targetDefineUniversal & {
   unsafe: TargetDefineUnsafe
 }
 const defineServer = (value: any) => {
-  if (_isTargetClient()) {
+  if (isTargetClient()) {
     return undefined
   }
   return value
@@ -139,7 +166,7 @@ type TargetIsServer = {
 const targetIs = Object.defineProperties(
   {},
   {
-    client: { get: _isTargetClient },
+    client: { get: isTargetClient },
     server: { get: isTargetServer },
     ssr: { get: isTargetSsr },
   },

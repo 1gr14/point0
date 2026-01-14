@@ -52,6 +52,7 @@ export class FakeClient {
       _getSsItemsWithRestErrors(
         {
           __POINT0_FAKE_CLIENT__: this,
+          __POINT0_REAL_SERVER_OVER_FAKE_CLIENT__: false,
           __POINT0_FETCH_FN__: this.fetch.bind(this),
           __POINT0_CLIENT_SCOPE__: this.scope,
         },

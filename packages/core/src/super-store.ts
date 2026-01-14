@@ -1,8 +1,24 @@
 /* eslint-disable import/first */
 import type { POINT0_CLIENT_PLATFORM } from '@point0/env'
-import { env } from '@point0/env'
+
+// it is full copy of @point0/env, but we need avoid circulare dependency, all __POINT0_IS_TARGET_CLIENT__() will be also hardocded via compiler if target provided
+const __POINT0_IS_TARGET_CLIENT__ = (): boolean => {
+  // Browser-like (DOM available)
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
+
+  // React Native
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') return true
+
+  // Electron renderer process
+  if (typeof process !== 'undefined' && (process as any).type === 'renderer') return true
+
+  // TODO: Electron main process in fact is client also (Yes it is client in point0 terminology, becouse it can send requests to server!)
+  return false // Node.js, Bun, Deno, or other server runtimes
+}
+
 // I do not know why, but it is only way to do it to work in bun and vite at the same time
-;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= env.target.is.client
+;(globalThis as any).__POINT0_SUPER_STORE_SERVER_STORAGE__ ||= __POINT0_IS_TARGET_CLIENT__()
   ? null
   : // eslint-disable-next-line @typescript-eslint/no-require-imports
     (new (require('node:async_hooks').AsyncLocalStorage)() as AsyncLocalStorage<SuperStoreState>)
@@ -135,7 +151,7 @@ export class SuperStore {
         serverGlobalState: undefined
       } {
     const fakeClient = this.getFakeClient()
-    if (env.target.is.client && !fakeClient) {
+    if (__POINT0_IS_TARGET_CLIENT__() && !fakeClient) {
       return {
         variant: 'client',
         clientState: this.clientGlobalState,
@@ -384,6 +400,7 @@ export class SuperStore {
           throw new Error(`Invalid policy: ${policy}`)
       }
     })()
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!result) {
       throw new Error(`State not found for item policy "${policy}". It is a critical bug, please report it`)
     }
@@ -522,6 +539,17 @@ export class SuperStore {
 
   isFakeClient(): boolean {
     return this.getFakeClient() !== undefined
+  }
+
+  isRealServerOverFakeClient(): boolean {
+    if (!this.serverStorage) {
+      return false
+    }
+    const serverStorageState = this.serverStorage.getStore()
+    if (!serverStorageState) {
+      return false
+    }
+    return !!serverStorageState.__POINT0_REAL_SERVER_OVER_FAKE_CLIENT__
   }
 }
 

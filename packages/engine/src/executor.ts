@@ -105,6 +105,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const serverStorageState = Object.assign(providedServerStorageState || {}, {
       __POINT0_FETCH_FN__: fetchFn,
       __POINT0_FAKE_CLIENT__: fakeClient,
+      __POINT0_REAL_SERVER_OVER_FAKE_CLIENT__: true,
       __POINT0_REQUEST0__: request0,
       __POINT0_RESPONSE0__: response0,
       __POINT0_CLIENT_SCOPE__: clientScope,

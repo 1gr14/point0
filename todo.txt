@@ -4,11 +4,11 @@
 
 TEST
 getFakeClient remove from internals, use from superstore
+? remove FAKE_CLINENT at all from items and use setFakeClient from super store
 executor do not need pointsManager, it needs fromScope
 clientServerTransferred → ssr
 fix points so it should not define by itslef __POINT0_CLIENT_SCOPE__ it should be done via superstore in mount
 fix init and create engine input types
-Помечать оригинальный ли мы фетч используем, то есть пусть он просто будет андефайнед, и только если андефайнед мы требуем сервер урл
 superstore getStates just return all states, but everywhere we can just use getState(policy)
 
 Хранить экзекьютед лоадеры и ктксы в суперсторе, и фетч пусть на сервере всегда заменяется на энжин фетч

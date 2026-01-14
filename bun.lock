@@ -277,6 +277,7 @@
       "name": "@point0/env",
       "version": "0.1.0",
       "devDependencies": {
+        "@point0/core": "workspace:*",
         "@types/bun": "^1.2.22",
         "@types/node": "^20.0.0",
         "esbuild-fix-imports-plugin": "^1.0.22",

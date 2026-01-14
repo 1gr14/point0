@@ -499,6 +499,7 @@ export class Fetcher {
     const serverStorageState = _getSsItemsWithRestErrors(
       {
         __POINT0_FAKE_CLIENT__: fakeClient,
+        __POINT0_REAL_SERVER_OVER_FAKE_CLIENT__: true,
         __POINT0_CLIENT_SCOPE__: fakeClient?.scope ?? _ssItems.__POINT0_CLIENT_SCOPE__.getWeak(),
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_RESPONSE0__: response0,
