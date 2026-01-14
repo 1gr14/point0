@@ -1,17 +1,17 @@
 import { UnheadProvider as UnheadProviderClient, createHead as createHeadClient } from '@unhead/react/client'
 import { createElement } from 'react'
 // import type { ResolvableHead, Unhead } from 'unhead/types'
-import { env } from '@point0/env'
+import { _point0_env } from './env.js'
 import { _ssItems } from './internals.js'
 
-const clientHead = env.target.is.client ? createHeadClient() : (undefined as never)
+const clientHead = _point0_env.target.is.client ? createHeadClient() : (undefined as never)
 
 export const UnheadProvider = ({
   children,
 }: {
   children: React.ReactNode
 }): React.ReactNode | Promise<React.ReactNode> => {
-  if (env.target.is.client) {
+  if (_point0_env.target.is.client) {
     return createElement(UnheadProviderClient, { head: clientHead, children })
   } else {
     return (async () => {

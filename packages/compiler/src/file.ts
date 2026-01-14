@@ -10,7 +10,7 @@ import prettier from 'prettier'
 import { normalizeEnvConsts, type CompilerEnvConsts } from './utils.js'
 import type { Walker } from './walker.js'
 import type { CompilerPoint } from './point.js'
-import type { POINT0_NODE_ENV } from '@point0/env'
+import type { NormalNodeEnv } from '@point0/core'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
   ? T
@@ -347,7 +347,7 @@ export class CompilerFile<THasContent extends boolean> {
   private _shakeForEnv:
     | {
         target: 'client' | 'server' | false
-        mode: POINT0_NODE_ENV | false
+        mode: NormalNodeEnv | false
         built: boolean
         scope: string | false
         // can be env name like NODE_ENV, or string SOMETHING_* then we should force value for all const started with SOMETHING_
@@ -367,14 +367,14 @@ export class CompilerFile<THasContent extends boolean> {
   }: {
     target: 'client' | 'server' | false
     scope: string | false
-    mode: POINT0_NODE_ENV | false
+    mode: NormalNodeEnv | false
     consts?: CompilerEnvConsts | undefined
     built?: boolean | undefined
   }): {
     target: 'client' | 'server' | false
     built: boolean
     scope: string | false
-    mode: POINT0_NODE_ENV | false
+    mode: NormalNodeEnv | false
     consts: CompilerEnvConsts
     errors: unknown[]
     ok: boolean
@@ -390,7 +390,7 @@ export class CompilerFile<THasContent extends boolean> {
       consts.unshift({ POINT0_SCOPE: scope })
     }
     if (target !== false) {
-      consts.unshift({ POINT0_TARGET: target })
+      consts.unshift({ Target: target })
     }
     let modified = false
     if (!this.content) {
@@ -409,7 +409,7 @@ export class CompilerFile<THasContent extends boolean> {
       return this._shakeForEnv
     }
     try {
-      if (!this.content.includes('@point0/env')) {
+      if (!this.content.includes('@point0/core') && !this.content.includes('_point0_env')) {
         const resultTarget = target !== false ? target : 'client'
         const resultScope = scope !== false ? scope : ''
         this._shakeForEnv = {
@@ -494,7 +494,7 @@ export class CompilerFile<THasContent extends boolean> {
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
-            node.object.object.object.name === 'env' &&
+            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
             node.object.object.property.type === 'Identifier' &&
             node.object.object.property.name === 'target' &&
             node.object.property.type === 'Identifier' &&
@@ -524,7 +524,7 @@ export class CompilerFile<THasContent extends boolean> {
             mode !== false &&
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'Identifier' &&
-            node.object.object.name === 'env' &&
+            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
             node.object.property.type === 'Identifier' &&
             node.object.property.name === 'mode' &&
             node.property.type === 'Identifier' &&
@@ -536,7 +536,7 @@ export class CompilerFile<THasContent extends boolean> {
           // Handle env.built
           else if (
             node.object.type === 'Identifier' &&
-            node.object.name === 'env' &&
+            (node.object.name === 'env' || node.object.name === '_point0_env') &&
             node.property.type === 'Identifier' &&
             node.property.name === 'built'
           ) {
@@ -549,7 +549,7 @@ export class CompilerFile<THasContent extends boolean> {
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
-            node.object.object.object.name === 'env' &&
+            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
             node.object.object.property.type === 'Identifier' &&
             node.object.object.property.name === 'mode' &&
             node.object.property.type === 'Identifier' &&
@@ -575,7 +575,7 @@ export class CompilerFile<THasContent extends boolean> {
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'MemberExpression' &&
             node.object.object.object.type === 'Identifier' &&
-            node.object.object.object.name === 'env' &&
+            (node.object.object.object.name === 'env' || node.object.object.object.name === '_point0_env') &&
             node.object.object.property.type === 'Identifier' &&
             node.object.object.property.name === 'scope' &&
             node.object.property.type === 'Identifier' &&
@@ -590,7 +590,7 @@ export class CompilerFile<THasContent extends boolean> {
           else if (
             node.object.type === 'MemberExpression' &&
             node.object.object.type === 'Identifier' &&
-            node.object.object.name === 'env' &&
+            (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
             node.object.property.type === 'Identifier' &&
             node.object.property.name === 'vars' &&
             node.property.type === 'Identifier'
@@ -645,7 +645,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'Identifier' &&
-            callee.object.object.object.name === 'env' &&
+            (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
             callee.object.object.property.type === 'Identifier' &&
             callee.object.object.property.name === 'target' &&
             callee.object.property.type === 'Identifier' &&
@@ -670,7 +670,8 @@ export class CompilerFile<THasContent extends boolean> {
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'MemberExpression' &&
             callee.object.object.object.object.type === 'Identifier' &&
-            callee.object.object.object.object.name === 'env' &&
+            (callee.object.object.object.object.name === 'env' ||
+              callee.object.object.object.object.name === '_point0_env') &&
             callee.object.object.object.property.type === 'Identifier' &&
             callee.object.object.object.property.name === 'target' &&
             callee.object.object.property.type === 'Identifier' &&
@@ -696,7 +697,7 @@ export class CompilerFile<THasContent extends boolean> {
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'Identifier' &&
-            callee.object.object.object.name === 'env' &&
+            (callee.object.object.object.name === 'env' || callee.object.object.object.name === '_point0_env') &&
             callee.object.object.property.type === 'Identifier' &&
             callee.object.object.property.name === 'scope' &&
             callee.object.property.type === 'Identifier' &&
@@ -716,7 +717,8 @@ export class CompilerFile<THasContent extends boolean> {
             callee.object.object.type === 'MemberExpression' &&
             callee.object.object.object.type === 'MemberExpression' &&
             callee.object.object.object.object.type === 'Identifier' &&
-            callee.object.object.object.object.name === 'env' &&
+            (callee.object.object.object.object.name === 'env' ||
+              callee.object.object.object.object.name === '_point0_env') &&
             callee.object.object.object.property.type === 'Identifier' &&
             callee.object.object.object.property.name === 'scope' &&
             callee.object.object.property.type === 'Identifier' &&
@@ -736,7 +738,7 @@ export class CompilerFile<THasContent extends boolean> {
             scope !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'Identifier' &&
-            callee.object.object.name === 'env' &&
+            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
             callee.object.property.type === 'Identifier' &&
             callee.object.property.name === 'scope' &&
             callee.property.type === 'Identifier' &&
@@ -758,7 +760,7 @@ export class CompilerFile<THasContent extends boolean> {
             target !== false &&
             callee.object.type === 'MemberExpression' &&
             callee.object.object.type === 'Identifier' &&
-            callee.object.object.name === 'env' &&
+            (callee.object.object.name === 'env' || callee.object.object.name === '_point0_env') &&
             callee.object.property.type === 'Identifier' &&
             callee.object.property.name === 'target' &&
             callee.property.type === 'Identifier' &&

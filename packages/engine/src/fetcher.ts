@@ -367,7 +367,7 @@ export class Fetcher {
             }
           } catch (error) {
             // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
-            if (error instanceof Error && error.message.includes('<!-- __POINT0_TARGET__ --> not found')) {
+            if (error instanceof Error && error.message.includes('<!-- __Target__ --> not found')) {
               const indexHtml = await relatedClient.getOriginalIndexHtmlWithEnvs(request.original.url)
               const response = new Response(indexHtml, {
                 headers: { 'Content-Type': 'text/html' },

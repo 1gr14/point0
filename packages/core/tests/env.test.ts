@@ -20,9 +20,9 @@ const init = async <TVars = any, TScope extends string = string>(options: {
   if (scope) {
     process.env.POINT0_SCOPE = scope
   } else {
-    process.env.POINT0_SCOPE ||= 'test'
+    process.env.POINT0_SCOPE ??= 'test'
   }
-  process.env.NODE_ENV ||= 'test'
+  process.env.NODE_ENV ??= 'test'
   return (await import('../src/index.js' + '?rand=' + Math.random())).env
 }
 
@@ -33,7 +33,7 @@ describe('env', () => {
   const originalNavigator = globalThis.navigator
   const originalProcess = globalThis.process
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // Reset environment
     process.env = { ...originalEnv }
     // Clear global objects that might affect target detection

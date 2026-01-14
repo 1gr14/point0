@@ -1,13 +1,12 @@
-import { Point0, QueryClientProvider } from '@point0/core'
+import { Point0, QueryClientProvider, env } from '@point0/core'
+import { Router } from '@point0/wouter'
 import '@testing-library/jest-dom'
+import { fireEvent, render, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
 import { FakeClient } from '../src/test-client.js'
 import { withFakeBrowser } from './utils/fake-browser.js'
-import { fireEvent, render, waitFor } from '@testing-library/react'
-import { Router } from '@point0/wouter'
-import assert from 'node:assert'
-import { env } from '@point0/env'
 
 describe('FakeClient', () => {
   it('should fetch page with loader', async () => {
@@ -61,7 +60,7 @@ describe('FakeClient', () => {
     expect(env.target.name).toBe('server')
   })
 
-  it.only('should render page with loader and client loader', async () => {
+  it('should render page with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     let counter = 0
     const mutation = root
@@ -75,7 +74,6 @@ describe('FakeClient', () => {
       .clientLoader(({ data }) => ({ ...data, clientLoaderTargetName: env.target.name }))
       .page(({ data }) => {
         const inc = mutation.useMutation()
-        console.log('inc.data', inc.data)
         return (
           <div>
             <div id="pageTargetName">{env.target.name}</div>

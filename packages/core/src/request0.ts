@@ -1,6 +1,6 @@
 import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { env } from '@point0/env'
+import { _point0_env } from './env.js'
 import { _ssItems } from './internals.js'
 
 // TODO: add generics TRoute, THeaders, TCookies
@@ -118,7 +118,7 @@ export class Request0 {
   }
 
   static get(): Request0 {
-    if (!env.target.is.server) {
+    if (!_point0_env.target.is.server) {
       throw new Error(
         'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )

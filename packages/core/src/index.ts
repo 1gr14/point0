@@ -9,7 +9,7 @@ import type {
   KnownLocation,
 } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { env } from '@point0/env'
+import { _point0_env } from './env.js'
 import type {
   DehydratedState,
   InfiniteData,
@@ -4534,7 +4534,7 @@ export class Point0<
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const fetchOptions = this.getFetchOptions(...args)
-    if (env.target.is.server && !fetchOptions.serverFetch) {
+    if (_point0_env.target.is.server && !fetchOptions.serverFetch) {
       throw new Error('Server fetch function is not set, it is a critical bug, please report it')
     }
     const fetchFn = fetchOptions.serverFetch ?? this.nativeFetch
@@ -4590,7 +4590,7 @@ export class Point0<
   ): Promise<
     ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   > {
-    if (env.target.is.server) {
+    if (_point0_env.target.is.server) {
       // throw new Error0(
       //   'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
       // )
@@ -5461,7 +5461,7 @@ export class Point0<
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
       try {
-        if (env.target.is.server) {
+        if (_point0_env.target.is.server) {
           throw new Error(
             'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
           )
@@ -6848,6 +6848,7 @@ export class Point0<
 }
 
 export * from './cookies-store.js'
+export * from './env.js'
 export * from './internals.js'
 export * from './points-manager.js'
 export * from './query-client.js'

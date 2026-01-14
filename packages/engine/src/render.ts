@@ -133,9 +133,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     })
   }
   html = fillRootElement({
-    content: content
-      ? `<!-- __POINT0_TARGET_START__ -->${content}<!-- __POINT0_TARGET_END__ -->`
-      : '<!-- __POINT0_TARGET__ -->',
+    content: content ? `<!-- __Target_START__ -->${content}<!-- __Target_END__ -->` : '<!-- __Target__ -->',
     html,
     domRootElementId,
   })
@@ -146,20 +144,20 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
   })
 
-  if (html.includes('<!-- __POINT0_TARGET__ -->')) {
-    const [prefix, suffix] = html.split('<!-- __POINT0_TARGET__ -->')
+  if (html.includes('<!-- __Target__ -->')) {
+    const [prefix, suffix] = html.split('<!-- __Target__ -->')
     return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
-  } else if (html.includes('<!-- __POINT0_TARGET_START__ -->') && html.includes('<!-- __POINT0_TARGET_END__ -->')) {
-    const prefix = html.split('<!-- __POINT0_TARGET_START__ -->')[0]
-    const suffix = html.split('<!-- __POINT0_TARGET_END__ -->')[1]
+  } else if (html.includes('<!-- __Target_START__ -->') && html.includes('<!-- __Target_END__ -->')) {
+    const prefix = html.split('<!-- __Target_START__ -->')[0]
+    const suffix = html.split('<!-- __Target_END__ -->')[1]
     const content = html
       .replace(prefix, '')
       .replace(suffix, '')
-      .replace('<!-- __POINT0_TARGET_START__ -->', '')
-      .replace('<!-- __POINT0_TARGET_END__ -->', '')
+      .replace('<!-- __Target_START__ -->', '')
+      .replace('<!-- __Target_END__ -->', '')
     return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
   } else {
-    throw new Error('<!-- __POINT0_TARGET__ --> not found')
+    throw new Error('<!-- __Target__ --> not found')
   }
 }
 

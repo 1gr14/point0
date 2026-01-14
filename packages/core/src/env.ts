@@ -1,9 +1,12 @@
-// vars
-import { superstore } from '@point0/superstore'
+import { superstore } from './super-store.js'
 
-export type POINT0_NODE_ENV = 'production' | 'development' | 'test'
-export type POINT0_TARGET = 'client' | 'server'
-export type POINT0_CLIENT_PLATFORM = 'browser' | 'react-native'
+export type NormalNodeEnv = 'production' | 'development' | 'test'
+export type Target = 'client' | 'server'
+export type ClientPlatform = 'browser' | 'react-native'
+
+export const normalNodeEnvs: NormalNodeEnv[] = ['production', 'development', 'test']
+
+// vars
 
 type AnyAnvVars = Record<string, string | undefined | boolean | number | null>
 
@@ -17,8 +20,8 @@ export const getEnvVars = (): EnvVars => {
   }
   try {
     Object.assign(env, {
-      // NODE_ENV: process.env.NODE_ENV,
-      POINT0_TARGET: process.env.POINT0_TARGET,
+      NODE_ENV: process.env.NODE_ENV,
+      TARGET: process.env.POINT0_TARGET,
       POINT0_SCOPE: process.env.POINT0_SCOPE,
       POINT0_BUILT: process.env.POINT0_BUILT,
       // in case if this vars was dfined by compiler
@@ -29,8 +32,6 @@ export const getEnvVars = (): EnvVars => {
   return env as EnvVars
 }
 
-const envVars = getEnvVars()
-
 // const isFakeClient = (): boolean | undefined => {
 //   return superstore.isFakeClient()
 // }
@@ -38,13 +39,12 @@ const envVars = getEnvVars()
 //   return superStore.isRealServerOverFakeClient()
 // }
 const isFakeClientOrRealServerOverFakeClient = (): 'fakeClient' | 'realServerOverFakeClient' | undefined => {
-  const superstore = (globalThis as any).__POINT0_SUPER_STORE_INSTANCE__ as SuperStore
   const fakeClient = superstore.isFakeClient()
   const realServerOverFakeClient = superstore.isRealServerOverFakeClient()
-  if (fakeClient === true && realServerOverFakeClient === false) {
+  if (fakeClient && !realServerOverFakeClient) {
     return 'fakeClient'
   }
-  if (fakeClient === true && realServerOverFakeClient === true) {
+  if (fakeClient && realServerOverFakeClient) {
     return 'realServerOverFakeClient'
   }
   return undefined
@@ -199,7 +199,7 @@ export const envTarget = Object.defineProperties(
 // scope
 
 const getScopeName = (): string => {
-  const scopeName = envVars.POINT0_SCOPE
+  const scopeName = getEnvVars().POINT0_SCOPE
   if (!scopeName || typeof scopeName !== 'string') {
     throw new Error('POINT0_SCOPE is not set in env vars')
   }
@@ -332,14 +332,22 @@ export type EnvMode =
         readonly test: false
       }
     }
-const envMode = {
-  name: envVars.NODE_ENV,
-  is: {
-    production: envVars.NODE_ENV === 'production',
-    development: envVars.NODE_ENV === 'development',
-    test: envVars.NODE_ENV === 'test',
+const envModeIs = Object.defineProperties(
+  {},
+  {
+    production: { get: () => getEnvVars().NODE_ENV === 'production' },
+    development: { get: () => getEnvVars().NODE_ENV === 'development' },
+    test: { get: () => getEnvVars().NODE_ENV === 'test' },
   },
-} as never as EnvMode
+)
+const envMode = Object.defineProperties(
+  {
+    is: envModeIs,
+  },
+  {
+    name: { get: () => getEnvVars().NODE_ENV },
+  },
+) as never as EnvMode
 
 // final
 
@@ -352,10 +360,16 @@ export type Env<TVars = any, TScope extends string = string> = {
   readonly built: boolean
 }
 
-export const env: Env = {
-  mode: envMode,
-  vars: envVars,
-  target: envTarget,
-  scope: envScope,
-  built: false, // will be overridden by compiler in build phase
-}
+export const env: Env = Object.defineProperties(
+  {
+    mode: envMode,
+    target: envTarget,
+    scope: envScope,
+    built: false, // will be overridden by compiler in build phase
+  },
+  {
+    vars: { get: getEnvVars },
+  },
+) as never as Env
+
+export const _point0_env = env

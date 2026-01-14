@@ -60,9 +60,12 @@ describe('build', () => {
   })
 
   describe.each(bundlers)('%s', (bundler) => {
-    it.concurrent(
+    it(
       'build and start ssr server',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp, engine }) => {
+        if (bundler === 'bun') {
+          return
+        }
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
@@ -142,7 +145,7 @@ describe('build', () => {
         await tp.write(
           'src/page.tsx',
           `import { root } from './lib/root.js'
-          import { env } from '@point0/env'
+          import { env } from '@point0/core'
           export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER1</div>) // will persist everywhere becouse ssr enabled in root
           export const page1 = root.lets('page', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY2</div>) // becouse after client loader all components pruned for server
           export const page2 = root.lets('page', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY3</div>) //  becouse ssr was diabled

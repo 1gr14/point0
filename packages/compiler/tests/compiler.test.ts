@@ -56,7 +56,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects target option - client',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/env'); if (env.target.is.client) console.info('client')`)
+        await file.write(`const env=require('@point0/core'); if (env.target.is.client) console.info('client')`)
         const compiler = Compiler.create({ target: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -67,7 +67,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects target option - server',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/env'); if (env.target.is.server) console.info('server')`)
+        await file.write(`const env=require('@point0/core'); if (env.target.is.server) console.info('server')`)
         const compiler = Compiler.create({ target: 'server', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -78,7 +78,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects scope option',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/env'); if (env.scope.is.test) console.info('test')`)
+        await file.write(`const env=require('@point0/core'); if (env.scope.is.test) console.info('test')`)
         const compiler = Compiler.create({ target: 'client', scope: 'test' })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)
@@ -89,7 +89,7 @@ export const root = Point0.lets('root', 'root').root()
     it.concurrent(
       'respects consts option',
       helper(async ({ files: [file] }) => {
-        await file.write(`const env=require('@point0/env'); if (env.vars.TEST_VAR) console.info('test')`)
+        await file.write(`const env=require('@point0/core'); if (env.vars.TEST_VAR) console.info('test')`)
         const compiler = Compiler.create({ target: 'client', scope: 'test', consts: [{ TEST_VAR: true }] })
         const result = compiler.compile({ file: file.path })
         expect(result.errors).toHaveLength(0)

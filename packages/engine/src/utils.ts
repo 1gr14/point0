@@ -7,8 +7,8 @@ import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
-import type { POINT0_NODE_ENV } from '@point0/env'
-import { env } from '@point0/env'
+import type { NormalNodeEnv } from '@point0/core'
+import { env } from '@point0/core'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
   if (!path) {
@@ -195,7 +195,7 @@ export const removeLikeJsExtension = (path: string) => {
 // build config
 
 export type ServerBunBuildConfigDefinitionFnOptions = {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   target: 'server'
 }
 export type ServerBunBuildConfigDefinitionFn = (
@@ -204,7 +204,7 @@ export type ServerBunBuildConfigDefinitionFn = (
 export type ServerBunBuildConfigDefinition = ServerBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type ClientBunBuildConfigDefinitionFnOptions = {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   target: 'client'
 }
 export type ClientBunBuildConfigDefinitionFn = (
@@ -213,7 +213,7 @@ export type ClientBunBuildConfigDefinitionFn = (
 export type ClientBunBuildConfigDefinition = ClientBunBuildConfigDefinitionFn | Partial<BuildConfig>
 
 export type BunBuildConfigDefinitionFnOptions = {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   target: 'client' | 'server'
   scope: PointsScope
 }
@@ -228,7 +228,7 @@ export const executeServerBunBuildConfig = async ({
   bunPlugins,
   scope,
 }: {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   bunBuildConfig: ServerBunBuildConfigDefinition
   bunPlugins: ServerBunPluginsDefinition
   scope: PointsScope
@@ -248,7 +248,7 @@ export const extractClientBunBuildConfig = async ({
   bunPlugins,
   scope,
 }: {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   bunBuildConfig: ClientBunBuildConfigDefinition
   bunPlugins: ClientBunPluginsDefinition
   scope: PointsScope
@@ -269,7 +269,7 @@ export const extractBunBuildConfig = async ({
   bunPlugins,
   scope,
 }: {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   target: 'client' | 'server'
   bunBuildConfig: BunBuildConfigDefinition
   bunPlugins: BunPluginsDefinition
@@ -287,7 +287,7 @@ export const extractBunBuildConfig = async ({
 // plugins
 
 export type ServerBunPluginsDefinitionFnOptions = {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   target: 'server'
 }
@@ -297,7 +297,7 @@ export type ServerBunPluginsDefinitionFn = (
 export type ServerBunPluginsDefinition = ServerBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type ClientBunPluginsDefinitionFnOptions = {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   target: 'client'
 }
@@ -307,7 +307,7 @@ export type ClientBunPluginsDefinitionFn = (
 export type ClientBunPluginsDefinition = ClientBunPluginsDefinitionFn | Array<BunPlugin | string>
 
 export type BunPluginsDefinitionFnOptions = {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   target: 'client' | 'server'
   scope: PointsScope
@@ -323,7 +323,7 @@ export const extractServerBunPlugins = async ({
   bunPlugins,
   scope,
 }: {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   bunPlugins: ServerBunPluginsDefinition
   scope: PointsScope
@@ -343,7 +343,7 @@ export const extractClientBunPlugins = async ({
   bunPlugins,
   scope,
 }: {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
   scope: PointsScope
@@ -364,7 +364,7 @@ export const extractBunPlugins = async ({
   target,
   scope,
 }: {
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   bunPlugins: BunPluginsDefinition
   target: 'client' | 'server'
@@ -390,7 +390,7 @@ export const extractClientBunDevPluginsStrings = async ({
   errorOnNotString,
 }: {
   cwd: string
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   command: 'serve' | 'build'
   bunPlugins: ClientBunPluginsDefinition
   errorOnNotString: string
@@ -455,7 +455,7 @@ export const extractViteConfig = async ({
   viteConfig: EngineOptionsViteConfig
   command: 'serve' | 'build'
   target: 'client' | 'server'
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   scope: PointsScope
 }): Promise<ExtractedViteConfig> => {
   return typeof viteConfig === 'function'
@@ -486,7 +486,7 @@ export const createViteDevServer = async ({
   target: 'client' | 'server'
   hmrPort: number | false
   env?: EngineOptionsEnvParsed
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
 }): Promise<ViteDevServer> => {
   if (env.built) {
     throw new Error('You can not serve by dev client with built engine')
@@ -662,16 +662,16 @@ export const withAsyncRetries: WithAsyncRetriesFn = (
   }
 }
 
-export const normalizeAndValidateNodeEnv = (fallback?: POINT0_NODE_ENV): POINT0_NODE_ENV => {
-  const validValues: POINT0_NODE_ENV[] = ['production', 'development', 'test']
+export const normalizeAndValidateNodeEnv = (fallback?: NormalNodeEnv): NormalNodeEnv => {
+  const validValues: NormalNodeEnv[] = ['production', 'development', 'test']
   const nodeEnv = process.env.NODE_ENV
   if (!nodeEnv && fallback) {
     process.env.NODE_ENV = fallback
     return fallback
   }
-  if (!nodeEnv || !validValues.includes(nodeEnv as POINT0_NODE_ENV)) {
+  if (!nodeEnv || !validValues.includes(nodeEnv as NormalNodeEnv)) {
     throw new Error(`Invalid process.env.NODE_ENV: ${nodeEnv}. Allowed values: ${validValues.join(', ')}`)
   }
   process.env.NODE_ENV = nodeEnv
-  return nodeEnv as POINT0_NODE_ENV
+  return nodeEnv as NormalNodeEnv
 }

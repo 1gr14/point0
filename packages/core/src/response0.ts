@@ -1,4 +1,4 @@
-import { env } from '@point0/env'
+import { _point0_env } from './env.js'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 import { _ssItems } from './internals.js'
 
@@ -229,7 +229,7 @@ export class Response0 {
   }
 
   static get(): Response0 {
-    if (!env.target.is.server) {
+    if (!_point0_env.target.is.server) {
       throw new Error(
         'You can not get respnse0 not in server. Please call Respons0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
       )

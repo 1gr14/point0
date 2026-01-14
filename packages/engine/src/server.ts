@@ -1,6 +1,6 @@
 import type { PointsScope, RequiredCtx } from '@point0/core'
 import { PointsManager, prependAndDeappendSlash } from '@point0/core'
-import { env } from '@point0/env'
+import { env } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -610,7 +610,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
         ...injectedEnvs,
         'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
         'process.env.POINT0_BUILT': JSON.stringify('true'),
-        'process.env.POINT0_TARGET': JSON.stringify('server'),
+        'process.env.Target': JSON.stringify('server'),
         'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
       },
     })
@@ -705,7 +705,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           ...injectedEnvs,
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
           'process.env.POINT0_BUILT': JSON.stringify('true'),
-          'process.env.POINT0_TARGET': JSON.stringify('server'),
+          'process.env.Target': JSON.stringify('server'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       }

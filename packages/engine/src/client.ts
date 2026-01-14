@@ -31,7 +31,7 @@ import {
   resolveTempDirPath,
   withRetries,
 } from './utils.js'
-import { env } from '@point0/env'
+import { env } from '@point0/core'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 
 // TODO:ASAP rename to EngineClient
@@ -727,7 +727,7 @@ Bun.serve({
           ...thisBunBuildConfig.define,
           ...providedBunBuildConfig.define,
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
-          'process.env.POINT0_TARGET': JSON.stringify('client'),
+          'process.env.Target': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       })
@@ -823,7 +823,7 @@ Bun.serve({
           ),
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
           'process.env.POINT0_BUILT': JSON.stringify('true'),
-          'process.env.POINT0_TARGET': JSON.stringify('client'),
+          'process.env.Target': JSON.stringify('client'),
           'process.env.POINT0_SCOPE': JSON.stringify(this.scope),
         },
       }

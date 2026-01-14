@@ -51,7 +51,6 @@
   "peerDependencies": {
     "react": "catalog:",
     "react-dom": "catalog:",
-    "@point0/env": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@devp0nt/error0": "catalog:",
     "@devp0nt/route0": "catalog:",

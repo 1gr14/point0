@@ -10,7 +10,7 @@ import type {
   RequiredCtxByPointsModules,
 } from '@point0/core'
 import { appendSlash, PointsManager, prependAndDeappendSlash } from '@point0/core'
-import type { POINT0_NODE_ENV } from '@point0/env'
+import type { NormalNodeEnv } from '@point0/core'
 import { minimatch } from 'minimatch'
 import nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -53,7 +53,7 @@ export type ExtractedViteConfig = import('vite').UserConfig
 export type ExtractViteConfigFn = (options: {
   command: 'serve' | 'build'
   target: 'client' | 'server'
-  mode: POINT0_NODE_ENV
+  mode: NormalNodeEnv
   scope: PointsScope
 }) => Promise<ExtractedViteConfig> | ExtractedViteConfig
 export type EngineOptionsViteConfig =

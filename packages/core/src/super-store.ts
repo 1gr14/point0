@@ -1,7 +1,7 @@
 /* eslint-disable import/first */
-import type { POINT0_CLIENT_PLATFORM } from '@point0/env'
+import type { ClientPlatform } from './env.js'
 
-// it is full copy of @point0/env, but we need avoid circulare dependency, all __POINT0_IS_TARGET_CLIENT__() will be also hardocded via compiler if target provided
+// it is full copy of @point0/core, but we need avoid circulare dependency, all __POINT0_IS_TARGET_CLIENT__() will be also hardocded via compiler if target provided
 const __POINT0_IS_TARGET_CLIENT__ = (): boolean => {
   // Browser-like (DOM available)
   if (typeof window !== 'undefined' && typeof document !== 'undefined') return true
@@ -526,7 +526,7 @@ export class SuperStore {
     }
   }
 
-  getFakeClient(): { id: string; scope: PointsScope; platform: POINT0_CLIENT_PLATFORM } | undefined {
+  getFakeClient(): { id: string; scope: PointsScope; platform: ClientPlatform } | undefined {
     if (!this.serverStorage) {
       return undefined
     }

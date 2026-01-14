@@ -1,5 +1,5 @@
 import type { RoutesPretty } from '@devp0nt/route0'
-import type { POINT0_NODE_ENV } from '@point0/env'
+import { normalNodeEnvs, type NormalNodeEnv } from '@point0/core'
 import type { CompilerFile } from './file.js'
 import { CompilerPoint } from './point.js'
 import type { CompilerEnvConsts } from './utils.js'
@@ -7,7 +7,7 @@ import { Walker } from './walker.js'
 
 export type CompilerOptions = {
   routes?: Record<string, RoutesPretty<any>> | undefined
-  mode?: POINT0_NODE_ENV | false
+  mode?: NormalNodeEnv | false
   target: 'client' | 'server' | false
   scope: string | false
   built?: boolean
@@ -20,7 +20,7 @@ export class Compiler {
   filter: RegExp
   scope: string | false
   built: boolean
-  mode: POINT0_NODE_ENV | false
+  mode: NormalNodeEnv | false
   target: 'client' | 'server' | false
   consts: CompilerEnvConsts | undefined
   hmrFix: 'function' | 'arrowFunction' | 'externalFunction' | false
@@ -48,7 +48,7 @@ export class Compiler {
     walker: Walker
     routes: Record<string, RoutesPretty<any>> | undefined
     built: boolean
-    mode: POINT0_NODE_ENV | false
+    mode: NormalNodeEnv | false
   }) {
     this.filter = filter
     this.target = target
@@ -63,7 +63,7 @@ export class Compiler {
 
   static create(options: CompilerOptions) {
     const { filter, target, scope, consts, hmrFix, routes, built, mode = process.env.NODE_ENV } = options
-    if (mode !== false && (!mode || !['production', 'development', 'test'].includes(mode))) {
+    if (mode !== false && (!mode || !normalNodeEnvs.includes(mode as NormalNodeEnv))) {
       throw new Error(`Invalid mode (NODE_ENV): "${mode}". Allowed values: production, development, test`)
     }
     return new Compiler({
@@ -75,7 +75,7 @@ export class Compiler {
       walker: new Walker({ routes }),
       routes,
       built: built ?? false,
-      mode: mode as POINT0_NODE_ENV | false,
+      mode: mode as NormalNodeEnv | false,
     })
   }
 

@@ -1,6 +1,6 @@
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@devp0nt/route0'
 import { Route0, Routes } from '@devp0nt/route0'
-import { env } from '@point0/env'
+import { _point0_env } from './env.js'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { _ssItems, getFakeClient } from './internals.js'
@@ -82,7 +82,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.transformer = this.root._tranformer
     this.ssr = this.root._ssr
     PointsManager.setPointsManager(this)
-    if (env.target.is.client) {
+    if (_point0_env.target.is.client) {
       _ssItems.__POINT0_CLIENT_SCOPE__.set(this.scope)
     }
   }
