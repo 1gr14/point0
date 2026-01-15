@@ -53,7 +53,7 @@ class GlobalThisItemProxy {
   }
 
   static create(fakeClient: FakeClient, key: string, value: unknown) {
-    const item = this.items.get(key)
+    const item = GlobalThisItemProxy.items.get(key)
     if (!item) {
       return new GlobalThisItemProxy({
         key,
@@ -65,17 +65,34 @@ class GlobalThisItemProxy {
     item.fakeClientsValues.set(fakeClient.id, value)
     return item
   }
+
+  static destroy(fakeClient?: FakeClient) {
+    if (fakeClient) {
+      GlobalThisItemProxy.items.delete(fakeClient.id)
+    } else {
+      GlobalThisItemProxy.items.forEach((item) => {
+        ;(globalThis as any)[item.key] = item.originalValue
+      })
+    }
+  }
 }
 
-export type FakeClientCleanup = () => any
+export type FakeClientCleanup = (
+  state: FakeClientState,
+) => undefined | Promise<undefined> | ((state: FakeClientState) => any)
+export type FakeClientState = {
+  [key: string]: unknown
+}
 
-export class FakeClient {
+export class FakeClient<TState extends FakeClientState = FakeClientState> {
   id: string
   scope: PointsScope
   client: ClientBun<true>
   engine: Engine<any, true>
+  state: TState
   jar: CookieJar
   fetch: FetchFn
+
   cleanup: FakeClientCleanup | undefined
 
   private constructor({
@@ -83,6 +100,7 @@ export class FakeClient {
     client,
     id,
     scope,
+    state,
     jar,
     fetch,
     cleanup,
@@ -91,6 +109,7 @@ export class FakeClient {
     client: ClientBun<true>
     id: string
     scope: PointsScope
+    state: TState
     jar: CookieJar
     fetch: FetchFn
     cleanup: FakeClientCleanup | undefined
@@ -99,22 +118,28 @@ export class FakeClient {
     this.client = client
     this.id = id
     this.scope = scope
+    this.state = state
     this.jar = jar
     this.fetch = fetch
     this.cleanup = cleanup
   }
 
-  static create({
+  static create<TState extends FakeClientState = FakeClientState>({
     engine,
     scope,
     globals,
     cleanup,
+    state,
   }: {
-    engine: Engine<any, true>
+    engine: Engine
     scope: PointsScope
     globals: Record<string, any>
     cleanup?: FakeClientCleanup
-  }): FakeClient {
+    state?: TState
+  }): FakeClient<TState> {
+    if (!engine.initialized) {
+      throw new Error('Engine is not initialized')
+    }
     const client = engine.clients.find((client) => client.scope === scope)
     if (!client) {
       throw new Error(`No client found with scope "${scope}"`)
@@ -122,14 +147,33 @@ export class FakeClient {
     const id = crypto.randomUUID()
     const jar = new CookieJar()
     const fetch = fetchCookie(engine.fetchSimple.bind(engine), jar)
-    const fakeClient = new FakeClient({ engine, client, id, scope, jar, fetch, cleanup })
+    const fakeClient = new FakeClient({
+      engine: engine as Engine<any, true>,
+      client: client as ClientBun<true>,
+      id,
+      scope,
+      jar,
+      fetch,
+      cleanup,
+      state: state ?? {},
+    })
     for (const [key, value] of Object.entries(globals)) {
       GlobalThisItemProxy.create(fakeClient, key, value)
     }
-    return fakeClient
+    return fakeClient as FakeClient<TState>
   }
 
-  run<TResult>(fn: () => TResult): TResult {
+  async destroy() {
+    GlobalThisItemProxy.destroy(this)
+    const cleanupResult = await this.cleanup?.(this.state)
+    if (typeof cleanupResult === 'function') {
+      await this.run(async () => {
+        await cleanupResult(this.state)
+      })
+    }
+  }
+
+  run<TResult>(fn: (state: TState) => TResult): TResult {
     return _ssRunWithServerStorageState(
       _getSsItemsWithRestErrors(
         {
@@ -140,27 +184,27 @@ export class FakeClient {
       ),
       // eslint-disable-next-line @typescript-eslint/promise-function-async
       () => {
-        try {
-          const result = fn()
-          if (result instanceof Promise) {
-            const promiseResult = result
-              .then((result) => {
-                this.cleanup?.()
-                return result
-              })
-              .catch((error: unknown) => {
-                this.cleanup?.()
-                throw error
-              })
-            return promiseResult
-          } else {
-            this.cleanup?.()
-            return result
-          }
-        } catch (error) {
-          this.cleanup?.()
-          throw error
+        // try {
+        const result = fn(this.state)
+        if (result instanceof Promise) {
+          const promiseResult = result
+            .then((result) => {
+              // this.onRunEnd?.()
+              return result
+            })
+            .catch((error: unknown) => {
+              // this.onRunEnd?.()
+              throw error
+            })
+          return promiseResult
+        } else {
+          // this.onRunEnd?.()
+          return result
         }
+        // } catch (error) {
+        //   // this.onRunEnd?.()
+        //   throw error
+        // }
       },
     ) as TResult
   }

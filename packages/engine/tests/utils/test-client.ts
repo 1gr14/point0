@@ -1,7 +1,7 @@
 import { cleanup } from '@testing-library/react'
 import nodePath from 'node:path'
 import { Engine } from '../../src/engine.js'
-import { FakeClient } from '../../src/test-client.js'
+import { FakeClient } from '../../src/fake-client.js'
 import type { PointsDefinitionSource } from '@point0/core'
 
 export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {

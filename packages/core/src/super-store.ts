@@ -525,6 +525,25 @@ export class SuperStore {
   isFakeClient(): boolean {
     return this.getFakeClient() !== undefined
   }
+
+  destroyFakeClient(): void {
+    const fakeClient = this.getFakeClient()
+    if (!fakeClient) {
+      return
+    }
+    if (!this.serverStorage) {
+      return
+    }
+    const serverStorageState = this.serverStorage.getStore()
+    if (!serverStorageState) {
+      return
+    }
+    if (!serverStorageState.__POINT0_FAKE_CLIENTS_STATE__) {
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id]
+  }
 }
 
 export class SuperStoreItem<TValue = any, TDehydratedValue = any> {

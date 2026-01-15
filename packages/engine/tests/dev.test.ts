@@ -148,21 +148,23 @@ describe('dev', () => {
           import { useState } from 'react'
         export const page = root.lets('page', 'home', '/').page(() => {
           const [count, setCount] = useState(0)
-          return (<div onClick={() => setCount(count + 1)}>Hello {count}</div>)
+          return (<div onClick={() => setCount(count + 1)}>Hop {count}</div>)
         })`,
         )
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
-        await new Promise((resolve) => setTimeout(resolve, 700))
         const page = await tp.gotoClient('/')
-        await new Promise((resolve) => setTimeout(resolve, 400))
-        await page.waitContent('Hello 0')
+        await page.waitContent('Hop 0')
         await page.original.click('div')
-        await page.waitContent('Hello 1')
-        await new Promise((resolve) => setTimeout(resolve, 400))
-        await tp.replace('src/page.tsx', 'Hello', 'Ciao')
-        await new Promise((resolve) => setTimeout(resolve, 400))
-        await page.waitContent('Ciao 1', 3000)
+        await page.waitContent('Hop 1')
+        await tp.replace('src/page.tsx', 'Hop', 'Hay')
+        await page.waitContent('Hay 1')
+        await page.original.click('div')
+        await page.waitContent('Hay 2')
+        await tp.replace('src/page.tsx', 'Hay', 'La La Lay')
+        await page.waitContent('La La Lay 2')
+        await page.original.click('div')
+        await page.waitContent('La La Lay 3')
         expect(page.history.length).toBe(1)
       }),
       {
