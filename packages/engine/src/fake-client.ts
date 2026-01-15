@@ -4,8 +4,7 @@ import type { ClientBun } from './client.js'
 import type { Engine } from './engine.js'
 import type { FetchCookieImpl } from 'fetch-cookie'
 import fetchCookie from 'fetch-cookie'
-import type { Cookie } from 'tough-cookie'
-import { CookieJar } from 'tough-cookie'
+import { Cookie, CookieJar } from 'tough-cookie'
 
 class GlobalThisItemProxy {
   // item key -> item proxy
@@ -184,6 +183,26 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
               typeof input === 'string' ? input : input instanceof URL ? input : String(input), // ← normalize URLLike
               init,
             )
+
+      // Sync cookies from document.cookie to the jar before making the request
+      if (typeof document !== 'undefined' && document.cookie) {
+        const url = new URL(request.url)
+        const cookieStrings = document.cookie.split('; ').filter(Boolean)
+        for (const cookieString of cookieStrings) {
+          try {
+            // Parse the cookie string (format: "name=value" or "name=value; Path=/; Domain=...")
+            const cookie = Cookie.parse(cookieString)
+            if (cookie) {
+              // Set the cookie in the jar for the request URL
+              await jar.setCookie(cookie, url.toString())
+            }
+          } catch (error) {
+            // Ignore parsing errors for malformed cookies
+            // This can happen with cookies that have special characters or invalid formats
+          }
+        }
+      }
+
       const response = await engine.fetchSimple(request)
       // Ensure the response has a URL property for fetch-cookie
       if (!('url' in response) || !response.url) {
@@ -217,9 +236,12 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     return fakeClient as FakeClient<TState>
   }
 
-  async getCookies(url?: string): Promise<Cookie[]> {
+  async getCookies(url: string | undefined = undefined, httpOnly: boolean | undefined = undefined): Promise<Cookie[]> {
     const cookies = await this.jar.getCookies(url ?? `http://localhost:${this.engine.server.port}/`)
-    return cookies.filter((cookie) => !cookie.httpOnly)
+    if (httpOnly === undefined) {
+      return cookies
+    }
+    return cookies.filter((cookie) => (httpOnly ? cookie.httpOnly : !cookie.httpOnly))
   }
 
   async destroy() {

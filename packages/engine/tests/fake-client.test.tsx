@@ -1,4 +1,4 @@
-import { Point0, QueryClientProvider, env } from '@point0/core'
+import { CookiesStore, Point0, QueryClientProvider, env } from '@point0/core'
 import { Router } from '@point0/wouter'
 import '@testing-library/jest-dom'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
@@ -109,6 +109,7 @@ describe('FakeClient', () => {
       .lets('page', 'page')
       .loader(() => ({ serverLoaderTargetName: env.target.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
+    const cooka = CookiesStore.define({ name: 'z' })
     const mutation = root
       .lets('mutation', 'mutation')
       .loader(({ set, request }) => {
@@ -129,19 +130,25 @@ describe('FakeClient', () => {
     })
     const client = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     await client.run(async () => {
+      cooka.set('3')
       expect(await client.getCookies()).toEqual([])
       const { current } = await mutation.fetch()
       expect(current).toEqual({})
-      const cookies = await client.getCookies()
-      expect(cookies.length).toBe(1)
-      expect(cookies[0].key).toBe('x')
-      expect(cookies[0].value).toBe('1')
+      const cookies = await client.getCookies(undefined, false)
+      expect(cookies.length).toBe(2)
+      expect(cookies[0].key).toBe('z')
+      expect(cookies[0].value).toBe('3')
+      expect(cookies[1].key).toBe('x')
+      expect(cookies[1].value).toBe('1')
+
       const { current: current2 } = await mutation.fetch()
-      expect(current2).toEqual({ x: '1', y: '2' })
-      const cookies2 = await client.getCookies()
-      expect(cookies2.length).toBe(1)
-      expect(cookies2[0].key).toBe('x')
-      expect(cookies2[0].value).toBe('1')
+      expect(current2).toEqual({ x: '1', y: '2', z: '3' })
+      const cookies2 = await client.getCookies(undefined, false)
+      expect(cookies2.length).toBe(2)
+      expect(cookies2[0].key).toBe('z')
+      expect(cookies2[0].value).toBe('3')
+      expect(cookies2[1].key).toBe('x')
+      expect(cookies2[1].value).toBe('1')
     })
     expect(env.target.name).toBe('server')
   })
