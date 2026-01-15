@@ -6,7 +6,7 @@ import { describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
 import { FakeClient } from '../src/test-client.js'
-import { getFakeBrowserGlobals } from './utils/fake-browser.js'
+import { createTestThings, getFakeBrowserGlobals } from './utils/test-client.js'
 
 describe('FakeClient', () => {
   it('should fetch page with loader', async () => {
@@ -124,6 +124,42 @@ describe('FakeClient', () => {
       expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
       expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
     })
+  })
+  it('should render ssr page with loader and client loader', async () => {
+    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+    let counter = 0
+    const mutation = root
+      .lets('mutation', 'mutation')
+      .loader(() => ({ index: counter++, serverMutationTargetName: env.target.name }))
+      .clientLoader(({ data }) => ({ ...data, clientMutationTargetName: env.target.name }))
+      .mutation()
+    const page = root
+      .lets('page', 'page', '/')
+      .loader(() => ({ x: 1, serverLoaderTargetName: env.target.name }))
+      .clientLoader(({ data }) => ({ ...data, clientLoaderTargetName: env.target.name }))
+      .page(({ data }) => {
+        const inc = mutation.useMutation()
+        return (
+          <div>
+            <div id="pageTargetName">{env.target.name}</div>
+            <div id="serverLoaderTargetName">{data.serverLoaderTargetName}</div>
+            <div id="clientLoaderTargetName">{data.clientLoaderTargetName}</div>
+            <div id="serverMutationTargetName">{inc.data?.serverMutationTargetName || '-'}</div>
+            <div id="clientMutationTargetName">{inc.data?.clientMutationTargetName || '-'}</div>
+            <button
+              onClick={() => {
+                inc.mutateAsync().catch((err: unknown) => {
+                  console.error(err)
+                })
+              }}
+            >
+              Increment {inc.data?.index ?? '-'}
+            </button>
+          </div>
+        )
+      })
+    const { engine, client } = await createTestThings([root, page, mutation])
+    const response = await client.fetch(new Request(page.ro))
   })
 
   // it('should render page with loader and client loader', async () => {
