@@ -4,6 +4,7 @@ import type { ClientBun } from './client.js'
 import type { Engine } from './engine.js'
 import type { FetchCookieImpl } from 'fetch-cookie'
 import fetchCookie from 'fetch-cookie'
+import type { Cookie } from 'tough-cookie'
 import { CookieJar } from 'tough-cookie'
 
 class GlobalThisItemProxy {
@@ -183,7 +184,17 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
               typeof input === 'string' ? input : input instanceof URL ? input : String(input), // ← normalize URLLike
               init,
             )
-      return await engine.fetchSimple(request)
+      const response = await engine.fetchSimple(request)
+      // Ensure the response has a URL property for fetch-cookie
+      if (!('url' in response) || !response.url) {
+        Object.defineProperty(response, 'url', {
+          value: request.url,
+          writable: false,
+          enumerable: true,
+          configurable: true,
+        })
+      }
+      return response
     }, jar)
     const fakeClient = new FakeClient({
       engine: engine as Engine<any, true>,
@@ -204,6 +215,11 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       GlobalThisItemProxy.create(fakeClient, key, value)
     }
     return fakeClient as FakeClient<TState>
+  }
+
+  async getCookies(url?: string): Promise<Cookie[]> {
+    const cookies = await this.jar.getCookies(url ?? `http://localhost:${this.engine.server.port}/`)
+    return cookies.filter((cookie) => !cookie.httpOnly)
   }
 
   async destroy() {

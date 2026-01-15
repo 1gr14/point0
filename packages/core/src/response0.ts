@@ -218,10 +218,12 @@ export class Response0 {
 
     const status = effects.status ?? response.status
 
-    return new Response(response.body, {
+    const newResponse = new Response(response.body, {
       status,
       headers: newHeaders,
     })
+
+    return newResponse
   }
 
   apply(response: Response): Response {

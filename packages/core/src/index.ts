@@ -4533,7 +4533,9 @@ export class Point0<
     if (_point0_env.target.is.server) {
       const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
       if (!__POINT0_FETCH_FN__) {
-        throw new Error('Server fetch function is not set, it is a critical bug, please report it')
+        throw new Error(
+          'Fetch function in server available only inside loaders, components, etc, do not use it in top level. Or use FakeClient',
+        )
       }
       return __POINT0_FETCH_FN__
     }

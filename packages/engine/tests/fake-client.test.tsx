@@ -78,7 +78,7 @@ describe('FakeClient', () => {
 
   // afterEach(cleanup)
 
-  it('should fetch page with loader', async () => {
+  it('fetch page with loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
@@ -103,7 +103,50 @@ describe('FakeClient', () => {
     expect(env.target.name).toBe('server')
   })
 
-  it('should execute page with loader and client loader', async () => {
+  it('respect cookies', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'page')
+      .loader(() => ({ serverLoaderTargetName: env.target.name }))
+      .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
+    const mutation = root
+      .lets('mutation', 'mutation')
+      .loader(({ set, request }) => {
+        set.cookies({ name: 'x', value: '1' })
+        set.cookies({ name: 'y', value: '2', httpOnly: true })
+        return {
+          current: request.cookies,
+        }
+      })
+      .mutation()
+    expect(env.target.name).toBe('server')
+    const points = [root, page, mutation] as const
+    const engine = await Engine.init({
+      compiler: false,
+      file: import.meta.url,
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
+    })
+    const client = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
+    await client.run(async () => {
+      expect(await client.getCookies()).toEqual([])
+      const { current } = await mutation.fetch()
+      expect(current).toEqual({})
+      const cookies = await client.getCookies()
+      expect(cookies.length).toBe(1)
+      expect(cookies[0].key).toBe('x')
+      expect(cookies[0].value).toBe('1')
+      const { current: current2 } = await mutation.fetch()
+      expect(current2).toEqual({ x: '1', y: '2' })
+      const cookies2 = await client.getCookies()
+      expect(cookies2.length).toBe(1)
+      expect(cookies2[0].key).toBe('x')
+      expect(cookies2[0].value).toBe('1')
+    })
+    expect(env.target.name).toBe('server')
+  })
+
+  it('execute page with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
       .lets('page', 'page')
