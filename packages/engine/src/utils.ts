@@ -1,4 +1,4 @@
-import type { PointsScope } from '@point0/core'
+import type { PointsScope, NormalNodeEnv } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
@@ -7,7 +7,6 @@ import type { Options as RetryOptions } from 'p-retry'
 import pRetry from 'p-retry'
 import type { ViteDevServer } from 'vite'
 import type { EngineOptionsEnvParsed, EngineOptionsViteConfig, ExtractedViteConfig } from './config.js'
-import type { NormalNodeEnv } from '@point0/core'
 import { env } from '@point0/core'
 
 export const toPathsOrUndefined = (path: string | string[] | undefined): string[] | undefined => {
@@ -675,3 +674,6 @@ export const normalizeAndValidateNodeEnv = (fallback?: NormalNodeEnv): NormalNod
   process.env.NODE_ENV = nodeEnv
   return nodeEnv as NormalNodeEnv
 }
+
+export const isAsyncFn = (fn: unknown): fn is (...args: any[]) => Promise<any> =>
+  typeof fn === 'function' && fn.constructor.name === 'AsyncFunction'

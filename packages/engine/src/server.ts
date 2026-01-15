@@ -1,6 +1,5 @@
-import type { PointsScope, RequiredCtx } from '@point0/core'
-import { PointsManager, prependAndDeappendSlash } from '@point0/core'
-import { env } from '@point0/core'
+import type { PointsDefinitionSource, PointsScope, RequiredCtx } from '@point0/core'
+import { PointsManager, prependAndDeappendSlash, env } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -9,7 +8,6 @@ import type { AllPointsManagers } from './all-points-managers.js'
 import type { ClientBun } from './client.js'
 import type {
   EngineLogger,
-  EngineOptionsPoints,
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
@@ -39,7 +37,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   cwd: string
   allPointsManagers: AllPointsManagers
   pointsManager: PointsManager | null
-  pointsProvided: EngineOptionsPoints | null
+  pointsProvided: PointsDefinitionSource | null
   itWasBuilt: boolean
   engineFile: string | null
   cwdBeforeBuild: string
@@ -67,7 +65,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     initialized: TInitialized
     cwd: string
     scope: PointsScope
-    pointsProvided: EngineOptionsPoints | null
+    pointsProvided: PointsDefinitionSource | null
     itWasBuilt: boolean
     engineFile: string | null
     cwdBeforeBuild: string
@@ -121,7 +119,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
   static create(input: {
     cwd: string
     scope: PointsScope
-    pointsProvided: EngineOptionsPoints | null
+    pointsProvided: PointsDefinitionSource | null
     allPointsManagers: AllPointsManagers
     engineFile: string | null
     cwdBeforeBuild: string
@@ -184,7 +182,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     if (!this.pointsProvided) {
       return null
     }
-    const pointsManager = PointsManager.create(await this.pointsProvided())
+    const pointsManager = await PointsManager.createFromSource(this.pointsProvided)
     this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
     return pointsManager
   }

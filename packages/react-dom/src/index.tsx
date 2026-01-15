@@ -1,14 +1,14 @@
 import { createElement } from 'react'
 import type { Root } from 'react-dom/client'
 import { createRoot, hydrateRoot } from 'react-dom/client'
-import type { LazyPointsModule, ReadyPointsModule } from '@point0/core'
+import type { PointsDefinition } from '@point0/core'
 import { PointsManager, superstore } from '@point0/core'
 
 let reactRoot: Root | null = null
 
 export function mount(
   App: AppComponent,
-  points: LazyPointsModule | ReadyPointsModule,
+  points: PointsDefinition | PointsManager,
   domRootElement?: HTMLElement | null,
 ) {
   if (domRootElement !== undefined) {

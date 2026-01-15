@@ -303,7 +303,11 @@ export class CompilerPoint<TValid extends boolean = any> {
         if (scopeRoute) {
           return { routeSegment: undefined, routeFull: scopeRoute, errors }
         } else {
-          errors.push(new Error(`unknown route key '${routeKey}'`))
+          errors.push(
+            new Error(
+              `unknown route key '${routeKey}' for scope '${scope}', you not provide routes, or provide routes for wrong scope`,
+            ),
+          )
           return { routeSegment: undefined, routeFull: undefined, errors }
         }
       }

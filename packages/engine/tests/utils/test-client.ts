@@ -1,8 +1,8 @@
-import type { RawPointsDefinition } from '@point0/core'
-import { Engine } from '../../src/engine.js'
-import { FakeClient } from '../../src/test-client.js'
 import { cleanup } from '@testing-library/react'
 import nodePath from 'node:path'
+import { Engine } from '../../src/engine.js'
+import { FakeClient } from '../../src/test-client.js'
+import type { PointsDefinitionSource } from '@point0/core'
 
 export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
   const url = options.url ?? 'http://localhost/'
@@ -39,11 +39,12 @@ export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
   }
 }
 
-export const createTestThings = async (points: RawPointsDefinition) => {
+export const createTestThings = async (points: PointsDefinitionSource) => {
   const engine = await Engine.init({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
-    clients: [points],
+    server: { scope: 'root', points },
+    clients: [{ scope: 'root', points }],
   })
   const client = FakeClient.create({
     engine,

@@ -12,13 +12,7 @@ import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
-import type {
-  EngineLogger,
-  EngineOptions,
-  EngineShortOptions,
-  RequiredCtxByEngineOptions,
-  RequiredCtxByEngineShortOptions,
-} from './config.js'
+import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
 import { Executor } from './executor.js'
 import type {
@@ -70,13 +64,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false>
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(options: EngineOptions): Engine<TRequiredCtx, false> {
-  static create<TEngineShortOptions extends EngineShortOptions>(
-    options: TEngineShortOptions,
-  ): Engine<RequiredCtxByEngineShortOptions<TEngineShortOptions>, false>
-  static create<TEngineOptions extends EngineOptions>(
-    options: TEngineOptions,
-  ): Engine<RequiredCtxByEngineOptions<TEngineOptions>, false>
-  static create(options: EngineShortOptions | EngineOptions) {
+  static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+    options: EngineOptions<TRequiredCtx>,
+  ): Engine<TRequiredCtx, false> {
     const parsedOptions = parseEngineOptions(options)
     const allPointsManagers = AllPointsManagers.create()
 
@@ -144,13 +134,9 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       fetchRecorder: parsedOptions.general.fetchRecorder,
     })
   }
-  static async init<TEngineOptions extends EngineOptions>(
-    options: TEngineOptions,
-  ): Promise<Engine<RequiredCtxByEngineOptions<TEngineOptions>, true>>
-  static async init<TEngineShortOptions extends EngineShortOptions>(
-    options: TEngineShortOptions,
-  ): Promise<Engine<RequiredCtxByEngineShortOptions<TEngineShortOptions>, true>>
-  static async init(options: EngineOptions | EngineShortOptions) {
+  static async init<TRequiredCtx extends RequiredCtx = RequiredCtx>(
+    options: EngineOptions<TRequiredCtx>,
+  ): Promise<Engine<TRequiredCtx, true>> {
     const engine = Engine.create(options as never)
     return await engine.init()
   }

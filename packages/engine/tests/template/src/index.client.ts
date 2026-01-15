@@ -1,6 +1,6 @@
 import { mount } from '@point0/react-dom'
 import App from './app.js'
-import * as points from './lib/points.client.js'
+import points from './lib/points.client.js'
 
 mount(App, points)
 

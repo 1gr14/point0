@@ -1,5 +1,5 @@
 import { Error0 } from '@devp0nt/error0'
-import { Route0, type AnyLocation } from '@devp0nt/route0'
+import type { AnyLocation } from '@devp0nt/route0'
 import type {
   AppComponent,
   Ctx,
@@ -11,14 +11,13 @@ import type {
   InputRaw,
   InputSchema,
   IsInputOptional,
-  LazyPointsModule,
   LoaderOutput,
   NiceEndPoint,
   PagePoint,
   PointName,
+  PointsDefinition,
   PointsScope,
   QueryKey,
-  ReadyPointsModule,
   RequiredCtx,
   ServerExecuteAction,
   ServerExecuteResult,
@@ -28,7 +27,6 @@ import type {
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
-  WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
 import { _ssItems, _ssRunWithServerStorageState, PointsManager, Request0, Response0 } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
@@ -89,7 +87,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   }: {
     engine: Engine
     request: Request | Request0
-    points: PointsManager<boolean, TRequiredCtx> | ReadyPointsModule<TRequiredCtx> | LazyPointsModule<TRequiredCtx>
+    points: PointsManager<boolean, TRequiredCtx> | PointsDefinition
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
@@ -171,39 +169,39 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
   }
 
-  static async execute<TPoint extends EndPoint>({
-    engine,
-    executor,
-    point,
-    input,
-    requiredCtx,
-    withLayouts,
-    response0,
-  }: {
-    engine: Engine
-    point: TPoint
-    input: TPoint['Infer']['InputRaw']
-    executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
-    withLayouts?: boolean
-    response0?: Response0
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
-    ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
-  > {
-    if (!point._root) {
-      throw new Error('Point root not found')
-    }
-    const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
-    const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
-    executor ??= await Executor.create({
-      engine,
-      request: Executor.createRequestByPointAndInput({ point, input }),
-      points: { _root: point._root, point, ...layoutsObject },
-      currentLocation: location,
-      requiredCtx,
-      pageLocation: point.type === 'page' ? location : undefined,
-    })
-    return await executor.execute({ point, input, withLayouts, response0 })
-  }
+  // static async execute<TPoint extends EndPoint>({
+  //   engine,
+  //   executor,
+  //   point,
+  //   input,
+  //   requiredCtx,
+  //   withLayouts,
+  //   response0,
+  // }: {
+  //   engine: Engine
+  //   point: TPoint
+  //   input: TPoint['Infer']['InputRaw']
+  //   executor?: Executor<TPoint['Infer']['RequiredCtx']> | undefined
+  //   withLayouts?: boolean
+  //   response0?: Response0
+  // } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
+  //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
+  // > {
+  //   if (!point._root) {
+  //     throw new Error('Point root not found')
+  //   }
+  //   const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
+  //   const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
+  //   executor ??= await Executor.create({
+  //     engine,
+  //     request: Executor.createRequestByPointAndInput({ point, input }),
+  //     points: { _root: point._root, point, ...layoutsObject },
+  //     currentLocation: location,
+  //     requiredCtx,
+  //     pageLocation: point.type === 'page' ? location : undefined,
+  //   })
+  //   return await executor.execute({ point, input, withLayouts, response0 })
+  // }
 
   async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     point: TPoint,

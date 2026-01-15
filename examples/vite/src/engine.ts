@@ -7,6 +7,7 @@ export const engine = Engine.create({
   pointsGlob: ['**/*.{ts,tsx}'],
   server: {
     scope: 'client',
+    points: async () => await import('./lib/points'),
     port: 3000,
     entry: './index.server.ts',
     outdir: '../dist/server',

@@ -1,6 +1,6 @@
 import { Route0, type AnyLocation } from '@devp0nt/route0'
-import type { AppComponent, InputParsed, PagePoint, PointsScope, Request0 } from '@point0/core'
-import { PointsManager, getHostnameOrNull } from '@point0/core'
+import type { AppComponent, InputParsed, PagePoint, PointsDefinitionSource, PointsScope, Request0 } from '@point0/core'
+import { PointsManager, getHostnameOrNull, env } from '@point0/core'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -12,7 +12,6 @@ import type {
   EngineOptionsAppComponent,
   EngineOptionsCompilerParsed,
   EngineOptionsEnvParsed,
-  EngineOptionsPoints,
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
@@ -27,11 +26,11 @@ import {
   extractClientBunBuildConfig,
   extractClientBunDevPluginsStrings,
   extractViteConfig,
+  isAsyncFn,
   normalizeAndValidateNodeEnv,
   resolveTempDirPath,
   withRetries,
 } from './utils.js'
-import { env } from '@point0/core'
 import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 
 // TODO:ASAP rename to EngineClient
@@ -41,7 +40,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   engineFile: string | null
   allPointsManagers: AllPointsManagers
   // pointsDistFile: string | null
-  pointsProvided: EngineOptionsPoints
+  pointsProvided: PointsDefinitionSource
   pointsManager: TInitialized extends true ? PointsManager : PointsManager | null
   ssr: TInitialized extends true ? boolean : null
   appProvided: EngineOptionsAppComponent | null
@@ -78,7 +77,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
     initialized: TInitialized
     cwd: string
     // pointsDistFile: string | null
-    pointsProvided: EngineOptionsPoints
+    pointsProvided: PointsDefinitionSource
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
     baseurl: string
@@ -145,7 +144,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   static create(input: {
     scope: PointsScope
     cwd: string
-    pointsProvided: EngineOptionsPoints
+    pointsProvided: PointsDefinitionSource
     // pointsDistFile: string | null
     appProvided: EngineOptionsAppComponent | null
     // appDistFile: string | null
@@ -245,7 +244,7 @@ export class ClientBun<TInitialized extends boolean = boolean> {
   }
 
   async initPointsManager(): Promise<PointsManager> {
-    const pointsManager = PointsManager.create(await this.pointsProvided())
+    const pointsManager = await PointsManager.createFromSource(this.pointsProvided)
     this.pointsManager = pointsManager as TInitialized extends true ? PointsManager : PointsManager | null
     return pointsManager
   }
@@ -255,13 +254,13 @@ export class ClientBun<TInitialized extends boolean = boolean> {
       this.App = null
       return null
     }
-    const result = await this.appProvided()
-    if ('default' in result && typeof result.default === 'function') {
-      this.App = result.default as TInitialized extends true ? AppComponent : null
-      return result.default
+    const defaultOrApp = isAsyncFn(this.appProvided) ? await this.appProvided() : this.appProvided
+    if ('default' in defaultOrApp && typeof defaultOrApp.default === 'function') {
+      this.App = defaultOrApp.default as TInitialized extends true ? AppComponent : null
+      return defaultOrApp.default
     }
-    this.App = result as TInitialized extends true ? AppComponent : null
-    return result as TInitialized extends true ? AppComponent : null
+    this.App = defaultOrApp as TInitialized extends true ? AppComponent : null
+    return defaultOrApp as TInitialized extends true ? AppComponent : null
   }
 
   async startDevServer(): Promise<void> {

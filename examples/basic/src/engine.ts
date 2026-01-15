@@ -6,6 +6,7 @@ export const engine = Engine.create({
     scope: 'server',
     port: 3000,
     entry: { main: './index.server.ts' },
+    points: async () => await import('./lib/points.ready'),
     outdir: '../dist/server',
   },
   clients: [

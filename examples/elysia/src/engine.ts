@@ -10,6 +10,7 @@ export const engine = Engine.create({
     port: 3000,
     entry: { main: './index.server.ts' },
     points: async () => await import('./lib/points.server.js'),
+    routes: async () => await import('./lib/routes').then((m) => m.routes),
     outdir: '../dist/server',
     generatePointsReady: './lib/points.server.ts',
   },

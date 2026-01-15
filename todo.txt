@@ -2,6 +2,7 @@
 ------ before start0 -----
 --------------------------
 
+requiredCtx not TSource
 короче все запросы через энжин фетч через все мидлвары, полная имитация спа приложения на сервере
 И получается фейк клиент должен создаваться и так всегда на каждый запрос с кукиджаром, чтобы по ходу отправки запросов он там обновлялся
 СерверКлиент и ТестКЛиент, главное кукисы не потерять походу выполнения запросов
@@ -459,6 +460,7 @@ serverOnlyPackages, clientOnlyPackages, throw on build and on runtime
 inspect by filepath how this file and in which place come to files via cli command
 
 REALTIME/MESSANGER
+name, bond, which bond, james bond, test
 Сенд тчк клиент, сенд тчк сервер
 mySub = root.lets('subscription').input({chatId}).subscription<{eventType: 'newMessage'; text: string} | {eventType: 'newGuest'; name: string}>(throw if not belong to user, return filterFn like ()); mySub.subscribe({chatId}, (event) => handle event); somewhere in server mySub.publish({chatId}, {eventType: 'newMessage', text: 'hello'});
 mySub = root.lets('subscription')

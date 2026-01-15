@@ -6,7 +6,7 @@ import { describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
 import { FakeClient } from '../src/test-client.js'
-import { createTestThings, getFakeBrowserGlobals } from './utils/test-client.js'
+import { getFakeBrowserGlobals } from './utils/test-client.js'
 
 describe('FakeClient', () => {
   it('should fetch page with loader', async () => {
@@ -16,10 +16,12 @@ describe('FakeClient', () => {
       .loader(() => ({ serverLoaderTargetName: env.target.name }))
       .page(({ data }) => <div>Hello from {data.serverLoaderTargetName}</div>)
     expect(env.target.name).toBe('server')
+    const points = [root, page] as const
     const engine = await Engine.init({
       compiler: false,
       file: import.meta.url,
-      clients: [[root, page]],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     })
     expect(env.target.name).toBe('server')
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
@@ -43,10 +45,12 @@ describe('FakeClient', () => {
           Hello from {data.serverLoaderTargetName} and {data.clientLoaderTargetName}
         </div>
       ))
+    const points = [root, page] as const
     const engine = await Engine.init({
       compiler: false,
       file: import.meta.url,
-      clients: [[root, page]],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     })
     const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     expect(env.target.name).toBe('server')
@@ -93,10 +97,12 @@ describe('FakeClient', () => {
           </div>
         )
       })
+    const points = [root, page, mutation] as const
     const engine = await Engine.init({
       compiler: false,
       file: import.meta.url,
-      clients: [[root, page, mutation]],
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     })
     const client = FakeClient.create({
       engine,
@@ -126,7 +132,7 @@ describe('FakeClient', () => {
     })
   })
 
-  it.only('should render ssr page with loader and client loader', async () => {
+  it('should render ssr page with loader and client loader', async () => {
     const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
     let counter = 0
     const mutation = root
@@ -159,10 +165,12 @@ describe('FakeClient', () => {
           </div>
         )
       })
+    const points = [root, page, mutation] as const
     const engine = await Engine.init({
       compiler: false,
       file: import.meta.url,
-      clients: { points: [root, page, mutation] },
+      server: { scope: 'root', points },
+      clients: [{ scope: 'root', points }],
     })
     const client = FakeClient.create({
       engine,

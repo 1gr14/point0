@@ -194,6 +194,12 @@ export class FilesGenerator {
     const orderIndex = new Map(order.map((t, i) => [t, i]))
 
     this.points.sort((a, b) => {
+      if (a.type === 'root') {
+        return -1
+      }
+      if (b.type === 'root') {
+        return 1
+      }
       const aIndex = orderIndex.get(a.type) ?? Number.MAX_SAFE_INTEGER
       const bIndex = orderIndex.get(b.type) ?? Number.MAX_SAFE_INTEGER
       const byType = aIndex - bIndex
@@ -445,14 +451,13 @@ export class FilesGenerator {
   }): {
     importLines: string[]
     importedPoints: Array<{ point: CompilerPoint; index: number; renamedExportName: string }>
-    // rootSingleReexportLine: string // for lazy points file
-    rootSingleImportLine: string | null // for lazy points file
     hasNotRootPoints: boolean
+    rootSingleImportLine: string | null
   } {
     points = points.filter((p) => p.scope === target.scope)
+    let rootSingleImportLine: string | null = null
     const importLines: string[] = []
     // let rootSingleReexportLine: string | undefined
-    let rootSingleImportLine: string | null = null
 
     const importPathsAndExportNames: Array<{
       hasRoot: boolean
@@ -465,10 +470,11 @@ export class FilesGenerator {
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const renamedExportName =
         point.type === 'root'
-          ? 'root'
+          ? `root_${index}`
           : point.exportName === 'default'
             ? `unnamed_${index}`
             : `${point.exportName}_${index}`
+      // const renamedExportName = point.exportName === 'default' ? `unnamed_${index}` : `${point.exportName}_${index}`
       const originalExportName = point.exportName === 'default' ? 'default' : point.exportName
       const newItem = { originalExportName, renamedExportName, root: point.type === 'root' }
       if (importPathAndExportNames) {
@@ -506,6 +512,145 @@ export class FilesGenerator {
     return { importLines, importedPoints, rootSingleImportLine, hasNotRootPoints }
   }
 
+  // private emitLazyPointsFile(target: FilesGeneratorTarget): string {
+  //   if (!target.outputPointsLazyAbs) {
+  //     throw new Error('outputPointsLazyAbs is not set')
+  //   }
+  //   const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
+  //   const lines: string[] = []
+  //   if (target.banner) {
+  //     lines.push(target.banner)
+  //   }
+  //   // lines.push(...this.emitSuperStoreInitialization())
+  //   lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core'`)
+  //   // lines.push(`import { Point0 } from '@point0/core'`)
+
+  //   if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
+  //     throw new Error(`Root point not found for target ${target.scope}`)
+  //   }
+
+  //   const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
+  //     points,
+  //     outputAbs: target.outputPointsLazyAbs,
+  //     target,
+  //   })
+
+  //   if (rootSingleImportLine) {
+  //     lines.push(rootSingleImportLine)
+  //   }
+  //   lines.push(``)
+
+  //   if (points.length === 0) {
+  //     lines.push(`export {}`)
+  //   } else {
+  //     for (const { point, renamedExportName } of importedPoints) {
+  //       if (point.type === 'root') {
+  //         lines.push(`export const _${renamedExportName} = root`)
+  //         continue
+  //       }
+  //       lines.push(`export const _${renamedExportName} = {`)
+  //       lines.push(`  type: '${point.type}',`)
+  //       lines.push(`  name: '${point.name}',`)
+  //       if (point.route) {
+  //         lines.push(`  route: '${point.route.definition}',`)
+  //       }
+  //       if (point.type === 'page') {
+  //         lines.push(`  polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
+  //       }
+  //       if (point.type === 'page' && point.layouts.length) {
+  //         const arr = point.layouts.map((r) => `'${r}'`).join(', ')
+  //         lines.push(`  layouts: [${arr}],`)
+  //       }
+
+  //       lines.push(
+  //         `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+  //       )
+  //       lines.push(`} as LazyPointsCollectionRecord`)
+  //       lines.push(``)
+  //     }
+  //   }
+
+  //   lines.push(``)
+  //   return lines.join('\n')
+  // }
+
+  // private emitReadyPointsFile(target: FilesGeneratorTarget): string {
+  //   if (!target.outputPointsReadyAbs) {
+  //     throw new Error('outputReadyAbs is not set')
+  //   }
+
+  //   const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
+
+  //   if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
+  //     throw new Error(`Root point not found for target ${target.scope}`)
+  //   }
+
+  //   const lines: string[] = []
+  //   if (target.banner) {
+  //     lines.push(target.banner)
+  //   }
+
+  //   const { importLines, importedPoints, hasNotRootPoints } = this.emitNamedImports({
+  //     points,
+  //     outputAbs: target.outputPointsReadyAbs,
+  //     target,
+  //   })
+  //   if (hasNotRootPoints) {
+  //     lines.push(`import type { RawPointsCollectionRecord } from '@point0/core'`)
+  //   }
+  //   lines.push(...importLines)
+
+  //   if (points.length === 0) {
+  //     lines.push(`export {}`)
+  //   } else {
+  //     lines.push(``)
+  //     for (const { point, renamedExportName } of importedPoints) {
+  //       if (point.type === 'root') {
+  //         lines.push(`export const _${renamedExportName} = ${renamedExportName}`)
+  //       } else {
+  //         lines.push(`export const _${renamedExportName} = ${renamedExportName} as RawPointsCollectionRecord`)
+  //       }
+  //       lines.push(``)
+  //     }
+  //   }
+
+  //   return lines.join('\n')
+  // }
+
+  private emitLazyPointCollectionRecord({
+    imported,
+    targetAbs,
+  }: {
+    targetAbs: string
+    imported: {
+      point: CompilerPoint
+      index: number
+      renamedExportName: string
+    }
+  }): string[] {
+    const { point } = imported
+    const lines: string[] = []
+    lines.push(`  {`)
+    lines.push(`    type: '${point.type}',`)
+    lines.push(`    name: '${point.name}',`)
+    if (point.route) {
+      lines.push(`    route: '${point.route.definition}',`)
+    }
+    if (point.type === 'page') {
+      lines.push(`    polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
+    }
+    if (point.type === 'page' && point.layouts.length) {
+      const arr = point.layouts.map((r) => `'${r}'`).join(', ')
+      lines.push(`    layouts: [${arr}],`)
+    }
+
+    lines.push(
+      `    point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(targetAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
+    )
+    lines.push(`  },`)
+    return lines
+  }
+
   private emitLazyPointsFile(target: FilesGeneratorTarget): string {
     if (!target.outputPointsLazyAbs) {
       throw new Error('outputPointsLazyAbs is not set')
@@ -516,53 +661,38 @@ export class FilesGenerator {
       lines.push(target.banner)
     }
     // lines.push(...this.emitSuperStoreInitialization())
-    lines.push(`import type { LazyPointsCollectionRecord } from '@point0/core'`)
+    lines.push(`import type { PointsDefinition } from '@point0/core'`)
     // lines.push(`import { Point0 } from '@point0/core'`)
 
-    if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
-      throw new Error(`Root point not found for target ${target.scope}`)
-    }
-
+    // TODO: lets add .lazy() and calculate by it
     const { importedPoints, rootSingleImportLine } = this.emitNamedImports({
       points,
       outputAbs: target.outputPointsLazyAbs,
       target,
     })
-
+    const rootImported = importedPoints.find((p) => p.point.type === 'root')
+    if (!rootImported) {
+      throw new Error(`Root point not found for target ${target.scope}`)
+    }
     if (rootSingleImportLine) {
       lines.push(rootSingleImportLine)
     }
-    lines.push(``)
 
-    if (points.length === 0) {
-      lines.push(`export {}`)
-    } else {
-      for (const { point, renamedExportName } of importedPoints) {
-        if (point.type === 'root') {
-          lines.push(`export const _${renamedExportName} = root`)
-          continue
-        }
-        lines.push(`export const _${renamedExportName} = {`)
-        lines.push(`  type: '${point.type}',`)
-        lines.push(`  name: '${point.name}',`)
-        if (point.route) {
-          lines.push(`  route: '${point.route.definition}',`)
-        }
-        if (point.type === 'page') {
-          lines.push(`  polh: ${point.polh === true ? 'true' : point.polh === false ? 'false' : point.polh},`)
-        }
-        if (point.type === 'page' && point.layouts.length) {
-          const arr = point.layouts.map((r) => `'${r}'`).join(', ')
-          lines.push(`  layouts: [${arr}],`)
-        }
+    lines.push(`export default [`)
+    lines.push(`  ${rootImported.renamedExportName},`)
 
-        lines.push(
-          `  point: async () => (await import('${FilesGenerator.toRelativeJsImportPath(target.outputPointsLazyAbs, point.file.abs)}')).${point.exportName === 'default' ? 'default' : point.exportName},`,
-        )
-        lines.push(`} as LazyPointsCollectionRecord`)
-        lines.push(``)
+    for (const imported of importedPoints) {
+      if (imported.point.type === 'root') {
+        continue
       }
+      lines.push(
+        ...this.emitLazyPointCollectionRecord({
+          imported,
+          targetAbs: target.outputPointsLazyAbs,
+        }),
+      )
     }
+    lines.push(`] as PointsDefinition<typeof ${rootImported.renamedExportName}['Infer']['RequiredCtx']>`)
 
     lines.push(``)
     return lines.join('\n')
@@ -575,38 +705,33 @@ export class FilesGenerator {
 
     const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
 
-    if (!points.find((p) => p.type === 'root' && p.scope === target.scope)) {
-      throw new Error(`Root point not found for target ${target.scope}`)
-    }
-
     const lines: string[] = []
     if (target.banner) {
       lines.push(target.banner)
     }
 
-    const { importLines, importedPoints, hasNotRootPoints } = this.emitNamedImports({
+    const { importLines, importedPoints } = this.emitNamedImports({
       points,
       outputAbs: target.outputPointsReadyAbs,
       target,
     })
-    if (hasNotRootPoints) {
-      lines.push(`import type { RawPointsCollectionRecord } from '@point0/core'`)
-    }
+    lines.push(`import type { PointsDefinition } from '@point0/core'`)
     lines.push(...importLines)
-
-    if (points.length === 0) {
-      lines.push(`export {}`)
-    } else {
-      lines.push(``)
-      for (const { point, renamedExportName } of importedPoints) {
-        if (point.type === 'root') {
-          lines.push(`export const _${renamedExportName} = ${renamedExportName}`)
-        } else {
-          lines.push(`export const _${renamedExportName} = ${renamedExportName} as RawPointsCollectionRecord`)
-        }
-        lines.push(``)
-      }
+    const rootImported = importedPoints.find((p) => p.point.type === 'root')
+    if (!rootImported) {
+      throw new Error(`Root point not found for target ${target.scope}`)
     }
+    lines.push(`export default [`)
+    lines.push(`  ${rootImported.renamedExportName},`)
+
+    for (const { point, renamedExportName } of importedPoints) {
+      if (point.type === 'root') {
+        continue
+      }
+      lines.push(`  ${renamedExportName},`)
+    }
+    lines.push(`] as PointsDefinition<typeof ${rootImported.renamedExportName}['Infer']['RequiredCtx']>`)
+    lines.push(``)
 
     return lines.join('\n')
   }

@@ -130,18 +130,18 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
 
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _page_0 = {
-            type: 'page',
-            name: 'mypage',
-            route: '/mypage',
-            polh: false,
-            point: async () => (await import('./file0.js')).page,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage',
+              route: '/mypage',
+              polh: false,
+              point: async () => (await import('./file0.js')).page,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
         expect(getLastLogFirstArg()).toBe('2 points processed')
@@ -172,10 +172,11 @@ export const page = root.lets('page', 'mypage')
 
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
         expect(getLogs()[0][0]).toBe('1 points processed')
@@ -211,33 +212,31 @@ export const page = layout2.lets('page', 'mypage').page(() => <div>Hello</div>)
 
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _page_0 = {
-            type: 'page',
-            name: 'mypage',
-            route: '/mypage',
-            polh: false,
-            layouts: ['layout1', 'layout2'],
-            point: async () => (await import('./file0.js')).page,
-          } as LazyPointsCollectionRecord
-
-          export const _layout1_1 = {
-            type: 'layout',
-            name: 'layout1',
-            route: '/',
-            point: async () => (await import('./file0.js')).layout1,
-          } as LazyPointsCollectionRecord
-
-          export const _layout2_2 = {
-            type: 'layout',
-            name: 'layout2',
-            route: '/',
-            point: async () => (await import('./file0.js')).layout2,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage',
+              route: '/mypage',
+              polh: false,
+              layouts: ['layout1', 'layout2'],
+              point: async () => (await import('./file0.js')).page,
+            },
+            {
+              type: 'layout',
+              name: 'layout1',
+              route: '/',
+              point: async () => (await import('./file0.js')).layout1,
+            },
+            {
+              type: 'layout',
+              name: 'layout2',
+              route: '/',
+              point: async () => (await import('./file0.js')).layout2,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
       }),
@@ -267,12 +266,12 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
 
         const content = fixPaths(await pointsFile.text())
         expect(content).toMatchInlineSnapshot(`
-          "import type { RawPointsCollectionRecord } from '@point0/core'
-          import { page as page_0, root as root } from './file0.js'
-
-          export const _page_0 = page_0 as RawPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0, page as page_1 } from './file0.js'
+          export default [
+            root_0,
+            page_1,
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
       }),
@@ -339,38 +338,36 @@ export const layout = root.lets('layout', 'mylayout', '/layout').layout(() => <d
 
         const lazyContent = fixPaths(await lazyFile.text())
         expect(lazyContent).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _page_0 = {
-            type: 'page',
-            name: 'mypage',
-            route: '/news',
-            polh: false,
-            point: async () => (await import('./file0.js')).page,
-          } as LazyPointsCollectionRecord
-
-          export const _layout_1 = {
-            type: 'layout',
-            name: 'mylayout',
-            route: '/layout',
-            point: async () => (await import('./file0.js')).layout,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage',
+              route: '/news',
+              polh: false,
+              point: async () => (await import('./file0.js')).page,
+            },
+            {
+              type: 'layout',
+              name: 'mylayout',
+              route: '/layout',
+              point: async () => (await import('./file0.js')).layout,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
 
         const readyContent = fixPaths(await readyFile.text())
         expect(readyContent).toMatchInlineSnapshot(`
-          "import type { RawPointsCollectionRecord } from '@point0/core'
-          import { page as page_0, layout as layout_1, root as root } from './file0.js'
-
-          export const _page_0 = page_0 as RawPointsCollectionRecord
-
-          export const _layout_1 = layout_1 as RawPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0, page as page_1, layout as layout_2 } from './file0.js'
+          export default [
+            root_0,
+            page_1,
+            layout_2,
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
 
@@ -422,30 +419,30 @@ export const page = root.lets('page', 'mypage', '/news').page(() => <div>Hello</
           "// This file is auto-generated
           // Do not edit manually
           // Target-specific banner 0
-          import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _page_0 = {
-            type: 'page',
-            name: 'mypage',
-            route: '/news',
-            polh: false,
-            point: async () => (await import('./file0.js')).page,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage',
+              route: '/news',
+              polh: false,
+              point: async () => (await import('./file0.js')).page,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
         expect(content1).toMatchInlineSnapshot(`
           "// This file is auto-generated
           // Do not edit manually
           // Target-specific banner 1
-          import type { RawPointsCollectionRecord } from '@point0/core'
-          import { page as page_0, root as root } from './file0.js'
-
-          export const _page_0 = page_0 as RawPointsCollectionRecord
-
-          export const _root = root
+          import type { PointsDefinition } from '@point0/core'
+          import { root as root_0, page as page_1 } from './file0.js'
+          export default [
+            root_0,
+            page_1,
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
       }),
@@ -521,52 +518,52 @@ export const page2 = root2.lets('page', 'page2', '/page2').page(() => <div>Page2
 
         const lazy0Content = fixPaths(await lazy0File.text())
         expect(lazy0Content).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root0 as root } from './file0.js'
-
-          export const _page0_0 = {
-            type: 'page',
-            name: 'page0',
-            route: '/page0',
-            polh: false,
-            point: async () => (await import('./file0.js')).page0,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root0 as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'page0',
+              route: '/page0',
+              polh: false,
+              point: async () => (await import('./file0.js')).page0,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
 
         const lazy1Content = fixPaths(await lazy1File.text())
         expect(lazy1Content).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root1 as root } from './file1.js'
-
-          export const _page1_0 = {
-            type: 'page',
-            name: 'page1',
-            route: '/page1',
-            polh: false,
-            point: async () => (await import('./file1.js')).page1,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root1 as root_0 } from './file1.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'page1',
+              route: '/page1',
+              polh: false,
+              point: async () => (await import('./file1.js')).page1,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
 
         const lazy2Content = fixPaths(await lazy2File.text())
         expect(lazy2Content).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root2 as root } from './file1.js'
-
-          export const _page2_0 = {
-            type: 'page',
-            name: 'page2',
-            route: '/page2',
-            polh: false,
-            point: async () => (await import('./file1.js')).page2,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root2 as root_0 } from './file1.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'page2',
+              route: '/page2',
+              polh: false,
+              point: async () => (await import('./file1.js')).page2,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
       }),
@@ -601,18 +598,18 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
         expect(getLogs()[1][0]).toBe('generator watcher started')
 
         expect(fixPaths(await pointsFile.text())).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _page_0 = {
-            type: 'page',
-            name: 'mypage',
-            route: '/mypage',
-            polh: false,
-            point: async () => (await import('./file0.js')).page,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage',
+              route: '/mypage',
+              polh: false,
+              point: async () => (await import('./file0.js')).page,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
 
@@ -624,18 +621,18 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
         await waitUntilFileChanged(pointsFile)
 
         expect(fixPaths(await pointsFile.text())).toMatchInlineSnapshot(`
-          "import type { LazyPointsCollectionRecord } from '@point0/core'
-          import { root as root } from './file0.js'
-
-          export const _page_0 = {
-            type: 'page',
-            name: 'mypage2',
-            route: '/mypage2',
-            polh: false,
-            point: async () => (await import('./file0.js')).page,
-          } as LazyPointsCollectionRecord
-
-          export const _root = root
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'page',
+              name: 'mypage2',
+              route: '/mypage2',
+              polh: false,
+              point: async () => (await import('./file0.js')).page,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
 
