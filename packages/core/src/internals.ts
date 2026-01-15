@@ -11,11 +11,6 @@ type LikeFakeClient = { id: string; scope: PointsScope; fetch: FetchFn } | undef
 export const _ssItems = {
   __POINT0_FETCH_FN__: ss.define<FetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: ss.define<LikeFakeClient>('__POINT0_FAKE_CLIENT__', initUndefined, 'serverOnlyStorage'),
-  __POINT0_REAL_SERVER_OVER_FAKE_CLIENT__: ss.define<boolean>(
-    '__POINT0_REAL_SERVER_OVER_FAKE_CLIENT__',
-    initUndefined,
-    'serverOnlyStorage',
-  ),
   __POINT0_REQUEST0__: ss.define<Request0>('__POINT0_REQUEST0__', initUndefined, 'serverOnlyStorage'),
   __POINT0_RESPONSE0__: ss.define<Response0>('__POINT0_RESPONSE0__', initUndefined, 'serverOnlyStorage'),
   __POINT0_CLIENT_SCOPE__: ss.define<PointsScope | undefined>(

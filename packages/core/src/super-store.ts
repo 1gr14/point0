@@ -11,7 +11,7 @@ import { _isTargetClient } from './env.utils.js'
 ;(globalThis as any).__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ ||= {}
 
 import type { AsyncLocalStorage } from 'node:async_hooks'
-import type { DataTransformer, DataTransformerExtended, PointsScope } from './types.js'
+import type { DataTransformer, DataTransformerExtended, FetchFn, PointsScope } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 
 export class SuperStore {
@@ -511,7 +511,7 @@ export class SuperStore {
     }
   }
 
-  getFakeClient(): { id: string; scope: PointsScope; platform: ClientPlatform } | undefined {
+  getFakeClient(): { id: string; scope: PointsScope; platform: ClientPlatform; fetch: FetchFn } | undefined {
     if (!this.serverStorage) {
       return undefined
     }
@@ -524,17 +524,6 @@ export class SuperStore {
 
   isFakeClient(): boolean {
     return this.getFakeClient() !== undefined
-  }
-
-  isRealServerOverFakeClient(): boolean {
-    if (!this.serverStorage) {
-      return false
-    }
-    const serverStorageState = this.serverStorage.getStore()
-    if (!serverStorageState) {
-      return false
-    }
-    return !!serverStorageState.__POINT0_REAL_SERVER_OVER_FAKE_CLIENT__
   }
 }
 

@@ -13,13 +13,13 @@ import {
   _ssItems,
   _wrapNavigate,
   _wrapUseNavigate,
+  env,
   Point0,
+  RouterContext,
   RouterContextProvider,
-  superstore,
   useLocation,
   useRouterContext,
 } from '@point0/core'
-import { env } from '@point0/core'
 import type { AnchorHTMLAttributes, MouseEventHandler, ReactElement, RefAttributes } from 'react'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
 import {
@@ -343,6 +343,7 @@ export const RouterRoutes = ({
   Page404?: React.ComponentType
   pagesTree?: PagesTree
 }): React.ReactElement => {
+  const routerCtx = React.useContext(RouterContext)
   return <RenderPagesTree pagesTree={pagesTree} Page404={Page404} />
 }
 

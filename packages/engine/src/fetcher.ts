@@ -11,21 +11,14 @@ import type {
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import {
-  _getSsItemsWithRestErrors,
-  _ssItems,
-  _ssRunWithServerStorageState,
-  getFakeClient,
-  Request0,
-  Response0,
-} from '@point0/core'
+import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
+import type { Engine } from './engine.js'
 import { toJsonErrorResponse } from './error.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
-import type { Engine } from './engine.js'
 
 export class Fetcher {
   engine: Engine
@@ -495,12 +488,8 @@ export class Fetcher {
       bunServer,
     })
 
-    const fakeClient = getFakeClient()
     const serverStorageState = _getSsItemsWithRestErrors(
       {
-        __POINT0_FAKE_CLIENT__: fakeClient,
-        __POINT0_REAL_SERVER_OVER_FAKE_CLIENT__: true,
-        __POINT0_CLIENT_SCOPE__: fakeClient?.scope ?? _ssItems.__POINT0_CLIENT_SCOPE__.getWeak(),
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_RESPONSE0__: response0,
       },

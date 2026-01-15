@@ -9,7 +9,6 @@ import type {
   KnownLocation,
 } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
-import { _point0_env } from './env.js'
 import type {
   DehydratedState,
   InfiniteData,
@@ -29,6 +28,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
+import { _point0_env } from './env.js'
 import { _ssItems, getFakeClient } from './internals.js'
 import { PointsManager } from './points-manager.js'
 import { useLocation, useRouterContext } from './router.js'
@@ -1105,7 +1105,6 @@ export class Point0<
       scope: pointName,
       scopes: [pointName],
       _letsEndPointType: 'root',
-      _serverurl: typeof window !== 'undefined' ? window.location.origin : undefined,
       name: pointName,
     }) as never
   }
@@ -4447,14 +4446,16 @@ export class Point0<
     return result as never
   }
 
-  getServerFetch = (): FetchFn | undefined => {
-    const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
-    if (__POINT0_FETCH_FN__) {
-      return __POINT0_FETCH_FN__
+  getServerUrl = (): string | undefined => {
+    if (this._serverurl) {
+      return this._serverurl
     }
-    const fakeClient = getFakeClient()
-    if (fakeClient) {
-      return fakeClient.fetch.bind(fakeClient)
+    const request0 = _ssItems.__POINT0_REQUEST0__.getWeak()
+    if (request0?.from.location?.href) {
+      return request0.from.location.href
+    }
+    if (typeof window !== 'undefined') {
+      return window.location.origin
     }
     return undefined
   }
@@ -4463,7 +4464,7 @@ export class Point0<
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
-  ): { url: string; init: RequestInit; request: Request; serverFetch: FetchFn | undefined } {
+  ): { url: string; init: RequestInit; request: Request } {
     const [input = {}, options] = args
     const fetchOptions = { ...this._fetchOptions?.(), ...options }
     const fromScope = _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? getFakeClient()?.scope
@@ -4474,11 +4475,11 @@ export class Point0<
       Accept: 'application/json',
       'X-Point0-From-Scope': fromScope,
     })
-    const serverFetch = this.getServerFetch()
-    if (!this._serverurl && !serverFetch) {
+    const serverurl = this.getServerUrl()
+    if (!serverurl) {
       throw new Error('Server URL is not set')
     }
-    const url = new URL('/_point0', this._serverurl || 'http://localhost')
+    const url = new URL('/_point0', serverurl)
     const method = 'post'
 
     const outputType = args[2] ?? 'data'
@@ -4522,11 +4523,21 @@ export class Point0<
       url: fetchUrl,
       init: fetchInit,
       request: fetchRequest,
-      serverFetch,
     }
   }
 
   private readonly nativeFetch = async (request: Request): Promise<Response> => await fetch(request)
+
+  getFetchFn = (): FetchFn => {
+    if (_point0_env.target.is.server) {
+      const __POINT0_FETCH_FN__ = _ssItems.__POINT0_FETCH_FN__.getWeak()
+      if (!__POINT0_FETCH_FN__) {
+        throw new Error('Server fetch function is not set, it is a critical bug, please report it')
+      }
+      return __POINT0_FETCH_FN__
+    }
+    return superstore.getFakeClient()?.fetch ?? this.nativeFetch
+  }
 
   async fetchDetailed(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
@@ -4534,10 +4545,7 @@ export class Point0<
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
     const fetchOptions = this.getFetchOptions(...args)
-    if (_point0_env.target.is.server && !fetchOptions.serverFetch) {
-      throw new Error('Server fetch function is not set, it is a critical bug, please report it')
-    }
-    const fetchFn = fetchOptions.serverFetch ?? this.nativeFetch
+    const fetchFn = this.getFetchFn()
     const res = await fetchFn(fetchOptions.request)
     CookiesStore.refresh()
     if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {

@@ -28,26 +28,12 @@ export const getEnvVars = (): EnvVars => {
   return env as EnvVars
 }
 
-const isFakeClientOrRealServerOverFakeClient = (): 'fakeClient' | 'realServerOverFakeClient' | undefined => {
-  const fakeClient = superstore.isFakeClient()
-  const realServerOverFakeClient = superstore.isRealServerOverFakeClient()
-  if (fakeClient && !realServerOverFakeClient) {
-    return 'fakeClient'
-  }
-  if (fakeClient && realServerOverFakeClient) {
-    return 'realServerOverFakeClient'
-  }
-  return undefined
-}
 // target
 
 const isTargetClient = (): boolean => {
-  const fakeClientOrRealServerOverFakeClient = isFakeClientOrRealServerOverFakeClient()
-  if (fakeClientOrRealServerOverFakeClient === 'fakeClient') {
+  const fakeClient = superstore.isFakeClient()
+  if (fakeClient) {
     return true
-  }
-  if (fakeClientOrRealServerOverFakeClient === 'realServerOverFakeClient') {
-    return false
   }
   return _isTargetClient()
 }

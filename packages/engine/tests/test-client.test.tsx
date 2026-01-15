@@ -1,12 +1,12 @@
 import { Point0, QueryClientProvider, env } from '@point0/core'
 import { Router } from '@point0/wouter'
 import '@testing-library/jest-dom'
-import { fireEvent, render, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
 import { FakeClient } from '../src/test-client.js'
-import { withFakeBrowser } from './utils/fake-browser.js'
+import { getFakeBrowserGlobals } from './utils/fake-browser.js'
 
 describe('FakeClient', () => {
   it('should fetch page with loader', async () => {
@@ -22,7 +22,7 @@ describe('FakeClient', () => {
       clients: [[root, page]],
     })
     expect(env.target.name).toBe('server')
-    const fakeClient = FakeClient.create({ engine, scope: 'root' })
+    const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     await fakeClient.run(async () => {
       expect(env.target.name).toBe('client')
       const data = await page.fetch()
@@ -48,7 +48,7 @@ describe('FakeClient', () => {
       file: import.meta.url,
       clients: [[root, page]],
     })
-    const fakeClient = FakeClient.create({ engine, scope: 'root' })
+    const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
     expect(env.target.name).toBe('server')
     await fakeClient.run(async () => {
       expect(env.target.name).toBe('client')
@@ -98,28 +98,31 @@ describe('FakeClient', () => {
       file: import.meta.url,
       clients: [[root, page, mutation]],
     })
-    const fakeClient = FakeClient.create({ engine, scope: 'root' })
+    const fakeClient = FakeClient.create({
+      engine,
+      scope: 'root',
+      globals: getFakeBrowserGlobals(),
+      cleanup,
+    })
     await fakeClient.run(async () => {
-      await withFakeBrowser(async () => {
-        const { container } = render(
-          <QueryClientProvider>
-            <Router />
-          </QueryClientProvider>,
-        )
-        await waitFor(() => {
-          expect(container.querySelector('#pageTargetName')?.textContent).toBe('client')
-        })
-        const button = container.querySelector('button')
-        assert(button)
-        fireEvent.click(button)
-        await waitFor(() => expect(button.textContent).toBe('Increment 0'))
-        fireEvent.click(button)
-        await waitFor(() => expect(button.textContent).toBe('Increment 1'))
-        expect(container.querySelector('#serverLoaderTargetName')?.textContent).toBe('server')
-        expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
-        expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
-        expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
+      const { container } = render(
+        <QueryClientProvider>
+          <Router />
+        </QueryClientProvider>,
+      )
+      await waitFor(() => {
+        expect(container.querySelector('#pageTargetName')?.textContent).toBe('client')
       })
+      const button = container.querySelector('button')
+      assert(button)
+      fireEvent.click(button)
+      await waitFor(() => expect(button.textContent).toBe('Increment 0'))
+      fireEvent.click(button)
+      await waitFor(() => expect(button.textContent).toBe('Increment 1'))
+      expect(container.querySelector('#serverLoaderTargetName')?.textContent).toBe('server')
+      expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
+      expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
+      expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
     })
   })
 

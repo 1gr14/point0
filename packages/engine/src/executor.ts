@@ -30,7 +30,7 @@ import type {
   UnknownData,
   WithMaybeOptionalReqiredCtx,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, PointsManager, Request0, Response0, getFakeClient } from '@point0/core'
+import { _ssItems, _ssRunWithServerStorageState, PointsManager, Request0, Response0 } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
@@ -99,16 +99,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     response0 ??= Response0.create()
     const request0 = Request0.create(request)
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
-    const fakeClient = getFakeClient()
-    const fetchFn = fakeClient ? fakeClient.fetch.bind(fakeClient) : engine.fetchSimple.bind(engine)
-    const clientScope = fakeClient?.scope ?? _ssItems.__POINT0_CLIENT_SCOPE__.getWeak() ?? pointsManager.scope
     const serverStorageState = Object.assign(providedServerStorageState || {}, {
-      __POINT0_FETCH_FN__: fetchFn,
-      __POINT0_FAKE_CLIENT__: fakeClient,
-      __POINT0_REAL_SERVER_OVER_FAKE_CLIENT__: true,
+      __POINT0_FAKE_CLIENT__: undefined,
+      __POINT0_FETCH_FN__: engine.fetchSimple.bind(engine),
       __POINT0_REQUEST0__: request0,
       __POINT0_RESPONSE0__: response0,
-      __POINT0_CLIENT_SCOPE__: clientScope,
+      __POINT0_CLIENT_SCOPE__: pointsManager.scope,
       __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_CURRENT_LOCATION__: currentLocation,
