@@ -2,7 +2,7 @@ import { Point0, QueryClientProvider, env } from '@point0/core'
 import { Router } from '@point0/wouter'
 import '@testing-library/jest-dom'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
 import { FakeClient } from '../src/fake-client.js'
@@ -53,7 +53,30 @@ import { getFakeBrowserGlobals } from './utils/test-client.js'
 // }
 
 describe('FakeClient', () => {
-  afterEach(cleanup)
+  // Suppress React's "Detected multiple renderers" warning in tests
+  // This warning occurs when @testing-library/react and our mount function
+  // both create React roots, even though they use the same React instance
+
+  // const originalError = console.error
+  // beforeAll(() => {
+  //   console.error = (...args: any[]) => {
+  //     const message = args[0]
+  //     if (
+  //       typeof message === 'string' &&
+  //       message.includes('Detected multiple renderers concurrently rendering the same context provider')
+  //     ) {
+  //       // Suppress this specific warning
+  //       return
+  //     }
+  //     originalError.apply(console, args)
+  //   }
+  // })
+
+  // afterAll(() => {
+  //   console.error = originalError
+  // })
+
+  // afterEach(cleanup)
 
   it('should fetch page with loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
@@ -154,7 +177,7 @@ describe('FakeClient', () => {
       engine,
       scope: 'root',
       globals: getFakeBrowserGlobals(),
-      cleanup: () => () => cleanup(),
+      onDestroyInside: () => cleanup(),
     })
     await client.run(async (state) => {
       const { container } = render(
@@ -192,11 +215,112 @@ describe('FakeClient', () => {
     })
 
     await client.destroy()
-
-    // await client.run(async () => {
-    //   cleanup()
-    // })
   })
+
+  // it('should render page with loader and client loader from ssr', async () => {
+  //   const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
+  //   let counter = 0
+  //   const mutation = root
+  //     .lets('mutation', 'mutation')
+  //     .loader(() => ({ index: counter++, serverMutationTargetName: env.target.name }))
+  //     .clientLoader(({ data }) => ({ ...data, clientMutationTargetName: env.target.name }))
+  //     .mutation()
+  //   const page = root
+  //     .lets('page', 'page', '/')
+  //     .loader(() => ({ x: 1, serverLoaderTargetName: env.target.name }))
+  //     .page(({ data }) => {
+  //       const inc = mutation.useMutation()
+  //       return (
+  //         <div>
+  //           <div id="serverMutationTargetName">{inc.data?.serverMutationTargetName || '-'}</div>
+  //           <div id="clientMutationTargetName">{inc.data?.clientMutationTargetName || '-'}</div>
+  //           <button
+  //             onClick={() => {
+  //               inc.mutateAsync().catch((err: unknown) => {
+  //                 console.error(err)
+  //               })
+  //             }}
+  //           >
+  //             Increment {inc.data?.index ?? '-'}
+  //           </button>
+  //         </div>
+  //       )
+  //     })
+  //   const points = [root, page, mutation] as const
+  //   const App = () => {
+  //     return (
+  //       <QueryClientProvider>
+  //         <Router />
+  //       </QueryClientProvider>
+  //     )
+  //   }
+  //   const engine = await Engine.create({
+  //     compiler: false,
+  //     file: import.meta.url,
+  //     server: { scope: 'root', points },
+  //     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app: App }],
+  //   }).init({ preventClientDevServers: true })
+  //   const client = FakeClient.create({
+  //     engine,
+  //     scope: 'root',
+  //     globals: getFakeBrowserGlobals(),
+  //     onDestroyInside: () => cleanup(),
+  //   })
+  //   const response = await client.fetch(page.route({ abs: true }))
+  //   const html = await response.text()
+  //   const headHtml = html.split(/<head>/)[1].split(/<\/head>/)[0]
+  //   const bodyHtml = html.split(/<body>/)[1].split(/<\/body>/)[0]
+  //   const ssScript = html.split(/<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">/)[1].split(/<\/script>/)[0]
+  //   // console.log(headHtml, bodyHtml)
+  //   expect(html).toContain('<div id="serverMutationTargetName">-</div>')
+  //   expect(html).toContain('<div id="clientMutationTargetName">-</div>')
+  //   await client.run(async () => {
+  //     // Set the SSR HTML as initial page HTML
+  //     // Parse the HTML and set up the document structure
+
+  //     // Clear existing content
+
+  //     // Use React's act() from the same React instance to ensure consistency
+  //     React.act(() => {
+  //       document.head.innerHTML = headHtml
+  //       document.body.innerHTML = bodyHtml
+  //       eval(ssScript)
+  //       mount(App, points)
+  //       // const pointsManager = PointsManager.create(points)
+  //       // superstore.prepare((window as any).__POINT0_DEHYDRATED_SUPER_STORE__, pointsManager.transformer)
+  //       // const appElement = React.createElement(App, {
+  //       //   points: PointsManager.create(points),
+  //       // })
+  //       // const domRootElement = document.getElementById('root')
+  //       // assert(domRootElement)
+  //       // const reactRoot = ReactDOMClient.createRoot(domRootElement)
+  //       // reactRoot.render(appElement)
+  //     })
+
+  //     return
+
+  //     // Get container for assertions
+  //     const container = document.getElementById('root')
+  //     assert(container)
+  //     const button = container.querySelector('button')
+  //     assert(button)
+  //     expect(button.textContent).toBe('Increment -')
+
+  //     // Test mutation
+  //     fireEvent.click(button)
+  //     await waitFor(() => expect(button.textContent).toBe('Increment 0'))
+  //     fireEvent.click(button)
+  //     await waitFor(() => expect(button.textContent).toBe('Increment 1'))
+  //     fireEvent.click(button)
+  //     await waitFor(() => expect(button.textContent).toBe('Increment 2'))
+
+  //     // Verify mutation data after hydration
+  //     expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
+  //     expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
+  //   })
+
+  //   await client.destroy()
+  // })
 
   // describe('ssr', () => {
   //   beforeAll(async () => {

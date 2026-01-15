@@ -1,7 +1,8 @@
-import type { FetchFn, PointsScope } from '@point0/core'
+import type { PointsScope } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, superstore } from '@point0/core'
 import type { ClientBun } from './client.js'
 import type { Engine } from './engine.js'
+import type { FetchCookieImpl } from 'fetch-cookie'
 import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
 
@@ -77,9 +78,7 @@ class GlobalThisItemProxy {
   }
 }
 
-export type FakeClientCleanup = (
-  state: FakeClientState,
-) => undefined | Promise<undefined> | ((state: FakeClientState) => any)
+export type FakeClientCallback = (state: FakeClientState) => any
 export type FakeClientState = {
   [key: string]: unknown
 }
@@ -91,9 +90,14 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
   engine: Engine<any, true>
   state: TState
   jar: CookieJar
-  fetch: FetchFn
+  fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
 
-  cleanup: FakeClientCleanup | undefined
+  onRunStartOutside: FakeClientCallback | undefined
+  onRunStartInside: FakeClientCallback | undefined
+  onRunEndOutside: FakeClientCallback | undefined
+  onRunEndInside: FakeClientCallback | undefined
+  onDestroyOutside: FakeClientCallback | undefined
+  onDestroyInside: FakeClientCallback | undefined
 
   private constructor({
     engine,
@@ -103,7 +107,12 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     state,
     jar,
     fetch,
-    cleanup,
+    onRunStartOutside,
+    onRunStartInside,
+    onRunEndOutside,
+    onRunEndInside,
+    onDestroyOutside,
+    onDestroyInside,
   }: {
     engine: Engine<any, true>
     client: ClientBun<true>
@@ -111,8 +120,13 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     scope: PointsScope
     state: TState
     jar: CookieJar
-    fetch: FetchFn
-    cleanup: FakeClientCleanup | undefined
+    fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
+    onRunStartOutside: FakeClientCallback | undefined
+    onRunStartInside: FakeClientCallback | undefined
+    onRunEndOutside: FakeClientCallback | undefined
+    onRunEndInside: FakeClientCallback | undefined
+    onDestroyOutside: FakeClientCallback | undefined
+    onDestroyInside: FakeClientCallback | undefined
   }) {
     this.engine = engine
     this.client = client
@@ -121,20 +135,35 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     this.state = state
     this.jar = jar
     this.fetch = fetch
-    this.cleanup = cleanup
+    this.onRunStartOutside = onRunStartOutside
+    this.onRunStartInside = onRunStartInside
+    this.onRunEndOutside = onRunEndOutside
+    this.onRunEndInside = onRunEndInside
+    this.onDestroyOutside = onDestroyOutside
+    this.onDestroyInside = onDestroyInside
   }
 
   static create<TState extends FakeClientState = FakeClientState>({
     engine,
     scope,
     globals,
-    cleanup,
+    onRunStartOutside,
+    onRunStartInside,
+    onRunEndOutside,
+    onRunEndInside,
+    onDestroyOutside,
+    onDestroyInside,
     state,
   }: {
     engine: Engine
     scope: PointsScope
     globals: Record<string, any>
-    cleanup?: FakeClientCleanup
+    onRunStartOutside?: FakeClientCallback
+    onRunStartInside?: FakeClientCallback
+    onRunEndOutside?: FakeClientCallback
+    onRunEndInside?: FakeClientCallback
+    onDestroyOutside?: FakeClientCallback
+    onDestroyInside?: FakeClientCallback
     state?: TState
   }): FakeClient<TState> {
     if (!engine.initialized) {
@@ -146,7 +175,16 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     }
     const id = crypto.randomUUID()
     const jar = new CookieJar()
-    const fetch = fetchCookie(engine.fetchSimple.bind(engine), jar)
+    const fetch = fetchCookie<string | URL | Request, RequestInit, Response>(async (input, init) => {
+      const request =
+        input instanceof Request
+          ? input
+          : new Request(
+              typeof input === 'string' ? input : input instanceof URL ? input : String(input), // ← normalize URLLike
+              init,
+            )
+      return await engine.fetchSimple(request)
+    }, jar)
     const fakeClient = new FakeClient({
       engine: engine as Engine<any, true>,
       client: client as ClientBun<true>,
@@ -154,7 +192,12 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       scope,
       jar,
       fetch,
-      cleanup,
+      onRunStartOutside,
+      onRunStartInside,
+      onRunEndOutside,
+      onRunEndInside,
+      onDestroyOutside,
+      onDestroyInside,
       state: state ?? {},
     })
     for (const [key, value] of Object.entries(globals)) {
@@ -164,17 +207,21 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
   }
 
   async destroy() {
-    GlobalThisItemProxy.destroy(this)
-    const cleanupResult = await this.cleanup?.(this.state)
-    if (typeof cleanupResult === 'function') {
-      await this.run(async () => {
-        await cleanupResult(this.state)
-      })
+    try {
+      await this.onDestroyOutside?.(this.state)
+      if (this.onDestroyInside) {
+        await this.run(async () => {
+          await this.onDestroyInside?.(this.state)
+        })
+      }
+    } finally {
+      GlobalThisItemProxy.destroy(this)
     }
   }
 
-  run<TResult>(fn: (state: TState) => TResult): TResult {
-    return _ssRunWithServerStorageState(
+  async run<TResult>(fn: (state: TState) => TResult): Promise<TResult> {
+    await this.onRunStartOutside?.(this.state)
+    const result = (await _ssRunWithServerStorageState(
       _getSsItemsWithRestErrors(
         {
           __POINT0_FAKE_CLIENT__: this,
@@ -182,30 +229,14 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
         },
         'Not yet exists in test client run',
       ),
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
-      () => {
-        // try {
-        const result = fn(this.state)
-        if (result instanceof Promise) {
-          const promiseResult = result
-            .then((result) => {
-              // this.onRunEnd?.()
-              return result
-            })
-            .catch((error: unknown) => {
-              // this.onRunEnd?.()
-              throw error
-            })
-          return promiseResult
-        } else {
-          // this.onRunEnd?.()
-          return result
-        }
-        // } catch (error) {
-        //   // this.onRunEnd?.()
-        //   throw error
-        // }
+      async () => {
+        await this.onRunStartInside?.(this.state)
+        const result = await fn(this.state)
+        await this.onRunEndOutside?.(this.state)
+        return result
       },
-    ) as TResult
+    )) as TResult
+    await this.onRunEndOutside?.(this.state)
+    return result
   }
 }

@@ -608,7 +608,19 @@ Bun.serve({
     if (!this.isInitialized()) {
       throw new Error('Client is not initialized')
     }
-
+    if (this.indexHtml === '__POINT0_TEST_INDEX_HTML__') {
+      return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`
+    }
     if (!this.indexHtml) {
       throw new Error(`indexHtml not found for client "${this.scope}"`)
     }

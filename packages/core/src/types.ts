@@ -554,6 +554,7 @@ export type OmitUnnamedKeys<T> = {
 }
 
 export type FetchFn = (request: Request) => Promise<Response>
+export type RichFetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
 export type ShowError<Message extends string> = {
   readonly __error__: Message

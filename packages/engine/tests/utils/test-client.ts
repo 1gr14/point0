@@ -3,39 +3,35 @@ import nodePath from 'node:path'
 import { Engine } from '../../src/engine.js'
 import { FakeClient } from '../../src/fake-client.js'
 import type { PointsDefinitionSource } from '@point0/core'
+import { Window } from 'happy-dom'
+
+// export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
+//   const url = options.url ?? 'http://localhost/'
+//   const window = new Window({
+//     url,
+//   })
+//   // Get all enumerable properties from window
+//   const globals: Record<string, any> = {}
+//   // eslint-disable-next-line guard-for-in
+//   for (const key in window) {
+//     globals[key] = (window as any)[key]
+//   }
+//   return globals
+// }
 
 export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
   const url = options.url ?? 'http://localhost/'
-  try {
-    // Bun / fast path
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Window } = require('happy-dom')
-    const window = new Window({
-      url,
-    })
-    return {
-      window,
-      document: window.document,
-      navigator: window.navigator,
-      location: window.location,
-      HTMLElement: window.HTMLElement,
-      Node: window.Node,
-    }
-  } catch {
-    // Node / Jest fallback
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { JSDOM } = require('jsdom')
-    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-      url,
-    })
-    return {
-      window: dom.window,
-      document: dom.window.document,
-      navigator: dom.window.navigator,
-      location: dom.window.location,
-      HTMLElement: dom.window.HTMLElement,
-      Node: dom.window.Node,
-    }
+  const window = new Window({
+    url,
+  })
+  return {
+    window,
+    document: window.document,
+    navigator: window.navigator,
+    location: window.location,
+    HTMLElement: window.HTMLElement,
+    Node: window.Node,
+    DOMParser: window.DOMParser,
   }
 }
 
@@ -50,7 +46,7 @@ export const createTestThings = async (points: PointsDefinitionSource) => {
     engine,
     scope: 'root',
     globals: getFakeBrowserGlobals(),
-    cleanup,
+    onDestroyInside: () => cleanup(),
   })
   return {
     engine,
