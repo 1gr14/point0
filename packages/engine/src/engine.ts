@@ -359,7 +359,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     if (!point._root) {
       throw new Error('Point root not found')
     }
-    const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
+    const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
     const suitable = this.allPointsManagers.getSuitable({
       pointType: point.type,
       scope: point.scope,

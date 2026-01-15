@@ -2384,7 +2384,7 @@ export type NicePageEndPoint<
         TServerLoaderOutput,
         TClientMapperOutput,
         TQueryResultType,
-        'point' | 'type' | 'lets' | 'Infer' | 'Page' | 'X'
+        'point' | 'type' | 'lets' | 'Infer' | 'Page' | 'X' | 'route'
       >
     >
   >
@@ -2467,7 +2467,7 @@ export type NiceLayoutEndPoint<
         TServerLoaderOutput,
         TClientMapperOutput,
         TQueryResultType,
-        'point' | 'type' | 'lets' | 'Infer' | 'Layout' | 'X'
+        'point' | 'type' | 'lets' | 'Infer' | 'Layout' | 'X' | 'route'
       >
     >
   >

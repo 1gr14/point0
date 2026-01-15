@@ -341,7 +341,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
         ready: true,
         type: point.type,
         name: point.name,
-        route: point._route ? Route0.from(point._route) : undefined,
+        route: point.route ? Route0.from(point.route) : undefined,
         polh: point._shouldBePrefetchedOnLinkHover,
         point,
         layouts: point._layouts.map((l) => l.name),

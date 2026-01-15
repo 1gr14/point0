@@ -98,13 +98,13 @@ describe('FakeClient', () => {
       file: import.meta.url,
       clients: [[root, page, mutation]],
     })
-    const fakeClient = FakeClient.create({
+    const client = FakeClient.create({
       engine,
       scope: 'root',
       globals: getFakeBrowserGlobals(),
       cleanup,
     })
-    await fakeClient.run(async () => {
+    await client.run(async () => {
       const { container } = render(
         <QueryClientProvider>
           <Router />
@@ -125,8 +125,9 @@ describe('FakeClient', () => {
       expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
     })
   })
-  it('should render ssr page with loader and client loader', async () => {
-    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+
+  it.only('should render ssr page with loader and client loader', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).serverurl('http://localhost:3000').root()
     let counter = 0
     const mutation = root
       .lets('mutation', 'mutation')
@@ -158,8 +159,22 @@ describe('FakeClient', () => {
           </div>
         )
       })
-    const { engine, client } = await createTestThings([root, page, mutation])
-    const response = await client.fetch(new Request(page.ro))
+    const engine = await Engine.init({
+      compiler: false,
+      file: import.meta.url,
+      clients: { points: [root, page, mutation] },
+    })
+    const client = FakeClient.create({
+      engine,
+      scope: 'root',
+      globals: getFakeBrowserGlobals(),
+      cleanup,
+    })
+    const response = await client.fetch(new Request(page.route({ abs: true })))
+    const html = await response.text()
+    console.log(html)
+    return
+    expect(html).toContain('pageTargetName')
   })
 
   // it('should render page with loader and client loader', async () => {

@@ -316,7 +316,7 @@ export class Point0<
   private readonly _clientExecuteActions: ClientExecuteAction[]
   private readonly _clientMapperFns: Array<ClientMapperFn<any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
-  readonly _route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
+  readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _prevRoute: TPrevRouteDefinition extends RouteDefinition
     ? CallableRoute<TPrevRouteDefinition>
     : UndefinedRoute
@@ -505,7 +505,7 @@ export class Point0<
         >
       | undefined
     _useValue?: any
-    _route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
+    route?: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
     _prevRoute?: TPrevRouteDefinition extends RouteDefinition ? CallableRoute<TPrevRouteDefinition> : UndefinedRoute
     _page?:
       | PageComponent<
@@ -664,8 +664,8 @@ export class Point0<
     this._clientMapperFns = options._clientMapperFns ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
-    this._route =
-      options._route ??
+    this.route =
+      options.route ??
       (undefined as TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute)
     this._prevRoute =
       options._prevRoute ??
@@ -850,7 +850,7 @@ export class Point0<
         >
       | undefined
     _useValue?: any
-    _route?: IfAnyThenElse<
+    route?: IfAnyThenElse<
       TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
@@ -1055,7 +1055,7 @@ export class Point0<
       _clientMapperFns: overrides._clientMapperFns ?? this._clientMapperFns,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
-      _route: (overrides._route ?? this._route) as never,
+      route: (overrides.route ?? this.route) as never,
       _prevRoute: (overrides._prevRoute ?? this._prevRoute) as never,
       _page: (overrides._page ?? this._page) as never,
       _component: (overrides._component ?? this._component) as never,
@@ -2891,7 +2891,7 @@ export class Point0<
     UndefinedProps
   >
   lets(letsEndPointType: EndPointType, pointName: PointName, route?: AnyRoute | string) {
-    const prevRoute = this._route
+    const prevRoute = this.route
     const newRoute = (() => {
       if (letsEndPointType === 'page') {
         if (typeof route === 'string' || !route) {
@@ -2923,8 +2923,8 @@ export class Point0<
       type: 'coreStage',
       _letsEndPointType: letsEndPointType,
       name: pointName,
-      _route: newRoute as never,
-      _prevRoute: this._route as never,
+      route: newRoute as never,
+      _prevRoute: this.route as never,
       _page: undefined,
       _component: undefined,
       _layout: undefined,
@@ -3715,6 +3715,7 @@ export class Point0<
       getValue: point.getValue.bind(point),
       getValueSafe: point.getValueSafe.bind(point),
       _hmr: point._hmr.bind(point),
+      route: point.route,
       ...extra,
     })
   }
@@ -3870,10 +3871,10 @@ export class Point0<
   }
 
   private _getRouteForce(): CallableRoute<NonNullable<TRouteDefinition>> {
-    if (!this._route) {
+    if (!this.route) {
       throw new Error(`No client route provided for this point. Name: ${this.name}.`)
     }
-    return this._route as CallableRoute<NonNullable<TRouteDefinition>>
+    return this.route as CallableRoute<NonNullable<TRouteDefinition>>
   }
 
   private _generateComponentDisplayName(options?: {
@@ -3936,8 +3937,8 @@ export class Point0<
       }
       return { success: false, data: undefined, error: Error0.from(parseResult.error) }
     }
-    if (this._route) {
-      const parseResult = this._route.safeParseFlatInput(input)
+    if (this.route) {
+      const parseResult = this.route.safeParseFlatInput(input)
       if (parseResult.success) {
         return {
           success: true,
@@ -3999,7 +4000,7 @@ export class Point0<
     if (inputError) {
       throw new Error(`Input error: ${inputError.message}`)
     }
-    let currentInputParsed: InputParsed = this._route ? this._route.parseFlatInput(input) : {}
+    let currentInputParsed: InputParsed = this.route ? this.route.parseFlatInput(input) : {}
     let currentInputSchema: InputSchema | undefined = this._serverInputSchema
     location ??=
       this.type === 'page' || this.type === 'layout'
@@ -4176,7 +4177,7 @@ export class Point0<
   }
 
   private _getSelfLocationByAnotherLocation(location: AnyLocation): AnyLocation {
-    const route = this._route
+    const route = this.route
     if (!route) {
       return _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
@@ -4189,7 +4190,7 @@ export class Point0<
     location?: AnyLocation | undefined,
     input?: InputRaw<TRouteDefinition, TInputSchema>,
   ): AnyLocation {
-    const route = this._route
+    const route = this.route
     if (!route) {
       return location ?? _ssItems.__POINT0_CURRENT_LOCATION__.get()
     }
@@ -5813,10 +5814,10 @@ export class Point0<
       return
     }
 
-    if (!this._route) {
+    if (!this.route) {
       throw new Error('Route is not set')
     }
-    const location = providedLocation ?? this._route.getLocation(this._route.flat(input))
+    const location = providedLocation ?? this.route.getLocation(this.route.flat(input))
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'queryClientDehydratedState' || policy === 'everything') {

@@ -192,7 +192,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     if (!point._root) {
       throw new Error('Point root not found')
     }
-    const location = point._route ? point._route.flat(input) : Route0.getLocation('/')
+    const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
     const layoutsObject = Object.fromEntries(point._layouts.map((layout) => [`layout_${layout.name}`, layout]))
     executor ??= await Executor.create({
       engine,
@@ -311,7 +311,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentInputSchema: InputSchema | undefined = undefined
 
       try {
-        currentInputParsed = !point?._route ? currentInputParsed : point._route.parseFlatInput(input) // will never throw, becouse we parse it before
+        currentInputParsed = !point?.route ? currentInputParsed : point.route.parseFlatInput(input) // will never throw, becouse we parse it before
 
         if (!point) {
           const error = new Error0(`Point Not Found`)
