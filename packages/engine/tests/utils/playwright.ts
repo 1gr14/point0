@@ -236,10 +236,10 @@ export class PlaywrightPage {
       return 'data:...'
     }
     if (url.startsWith('http://localhost:')) {
-      return url.replace(/:(\d+)/, '')
+      return url.replace(/http:\/\/localhost:(\d+)/, '') || '/'
     }
     if (url.startsWith('http://127.0.0.1:')) {
-      return url.replace(/:(\d+)/, '').replace('127.0.0.1', 'localhost')
+      return url.replace(/http:\/\/127.0.0.1:(\d+)/, '') || '/'
     }
     return url
   }

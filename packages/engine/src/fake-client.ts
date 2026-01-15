@@ -78,12 +78,12 @@ class GlobalThisItemProxy {
   }
 }
 
-export type FakeClientCallback = (state: FakeClientState) => any
+export type FakeClientCallback<TState extends FakeClientState = FakeClientState> = (state: TState) => any
 export type FakeClientState = {
   [key: string]: unknown
 }
 
-export class FakeClient<TState extends FakeClientState = FakeClientState> {
+export class FakeClient<TState extends FakeClientState = any> {
   id: string
   scope: PointsScope
   client: ClientBun<true>
@@ -92,12 +92,12 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
   jar: CookieJar
   fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
 
-  onRunStartOutside: FakeClientCallback | undefined
-  onRunStartInside: FakeClientCallback | undefined
-  onRunEndOutside: FakeClientCallback | undefined
-  onRunEndInside: FakeClientCallback | undefined
-  onDestroyOutside: FakeClientCallback | undefined
-  onDestroyInside: FakeClientCallback | undefined
+  onRunStartOutside: FakeClientCallback<TState> | undefined
+  onRunStartInside: FakeClientCallback<TState> | undefined
+  onRunEndOutside: FakeClientCallback<TState> | undefined
+  onRunEndInside: FakeClientCallback<TState> | undefined
+  onDestroyOutside: FakeClientCallback<TState> | undefined
+  onDestroyInside: FakeClientCallback<TState> | undefined
 
   private constructor({
     engine,
@@ -121,12 +121,12 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     state: TState
     jar: CookieJar
     fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
-    onRunStartOutside: FakeClientCallback | undefined
-    onRunStartInside: FakeClientCallback | undefined
-    onRunEndOutside: FakeClientCallback | undefined
-    onRunEndInside: FakeClientCallback | undefined
-    onDestroyOutside: FakeClientCallback | undefined
-    onDestroyInside: FakeClientCallback | undefined
+    onRunStartOutside: FakeClientCallback<TState> | undefined
+    onRunStartInside: FakeClientCallback<TState> | undefined
+    onRunEndOutside: FakeClientCallback<TState> | undefined
+    onRunEndInside: FakeClientCallback<TState> | undefined
+    onDestroyOutside: FakeClientCallback<TState> | undefined
+    onDestroyInside: FakeClientCallback<TState> | undefined
   }) {
     this.engine = engine
     this.client = client
@@ -158,13 +158,13 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
     engine: Engine
     scope: PointsScope
     globals: Record<string, any>
-    onRunStartOutside?: FakeClientCallback
-    onRunStartInside?: FakeClientCallback
-    onRunEndOutside?: FakeClientCallback
-    onRunEndInside?: FakeClientCallback
-    onDestroyOutside?: FakeClientCallback
-    onDestroyInside?: FakeClientCallback
-    state?: TState
+    onRunStartOutside?: FakeClientCallback<TState> | undefined
+    onRunStartInside?: FakeClientCallback<TState> | undefined
+    onRunEndOutside?: FakeClientCallback<TState> | undefined
+    onRunEndInside?: FakeClientCallback<TState> | undefined
+    onDestroyOutside?: FakeClientCallback<TState> | undefined
+    onDestroyInside?: FakeClientCallback<TState> | undefined
+    state?: TState | undefined
   }): FakeClient<TState> {
     if (!engine.initialized) {
       throw new Error('Engine is not initialized')
@@ -228,12 +228,12 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
       onRunEndInside,
       onDestroyOutside,
       onDestroyInside,
-      state: state ?? {},
+      state: state ?? ({} as TState),
     })
     for (const [key, value] of Object.entries(globals)) {
       GlobalThisItemProxy.create(fakeClient, key, value)
     }
-    return fakeClient as FakeClient<TState>
+    return fakeClient as unknown as FakeClient<TState>
   }
 
   async getCookies(url: string | undefined = undefined, httpOnly: boolean | undefined = undefined): Promise<Cookie[]> {
@@ -253,7 +253,7 @@ export class FakeClient<TState extends FakeClientState = FakeClientState> {
         })
       }
     } finally {
-      GlobalThisItemProxy.destroy(this)
+      GlobalThisItemProxy.destroy(this as never)
     }
   }
 

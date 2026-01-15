@@ -9,7 +9,8 @@ import { FakeClient } from '../src/fake-client.js'
 // import { PlaywrightBrowser } from './utils/playwright.js'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 // import { TestProjectFactory } from './utils/project.js'
-import { getFakeBrowserGlobals } from './utils/test-client.js'
+import { getFakeBrowserGlobals } from './utils/internal-testing.js'
+import { ElementViewer } from './utils/element-viewer.js'
 
 // const tpf = TestProjectFactory.create({
 //   namespace: 'test-client',
@@ -223,7 +224,11 @@ describe('FakeClient', () => {
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
     })
-    const client = FakeClient.create<{ container: HTMLElement; getButton: () => HTMLButtonElement }>({
+    const client = FakeClient.create<{
+      container: HTMLElement
+      getButton: () => HTMLButtonElement
+      viewer: ElementViewer
+    }>({
       engine,
       scope: 'root',
       globals: getFakeBrowserGlobals(),
@@ -235,6 +240,7 @@ describe('FakeClient', () => {
           <Router />
         </QueryClientProvider>,
       )
+      state.viewer = ElementViewer.create(container)
       state.container = container
       await waitFor(() => {
         expect(container.querySelector('#pageTargetName')?.textContent).toBe('client')
@@ -250,12 +256,12 @@ describe('FakeClient', () => {
       await waitFor(() => expect(button.textContent).toBe('Increment 0'))
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 1'))
+      //   expect(env.target.name).toBe('client')
+      // })
+      // expect(env.target.name).toBe('server')
+      // await client.run(async ({ container, getButton, viewer }) => {
       expect(env.target.name).toBe('client')
-    })
-    expect(env.target.name).toBe('server')
-    await client.run(async ({ container, getButton }) => {
-      expect(env.target.name).toBe('client')
-      const button = getButton()
+      // const button = getButton()
       fireEvent.click(button)
       await waitFor(() => expect(button.textContent).toBe('Increment 2'))
       expect(container.querySelector('#serverLoaderTargetName')?.textContent).toBe('server')

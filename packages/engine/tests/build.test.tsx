@@ -91,7 +91,7 @@ describe('build', () => {
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-        "http://localhost/
+        "/
           div: My Cool Page
           "
       `)
@@ -127,7 +127,7 @@ describe('build', () => {
         const page = await tp.gotoServer('/')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-        "http://localhost/
+        "/
           (Empty)
 
           div: My Cool Page
@@ -195,7 +195,7 @@ describe('build', () => {
         const page = await tp.gotoServer('/3')
         await page.stable
         expect(page.tale).toMatchInlineSnapshot(`
-          "http://localhost/3
+          "/3
             div: MY_SERVER_ONLY4
             
             div: MY_CLIENT_ONLY5
@@ -248,7 +248,7 @@ describe('build', () => {
       const page = await tp.gotoServer('/')
       await page.stable
       expect(page.tale).toMatchInlineSnapshot(`
-      "http://localhost/
+      "/
         div: My Cool Page
         "
     `)

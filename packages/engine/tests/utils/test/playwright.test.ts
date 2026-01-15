@@ -378,19 +378,19 @@ describe('playwright', () => {
     it.concurrent('should prettify http://localhost: URLs by removing port number', () => {
       const url = 'http://localhost:3000'
       const result = PlaywrightPage.prettifyUrl(url)
-      expect(result).toBe('http://localhost')
+      expect(result).toBe('/')
     })
 
     it.concurrent('should prettify http://localhost: URLs with path', () => {
       const url = 'http://localhost:8080/path/to/page'
       const result = PlaywrightPage.prettifyUrl(url)
-      expect(result).toBe('http://localhost/path/to/page')
+      expect(result).toBe('/path/to/page')
     })
 
     it.concurrent('should prettify http://localhost: URLs with different port numbers', () => {
-      expect(PlaywrightPage.prettifyUrl('http://localhost:1234')).toBe('http://localhost')
-      expect(PlaywrightPage.prettifyUrl('http://localhost:9999')).toBe('http://localhost')
-      expect(PlaywrightPage.prettifyUrl('http://localhost:80')).toBe('http://localhost')
+      expect(PlaywrightPage.prettifyUrl('http://localhost:1234')).toBe('/')
+      expect(PlaywrightPage.prettifyUrl('http://localhost:9999')).toBe('/')
+      expect(PlaywrightPage.prettifyUrl('http://localhost:80')).toBe('/')
     })
 
     it.concurrent('should return other URLs unchanged', () => {
@@ -464,7 +464,7 @@ describe('playwright', () => {
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         await page.waitContent('Never Changes', 300)
-        // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+        // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitContent('But Maybe Changes', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
@@ -523,7 +523,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+        // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitNoContent('Always Present', 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
@@ -592,7 +592,7 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+        // eslint-disable-next-line @typescript-eslint/await-thenable
         await expect(page.waitContentSequence(['Changed', '!Will Not Disappear'], 300)).rejects.toThrow()
         expect(page.tale).toMatchInlineSnapshot(`
           "data:...
