@@ -1,19 +1,20 @@
-import type { PointsDefinitionSource, PointsScope, RequiredCtx } from '@point0/core'
-import { PointsManager, prependAndDeappendSlash, env } from '@point0/core'
+import type { FetcherFetchDetailedResult, PointsDefinitionSource, PointsScope, RequiredCtx } from '@point0/core'
+import { env, PointsManager, prependAndDeappendSlash } from '@point0/core'
 import type { BunPlugin } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
+import type { CompilerOptions } from '../../compiler/dist/compiler.js'
 import type { AllPointsManagers } from './all-points-managers.js'
 import type { ClientBun } from './client.js'
 import type {
   EngineLogger,
+  EngineOptionsCompilerParsed,
   EngineOptionsPublicdirParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
-  EngineOptionsCompilerParsed,
 } from './config.js'
-import type { FetcherFetchDetailedResult } from './fetcher.js'
+import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
 import { Publicdir } from './publicdir.js'
 import type { ServerBunBuildConfigDefinition, ServerBunPluginsDefinition } from './utils.js'
@@ -28,8 +29,6 @@ import {
   validateEntrypoints,
   withRetries,
 } from './utils.js'
-import type { CompilerOptions } from '../../compiler/dist/compiler.js'
-import type { Engine } from './engine.js'
 
 // TODO:ASAP rename to EngineServer
 export class ServerBun<TInitialized extends boolean = boolean> {
@@ -312,6 +311,43 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     )
   }
 
+  private readonly fetchDevClientsProxy = async ({
+    request,
+    bunServer,
+  }: {
+    request: Request
+    bunServer?: Bun.Server<unknown>
+  }): Promise<{ response: Response | undefined } | undefined> => {
+    if (process.env.NODE_ENV === 'production') {
+      return undefined
+    }
+    if (request.headers.get('X-Point0-Forwarded-From-Dev-Client-Server') === 'true') {
+      return undefined
+    }
+    bunServer ??= this.bunServer
+    for (const client of this.clients) {
+      // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
+      if (bunServer) {
+        const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
+          request,
+          bunServer,
+        })
+        if (bunDevServerUpgradeWebSocketResult) {
+          return { response: bunDevServerUpgradeWebSocketResult.result } // in this case response really should be undefined
+        }
+      }
+      const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request })
+      if (clientViteDevServerResponse) {
+        return { response: clientViteDevServerResponse }
+      }
+      const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request })
+      if (clientBunDevServerResponse) {
+        return { response: clientBunDevServerResponse }
+      }
+    }
+    return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
+  }
+
   serve({ requiredCtx }: { requiredCtx: RequiredCtx }): void {
     if (!this.isInitialized()) {
       throw new Error('Server is not initialized')
@@ -320,12 +356,12 @@ export class ServerBun<TInitialized extends boolean = boolean> {
       Bun.serve({
         port: this.port,
         fetch: async (request, bunServer) => {
-          const response = await this.fetch({ request, requiredCtx, bunServer })
-
-          // in case of dev upgrade proxy websocket
-          if (!response) {
-            return response
+          const devClientsProxyResponse = await this.fetchDevClientsProxy({ request, bunServer })
+          if (devClientsProxyResponse) {
+            return devClientsProxyResponse.response
           }
+
+          const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
 
           // Add CORS headers in dev mode for requests from localhost with client ports (for vite development)
           // TODO: remove it, we now just forward from client to server
@@ -376,7 +412,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
           //   }
           // }
 
-          return response
+          return result.response
         },
         websocket: {
           open(ws) {
@@ -416,7 +452,7 @@ export class ServerBun<TInitialized extends boolean = boolean> {
             // Forward messages from client to upstream (only for proxied connections)
             if (process.env.NODE_ENV !== 'production') {
               const data = ws.data as unknown as { upstream?: WebSocket }
-              if (data.upstream && data.upstream.readyState === WebSocket.OPEN) {
+              if (data.upstream?.readyState === WebSocket.OPEN) {
                 data.upstream.send(message)
               }
             }
@@ -770,18 +806,18 @@ export class ServerBun<TInitialized extends boolean = boolean> {
     return await this.fetcher.fetchDetailed({ request, requiredCtx, scope, bunServer })
   }
 
-  async fetch({
-    request,
-    requiredCtx,
-    scope,
-    bunServer,
-  }: {
-    request: Request
-    requiredCtx: RequiredCtx
-    scope?: PointsScope
-    bunServer?: Bun.Server<unknown>
-  }): Promise<Response | undefined> {
-    const result = await this.fetchDetailed({ request, requiredCtx, scope, bunServer })
-    return result.response
-  }
+  // async fetch({
+  //   request,
+  //   requiredCtx,
+  //   scope,
+  //   bunServer,
+  // }: {
+  //   request: Request
+  //   requiredCtx: RequiredCtx
+  //   scope?: PointsScope
+  //   bunServer?: Bun.Server<unknown>
+  // }): Promise<Response | undefined> {
+  //   const result = await this.fetchDetailed({ request, requiredCtx, scope, bunServer })
+  //   return result.response
+  // }
 }

@@ -677,3 +677,7 @@ export const normalizeAndValidateNodeEnv = (fallback?: NormalNodeEnv): NormalNod
 
 export const isAsyncFn = (fn: unknown): fn is (...args: any[]) => Promise<any> =>
   typeof fn === 'function' && fn.constructor.name === 'AsyncFunction'
+
+export const generateId = (): string => {
+  return crypto.randomUUID()
+}

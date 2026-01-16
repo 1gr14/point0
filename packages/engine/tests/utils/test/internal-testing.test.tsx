@@ -34,13 +34,20 @@ describe('internal-testing', () => {
           </SimpleLink>
         </div>
       ))
-    const { client, fetchPreview } = await createTestThings({ points: [root, page, news] })
+    const { client, fetchPreview, fetchRecorder, getFetchResults } = await createTestThings({
+      points: [root, page, news],
+    })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#home:
         h1: Home Page
         #link: Go to News
       "
     `)
+    const fetchResults1 = await fetchRecorder.waitFinishedResults()
+    expect(fetchResults1).toHaveLength(1)
+    expect(fetchResults1[0].variant).toBe('page')
+    fetchRecorder.prune()
+
     await client.run(async ({ tale, click, waitContent }) => {
       await waitContent('#home')
       await click('#link')
@@ -74,6 +81,12 @@ describe('internal-testing', () => {
         "
       `)
     })
+    expect(await getFetchResults()).toMatchInlineSnapshot(`
+      "page.news < {}
+      page.news < {}
+      "
+    `)
+
     // await client.destroy()
   })
 })

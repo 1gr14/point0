@@ -1,12 +1,4 @@
-import { Route0 } from '@devp0nt/route0'
-import type {
-  EndPoint,
-  PointsScope,
-  RequiredCtx,
-  ServerExecuteResult,
-  UndefinedCtx,
-  WithMaybeOptionalReqiredCtx,
-} from '@point0/core'
+import type { FetcherFetchDetailedResult, PointsScope, RequiredCtx, UndefinedCtx } from '@point0/core'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -14,7 +6,7 @@ import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
-import { Executor } from './executor.js'
+import { FetchRecorder } from './fetch-recorder.js'
 import type {
   FileGeneratorProcessResult,
   FilesGeneratorPointsFilesChangeWatcher,
@@ -33,7 +25,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   generator: FilesGenerator
   allPointsManagers: AllPointsManagers
   initialized: TInitialized
-  fetchRecorder: boolean | number
+  fetchRecorder: FetchRecorder
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -45,7 +37,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     initialized: TInitialized
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
-    fetchRecorder: boolean | number
+    fetchRecorder: FetchRecorder
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
@@ -69,6 +61,11 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   ): Engine<TRequiredCtx, false> {
     const parsedOptions = parseEngineOptions(options)
     const allPointsManagers = AllPointsManagers.create()
+
+    const fetchRecorder = FetchRecorder.create({
+      limit: typeof parsedOptions.general.fetchRecorder === 'number' ? parsedOptions.general.fetchRecorder : 100,
+      enabled: !!parsedOptions.general.fetchRecorder,
+    })
 
     const server = ServerBun.create({
       ...parsedOptions.server,
@@ -131,7 +128,7 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       initialized: false,
       generator,
       publicdirs,
-      fetchRecorder: parsedOptions.general.fetchRecorder,
+      fetchRecorder,
     })
   }
   static async init<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -301,11 +298,11 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     ])
   }
 
-  async fetch(
+  async fetchDetailed(
     ...args: TRequiredCtx extends UndefinedCtx
       ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
       : [request: Request, options: { requiredCtx: TRequiredCtx }]
-  ): Promise<Response | undefined> {
+  ): Promise<FetcherFetchDetailedResult> {
     if (!this.isInitialized()) {
       throw new Error('Engine is not initialized. Please call await engine.init() first.')
     }
@@ -315,54 +312,55 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       request,
       requiredCtx,
     })
-    // TODO:ASAP if FetchRecorder then pass it there
+    return result
+  }
+
+  async fetch(
+    ...args: TRequiredCtx extends UndefinedCtx
+      ? [request: Request, options?: { requiredCtx?: TRequiredCtx }]
+      : [request: Request, options: { requiredCtx: TRequiredCtx }]
+  ): Promise<Response> {
+    const result = await this.fetchDetailed(...args)
     return result.response
   }
 
-  async fetchSimple(request: Request): Promise<Response> {
-    const response = await (this.fetch as any)(request)
-    if (!response) {
-      return new Response('Empty response', { status: 404 })
-    }
-    return response
-  }
-
-  async execute<TPoint extends EndPoint>({
-    point,
-    input,
-    requiredCtx,
-    withLayouts,
-  }: {
-    point: TPoint
-    input: TPoint['Infer']['InputRaw']
-    withLayouts?: boolean
-  } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
-    ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
-  > {
-    if (!this.isInitialized()) {
-      throw new Error('Engine is not initialized. Please call await engine.init() first.')
-    }
-    if (!point._root) {
-      throw new Error('Point root not found')
-    }
-    const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
-    const suitable = this.allPointsManagers.getSuitable({
-      pointType: point.type,
-      scope: point.scope,
-      pointName: point.name,
-      input,
-      fallbackScope: point.scope,
-    })
-    const executor = await Executor.create({
-      engine: this,
-      request: Executor.createRequestByPointAndInput({ point, input }),
-      points: suitable.pointsManager,
-      pageLocation: suitable.pageLocation,
-      currentLocation: location,
-      requiredCtx,
-    })
-    return await executor.execute({ point: suitable.point, input, withLayouts, response0: executor.response0 })
-  }
+  // We need request, so we should fake request, or somehow
+  // async execute<TPoint extends EndPoint>({
+  //   point,
+  //   input,
+  //   requiredCtx,
+  //   withLayouts,
+  // }: {
+  //   point: TPoint
+  //   input: TPoint['Infer']['InputRaw']
+  //   withLayouts?: boolean
+  // } & WithMaybeOptionalReqiredCtx<TPoint['Infer']['RequiredCtx']>): Promise<
+  //   ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>
+  // > {
+  //   if (!this.isInitialized()) {
+  //     throw new Error('Engine is not initialized. Please call await engine.init() first.')
+  //   }
+  //   if (!point._root) {
+  //     throw new Error('Point root not found')
+  //   }
+  //   const location = point.route ? point.route.flat(input) : Route0.getLocation('/')
+  //   const suitable = this.allPointsManagers.getSuitable({
+  //     pointType: point.type,
+  //     scope: point.scope,
+  //     pointName: point.name,
+  //     input,
+  //     fallbackScope: point.scope,
+  //   })
+  //   const executor = await Executor.create({
+  //     engine: this,
+  //     request: Executor.createRequestByPointAndInput({ point, input }),
+  //     points: suitable.pointsManager,
+  //     pageLocation: suitable.pageLocation,
+  //     currentLocation: location,
+  //     requiredCtx,
+  //   })
+  //   return await executor.execute({ point: suitable.point, input, withLayouts, response0: executor.response0 })
+  // }
 
   async clean(): Promise<void> {
     await Promise.all([...this.clients.map(async (client) => await client.clean()), this.server.clean()])

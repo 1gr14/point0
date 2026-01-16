@@ -476,7 +476,7 @@ describe('playwright', () => {
   })
 
   describe.concurrent('waitNoContent', () => {
-    it.only(
+    it(
       'should wait for content that disappears after delay',
       wrp(async (page) => {
         const html = `

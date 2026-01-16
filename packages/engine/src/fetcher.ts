@@ -3,12 +3,15 @@ import { Route0 } from '@devp0nt/route0'
 import type {
   Data,
   EndPoint,
-  EndPointType,
+  FetcherFetchDetailedResult,
+  FetcherFetchDetailedResultGeneral,
+  FetcherFetchDetailedResultNoMiddleware,
+  FetchTask,
   InputRawUnknown,
   MiddlewareFn,
+  MiddlewareFnOptions,
   MiddlewareFnOptionsBase,
   PagePoint,
-  PointName,
   PointsScope,
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
@@ -21,6 +24,7 @@ import { toJsonErrorResponse } from './error.js'
 import { Executor } from './executor.js'
 import type { Publicdir } from './publicdir.js'
 import type { ServerBun } from './server.js'
+import { generateId } from './utils.js'
 
 export class Fetcher {
   engine: Engine
@@ -83,7 +87,7 @@ export class Fetcher {
     }
   }
 
-  getPointInputFromTaskRequest = async ({
+  private readonly _getPointInputFromTaskRequest = async ({
     request,
     scope,
   }: {
@@ -127,8 +131,19 @@ export class Fetcher {
     const inputRaw = transformer.deserialize<InputRawUnknown>(inputRawNotTransformed)
     return inputRaw
   }
+  getPointInputFromTaskRequest = async ({
+    request,
+    scope,
+  }: {
+    request: Request0
+    scope: PointsScope
+  }): Promise<InputRawUnknown | undefined> => {
+    const result = await this._getPointInputFromTaskRequest({ request, scope })
+    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+    return result
+  }
 
-  getPointInputFormSuitablePageOrLayout = ({
+  private readonly _getPointInputFormSuitablePageOrLayout = ({
     suitable,
   }: {
     suitable: GetSuitableResult
@@ -138,8 +153,19 @@ export class Fetcher {
     }
     return undefined
   }
+  getPointInputFormSuitablePageOrLayout = ({
+    suitable,
+    request,
+  }: {
+    suitable: GetSuitableResult
+    request: Request0
+  }): InputRawUnknown | undefined => {
+    const result = this._getPointInputFormSuitablePageOrLayout({ suitable })
+    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+    return result
+  }
 
-  getPointInput = async ({
+  private readonly _getPointInput = async ({
     suitable,
     task,
     request,
@@ -159,11 +185,25 @@ export class Fetcher {
     if (inputFromTaskRequest) {
       return inputFromTaskRequest
     }
-    const inputFromSuitablePageOrLayout = this.getPointInputFormSuitablePageOrLayout({ suitable })
+    const inputFromSuitablePageOrLayout = this.getPointInputFormSuitablePageOrLayout({ suitable, request })
     if (inputFromSuitablePageOrLayout) {
       return inputFromSuitablePageOrLayout
     }
     return {}
+  }
+
+  getPointInput = async ({
+    suitable,
+    task,
+    request,
+  }: {
+    suitable: GetSuitableResult
+    task: FetchTask | undefined
+    request: Request0
+  }): Promise<InputRawUnknown> => {
+    const result = await this._getPointInput({ suitable, task, request })
+    request.state.__POINT0_RAW_UNKNOWN_INPUT__ = result
+    return result
   }
 
   prepareFetch = async ({
@@ -176,30 +216,12 @@ export class Fetcher {
     bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
     const response0 = Response0.create()
-    const request = Request0.create(originalRequest, bunServer || this.server.bunServer)
-
-    const devClientsProxyResponse = await this.fetchDevClientsProxy({
-      request,
-      bunServer,
+    const request = Request0.create(originalRequest, {
+      bunServer: bunServer || this.server.bunServer,
+      id: generateId(),
     })
-    if (devClientsProxyResponse) {
-      const scope = this.engine.server.scope
-      return {
-        scope,
-        request,
-        response0,
-        devClientsProxyResult: devClientsProxyResponse,
-        publicdirResult: undefined,
-        pointResult: undefined,
-        middlewares: [],
-        middlewareOptions: {
-          request,
-          set: response0.set,
-          point: undefined,
-          scope,
-          variant: '' as never, // it is dev only thing, lets forget about it
-        },
-      }
+    if (this.engine.fetchRecorder.enabled) {
+      this.engine.fetchRecorder.recordRequest(request)
     }
 
     for (const publicdir of this.server.publicdirs) {
@@ -210,7 +232,6 @@ export class Fetcher {
           scope,
           request,
           response0,
-          devClientsProxyResult: undefined,
           publicdirResult: { publicdir, response: staticResponse },
           pointResult: undefined,
           // middlewares: publicdir.getPointsManager()?.root._middlewares ?? [],
@@ -236,7 +257,6 @@ export class Fetcher {
           scope: this.engine.server.scope,
           request,
           response0,
-          devClientsProxyResult: undefined,
           publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
           pointResult: undefined,
           middlewares: [],
@@ -260,11 +280,20 @@ export class Fetcher {
       fallbackScope: this.server.fallbackScope,
     })
 
+    const variant: MiddlewareFnOptions['variant'] = (() => {
+      if (task) {
+        return 'point'
+      }
+      if (request.method === 'get') {
+        return 'page'
+      }
+      return 'unknown'
+    })()
+
     return {
       scope: suitable.pointsManager.scope,
       request,
       response0,
-      devClientsProxyResult: undefined,
       publicdirResult: undefined,
       pointResult: { suitable, task },
       middlewares: suitable.point?._middlewares ?? suitable.pointsManager.root._middlewares,
@@ -273,49 +302,49 @@ export class Fetcher {
         set: response0.set,
         point: suitable.point,
         scope: suitable.pointsManager.scope,
-        variant: task ? 'point' : 'page',
+        variant,
       },
     }
   }
 
-  fetchDevClientsProxy = async ({
-    request,
-    bunServer,
-  }: {
-    request: Request0
-    bunServer?: Bun.Server<unknown>
-  }): Promise<{ response: Response | undefined } | undefined> => {
-    if (process.env.NODE_ENV === 'production') {
-      return undefined
-    }
-    if (request.original.headers.get('X-Point0-Forwarded-From-Dev-Client-Server') === 'true') {
-      return undefined
-    }
-    bunServer ??= this.server.bunServer
-    for (const client of this.server.clients) {
-      // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
-      if (bunServer) {
-        const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
-          request,
-          bunServer,
-        })
-        if (bunDevServerUpgradeWebSocketResult) {
-          return { response: bunDevServerUpgradeWebSocketResult.result } // in this case response really should be undefined
-        }
-      }
-      const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request })
-      if (clientViteDevServerResponse) {
-        return { response: clientViteDevServerResponse }
-      }
-      const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request })
-      if (clientBunDevServerResponse) {
-        return { response: clientBunDevServerResponse }
-      }
-    }
-    return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
-  }
+  // fetchDevClientsProxy = async ({
+  //   request,
+  //   bunServer,
+  // }: {
+  //   request: Request0
+  //   bunServer?: Bun.Server<unknown>
+  // }): Promise<{ response: Response | undefined } | undefined> => {
+  //   if (process.env.NODE_ENV === 'production') {
+  //     return undefined
+  //   }
+  //   if (request.original.headers.get('X-Point0-Forwarded-From-Dev-Client-Server') === 'true') {
+  //     return undefined
+  //   }
+  //   bunServer ??= this.server.bunServer
+  //   for (const client of this.server.clients) {
+  //     // it is provided when we serve via bun, if we serve via elysia, then elysia manages websocket by itself
+  //     if (bunServer) {
+  //       const bunDevServerUpgradeWebSocketResult = await client.upgradeProxyBunDevServerWebSocket({
+  //         request,
+  //         bunServer,
+  //       })
+  //       if (bunDevServerUpgradeWebSocketResult) {
+  //         return { response: bunDevServerUpgradeWebSocketResult.result } // in this case response really should be undefined
+  //       }
+  //     }
+  //     const clientViteDevServerResponse = await client.fetchViteDevServerMiddleware({ request })
+  //     if (clientViteDevServerResponse) {
+  //       return { response: clientViteDevServerResponse }
+  //     }
+  //     const clientBunDevServerResponse = await client.fetchBunDevServerMiddleware({ request })
+  //     if (clientBunDevServerResponse) {
+  //       return { response: clientBunDevServerResponse }
+  //     }
+  //   }
+  //   return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
+  // }
 
-  fetchPoint = async ({
+  private readonly fetchPoint = async ({
     suitable,
     task,
     request,
@@ -328,7 +357,7 @@ export class Fetcher {
     request: Request0
     requiredCtx: RequiredCtx
     response0: Response0
-    serverStorageState?: SuperStoreInternalValuesOrErrors
+    serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchPointResult> => {
     const meta: Record<string, any> = {
       url: request.original.url,
@@ -356,6 +385,7 @@ export class Fetcher {
         return {
           ...partialResult,
           response,
+          responseFormat: 'headers',
         }
       }
 
@@ -402,6 +432,7 @@ export class Fetcher {
             return {
               ...partialResult,
               response,
+              responseFormat: 'html',
             }
           } catch (error) {
             // in case if entry provided in index.html is not correct, we fallback to original index.html with provided bun error
@@ -415,6 +446,7 @@ export class Fetcher {
                 ...partialResult,
                 response,
                 error: Error0.from(error),
+                responseFormat: 'html',
               }
             }
             throw error
@@ -428,6 +460,7 @@ export class Fetcher {
           return {
             ...partialResult,
             response,
+            responseFormat: 'html',
           }
         } else if (outputType === 'queryClientDehydratedState' && pointType === 'page') {
           if (!suitable.pageLocation) {
@@ -449,6 +482,7 @@ export class Fetcher {
             ...partialResult,
             response,
             data: { dehydratedState },
+            responseFormat: 'json',
           }
         }
       } else if (outputType === 'html' && pointType === 'page') {
@@ -471,6 +505,7 @@ export class Fetcher {
           ...partialResult,
           response,
           error: executeResult.error,
+          responseFormat: 'json',
         }
       }
 
@@ -479,6 +514,7 @@ export class Fetcher {
         return {
           ...partialResult,
           response: executeResult.output,
+          responseFormat: 'json',
         }
       }
 
@@ -489,6 +525,7 @@ export class Fetcher {
           ...partialResult,
           response,
           error,
+          responseFormat: 'json',
         }
       }
 
@@ -501,6 +538,7 @@ export class Fetcher {
         ...partialResult,
         response,
         data: executeResult.output,
+        responseFormat: 'json',
       }
     } catch (error) {
       this.server.logger.error(error, meta)
@@ -510,6 +548,7 @@ export class Fetcher {
         ...partialResult,
         response,
         error: error0,
+        responseFormat: 'json',
       }
     }
   }
@@ -524,51 +563,64 @@ export class Fetcher {
     baseOptions: MiddlewareFnOptionsBase
   }): Promise<FetcherFetchDetailedResult> {
     let index = -1
-    const finishSymbol = Symbol('finish')
+    let isMiddleware = true as boolean
 
-    async function dispatch(i: number): Promise<Response> {
+    async function dispatch(i: number): Promise<Response | FetcherFetchDetailedResult> {
       if (i <= index) {
         throw new Error('next() called multiple times')
       }
       index = i
 
       if (i === middlewares.length) {
-        // return await finalHandler()
-        // eslint-disable-next-line @typescript-eslint/only-throw-error
-        throw finishSymbol
+        isMiddleware = false
+        return await finalHandler()
+        // // eslint-disable-next-line @typescript-eslint/only-throw-error
+        // throw finishSymbol
       }
 
       const mw = middlewares[i]
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!mw) {
         throw new Error('Middleware is undefined')
       }
 
       return await mw({
         ...baseOptions,
-        next: async () => await dispatch(i + 1),
+        next: async () => {
+          const result = await dispatch(i + 1)
+          if (result instanceof Response) {
+            return {
+              request: baseOptions.request,
+              scope: baseOptions.scope,
+              response: result,
+              variant: 'middleware',
+              error: null,
+            }
+          }
+          return result
+        },
       })
     }
 
     try {
-      const middlewareResponse = await dispatch(0)
-      return {
-        request: baseOptions.request,
-        scope: baseOptions.scope,
-        response: middlewareResponse,
-        variant: 'middleware',
-        error: null,
+      const result = await dispatch(0)
+      if (result instanceof Response) {
+        return {
+          request: baseOptions.request,
+          scope: baseOptions.scope,
+          response: result,
+          variant: 'middleware',
+          error: null,
+        }
       }
+      return result
     } catch (error) {
-      if (error === finishSymbol) {
-        const finalHandlerResult = await finalHandler()
-        return finalHandlerResult
-      }
       const error0 = Error0.from(error)
       return {
         request: baseOptions.request,
         scope: baseOptions.scope,
         response: toJsonErrorResponse(error0),
-        variant: 'middleware',
+        variant: isMiddleware ? 'middleware' : 'unknown',
         error: error0,
       }
     }
@@ -583,45 +635,49 @@ export class Fetcher {
     prepareFetchResult: PrepareFetchResult
     serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchDetailedResultNoMiddleware> {
-    return await _ssRunWithServerStorageState(serverStorageState, async () => {
-      if (prepareFetchResult.devClientsProxyResult) {
-        const response = prepareFetchResult.devClientsProxyResult.response
-        return {
-          request: prepareFetchResult.request,
-          scope: prepareFetchResult.scope,
-          response,
-          variant: 'devClientsProxy',
-          error: null,
-        }
-      }
-
-      if (prepareFetchResult.publicdirResult) {
-        const response = prepareFetchResult.response0.apply(prepareFetchResult.publicdirResult.response)
-        return {
-          request: prepareFetchResult.request,
-          scope: prepareFetchResult.scope,
-          publicdir: prepareFetchResult.publicdirResult.publicdir,
-          response,
-          variant: 'publicdir',
-          error: null,
-        }
-      }
-
-      const fetchPointResult = await this.fetchPoint({
+    if (prepareFetchResult.publicdirResult) {
+      return {
         request: prepareFetchResult.request,
-        suitable: prepareFetchResult.pointResult.suitable,
-        task: prepareFetchResult.pointResult.task,
-        requiredCtx,
-        response0: prepareFetchResult.response0,
-        serverStorageState,
-      })
+        scope: prepareFetchResult.scope,
+        response: prepareFetchResult.publicdirResult.response,
+        variant: 'publicdir',
+        error: null,
+      }
+    }
 
-      const response = prepareFetchResult.response0.apply(fetchPointResult.response)
+    const fetchPointResult = await this.fetchPoint({
+      request: prepareFetchResult.request,
+      suitable: prepareFetchResult.pointResult.suitable,
+      task: prepareFetchResult.pointResult.task,
+      requiredCtx,
+      response0: prepareFetchResult.response0,
+      serverStorageState,
+    })
+
+    if (fetchPointResult.task) {
       return {
         ...fetchPointResult,
-        response,
+        task: fetchPointResult.task,
+        variant: 'point',
+        response: fetchPointResult.response,
+        input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
       }
-    })
+    }
+
+    if (fetchPointResult.responseFormat === 'html') {
+      return {
+        ...fetchPointResult,
+        variant: 'page',
+        response: fetchPointResult.response,
+        input: fetchPointResult.request.state.__POINT0_RAW_UNKNOWN_INPUT__ as InputRawUnknown | undefined,
+      }
+    }
+
+    return {
+      ...fetchPointResult,
+      variant: 'unknown',
+      response: fetchPointResult.response,
+    }
   }
 
   async fetchDetailed({
@@ -651,16 +707,27 @@ export class Fetcher {
 
     const middlewares = prepareFetchResult.middlewares
     const middlewareOptions = prepareFetchResult.middlewareOptions
-    const finalHandler = async () =>
-      await this._fetchDetailed({
-        requiredCtx,
-        prepareFetchResult,
-        serverStorageState,
+
+    return await _ssRunWithServerStorageState(serverStorageState, async () => {
+      const result = await this._composeMiddlewares({
+        middlewares,
+        finalHandler: async () =>
+          await this._fetchDetailed({
+            requiredCtx,
+            prepareFetchResult,
+            serverStorageState,
+          }),
+        baseOptions: middlewareOptions,
       })
-    return await this._composeMiddlewares({
-      middlewares,
-      finalHandler,
-      baseOptions: middlewareOptions,
+      const response = result.response ? prepareFetchResult.response0.apply(result.response) : result.response
+      const finalResult = {
+        ...result,
+        response,
+      } as FetcherFetchDetailedResult
+      if (this.engine.fetchRecorder.enabled) {
+        this.engine.fetchRecorder.recordResult(result)
+      }
+      return finalResult
     })
   }
 
@@ -683,20 +750,9 @@ export class Fetcher {
 export type PrepareFetchResult =
   | {
       scope: PointsScope
-      publicdirResult: undefined
-      request: Request0
-      response0: Response0
-      devClientsProxyResult: { response: Response | undefined }
-      pointResult: undefined
-      middlewares: MiddlewareFn[]
-      middlewareOptions: MiddlewareFnOptionsBase
-    }
-  | {
-      scope: PointsScope
       publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
       request: Request0
       response0: Response0
-      devClientsProxyResult: undefined
       pointResult: undefined
       middlewares: MiddlewareFn[]
       middlewareOptions: MiddlewareFnOptionsBase
@@ -706,56 +762,83 @@ export type PrepareFetchResult =
       publicdirResult: undefined
       request: Request0
       response0: Response0
-      devClientsProxyResult: undefined
       pointResult: { suitable: GetSuitableResult; task: FetchTask | undefined }
       middlewares: MiddlewareFn[]
       middlewareOptions: MiddlewareFnOptionsBase
     }
 
-export type FetcherFetchDetailedResultGeneral = {
-  response: Response | undefined
-  request: Request0
-  scope: PointsScope
-  error: Error0 | null
-}
-export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
-  variant: 'middleware'
-}
-export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
-  variant: 'point'
-  point: EndPoint | undefined
-  task: FetchTask | undefined
-  data: Data | undefined
-}
-export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGeneral & {
-  variant: 'publicdir'
-  publicdir: Publicdir<true> | undefined
-}
-export type FetcherFetchDetailedResultDevClientsProxy = FetcherFetchDetailedResultGeneral & {
-  variant: 'devClientsProxy'
-}
+// export type FetcherFetchDetailedResultGeneral = {
+//   response: Response | undefined
+//   request: Request0
+//   scope: PointsScope
+//   error: Error0 | null
+// }
+// export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
+//   variant: 'middleware'
+// }
+// export type FetcherFetchDetailedResultPage = FetcherFetchDetailedResultGeneral & {
+//   variant: 'page'
+//   point: EndPoint | undefined
+//   input: InputRawUnknown | undefined
+// }
+// export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
+//   variant: 'point'
+//   point: EndPoint | undefined
+//   task: FetchTask
+//   data: Data | undefined
+//   responseFormat: 'json' | 'html' | 'headers'
+//   input: InputRawUnknown | undefined
+// }
+// export type FetcherFetchDetailedResultUnknown = FetcherFetchDetailedResultGeneral & {
+//   variant: 'unknown'
+// }
+// export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGeneral & {
+//   variant: 'publicdir'
+//   publicdir: Publicdir<true> | undefined
+// }
+// export type FetcherFetchDetailedResultDevClientsProxy = FetcherFetchDetailedResultGeneral & {
+//   variant: 'devClientsProxy'
+// }
 
-export type FetcherFetchDetailedResultNoMiddleware =
-  | FetcherFetchDetailedResultPoint
-  | FetcherFetchDetailedResultPublicdir
-  | FetcherFetchDetailedResultDevClientsProxy
-export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
+// export type FetcherFetchDetailedResultNoMiddleware =
+//   | FetcherFetchDetailedResultPoint
+//   | FetcherFetchDetailedResultPage
+//   | FetcherFetchDetailedResultUnknown
+//   | FetcherFetchDetailedResultPublicdir
+//   | FetcherFetchDetailedResultDevClientsProxy
+// export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
+// export type FetcherFetchDetailedResultSpecific<
+//   TVariant extends FetcherFetchDetailedResult['variant'] | undefined = undefined,
+// > = TVariant extends undefined
+//   ? FetcherFetchDetailedResult
+//   : TVariant extends 'middleware'
+//     ? FetcherFetchDetailedResultMiddleware
+//     : TVariant extends 'page'
+//       ? FetcherFetchDetailedResultPage
+//       : TVariant extends 'point'
+//         ? FetcherFetchDetailedResultPoint
+//         : TVariant extends 'unknown'
+//           ? FetcherFetchDetailedResultUnknown
+//           : TVariant extends 'publicdir'
+//             ? FetcherFetchDetailedResultPublicdir
+//             : TVariant extends 'devClientsProxy'
+//               ? FetcherFetchDetailedResultDevClientsProxy
+//               : never
+
+// // TODO:ASAP simplify names
+// export type FetchTask = {
+//   pointType: EndPointType
+//   outputType: 'data' | 'queryClientDehydratedState'
+//   scope: PointsScope
+//   pointName: PointName
+//   pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
+// }
 
 export type FetcherFetchPointResult = Omit<FetcherFetchDetailedResultGeneral, 'response'> & {
   response: Response
-} & {
-  variant: 'point'
   point: EndPoint | undefined
   scope: PointsScope
   task: FetchTask | undefined
   data: Data | undefined
-}
-
-// TODO:ASAP simplify names
-export type FetchTask = {
-  pointType: EndPointType
-  outputType: 'data' | 'queryClientDehydratedState'
-  scope: PointsScope
-  pointName: PointName
-  pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
+  responseFormat: 'json' | 'html' | 'headers'
 }

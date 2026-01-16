@@ -2,7 +2,7 @@ import { CookiesStore, Point0, QueryClientProvider, env } from '@point0/core'
 import { Router } from '@point0/wouter'
 import '@testing-library/jest-dom'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'bun:test'
+import { beforeAll, afterAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
 import { Engine } from '../src/engine.js'
 import { FakeClient } from '../src/fake-client.js'
@@ -58,24 +58,24 @@ describe('FakeClient', () => {
   // This warning occurs when @testing-library/react and our mount function
   // both create React roots, even though they use the same React instance
 
-  // const originalError = console.error
-  // beforeAll(() => {
-  //   console.error = (...args: any[]) => {
-  //     const message = args[0]
-  //     if (
-  //       typeof message === 'string' &&
-  //       message.includes('Detected multiple renderers concurrently rendering the same context provider')
-  //     ) {
-  //       // Suppress this specific warning
-  //       return
-  //     }
-  //     originalError.apply(console, args)
-  //   }
-  // })
+  const originalError = console.error
+  beforeAll(() => {
+    console.error = (...args: any[]) => {
+      const message = args[0]
+      if (
+        typeof message === 'string' &&
+        message.includes('Detected multiple renderers concurrently rendering the same context provider')
+      ) {
+        // Suppress this specific warning
+        return
+      }
+      originalError.apply(console, args)
+    }
+  })
 
-  // afterAll(() => {
-  //   console.error = originalError
-  // })
+  afterAll(() => {
+    console.error = originalError
+  })
 
   // afterEach(cleanup)
 
@@ -221,6 +221,7 @@ describe('FakeClient', () => {
     const engine = await Engine.init({
       compiler: false,
       file: import.meta.url,
+      fetchRecorder: true,
       server: { scope: 'root', points },
       clients: [{ scope: 'root', points }],
     })
@@ -268,6 +269,8 @@ describe('FakeClient', () => {
       expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
       expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
       expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
+      const results = await engine.fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'point' })
+      expect(results).toHaveLength(3)
     })
 
     await client.destroy()

@@ -11,6 +11,8 @@ export class Request0 {
   location: AnyLocation
   method: RequestMethod
   from: RequestFrom
+  id: string
+  state: Record<string, unknown>
 
   constructor({
     original,
@@ -19,6 +21,8 @@ export class Request0 {
     location,
     method,
     from,
+    id,
+    state,
   }: {
     original: Request
     headers: RequestHeaders
@@ -26,6 +30,8 @@ export class Request0 {
     location: AnyLocation
     method: RequestMethod
     from: RequestFrom
+    id: string
+    state: Record<string, unknown>
   }) {
     this.original = original
     this.headers = headers
@@ -33,16 +39,19 @@ export class Request0 {
     this.location = location
     this.method = method
     this.from = from
+    this.state = state
+    this.id = id
   }
 
   static create(
-    original: Request | Request0,
-    bunServer?: { requestIP: (request: Request) => { address: string } | null },
+    original: Request,
+    options: {
+      bunServer?: { requestIP: (request: Request) => { address: string } | null }
+      id: string
+      state?: Record<string, unknown>
+    },
   ): Request0 {
-    if (original instanceof Request0) {
-      return original
-    }
-
+    const { bunServer, id, state = {} } = options
     // Parse headers
     const headers: RequestHeaders = {}
     original.headers.forEach((value, key) => {
@@ -114,7 +123,7 @@ export class Request0 {
       scope: fromScope,
     }
 
-    return new Request0({ original, headers, cookies, location, method, from })
+    return new Request0({ original, headers, cookies, location, method, from, id, state })
   }
 
   static get(): Request0 {
@@ -140,3 +149,9 @@ export interface RequestFrom {
 
 export type RequestHeaders = Record<string, string>
 export type RequestCookies = Record<string, string>
+
+export type RequestState = {
+  startedAt: number
+
+  [key: string]: unknown
+}

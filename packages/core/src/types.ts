@@ -1538,17 +1538,76 @@ export type DataTransformerExtended = {
 
 // middleware
 
-export type MiddlewareNextFn = () => Promise<Response>
+export type FetchTask = {
+  pointType: EndPointType
+  outputType: 'data' | 'queryClientDehydratedState'
+  scope: PointsScope
+  pointName: PointName
+  pointInput: InputRawUnknown | undefined // in case if it is page or layout, we will parse input on task level, becouse we need it to extract totally match pageLocation
+}
+
+export type FetcherFetchDetailedResultGeneral = {
+  response: Response
+  request: Request0
+  scope: PointsScope
+  error: Error0 | null
+}
+export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
+  variant: 'middleware'
+}
+export type FetcherFetchDetailedResultPage = FetcherFetchDetailedResultGeneral & {
+  variant: 'page'
+  point: EndPoint | undefined
+  input: InputRawUnknown | undefined
+}
+export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
+  variant: 'point'
+  point: EndPoint | undefined
+  task: FetchTask
+  data: Data | undefined
+  responseFormat: 'json' | 'html' | 'headers'
+  input: InputRawUnknown | undefined
+}
+export type FetcherFetchDetailedResultUnknown = FetcherFetchDetailedResultGeneral & {
+  variant: 'unknown'
+}
+export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGeneral & {
+  variant: 'publicdir'
+}
+
+export type FetcherFetchDetailedResultNoMiddleware =
+  | FetcherFetchDetailedResultPoint
+  | FetcherFetchDetailedResultPage
+  | FetcherFetchDetailedResultUnknown
+  | FetcherFetchDetailedResultPublicdir
+export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
+export type FetcherFetchDetailedResultSpecific<
+  TVariant extends FetcherFetchDetailedResult['variant'] | undefined = undefined,
+> = TVariant extends undefined
+  ? FetcherFetchDetailedResult
+  : TVariant extends 'middleware'
+    ? FetcherFetchDetailedResultMiddleware
+    : TVariant extends 'page'
+      ? FetcherFetchDetailedResultPage
+      : TVariant extends 'point'
+        ? FetcherFetchDetailedResultPoint
+        : TVariant extends 'unknown'
+          ? FetcherFetchDetailedResultUnknown
+          : TVariant extends 'publicdir'
+            ? FetcherFetchDetailedResultPublicdir
+            : never
+
+export type MiddlewareNextFn = () => Promise<FetcherFetchDetailedResult>
 export type MiddlewareFnOptions = {
   request: Request0
   set: ResponseEffectsSetHelper
   point: AnyNiceEndPoint | undefined
   scope: PointsScope
-  variant: 'point' | 'page' | 'publicdir'
+  variant: 'point' | 'page' | 'unknown' | 'publicdir'
   next: MiddlewareNextFn
 }
 export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>
-export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response>
+export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | FetcherFetchDetailedResult>
 
 // nice middle point
 export type AssertNoForbiddenMethodsIfNotSuitableStage<

@@ -27,8 +27,9 @@ import type {
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
+  Request0,
 } from '@point0/core'
-import { _ssItems, _ssRunWithServerStorageState, PointsManager, Request0, Response0 } from '@point0/core'
+import { _ssItems, _ssRunWithServerStorageState, PointsManager, Response0 } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
 import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
@@ -86,21 +87,19 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     serverStorageState: providedServerStorageState,
   }: {
     engine: Engine
-    request: Request | Request0
+    request: Request0
     points: PointsManager<boolean, TRequiredCtx> | PointsDefinition
     currentLocation: AnyLocation
     requiredCtx: TRequiredCtx
     pageLocation: AnyLocation | undefined
-    response0?: Response0
-    serverStorageState?: SuperStoreInternalValuesOrErrors
+    response0: Response0
+    serverStorageState: SuperStoreInternalValuesOrErrors
   }): Promise<Executor<TRequiredCtx>> {
-    response0 ??= Response0.create()
-    const request0 = Request0.create(request)
     const pointsManager = (await PointsManager.create(points).load()) as PointsManager<true, TRequiredCtx>
-    const serverStorageState = Object.assign(providedServerStorageState || {}, {
+    const serverStorageState = Object.assign(providedServerStorageState, {
       __POINT0_FAKE_CLIENT__: undefined,
-      __POINT0_FETCH_FN__: engine.fetchSimple.bind(engine),
-      __POINT0_REQUEST0__: request0,
+      __POINT0_FETCH_FN__: engine.fetch.bind(engine),
+      __POINT0_REQUEST0__: request,
       __POINT0_RESPONSE0__: response0,
       __POINT0_CLIENT_SCOPE__: pointsManager.scope,
       __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
@@ -110,7 +109,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx>({
       engine,
-      request: request0,
+      request,
       pointsManager,
       pageLocation,
       requiredCtx,

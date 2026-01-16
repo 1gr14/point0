@@ -93,15 +93,17 @@ describe('midleware', () => {
     `)
   })
 
-  it('with', async () => {
+  it('change headers', async () => {
     const root = Point0.lets('root', 'root')
-      .middleware(({ request, set, next }) => {
+      .middleware(async ({ request, set, next }) => {
         set.headers('y', '3')
-        return next()
+        return await next()
       })
-      .middleware(({ request, set, next }) => {
+      .middleware(async ({ request, set, next }) => {
         set.headers('z', '4')
-        return next()
+        const result = await next()
+        set.headers('y', 'NEVER')
+        return result // ok fine, I just want to check meta, now I want it going forward
       })
       .ssr(true)
       .root()
@@ -121,5 +123,85 @@ describe('midleware', () => {
       "#page: x=1,y=3,z=4
       "
     `)
+  })
+
+  it('return custom response', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(async ({ request, set, next }) => {
+        set.headers('y', '3')
+        return await next()
+      })
+      .middleware(async ({ request, set, next }) => {
+        return new Response('custom response')
+      })
+      .ssr(true)
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y},z={data.z}
+        </div>
+      ))
+    const { fetch } = await createTestThings({ points: [root, page] })
+    const response = await fetch(page.route.flat({}, true))
+    expect(await response.text()).toBe('custom response')
+  })
+
+  it('throws error', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(async ({ request, set, next }) => {
+        set.headers('y', '3')
+        return await next()
+      })
+      .middleware(async ({ request, set, next }) => {
+        throw new Error('custom error')
+      })
+      .ssr(true)
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y},z={data.z}
+        </div>
+      ))
+    const { fetch } = await createTestThings({ points: [root, page] })
+    const response = await fetch(page.route.flat({}, true))
+    expect(response.status).toBe(500)
+    expect(response.headers.get('y')).toBe('3')
+    expect(await response.text()).toContain('custom error')
+  })
+
+  it('override final response', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(async ({ request, set, next }) => {
+        set.headers('y', '3')
+        return await next()
+      })
+      .middleware(async ({ request, set, next }) => {
+        const result = await next()
+        if (result.variant === 'page') {
+          return new Response('overriden page response', { status: 200 })
+        }
+        return result
+      })
+      .ssr(true)
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y},z={data.z}
+        </div>
+      ))
+    const { fetch } = await createTestThings({ points: [root, page] })
+    const response = await fetch(page.route.flat({}, true))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('y')).toBe('3')
+    expect(await response.text()).toContain('overriden page response')
   })
 })

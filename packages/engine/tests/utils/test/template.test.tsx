@@ -55,7 +55,7 @@ describe('template', () => {
     }),
   )
 
-  it.only(
+  it(
     'import engine',
     wrp(async ({ tp }) => {
       const engine = await tp.importEngine()

@@ -1,10 +1,10 @@
-import type { EndPoint, PointsScope, RichFetchFn } from '@point0/core'
+import type { PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, superstore } from '@point0/core'
 import fetchCookie from 'fetch-cookie'
 import { Cookie, CookieJar } from 'tough-cookie'
 import type { ClientBun } from './client.js'
 import type { Engine } from './engine.js'
-import { HtmlView } from '../tests/utils/html-view.js'
+import { generateId } from './utils.js'
 
 class GlobalThisItemProxy {
   // item key -> item proxy
@@ -176,7 +176,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     if (!client) {
       throw new Error(`No client found with scope "${scope}"`)
     }
-    const id = crypto.randomUUID()
+    const id = generateId()
     const jar = new CookieJar()
     const fetch = fetchCookie<string | URL | Request, RequestInit, Response>(async (input, init) => {
       const request =
@@ -206,7 +206,7 @@ export class FakeClient<TState extends FakeClientState = any> {
         }
       }
 
-      const response = await engine.fetchSimple(request)
+      const response = await engine.fetch(request)
       // Ensure the response has a URL property for fetch-cookie
       if (!('url' in response) || !response.url) {
         Object.defineProperty(response, 'url', {
@@ -272,8 +272,8 @@ export class FakeClient<TState extends FakeClientState = any> {
           'Not yet exists in test client run',
         ),
         async () => {
-          await this.onRunStartInside?.(this.state)
           try {
+            await this.onRunStartInside?.(this.state)
             const result = await fn(this.state)
             await this.onRunEndInside?.(this.state)
             return result

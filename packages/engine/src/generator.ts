@@ -5,7 +5,7 @@ import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { EngineLogger, EngineOptionsRoutes } from './config.js'
-import { getDirByPaths, resolveTempDirPath } from './utils.js'
+import { generateId, getDirByPaths, resolveTempDirPath } from './utils.js'
 import { END_POINT_TYPES, Walker, CompilerPoint } from '@point0/compiler'
 
 type ChangeCollectedPointsEvent = {
@@ -318,21 +318,21 @@ export class FilesGenerator {
       tasks.push({
         content: this.emitLazyPointsFile(target),
         outputAbs: target.outputPointsLazyAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${crypto.randomUUID()}.lazy.ts`),
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.lazy.ts`),
       })
     }
     if (target.outputPointsReadyAbs) {
       tasks.push({
         content: this.emitReadyPointsFile(target),
         outputAbs: target.outputPointsReadyAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${crypto.randomUUID()}.ready.ts`),
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.ready.ts`),
       })
     }
     if (target.outputRoutesAbs) {
       tasks.push({
         content: this.emitRoutesPointsFile(target),
         outputAbs: target.outputRoutesAbs,
-        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${crypto.randomUUID()}.routes.ts`),
+        tempOutputAbs: nodePath.join(this.tempDir, `${target.scope}.${generateId()}.routes.ts`),
       })
     }
     // if (this.outputWouterRoutesAbs) {

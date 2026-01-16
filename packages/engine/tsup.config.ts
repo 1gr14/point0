@@ -12,6 +12,7 @@ const general = {
     'src/generator.ts',
     'src/publicdir.ts',
     'src/render.ts',
+    'src/fetch-recorder.ts',
     'src/server.ts',
     'src/utils.ts',
     'src/executor.ts',

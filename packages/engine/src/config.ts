@@ -6,7 +6,6 @@ import type {
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
-  UndefinedCtx,
 } from '@point0/core'
 import { appendSlash, prependAndDeappendSlash } from '@point0/core'
 import { minimatch } from 'minimatch'

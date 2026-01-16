@@ -225,6 +225,7 @@ export const createTestThings = async ({
   const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
+    // fetchRecorder: 100,
     server: { scope: 'root', points },
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
   }).init({ preventClientDevServers: true })
@@ -328,13 +329,39 @@ export const createTestThings = async ({
     })
   }) as unknown as FetchPoint
   const fetchView = (async (point: EndPoint, ...args: [any]) => {
-    const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
-    return await HtmlView.parse(await response.text())
+    // const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+    // return await HtmlView.parse(await response.text())
+
+    return await client.run(async () => {
+      const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+      return await HtmlView.parse(await response.text())
+    })
   }) as unknown as FetchHtmlView
   const fetchPreview = (async (point: EndPoint, ...args: [any]) => {
-    const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
-    return (await HtmlView.parse(await response.text())).preview
+    // const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+    // return (await HtmlView.parse(await response.text())).preview
+
+    return await client.run(async () => {
+      const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+      return (await HtmlView.parse(await response.text())).preview
+    })
   }) as unknown as FetchHtmlPreview
+  const getFetchResults = async () => {
+    const results = await engine.fetchRecorder.waitFinishedResults()
+    const lines = results.flatMap((result) => {
+      if (result.variant !== 'page' && result.variant !== 'point') {
+        return []
+      }
+      const pointString = 'point' in result && result.point ? `${result.point.type}.${result.point.name}` : 'unknown'
+      // const responseFormat = 'responseFormat' in result ? result.responseFormat : undefined
+      const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
+      if (result.variant === 'page') {
+        return `${pointString} (page) < ${inputString}`
+      }
+      return `${pointString} < ${inputString}`
+    })
+    return lines.join('\n') + '\n'
+  }
   return {
     engine,
     client,
@@ -343,5 +370,7 @@ export const createTestThings = async ({
     fetchPoint,
     fetchView,
     fetchPreview,
+    fetchRecorder: engine.fetchRecorder,
+    getFetchResults,
   }
 }
