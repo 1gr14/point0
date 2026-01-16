@@ -337,7 +337,7 @@
     "@devp0nt/error0": "^1.0.0-next.38",
     "@devp0nt/route0": "^1.0.0-next.52",
     "@tanstack/react-query": "^5.0.0",
-    "@unhead/react": "^2.0.19",
+    "@unhead/react": "^2.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0",

@@ -89,6 +89,71 @@ function prependHeadElement({ html, content }: { html: string; content: string }
   return html.replace(pattern, replacement)
 }
 
+/**
+ * Extracts all script tags from HTML while preserving their order and location
+ * Returns an object with scripts from head and body separately
+ */
+function extractScripts(html: string): {
+  headScripts: Array<{ tag: string; placeholder: string }>
+  bodyScripts: Array<{ tag: string; placeholder: string }>
+  htmlWithPlaceholders: string
+} {
+  const headScripts: Array<{ tag: string; placeholder: string }> = []
+  const bodyScripts: Array<{ tag: string; placeholder: string }> = []
+
+  // Extract scripts from head - handles both <script>...</script> and <script ... />
+  html = html.replace(/<head\b[^>]*>([\s\S]*?)<\/head>/i, (headMatch, headContent) => {
+    const headWithPlaceholders = headContent.replace(
+      /<script\b[^>]*(?:\/>|>[\s\S]*?<\/script>)/gi,
+      (scriptTag: string) => {
+        const placeholder = `<!-- __POINT0_SCRIPT_HEAD_${headScripts.length}__ -->`
+        headScripts.push({ tag: scriptTag, placeholder })
+        return placeholder
+      },
+    )
+    return headMatch.replace(headContent, headWithPlaceholders)
+  })
+
+  // Extract scripts from body - handles both <script>...</script> and <script ... />
+  html = html.replace(/<body\b[^>]*>([\s\S]*?)<\/body>/i, (bodyMatch, bodyContent) => {
+    const bodyWithPlaceholders = bodyContent.replace(
+      /<script\b[^>]*(?:\/>|>[\s\S]*?<\/script>)/gi,
+      (scriptTag: string) => {
+        const placeholder = `<!-- __POINT0_SCRIPT_BODY_${bodyScripts.length}__ -->`
+        bodyScripts.push({ tag: scriptTag, placeholder })
+        return placeholder
+      },
+    )
+    return bodyMatch.replace(bodyContent, bodyWithPlaceholders)
+  })
+
+  return { headScripts, bodyScripts, htmlWithPlaceholders: html }
+}
+
+/**
+ * Restores original scripts to their placeholders in the HTML
+ */
+function restoreScripts(
+  html: string,
+  headScripts: Array<{ tag: string; placeholder: string }>,
+  bodyScripts: Array<{ tag: string; placeholder: string }>,
+): string {
+  // Restore scripts in reverse order to avoid issues if placeholders contain similar text
+  // Restore head scripts
+  for (let i = headScripts.length - 1; i >= 0; i--) {
+    const { tag, placeholder } = headScripts[i]
+    html = html.replace(placeholder, tag)
+  }
+
+  // Restore body scripts
+  for (let i = bodyScripts.length - 1; i >= 0; i--) {
+    const { tag, placeholder } = bodyScripts[i]
+    html = html.replace(placeholder, tag)
+  }
+
+  return html
+}
+
 export function addEnvToDocumentHtml({
   html,
   env,
@@ -126,6 +191,15 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
   clientBundlePath?: string
 }): Promise<DocumentHtmlResult<TContent>> {
   let html = originalIndexHtml
+
+  // Extract existing scripts to preserve their order
+  const { headScripts, bodyScripts, htmlWithPlaceholders } = extractScripts(html)
+
+  // Transform HTML with Unhead (this may reorder scripts, but we'll restore original order)
+  html = await transformHtmlTemplate(executor.serverStorageState.__POINT0_UNHEAD_HEAD__, htmlWithPlaceholders)
+
+  // Restore original scripts in their original positions
+  html = restoreScripts(html, headScripts, bodyScripts)
   if (clientBundlePath) {
     html = prependBodyElement({
       content: `<script src="${clientBundlePath}" defer></script>`,
@@ -137,7 +211,6 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     html,
     domRootElementId,
   })
-  html = await transformHtmlTemplate(executor.serverStorageState.__POINT0_UNHEAD_HEAD__, html)
   html = addEnvToDocumentHtml({ html, env })
   html = prependHeadElement({
     content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
