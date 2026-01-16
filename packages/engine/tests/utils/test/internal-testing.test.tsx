@@ -10,77 +10,70 @@ import { createTestThings } from '../internal-testing.js'
 describe('internal-testing', () => {
   it('works', async () => {
     const root = Point0.lets('root', 'root')
+      .ssr(true)
+      .prefetchPolicy('none')
       .loading(() => <div id="loading">...</div>)
       .root()
-    const page = root
-      .lets('page', 'home', '/')
-      .loader(() => ({ x: 1 }))
-      .page(({ data }) => (
-        <div id="home">
-          <h1>Home Page ({data.x})</h1>
-          <SimpleLink id="link" to={'/news'}>
-            News
-          </SimpleLink>
-        </div>
-      ))
-    const news = root.lets('page', 'news').page(({ data }) => (
-      <div id="news">
-        <h1>News Page</h1>
-        <SimpleLink id="link" to={'/'}>
-          Home
+    const page = root.lets('page', 'home', '/').page(({ data }) => (
+      <div id="home">
+        <h1>Home Page</h1>
+        <SimpleLink id="link" to={'/news'}>
+          Go to News
         </SimpleLink>
       </div>
     ))
-    const { client } = await createTestThings({ points: [root, page, news] })
+    const news = root
+      .lets('page', 'news')
+      // .loader(async () => await waitReturn({ x: 1 }))
+      .loader(() => ({ x: 1 }))
+      .page(({ data }) => (
+        <div id="news">
+          <h1>News Page ({data.x})</h1>
+          <SimpleLink id="link" to={'/'}>
+            Go to Home
+          </SimpleLink>
+        </div>
+      ))
+    const { client, fetchPreview } = await createTestThings({ points: [root, page, news] })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#home:
+        h1: Home Page
+        #link: Go to News
+      "
+    `)
     await client.run(async ({ tale, click, waitContent }) => {
-      expect(await tale()).toMatchInlineSnapshot(`
-        "/
-          #loading: ...
-
-          #home:
-            h1: Home Page (1)
-            #link: News
-        "
-      `)
-
+      await waitContent('#home')
+      await click('#link')
+      await waitContent('#news')
+      await click('#link')
+      await waitContent('#home')
       await click('#link')
       await waitContent('#news')
       expect(await tale()).toMatchInlineSnapshot(`
         "/
-          #loading: ...
-
           #home:
-            h1: Home Page (1)
-            #link: News
+            h1: Home Page
+            #link: Go to News
 
         /news
-          #news:
-            h1: News Page
-            #link: Home
-        "
-      `)
-      await click('#link')
-      await waitContent('#home')
-      expect(await tale()).toMatchInlineSnapshot(`
-        "/
           #loading: ...
 
-          #home:
-            h1: Home Page (1)
-            #link: News
-
-        /news
           #news:
-            h1: News Page
-            #link: Home
+            h1: News Page (1)
+            #link: Go to Home
 
         /
           #home:
-            h1: Home Page (1)
-            #link: News
+            h1: Home Page
+            #link: Go to News
+
+        /news
+          #news:
+            h1: News Page (1)
+            #link: Go to Home
         "
       `)
     })
-    await client.destroy()
+    // await client.destroy()
   })
 })

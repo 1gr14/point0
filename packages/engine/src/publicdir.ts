@@ -1,4 +1,4 @@
-import type { Request0, PointsScope } from '@point0/core'
+import type { Request0, PointsScope, PointsManager } from '@point0/core'
 import { prependAndDeappendSlash } from '@point0/core'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -196,6 +196,16 @@ export class Publicdir<TInitialized extends boolean = boolean> {
     )
 
     return await Promise.all(fileOperations)
+  }
+
+  getPointsManager(): PointsManager | undefined {
+    if (this.server) {
+      return this.server.pointsManager ?? undefined
+    }
+    if (this.client) {
+      return this.client.pointsManager ?? undefined
+    }
+    return undefined
   }
 
   // TODO: add static checkConflicts(publicdirs: Publicdir[]): throw error if same files paths are used in different public dirs with same hostname

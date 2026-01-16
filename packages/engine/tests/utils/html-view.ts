@@ -237,7 +237,8 @@ export class HtmlView<TParsed extends boolean = any> {
   private static async htmlToPreview(html: string): Promise<string> {
     const tree = await HtmlView.htmlToTree(html)
     const lines = tree.map((item) => HtmlView.formatTreeItemToString(item, 0))
-    return lines.join('\n') + '\n'
+    const result = lines.join('\n') || '(Empty)'
+    return result + '\n'
   }
 
   private static buildTreeItem(el: HTMLRewriterTypes.Element): HtmlTreeItem {

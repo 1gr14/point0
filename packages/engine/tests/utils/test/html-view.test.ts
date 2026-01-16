@@ -475,7 +475,7 @@ describe('html-viewer', () => {
       const html = '<div id="root"></div>'
       const { preview } = await HtmlView.parse(html)
       expect(preview).toMatchInlineSnapshot(`
-      "
+      "(Empty)
       "
     `)
     })

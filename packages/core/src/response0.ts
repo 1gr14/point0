@@ -2,7 +2,7 @@ import { _point0_env } from './env.js'
 import type { CookieOptions, CookieOptionsInput } from './cookies-store.js'
 import { _ssItems } from './internals.js'
 
-export type ResponseHeaders = Record<string, string>
+export type ResponseHeaders = Record<string, string | undefined>
 export type ResponseCookies = Record<string, CookieOptions>
 export type ResponseStatus = number
 
@@ -199,7 +199,11 @@ export class Response0 {
     // Apply effects headers first (except Set-Cookie)
     for (const [name, value] of Object.entries(effects.headers)) {
       if (name.toLowerCase() !== setCookieHeaderName) {
-        newHeaders.set(name, value)
+        if (value === undefined) {
+          newHeaders.delete(name)
+        } else {
+          newHeaders.set(name, value)
+        }
       }
     }
 

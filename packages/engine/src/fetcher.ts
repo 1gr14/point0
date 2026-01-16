@@ -5,6 +5,8 @@ import type {
   EndPoint,
   EndPointType,
   InputRawUnknown,
+  MiddlewareFn,
+  MiddlewareFnOptionsBase,
   PagePoint,
   PointName,
   PointsScope,
@@ -173,6 +175,7 @@ export class Fetcher {
     scope?: PointsScope
     bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
+    const response0 = Response0.create()
     const request = Request0.create(originalRequest, bunServer || this.server.bunServer)
 
     const devClientsProxyResponse = await this.fetchDevClientsProxy({
@@ -180,22 +183,46 @@ export class Fetcher {
       bunServer,
     })
     if (devClientsProxyResponse) {
+      const scope = this.engine.server.scope
       return {
+        scope,
         request,
+        response0,
         devClientsProxyResult: devClientsProxyResponse,
         publicdirResult: undefined,
         pointResult: undefined,
+        middlewares: [],
+        middlewareOptions: {
+          request,
+          set: response0.set,
+          point: undefined,
+          scope,
+          variant: '' as never, // it is dev only thing, lets forget about it
+        },
       }
     }
 
     for (const publicdir of this.server.publicdirs) {
       const staticResponse = await publicdir.fetch({ request })
       if (staticResponse) {
+        const scope = publicdir.scope
         return {
+          scope,
           request,
+          response0,
           devClientsProxyResult: undefined,
           publicdirResult: { publicdir, response: staticResponse },
           pointResult: undefined,
+          // middlewares: publicdir.getPointsManager()?.root._middlewares ?? [],
+          middlewares: this.engine.allPointsManagers.getPointsManagerByScope({ scope: publicdir.scope }).root
+            ._middlewares,
+          middlewareOptions: {
+            request,
+            set: response0.set,
+            point: undefined,
+            scope,
+            variant: 'publicdir',
+          },
         }
       }
     }
@@ -206,10 +233,20 @@ export class Fetcher {
       const responseFromAbsFilePath = await Fetcher.fetchAbsFilePathOnDevServer({ request })
       if (responseFromAbsFilePath) {
         return {
+          scope: this.engine.server.scope,
           request,
+          response0,
           devClientsProxyResult: undefined,
           publicdirResult: { publicdir: undefined, response: responseFromAbsFilePath },
           pointResult: undefined,
+          middlewares: [],
+          middlewareOptions: {
+            request,
+            set: response0.set,
+            point: undefined,
+            scope: this.engine.server.scope,
+            variant: '' as never, // it is dev only thing, lets forget about it
+          },
         }
       }
     }
@@ -224,10 +261,20 @@ export class Fetcher {
     })
 
     return {
+      scope: suitable.pointsManager.scope,
       request,
+      response0,
       devClientsProxyResult: undefined,
       publicdirResult: undefined,
       pointResult: { suitable, task },
+      middlewares: suitable.point?._middlewares ?? suitable.pointsManager.root._middlewares,
+      middlewareOptions: {
+        request,
+        set: response0.set,
+        point: suitable.point,
+        scope: suitable.pointsManager.scope,
+        variant: task ? 'point' : 'page',
+      },
     }
   }
 
@@ -272,7 +319,6 @@ export class Fetcher {
     suitable,
     task,
     request,
-    scope,
     requiredCtx,
     response0,
     serverStorageState,
@@ -280,14 +326,13 @@ export class Fetcher {
     suitable: GetSuitableResult
     task: FetchTask | undefined
     request: Request0
-    scope?: PointsScope
     requiredCtx: RequiredCtx
     response0: Response0
     serverStorageState?: SuperStoreInternalValuesOrErrors
   }): Promise<FetcherFetchPointResult> => {
     const meta: Record<string, any> = {
       url: request.original.url,
-      scope,
+      scope: suitable.pointsManager.scope,
     }
     const partialResult = {
       request,
@@ -469,38 +514,81 @@ export class Fetcher {
     }
   }
 
-  async fetchDetailed({
-    request,
-    requiredCtx,
-    scope,
-    bunServer,
+  private async _composeMiddlewares({
+    middlewares,
+    finalHandler,
+    baseOptions,
   }: {
-    request: Request
-    requiredCtx: RequiredCtx
-    scope?: PointsScope
-    bunServer?: Bun.Server<unknown>
+    middlewares: MiddlewareFn[]
+    finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware>
+    baseOptions: MiddlewareFnOptionsBase
   }): Promise<FetcherFetchDetailedResult> {
-    const response0 = Response0.create()
+    let index = -1
+    const finishSymbol = Symbol('finish')
 
-    const prepareFetchResult = await this.prepareFetch({
-      originalRequest: request,
-      scope,
-      bunServer,
-    })
+    async function dispatch(i: number): Promise<Response> {
+      if (i <= index) {
+        throw new Error('next() called multiple times')
+      }
+      index = i
 
-    const serverStorageState = _getSsItemsWithRestErrors(
-      {
-        __POINT0_REQUEST0__: prepareFetchResult.request,
-        __POINT0_RESPONSE0__: response0,
-      },
-      'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
-    )
+      if (i === middlewares.length) {
+        // return await finalHandler()
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw finishSymbol
+      }
 
+      const mw = middlewares[i]
+      if (!mw) {
+        throw new Error('Middleware is undefined')
+      }
+
+      return await mw({
+        ...baseOptions,
+        next: async () => await dispatch(i + 1),
+      })
+    }
+
+    try {
+      const middlewareResponse = await dispatch(0)
+      return {
+        request: baseOptions.request,
+        scope: baseOptions.scope,
+        response: middlewareResponse,
+        variant: 'middleware',
+        error: null,
+      }
+    } catch (error) {
+      if (error === finishSymbol) {
+        const finalHandlerResult = await finalHandler()
+        return finalHandlerResult
+      }
+      const error0 = Error0.from(error)
+      return {
+        request: baseOptions.request,
+        scope: baseOptions.scope,
+        response: toJsonErrorResponse(error0),
+        variant: 'middleware',
+        error: error0,
+      }
+    }
+  }
+
+  private async _fetchDetailed({
+    requiredCtx,
+    prepareFetchResult,
+    serverStorageState,
+  }: {
+    requiredCtx: RequiredCtx
+    prepareFetchResult: PrepareFetchResult
+    serverStorageState: SuperStoreInternalValuesOrErrors
+  }): Promise<FetcherFetchDetailedResultNoMiddleware> {
     return await _ssRunWithServerStorageState(serverStorageState, async () => {
       if (prepareFetchResult.devClientsProxyResult) {
         const response = prepareFetchResult.devClientsProxyResult.response
         return {
           request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
           response,
           variant: 'devClientsProxy',
           error: null,
@@ -508,9 +596,10 @@ export class Fetcher {
       }
 
       if (prepareFetchResult.publicdirResult) {
-        const response = response0.apply(prepareFetchResult.publicdirResult.response)
+        const response = prepareFetchResult.response0.apply(prepareFetchResult.publicdirResult.response)
         return {
           request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
           publicdir: prepareFetchResult.publicdirResult.publicdir,
           response,
           variant: 'publicdir',
@@ -523,16 +612,55 @@ export class Fetcher {
         suitable: prepareFetchResult.pointResult.suitable,
         task: prepareFetchResult.pointResult.task,
         requiredCtx,
-        scope,
-        response0,
+        response0: prepareFetchResult.response0,
         serverStorageState,
       })
 
-      const response = response0.apply(fetchPointResult.response)
+      const response = prepareFetchResult.response0.apply(fetchPointResult.response)
       return {
         ...fetchPointResult,
         response,
       }
+    })
+  }
+
+  async fetchDetailed({
+    request,
+    requiredCtx,
+    scope,
+    bunServer,
+  }: {
+    request: Request
+    requiredCtx: RequiredCtx
+    scope?: PointsScope
+    bunServer?: Bun.Server<unknown>
+  }): Promise<FetcherFetchDetailedResult> {
+    const prepareFetchResult = await this.prepareFetch({
+      originalRequest: request,
+      scope,
+      bunServer,
+    })
+
+    const serverStorageState = _getSsItemsWithRestErrors(
+      {
+        __POINT0_REQUEST0__: prepareFetchResult.request,
+        __POINT0_RESPONSE0__: prepareFetchResult.response0,
+      },
+      'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
+    )
+
+    const middlewares = prepareFetchResult.middlewares
+    const middlewareOptions = prepareFetchResult.middlewareOptions
+    const finalHandler = async () =>
+      await this._fetchDetailed({
+        requiredCtx,
+        prepareFetchResult,
+        serverStorageState,
+      })
+    return await this._composeMiddlewares({
+      middlewares,
+      finalHandler,
+      baseOptions: middlewareOptions,
     })
   }
 
@@ -554,33 +682,48 @@ export class Fetcher {
 
 export type PrepareFetchResult =
   | {
+      scope: PointsScope
       publicdirResult: undefined
       request: Request0
+      response0: Response0
       devClientsProxyResult: { response: Response | undefined }
       pointResult: undefined
+      middlewares: MiddlewareFn[]
+      middlewareOptions: MiddlewareFnOptionsBase
     }
   | {
+      scope: PointsScope
       publicdirResult: { publicdir: Publicdir<true> | undefined; response: Response } // in case if it is bun dev server try to fetch abs path
       request: Request0
+      response0: Response0
       devClientsProxyResult: undefined
       pointResult: undefined
+      middlewares: MiddlewareFn[]
+      middlewareOptions: MiddlewareFnOptionsBase
     }
   | {
+      scope: PointsScope
       publicdirResult: undefined
       request: Request0
+      response0: Response0
       devClientsProxyResult: undefined
       pointResult: { suitable: GetSuitableResult; task: FetchTask | undefined }
+      middlewares: MiddlewareFn[]
+      middlewareOptions: MiddlewareFnOptionsBase
     }
 
 export type FetcherFetchDetailedResultGeneral = {
   response: Response | undefined
   request: Request0
+  scope: PointsScope
   error: Error0 | null
+}
+export type FetcherFetchDetailedResultMiddleware = FetcherFetchDetailedResultGeneral & {
+  variant: 'middleware'
 }
 export type FetcherFetchDetailedResultPoint = FetcherFetchDetailedResultGeneral & {
   variant: 'point'
   point: EndPoint | undefined
-  scope: PointsScope
   task: FetchTask | undefined
   data: Data | undefined
 }
@@ -591,10 +734,12 @@ export type FetcherFetchDetailedResultPublicdir = FetcherFetchDetailedResultGene
 export type FetcherFetchDetailedResultDevClientsProxy = FetcherFetchDetailedResultGeneral & {
   variant: 'devClientsProxy'
 }
-export type FetcherFetchDetailedResult =
+
+export type FetcherFetchDetailedResultNoMiddleware =
   | FetcherFetchDetailedResultPoint
   | FetcherFetchDetailedResultPublicdir
   | FetcherFetchDetailedResultDevClientsProxy
+export type FetcherFetchDetailedResult = FetcherFetchDetailedResultNoMiddleware | FetcherFetchDetailedResultMiddleware
 
 export type FetcherFetchPointResult = Omit<FetcherFetchDetailedResultGeneral, 'response'> & {
   response: Response

@@ -3048,22 +3048,21 @@ export class Point0<
     > extends Response
       ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
       : never[]
-  ): MountableComponent<TInputSchema, TProps, false> &
-    NicePageEndPoint<
-      'page',
-      UndefinedEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >
+  ): NicePageEndPoint<
+    'page',
+    UndefinedEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
   page(
     ...args: FinalLoaderMappedOutput<
       TQueryResultType,
@@ -3083,22 +3082,21 @@ export class Point0<
             TProps
           >,
         ]
-  ): MountableComponent<TInputSchema, TProps, false> &
-    NicePageEndPoint<
-      'page',
-      UndefinedEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >
+  ): NicePageEndPoint<
+    'page',
+    UndefinedEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
   page(
     ...args: FinalLoaderMappedOutput<
       TQueryResultType,
@@ -3133,22 +3131,21 @@ export class Point0<
             TProps
           >,
         ]
-  ): MountableComponent<TInputSchema, TProps, false> &
-    NicePageEndPoint<
-      'page',
-      UndefinedEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
-      TQueryResultType,
-      TProps
-    >
+  ): NicePageEndPoint<
+    'page',
+    UndefinedEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >
   page(...args: any[]) {
     const [head, page = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
       SuccessHeadFn | undefined,

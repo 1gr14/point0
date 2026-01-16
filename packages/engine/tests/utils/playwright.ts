@@ -121,7 +121,7 @@ export class PlaywrightPage {
     await page.setupBridge()
 
     await page.original.addInitScript(() => {
-      let timeout: NodeJS.Timeout
+      // let timeout: NodeJS.Timeout
       let lastHtml = undefined as string | undefined
 
       const notify = () => {
@@ -249,16 +249,12 @@ export class PlaywrightPage {
     for (const item of this.story) {
       const pair: [string, string[]] = [PlaywrightPage.prettifyUrl(item.url), []]
       for (const preview of item.previews) {
-        if (preview === '' || preview === '\n') {
-          pair[1].push('  (Empty)\n')
-        } else {
-          pair[1].push(
-            preview
-              .split('\n')
-              .map((line) => `  ${line}`)
-              .join('\n'),
-          )
-        }
+        pair[1].push(
+          preview
+            .split('\n')
+            .map((line) => `  ${line}`)
+            .join('\n'),
+        )
       }
       pairs.push(pair)
     }

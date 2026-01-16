@@ -1,10 +1,10 @@
-import type { PointsScope } from '@point0/core'
+import type { EndPoint, PointsScope, RichFetchFn } from '@point0/core'
 import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, superstore } from '@point0/core'
-import type { ClientBun } from './client.js'
-import type { Engine } from './engine.js'
-import type { FetchCookieImpl } from 'fetch-cookie'
 import fetchCookie from 'fetch-cookie'
 import { Cookie, CookieJar } from 'tough-cookie'
+import type { ClientBun } from './client.js'
+import type { Engine } from './engine.js'
+import { HtmlView } from '../tests/utils/html-view.js'
 
 class GlobalThisItemProxy {
   // item key -> item proxy
@@ -30,6 +30,7 @@ class GlobalThisItemProxy {
     this.originalValue = originalValue
     this.fakeClientsValues = new Map<string, unknown>()
     this.fakeClientsValues.set(fakeClientId, fakeClientValue)
+    // try {
     Object.defineProperty(globalThis, key, {
       get: () => {
         const fakeClient = superstore.getFakeClient()
@@ -50,6 +51,7 @@ class GlobalThisItemProxy {
         this.fakeClientsValues.set(fakeClient.id, value)
       },
     })
+    // } catch {}
     GlobalThisItemProxy.items.set(key, this)
   }
 
@@ -90,7 +92,8 @@ export class FakeClient<TState extends FakeClientState = any> {
   engine: Engine<any, true>
   state: TState
   jar: CookieJar
-  fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
+  // fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
+  fetch: RichFetchFn
 
   onRunStartOutside: FakeClientCallback<TState> | undefined
   onRunStartInside: FakeClientCallback<TState> | undefined
@@ -120,7 +123,7 @@ export class FakeClient<TState extends FakeClientState = any> {
     scope: PointsScope
     state: TState
     jar: CookieJar
-    fetch: FetchCookieImpl<string | URL | Request, RequestInit, Response>
+    fetch: RichFetchFn
     onRunStartOutside: FakeClientCallback<TState> | undefined
     onRunStartInside: FakeClientCallback<TState> | undefined
     onRunEndOutside: FakeClientCallback<TState> | undefined
@@ -259,22 +262,30 @@ export class FakeClient<TState extends FakeClientState = any> {
 
   async run<TResult>(fn: (state: TState) => TResult): Promise<TResult> {
     await this.onRunStartOutside?.(this.state)
-    const result = (await _ssRunWithServerStorageState(
-      _getSsItemsWithRestErrors(
-        {
-          __POINT0_FAKE_CLIENT__: this,
-          __POINT0_CLIENT_SCOPE__: this.scope,
+    try {
+      const result = (await _ssRunWithServerStorageState(
+        _getSsItemsWithRestErrors(
+          {
+            __POINT0_FAKE_CLIENT__: this,
+            __POINT0_CLIENT_SCOPE__: this.scope,
+          },
+          'Not yet exists in test client run',
+        ),
+        async () => {
+          await this.onRunStartInside?.(this.state)
+          try {
+            const result = await fn(this.state)
+            await this.onRunEndInside?.(this.state)
+            return result
+          } catch (error) {
+            await this.onRunEndInside?.(this.state)
+            throw error
+          }
         },
-        'Not yet exists in test client run',
-      ),
-      async () => {
-        await this.onRunStartInside?.(this.state)
-        const result = await fn(this.state)
-        await this.onRunEndOutside?.(this.state)
-        return result
-      },
-    )) as TResult
-    await this.onRunEndOutside?.(this.state)
-    return result
+      )) as TResult
+      return result
+    } finally {
+      await this.onRunEndOutside?.(this.state)
+    }
   }
 }

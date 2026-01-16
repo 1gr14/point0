@@ -21,18 +21,22 @@ export type ElementViewerHistoryParsedItem =
 
 export class ElementViewer {
   element: HTMLElement
-  observer: MutationObserver
+  // observer: MutationObserver
   private readonly _history: ElementViewerHistoryItem[]
+  private looping: boolean
+  private rafId: number | null = null
 
   private lastHtml: string | undefined
 
   private constructor({ element, url }: { element: HTMLElement; url: string }) {
     this.element = element
     this._history = [{ url, timestamp: Date.now() }]
-    this.observer = new MutationObserver(() => {
-      // Read innerHTML immediately - DOM should be updated when callback fires
-      this.notify()
-    })
+    // this.observer = new MutationObserver(() => {
+    //   // Read innerHTML immediately - DOM should be updated when callback fires
+    //   console.log('FIRE', this.element.innerHTML)
+    //   this.notify()
+    // })
+    this.looping = false
     this.start()
   }
 
@@ -52,29 +56,55 @@ export class ElementViewer {
   //   // // }
   // }
 
-  private notify(): void {
-    const currentHtml = this.element.innerHTML
-    if (currentHtml === this.lastHtml) {
-      return
-    }
-    this.lastHtml = currentHtml
-    const hasRoot = /<div[^>]*id=["']root["'][^>]*>/i.test(currentHtml.trim())
-    const wrappedHtml = hasRoot ? currentHtml : `<div id="root">${currentHtml}</div>`
+  private notify(html: string): void {
+    const hasRoot = /<div[^>]*id=["']root["'][^>]*>/i.test(html.trim())
+    const wrappedHtml = hasRoot ? html : `<div id="root">${html}</div>`
     const newView = HtmlView.create(wrappedHtml)
     this._history.push({ view: newView, timestamp: Date.now() })
   }
 
-  private start(): void {
-    // Start observing
-    this.observer.observe(this.element, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      characterData: true,
-    })
-    // Send the initial state
-    this.notify()
+  private start() {
+    if (this.looping) return
+    this.looping = true
+
+    const loop = () => {
+      if (!this.looping) return
+
+      const html = this.element.innerHTML
+      if (html !== this.lastHtml) {
+        this.lastHtml = html
+        this.notify(html)
+      }
+
+      this.rafId = requestAnimationFrame(loop)
+    }
+
+    loop()
   }
+
+  destroy() {
+    this.looping = false
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
+    }
+  }
+
+  // private start(): void {
+  //   // Start observing
+  //   this.observer.observe(this.element, {
+  //     childList: true,
+  //     subtree: true,
+  //     attributes: true,
+  //     characterData: true,
+  //   })
+  //   // Send the initial state
+  //   this.notify()
+  // }
+
+  // destroy(): void {
+  //   this.observer.disconnect()
+  // }
 
   private static normalizeUrl(url: string | URL): string {
     if (typeof url === 'string') {
@@ -106,32 +136,6 @@ export class ElementViewer {
       }),
     )
   }
-
-  // async tale(): Promise<string> {
-  //   const items = await this.getHistory()
-  //   const pairs: Array<[string, string[]]> = []
-  //   for (const item of items) {
-  //     if ('url' in item) {
-  //       pairs.push([item.url, []])
-  //       continue
-  //     }
-  //     const pair: [string, string[]] = ['', []]
-  //     for (const { preview } of item.v) {
-  //       if (preview === '' || preview === '\n') {
-  //         pair[1].push('  (Empty)\n')
-  //       } else {
-  //         pair[1].push(
-  //           preview
-  //             .split('\n')
-  //             .map((line) => `  ${line}`)
-  //             .join('\n'),
-  //         )
-  //       }
-  //     }
-  //     pairs.push(pair)
-  //   }
-  //   return pairs.map(([url, previews]) => `${url}\n${previews.join('\n')}`).join('\n')
-  // }
 
   private async getLastHtmlView(): Promise<HtmlView<true> | undefined> {
     const history = await this.stable()
@@ -186,11 +190,6 @@ export class ElementViewer {
         continue
       }
       // Indent each line of the preview with 2 spaces, starting right after URL
-      if (item.view.preview === '' || item.view.preview === '\n') {
-        lines.push('  (Empty)')
-        lines.push('')
-        continue
-      }
       const previewLines = item.view.preview.split('\n').filter((line) => line.trim() !== '')
       for (const line of previewLines) {
         lines.push(`  ${line}`)
@@ -201,7 +200,7 @@ export class ElementViewer {
   }
 
   async stable(): Promise<ElementViewerHistoryParsedItem[]> {
-    const maxWaitTime = 7000
+    const maxWaitTime = 2000
     const notChangedDuringMsIsStable = 150
 
     const startTimestamp = Date.now()
@@ -216,11 +215,6 @@ export class ElementViewer {
       }
       await new Promise((resolve) => setTimeout(resolve, 5))
     }
-    this.notify()
     return await this.history()
-  }
-
-  destroy(): void {
-    this.observer.disconnect()
   }
 }

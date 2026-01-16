@@ -1,13 +1,15 @@
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinitionSource } from '@point0/core'
+import { QueryClientProvider } from '@point0/core'
+import { Router } from '@point0/wouter'
+import { Window } from 'happy-dom'
+import assert from 'node:assert'
 import nodePath from 'node:path'
 import { Engine } from '../../src/engine.js'
 import { FakeClient } from '../../src/fake-client.js'
-import { QueryClientProvider, type AppComponent, type PointsDefinitionSource } from '@point0/core'
-import { Window } from 'happy-dom'
-import { Router } from '@point0/wouter'
-import { HtmlView } from './html-view.js'
 import { ElementViewer } from './element-viewer.js'
-import assert from 'node:assert'
+import { HtmlView } from './html-view.js'
+// import { AsyncLocalStorage } from 'node:async_hooks'
+import * as rtl from '@testing-library/react'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -23,11 +25,77 @@ import assert from 'node:assert'
 //   return globals
 // }
 
+// let _rtl: {
+//   rtl: typeof import('@testing-library/react')
+//   globals: Record<string, any>
+// } | undefined
+// const importRtl = async () => {
+//   // if (_rtl) {
+//   //   return _rtl
+//   // }
+//   const storage = new AsyncLocalStorage()
+//   const knownKeys = Object.keys(Window)
+//   const rtlGlobals = {}
+//   const rtl = await storage.run(rtlGlobals, async () => {
+//     for (const key of knownKeys) {
+//       try {
+//         Object.defineProperty(globalThis, key, {
+//           get: () => {
+//             return (rtlGlobals as any)[key]
+//           },
+//           set: (value) => {
+//             ;(rtlGlobals as any)[key] = value
+//           },
+//         })
+//       } catch (error) {
+//         console.error(`Error setting global ${key}`, error)
+//       }
+//     }
+//     return await import('@testing-library/react')
+//   })
+//   return {
+//     rtl,
+//     rtlGlobals,
+//   }
+//   // _rtl = {
+//   //   rtl,
+//   //   globals: newGlobals,
+//   // }
+//   // return _rtl
+// }
+// export const { rtl, rtlGlobals } = await importRtl()
+// console.log(Object.keys(rtlGlobals))
+// export const rtl = {
+//   ..._rtl.rtl,
+//   globals: _rtl.globals,
+// }
+
 export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
   const url = options.url ?? 'http://localhost/'
   const window = new Window({
     url,
   })
+  // const result = {
+  //   window,
+  //   ...Object.fromEntries(
+  //     Object.entries(window)
+  //       .map(([key, value]) => {
+  //         if (['timeStamp'].includes(key)) {
+  //           return null as never
+  //         }
+  //         if (typeof value === 'undefined' || value === null) {
+  //           return null as never
+  //         }
+  //         if (typeof value === 'function') {
+  //           return [key, value.bind(window)]
+  //         }
+  //         return [key, value]
+  //       })
+  //       .filter((x: any) => x !== null),
+  //   ),
+  // }
+  // console.log(555, Object.keys(result))
+  // return result
   return {
     window,
     document: window.document,
@@ -38,6 +106,8 @@ export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
     DOMParser: window.DOMParser,
     MutationObserver: window.MutationObserver,
     history: window.history,
+    requestAnimationFrame: window.requestAnimationFrame.bind(window),
+    cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
   }
 }
 
@@ -66,11 +136,19 @@ export const withFakeBrowserGlobals = async <TResult,>(fn: () => Promise<TResult
   }
 }
 
+export const waitReturn = async <T,>(value: T, timeout = 200): Promise<T> => {
+  await new Promise((resolve) => setTimeout(resolve, timeout))
+  return value
+}
+
 const createFilteredConsole = () => {
   const originalConsole = console
   const shouldFilterMessage = (...args: any[]): boolean => {
     const message = args.map((arg) => String(arg)).join(' ')
-    return message.includes('When testing, code that causes React state updates should be wrapped into act(...)')
+    return (
+      message.includes('When testing, code that causes React state updates should be wrapped into act(...)') ||
+      message.includes('ected multiple renderers concurrently rendering the same context')
+    )
   }
 
   const createFilteredMethod = (method: (...args: any[]) => void) => {
@@ -109,7 +187,7 @@ const createFilteredConsole = () => {
 }
 
 type TestThingsState = {
-  container: HTMLElement
+  body: HTMLElement
   getHtmlView: () => Promise<HtmlView>
   viewer: ElementViewer
   preview: ElementViewer['preview']
@@ -118,6 +196,18 @@ type TestThingsState = {
   click: (selector: string) => Promise<void>
   _locationCleanup: () => void
 }
+type FetchPoint = <T extends AnyNiceRequestableEndPoint>(
+  point: T,
+  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+) => ReturnType<T['fetch']>
+type FetchHtmlView = <T extends AnyNiceRequestableEndPoint>(
+  point: T,
+  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+) => Promise<HtmlView>
+type FetchHtmlPreview = <T extends AnyNiceRequestableEndPoint>(
+  point: T,
+  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+) => Promise<string>
 
 export const createTestThings = async ({
   points,
@@ -132,41 +222,50 @@ export const createTestThings = async ({
   app?: AppComponent
   globals?: Record<string, any>
 }) => {
-  const engine = await Engine.init({
+  const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
     server: { scope: 'root', points },
-    clients: [{ scope: 'root', points }],
-  })
+    clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
+  }).init({ preventClientDevServers: true })
   const client = FakeClient.create<TestThingsState>({
     engine,
     scope: 'root',
     globals: {
+      // ...rtlGlobals,
       ...globals,
       console: createFilteredConsole(),
     },
-    onDestroyInside: (state) => {
+    onDestroyInside: async (state) => {
       state.viewer.destroy()
       // Clean up location change listeners
       state._locationCleanup()
-      cleanup()
+      rtl.cleanup()
     },
-    onRunStartInside: (state) => {
-      const { container } = render(app({ points: client.client.pointsManager }))
-      state.container = container
+    onRunEndInside: async (state) => {
+      rtl.cleanup()
+    },
+    onRunStartInside: async (state) => {
+      const root = document.createElement('div')
+      root.id = 'root'
+      document.body.appendChild(root)
+
+      rtl.render(app({ points: client.client.pointsManager }), { container: root })
+      // state.body = body
       state.getHtmlView = async () => {
-        return await HtmlView.parse(container.innerHTML)
+        return await HtmlView.parse(root.innerHTML)
       }
-      state.viewer = ElementViewer.create(container)
+      // state.viewer = ElementViewer.create(host)
+      state.viewer = ElementViewer.create(root)
       state.preview = async () => await state.viewer.preview()
       state.tale = async () => await state.viewer.tale()
       state.click = async (selector: string) => {
-        // await act(async () => {
-        await state.viewer.waitContent(selector)
-        const element = container.querySelector(selector)
-        assert(element)
-        fireEvent.click(element)
-        // })
+        await rtl.act(async () => {
+          await state.viewer.waitContent(selector)
+          const element = root.querySelector(selector)
+          assert(element)
+          rtl.fireEvent.click(element)
+        })
       }
       state.waitContent = async (search: string) => {
         await state.viewer.waitContent(search)
@@ -218,9 +317,31 @@ export const createTestThings = async ({
       }
     },
   })
+  const fetch: FakeClient['fetch'] = async (input, init) => {
+    return await client.run(async () => {
+      return await client.fetch(input, init)
+    })
+  }
+  const fetchPoint = (async (point: EndPoint, ...args: [any]) => {
+    return await client.run(async () => {
+      return await point.fetch(...args)
+    })
+  }) as unknown as FetchPoint
+  const fetchView = (async (point: EndPoint, ...args: [any]) => {
+    const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+    return await HtmlView.parse(await response.text())
+  }) as unknown as FetchHtmlView
+  const fetchPreview = (async (point: EndPoint, ...args: [any]) => {
+    const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+    return (await HtmlView.parse(await response.text())).preview
+  }) as unknown as FetchHtmlPreview
   return {
     engine,
     client,
     app,
+    fetch,
+    fetchPoint,
+    fetchView,
+    fetchPreview,
   }
 }

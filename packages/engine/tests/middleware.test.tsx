@@ -1,0 +1,125 @@
+import { Point0 } from '@point0/core'
+import '@testing-library/jest-dom'
+import { describe, expect, it } from 'bun:test'
+// import { PlaywrightBrowser } from './utils/playwright.js'
+// import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
+// import { TestProjectFactory } from './utils/project.js'
+import { createTestThings } from './utils/internal-testing.js'
+
+// const tpf = TestProjectFactory.create({
+//   namespace: 'test-client',
+//   portsRange: [3300, 3399],
+// })
+
+// type ItFn = (done: (err?: unknown) => any) => any
+
+// let preventFinalFilesCleanup = false
+// function wrp(
+//   options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+//   callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+// ): ItFn
+// function wrp(callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any): ItFn
+// function wrp(
+//   ...args:
+//     | [callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any]
+//     | [
+//         options: TestProjectFactoryCreateProjectOptions & { preserve?: boolean },
+//         callback: ({ tp, engine }: { tp: TestProject; engine: Engine }) => any,
+//       ]
+// ): ItFn {
+//   const [options, callback] = args.length === 1 ? [{}, args[0]] : args
+//   const { preserve = false, ...tpOptions } = options
+//   if (preserve) {
+//     preventFinalFilesCleanup = true
+//   }
+//   const tp = tpf.create({ ...tpOptions, fixedId: preserve })
+//   return async () => {
+//     try {
+//       await tp.cleanup('ports')
+//       await tp.init()
+//       const engine = await tp.importEngine()
+//       await callback({ tp, engine })
+//       await tp.cleanup({ files: !preserve, ports: true, processes: true })
+//     } catch (error) {
+//       await tp.cleanup({ files: !preserve, ports: true, processes: true })
+//       throw error
+//     }
+//   }
+// }
+
+describe('midleware', () => {
+  // Suppress React's "Detected multiple renderers" warning in tests
+  // This warning occurs when @testing-library/react and our mount function
+  // both create React roots, even though they use the same React instance
+
+  // const originalError = console.error
+  // beforeAll(() => {
+  //   console.error = (...args: any[]) => {
+  //     const message = args[0]
+  //     if (
+  //       typeof message === 'string' &&
+  //       message.includes('Detected multiple renderers concurrently rendering the same context provider')
+  //     ) {
+  //       // Suppress this specific warning
+  //       return
+  //     }
+  //     originalError.apply(console, args)
+  //   }
+  // })
+
+  // afterAll(() => {
+  //   console.error = originalError
+  // })
+
+  // afterEach(cleanup)
+
+  it('without', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ request }) => ({ x: 1, y: request.headers.x }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y}
+        </div>
+      ))
+    const { fetchPoint, fetchPreview } = await createTestThings({ points: [root, page] })
+    const data = await fetchPoint(page)
+    expect(data.x).toBe(1)
+    const preview = await fetchPreview(page)
+    expect(preview).toMatchInlineSnapshot(`
+      "#page: x=1,y=
+      "
+    `)
+  })
+
+  it('with', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(({ request, set, next }) => {
+        set.headers('y', '3')
+        return next()
+      })
+      .middleware(({ request, set, next }) => {
+        set.headers('z', '4')
+        return next()
+      })
+      .ssr(true)
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x},y={data.y},z={data.z}
+        </div>
+      ))
+    const { fetchPoint, fetchPreview } = await createTestThings({ points: [root, page] })
+    const data = await fetchPoint(page)
+    expect(data.x).toBe(1)
+    const preview = await fetchPreview(page)
+    expect(preview).toMatchInlineSnapshot(`
+      "#page: x=1,y=3,z=4
+      "
+    `)
+  })
+})

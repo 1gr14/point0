@@ -129,7 +129,7 @@ describe('build', () => {
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           (Empty)
-
+          
           div: My Cool Page
           "
       `)

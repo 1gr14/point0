@@ -107,6 +107,7 @@ export type Infer<
   RouteDefinition: TRouteDefinition
   PrevRouteDefinition: TPrevRouteDefinition
   InputSchema: TInputSchema
+  InputOptional: IsInputOptional<TRouteDefinition, TInputSchema>
   QueryResultType: TQueryResultType
   Props: TProps
   InputParsed: InputParsed<TRouteDefinition, TInputSchema>
@@ -149,6 +150,7 @@ export type PointType =
   | 'renderStage'
 export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'renderStage'
 export type EndPointType = Exclude<PointType, StagePointType>
+export type RequestableEndPointType = Exclude<EndPointType, 'root' | 'base'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
 export type RenderablePointType = 'page' | 'component' | 'layout'
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
@@ -1543,7 +1545,9 @@ export type MiddlewareFnOptions = {
   point: AnyNiceEndPoint | undefined
   scope: PointsScope
   variant: 'point' | 'page' | 'publicdir'
+  next: MiddlewareNextFn
 }
+export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>
 export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response>
 
 // nice middle point
@@ -1609,6 +1613,7 @@ export type NiceRootStagePoint<
     TProps
   >,
   | 'root'
+  | 'middleware'
   | 'ssr'
   | 'transformer'
   // | 'fetchFn'
@@ -2375,33 +2380,32 @@ export type NicePageEndPoint<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = MountableComponent<TInputSchema, TProps, false> &
-  Pick<
-    Point0<
-      TPointType,
-      TLetsEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    WithExecuteEndLiteralsIfSuitable<
       TServerLoaderOutput,
-      TClientLoaderOutput,
       TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
       TQueryResultType,
-      TProps
-    >,
-    WithInputSchemaLiteralIfExists<
-      TInputSchema,
-      WithExecuteEndLiteralsIfSuitable<
-        TServerLoaderOutput,
-        TClientMapperOutput,
-        TQueryResultType,
-        'point' | 'type' | 'lets' | 'Infer' | 'Page' | 'X' | 'route'
-      >
+      'point' | 'type' | 'lets' | 'Infer' | 'Page' | 'X' | 'route'
     >
   >
+>
 
 export type NiceComponentEndPoint<
   TPointType extends 'component',
@@ -2458,33 +2462,32 @@ export type NiceLayoutEndPoint<
   TInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
-> = MountableComponent<TInputSchema, TProps, true> &
-  Pick<
-    Point0<
-      TPointType,
-      TLetsEndPointType,
-      TRequiredCtx,
-      TCtx,
-      TCtxExposedKeys,
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  >,
+  WithInputSchemaLiteralIfExists<
+    TInputSchema,
+    WithExecuteEndLiteralsIfSuitable<
       TServerLoaderOutput,
-      TClientLoaderOutput,
       TClientMapperOutput,
-      TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
       TQueryResultType,
-      TProps
-    >,
-    WithInputSchemaLiteralIfExists<
-      TInputSchema,
-      WithExecuteEndLiteralsIfSuitable<
-        TServerLoaderOutput,
-        TClientMapperOutput,
-        TQueryResultType,
-        'point' | 'type' | 'lets' | 'Infer' | 'Layout' | 'X' | 'route'
-      >
+      'point' | 'type' | 'lets' | 'Infer' | 'Layout' | 'X' | 'route'
     >
   >
+>
 
 export type NiceQueryEndPoint<
   TPointType extends 'query',
@@ -2810,6 +2813,35 @@ export type NiceEndPoint<
 
 export type AnyNiceEndPoint<
   TPointType extends EndPointType = any,
+  TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TProps extends Props | UndefinedProps = any,
+> = NiceEndPoint<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TClientMapperOutput,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TQueryResultType,
+  TProps
+>
+export type AnyNiceRequestableEndPoint<
+  TPointType extends RequestableEndPointType = RequestableEndPointType,
   TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
   TRequiredCtx extends RequiredCtx = any,
   TCtx extends Ctx = any,
