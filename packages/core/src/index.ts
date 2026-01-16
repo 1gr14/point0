@@ -93,6 +93,7 @@ import type {
   LoadingHeadFn,
   MapperOutput,
   MergeInputSchemas,
+  MiddlewareFn,
   MountableComponent,
   MountableComponentProps,
   MountablePointType,
@@ -279,6 +280,7 @@ export class Point0<
 
   private readonly _base: BasePoint | LayoutPoint | undefined
   readonly _root: RootPoint | undefined
+  readonly _middlewares: MiddlewareFn[]
   _serverurl: string | undefined
   readonly _baseurl: string | null | undefined
   readonly type: TPointType
@@ -464,6 +466,7 @@ export class Point0<
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
+    _middlewares?: MiddlewareFn[]
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
@@ -636,6 +639,7 @@ export class Point0<
     this.scopes = options.scopes
     this._base = options._base ?? undefined
     this._root = options._root ?? undefined
+    this._middlewares = options._middlewares ?? []
     this.inputSchema = (options.inputSchema ?? undefined) as TInputSchema
     this._serverInputSchema = options._serverInputSchema
     this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
@@ -811,6 +815,7 @@ export class Point0<
     _letsEndPointType?: TLetsEndPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
+    _middlewares?: MiddlewareFn[]
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
     inputSchema?: TInputSchema
@@ -1016,6 +1021,7 @@ export class Point0<
       _root: overrides._root ?? this._root,
       type: (overrides.type ?? this.type) as TPointType,
       _letsEndPointType: (overrides._letsEndPointType ?? this._letsEndPointType) as TLetsEndPointType,
+      _middlewares: overrides._middlewares ?? this._middlewares,
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
       inputSchema: (overrides.inputSchema ?? this.inputSchema) as TInputSchema,
@@ -2090,6 +2096,28 @@ export class Point0<
   private static readonly _prevPageScrollPositions: Array<{ name: PointName; input: InputRaw; x: number; y: number }> =
     []
 
+  // middlewares
+  middleware(
+    middlewareFn: MiddlewareFn,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TPrevRouteDefinition,
+    TInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      _middlewares: [...this._middlewares, middlewareFn],
+    }) as never
+  }
   // prefetch mode
 
   prefetchPolicy(

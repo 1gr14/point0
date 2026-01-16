@@ -1263,6 +1263,7 @@ export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, a
     : CtxFnOutput<TCtxFn> extends [Ctx, ...infer TCtxExposedKeys extends string[]]
       ? TCtxExposedKeys[number]
       : undefined
+
 export type LoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
@@ -1532,6 +1533,18 @@ export type DataTransformerExtended = {
   stringify: (data: unknown) => string | undefined
   parse: <TData = unknown>(stringified: string) => TData
 }
+
+// middleware
+
+export type MiddlewareNextFn = () => Promise<Response>
+export type MiddlewareFnOptions = {
+  request: Request0
+  set: ResponseEffectsSetHelper
+  point: AnyNiceEndPoint | undefined
+  scope: PointsScope
+  variant: 'point' | 'page' | 'publicdir'
+}
+export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response>
 
 // nice middle point
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
@@ -2795,35 +2808,35 @@ export type NiceEndPoint<
                     >
                   : never
 
-// type _AnyNiceEndPoint<
-//   TPointType extends EndPointType = any,
-//   TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
-//   TRequiredCtx extends RequiredCtx = any,
-//   TCtx extends Ctx = any,
-//   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
-//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
-//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-//   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-//   TInputSchema extends InputSchema | UndefinedInputSchema = any,
-//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-//   TProps extends Props | UndefinedProps = any,
-// > = NiceEndPoint<
-//   TPointType,
-//   TLetsEndPointType,
-//   TRequiredCtx,
-//   TCtx,
-//   TCtxExposedKeys,
-//   TServerLoaderOutput,
-//   TClientLoaderOutput,
-//   TClientMapperOutput,
-//   TRouteDefinition,
-//   TPrevRouteDefinition,
-//   TInputSchema,
-//   TQueryResultType,
-//   TProps
-// >
+export type AnyNiceEndPoint<
+  TPointType extends EndPointType = any,
+  TLetsEndPointType extends UndefinedEndPointType = UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TProps extends Props | UndefinedProps = any,
+> = NiceEndPoint<
+  TPointType,
+  TLetsEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TClientMapperOutput,
+  TRouteDefinition,
+  TPrevRouteDefinition,
+  TInputSchema,
+  TQueryResultType,
+  TProps
+>
 
 // export type AnyNiceEndPoint<
 //   TPointType extends EndPointType = any,
