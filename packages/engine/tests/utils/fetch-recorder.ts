@@ -2,6 +2,7 @@ import type {
   EndPointType,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultSpecific,
+  MiddlewareFn,
   PointsScope,
   Request0,
 } from '@point0/core'
@@ -124,19 +125,14 @@ export class FetchRecorder {
     }
   }
 
-  // private static recordToPreview(record: FetchRecorderRecord): string {
-  //   if (!record.result
-  // }
-
-  // getTale(): string {
-  //   const lines: string[] = []
-  //   for (const record of this.records) {
-  //     if (record.result) {
-  //       lines.push(``)
-  //     }
-  //   }
-  //   return lines.join('\n')
-  // }
+  get middlleware(): MiddlewareFn {
+    return async ({ request, next }) => {
+      this.recordRequest(request)
+      const result = await next()
+      this.recordResult(result)
+      return result
+    }
+  }
 }
 
 export type FetchRecorderVariant = FetcherFetchDetailedResult['variant']

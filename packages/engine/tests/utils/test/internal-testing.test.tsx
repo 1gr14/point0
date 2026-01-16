@@ -5,7 +5,7 @@ import { describe, expect, it } from 'bun:test'
 // import type { TestProject, TestProjectFactoryCreateProjectOptions } from './utils/project.js'
 // import { TestProjectFactory } from './utils/project.js'
 import { SimpleLink } from '@point0/wouter'
-import { createTestThings } from '../internal-testing.js'
+import { createTestThings, waitReturn } from '../internal-testing.js'
 
 describe('internal-testing', () => {
   it('works', async () => {
@@ -24,8 +24,8 @@ describe('internal-testing', () => {
     ))
     const news = root
       .lets('page', 'news')
-      // .loader(async () => await waitReturn({ x: 1 }))
-      .loader(() => ({ x: 1 }))
+      .loader(async () => await waitReturn({ x: 1 }))
+      // .loader(() => ({ x: 1 }))
       .page(({ data }) => (
         <div id="news">
           <h1>News Page ({data.x})</h1>

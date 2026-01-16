@@ -1,4 +1,10 @@
-import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinitionSource } from '@point0/core'
+import type {
+  AnyNiceRequestableEndPoint,
+  AppComponent,
+  EndPoint,
+  PointsDefinition,
+  PointsDefinitionSource,
+} from '@point0/core'
 import { QueryClientProvider } from '@point0/core'
 import { Router } from '@point0/wouter'
 import { Window } from 'happy-dom'
@@ -10,6 +16,7 @@ import { ElementViewer } from './element-viewer.js'
 import { HtmlView } from './html-view.js'
 // import { AsyncLocalStorage } from 'node:async_hooks'
 import * as rtl from '@testing-library/react'
+import { FetchRecorder } from './fetch-recorder.js'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -136,7 +143,7 @@ export const withFakeBrowserGlobals = async <TResult,>(fn: () => Promise<TResult
   }
 }
 
-export const waitReturn = async <T,>(value: T, timeout = 200): Promise<T> => {
+export const waitReturn = async <T,>(value: T, timeout = 100): Promise<T> => {
   await new Promise((resolve) => setTimeout(resolve, timeout))
   return value
 }
@@ -218,14 +225,18 @@ export const createTestThings = async ({
   ),
   globals = getFakeBrowserGlobals(),
 }: {
-  points: PointsDefinitionSource
+  points: PointsDefinition
   app?: AppComponent
   globals?: Record<string, any>
 }) => {
+  const fetchRecorder = FetchRecorder.create({
+    limit: 100,
+    enabled: true,
+  })
+  points[0].point._middlewares.push(fetchRecorder.middlleware)
   const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),
-    // fetchRecorder: 100,
     server: { scope: 'root', points },
     clients: [{ scope: 'root', points, indexHtml: '__POINT0_TEST_INDEX_HTML__', app }],
   }).init({ preventClientDevServers: true })
@@ -346,8 +357,10 @@ export const createTestThings = async ({
       return (await HtmlView.parse(await response.text())).preview
     })
   }) as unknown as FetchHtmlPreview
+
+  // TODO: move to fetch recorder
   const getFetchResults = async () => {
-    const results = await engine.fetchRecorder.waitFinishedResults()
+    const results = await fetchRecorder.waitFinishedResults()
     const lines = results.flatMap((result) => {
       if (result.variant !== 'page' && result.variant !== 'point') {
         return []
@@ -370,7 +383,7 @@ export const createTestThings = async ({
     fetchPoint,
     fetchView,
     fetchPreview,
-    fetchRecorder: engine.fetchRecorder,
+    fetchRecorder,
     getFetchResults,
   }
 }

@@ -220,9 +220,6 @@ export class Fetcher {
       bunServer: bunServer || this.server.bunServer,
       id: generateId(),
     })
-    if (this.engine.fetchRecorder.enabled) {
-      this.engine.fetchRecorder.recordRequest(request)
-    }
 
     for (const publicdir of this.server.publicdirs) {
       const staticResponse = await publicdir.fetch({ request })
@@ -284,7 +281,7 @@ export class Fetcher {
       if (task) {
         return 'point'
       }
-      if (request.method === 'get') {
+      if (request.method === 'get' && suitable.point?.type === 'page') {
         return 'page'
       }
       return 'unknown'
@@ -724,9 +721,6 @@ export class Fetcher {
         ...result,
         response,
       } as FetcherFetchDetailedResult
-      if (this.engine.fetchRecorder.enabled) {
-        this.engine.fetchRecorder.recordResult(result)
-      }
       return finalResult
     })
   }

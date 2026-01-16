@@ -6,7 +6,6 @@ import { AllPointsManagers } from './all-points-managers.js'
 import { ClientBun } from './client.js'
 import type { EngineLogger, EngineOptions } from './config.js'
 import { parseEngineOptions } from './config.js'
-import { FetchRecorder } from './fetch-recorder.js'
 import type {
   FileGeneratorProcessResult,
   FilesGeneratorPointsFilesChangeWatcher,
@@ -25,7 +24,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   generator: FilesGenerator
   allPointsManagers: AllPointsManagers
   initialized: TInitialized
-  fetchRecorder: FetchRecorder
 
   private readonly __POINT0_ENGINE__ = true as const
 
@@ -37,7 +35,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     initialized: TInitialized
     generator: FilesGenerator
     publicdirs: Array<Publicdir<false>>
-    fetchRecorder: FetchRecorder
   }) {
     this.clients = input.clients as TInitialized extends true ? Array<ClientBun<true>> : ClientBun[]
     this.server = input.server as TInitialized extends true ? ServerBun<true> : ServerBun<false>
@@ -46,7 +43,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
     this.initialized = input.initialized
     this.generator = input.generator
     this.publicdirs = input.publicdirs as TInitialized extends true ? Array<Publicdir<true>> : Array<Publicdir<false>>
-    this.fetchRecorder = input.fetchRecorder
   }
 
   // static create<TRequiredCtx extends RequiredCtx = RequiredCtx>(
@@ -61,11 +57,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
   ): Engine<TRequiredCtx, false> {
     const parsedOptions = parseEngineOptions(options)
     const allPointsManagers = AllPointsManagers.create()
-
-    const fetchRecorder = FetchRecorder.create({
-      limit: typeof parsedOptions.general.fetchRecorder === 'number' ? parsedOptions.general.fetchRecorder : 100,
-      enabled: !!parsedOptions.general.fetchRecorder,
-    })
 
     const server = ServerBun.create({
       ...parsedOptions.server,
@@ -128,7 +119,6 @@ export class Engine<TRequiredCtx extends RequiredCtx = RequiredCtx, TInitialized
       initialized: false,
       generator,
       publicdirs,
-      fetchRecorder,
     })
   }
   static async init<TRequiredCtx extends RequiredCtx = RequiredCtx>(

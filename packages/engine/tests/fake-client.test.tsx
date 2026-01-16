@@ -11,6 +11,7 @@ import { FakeClient } from '../src/fake-client.js'
 // import { TestProjectFactory } from './utils/project.js'
 import { getFakeBrowserGlobals } from './utils/internal-testing.js'
 import { ElementViewer } from './utils/element-viewer.js'
+import { FetchRecorder } from './utils/fetch-recorder.js'
 
 // const tpf = TestProjectFactory.create({
 //   namespace: 'test-client',
@@ -185,7 +186,13 @@ describe('FakeClient', () => {
   })
 
   it('should render page with loader and client loader', async () => {
-    const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
+    const fetchRecorder = FetchRecorder.create({
+      limit: 100,
+    })
+    const root = Point0.lets('root', 'root')
+      .middleware(fetchRecorder.middlleware)
+      .serverurl('http://localhost:3000')
+      .root()
     let counter = 0
     const mutation = root
       .lets('mutation', 'mutation')
@@ -269,7 +276,7 @@ describe('FakeClient', () => {
       expect(container.querySelector('#clientLoaderTargetName')?.textContent).toBe('client')
       expect(container.querySelector('#serverMutationTargetName')?.textContent).toBe('server')
       expect(container.querySelector('#clientMutationTargetName')?.textContent).toBe('client')
-      const results = await engine.fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'point' })
+      const results = await fetchRecorder.waitFinishedResults({ pointType: 'mutation', variant: 'point' })
       expect(results).toHaveLength(3)
     })
 
