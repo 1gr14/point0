@@ -127,7 +127,7 @@ export class Response0 {
     return new Response0()
   }
 
-  private static _serializeCookie(cookie: CookieOptions): string {
+  static serializeCookie(cookie: CookieOptions): string {
     const parts: string[] = [`${cookie.name}=${cookie.value}`]
 
     if (cookie.path) {
@@ -185,7 +185,7 @@ export class Response0 {
 
     // Add effects cookies that don't conflict with response cookies
     for (const cookie of Object.values(cookies)) {
-      const cookieString = Response0._serializeCookie(cookie)
+      const cookieString = Response0.serializeCookie(cookie)
       if (!responseCookieNames.has(cookie.name)) {
         merged.push(cookieString)
       }

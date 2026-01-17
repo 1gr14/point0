@@ -152,6 +152,20 @@ export class HtmlView<TParsed extends boolean = any> {
           const node = HtmlView.buildTreeItem(el)
 
           const parent = stack[stack.length - 1]
+
+          // If parent has content but no element children yet, convert content to TEXT child
+          // Only if content is not whitespace-only
+          if (parent.content?.trim() && parent.children.length === 0) {
+            parent.children.push({
+              tag: 'text',
+              id: undefined,
+              classNames: [],
+              content: parent.content,
+              children: [],
+            })
+            parent.content = undefined
+          }
+
           parent.children.push(node)
 
           // Only push to stack and set up end tag handler if element can have content
@@ -165,7 +179,19 @@ export class HtmlView<TParsed extends boolean = any> {
               const current = stack[stack.length - 1]
               if (current.content !== undefined) {
                 const trimmed = current.content.trim()
-                current.content = trimmed || undefined
+                // If element has element children, convert remaining content to TEXT child
+                if (current.children.length > 0 && trimmed) {
+                  current.children.push({
+                    tag: 'text',
+                    id: undefined,
+                    classNames: [],
+                    content: trimmed,
+                    children: [],
+                  })
+                  current.content = undefined
+                } else {
+                  current.content = trimmed || undefined
+                }
               }
               // Pop the current element from stack (but keep root in stack)
               if (stack.length > 1) {
@@ -183,11 +209,42 @@ export class HtmlView<TParsed extends boolean = any> {
           if (!text) return
 
           const current = stack[stack.length - 1]
-          // Append text to content, or create content if it doesn't exist
-          if (current.content) {
-            current.content += text
+
+          // If the element already has element children, create a TEXT child node
+          // Otherwise, add to content
+          const hasElementChildren = current.children.length > 0
+
+          if (hasElementChildren) {
+            // Skip whitespace-only text nodes when there are element children
+            const trimmedText = text.trim()
+            if (!trimmedText) return
+
+            // Find or create the last TEXT child node
+            const lastChild = current.children[current.children.length - 1]
+            if (lastChild.tag === 'text') {
+              // Append to existing TEXT node
+              if (lastChild.content) {
+                lastChild.content += text
+              } else {
+                lastChild.content = text
+              }
+            } else {
+              // Create a new TEXT child node
+              current.children.push({
+                tag: 'text',
+                id: undefined,
+                classNames: [],
+                content: text,
+                children: [],
+              })
+            }
           } else {
-            current.content = text
+            // No element children yet, add to content
+            if (current.content) {
+              current.content += text
+            } else {
+              current.content = text
+            }
           }
         },
       })
@@ -205,8 +262,11 @@ export class HtmlView<TParsed extends boolean = any> {
     const indentStr = '  '.repeat(indent)
 
     // Build the key: #id, .class1.class2, or tag
+    // Special handling for TEXT nodes
     let key: string
-    if (item.id) {
+    if (item.tag === 'text') {
+      key = 'text'
+    } else if (item.id) {
       key = `#${item.id}`
     } else if (item.classNames.length > 0) {
       key = `.${item.classNames.join('.')}`

@@ -260,8 +260,17 @@ export class FakeClient<TState extends FakeClientState = any> {
     }
   }
 
-  async run<TResult>(fn: (state: TState) => TResult): Promise<TResult> {
+  async run<TResult>(
+    fn: (state: TState) => TResult,
+    options?: {
+      onStartInside?: FakeClientCallback<TState> | undefined
+      onEndInside?: FakeClientCallback<TState> | undefined
+      onStartOutside?: FakeClientCallback<TState> | undefined
+      onEndOutside?: FakeClientCallback<TState> | undefined
+    },
+  ): Promise<TResult> {
     await this.onRunStartOutside?.(this.state)
+    await options?.onStartOutside?.(this.state)
     try {
       const result = (await _ssRunWithServerStorageState(
         _getSsItemsWithRestErrors(
@@ -274,10 +283,13 @@ export class FakeClient<TState extends FakeClientState = any> {
         async () => {
           try {
             await this.onRunStartInside?.(this.state)
+            await options?.onStartInside?.(this.state)
             const result = await fn(this.state)
+            await options?.onEndInside?.(this.state)
             await this.onRunEndInside?.(this.state)
             return result
           } catch (error) {
+            await options?.onEndInside?.(this.state)
             await this.onRunEndInside?.(this.state)
             throw error
           }
@@ -285,6 +297,7 @@ export class FakeClient<TState extends FakeClientState = any> {
       )) as TResult
       return result
     } finally {
+      await options?.onEndOutside?.(this.state)
       await this.onRunEndOutside?.(this.state)
     }
   }

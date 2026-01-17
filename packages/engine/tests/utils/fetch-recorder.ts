@@ -133,6 +133,23 @@ export class FetchRecorder {
       return result
     }
   }
+
+  tale = async () => {
+    const results = await this.waitFinishedResults()
+    const lines = results.flatMap((result) => {
+      if (result.variant !== 'page' && result.variant !== 'point') {
+        return []
+      }
+      const pointString = 'point' in result && result.point ? `${result.point.type}.${result.point.name}` : 'unknown'
+      const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
+      const serverOrClient = result.request.from.server ? 'server' : 'client'
+      if (result.variant === 'page') {
+        return `${pointString} (${serverOrClient}) (page) < ${inputString}`
+      }
+      return `${pointString} (${serverOrClient}) < ${inputString}`
+    })
+    return lines.join('\n') + '\n'
+  }
 }
 
 export type FetchRecorderVariant = FetcherFetchDetailedResult['variant']

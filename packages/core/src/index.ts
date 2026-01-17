@@ -168,6 +168,7 @@ import {
   windowScrollPositionGetter,
   windowScrollPositionSetter,
 } from './utils.js'
+import { Response0 } from './response0.js'
 
 // known stage fns
 
@@ -4472,7 +4473,7 @@ export class Point0<
     return result as never
   }
 
-  getServerUrl = (): string | undefined => {
+  private getServerUrl(): string | undefined {
     if (this._serverurl) {
       return this._serverurl
     }
@@ -4567,6 +4568,56 @@ export class Point0<
     return superstore.getFakeClient()?.fetch ?? this.nativeFetch
   }
 
+  private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchOptions>): Request {
+    if (!_point0_env.target.is.server) {
+      return fetchOptions.request
+    }
+    const currentRequest0 = _ssItems.__POINT0_REQUEST0__.getWeak()
+    if (!currentRequest0) {
+      return Object.assign(fetchOptions.request, {
+        __POINT0_IS_SERVER_REQUEST__: true,
+      })
+    }
+    const originalRequest = currentRequest0.original
+    const updatedHeaders = new Headers(originalRequest.headers)
+    updatedHeaders.forEach((value, key) => {
+      if (key.startsWith('x-point0-')) {
+        updatedHeaders.delete(key)
+      }
+    })
+
+    const currentResponse0 = _ssItems.__POINT0_RESPONSE0__.getWeak()
+    if (currentResponse0) {
+      const cookies = Object.values(currentResponse0.cookies)
+      for (const cookie of cookies) {
+        const serializedCookie = Response0.serializeCookie(cookie)
+        if (updatedHeaders.has('cookie')) {
+          updatedHeaders.set('cookie', `${updatedHeaders.get('cookie')}; ${serializedCookie}`)
+        } else {
+          updatedHeaders.set('cookie', serializedCookie)
+        }
+      }
+    }
+
+    const updatedInit: RequestInit = {
+      ...fetchOptions.init,
+      headers: updatedHeaders,
+      referrer: originalRequest.referrer,
+      referrerPolicy: originalRequest.referrerPolicy,
+      mode: originalRequest.mode,
+      credentials: originalRequest.credentials,
+      cache: originalRequest.cache,
+      redirect: originalRequest.redirect,
+      integrity: originalRequest.integrity,
+      keepalive: originalRequest.keepalive,
+    }
+    const updatedRequest = new Request(fetchOptions.url, updatedInit)
+    Object.assign(updatedRequest, {
+      __POINT0_IS_SERVER_REQUEST__: true,
+    })
+    return updatedRequest
+  }
+
   async fetchDetailed(
     ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
@@ -4576,7 +4627,9 @@ export class Point0<
     try {
       const fetchOptions = this.getFetchOptions(...args)
       const fetchFn = this.getFetchFn()
-      res = await fetchFn(fetchOptions.request)
+      const fetchRequest = this.modifyFetchRequestForServerIfRequired(fetchOptions)
+
+      res = await fetchFn(fetchRequest)
       CookiesStore.refresh()
       if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
         return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>

@@ -175,7 +175,17 @@ describe('html-viewer', () => {
         </main>
       </div>
     `
-      const { tree } = await HtmlView.parse(html)
+      const { tree, preview } = await HtmlView.parse(html)
+      expect(preview).toMatchInlineSnapshot(`
+        "#header:
+          .nav:
+            a: Home
+        #content:
+          .post:
+            h1: Title
+            p: Body text
+        "
+      `)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -355,7 +365,14 @@ describe('html-viewer', () => {
 
     it('should handle mixed content with text and elements', async () => {
       const html = '<div id="root"><p>Start<span>Middle</span>End</p></div>'
-      const { tree } = await HtmlView.parse(html)
+      const { tree, preview } = await HtmlView.parse(html)
+      expect(preview).toMatchInlineSnapshot(`
+        "p:
+          text: Start
+          span: Middle
+          text: End
+        "
+      `)
       expect(tree).toMatchInlineSnapshot(`
       [
         {
@@ -363,13 +380,27 @@ describe('html-viewer', () => {
             {
               "children": [],
               "classNames": [],
+              "content": "Start",
+              "id": undefined,
+              "tag": "text",
+            },
+            {
+              "children": [],
+              "classNames": [],
               "content": "Middle",
               "id": undefined,
               "tag": "span",
             },
+            {
+              "children": [],
+              "classNames": [],
+              "content": "End",
+              "id": undefined,
+              "tag": "text",
+            },
           ],
           "classNames": [],
-          "content": "StartEnd",
+          "content": undefined,
           "id": undefined,
           "tag": "p",
         },
@@ -422,6 +453,19 @@ describe('html-viewer', () => {
         `
         "div:
           span: Nested
+        "
+      `,
+      )
+    })
+
+    it('should convert nested HTML structure to YAML with text node', async () => {
+      const html = '<div id="root"><div id="page"><div id="page-content">x=<!-- -->1</div>Loading...</div></div>'
+      const { preview } = await HtmlView.parse(html)
+      expect(preview).toMatchInlineSnapshot(
+        `
+        "#page:
+          #page-content: x=1
+          text: Loading...
         "
       `,
       )

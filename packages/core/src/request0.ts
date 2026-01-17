@@ -48,10 +48,11 @@ export class Request0 {
     options: {
       bunServer?: { requestIP: (request: Request) => { address: string } | null }
       id: string
+      isFromServer: boolean
       state?: Record<string, unknown>
     },
   ): Request0 {
-    const { bunServer, id, state = {} } = options
+    const { bunServer, id, isFromServer, state = {} } = options
     // Parse headers
     const headers: RequestHeaders = {}
     original.headers.forEach((value, key) => {
@@ -121,6 +122,7 @@ export class Request0 {
       userAgent,
       location: referrerLocation,
       scope: fromScope,
+      server: isFromServer,
     }
 
     return new Request0({ original, headers, cookies, location, method, from, id, state })
@@ -145,6 +147,7 @@ export interface RequestFrom {
   userAgent: string | null
   location: AnyLocation | null
   scope: string | null
+  server: boolean
 }
 
 export type RequestHeaders = Record<string, string>

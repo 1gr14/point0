@@ -11,6 +11,7 @@ describe('internal-testing', () => {
   it('works', async () => {
     const root = Point0.lets('root', 'root')
       .ssr(true)
+      .queryOptions({ refetchOnMount: false })
       .prefetchPolicy('none')
       .loading(() => <div id="loading">...</div>)
       .root()
@@ -34,7 +35,7 @@ describe('internal-testing', () => {
           </SimpleLink>
         </div>
       ))
-    const { client, fetchPreview, fetchRecorder, getFetchResults } = await createTestThings({
+    const { fetchPreview, fetchRecorder, fetchesTale, render } = await createTestThings({
       points: [root, page, news],
     })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
@@ -48,7 +49,7 @@ describe('internal-testing', () => {
     expect(fetchResults1[0].variant).toBe('page')
     fetchRecorder.prune()
 
-    await client.run(async ({ tale, click, waitContent }) => {
+    await render(async ({ tale, click, waitContent }) => {
       await waitContent('#home')
       await click('#link')
       await waitContent('#news')
@@ -81,9 +82,8 @@ describe('internal-testing', () => {
         "
       `)
     })
-    expect(await getFetchResults()).toMatchInlineSnapshot(`
-      "page.news < {}
-      page.news < {}
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.news (client) < {}
       "
     `)
 

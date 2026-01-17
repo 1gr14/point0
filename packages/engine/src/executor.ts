@@ -17,6 +17,7 @@ import type {
   PointsDefinition,
   PointsScope,
   QueryKey,
+  Request0,
   RequiredCtx,
   ServerExecuteResult,
   SuperStoreInternalValues,
@@ -25,21 +26,22 @@ import type {
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
-  Request0,
 } from '@point0/core'
 import { _ssItems, _ssRunWithServerStorageState, PointsManager, Response0 } from '@point0/core'
 import type { DehydratedState, QueryKey as OriginalQueryKey } from '@tanstack/react-query'
-import { dehydrate, hashKey, hydrate } from '@tanstack/react-query'
+import { dehydrate } from '@tanstack/react-query'
 import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import type { Engine } from './engine.js'
+import { stringify } from 'safe-stable-stringify'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   engine: Engine
   request: Request0
   response0: Response0
   pointsManager: PointsManager<true, TRequiredCtx>
+  serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverStorageState: SuperStoreInternalValues
@@ -50,6 +52,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pointsManager,
     pageLocation,
     requiredCtx,
+    serverExecuteActionsWithOutput,
     serverStorageState,
     response0,
   }: {
@@ -58,6 +61,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pointsManager: PointsManager<true, TRequiredCtx>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
+    serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     serverStorageState: SuperStoreInternalValues
     response0: Response0
   }) {
@@ -67,6 +71,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.pointsManager = pointsManager
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
+    this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.serverStorageState = serverStorageState
   }
 
@@ -110,6 +115,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pointsManager,
       pageLocation,
       requiredCtx,
+      serverExecuteActionsWithOutput: [],
       response0,
       serverStorageState,
     })
@@ -314,58 +320,109 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               break
             }
             case 'ctx': {
-              const result = await serverExecuteAction.fn({
-                ...currentCtxExposed,
-                ctx: { ...currentCtx },
-                input: currentInputParsed,
-                execute: this.execute.bind(this),
-                inputRaw: input,
-                request: this.request,
-                set: response0.set,
-                point,
-              })
-              if (Array.isArray(result)) {
-                const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
-                currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-                currentCtx = { ...currentCtx, ...result[0] }
-                // eslint-disable-next-line @typescript-eslint/no-loop-func
-                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+              const ex = this.serverExecuteActionsWithOutput.find(
+                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
+              )
+              if (ex) {
+                if (Array.isArray(ex.output)) {
+                  const appendCtxExposedKeys =
+                    ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
+                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+                  currentCtx = { ...currentCtx, ...ex.output[0] }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                } else {
+                  currentCtx = { ...currentCtx, ...ex.output }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                }
               } else {
-                currentCtx = { ...currentCtx, ...result }
-                // eslint-disable-next-line @typescript-eslint/no-loop-func
-                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                const result = await serverExecuteAction.fn({
+                  ...currentCtxExposed,
+                  ctx: { ...currentCtx },
+                  input: currentInputParsed,
+                  execute: this.execute.bind(this),
+                  inputRaw: input,
+                  request: this.request,
+                  set: response0.set,
+                  point,
+                })
+                if (Array.isArray(result)) {
+                  const appendCtxExposedKeys =
+                    result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
+                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+                  currentCtx = { ...currentCtx, ...result[0] }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                } else {
+                  currentCtx = { ...currentCtx, ...result }
+                  // eslint-disable-next-line @typescript-eslint/no-loop-func
+                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+                }
+                this.serverExecuteActionsWithOutput.push({
+                  output: result,
+                  record: serverExecuteAction,
+                })
               }
               break
             }
             case 'loader': {
-              const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
-                ...currentCtxExposed,
-                ctx: { ...currentCtx },
-                data: { ...currentData },
-                input: currentInputParsed,
-                execute: this.execute.bind(this),
-                inputRaw: input,
-                request: this.request,
-                set: response0.set,
-                point,
-              })
-              if (Array.isArray(result)) {
-                response0.set.status(result[0])
-                if (result[1] instanceof Response) {
-                  currentResponse = result[1]
-                  currentOutput = result[1]
+              const ex = this.serverExecuteActionsWithOutput.find(
+                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
+              )
+              if (ex) {
+                if (Array.isArray(ex.output)) {
+                  this.response0.set.status(ex.output[0])
+                  if (ex.output[1] instanceof Response) {
+                    currentResponse = ex.output[1]
+                    currentOutput = ex.output[1]
+                  } else {
+                    currentData = ex.output[1]
+                    currentOutput = ex.output[1]
+                  }
                 } else {
-                  currentData = result[1]
-                  currentOutput = result[1]
+                  if (ex.output instanceof Response) {
+                    currentResponse = ex.output
+                    currentOutput = ex.output
+                  } else {
+                    currentData = ex.output
+                    currentOutput = ex.output
+                  }
                 }
               } else {
-                if (result instanceof Response) {
-                  currentResponse = result
-                  currentOutput = result
+                const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
+                  ...currentCtxExposed,
+                  ctx: { ...currentCtx },
+                  data: { ...currentData },
+                  input: currentInputParsed,
+                  execute: this.execute.bind(this),
+                  inputRaw: input,
+                  request: this.request,
+                  set: response0.set,
+                  point,
+                })
+                if (Array.isArray(result)) {
+                  response0.set.status(result[0])
+                  if (result[1] instanceof Response) {
+                    currentResponse = result[1]
+                    currentOutput = result[1]
+                  } else {
+                    currentData = result[1]
+                    currentOutput = result[1]
+                  }
                 } else {
-                  currentData = result
-                  currentOutput = result
+                  if (result instanceof Response) {
+                    currentResponse = result
+                    currentOutput = result
+                  } else {
+                    currentData = result
+                    currentOutput = result
+                  }
                 }
+                this.serverExecuteActionsWithOutput.push({
+                  output: result,
+                  record: serverExecuteAction,
+                })
               }
               break
             }
@@ -380,9 +437,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           currentData = undefined
         }
 
-        // if (currentData) {
-        //   await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
-        // }
         const status = response0.status ?? 200
         response0.set.status(status)
         return {
@@ -396,9 +450,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       } catch (error) {
         try {
-          // if (currentData) {
-          //   await this.appendQueryClientCache({ data: currentData, point, error, input })
-          // }
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
           response0.set.status(status)
@@ -439,12 +490,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     | {
         isServer: boolean
         isClient: boolean
+        isCombined: boolean
         scope: PointsScope
         pointType: EndPointType
         pointName: PointName
         outputType: string
         isInfiniteQuery: boolean
         input: InputRaw
+        serverHash: string
       }
     | undefined {
     const [check, scope, pointType, pointName, serverOrClient, finiteOrInfinite, inputStringified, outputType] =
@@ -461,15 +514,31 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     ) {
       return undefined
     }
+    const isServer = serverOrClient === 'server' || serverOrClient === 'combined'
+    const isClient = serverOrClient === 'client' || serverOrClient === 'combined'
+    const isCombined = serverOrClient === 'combined'
+    const isInfiniteQuery = finiteOrInfinite === 'infinite'
+    const serverHash =
+      stringify({
+        isServer,
+        scope,
+        pointType,
+        pointName,
+        outputType,
+        isInfiniteQuery,
+        inputStringified,
+      }) ?? 'unknown'
     return {
-      isServer: serverOrClient === 'server' || serverOrClient === 'combined',
-      isClient: serverOrClient === 'client' || serverOrClient === 'combined',
+      isServer,
+      isClient,
+      isCombined,
       scope,
       pointType: pointType as EndPointType,
       pointName,
       outputType,
-      isInfiniteQuery: finiteOrInfinite === 'infinite',
+      isInfiniteQuery,
       input: transformer.parse<InputRaw>(inputStringified),
+      serverHash,
     }
   }
 
@@ -503,15 +572,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       await stream.allReady
       const queryClientState = _ssItems.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
       const suitableMarkers = queryClientState.flatMap((query) => {
-        const hash = query.queryHash
-        if (seenQueryHashes.has(hash)) {
-          return []
-        }
         const parsedQueryKey = Executor.parseQueryKey({
           queryKey: query.queryKey,
           transformer: this.pointsManager.transformer,
         })
         if (!parsedQueryKey) {
+          return []
+        }
+        if (seenQueryHashes.has(parsedQueryKey.serverHash)) {
           return []
         }
         if (!parsedQueryKey.isServer) {
@@ -520,7 +588,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         if (parsedQueryKey.outputType !== 'data') {
           return []
         }
-        seenQueryHashes.add(hash)
+        seenQueryHashes.add(parsedQueryKey.serverHash)
         return parsedQueryKey
       })
 
@@ -556,7 +624,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           // ...I think better use prefetchQuery.
           // console.log(123123, _ssItems.__POINT0_REQUEST0__.getWeak())
           // await suitable.point.prefetchQuery(suitableMarker.input)
-          await suitable.point.prefetchQuery(suitableMarker.input, undefined, { force: true })
+          await suitable.point.prefetchQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
         }
       }
 
@@ -805,3 +873,15 @@ export type ExecuteOptions<
     : InputRaw
   response0?: Response0
 }
+
+export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
+  ? {
+      output: Ctx | [Ctx, ...string[]]
+      record: ServerExecuteAction<'ctx'>
+    }
+  : TType extends 'loader'
+    ? {
+        output: Data | Response | [number, Data | Response]
+        record: ServerExecuteAction<'loader'>
+      }
+    : never

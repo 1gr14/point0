@@ -216,9 +216,12 @@ export class Fetcher {
     bunServer?: Bun.Server<unknown>
   }): Promise<PrepareFetchResult> => {
     const response0 = Response0.create()
+    const isFromServer =
+      '__POINT0_IS_SERVER_REQUEST__' in originalRequest && originalRequest.__POINT0_IS_SERVER_REQUEST__ === true
     const request = Request0.create(originalRequest, {
       bunServer: bunServer || this.server.bunServer,
       id: generateId(),
+      isFromServer,
     })
 
     for (const publicdir of this.server.publicdirs) {

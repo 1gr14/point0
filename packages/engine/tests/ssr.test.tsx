@@ -33,4 +33,120 @@ describe('ssr', () => {
       "
     `)
   })
+
+  it('page with loader and component with loader', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const component = root
+      .lets('component', 'component')
+      .loader(() => ({ y: 2 }))
+      .component(({ data }) => <div id="component">y={data.y}</div>)
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1 }))
+      .page(({ data }) => (
+        <div id="page">
+          <div id="page-content">x={data.x}</div>
+          <component.X />
+        </div>
+      ))
+    const { fetchSsr, fetchesTale } = await createTestThings({ points: [root, page, component] })
+    const result = await fetchSsr(page)
+    expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
+      "point0|root|page|home|server|finite|{}|data
+      {"x":1}
+      point0|root|component|component|server|finite|{}|data
+      {"y":2}
+      "
+    `)
+    expect(result.preview).toMatchInlineSnapshot(`
+      "#page:
+        #page-content: x=1
+        #component: y=2
+      "
+    `)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) (page) < {}
+      page.home (server) < {}
+      component.component (server) < {}
+      "
+    `)
+  })
+
+  it('page with loader and component with client loader', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const component = root
+      .lets('component', 'component')
+      .clientLoader(() => ({ y: 2 }))
+      .component(({ data }) => <div id="component">y={data.y}</div>)
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1 }))
+      .page(({ data }) => (
+        <div id="page">
+          <div id="page-content">x={data.x}</div>
+          <component.X />
+        </div>
+      ))
+    const { fetchSsr, fetchesTale } = await createTestThings({ points: [root, page, component] })
+    const result = await fetchSsr(page)
+    expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
+      "point0|root|page|home|server|finite|{}|data
+      {"x":1}
+      "
+    `)
+    expect(result.preview).toMatchInlineSnapshot(`
+      "#page:
+        #page-content: x=1
+        text: Loading...
+      "
+    `)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) (page) < {}
+      page.home (server) < {}
+      "
+    `)
+  })
+
+  it('page with loader and component with loader and client loader', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const component = root
+      .lets('component', 'component')
+      .loader(() => ({ z: 3 }))
+      .clientLoader(({ data }) => ({ ...data, y: 2 }))
+      .component(({ data }) => (
+        <div id="component">
+          z={data.z}, y={data.y}
+        </div>
+      ))
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1 }))
+      .page(({ data }) => (
+        <div id="page">
+          <div id="page-content">x={data.x}</div>
+          <component.X />
+        </div>
+      ))
+    const { fetchSsr, fetchesTale } = await createTestThings({ points: [root, page, component] })
+    const result = await fetchSsr(page)
+    expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
+      "point0|root|page|home|server|finite|{}|data
+      {"x":1}
+      point0|root|component|component|server|finite|{}|data
+      {"z":3}
+      "
+    `)
+    expect(result.preview).toMatchInlineSnapshot(`
+      "#page:
+        #page-content: x=1
+        text: Loading...
+      "
+    `)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) (page) < {}
+      page.home (server) < {}
+      component.component (server) < {}
+      "
+    `)
+  })
 })

@@ -270,78 +270,82 @@ export const createTestThings = async ({
     onRunEndInside: async (state) => {
       rtl.cleanup()
     },
-    onRunStartInside: async (state) => {
-      const root = document.createElement('div')
-      root.id = 'root'
-      document.body.appendChild(root)
+  })
+  const render = async (callback: Parameters<typeof client.run>[0]) => {
+    return await client.run(callback, {
+      onStartInside: async (state) => {
+        const root = document.createElement('div')
+        root.id = 'root'
+        document.body.appendChild(root)
 
-      rtl.render(app({ points: client.client.pointsManager }), { container: root })
-      // state.body = body
-      state.getHtmlView = async () => {
-        return await HtmlView.parse(root.innerHTML)
-      }
-      // state.viewer = ElementViewer.create(host)
-      state.viewer = ElementViewer.create(root)
-      state.preview = async () => await state.viewer.preview()
-      state.tale = async () => await state.viewer.tale()
-      state.click = async (selector: string) => {
-        await rtl.act(async () => {
-          await state.viewer.waitContent(selector)
-          const element = root.querySelector(selector)
-          assert(element)
-          rtl.fireEvent.click(element)
-        })
-      }
-      state.waitContent = async (search: string) => {
-        await state.viewer.waitContent(search)
-      }
+        rtl.render(app({ points: client.client.pointsManager }), { container: root })
+        // state.body = body
+        state.getHtmlView = async () => {
+          return await HtmlView.parse(root.innerHTML)
+        }
+        // state.viewer = ElementViewer.create(host)
+        state.viewer = ElementViewer.create(root)
+        state.preview = async () => await state.viewer.preview()
+        state.tale = async () => await state.viewer.tale()
+        state.click = async (selector: string) => {
+          await rtl.act(async () => {
+            await state.viewer.waitContent(selector)
+            const element = root.querySelector(selector)
+            assert(element)
+            rtl.fireEvent.click(element)
+          })
+        }
+        state.waitContent = async (search: string) => {
+          await state.viewer.waitContent(search)
+        }
 
-      // Listen for window URL changes and update viewer
-      const window = globals.window as Window
-      const updateViewerUrl = () => {
-        state.viewer.setUrl(window.location.href)
-      }
+        // Listen for window URL changes and update viewer
+        const window = globals.window as Window
+        const updateViewerUrl = () => {
+          state.viewer.setUrl(window.location.href)
+        }
 
-      // Listen to popstate events (browser back/forward)
-      window.addEventListener('popstate', updateViewerUrl)
+        // Listen to popstate events (browser back/forward)
+        window.addEventListener('popstate', updateViewerUrl)
 
-      // Override history.pushState to catch programmatic navigation
-      const originalPushState = window.history.pushState.bind(window.history)
-      window.history.pushState = function (...args: Parameters<typeof originalPushState>) {
-        originalPushState(...args)
-        updateViewerUrl()
-      }
-
-      // Override history.replaceState to catch programmatic navigation
-      const originalReplaceState = window.history.replaceState.bind(window.history)
-      window.history.replaceState = function (...args: Parameters<typeof originalReplaceState>) {
-        originalReplaceState(...args)
-        updateViewerUrl()
-      }
-
-      // Watch for direct location changes using a MutationObserver on location
-      // Note: happy-dom's location might not be observable, so we also use a polling approach
-      let lastUrl = window.location.href
-      const checkLocationChange = () => {
-        const currentUrl = window.location.href
-        if (currentUrl !== lastUrl) {
-          lastUrl = currentUrl
+        // Override history.pushState to catch programmatic navigation
+        const originalPushState = window.history.pushState.bind(window.history)
+        window.history.pushState = function (...args: Parameters<typeof originalPushState>) {
+          originalPushState(...args)
           updateViewerUrl()
         }
-      }
 
-      // Poll for location changes (fallback for direct location.href assignments)
-      const locationCheckInterval = setInterval(checkLocationChange, 10)
+        // Override history.replaceState to catch programmatic navigation
+        const originalReplaceState = window.history.replaceState.bind(window.history)
+        window.history.replaceState = function (...args: Parameters<typeof originalReplaceState>) {
+          originalReplaceState(...args)
+          updateViewerUrl()
+        }
 
-      // Store cleanup function in state
-      state._locationCleanup = () => {
-        window.removeEventListener('popstate', updateViewerUrl)
-        window.history.pushState = originalPushState
-        window.history.replaceState = originalReplaceState
-        clearInterval(locationCheckInterval)
-      }
-    },
-  })
+        // Watch for direct location changes using a MutationObserver on location
+        // Note: happy-dom's location might not be observable, so we also use a polling approach
+        let lastUrl = window.location.href
+        const checkLocationChange = () => {
+          const currentUrl = window.location.href
+          if (currentUrl !== lastUrl) {
+            lastUrl = currentUrl
+            updateViewerUrl()
+          }
+        }
+
+        // Poll for location changes (fallback for direct location.href assignments)
+        const locationCheckInterval = setInterval(checkLocationChange, 10)
+
+        // Store cleanup function in state
+        state._locationCleanup = () => {
+          window.removeEventListener('popstate', updateViewerUrl)
+          window.history.pushState = originalPushState
+          window.history.replaceState = originalReplaceState
+          clearInterval(locationCheckInterval)
+        }
+      },
+    })
+  }
   const fetch: FakeClient['fetch'] = async (input, init) => {
     return await client.run(async () => {
       return await client.fetch(input, init)
@@ -441,25 +445,11 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
   }) as unknown as FetchSsr
 
   // TODO: move to fetch recorder
-  const getFetchResults = async () => {
-    const results = await fetchRecorder.waitFinishedResults()
-    const lines = results.flatMap((result) => {
-      if (result.variant !== 'page' && result.variant !== 'point') {
-        return []
-      }
-      const pointString = 'point' in result && result.point ? `${result.point.type}.${result.point.name}` : 'unknown'
-      // const responseFormat = 'responseFormat' in result ? result.responseFormat : undefined
-      const inputString = 'input' in result && result.input ? JSON.stringify(result.input) : 'undefined'
-      if (result.variant === 'page') {
-        return `${pointString} (page) < ${inputString}`
-      }
-      return `${pointString} < ${inputString}`
-    })
-    return lines.join('\n') + '\n'
-  }
+  const fetchesTale = fetchRecorder.tale.bind(fetchRecorder)
   return {
     engine,
     client,
+    render,
     app,
     fetch,
     fetchSsr,
@@ -467,6 +457,6 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     fetchView,
     fetchPreview,
     fetchRecorder,
-    getFetchResults,
+    fetchesTale,
   }
 }
