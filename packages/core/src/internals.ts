@@ -4,6 +4,7 @@ import type { Request0, Response0, SuperStoreItemsValues, SuperStoreItemsValuesO
 import { queryClient } from './query-client.js'
 import { ss } from './super-store.js'
 import type { FetchFn, PointsScope } from './types.js'
+import type { QueryClient } from '@tanstack/react-query'
 
 const initUndefined = () => undefined as never
 
@@ -17,6 +18,11 @@ export const _ssItems = {
     '__POINT0_CLIENT_SCOPE__',
     initUndefined,
     'clientServerIsolated',
+  ),
+  __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: ss.define<QueryClient | undefined>(
+    '__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__',
+    initUndefined,
+    'serverOnlyStorage',
   ),
   __POINT0_QUERY_CLIENT__: queryClient,
   __POINT0_SSR_LOCATION__: ss.define<AnyLocation | undefined>(

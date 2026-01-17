@@ -17,6 +17,7 @@ import { HtmlView } from './html-view.js'
 // import { AsyncLocalStorage } from 'node:async_hooks'
 import * as rtl from '@testing-library/react'
 import { FetchRecorder } from './fetch-recorder.js'
+import type { DehydratedState } from '@tanstack/react-query'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -215,6 +216,18 @@ type FetchHtmlPreview = <T extends AnyNiceRequestableEndPoint>(
   point: T,
   ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
 ) => Promise<string>
+type FetchSsr = <T extends AnyNiceRequestableEndPoint>(
+  point: T,
+  ...args: T['Infer']['InputOptional'] extends true ? [input?: T['Infer']['InputRaw']] : [input: T['Infer']['InputRaw']]
+) => Promise<{
+  html: string
+  preview: string
+  dehydratedSuperStore: Record<string, unknown>
+  queryClientDehydratedState: DehydratedState
+  queryClientQueriesKeys: string[]
+  queryClientQueriesState: Record<string, { status: string; data: string | undefined; error: string | undefined }>
+  queryClientQueriesPreview: string
+}>
 
 export const createTestThings = async ({
   points,
@@ -340,23 +353,92 @@ export const createTestThings = async ({
     })
   }) as unknown as FetchPoint
   const fetchView = (async (point: EndPoint, ...args: [any]) => {
-    // const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
-    // return await HtmlView.parse(await response.text())
-
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
       return await HtmlView.parse(await response.text())
     })
   }) as unknown as FetchHtmlView
   const fetchPreview = (async (point: EndPoint, ...args: [any]) => {
-    // const response = await fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
-    // return (await HtmlView.parse(await response.text())).preview
-
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
       return (await HtmlView.parse(await response.text())).preview
     })
   }) as unknown as FetchHtmlPreview
+  const fetchSsr = (async (point: EndPoint, ...args: [any]) => {
+    return await client.run(async () => {
+      const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
+      const view = await HtmlView.parse(await response.text())
+      const scriptMatch = /<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">([\s\S]+?)<\/script>/.exec(view.html)
+      if (!scriptMatch) {
+        throw new Error('Dehydrated super store script not found')
+      }
+      const scriptContent = scriptMatch[1]
+      // Extract the JSON string value from: window.__POINT0_DEHYDRATED_SUPER_STORE__ = "...";
+      // The value is JSON.stringify'd, so it's a double-quoted string that may contain escaped characters
+      // Match from the opening quote to the closing quote (handling escaped quotes)
+      const valueMatch = /window\.__POINT0_DEHYDRATED_SUPER_STORE__\s*=\s*("(?:[^"\\]|\\.)*")\s*;/.exec(scriptContent)
+      if (!valueMatch) {
+        throw new Error('Could not extract dehydrated super store value from script')
+      }
+      // Parse the JSON string to get the actual string value (first JSON.parse removes the outer quotes)
+      const dehydratedSuperStoreString = JSON.parse(valueMatch[1])
+      // Parse again to get the actual JSON object
+      const dehydratedSuperStore = JSON.parse(dehydratedSuperStoreString)
+      const queryClientDehydratedState = dehydratedSuperStore.__POINT0_QUERY_CLIENT__ as DehydratedState
+      if (queryClientDehydratedState.queries.length === 0) {
+        throw new Error('Query client dehydrated state is empty')
+      }
+      const queryClientDehydratedStateInDehydratedStateQuery = queryClientDehydratedState.queries.find(
+        (query) => query.queryKey.at(-1) === 'queryClientDehydratedState',
+      )
+      if (!queryClientDehydratedStateInDehydratedStateQuery) {
+        throw new Error(
+          `Query client dehydrated state query in dehydrated state is not found: ${JSON.stringify(queryClientDehydratedState, null, 2)}`,
+        )
+      }
+      if (queryClientDehydratedState.queries.length > 1) {
+        throw new Error(
+          `There is not only one query client dehydrated state in dehydrated state: ${JSON.stringify(queryClientDehydratedState, null, 2)}`,
+        )
+      }
+      const queryClientDehydratedStateInDehydratedState = (queryClientDehydratedStateInDehydratedStateQuery as any)
+        .state.data?.dehydratedState as DehydratedState | undefined
+      if (!queryClientDehydratedStateInDehydratedState) {
+        throw new Error(
+          `Query client dehydrated state data in dehydrated state query is not found: ${JSON.stringify(queryClientDehydratedStateInDehydratedStateQuery, null, 2)}`,
+        )
+      }
+      const queryClientQueriesKeys = queryClientDehydratedStateInDehydratedState.queries.map((query) =>
+        query.queryKey.join('|'),
+      )
+      const queryClientQueriesState = Object.fromEntries(
+        queryClientDehydratedStateInDehydratedState.queries.map((query) => [
+          query.queryKey.join('|'),
+          {
+            status: query.state.status,
+            data: query.state.data ? JSON.stringify(query.state.data) : undefined,
+            error: query.state.error?.message,
+          },
+        ]),
+      )
+      const queryClientQueriesPreview =
+        Object.entries(queryClientQueriesState)
+          .map(([key, value]) => {
+            return `${key}
+${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${value.status}`}`
+          })
+          .join('\n') + '\n'
+      return {
+        html: view.html,
+        preview: view.preview,
+        dehydratedSuperStore,
+        queryClientQueriesKeys,
+        queryClientDehydratedState,
+        queryClientQueriesState,
+        queryClientQueriesPreview,
+      } satisfies Awaited<ReturnType<FetchSsr>>
+    })
+  }) as unknown as FetchSsr
 
   // TODO: move to fetch recorder
   const getFetchResults = async () => {
@@ -380,6 +462,7 @@ export const createTestThings = async ({
     client,
     app,
     fetch,
+    fetchSsr,
     fetchPoint,
     fetchView,
     fetchPreview,

@@ -2,7 +2,6 @@ import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type {
   AppComponent,
-  Ctx,
   Data,
   DataTransformerExtended,
   EndPoint,
@@ -19,7 +18,6 @@ import type {
   PointsScope,
   QueryKey,
   RequiredCtx,
-  ServerExecuteAction,
   ServerExecuteResult,
   SuperStoreInternalValues,
   SuperStoreInternalValuesOrErrors,
@@ -42,7 +40,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   request: Request0
   response0: Response0
   pointsManager: PointsManager<true, TRequiredCtx>
-  serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverStorageState: SuperStoreInternalValues
@@ -53,14 +50,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pointsManager,
     pageLocation,
     requiredCtx,
-    serverExecuteActionsWithOutput,
     serverStorageState,
     response0,
   }: {
     engine: Engine
     request: Request0
     pointsManager: PointsManager<true, TRequiredCtx>
-    serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
     serverStorageState: SuperStoreInternalValues
@@ -70,7 +65,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.request = request
     this.response0 = response0
     this.pointsManager = pointsManager
-    this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
     this.serverStorageState = serverStorageState
@@ -102,7 +96,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       __POINT0_REQUEST0__: request,
       __POINT0_RESPONSE0__: response0,
       __POINT0_CLIENT_SCOPE__: pointsManager.scope,
-      __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
+      // in case of recursive server response we want preserve query client to keep state
+      __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: undefined,
+      __POINT0_QUERY_CLIENT__:
+        _ssItems.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getWeak() || _ssItems.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_CURRENT_LOCATION__: currentLocation,
       __POINT0_UNHEAD_HEAD__: createHead(),
@@ -113,60 +110,42 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pointsManager,
       pageLocation,
       requiredCtx,
-      serverExecuteActionsWithOutput: [],
       response0,
       serverStorageState,
     })
-    // return await _ssRunWithServerStorageState(serverStorageState as never, async () => {
-    //   return new Executor<TRequiredCtx>({
-    //     request: request0,
-    //     pointsManager,
-    //     pageLocation,
-    //     requiredCtx,
-    //     serverExecuteActionsWithOutput: [],
-    //     response0,
-    //     serverStorageState: {
-    //       __POINT0_REQUEST0__: request0,
-    //       __POINT0_RESPONSE0__: response0,
-    //       __POINT0_SCOPE__: pointsManager.scope,
-    //       __POINT0_QUERY_CLIENT__: _ssItems.__POINT0_QUERY_CLIENT__.get(),
-    //       __POINT0_SSR_LOCATION__: undefined,
-    //       __POINT0_CURRENT_LOCATION__: currentLocation,
-    //       __POINT0_UNHEAD_HEAD__: createHead(),
-    //     },
-    //   })
-    // })
   }
 
   async withServerGlobalState<T>(callback: () => Promise<T>): Promise<T> {
     return await _ssRunWithServerStorageState(this.serverStorageState, callback)
   }
 
-  static createRequestByPointAndInput<TPoint extends EndPoint>({
-    point,
-    input,
-  }: {
-    point: TPoint
-    input: TPoint['Infer']['InputRaw']
-  }): Request {
-    // TODO: generate real request by point and input
-    return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
-  }
+  // maybe not needed helpers to execute points
 
-  static createRequestByPointScopeTypeNameInput({
-    scope,
-    pointType,
-    pointName,
-    input,
-  }: {
-    scope: PointsScope
-    pointType: EndPointType
-    pointName: PointName
-    input: InputRaw
-  }): Request {
-    // TODO: generate real request by point scope type name and input
-    return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
-  }
+  // static createRequestByPointAndInput<TPoint extends EndPoint>({
+  //   point,
+  //   input,
+  // }: {
+  //   point: TPoint
+  //   input: TPoint['Infer']['InputRaw']
+  // }): Request {
+  //   // TODO: generate real request by point and input
+  //   return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
+  // }
+
+  // static createRequestByPointScopeTypeNameInput({
+  //   scope,
+  //   pointType,
+  //   pointName,
+  //   input,
+  // }: {
+  //   scope: PointsScope
+  //   pointType: EndPointType
+  //   pointName: PointName
+  //   input: InputRaw
+  // }): Request {
+  //   // TODO: generate real request by point scope type name and input
+  //   return new Request(`http://localhost:3000/_point0/TODO:FIXME`)
+  // }
 
   // static async execute<TPoint extends EndPoint>({
   //   engine,
@@ -202,6 +181,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   return await executor.execute({ point, input, withLayouts, response0 })
   // }
 
+  // old execute method
+
   async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     point: TPoint,
     ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
@@ -213,7 +194,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   >({
     point,
     input,
-    withLayouts,
     response0,
   }: ExecuteOptions<TPoint>): Promise<
     ServerExecuteResult<
@@ -237,41 +217,25 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     const {
       point,
       input = {},
-      withLayouts = false,
       response0 = Response0.create(),
     } = ((): {
       point: EndPoint | undefined
       input: InputRaw
-      withLayouts: boolean
       response0?: Response0
     } => {
       if (args[0] === undefined || 'Infer' in args[0]) {
         // so it is NiceEndPoint provided like first argument
-        return { point: args[0]?.point, input: args[1] as InputRaw, withLayouts: false, response0: args[2] }
+        return { point: args[0]?.point, input: args[1] as InputRaw, response0: args[2] }
       }
       // so it is EndPoint provided in object
       return {
         point: args[0].point,
         input: args[0].input,
-        withLayouts: !!args[0].withLayouts,
         response0: args[0].response0,
       }
     })()
 
     return await this.withServerGlobalState(async () => {
-      if (point?.type === 'page' && withLayouts) {
-        for (const layout of point._layouts) {
-          if (!layout._hasServerLoader()) {
-            continue
-          }
-          await this.execute({
-            point: layout,
-            input,
-            response0, // here if layout set some status, it will be applied to current response0
-          })
-        }
-      }
-
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
       const { parsedInput, inputError } = (() => {
         if (!point) {
@@ -350,110 +314,58 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               break
             }
             case 'ctx': {
-              const ex = this.serverExecuteActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
-              ) as ServerExecuteActionWithOutput<'ctx'> | undefined
-              if (ex) {
-                // TODO:ASAP if ex then we should get previous effects also?
-                if (Array.isArray(ex.output)) {
-                  const appendCtxExposedKeys =
-                    ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
-                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-                  currentCtx = { ...currentCtx, ...ex.output[0] }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                } else {
-                  currentCtx = { ...currentCtx, ...ex.output }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                }
+              const result = await serverExecuteAction.fn({
+                ...currentCtxExposed,
+                ctx: { ...currentCtx },
+                input: currentInputParsed,
+                execute: this.execute.bind(this),
+                inputRaw: input,
+                request: this.request,
+                set: response0.set,
+                point,
+              })
+              if (Array.isArray(result)) {
+                const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
+                currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+                currentCtx = { ...currentCtx, ...result[0] }
+                // eslint-disable-next-line @typescript-eslint/no-loop-func
+                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               } else {
-                const result = await serverExecuteAction.fn({
-                  ...currentCtxExposed,
-                  ctx: { ...currentCtx },
-                  input: currentInputParsed,
-                  execute: this.execute.bind(this),
-                  inputRaw: input,
-                  request: this.request,
-                  set: response0.set,
-                  point,
-                })
-                if (Array.isArray(result)) {
-                  const appendCtxExposedKeys =
-                    result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
-                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-                  currentCtx = { ...currentCtx, ...result[0] }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                } else {
-                  currentCtx = { ...currentCtx, ...result }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                }
-                this.serverExecuteActionsWithOutput.push({
-                  output: result,
-                  record: serverExecuteAction,
-                })
+                currentCtx = { ...currentCtx, ...result }
+                // eslint-disable-next-line @typescript-eslint/no-loop-func
+                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               }
               break
             }
             case 'loader': {
-              const ex = this.serverExecuteActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
-              ) as ServerExecuteActionWithOutput<'loader'> | undefined
-              if (ex) {
-                if (Array.isArray(ex.output)) {
-                  this.response0.set.status(ex.output[0])
-                  if (ex.output[1] instanceof Response) {
-                    currentResponse = ex.output[1]
-                    currentOutput = ex.output[1]
-                  } else {
-                    currentData = ex.output[1]
-                    currentOutput = ex.output[1]
-                  }
+              const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
+                ...currentCtxExposed,
+                ctx: { ...currentCtx },
+                data: { ...currentData },
+                input: currentInputParsed,
+                execute: this.execute.bind(this),
+                inputRaw: input,
+                request: this.request,
+                set: response0.set,
+                point,
+              })
+              if (Array.isArray(result)) {
+                response0.set.status(result[0])
+                if (result[1] instanceof Response) {
+                  currentResponse = result[1]
+                  currentOutput = result[1]
                 } else {
-                  if (ex.output instanceof Response) {
-                    currentResponse = ex.output
-                    currentOutput = ex.output
-                  } else {
-                    currentData = ex.output
-                    currentOutput = ex.output
-                  }
+                  currentData = result[1]
+                  currentOutput = result[1]
                 }
               } else {
-                const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
-                  ...currentCtxExposed,
-                  ctx: { ...currentCtx },
-                  data: { ...currentData },
-                  input: currentInputParsed,
-                  execute: this.execute.bind(this),
-                  inputRaw: input,
-                  request: this.request,
-                  set: response0.set,
-                  point,
-                })
-                if (Array.isArray(result)) {
-                  response0.set.status(result[0])
-                  if (result[1] instanceof Response) {
-                    currentResponse = result[1]
-                    currentOutput = result[1]
-                  } else {
-                    currentData = result[1]
-                    currentOutput = result[1]
-                  }
+                if (result instanceof Response) {
+                  currentResponse = result
+                  currentOutput = result
                 } else {
-                  if (result instanceof Response) {
-                    currentResponse = result
-                    currentOutput = result
-                  } else {
-                    currentData = result
-                    currentOutput = result
-                  }
+                  currentData = result
+                  currentOutput = result
                 }
-                this.serverExecuteActionsWithOutput.push({
-                  output: result,
-                  record: serverExecuteAction,
-                })
               }
               break
             }
@@ -468,9 +380,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           currentData = undefined
         }
 
-        if (currentData) {
-          await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
-        }
+        // if (currentData) {
+        //   await this.appendQueryClientCache({ data: currentData, point, error: undefined, input })
+        // }
         const status = response0.status ?? 200
         response0.set.status(status)
         return {
@@ -484,9 +396,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         }
       } catch (error) {
         try {
-          if (currentData) {
-            await this.appendQueryClientCache({ data: currentData, point, error, input })
-          }
+          // if (currentData) {
+          //   await this.appendQueryClientCache({ data: currentData, point, error, input })
+          // }
           const error0 = Error0.from(error)
           const status = error0.httpStatus ?? 500
           response0.set.status(status)
@@ -627,11 +539,24 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           input: suitableMarker.input,
         })
         if (suitable) {
-          await this.execute({
-            point: suitable.point,
-            input: suitableMarker.input,
-            response0: suitable.point === pagePoint ? this.response0 : undefined, // if it is loader for desired page, then we want it to be applied to executor response0, else new one will be created
-          })
+          // ...we want fully imitate spa behaviour on server, so we should not just execute, but do full fetch request to keep all middlewares and side effects
+          // await this.execute({
+          //   point: suitable.point,
+          //   input: suitableMarker.input,
+          //   response0: suitable.point === pagePoint ? this.response0 : undefined, // if it is loader for desired page, then we want it to be applied to executor response0, else new one will be created
+          // })
+          // ...here underth hood point already use engine.fetch, not native fetch, so no real request to url
+          // const { response } = await suitable.point.fetchDetailed(suitableMarker.input)
+          // if (response) {
+          //   const cookies = Response0.parseCookies(response)
+          //   for (const cookie of cookies) {
+          //     this.response0.set.cookies(cookie)
+          //   }
+          // }
+          // ...I think better use prefetchQuery.
+          // console.log(123123, _ssItems.__POINT0_REQUEST0__.getWeak())
+          // await suitable.point.prefetchQuery(suitableMarker.input)
+          await suitable.point.prefetchQuery(suitableMarker.input, undefined, { force: true })
         }
       }
 
@@ -642,6 +567,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         pageLocation,
         input,
         seenQueryHashes,
+        level: level + 1,
       })
 
       if (level === 0 && pagePoint) {
@@ -650,75 +576,164 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     })
   }
 
-  async appendQueryClientCache({
-    data,
-    input,
-    error,
-    point,
-  }: {
-    data: Data
-    input: InputParsed
-    error: unknown
-    point: EndPoint | undefined
-  }): Promise<void> {
-    await this.withServerGlobalState(async () => {
-      if (
-        point &&
-        (point.type === 'query' ||
-          point.type === 'infiniteQuery' ||
-          point.type === 'page' ||
-          point.type === 'layout' ||
-          point.type === 'provider' ||
-          point.type === 'component')
-      ) {
-        const queryKey = point._getServerQueryKey({
-          input,
-          isInfiniteQuery: point._queryResultType === 'infiniteQuery',
-        })
-        const query = _ssItems.__POINT0_QUERY_CLIENT__
-          .get()
-          .getQueryCache()
-          .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
-        if (error) {
-          query.setState({
-            data: undefined,
-            error: { ...Error0.toJSON(error), name: 'Error0' },
-            status: 'error',
-            fetchStatus: 'idle',
-          })
-        } else {
-          const query = _ssItems.__POINT0_QUERY_CLIENT__
-            .get()
-            .getQueryCache()
-            .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
-          if (point._queryResultType === 'infiniteQuery') {
-            const pageParam =
-              (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
-              point._infiniteQueryOptions.initialPageParam
-            query.setState({
-              data: {
-                pages: Array.isArray(data) ? data : [data],
-                pageParams: [pageParam], // or your actual param if known
-              },
-              error: null,
-              status: 'success',
-              fetchStatus: 'idle',
-            })
-          } else {
-            query.setState({
-              data,
-              error: null,
-              status: 'success',
-              fetchStatus: 'idle',
-            })
-          }
-        }
-      }
-    })
-  }
+  // async prefetchAppPagePointDeep({
+  //   App,
+  //   renderToReadableStream,
+  //   pagePoint,
+  //   pageLocation,
+  //   input,
+  //   seenQueryHashes = new Set<string>(),
+  //   level = 0,
+  // }: {
+  //   App: AppComponent
+  //   renderToReadableStream: typeof RenderToReadableStream
+  //   pagePoint: PagePoint | undefined
+  //   pageLocation: AnyLocation
+  //   input: InputRaw
+  //   seenQueryHashes?: Set<string>
+  //   level?: number
+  // }): Promise<void> {
+  //   if (level === 0) {
+  //     this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
+  //     this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
+  //   }
+  //   await this.withServerGlobalState(async () => {
+  //     const stream = await renderToReadableStream(
+  //       React.createElement(App, {
+  //         points: this.pointsManager,
+  //       }),
+  //     )
+  //     await stream.allReady
+  //     const queryClientState = _ssItems.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
+  //     const suitableMarkers = queryClientState.flatMap((query) => {
+  //       const hash = query.queryHash
+  //       if (seenQueryHashes.has(hash)) {
+  //         return []
+  //       }
+  //       const parsedQueryKey = Executor.parseQueryKey({
+  //         queryKey: query.queryKey,
+  //         transformer: this.pointsManager.transformer,
+  //       })
+  //       if (!parsedQueryKey) {
+  //         return []
+  //       }
+  //       if (!parsedQueryKey.isServer) {
+  //         return []
+  //       }
+  //       if (parsedQueryKey.outputType !== 'data') {
+  //         return []
+  //       }
+  //       seenQueryHashes.add(hash)
+  //       return parsedQueryKey
+  //     })
 
-  async getQueryClientDehydratedState(): Promise<DehydratedState> {
-    return await this.withServerGlobalState(async () => {
+  //     if (suitableMarkers.length === 0) {
+  //       if (level === 0 && pagePoint) {
+  //         await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+  //       }
+  //       return
+  //     }
+
+  //     for (const suitableMarker of suitableMarkers) {
+  //       const suitable = this.pointsManager.getSuitablePoint({
+  //         scope: suitableMarker.scope,
+  //         pointType: suitableMarker.pointType,
+  //         pointName: suitableMarker.pointName,
+  //         input: suitableMarker.input,
+  //       })
+  //       if (suitable) {
+  //         await this.execute({
+  //           point: suitable.point,
+  //           input: suitableMarker.input,
+  //           response0: suitable.point === pagePoint ? this.response0 : undefined, // if it is loader for desired page, then we want it to be applied to executor response0, else new one will be created
+  //         })
+  //       }
+  //     }
+
+  //     await this.prefetchAppPagePointDeep({
+  //       App,
+  //       renderToReadableStream,
+  //       pagePoint,
+  //       pageLocation,
+  //       input,
+  //       seenQueryHashes,
+  //     })
+
+  //     if (level === 0 && pagePoint) {
+  //       await this.addPrefetchPageDehydratedStateToQueryClient({ pagePoint, input })
+  //     }
+  //   })
+  // }
+
+  // async appendQueryClientCache({
+  //   data,
+  //   input,
+  //   error,
+  //   point,
+  // }: {
+  //   data: Data
+  //   input: InputParsed
+  //   error: unknown
+  //   point: EndPoint | undefined
+  // }): Promise<void> {
+  //   await this.withServerGlobalState(async () => {
+  //     if (
+  //       point &&
+  //       (point.type === 'query' ||
+  //         point.type === 'infiniteQuery' ||
+  //         point.type === 'page' ||
+  //         point.type === 'layout' ||
+  //         point.type === 'provider' ||
+  //         point.type === 'component')
+  //     ) {
+  //       const queryKey = point._getServerQueryKey({
+  //         input,
+  //         isInfiniteQuery: point._queryResultType === 'infiniteQuery',
+  //       })
+  //       const query = _ssItems.__POINT0_QUERY_CLIENT__
+  //         .get()
+  //         .getQueryCache()
+  //         .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
+  //       if (error) {
+  //         query.setState({
+  //           data: undefined,
+  //           error: { ...Error0.toJSON(error), name: 'Error0' },
+  //           status: 'error',
+  //           fetchStatus: 'idle',
+  //         })
+  //       } else {
+  //         const query = _ssItems.__POINT0_QUERY_CLIENT__
+  //           .get()
+  //           .getQueryCache()
+  //           .build(_ssItems.__POINT0_QUERY_CLIENT__.get(), { queryKey, queryHash: hashKey(queryKey) })
+  //         if (point._queryResultType === 'infiniteQuery') {
+  //           const pageParam =
+  //             (input as any)?.[point._infiniteQueryOptions.pageParamFromInput] ||
+  //             point._infiniteQueryOptions.initialPageParam
+  //           query.setState({
+  //             data: {
+  //               pages: Array.isArray(data) ? data : [data],
+  //               pageParams: [pageParam], // or your actual param if known
+  //             },
+  //             error: null,
+  //             status: 'success',
+  //             fetchStatus: 'idle',
+  //           })
+  //         } else {
+  //           query.setState({
+  //             data,
+  //             error: null,
+  //             status: 'success',
+  //             fetchStatus: 'idle',
+  //           })
+  //         }
+  //       }
+  //     }
+  //   })
+  // }
+
+  async getQueryClientReadyDehydratedState(): Promise<DehydratedState> {
+    const result = await this.withServerGlobalState(async () => {
       const dehydratedState = dehydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), {
         shouldDehydrateQuery: (query) => {
           // This will include all queries, including failed ones
@@ -727,6 +742,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       })
       return dehydratedState
     })
+    result.queries = result.queries.filter((query) => query.state.status !== 'pending')
+    return result
   }
 
   async addPrefetchPageDehydratedStateToQueryClient({
@@ -749,25 +766,32 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         fetchOptions: undefined,
         outputType: 'queryClientDehydratedState',
       })
-
-      const relatedQueriesDehydratedState = this.getQueryClientDehydratedState()
-
-      // register per-key options (retry, gcTime, etc.)
-      const tempQueryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!tempQueryClient) {
-        throw new Error('Query client not found')
-      }
+      const relatedQueriesDehydratedState = await this.getQueryClientReadyDehydratedState()
+      const queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get()
       const { queryKey, ...restOptions } = prefetchPageQueryOptions
-      tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
+      queryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
         ...(restOptions as any),
       })
-      tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
+      queryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
         dehydratedState: relatedQueriesDehydratedState,
       })
-      const tempDehydratedState = dehydrate(tempQueryClient)
 
-      hydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), tempDehydratedState)
+      // // register per-key options (retry, gcTime, etc.)
+      // const tempQueryClient = _ssItems.__POINT0_QUERY_CLIENT__.config.init()
+      // // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // if (!tempQueryClient) {
+      //   throw new Error('Query client not found')
+      // }
+      // const { queryKey, ...restOptions } = prefetchPageQueryOptions
+      // tempQueryClient.setQueryDefaults(prefetchPageQueryOptions.queryKey, {
+      //   ...(restOptions as any),
+      // })
+      // tempQueryClient.setQueryData(prefetchPageQueryOptions.queryKey, {
+      //   dehydratedState: relatedQueriesDehydratedState,
+      // })
+      // const tempDehydratedState = dehydrate(tempQueryClient)
+      // _ssItems.__POINT0_QUERY_CLIENT__.get().clear()
+      // hydrate(_ssItems.__POINT0_QUERY_CLIENT__.get(), tempDehydratedState)
     })
   }
 }
@@ -779,17 +803,5 @@ export type ExecuteOptions<
   input: TPoint extends EndPoint
     ? InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>
     : InputRaw
-  withLayouts?: boolean
   response0?: Response0
 }
-export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
-  ? {
-      output: Ctx | [Ctx, ...string[]]
-      record: ServerExecuteAction<'ctx'>
-    }
-  : TType extends 'loader'
-    ? {
-        output: Data | Response | [number, Data | Response]
-        record: ServerExecuteAction<'loader'>
-      }
-    : never

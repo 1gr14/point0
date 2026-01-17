@@ -4477,8 +4477,8 @@ export class Point0<
       return this._serverurl
     }
     const request0 = _ssItems.__POINT0_REQUEST0__.getWeak()
-    if (request0?.from.location?.href) {
-      return request0.from.location.href
+    if (request0?.location.origin) {
+      return request0.location.origin
     }
     if (typeof window !== 'undefined') {
       return window.location.origin
@@ -4572,14 +4572,15 @@ export class Point0<
       ? [input?: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
       : [input: InputRaw<TRouteDefinition, TInputSchema>, fetchOptions?: FetchOptions, _outputType?: FetchOutputType]
   ): Promise<FetchDetailedOutput<TServerLoaderOutput>> {
-    const fetchOptions = this.getFetchOptions(...args)
-    const fetchFn = this.getFetchFn()
-    const res = await fetchFn(fetchOptions.request)
-    CookiesStore.refresh()
-    if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
-      return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
-    }
+    let res: Response | undefined
     try {
+      const fetchOptions = this.getFetchOptions(...args)
+      const fetchFn = this.getFetchFn()
+      res = await fetchFn(fetchOptions.request)
+      CookiesStore.refresh()
+      if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
+        return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
+      }
       const json = await res.json()
       const data = this._tranformer.deserialize(json)
       if (res.ok) {

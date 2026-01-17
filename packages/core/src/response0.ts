@@ -74,14 +74,16 @@ export class Response0 {
       const arg = args[0]
       if (arg instanceof Headers) {
         arg.forEach((value, key) => {
-          this.headers[key] = value
+          this.headers[key.toLowerCase()] = value
         })
       } else if (typeof arg === 'object' && arg !== null) {
-        Object.assign(this.headers, arg)
+        for (const [name, value] of Object.entries(arg)) {
+          this.headers[name.toLowerCase()] = typeof value === 'string' ? value : (value as string | undefined)
+        }
       }
     } else if (args.length === 2) {
       const [name, value] = args as [string, string]
-      this.headers[name] = value
+      this.headers[name.toLowerCase()] = value
     }
   }
 
@@ -232,6 +234,74 @@ export class Response0 {
 
   apply(response: Response): Response {
     return Response0.apply(response, this.effects)
+  }
+
+  static parseCookies(response: Response): CookieOptions[] {
+    const setCookieHeaders = response.headers.getAll('set-cookie')
+    if (setCookieHeaders.length === 0) {
+      return []
+    }
+
+    const cookies: CookieOptions[] = []
+
+    for (const cookieString of setCookieHeaders) {
+      const parts = cookieString.split(';').map((part) => part.trim())
+
+      // Parse name=value (first part)
+      const nameValueRegex = /^([^=]+)=(.*)$/
+      const nameValueMatch = nameValueRegex.exec(parts[0])
+      if (!nameValueMatch) {
+        continue // Skip invalid cookies
+      }
+
+      const name = nameValueMatch[1].trim()
+      const value = nameValueMatch[2].trim()
+
+      const cookie: CookieOptions = {
+        name,
+        value,
+        path: '/', // Default
+        sameSite: 'lax', // Default
+      }
+
+      // Parse attributes
+      for (let i = 1; i < parts.length; i++) {
+        const part = parts[i]
+        const lowerPart = part.toLowerCase()
+
+        if (lowerPart === 'secure') {
+          cookie.secure = true
+        } else if (lowerPart === 'httponly') {
+          cookie.httpOnly = true
+        } else if (lowerPart === 'partitioned') {
+          cookie.partitioned = true
+        } else if (part.startsWith('Path=')) {
+          cookie.path = part.substring(5).trim()
+        } else if (part.startsWith('Domain=')) {
+          cookie.domain = part.substring(7).trim()
+        } else if (part.startsWith('Max-Age=')) {
+          const maxAge = parseInt(part.substring(8).trim(), 10)
+          if (!isNaN(maxAge)) {
+            cookie.maxAge = maxAge
+          }
+        } else if (part.startsWith('Expires=')) {
+          const expiresStr = part.substring(8).trim()
+          const expiresDate = new Date(expiresStr)
+          if (!isNaN(expiresDate.getTime())) {
+            cookie.expires = expiresDate
+          }
+        } else if (part.startsWith('SameSite=')) {
+          const sameSiteValue = part.substring(9).trim().toLowerCase()
+          if (sameSiteValue === 'strict' || sameSiteValue === 'lax' || sameSiteValue === 'none') {
+            cookie.sameSite = sameSiteValue
+          }
+        }
+      }
+
+      cookies.push(cookie)
+    }
+
+    return cookies
   }
 
   static get(): Response0 {

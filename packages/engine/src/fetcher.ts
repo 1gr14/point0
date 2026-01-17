@@ -16,7 +16,7 @@ import type {
   RequiredCtx,
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
-import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
+import { _getSsItemsWithRestErrors, _ssItems, _ssRunWithServerStorageState, Request0, Response0 } from '@point0/core'
 import { unflatten } from 'flat'
 import type { GetSuitableResult } from './all-points-managers.js'
 import type { Engine } from './engine.js'
@@ -470,7 +470,7 @@ export class Fetcher {
             pageLocation: suitable.pageLocation,
             input: await this.getPointInput({ suitable, task, request }),
           })
-          const dehydratedState = await executor.getQueryClientDehydratedState()
+          const dehydratedState = await executor.getQueryClientReadyDehydratedState()
           const response = new Response(executor.pointsManager.transformer.stringify({ dehydratedState }), {
             headers: { 'Content-Type': 'application/json' },
             status: 200,
@@ -698,6 +698,8 @@ export class Fetcher {
       {
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_RESPONSE0__: prepareFetchResult.response0,
+        // in case of recursive server response we want preserve query client to keep state
+        __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ssItems.__POINT0_QUERY_CLIENT__.getWeak(),
       },
       'Not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )
@@ -716,7 +718,7 @@ export class Fetcher {
           }),
         baseOptions: middlewareOptions,
       })
-      const response = result.response ? prepareFetchResult.response0.apply(result.response) : result.response
+      const response = prepareFetchResult.response0.apply(result.response)
       const finalResult = {
         ...result,
         response,

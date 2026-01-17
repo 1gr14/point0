@@ -9,13 +9,21 @@ import { ss } from './super-store.js'
 import type { DehydratedState } from '@tanstack/react-query'
 
 export const queryClient = ss.define<QueryClient, DehydratedState>('__POINT0_QUERY_CLIENT__', () => new QueryClient(), {
-  dehydrate: (queryClient) =>
-    dehydrate(queryClient, {
+  dehydrate: (queryClient) => {
+    const dehydratedState = dehydrate(queryClient, {
       shouldDehydrateQuery: () => {
         // This will include all queries, including failed ones
         return true
       },
-    }),
+    })
+    const queriesWithQueryClientDehydratedStateOnly = dehydratedState.queries.filter(
+      (query) => query.queryKey.at(-1) === 'queryClientDehydratedState',
+    )
+    if (queriesWithQueryClientDehydratedStateOnly.length > 0) {
+      dehydratedState.queries = queriesWithQueryClientDehydratedStateOnly
+    }
+    return dehydratedState
+  },
   hydrate: (dehydratedState, createQueryClient) => {
     const queryClient = createQueryClient()
     hydrate(queryClient, dehydratedState)
@@ -24,7 +32,16 @@ export const queryClient = ss.define<QueryClient, DehydratedState>('__POINT0_QUE
       .getQueryCache()
       .getAll()
       .find(
-        (q: any) => q.state?.data && typeof q.state.data === 'object' && 'queryClientDehydratedState' in q.state.data,
+        (q: unknown) =>
+          !!q &&
+          typeof q === 'object' &&
+          'state' in q &&
+          q.state &&
+          typeof q.state === 'object' &&
+          'data' in q.state &&
+          typeof q.state.data === 'object' &&
+          q.state.data &&
+          'queryClientDehydratedState' in q.state.data,
       )
 
     if (!prefetchPageQuery) {

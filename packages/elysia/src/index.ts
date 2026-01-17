@@ -37,7 +37,7 @@ export const hmr = (engine: Engine, options: { enabled?: boolean } = {}) => {
         Object.keys(ws.data.query).length > 0 ? '?' + new URLSearchParams(ws.data.query).toString() : ''
 
       // we need only pathname and query string, not the full url
-      const requestUrl = `http://example.com${path}${queryString}`
+      const requestUrl = `http://localhost${path}${queryString}`
 
       const upstreamUrl = getUpstreamHmrUrl(requestUrl)
       // console.info('Proxying WebSocket:', requestUrl, '->', upstreamUrl)
