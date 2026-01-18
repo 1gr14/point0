@@ -3,13 +3,20 @@
 --------------------------
 
 root (no input, no loaders) → any
-
 base (input, loaders) → any except root
-
 layout → layout, page (break loaders, input)
-
 others → nothing
 
+input
+
+page, layout, component, provider → use(query | infiniteQuery | plugin)
+use(any) ← check not conflicted input, input (new), loaders (like execute append data), ctx (as is append ctx), mapper, new middlewares
+use(query | infiniteQuery) ← set similar queryKey if not loaders before, and remove it if some loaders after
+use(layout) ← like query | infiniteQuery, but also added to layouts, check not wider input
+use(pluginLike) ← just as any
+
+.middleware('publicdir') for early return and skipp all other middlewares
+I think we do not need .mdlwr
 Лоадеры сбрасываются после летс, мидлвары не сбрасываются и доступны в бэйзе, от лэйоута можно только летс пейдж и лэйоут, всё остальное только от рута и бейза, лэйоут является провайдером
 Отменить андер клиент лоадер
 Сср теперь смотрит на андерлладер только внутри самого поинта
