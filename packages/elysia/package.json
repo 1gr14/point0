@@ -51,8 +51,7 @@
     "@tanstack/react-query": "catalog:",
     "@devp0nt/error0": "catalog:",
     "@devp0nt/route0": "catalog:",
-    "@unhead/react": "catalog:",
-    "zod": "catalog:"
+    "@unhead/react": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.2.22",

@@ -21,6 +21,7 @@
         "prettier": "^3.6.2",
         "rimraf": "^6.0.1",
         "semantic-release": "^24.2.8",
+        "zod": "catalog:",
       },
     },
     "examples/basic": {
@@ -165,7 +166,6 @@
         "@unhead/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "zod": "catalog:",
       },
     },
     "packages/elysia": {
@@ -188,7 +188,6 @@
         "elysia": "^1.4.0",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "zod": "catalog:",
       },
     },
     "packages/engine": {
@@ -236,7 +235,6 @@
         "@unhead/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "zod": "catalog:",
       },
     },
     "packages/engine/tests/temp/test-client/test-0": {
@@ -330,7 +328,6 @@
         "react": "catalog:",
         "react-dom": "catalog:",
         "wouter": "^3.7.1",
-        "zod": "catalog:",
       },
     },
   },
