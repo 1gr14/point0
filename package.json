@@ -25,7 +25,7 @@
     "dev": "bun run build:watch",
     "build": "bun --filter './packages/**' build",
     "build:watch": "bun --filter './packages/**' build:watch",
-    "testp": "bun run scripts/test-parallel.ts",
+    "testa": "bun run scripts/test-parallel.ts",
     "tests": "cross-env SLOW_TESTS_ONLY=1 bun run scripts/test-parallel.ts",
     "testf": "cross-env NO_TEST_UTILS_TESTS=1 NO_SLOW_TESTS=1 bun run scripts/test-parallel.ts",
     "testfu": "cross-env NO_SLOW_TESTS=1 bun run scripts/test-parallel.ts",
