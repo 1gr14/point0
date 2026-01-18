@@ -129,7 +129,7 @@ describe('build', () => {
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           (Empty)
-          
+
           div: My Cool Page
           "
       `)
@@ -148,8 +148,8 @@ describe('build', () => {
           import { env } from '@point0/core'
           export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER1</div>) // will persist everywhere becouse ssr enabled in root
           export const page2 = root.lets('page', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY3</div>) //  becouse ssr was diabled
-          export const page3 = root.lets('page', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_ONLY4</div> : <div>MY_CLIENT_ONLY5</div>)) 
-          export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY6</div> } else { return <div>MY_CLIENT_ONLY7</div> } }) 
+          export const page3 = root.lets('page', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_ONLY4</div> : <div>MY_CLIENT_ONLY5</div>))
+          export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY6</div> } else { return <div>MY_CLIENT_ONLY7</div> } })
           export const page5 = root.lets('page', 'page5', '/5').loader(() => { console.info('MY_SERVER_ONLY8'); return {y:2} }).page(() => <div>MY_CLIENT_SERVER9</div>) // it is ok
         `,
         )
@@ -194,7 +194,7 @@ describe('build', () => {
         expect(page.tale).toMatchInlineSnapshot(`
           "/3
             div: MY_SERVER_ONLY4
-            
+
             div: MY_CLIENT_ONLY5
             "
         `)
@@ -218,7 +218,7 @@ describe('build', () => {
         `
         import react from '@vitejs/plugin-react'
         import svgr from 'vite-plugin-svgr'
-        import tsconfigPaths from 'vite-tsconfig-paths'  
+        import tsconfigPaths from 'vite-tsconfig-paths'
       `,
       )
       await tp.replace(

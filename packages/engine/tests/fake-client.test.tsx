@@ -80,6 +80,9 @@ describe('FakeClient', () => {
 
   // afterEach(cleanup)
 
+  it('fail', async () => {
+    throw new Error('test fail')
+  })
   it('fetch page with loader', async () => {
     const root = Point0.lets('root', 'root').serverurl('http://localhost:3000').root()
     const page = root
