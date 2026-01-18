@@ -2,6 +2,7 @@ import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type {
   AppComponent,
+  Ctx,
   Data,
   DataTransformerExtended,
   EndPoint,
@@ -19,6 +20,7 @@ import type {
   QueryKey,
   Request0,
   RequiredCtx,
+  ServerExecuteAction,
   ServerExecuteResult,
   SuperStoreInternalValues,
   SuperStoreInternalValuesOrErrors,
@@ -322,7 +324,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             case 'ctx': {
               const ex = this.serverExecuteActionsWithOutput.find(
                 (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
-              )
+              ) as ServerExecuteActionWithOutput<'ctx'> | undefined
               if (ex) {
                 if (Array.isArray(ex.output)) {
                   const appendCtxExposedKeys =
@@ -369,7 +371,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
             case 'loader': {
               const ex = this.serverExecuteActionsWithOutput.find(
                 (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
-              )
+              ) as ServerExecuteActionWithOutput<'loader'> | undefined
               if (ex) {
                 if (Array.isArray(ex.output)) {
                   this.response0.set.status(ex.output[0])

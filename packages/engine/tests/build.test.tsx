@@ -147,7 +147,6 @@ describe('build', () => {
           `import { root } from './lib/root.js'
           import { env } from '@point0/core'
           export const page = root.lets('page', 'home', '/').page(() => <div>MY_CLIENT_SERVER1</div>) // will persist everywhere becouse ssr enabled in root
-          export const page1 = root.lets('page', 'page1', '/1').clientLoader(() => ({x:1})).page(() => <div>MY_CLIENT_ONLY2</div>) // becouse after client loader all components pruned for server
           export const page2 = root.lets('page', 'page2', '/2').ssr(false).page(() => <div>MY_CLIENT_ONLY3</div>) //  becouse ssr was diabled
           export const page3 = root.lets('page', 'page3', '/3').page(() => (env.target.is.server ? <div>MY_SERVER_ONLY4</div> : <div>MY_CLIENT_ONLY5</div>)) 
           export const page4 = root.lets('page', 'page4', '/4').page(() => { if (env.target.is.server) { return <div>MY_SERVER_ONLY6</div> } else { return <div>MY_CLIENT_ONLY7</div> } }) 
@@ -155,34 +154,32 @@ describe('build', () => {
         `,
         )
         const generateResult = await tp.generate()
-        expect(generateResult.points.length).toBe(7)
+        expect(generateResult.points.length).toBe(6)
         const bp = tp.spawn(['bun', 'run', 'build'])
         await bp.exited
         const clientFilesContent = await tp.getDistClientFilesContent()
         const serverFilesContent = await tp.getDistServerFilesContent()
-        expect(clientFilesContent).toContain('MY_CLIENT_SERVER9')
-        expect(clientFilesContent).toContain('MY_CLIENT_SERVER1')
-        expect(clientFilesContent).toContain('MY_CLIENT_ONLY5')
+        expect(clientFilesContent.includes('MY_CLIENT_SERVER9')).toBe(true)
+        expect(clientFilesContent.includes('MY_CLIENT_SERVER1')).toBe(true)
+        expect(clientFilesContent.includes('MY_CLIENT_ONLY5')).toBe(true)
 
-        expect(clientFilesContent).toContain('MY_CLIENT_ONLY2')
-        expect(clientFilesContent).toContain('MY_CLIENT_ONLY3')
-        expect(clientFilesContent).toContain('MY_CLIENT_ONLY7')
+        expect(clientFilesContent.includes('MY_CLIENT_ONLY3')).toBe(true)
+        expect(clientFilesContent.includes('MY_CLIENT_ONLY7')).toBe(true)
 
-        expect(clientFilesContent).not.toContain('MY_SERVER_ONLY4')
-        expect(clientFilesContent).not.toContain('MY_SERVER_ONLY8')
-        expect(clientFilesContent).not.toContain('MY_SERVER_ONLY6')
+        expect(clientFilesContent.includes('MY_SERVER_ONLY4')).toBe(false)
+        expect(clientFilesContent.includes('MY_SERVER_ONLY8')).toBe(false)
+        expect(clientFilesContent.includes('MY_SERVER_ONLY6')).toBe(false)
 
-        expect(serverFilesContent).toContain('MY_CLIENT_SERVER9')
-        expect(serverFilesContent).toContain('MY_CLIENT_SERVER1')
-        expect(serverFilesContent).toContain('MY_SERVER_ONLY4')
+        expect(serverFilesContent.includes('MY_CLIENT_SERVER9')).toBe(true)
+        expect(serverFilesContent.includes('MY_CLIENT_SERVER1')).toBe(true)
+        expect(serverFilesContent.includes('MY_SERVER_ONLY4')).toBe(true)
 
-        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY5')
-        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY2')
-        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY3')
-        expect(serverFilesContent).not.toContain('MY_CLIENT_ONLY7')
+        expect(serverFilesContent.includes('MY_CLIENT_ONLY5')).toBe(false)
+        expect(serverFilesContent.includes('MY_CLIENT_ONLY3')).toBe(false)
+        expect(serverFilesContent.includes('MY_CLIENT_ONLY7')).toBe(false)
 
-        expect(serverFilesContent).toContain('MY_SERVER_ONLY8')
-        expect(serverFilesContent).toContain('MY_SERVER_ONLY6')
+        expect(serverFilesContent.includes('MY_SERVER_ONLY8')).toBe(true)
+        expect(serverFilesContent.includes('MY_SERVER_ONLY6')).toBe(true)
 
         tp.spawn(['bun', 'run', 'start'])
         expect(engine.server.port).toBeNumber()

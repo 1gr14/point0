@@ -2461,7 +2461,7 @@ export type NicePageEndPoint<
       TServerLoaderOutput,
       TClientMapperOutput,
       TQueryResultType,
-      'point' | 'type' | 'lets' | 'Infer' | 'Page' | 'X' | 'route'
+      'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'
     >
   >
 >
@@ -2502,7 +2502,7 @@ export type NiceComponentEndPoint<
       TServerLoaderOutput,
       TClientMapperOutput,
       TQueryResultType,
-      'point' | 'type' | 'lets' | 'Infer' | 'Component' | 'X'
+      'point' | 'type' | 'Infer' | 'Component' | 'X'
     >
   >
 >
@@ -2543,7 +2543,7 @@ export type NiceLayoutEndPoint<
       TServerLoaderOutput,
       TClientMapperOutput,
       TQueryResultType,
-      'point' | 'type' | 'lets' | 'Infer' | 'Layout' | 'X' | 'route'
+      'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
     >
   >
 >
@@ -2584,7 +2584,7 @@ export type NiceQueryEndPoint<
       TServerLoaderOutput,
       TClientMapperOutput,
       TQueryResultType,
-      'point' | 'type' | 'lets' | 'Infer'
+      'point' | 'type' | 'Infer'
     >
   >
 >
@@ -2625,7 +2625,7 @@ export type NiceInfiniteQueryEndPoint<
       TServerLoaderOutput,
       TClientMapperOutput,
       TQueryResultType,
-      'point' | 'type' | 'lets' | 'Infer'
+      'point' | 'type' | 'Infer'
     >
   >
 >
@@ -2664,7 +2664,7 @@ export type NiceMutationEndPoint<
     TInputSchema,
     WithFetchIfHasServerLoader<
       TServerLoaderOutput,
-      'point' | 'type' | 'lets' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
+      'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
     >
   >
 >
@@ -2705,7 +2705,7 @@ export type NiceProviderEndPoint<
       TServerLoaderOutput,
       TClientMapperOutput,
       TQueryResultType,
-      'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueSafe' | 'Provider' | 'X' | 'Infer'
+      'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
     >
   >
 >

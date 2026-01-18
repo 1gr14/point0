@@ -2825,28 +2825,10 @@ export class Point0<
   //   }) as never
   // }
 
-  lets(
-    letsEndPointType: 'root',
-    pointName: string,
-  ): NiceStagePoint<
-    'coreStage',
-    'root',
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TPrevRouteDefinition,
-    TRouteDefinition,
-    TInputSchema,
-    TQueryResultType,
-    UndefinedProps
-  >
   lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = TPointName>(
-    letsEndPointType: 'page',
-    pointName: TPointName,
-    route?: TProvidedRoute,
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsEndPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
+      : never[]
   ): NiceStagePoint<
     'coreStage',
     'page',
@@ -2873,9 +2855,9 @@ export class Point0<
     UndefinedProps
   >
   lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = '/'>(
-    letsEndPointType: 'layout',
-    pointName: TPointName,
-    route?: TProvidedRoute,
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsEndPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
+      : never[]
   ): NiceStagePoint<
     'coreStage',
     'layout',
@@ -2901,9 +2883,10 @@ export class Point0<
     TQueryResultType,
     UndefinedProps
   >
-  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'root'>, TPointName extends PointName>(
-    letsEndPointType: TNewLetsEndPointType,
-    pointName: TPointName,
+  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout'>, TPointName extends PointName>(
+    ...args: TPointType extends 'root' | 'base'
+      ? [letsEndPointType: TNewLetsEndPointType, pointName: TPointName]
+      : never[]
   ): NiceStagePoint<
     'coreStage',
     TNewLetsEndPointType,
@@ -2919,7 +2902,8 @@ export class Point0<
     TQueryResultType,
     UndefinedProps
   >
-  lets(letsEndPointType: EndPointType, pointName: PointName, route?: AnyRoute | string) {
+  lets(...args: any[]) {
+    const [letsEndPointType, pointName, route] = args as [EndPointType, PointName, AnyRoute | string | undefined]
     const prevRoute = this.route
     const newRoute = (() => {
       if (letsEndPointType === 'page') {
@@ -3290,11 +3274,13 @@ export class Point0<
       | undefined,
     ]
     // this._applyComponentDisplayName(layout as React.ComponentType<any>, { suffix: 'LayoutInner' })
+
     const point = this._continue({
       type: 'layout',
       _layout: layout as never,
       _letsEndPointType: undefined,
       _base: this as never as BasePoint,
+      ...this._getProviderLikeProps(),
     })
     // point.X = point.Layout.bind(point) as never
     // this._applyComponentDisplayName(point.X, { suffix: 'Layout' })
@@ -3303,6 +3289,45 @@ export class Point0<
     point.X = point.Layout
     Point0._assignNicePointMethodsToComponent({ component: layout, point, extra: { X: point.X } })
     return layout as never
+  }
+
+  private _getProviderLikeProps() {
+    return {
+      _ProviderReactContext: createContext<
+        FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+      >(null as never) as never,
+      _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
+        if (!point._ProviderReactContext) {
+          throw new Error('ProviderReactContext not found on point: ' + point.name)
+        }
+
+        if (keys == null) {
+          // no keys — return full context
+          return useContextSelector(point._ProviderReactContext, (ctx) => {
+            if (!ctx) throw new Error('useValue must be used within a Provider.')
+            return ctx
+          })
+        }
+
+        if (Array.isArray(keys)) {
+          // multiple keys — build a memoized object
+          return useContextSelector(point._ProviderReactContext, (ctx) => {
+            if (!ctx) throw new Error('useValue must be used within a Provider.')
+            const picked = {} as any
+            for (const key of keys) {
+              picked[key] = ctx[key]
+            }
+            return picked
+          })
+        }
+
+        // single key
+        return useContextSelector(point._ProviderReactContext, (ctx) => {
+          if (!ctx) throw new Error('useValue must be used within a Provider.')
+          return ctx[keys]
+        })
+      },
+    }
   }
 
   provider<TNewClientMapperOutput extends MapperOutput = MapperOutput>(
@@ -3365,40 +3390,7 @@ export class Point0<
       type: 'provider',
       _letsEndPointType: undefined,
       _clientMapperFns: mapperFn ? [...this._clientMapperFns, mapperFn as never] : this._clientMapperFns,
-      _ProviderReactContext: createContext<
-        FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-      >(null as never) as never,
-      _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
-        if (!point._ProviderReactContext) {
-          throw new Error('ProviderReactContext not found on point: ' + point.name)
-        }
-
-        if (keys == null) {
-          // no keys — return full context
-          return useContextSelector(point._ProviderReactContext, (ctx) => {
-            if (!ctx) throw new Error('useValue must be used within a Provider.')
-            return ctx
-          })
-        }
-
-        if (Array.isArray(keys)) {
-          // multiple keys — build a memoized object
-          return useContextSelector(point._ProviderReactContext, (ctx) => {
-            if (!ctx) throw new Error('useValue must be used within a Provider.')
-            const picked = {} as any
-            for (const key of keys) {
-              picked[key] = ctx[key]
-            }
-            return picked
-          })
-        }
-
-        // single key
-        return useContextSelector(point._ProviderReactContext, (ctx) => {
-          if (!ctx) throw new Error('useValue must be used within a Provider.')
-          return ctx[keys]
-        })
-      },
+      ...this._getProviderLikeProps(),
     })
     // point.X = point.Provider.bind(point) as never
     // this._applyComponentDisplayName(point.X, { suffix: 'Provider' })
@@ -3739,7 +3731,7 @@ export class Point0<
       useValue: point.useValue.bind(point),
       _useValue: point._useValue?.bind(point),
       getValue: point.getValue.bind(point),
-      getValueSafe: point.getValueSafe.bind(point),
+      getValueWeak: point.getValueWeak.bind(point),
       _hmr: point._hmr.bind(point),
       route: point.route,
       ...extra,
@@ -6696,6 +6688,10 @@ export class Point0<
     const loadingComponent = this._getLoadingComponent({ type: 'layout' })
     const errorComponent = this._getErrorComponent({ type: 'layout' })
 
+    if (!this._ProviderReactContext) {
+      throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+    }
+
     const { location, inputParseResult, restProps, children } = props
 
     const result = this.useLoader(inputParseResult.inputRaw, undefined, undefined, inputParseResult)
@@ -6747,10 +6743,20 @@ export class Point0<
       })
     }
 
+    const value = result.data
+    superstore.setValue(
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._tranformer.stringify(result.inputRaw)}`,
+      value,
+      'clientServerIsolated',
+    )
+
     return this._withWrappers({
       children: React.createElement(this._layout, {
         ...(result as any),
-        children,
+        children: React.createElement(this._ProviderReactContext.Provider, {
+          value,
+          children,
+        }),
         props: restProps,
       }),
       useLoaderResult: result,
@@ -6759,16 +6765,18 @@ export class Point0<
   }
 
   // provider
+  private getSsProviderValueKey(input?: InputRaw<TRouteDefinition, TInputSchema>): string {
+    return `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._tranformer.stringify(input || {})}`
+  }
 
   getValue(
-    input?: InputRaw<TRouteDefinition, TInputSchema>,
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ): FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput> {
     const value = superstore.getValue<
       FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-    >(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
-      'clientServerIsolated',
-    )
+    >(this.getSsProviderValueKey(...args), 'clientServerIsolated')
     if (!value) {
       throw new Error(
         `Provider value not found on point: provider.${this.name}. You should call getValue only after Provider component is mounted and loaded.`,
@@ -6777,17 +6785,16 @@ export class Point0<
     return value
   }
 
-  getValueSafe(
-    input?: InputRaw<TRouteDefinition, TInputSchema>,
+  getValueWeak(
+    ...args: IsInputOptional<TRouteDefinition, TInputSchema> extends true
+      ? [input?: InputRaw<TRouteDefinition, TInputSchema>]
+      : [input: InputRaw<TRouteDefinition, TInputSchema>]
   ):
     | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
     | undefined {
-    const value = superstore.getValue<
+    const value = superstore.getValueWeak<
       FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-    >(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(input || {})}`,
-      'clientServerIsolated',
-    )
+    >(this.getSsProviderValueKey(...args), 'clientServerIsolated')
     return value
   }
 
@@ -6796,7 +6803,7 @@ export class Point0<
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
     if (!this._ProviderReactContext) {
-      throw new Error('ProviderReactContext not found on point: ' + this.name)
+      throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
     }
 
     const { inputRaw, children } = React.useMemo<{
@@ -6843,11 +6850,7 @@ export class Point0<
     //   })
     // }
     const value = result.data
-    superstore.setValue(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
-      value,
-      'clientServerIsolated',
-    )
+    superstore.setValue(this.getSsProviderValueKey(inputRaw), value, 'clientServerIsolated')
     return this._withWrappers({
       children: React.createElement(this._ProviderReactContext.Provider, {
         value,

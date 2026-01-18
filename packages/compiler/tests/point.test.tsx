@@ -693,53 +693,39 @@ export const page = root.lets('page', 'page', '/').ctx(() => ({ a: 1 })).loader(
       )
 
       it.concurrent(
-        'correctly understand when it is underSsr and underClientLoader',
+        'correctly understand when it is underSsr',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
 export const page = root.lets('page', 'page', '/')
 .iamNotUnderSsrByDefault()
-.iamNotUnderClientLoaderByDefault()
 .ssr(true)
 .iamUnderSsr()
 .ssr(false)
 .iamNotUnderSsr()
 .clientLoader(true)
-.iamUnderClientLoader()
-.clientLoader(false)
-.iamNotUnderClientLoader()
-.clientLoader(() => ({}))
-.iamUnderClientLoader()
+.iamNotUnderSsr()
 .ssr(true)
-.iamUnderSsrAndUnderClientLoader()
+.iamUnderSsr()
 .page(() => <div>Hello</div>)
         `)
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.shakeMethods({ target: 'client' })
-          expect(
-            point.chainMethods.map(
-              (m) =>
-                `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}; underClientLoader=${m.underClientLoader ? 'true' : 'false'}`,
-            ),
-          ).toMatchInlineSnapshot(`
+          expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
+            .toMatchInlineSnapshot(`
             [
-              "root: underSsr=false; underClientLoader=false",
-              "iamNotUnderSsrByDefault: underSsr=false; underClientLoader=false",
-              "iamNotUnderClientLoaderByDefault: underSsr=false; underClientLoader=false",
-              "ssr: underSsr=true; underClientLoader=false",
-              "iamUnderSsr: underSsr=true; underClientLoader=false",
-              "ssr: underSsr=false; underClientLoader=false",
-              "iamNotUnderSsr: underSsr=false; underClientLoader=false",
-              "clientLoader: underSsr=false; underClientLoader=true",
-              "iamUnderClientLoader: underSsr=false; underClientLoader=true",
-              "clientLoader: underSsr=false; underClientLoader=false",
-              "iamNotUnderClientLoader: underSsr=false; underClientLoader=false",
-              "clientLoader: underSsr=false; underClientLoader=true",
-              "iamUnderClientLoader: underSsr=false; underClientLoader=true",
-              "ssr: underSsr=true; underClientLoader=true",
-              "iamUnderSsrAndUnderClientLoader: underSsr=true; underClientLoader=true",
-              "page: underSsr=true; underClientLoader=true",
+              "root: underSsr=false",
+              "iamNotUnderSsrByDefault: underSsr=false",
+              "ssr: underSsr=true",
+              "iamUnderSsr: underSsr=true",
+              "ssr: underSsr=false",
+              "iamNotUnderSsr: underSsr=false",
+              "clientLoader: underSsr=false",
+              "iamNotUnderSsr: underSsr=false",
+              "ssr: underSsr=true",
+              "iamUnderSsr: underSsr=true",
+              "page: underSsr=true",
             ]
           `)
         }),

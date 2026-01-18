@@ -574,30 +574,11 @@ export class CompilerPoint<TValid extends boolean = any> {
     const chainMethods: CompilerPointChainMethod[] = []
     let chainIndex = 0
     let underSsr = false
-    let underClientLoader = false
     for (const point of [this, ...this.parents].reverse()) {
       const methods = point.getSelfMethods()
       for (const method of methods) {
         if (method.name === 'ssr') {
           underSsr = this.getFirstArgBooleanLiteral({ nodePath: method.nodePath, name: 'ssr', fallback: underSsr })
-        }
-        if (method.name === 'clientLoader') {
-          const firstArgBoolean = this.getFirstArgBooleanLiteral({
-            nodePath: method.nodePath,
-            name: 'clientLoader',
-            fallback: undefined,
-          })
-          if (firstArgBoolean !== undefined) {
-            // .clientLoader() | .clientLoader(() => ...)
-            underClientLoader = true
-          }
-          if (firstArgBoolean === false) {
-            // .clientLoader(false) we disables clientLoaders
-            underClientLoader = false
-          } else {
-            // .clientLoader(true) we enable clientLoaders
-            underClientLoader = true
-          }
         }
         chainMethods.push({
           nodePath: method.nodePath,
@@ -605,7 +586,6 @@ export class CompilerPoint<TValid extends boolean = any> {
           index: method.index,
           chainIndex,
           underSsr,
-          underClientLoader,
           point,
         })
         chainIndex++
@@ -695,7 +675,6 @@ export class CompilerPoint<TValid extends boolean = any> {
   private shakeMethodsForServer(): void {
     // TODO: add all pruners for server side
     // when method underSsr, then we prune on nossr-server
-    // when method underClientLoader, then we prune it on nossr-server
     for (const method of this.getSelfRichMethods()) {
       if (method.name === 'clientLoader') {
         this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
@@ -731,12 +710,6 @@ export class CompilerPoint<TValid extends boolean = any> {
             // 'fetchOptions',
           ].includes(method.name)
         ) {
-          this.removeMethodArgs({ nodePath: method.nodePath })
-        }
-      } else if (method.underClientLoader) {
-        if (method.name === 'page') {
-          this.replaceLastArgWithArrowFnReturnNull({ nodePath: method.nodePath })
-        } else if (['component', 'layout'].includes(method.name)) {
           this.removeMethodArgs({ nodePath: method.nodePath })
         }
       }
@@ -1053,6 +1026,5 @@ export type CompilerPointChainMethod = {
   index: number
   chainIndex: number
   underSsr: boolean
-  underClientLoader: boolean
   point: CompilerPoint
 }
