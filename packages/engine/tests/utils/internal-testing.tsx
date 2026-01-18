@@ -1,10 +1,4 @@
-import type {
-  AnyNiceRequestableEndPoint,
-  AppComponent,
-  EndPoint,
-  PointsDefinition,
-  PointsDefinitionSource,
-} from '@point0/core'
+import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinition } from '@point0/core'
 import { QueryClientProvider } from '@point0/core'
 import { Router } from '@point0/wouter'
 import { Window } from 'happy-dom'
@@ -15,9 +9,9 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { HtmlView } from './html-view.js'
 // import { AsyncLocalStorage } from 'node:async_hooks'
+import type { DehydratedState } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react'
 import { FetchRecorder } from './fetch-recorder.js'
-import type { DehydratedState } from '@tanstack/react-query'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -271,9 +265,22 @@ export const createTestThings = async ({
       rtl.cleanup()
     },
   })
-  const render = async (callback: Parameters<typeof client.run>[0]) => {
+  async function render<TResult = undefined>(callback?: (state: TestThingsState) => TResult): Promise<TResult>
+  async function render<TResult = undefined>(
+    path: string,
+    callback?: (state: TestThingsState) => TResult,
+  ): Promise<TResult>
+  async function render(
+    ...args: [callback?: (state: TestThingsState) => any] | [path: string, callback?: (state: TestThingsState) => any]
+  ): Promise<any> {
+    const [path = '/', callback = () => undefined] =
+      typeof args[0] === 'string' ? [args[0], args[1]] : [undefined, args[0]]
+    const location = new URL(path, 'http://localhost/')
     return await client.run(callback, {
       onStartInside: async (state) => {
+        const window = globals.window as Window
+        window.location.href = location.href
+
         const root = document.createElement('div')
         root.id = 'root'
         document.body.appendChild(root)
@@ -300,7 +307,6 @@ export const createTestThings = async ({
         }
 
         // Listen for window URL changes and update viewer
-        const window = globals.window as Window
         const updateViewerUrl = () => {
           state.viewer.setUrl(window.location.href)
         }

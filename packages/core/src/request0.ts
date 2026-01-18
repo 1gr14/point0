@@ -2,9 +2,16 @@ import type { AnyLocation } from '@devp0nt/route0'
 import { Route0 } from '@devp0nt/route0'
 import { _point0_env } from './env.js'
 import { _ssItems } from './internals.js'
+import type { InputParsed, InputRawUnknown, InputSchema, UndefinedInputSchema } from './types.js'
 
-// TODO: add generics TRoute, THeaders, TCookies
-export class Request0 {
+export class Request0<
+  TInputWasExtracted extends boolean = boolean,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> {
+  // export class Request0<
+  //   TInputWasExtracted extends boolean,
+  //   TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  // > {
   original: Request
   headers: RequestHeaders
   cookies: RequestCookies
@@ -13,6 +20,8 @@ export class Request0 {
   from: RequestFrom
   id: string
   state: Record<string, unknown>
+  input: RequestInput<TInputWasExtracted, TServerInputSchema>
+  body: RequestBody<TInputWasExtracted>
 
   constructor({
     original,
@@ -23,6 +32,8 @@ export class Request0 {
     from,
     id,
     state,
+    input,
+    body,
   }: {
     original: Request
     headers: RequestHeaders
@@ -32,6 +43,8 @@ export class Request0 {
     from: RequestFrom
     id: string
     state: Record<string, unknown>
+    input: RequestInput<TInputWasExtracted, TServerInputSchema>
+    body: RequestBody<TInputWasExtracted>
   }) {
     this.original = original
     this.headers = headers
@@ -41,6 +54,8 @@ export class Request0 {
     this.from = from
     this.state = state
     this.id = id
+    this.input = input
+    this.body = body
   }
 
   static create(
@@ -125,10 +140,51 @@ export class Request0 {
       server: isFromServer,
     }
 
-    return new Request0({ original, headers, cookies, location, method, from, id, state })
+    const body = Object.defineProperties(
+      {
+        // original: original.body,
+        // used: false,
+        raw: undefined,
+        arrayBuffer: original.arrayBuffer.bind(original),
+        blob: original.blob.bind(original),
+        bytes: original.bytes.bind(original),
+        formData: original.formData.bind(original),
+        json: original.json.bind(original),
+        text: original.text.bind(original),
+      } as never,
+      {
+        original: {
+          get: () => original.body,
+        },
+        used: {
+          get: () => original.bodyUsed,
+        },
+      },
+    ) as RequestBody
+
+    return new Request0({
+      original,
+      headers,
+      cookies,
+      location,
+      method,
+      from,
+      id,
+      state,
+      body,
+      input: {
+        raw: undefined,
+        parse: async () => {
+          return {} as never
+        },
+        extract: async () => {
+          return {} as never
+        },
+      },
+    })
   }
 
-  static get(): Request0 {
+  static get(): Request0<boolean, InputSchema | UndefinedInputSchema> {
     if (!_point0_env.target.is.server) {
       throw new Error(
         'You can not get request0 not in server. Please call Request0.get() only in server, inside .loader() or .ctx() or .middleware() or inside ssr code, it only exists there',
@@ -136,6 +192,14 @@ export class Request0 {
     }
     const request0 = _ssItems.__POINT0_REQUEST0__.get()
     return request0
+  }
+
+  static getWeak(): Request0<boolean, InputSchema | UndefinedInputSchema> | undefined {
+    try {
+      return _ssItems.__POINT0_REQUEST0__.getWeak()
+    } catch {
+      return undefined
+    }
   }
 }
 
@@ -157,4 +221,34 @@ export type RequestState = {
   startedAt: number
 
   [key: string]: unknown
+}
+
+type RequestInputExtracted<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = {
+  raw: InputRawUnknown
+  extract: () => Promise<InputRawUnknown>
+  parse: () => Promise<InputParsed<TInputSchema>>
+}
+type RequestInputMaybeExtracted<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = {
+  raw: undefined | InputRawUnknown
+  extract: () => Promise<InputRawUnknown>
+  parse: () => Promise<InputParsed<TInputSchema>>
+}
+
+export type RequestInput<
+  TInputWasExtracted extends boolean = boolean,
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = boolean extends TInputWasExtracted
+  ? RequestInputExtracted<TInputSchema> | RequestInputMaybeExtracted<TInputSchema>
+  : TInputWasExtracted extends true
+    ? RequestInputExtracted<TInputSchema>
+    : RequestInputMaybeExtracted<TInputSchema>
+
+export type RequestBody<TInputWasExtracted extends boolean = boolean> = Omit<Body, 'bodyUsed' | 'body'> & {
+  original: Body['body']
+  used: TInputWasExtracted extends true ? true : boolean
+  raw: TInputWasExtracted extends true ? string : undefined | string
 }

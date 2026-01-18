@@ -43,6 +43,7 @@
     "postpublish": "bun ../../scripts/restore-package.ts"
   },
   "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
     "flat": "^6.0.1",
     "react-ssr-prepass": "^1.6.0",
     "safe-stable-stringify": "^2.5.0",

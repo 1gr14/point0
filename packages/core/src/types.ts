@@ -3,10 +3,11 @@ import type {
   AnyLocation,
   ChildrenLocation,
   ExactLocation,
+  Extended,
   FlatInputStringOnly,
   FlatOutput,
-  HasParams,
 } from '@devp0nt/route0'
+import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type {
   InfiniteData,
   UseInfiniteQueryOptions as OriginalUseInfiniteQueryOptions,
@@ -15,7 +16,6 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { ResolvableHead } from 'unhead/types'
-import type { ZodDefault, input as ZodInput, ZodObject, ZodOptional, output as ZodOutput, util as ZodUtil } from 'zod'
 import type { Point0 } from './index.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
@@ -90,8 +90,8 @@ export type Infer<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = {
@@ -105,13 +105,18 @@ export type Infer<
   ClientLoaderOutput: TClientLoaderOutput
   ClientMapperOutput: TClientMapperOutput
   RouteDefinition: TRouteDefinition
-  PrevRouteDefinition: TPrevRouteDefinition
-  InputSchema: TInputSchema
-  InputOptional: IsInputOptional<TRouteDefinition, TInputSchema>
-  QueryResultType: TQueryResultType
+  ServerInputSchema: TServerInputSchema
+  ClientInputSchema: TClientInputSchema
+  InputOptional: IsInputsOptional<TServerInputSchema, TClientInputSchema>
+  InputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  ClientInputParsed: InputParsed<TClientInputSchema>
+  ClientInputRaw: InputRaw<TClientInputSchema>
+  ClientInputOptional: IsInputOptional<TClientInputSchema>
+  ServerInputParsed: InputParsed<TServerInputSchema>
+  ServerInputRaw: InputRaw<TServerInputSchema>
+  ServerInputOptional: IsInputOptional<TServerInputSchema>
   Props: TProps
-  InputParsed: InputParsed<TRouteDefinition, TInputSchema>
-  InputRaw: InputRaw<TRouteDefinition, TInputSchema>
+  QueryResultType: TQueryResultType
   FetchOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
   QueriedData: FinalLoaderUnmappedOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
     ? FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
@@ -175,8 +180,8 @@ export type AnyPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = Point0<
@@ -189,8 +194,8 @@ export type AnyPoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
@@ -203,8 +208,8 @@ export type BasePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
@@ -217,8 +222,8 @@ export type BasePoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
@@ -231,8 +236,8 @@ export type RootPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
@@ -245,8 +250,8 @@ export type RootPoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
@@ -259,8 +264,8 @@ export type PagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
@@ -273,8 +278,8 @@ export type PagePoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
@@ -287,8 +292,8 @@ export type LayoutPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
@@ -301,8 +306,8 @@ export type LayoutPoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
@@ -316,8 +321,8 @@ export type EndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
@@ -330,13 +335,248 @@ export type EndPoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
 
+// input
+
+// export type ValidationSchema<I = unknown, O = I> = StandardSchemaV1<I, O> & WithValidationSchemaParseFn<O>
+// export type ValidationSchemaInput<S extends ValidationSchema> = StandardSchemaV1.InferInput<S>
+// export type ValidationSchemaOutput<S extends ValidationSchema> = StandardSchemaV1.InferOutput<S>
+
+// export type RecordValidationSchemaFunction<
+//   TOutput extends Record<string, unknown> = Record<string, unknown>,
+// > = (input: unknown) => TOutput
+// export type RecordValidationSchemaStandard<
+//   TInput extends Record<string, unknown> = Record<string, unknown>,
+//   TOutput extends Record<string, unknown> = Record<string, unknown>,
+// > = StandardSchemaV1<TInput, TOutput> & WithValidationSchemaParseFn<TOutput>
+// & {
+//   readonly '~standard': {
+//     readonly types?: {
+//       readonly input: Record<string, unknown>
+//       readonly output: Record<string, unknown>
+//     }
+//   }
+// }
+export type RecordValidationSchema<
+  TInput extends Record<string, unknown> = Record<string, unknown>,
+  TOutput extends Record<string, unknown> = Record<string, unknown>,
+  // > = RecordValidationSchemaFunction<TInput, TOutput> | RecordValidationSchemaStandard<TInput, TOutput>
+> = StandardSchemaV1<TInput, TOutput>
+export type RecordValidationSchemaInput<S extends RecordValidationSchema> = StandardSchemaV1.InferInput<S>
+export type RecordValidationSchemaOutput<S extends RecordValidationSchema> = StandardSchemaV1.InferOutput<S>
+
+// type PickOnlyStringKeys<T extends Record<string | number | symbol, unknown>> = {
+//   [K in keyof T]: K extends string ? K : never
+// }
+export type RouteDefinitionToRecordValidationSchema<TRouteDefinition extends RouteDefinition> = RecordValidationSchema<
+  // PickOnlyStringKeys<FlatInputStringOnly<TRouteDefinition>>,
+  FlatInputStringOnly<TRouteDefinition>,
+  // Record<string, unknown>,
+  FlatOutput<TRouteDefinition>
+>
+export type CustomValidationFn<
+  TInput extends InputRawUnknown = InputRawUnknown,
+  TOutput extends InputParsed = InputParsed,
+> = (data: TInput) => TOutput
+export type CustomValidationFnToRecordValidationSchema<TCustomValidationFn extends CustomValidationFn> =
+  TCustomValidationFn extends CustomValidationFn<infer TInput, infer TOutput>
+    ? RecordValidationSchema<TInput, TOutput>
+    : never
+
+// export type IsRecord<T> = T extends Record<string, unknown> ? true : false
+// export type IsRecordValidationSchema<S extends ValidationSchema> =
+//   IsRecord<StandardSchemaV1.InferInput<S>> extends true
+//     ? IsRecord<StandardSchemaV1.InferOutput<S>> extends true
+//       ? true
+//       : false
+//     : false
+
+type MergeObjects<A, B> = Omit<A, keyof B> & B
+export type MergeRecordValidationSchemas<
+  TSchema1 extends RecordValidationSchema | undefined,
+  TSchema2 extends RecordValidationSchema | undefined,
+> = TSchema1 extends RecordValidationSchema
+  ? TSchema2 extends RecordValidationSchema
+    ? RecordValidationSchema<
+        MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>,
+        MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>
+      >
+    : TSchema1
+  : TSchema2 extends RecordValidationSchema
+    ? TSchema2
+    : undefined
+
+// export type MergeRouteDefinitionAndInputSchema<
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TInputSchema extends RecordValidationSchema | undefined,
+// > = TInputSchema extends RecordValidationSchema
+//   ? TRouteDefinition extends RouteDefinition
+//     ? MergeValidationSchema<
+//         ValidationSchema<FlatInputStringOnly<TRouteDefinition>, FlatOutput<TRouteDefinition>>,
+//         TInputSchema
+//       >
+//     : undefined
+//   : TInputSchema
+// export type MergeRouteDefinitionAndInputSchemas<
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TServerInputSchema extends RecordValidationSchema | undefined,
+//   TClientInputSchema extends RecordValidationSchema | undefined,
+// > = TServerInputSchema extends RecordValidationSchema
+//   ? TClientInputSchema extends RecordValidationSchema
+//     ? ValidationSchema<
+//         MergeObjects<ValidationSchemaInput<TServerInputSchema>, ValidationSchemaInput<TClientInputSchema>>,
+//         MergeObjects<ValidationSchemaOutput<TServerInputSchema>, ValidationSchemaOutput<TClientInputSchema>>
+//       >
+//     : TServerInputSchema
+//   : TClientInputSchema extends RecordValidationSchema
+//     ? TClientInputSchema
+//     : TRouteDefinition extends RouteDefinition
+//       ? ValidationSchema<FlatInputStringOnly<TRouteDefinition>, FlatOutput<TRouteDefinition>>
+//       : undefined
+
+type RequiredKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  [K in keyof T]-?: {} extends Pick<T, K> ? never : K
+}[keyof T]
+export type HasRequiredKeysInValidationSchema<S extends RecordValidationSchema | undefined> =
+  S extends RecordValidationSchema ? (RequiredKeys<RecordValidationSchemaInput<S>> extends never ? false : true) : false
+
+export type IsInputOptional<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = HasRequiredKeysInValidationSchema<TInputSchema> extends true ? false : true
+export type IsInputsOptional<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  HasRequiredKeysInValidationSchema<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>> extends true
+    ? false
+    : true
+
+export type SimilarKeys<T extends Record<string, unknown>, U extends Record<string, unknown>> = {
+  [K in keyof T]: K extends keyof U ? K : never
+}[keyof T]
+// export type PickSimilarKeys<T extends Record<string, unknown>, U extends Record<string, unknown>> = Pick<
+//   T,
+//   SimilarKeys<T, U>
+// >
+
+// new schema should be compatible with previous schema, so if it is override prev keys, new values should be NOT wider (if it was string | number, we can do it string, if it was string we can not do it string | number)
+
+type OverlapKeys<A, B> = keyof A & keyof B
+type IsNarrowerOrEqual<New, Prev> = [New] extends [Prev] ? true : false
+type HasWideningKey<Prev, New> = {
+  [K in OverlapKeys<Prev, New>]: IsNarrowerOrEqual<New[K], Prev[K]> extends true ? never : K
+}[OverlapKeys<Prev, New>] extends never
+  ? false
+  : true
+export type IsInputSchemaConflicts<
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+> = TPrevInputSchema extends InputSchema
+  ? TNewInputSchema extends InputSchema
+    ? HasWideningKey<InputRaw<TPrevInputSchema>, InputRaw<TNewInputSchema>>
+    : false
+  : false
+
+export type IsRouteDefinitionConflicts<
+  TRouteDefinition extends RouteDefinition,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+> =
+  IsInputSchemaConflicts<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
+    ? true
+    : IsInputSchemaConflicts<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
+      ? true
+      : false
+
+// export type IsFinalInputOptional<
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+// > = TServerInputSchema extends InputSchema
+//   ? TClientInputSchema extends InputSchema
+//     ? IsInputOptional<
+//         TRouteDefinition,
+//         MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>
+//       > extends true
+//       ? IsInputOptional<TRouteDefinition, TClientInputSchema> extends true
+//         ? true
+//         : false
+//       : false
+//     : true
+//   : TClientInputSchema extends InputSchema
+//     ? IsInputOptional<TRouteDefinition, TClientInputSchema> extends true
+//       ? true
+//       : false
+//     : true
+
+export type InputSchema = RecordValidationSchema
+export type UndefinedInputSchema = undefined
+export type InputParsed<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
+  TInputSchema extends RecordValidationSchema ? RecordValidationSchemaOutput<TInputSchema> : Record<never, never>
+export type InputsParsed<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = InputParsed<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+export type InputRaw<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
+  TInputSchema extends RecordValidationSchema ? RecordValidationSchemaInput<TInputSchema> : Record<never, never>
+export type InputsRaw<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+export type InputRawMaybeOptional<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  IsInputOptional<TInputSchema> extends true
+    ? // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+      InputRaw<TInputSchema> | undefined | void
+    : InputRaw<TInputSchema>
+export type InputsRawMaybeOptional<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = InputRawMaybeOptional<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+export type InputRawUnknown = Record<string, unknown>
+export type InputParseResult<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  | {
+      inputParsed: InputParsed<TInputSchema>
+      inputParseError: null
+    }
+  | {
+      inputParsed: null // TODO: to undefined
+      inputParseError: Error0
+    }
+export type InputsParseResult<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = InputParseResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+
+export type SafeParseInputResult<
+  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> =
+  | {
+      success: true
+      data: InputParsed<TInputSchema>
+      error: undefined
+    }
+  | {
+      success: false
+      data: undefined
+      error: Error0
+    }
+export type SafeParseInputsResult<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = SafeParseInputResult<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+
 // utils
+
 export type Prettify<T extends object> = {
   [K in keyof T]: T[K]
 }
@@ -379,6 +619,10 @@ export type EmptyStringIfStandaloneSlash<TRouteDefinition extends RouteDefinitio
   : TRouteDefinition
 export type StandaloneSlashIfUndefined<TRouteDefinition extends RouteDefinition | undefined> =
   TRouteDefinition extends undefined ? '/' : TRouteDefinition
+export type ExtendRouteDefinition<
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TProvidedRoute extends RouteDefinition,
+> = Extended<StandaloneSlashIfUndefined<TRouteDefinition>, EmptyStringIfStandaloneSlash<TProvidedRoute>>['definition']
 
 export type DataOrUndefinedData<TData extends Data | Response | UndefinedData> = TData extends Data
   ? TData
@@ -438,100 +682,8 @@ export type HasAnyOutput<
       ? true
       : false
 
-export type InputSchemaZod = ZodObject<any>
-export type InputSchema = InputSchemaZod
-export type UndefinedInputSchema = undefined
-export type InputParsed<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TInputSchema extends InputSchemaZod
-  ? ZodOutput<TInputSchema>
-  : TRouteDefinition extends RouteDefinition
-    ? FlatOutput<TRouteDefinition>
-    : Record<never, never>
-export type InputRaw<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TInputSchema extends InputSchemaZod
-  ? ZodInput<TInputSchema>
-  : TRouteDefinition extends RouteDefinition
-    ? FlatInputStringOnly<TRouteDefinition>
-    : Record<never, never>
-export type InputRawMaybeOptional<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> =
-  IsInputOptional<TRouteDefinition, TInputSchema> extends true
-    ? // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-      InputRaw<TRouteDefinition, TInputSchema> | undefined | void
-    : InputRaw<TRouteDefinition, TInputSchema>
-export type InputRawUnknown = Record<string, unknown>
-export type InputParseResult<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> =
-  | {
-      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-      inputParsed: InputParsed<TRouteDefinition, TInputSchema>
-      inputParseError: null
-    }
-  | {
-      inputRaw: InputRaw<TRouteDefinition, TInputSchema>
-      inputParsed: null // TODO: to undefined
-      inputParseError: Error0
-    }
-
-export type MergeInputSchemas<
-  TInputSchema1 extends InputSchema | UndefinedInputSchema,
-  TInputSchema2 extends InputSchema | UndefinedInputSchema,
-> = TInputSchema1 extends InputSchemaZod
-  ? TInputSchema2 extends InputSchemaZod
-    ? ZodObject<ZodUtil.Extend<TInputSchema1['shape'], TInputSchema2['shape']>>
-    : TInputSchema1
-  : TInputSchema2 extends InputSchemaZod
-    ? TInputSchema2
-    : Record<never, never>
-
-export type SafeParseInputResult<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> =
-  | {
-      success: true
-      data: InputParsed<TRouteDefinition, TInputSchema>
-      error: undefined
-    }
-  | {
-      success: false
-      data: undefined
-      error: Error0
-    }
-
 export type WithMaybeOptionalReqiredCtx<TRequiredCtx extends RequiredCtx = RequiredCtx> =
   TRequiredCtx extends UndefinedCtx ? { requiredCtx?: TRequiredCtx } : { requiredCtx: TRequiredCtx }
-
-export type HasRequiredKeysInZod<T extends ZodObject<any>> = keyof {
-  [K in keyof T['shape'] as T['shape'][K] extends ZodOptional<any> | ZodDefault<any> ? never : K]: true
-} extends never
-  ? false
-  : true
-
-export type IsInputOptional<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-> = TRouteDefinition extends RouteDefinition
-  ? TInputSchema extends InputSchema
-    ? HasRequiredKeysInZod<TInputSchema> extends true
-      ? false
-      : true
-    : HasParams<TRouteDefinition> extends true
-      ? false
-      : true
-  : TInputSchema extends InputSchema
-    ? HasRequiredKeysInZod<TInputSchema> extends true
-      ? false
-      : true
-    : true
 
 export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | UndefinedProps> = TProps extends undefined
   ? true
@@ -693,8 +845,7 @@ export type AnyUseLoaderResult<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation,
 > = IfAnyThenElse<
   TStatus,
@@ -704,8 +855,7 @@ export type AnyUseLoaderResult<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      TInputSchema,
-      TRouteDefinition,
+      TClientInputSchema,
       TLocation
     >
   | UseLoaderResult<
@@ -714,8 +864,7 @@ export type AnyUseLoaderResult<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      TInputSchema,
-      TRouteDefinition,
+      TClientInputSchema,
       TLocation
     >
   | UseLoaderResult<
@@ -724,8 +873,7 @@ export type AnyUseLoaderResult<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      TInputSchema,
-      TRouteDefinition,
+      TClientInputSchema,
       TLocation
     >,
   UseLoaderResult<
@@ -734,8 +882,7 @@ export type AnyUseLoaderResult<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TLocation
   >
 >
@@ -746,8 +893,7 @@ export type UseLoaderResult<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation,
 > = TStatus extends 'success'
   ? {
@@ -757,8 +903,7 @@ export type UseLoaderResult<
       query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
         ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> // TODO: to undefined
         : null
-      input: InputParsed<TRouteDefinition, TInputSchema>
-      inputRaw: InputRaw<TRouteDefinition, TInputSchema> // TODO: maybe remove it?
+      input: InputParsed<TClientInputSchema>
       location: TLocation
     }
   : TStatus extends 'pending'
@@ -769,8 +914,7 @@ export type UseLoaderResult<
         query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
           ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
           : null
-        input: InputParsed<TRouteDefinition, TInputSchema>
-        inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+        input: InputParsed<TClientInputSchema>
         location: TLocation
       }
     : TStatus extends 'error'
@@ -781,8 +925,7 @@ export type UseLoaderResult<
           query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
             ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
             : null
-          input: InputParsed<TRouteDefinition, TInputSchema> | null
-          inputRaw: InputRaw<TRouteDefinition, TInputSchema>
+          input: InputParsed<TClientInputSchema> | null
           location: TLocation
         }
       : never
@@ -858,7 +1001,7 @@ export type PageComponentProps<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = UseLoaderResult<
   'success',
@@ -866,8 +1009,7 @@ export type PageComponentProps<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  TRouteDefinition,
+  TClientInputSchema,
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
 > & { props: FinalProps<TProps> }
 export type PageComponent<
@@ -876,7 +1018,7 @@ export type PageComponent<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = React.ComponentType<
   PageComponentProps<
@@ -885,7 +1027,7 @@ export type PageComponent<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TInputSchema,
+    TClientInputSchema,
     TProps
   >
 >
@@ -897,7 +1039,7 @@ export type LayoutComponentProps<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = UseLoaderResult<
   'success',
@@ -905,8 +1047,7 @@ export type LayoutComponentProps<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  TRouteDefinition,
+  TClientInputSchema,
   ExactLocation<CurrentRouteDefinition<TRouteDefinition>> | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
 > & { props: FinalProps<TProps>; children: React.ReactNode }
 export type LayoutComponent<
@@ -915,7 +1056,7 @@ export type LayoutComponent<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = React.ComponentType<
   LayoutComponentProps<
@@ -924,7 +1065,7 @@ export type LayoutComponent<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TInputSchema,
+    TClientInputSchema,
     TProps
   >
 >
@@ -935,7 +1076,7 @@ export type ComponentComponentProps<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
 > = UseLoaderResult<
   'success',
@@ -943,8 +1084,7 @@ export type ComponentComponentProps<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  UndefinedRouteDefinition,
+  TClientInputSchema,
   AnyLocation
 > & { props: FinalProps<TProps> }
 export type ComponentComponent<
@@ -967,13 +1107,13 @@ export type ComponentComponent<
 export type UndefinedComponentComponent = undefined
 
 export type MountableComponentProps<
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
   TWithChildren extends boolean | null,
-> = (TInputSchema extends InputSchemaZod
-  ? IsInputOptional<UndefinedRouteDefinition, TInputSchema> extends true
-    ? { input?: ZodInput<TInputSchema> } & FinalProps<TProps>
-    : { input: ZodInput<TInputSchema> } & FinalProps<TProps>
+> = (TClientInputSchema extends InputSchema
+  ? IsInputOptional<TClientInputSchema> extends true
+    ? { input?: InputRaw<TClientInputSchema> } & FinalProps<TProps>
+    : { input: InputRaw<TClientInputSchema> } & FinalProps<TProps>
   : FinalProps<TProps>) &
   (TWithChildren extends true
     ? { children: React.ReactNode }
@@ -981,10 +1121,10 @@ export type MountableComponentProps<
       ? { children?: React.ReactNode }
       : Record<never, never>)
 export type MountableComponent<
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
   TWithChildren extends boolean | null,
-> = React.ComponentType<MountableComponentProps<TInputSchema, TProps, TWithChildren>>
+> = React.ComponentType<MountableComponentProps<TClientInputSchema, TProps, TWithChildren>>
 
 // extra components
 
@@ -995,8 +1135,7 @@ export type LoadingComponentProps<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = {
   type: TType
@@ -1007,8 +1146,7 @@ export type LoadingComponentProps<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  TRouteDefinition,
+  TClientInputSchema,
   AnyLocation
 >
 export type LoadingComponentType<
@@ -1017,8 +1155,7 @@ export type LoadingComponentType<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<
   LoadingComponentProps<
@@ -1027,8 +1164,7 @@ export type LoadingComponentType<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TProps
   >
 >
@@ -1039,8 +1175,7 @@ export type ErrorComponentProps<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = {
   type: TType
@@ -1051,8 +1186,7 @@ export type ErrorComponentProps<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  TRouteDefinition,
+  TClientInputSchema,
   AnyLocation
 >
 export type ErrorComponentType<
@@ -1061,8 +1195,7 @@ export type ErrorComponentType<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<
   ErrorComponentProps<
@@ -1071,8 +1204,7 @@ export type ErrorComponentType<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TProps
   >
 >
@@ -1082,8 +1214,7 @@ export type WrapperComponentProps<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = AnyUseLoaderResult<
   any,
@@ -1091,8 +1222,7 @@ export type WrapperComponentProps<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  TRouteDefinition,
+  TClientInputSchema,
   AnyLocation
 > & {
   props: FinalProps<TProps>
@@ -1103,8 +1233,7 @@ export type WrapperComponentType<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
 > = React.ComponentType<
   WrapperComponentProps<
@@ -1112,20 +1241,17 @@ export type WrapperComponentType<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TProps
   >
 >
 
 export type OuterComponentProps<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
   TLocation extends AnyLocation = AnyLocation,
 > = {
-  inputRaw: InputRawUnknown
-  input: InputParsed<TRouteDefinition, TInputSchema>
+  input: InputParsed<TClientInputSchema>
   props: FinalProps<TProps>
   location: TLocation
   children: Exclude<React.ReactNode, Promise<any>>
@@ -1134,11 +1260,10 @@ export type OuterComponentProps<
 }
 
 export type OuterComponentType<
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps = Props | UndefinedProps,
   TLocation extends AnyLocation = AnyLocation,
-> = React.ComponentType<OuterComponentProps<TRouteDefinition, TInputSchema, TProps, TLocation>>
+> = React.ComponentType<OuterComponentProps<TClientInputSchema, TProps, TLocation>>
 
 // export type BeforeClientHookOptions<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
@@ -1185,20 +1310,14 @@ export type OnPrefetchFn = () => Promise<void> | void
 export type UndefinedResponse = undefined
 export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
-export type InputFnOptions<TInputSchema extends InputSchema = InputSchema> = {
-  inputRaw: InputRaw<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
-}
-export type InputFn<TInputSchema extends InputSchema = InputSchema> = (
-  options: InputFnOptions<TInputSchema>,
-) => InputParsed<RouteDefinition | UndefinedRouteDefinition, TInputSchema>
 
 export type ServerExecuteFn = <
   TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
-  ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
-    ? [input?: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
-    : [input: InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>]
+  ...args: TPoint['Infer']['ServerInputOptional'] extends true
+    ? [input?: TPoint['Infer']['ServerInputRaw']]
+    : [input: TPoint['Infer']['ServerInputRaw']]
 ) => Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
 export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> =
   | {
@@ -1223,13 +1342,11 @@ export type ServerExecuteResult<TCtx extends Ctx, TServerLoaderOutput extends Lo
 export type CtxFnOptions<
   TCtxPrev extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtxPrev, TCtxExposedKeys> & {
-  request: Request0
+  request: Request0<boolean, TServerInputSchema>
   point: EndPoint | undefined
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  inputRaw: InputRawUnknown
+  input: InputParsed<TServerInputSchema>
   set: ResponseEffectsSetHelper
   execute: ServerExecuteFn
   ctx: TCtxPrev
@@ -1237,18 +1354,17 @@ export type CtxFnOptions<
 export type CtxFn<
   TCtxPrev extends Ctx = Ctx,
   TCtxPrevExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TCtxAppend extends Ctx = Ctx,
 > = (
-  props: CtxFnOptions<TCtxPrev, TCtxPrevExposedKeys, TRouteDefinition, TInputSchema>,
+  props: CtxFnOptions<TCtxPrev, TCtxPrevExposedKeys, TServerInputSchema>,
 ) =>
   | Promise<TCtxAppend>
   | Promise<[TCtxAppend, ...Array<keyof TCtxAppend>]>
   | TCtxAppend
   | [TCtxAppend, ...Array<keyof TCtxAppend>]
 
-export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
+export type CtxFnOutput<TCtxFn extends CtxFn<any, any, any, any>> = Awaited<ReturnType<TCtxFn>>
 export type ForbiddenCtxExposedKeys = 'request' | 'input' | 'inputRaw' | 'data' | 'set' | 'execute' | 'ctx'
 export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] extends [never]
   ? unknown
@@ -1257,9 +1373,9 @@ export type AssertNoForbiddenCtxExposedKeys<TExposedKeys> = [TExposedKeys] exten
     : [Extract<TExposedKeys, ForbiddenCtxExposedKeys>] extends [never]
       ? unknown
       : ShowError<`Forbidden to expose ctx keys: ${Extract<TExposedKeys, ForbiddenCtxExposedKeys> & string}`>
-export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any, any>> =
-  TCtxFn extends CtxFn<any, any, any, any, infer TCtxAppend> ? TCtxAppend : never
-export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any, any>> =
+export type InferCtxFnOutputCtxAppend<TCtxFn extends CtxFn<any, any, any, any>> =
+  TCtxFn extends CtxFn<any, any, any, infer TCtxAppend> ? TCtxAppend : never
+export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, any>> =
   CtxFnOutput<TCtxFn> extends [infer TCtx]
     ? Extract<keyof TCtx, string>
     : CtxFnOutput<TCtxFn> extends [Ctx, ...infer TCtxExposedKeys extends string[]]
@@ -1270,13 +1386,11 @@ export type LoaderFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
-  request: Request0
+  request: Request0<true, TServerInputSchema>
   point: EndPoint | undefined
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  inputRaw: InputRawUnknown
+  input: InputParsed<TServerInputSchema>
   data: DataOrUndefinedData<TServerLoaderOutput>
   set: ResponseEffectsSetHelper
   execute: ServerExecuteFn
@@ -1286,11 +1400,10 @@ export type LoaderFn<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TNewServerLoaderOutput extends LoaderOutput = LoaderOutput,
 > = (
-  options: LoaderFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TRouteDefinition, TInputSchema>,
+  options: LoaderFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
 ) =>
   | Promise<[number, TNewServerLoaderOutput]>
   | [number, TNewServerLoaderOutput]
@@ -1340,7 +1453,7 @@ export type ClientExecuteActionLocation<
 export type ClientLoaderFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 > = {
@@ -1354,13 +1467,12 @@ export type ClientLoaderFnOptions<
         : undefined
     : TClientLoaderOutput
   location: ClientExecuteActionLocation<TLetsEndPointType, TRouteDefinition>
-  input: InputParsed<TRouteDefinition, TInputSchema>
-  inputRaw: InputRawUnknown
+  input: InputParsed<TClientInputSchema>
 }
 export type ClientLoaderFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
@@ -1368,7 +1480,7 @@ export type ClientLoaderFn<
   options: ClientLoaderFnOptions<
     TLetsEndPointType,
     TRouteDefinition,
-    TInputSchema,
+    TClientInputSchema,
     TServerLoaderOutput,
     TClientLoaderOutput
   >,
@@ -1401,8 +1513,7 @@ export type SuccessHeadFn<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation = AnyLocation,
 > = (
   options: HeadFnOptions<
@@ -1411,8 +1522,7 @@ export type SuccessHeadFn<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TLocation
   >,
 ) => ResolvableHead | string
@@ -1422,8 +1532,7 @@ export type ErrorHeadFn<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation = AnyLocation,
 > = (
   options: HeadFnOptions<
@@ -1432,8 +1541,7 @@ export type ErrorHeadFn<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TLocation
   >,
 ) => ResolvableHead | string
@@ -1443,8 +1551,7 @@ export type LoadingHeadFn<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation = AnyLocation,
 > = (
   options: HeadFnOptions<
@@ -1453,8 +1560,7 @@ export type LoadingHeadFn<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TLocation
   >,
 ) => ResolvableHead | string
@@ -1465,8 +1571,7 @@ export type HeadFnOptions<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation = AnyLocation,
 > = AnyUseLoaderResult<
   TStatus,
@@ -1474,8 +1579,7 @@ export type HeadFnOptions<
   TServerLoaderOutput,
   TClientLoaderOutput,
   TClientMapperOutput,
-  TInputSchema,
-  TRouteDefinition,
+  TClientInputSchema,
   TLocation
 >
 export type HeadFn<
@@ -1484,8 +1588,7 @@ export type HeadFn<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TLocation extends AnyLocation = AnyLocation,
 > = (
   options: HeadFnOptions<
@@ -1494,8 +1597,7 @@ export type HeadFn<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    TInputSchema,
-    TRouteDefinition,
+    TClientInputSchema,
     TLocation
   >,
 ) => ResolvableHead | string
@@ -1612,33 +1714,43 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 // nice middle point
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props',
+  TMethod extends 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props' | 'input' | 'clientInput',
 > = TPointType extends 'clientStage'
   ? TMethod extends 'loader'
     ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add you .loader() before last .clientLoader()`>
     : TMethod extends 'ctx'
       ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add you .ctx() before last .clientLoader()`>
-      : unknown
+      : TMethod extends 'input'
+        ? ShowError<`You can not use input() in client stage. Please, drop client loader via .clientLoader(false) or add you .ctx() before last .clientLoader()`>
+        : unknown
   : TPointType extends 'mapperStage'
     ? TMethod extends 'loader'
       ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .loader() before last .clientLoader()`>
       : TMethod extends 'ctx'
         ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .ctx() before last .clientLoader()`>
-        : TMethod extends 'clientLoader'
-          ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add you .clientLoader() before last .mapper()`>
-          : unknown
+        : TMethod extends 'input'
+          ? ShowError<`You can not use input() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .loader() before last .clientLoader()`>
+          : TMethod extends 'clientLoader'
+            ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add you .clientLoader() before last .mapper()`>
+            : TMethod extends 'clientInput'
+              ? ShowError<`You can not use clientInput() in mapper stage. Please, drop mappers via .mapper(false) or add you .clientLoader() before last .mapper()`>
+              : unknown
     : TPointType extends 'renderStage'
       ? TMethod extends 'loader'
         ? ShowError<`You can not use loader() in render stage. Call it before any render methods`>
         : TMethod extends 'ctx'
           ? ShowError<`You can not use ctx() in render stage. Call it before any render methods`>
-          : TMethod extends 'clientLoader'
-            ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
-            : TMethod extends 'mapper'
-              ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
-              : TMethod extends 'props'
-                ? ShowError<`You can not use props() in render stage. Call it before any render methods`>
-                : unknown
+          : TMethod extends 'input'
+            ? ShowError<`You can not use input() in render stage. Call it before any render methods`>
+            : TMethod extends 'clientLoader'
+              ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
+              : TMethod extends 'clientInput'
+                ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
+                : TMethod extends 'mapper'
+                  ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
+                  : TMethod extends 'props'
+                    ? ShowError<`You can not use props() in render stage. Call it before any render methods`>
+                    : unknown
       : unknown
 
 export type NiceRootStagePoint<
@@ -1651,8 +1763,8 @@ export type NiceRootStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1666,8 +1778,8 @@ export type NiceRootStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -1696,6 +1808,7 @@ export type NiceRootStagePoint<
   | 'componentLoading'
   | 'loading'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1721,8 +1834,8 @@ export type NiceBaseStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1736,8 +1849,8 @@ export type NiceBaseStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -1759,6 +1872,7 @@ export type NiceBaseStagePoint<
   | 'componentLoading'
   | 'loading'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1784,8 +1898,8 @@ export type NicePageStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1799,8 +1913,8 @@ export type NicePageStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -1811,6 +1925,7 @@ export type NicePageStagePoint<
   | 'wrapper'
   | 'outer'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1840,8 +1955,8 @@ export type NiceComponentStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1855,8 +1970,8 @@ export type NiceComponentStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -1867,6 +1982,7 @@ export type NiceComponentStagePoint<
   | 'wrapper'
   | 'outer'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1891,8 +2007,8 @@ export type NiceQueryStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1906,14 +2022,15 @@ export type NiceQueryStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
   | 'query'
   | 'fetchOptions'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1934,8 +2051,8 @@ export type NiceInfiniteQueryStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1949,14 +2066,15 @@ export type NiceInfiniteQueryStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
   | 'infiniteQuery'
   | 'fetchOptions'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -1978,8 +2096,8 @@ export type NiceMutationStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -1993,8 +2111,8 @@ export type NiceMutationStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -2002,6 +2120,7 @@ export type NiceMutationStagePoint<
   // | 'asFormData'
   | 'fetchOptions'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -2021,8 +2140,8 @@ export type NiceLayoutStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2036,8 +2155,8 @@ export type NiceLayoutStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -2053,6 +2172,7 @@ export type NiceLayoutStagePoint<
   | 'wrapper'
   | 'outer'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -2082,8 +2202,8 @@ export type NiceProviderStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2097,14 +2217,15 @@ export type NiceProviderStagePoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
   | 'provider'
   | 'fetchOptions'
   | 'input'
+  | 'clientInput'
   | 'ctx'
   | 'loader'
   | 'clientLoader'
@@ -2131,8 +2252,8 @@ export type NiceStagePoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = TLetsEndPointType extends 'root'
@@ -2146,8 +2267,8 @@ export type NiceStagePoint<
       TClientLoaderOutput,
       TClientMapperOutput,
       TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
+      TServerInputSchema,
+      TClientInputSchema,
       TQueryResultType,
       TProps
     >
@@ -2162,8 +2283,8 @@ export type NiceStagePoint<
         TClientLoaderOutput,
         TClientMapperOutput,
         TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
+        TServerInputSchema,
+        TClientInputSchema,
         TQueryResultType,
         TProps
       >
@@ -2178,8 +2299,8 @@ export type NiceStagePoint<
           TClientLoaderOutput,
           TClientMapperOutput,
           TRouteDefinition,
-          TPrevRouteDefinition,
-          TInputSchema,
+          TServerInputSchema,
+          TClientInputSchema,
           TQueryResultType,
           TProps
         >
@@ -2194,8 +2315,8 @@ export type NiceStagePoint<
             TClientLoaderOutput,
             TClientMapperOutput,
             TRouteDefinition,
-            TPrevRouteDefinition,
-            TInputSchema,
+            TServerInputSchema,
+            TClientInputSchema,
             TQueryResultType,
             TProps
           >
@@ -2210,8 +2331,8 @@ export type NiceStagePoint<
               TClientLoaderOutput,
               TClientMapperOutput,
               TRouteDefinition,
-              TPrevRouteDefinition,
-              TInputSchema,
+              TServerInputSchema,
+              TClientInputSchema,
               TQueryResultType,
               TProps
             >
@@ -2226,8 +2347,8 @@ export type NiceStagePoint<
                 TClientLoaderOutput,
                 TClientMapperOutput,
                 TRouteDefinition,
-                TPrevRouteDefinition,
-                TInputSchema,
+                TServerInputSchema,
+                TClientInputSchema,
                 TQueryResultType,
                 TProps
               >
@@ -2242,8 +2363,8 @@ export type NiceStagePoint<
                   TClientLoaderOutput,
                   TClientMapperOutput,
                   TRouteDefinition,
-                  TPrevRouteDefinition,
-                  TInputSchema,
+                  TServerInputSchema,
+                  TClientInputSchema,
                   TQueryResultType,
                   TProps
                 >
@@ -2258,8 +2379,8 @@ export type NiceStagePoint<
                     TClientLoaderOutput,
                     TClientMapperOutput,
                     TRouteDefinition,
-                    TPrevRouteDefinition,
-                    TInputSchema,
+                    TServerInputSchema,
+                    TClientInputSchema,
                     TQueryResultType,
                     TProps
                   >
@@ -2274,8 +2395,8 @@ export type NiceStagePoint<
                       TClientLoaderOutput,
                       TClientMapperOutput,
                       TRouteDefinition,
-                      TPrevRouteDefinition,
-                      TInputSchema,
+                      TServerInputSchema,
+                      TClientInputSchema,
                       TQueryResultType,
                       TProps
                     >
@@ -2327,8 +2448,8 @@ export type NiceRootEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2342,8 +2463,8 @@ export type NiceRootEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -2360,8 +2481,8 @@ export type NiceBaseEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2375,8 +2496,8 @@ export type NiceBaseEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
@@ -2420,11 +2541,6 @@ export type WithExecuteEndLiteralsIfSuitable<
       ? TLiteral | 'useLoader' | 'execute' | 'executeDetailed'
       : TLiteral
 
-export type WithInputSchemaLiteralIfExists<
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TLiteral extends string,
-> = TInputSchema extends InputSchema ? TLiteral | 'inputSchema' : TLiteral
-
 export type NicePageEndPoint<
   TPointType extends 'page',
   TLetsEndPointType extends UndefinedEndPointType,
@@ -2435,8 +2551,8 @@ export type NicePageEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2450,19 +2566,16 @@ export type NicePageEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithExecuteEndLiteralsIfSuitable<
-      TServerLoaderOutput,
-      TClientMapperOutput,
-      TQueryResultType,
-      'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'
-    >
+  WithExecuteEndLiteralsIfSuitable<
+    TServerLoaderOutput,
+    TClientMapperOutput,
+    TQueryResultType,
+    'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'
   >
 >
 
@@ -2476,8 +2589,8 @@ export type NiceComponentEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2491,19 +2604,16 @@ export type NiceComponentEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithExecuteEndLiteralsIfSuitable<
-      TServerLoaderOutput,
-      TClientMapperOutput,
-      TQueryResultType,
-      'point' | 'type' | 'Infer' | 'Component' | 'X'
-    >
+  WithExecuteEndLiteralsIfSuitable<
+    TServerLoaderOutput,
+    TClientMapperOutput,
+    TQueryResultType,
+    'point' | 'type' | 'Infer' | 'Component' | 'X'
   >
 >
 
@@ -2517,8 +2627,8 @@ export type NiceLayoutEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2532,19 +2642,16 @@ export type NiceLayoutEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithExecuteEndLiteralsIfSuitable<
-      TServerLoaderOutput,
-      TClientMapperOutput,
-      TQueryResultType,
-      'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
-    >
+  WithExecuteEndLiteralsIfSuitable<
+    TServerLoaderOutput,
+    TClientMapperOutput,
+    TQueryResultType,
+    'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
   >
 >
 
@@ -2558,8 +2665,8 @@ export type NiceQueryEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2573,19 +2680,16 @@ export type NiceQueryEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithExecuteEndLiteralsIfSuitable<
-      TServerLoaderOutput,
-      TClientMapperOutput,
-      TQueryResultType,
-      'point' | 'type' | 'Infer'
-    >
+  WithExecuteEndLiteralsIfSuitable<
+    TServerLoaderOutput,
+    TClientMapperOutput,
+    TQueryResultType,
+    'point' | 'type' | 'Infer'
   >
 >
 
@@ -2599,8 +2703,8 @@ export type NiceInfiniteQueryEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2614,19 +2718,16 @@ export type NiceInfiniteQueryEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithExecuteEndLiteralsIfSuitable<
-      TServerLoaderOutput,
-      TClientMapperOutput,
-      TQueryResultType,
-      'point' | 'type' | 'Infer'
-    >
+  WithExecuteEndLiteralsIfSuitable<
+    TServerLoaderOutput,
+    TClientMapperOutput,
+    TQueryResultType,
+    'point' | 'type' | 'Infer'
   >
 >
 
@@ -2640,8 +2741,8 @@ export type NiceMutationEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2655,17 +2756,14 @@ export type NiceMutationEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithFetchIfHasServerLoader<
-      TServerLoaderOutput,
-      'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
-    >
+  WithFetchIfHasServerLoader<
+    TServerLoaderOutput,
+    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
   >
 >
 
@@ -2679,8 +2777,8 @@ export type NiceProviderEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = Pick<
@@ -2694,19 +2792,16 @@ export type NiceProviderEndPoint<
     TClientLoaderOutput,
     TClientMapperOutput,
     TRouteDefinition,
-    TPrevRouteDefinition,
-    TInputSchema,
+    TServerInputSchema,
+    TClientInputSchema,
     TQueryResultType,
     TProps
   >,
-  WithInputSchemaLiteralIfExists<
-    TInputSchema,
-    WithExecuteEndLiteralsIfSuitable<
-      TServerLoaderOutput,
-      TClientMapperOutput,
-      TQueryResultType,
-      'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
-    >
+  WithExecuteEndLiteralsIfSuitable<
+    TServerLoaderOutput,
+    TClientMapperOutput,
+    TQueryResultType,
+    'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
   >
 >
 
@@ -2720,8 +2815,8 @@ export type NiceEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
 > = TPointType extends 'root'
@@ -2735,8 +2830,8 @@ export type NiceEndPoint<
       TClientLoaderOutput,
       TClientMapperOutput,
       TRouteDefinition,
-      TPrevRouteDefinition,
-      TInputSchema,
+      TServerInputSchema,
+      TClientInputSchema,
       TQueryResultType,
       TProps
     >
@@ -2751,8 +2846,8 @@ export type NiceEndPoint<
         TClientLoaderOutput,
         TClientMapperOutput,
         TRouteDefinition,
-        TPrevRouteDefinition,
-        TInputSchema,
+        TServerInputSchema,
+        TClientInputSchema,
         TQueryResultType,
         TProps
       >
@@ -2767,8 +2862,8 @@ export type NiceEndPoint<
           TClientLoaderOutput,
           TClientMapperOutput,
           TRouteDefinition,
-          TPrevRouteDefinition,
-          TInputSchema,
+          TServerInputSchema,
+          TClientInputSchema,
           TQueryResultType,
           TProps
         >
@@ -2783,8 +2878,8 @@ export type NiceEndPoint<
             TClientLoaderOutput,
             TClientMapperOutput,
             TRouteDefinition,
-            TPrevRouteDefinition,
-            TInputSchema,
+            TServerInputSchema,
+            TClientInputSchema,
             TQueryResultType,
             TProps
           >
@@ -2799,8 +2894,8 @@ export type NiceEndPoint<
               TClientLoaderOutput,
               TClientMapperOutput,
               TRouteDefinition,
-              TPrevRouteDefinition,
-              TInputSchema,
+              TServerInputSchema,
+              TClientInputSchema,
               TQueryResultType,
               TProps
             >
@@ -2815,8 +2910,8 @@ export type NiceEndPoint<
                 TClientLoaderOutput,
                 TClientMapperOutput,
                 TRouteDefinition,
-                TPrevRouteDefinition,
-                TInputSchema,
+                TServerInputSchema,
+                TClientInputSchema,
                 TQueryResultType,
                 TProps
               >
@@ -2831,8 +2926,8 @@ export type NiceEndPoint<
                   TClientLoaderOutput,
                   TClientMapperOutput,
                   TRouteDefinition,
-                  TPrevRouteDefinition,
-                  TInputSchema,
+                  TServerInputSchema,
+                  TClientInputSchema,
                   TQueryResultType,
                   TProps
                 >
@@ -2847,8 +2942,8 @@ export type NiceEndPoint<
                     TClientLoaderOutput,
                     TClientMapperOutput,
                     TRouteDefinition,
-                    TPrevRouteDefinition,
-                    TInputSchema,
+                    TServerInputSchema,
+                    TClientInputSchema,
                     TQueryResultType,
                     TProps
                   >
@@ -2863,8 +2958,8 @@ export type NiceEndPoint<
                       TClientLoaderOutput,
                       TClientMapperOutput,
                       TRouteDefinition,
-                      TPrevRouteDefinition,
-                      TInputSchema,
+                      TServerInputSchema,
+                      TClientInputSchema,
                       TQueryResultType,
                       TProps
                     >
@@ -2880,8 +2975,8 @@ export type AnyNiceEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = NiceEndPoint<
@@ -2894,8 +2989,8 @@ export type AnyNiceEndPoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >
@@ -2909,8 +3004,8 @@ export type AnyNiceRequestableEndPoint<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
 > = NiceEndPoint<
@@ -2923,8 +3018,8 @@ export type AnyNiceRequestableEndPoint<
   TClientLoaderOutput,
   TClientMapperOutput,
   TRouteDefinition,
-  TPrevRouteDefinition,
-  TInputSchema,
+  TServerInputSchema,
+  TClientInputSchema,
   TQueryResultType,
   TProps
 >

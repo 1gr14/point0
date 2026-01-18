@@ -1,8 +1,9 @@
 import { Error0 } from '@devp0nt/error0'
 import type { AnyLocation } from '@devp0nt/route0'
 import type {
+  AnyPoint,
   AppComponent,
-  Ctx,
+  // Ctx,
   Data,
   DataTransformerExtended,
   EndPoint,
@@ -20,11 +21,13 @@ import type {
   QueryKey,
   Request0,
   RequiredCtx,
-  ServerExecuteAction,
+  SafeParseInputResult,
+  // ServerExecuteAction,
   ServerExecuteResult,
   SuperStoreInternalValues,
   SuperStoreInternalValuesOrErrors,
   UndefinedData,
+  UndefinedInputSchema,
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
@@ -43,7 +46,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   request: Request0
   response0: Response0
   pointsManager: PointsManager<true, TRequiredCtx>
-  serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
+  // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
   pageLocation: AnyLocation | undefined
   requiredCtx: TRequiredCtx
   serverStorageState: SuperStoreInternalValues
@@ -54,7 +57,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pointsManager,
     pageLocation,
     requiredCtx,
-    serverExecuteActionsWithOutput,
+    // serverExecuteActionsWithOutput,
     serverStorageState,
     response0,
   }: {
@@ -63,7 +66,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     pointsManager: PointsManager<true, TRequiredCtx>
     pageLocation: AnyLocation | undefined
     requiredCtx: TRequiredCtx
-    serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
+    // serverExecuteActionsWithOutput: Array<ServerExecuteActionWithOutput<any>>
     serverStorageState: SuperStoreInternalValues
     response0: Response0
   }) {
@@ -73,7 +76,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     this.pointsManager = pointsManager
     this.pageLocation = pageLocation
     this.requiredCtx = requiredCtx
-    this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
+    // this.serverExecuteActionsWithOutput = serverExecuteActionsWithOutput
     this.serverStorageState = serverStorageState
   }
 
@@ -117,7 +120,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       pointsManager,
       pageLocation,
       requiredCtx,
-      serverExecuteActionsWithOutput: [],
+      // serverExecuteActionsWithOutput: [],
       response0,
       serverStorageState,
     })
@@ -191,11 +194,86 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
   // old execute method
 
+  private static async parseInputSafeAsync<TInputSchema extends InputSchema | UndefinedInputSchema>(
+    inputSchema: TInputSchema,
+    ...args: IsInputOptional<TInputSchema> extends true
+      ? [input?: InputRaw<TInputSchema>]
+      : [input: InputRaw<TInputSchema>]
+  ): Promise<SafeParseInputResult<TInputSchema>> {
+    const [input = {}] = args
+    if (!inputSchema) {
+      return {
+        success: true,
+        data: {} as InputParsed<TInputSchema>,
+        error: undefined,
+      }
+    }
+    try {
+      const result = await inputSchema['~standard'].validate(input)
+
+      if ('value' in result) {
+        return {
+          success: true,
+          data: result.value as InputParsed<TInputSchema>,
+          error: undefined,
+        }
+      }
+
+      const firstIssue = result.issues.at(0)
+      if (!firstIssue) {
+        return {
+          success: false,
+          data: undefined,
+          error: new Error0('Unknown input schema error'),
+        }
+      }
+      const path = firstIssue.path?.map((p) => (typeof p === 'object' ? p.key : p)).join('.')
+      const message = [path, firstIssue.message].filter(Boolean).join(': ')
+      const error = new Error0(message)
+      return {
+        success: false,
+        data: undefined,
+        error,
+      }
+    } catch (error) {
+      return { success: false, data: undefined, error: Error0.from(error) }
+    }
+  }
+
+  private static async parsePointInputSafeAsync<TPoint extends AnyPoint>(
+    point: TPoint,
+    input: TPoint['Infer']['ServerInputRaw'],
+  ): Promise<SafeParseInputResult<TPoint['Infer']['ServerInputSchema']>> {
+    const output = {} as InputParsed<TPoint['Infer']['ServerInputSchema']>
+    for (const serverExecuteAction of point._serverExecuteActions) {
+      if (serverExecuteAction.type === 'input') {
+        const result = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
+        if (!result.success) {
+          return result
+        }
+        Object.assign(output, result.data)
+      }
+    }
+    return { success: true, data: output, error: undefined }
+  }
+
+  // parseClientInput(
+  //   ...args: IsInputOptional<TClientInputSchema> extends true
+  //     ? [input?: InputRaw<TClientInputSchema>]
+  //     : [input: InputRaw<TClientInputSchema>]
+  // ): InputParsed<TClientInputSchema> {
+  //   const result = this.parseClientInputSafe(...args)
+  //   if (!result.success) {
+  //     throw result.error
+  //   }
+  //   return result.data
+  // }
+
   async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     point: TPoint,
-    ...args: IsInputOptional<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']> extends true
-      ? [input?: TPoint['Infer']['InputRaw'], response0?: Response0]
-      : [input: TPoint['Infer']['InputRaw'], response0?: Response0]
+    ...args: TPoint['Infer']['ServerInputOptional'] extends true
+      ? [input?: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
+      : [input: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
   ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
   async execute<
     TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | EndPoint | undefined,
@@ -245,12 +323,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 
     return await this.withServerGlobalState(async () => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
-      const { parsedInput, inputError } = (() => {
+      const { parsedInput, inputError } = await (async () => {
         if (!point) {
           // we will throw 404 later, so input unused
           return { parsedInput: {}, inputError: undefined }
         }
-        const result = point.parseInputSafe(input)
+        const result = await Executor.parsePointInputSafeAsync(point, input)
         if (!result.success) {
           return { parsedInput: {}, inputError: result.error }
         }
@@ -277,11 +355,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       let currentResponse: Response | undefined = undefined
       let currentOutput: LoaderOutput | UndefinedLoaderOutput = currentData
       let currentInputParsed: InputParsed = {}
-      let currentInputSchema: InputSchema | undefined = undefined
 
       try {
-        currentInputParsed = !point?.route ? currentInputParsed : point.route.parseFlatInput(input) // will never throw, becouse we parse it before
-
         if (!point) {
           const error = new Error0(`Point Not Found`)
           const status = 404
@@ -300,11 +375,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
         for (const serverExecuteAction of point._serverExecuteActions) {
           switch (serverExecuteAction.type) {
             case 'input': {
-              const newCurrentInputSchema: InputSchema = currentInputSchema
-                ? currentInputSchema.extend(serverExecuteAction.schema.shape)
-                : serverExecuteAction.schema
-              currentInputSchema = newCurrentInputSchema
-              const safeParseResult = newCurrentInputSchema.safeParse(input)
+              const safeParseResult = await Executor.parseInputSafeAsync(serverExecuteAction.schema, input)
               if (safeParseResult.error) {
                 const status = 422
                 response0.set.status(status)
@@ -318,114 +389,114 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                   effects: response0.effects,
                 }
               }
-              currentInputParsed = safeParseResult.data
+              currentInputParsed = {
+                ...currentInputParsed,
+                ...safeParseResult.data,
+              }
               break
             }
             case 'ctx': {
-              const ex = this.serverExecuteActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
-              ) as ServerExecuteActionWithOutput<'ctx'> | undefined
-              if (ex) {
-                if (Array.isArray(ex.output)) {
-                  const appendCtxExposedKeys =
-                    ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
-                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-                  currentCtx = { ...currentCtx, ...ex.output[0] }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                } else {
-                  currentCtx = { ...currentCtx, ...ex.output }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                }
+              // const ex = this.serverExecuteActionsWithOutput.find(
+              //   (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'ctx',
+              // ) as ServerExecuteActionWithOutput<'ctx'> | undefined
+              // if (ex) {
+              //   if (Array.isArray(ex.output)) {
+              //     const appendCtxExposedKeys =
+              //       ex.output.length > 1 ? (ex.output.slice(1) as string[]) : Object.keys(ex.output[0])
+              //     currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+              //     currentCtx = { ...currentCtx, ...ex.output[0] }
+              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
+              //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+              //   } else {
+              //     currentCtx = { ...currentCtx, ...ex.output }
+              //     // eslint-disable-next-line @typescript-eslint/no-loop-func
+              //     currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
+              //   }
+              // } else {
+              const result = await serverExecuteAction.fn({
+                ...currentCtxExposed,
+                ctx: { ...currentCtx },
+                input: currentInputParsed,
+                execute: this.execute.bind(this),
+                request: this.request,
+                set: response0.set,
+                point,
+              })
+              if (Array.isArray(result)) {
+                const appendCtxExposedKeys = result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
+                currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
+                currentCtx = { ...currentCtx, ...result[0] }
+                // eslint-disable-next-line @typescript-eslint/no-loop-func
+                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               } else {
-                const result = await serverExecuteAction.fn({
-                  ...currentCtxExposed,
-                  ctx: { ...currentCtx },
-                  input: currentInputParsed,
-                  execute: this.execute.bind(this),
-                  inputRaw: input,
-                  request: this.request,
-                  set: response0.set,
-                  point,
-                })
-                if (Array.isArray(result)) {
-                  const appendCtxExposedKeys =
-                    result.length > 1 ? (result.slice(1) as string[]) : Object.keys(result[0])
-                  currentCtxExposedKeys = [...new Set([...currentCtxExposedKeys, ...appendCtxExposedKeys])]
-                  currentCtx = { ...currentCtx, ...result[0] }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                } else {
-                  currentCtx = { ...currentCtx, ...result }
-                  // eslint-disable-next-line @typescript-eslint/no-loop-func
-                  currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
-                }
-                this.serverExecuteActionsWithOutput.push({
-                  output: result,
-                  record: serverExecuteAction,
-                })
+                currentCtx = { ...currentCtx, ...result }
+                // eslint-disable-next-line @typescript-eslint/no-loop-func
+                currentCtxExposed = Object.fromEntries(currentCtxExposedKeys.map((key) => [key, currentCtx[key]]))
               }
+              // this.serverExecuteActionsWithOutput.push({
+              //   output: result,
+              //   record: serverExecuteAction,
+              // })
+              // }
               break
             }
             case 'loader': {
-              const ex = this.serverExecuteActionsWithOutput.find(
-                (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
-              ) as ServerExecuteActionWithOutput<'loader'> | undefined
-              if (ex) {
-                if (Array.isArray(ex.output)) {
-                  this.response0.set.status(ex.output[0])
-                  if (ex.output[1] instanceof Response) {
-                    currentResponse = ex.output[1]
-                    currentOutput = ex.output[1]
-                  } else {
-                    currentData = ex.output[1]
-                    currentOutput = ex.output[1]
-                  }
+              // const ex = this.serverExecuteActionsWithOutput.find(
+              //   (e) => e.record.unstableId === serverExecuteAction.unstableId && e.record.type === 'loader',
+              // ) as ServerExecuteActionWithOutput<'loader'> | undefined
+              // if (ex) {
+              //   if (Array.isArray(ex.output)) {
+              //     this.response0.set.status(ex.output[0])
+              //     if (ex.output[1] instanceof Response) {
+              //       currentResponse = ex.output[1]
+              //       currentOutput = ex.output[1]
+              //     } else {
+              //       currentData = ex.output[1]
+              //       currentOutput = ex.output[1]
+              //     }
+              //   } else {
+              //     if (ex.output instanceof Response) {
+              //       currentResponse = ex.output
+              //       currentOutput = ex.output
+              //     } else {
+              //       currentData = ex.output
+              //       currentOutput = ex.output
+              //     }
+              //   }
+              // } else {
+              const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
+                ...currentCtxExposed,
+                ctx: { ...currentCtx },
+                data: { ...currentData },
+                input: currentInputParsed,
+                execute: this.execute.bind(this),
+                request: this.request as never,
+                set: response0.set,
+                point,
+              })
+              if (Array.isArray(result)) {
+                response0.set.status(result[0])
+                if (result[1] instanceof Response) {
+                  currentResponse = result[1]
+                  currentOutput = result[1]
                 } else {
-                  if (ex.output instanceof Response) {
-                    currentResponse = ex.output
-                    currentOutput = ex.output
-                  } else {
-                    currentData = ex.output
-                    currentOutput = ex.output
-                  }
+                  currentData = result[1]
+                  currentOutput = result[1]
                 }
               } else {
-                const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
-                  ...currentCtxExposed,
-                  ctx: { ...currentCtx },
-                  data: { ...currentData },
-                  input: currentInputParsed,
-                  execute: this.execute.bind(this),
-                  inputRaw: input,
-                  request: this.request,
-                  set: response0.set,
-                  point,
-                })
-                if (Array.isArray(result)) {
-                  response0.set.status(result[0])
-                  if (result[1] instanceof Response) {
-                    currentResponse = result[1]
-                    currentOutput = result[1]
-                  } else {
-                    currentData = result[1]
-                    currentOutput = result[1]
-                  }
+                if (result instanceof Response) {
+                  currentResponse = result
+                  currentOutput = result
                 } else {
-                  if (result instanceof Response) {
-                    currentResponse = result
-                    currentOutput = result
-                  } else {
-                    currentData = result
-                    currentOutput = result
-                  }
+                  currentData = result
+                  currentOutput = result
                 }
-                this.serverExecuteActionsWithOutput.push({
-                  output: result,
-                  record: serverExecuteAction,
-                })
               }
+              // this.serverExecuteActionsWithOutput.push({
+              //   output: result,
+              //   record: serverExecuteAction,
+              // })
+              // }
               break
             }
             // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
@@ -870,20 +941,18 @@ export type ExecuteOptions<
   TPoint extends EndPoint | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any> | undefined,
 > = {
   point?: TPoint | undefined
-  input: TPoint extends EndPoint
-    ? InputRaw<TPoint['Infer']['RouteDefinition'], TPoint['Infer']['InputSchema']>
-    : InputRaw
+  input: TPoint extends EndPoint ? TPoint['Infer']['ServerInputRaw'] : InputRaw
   response0?: Response0
 }
 
-export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
-  ? {
-      output: Ctx | [Ctx, ...string[]]
-      record: ServerExecuteAction<'ctx'>
-    }
-  : TType extends 'loader'
-    ? {
-        output: Data | Response | [number, Data | Response]
-        record: ServerExecuteAction<'loader'>
-      }
-    : never
+// export type ServerExecuteActionWithOutput<TType extends 'ctx' | 'loader'> = TType extends 'ctx'
+//   ? {
+//       output: Ctx | [Ctx, ...string[]]
+//       record: ServerExecuteAction<'ctx'>
+//     }
+//   : TType extends 'loader'
+//     ? {
+//         output: Data | Response | [number, Data | Response]
+//         record: ServerExecuteAction<'loader'>
+//       }
+//     : never

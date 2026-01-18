@@ -9,13 +9,18 @@ others → nothing
 
 input
 
+middleware вырезать из client, input вырзещать из client
+
 page, layout, component, provider → use(query | infiniteQuery | plugin)
 use(any) ← check not conflicted input, input (new), loaders (like execute append data), ctx (as is append ctx), mapper, new middlewares
 use(query | infiniteQuery) ← set similar queryKey if not loaders before, and remove it if some loaders after
 use(layout) ← like query | infiniteQuery, but also added to layouts, check not wider input, check if sope suitable
 use(pluginLike) ← just as any
 
+dropLoaders()
+render and mount internal testing helpers
 .middleware('publicdir') for early return and skipp all other middlewares
+input schema provided by route input only provides new keys not those which was before in previously defined route
 I think we do not need .mdlwr
 Лоадеры сбрасываются после летс, мидлвары не сбрасываются и доступны в бэйзе, от лэйоута можно только летс пейдж и лэйоут, всё остальное только от рута и бейза, лэйоут является провайдером
 Отменить андер клиент лоадер
