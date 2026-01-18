@@ -83,8 +83,8 @@ describe('midleware', () => {
           x={data.x},y={data.y}
         </div>
       ))
-    const { fetchPoint, fetchPreview } = await createTestThings({ points: [root, page] })
-    const data = await fetchPoint(page)
+    const { loadPoint, fetchPreview } = await createTestThings({ points: [root, page] })
+    const data = await loadPoint(page)
     expect(data.x).toBe(1)
     const preview = await fetchPreview(page)
     expect(preview).toMatchInlineSnapshot(`
@@ -115,8 +115,8 @@ describe('midleware', () => {
           x={data.x},y={data.y},z={data.z}
         </div>
       ))
-    const { fetchPoint, fetchPreview } = await createTestThings({ points: [root, page] })
-    const data = await fetchPoint(page)
+    const { loadPoint, fetchPreview } = await createTestThings({ points: [root, page] })
+    const data = await loadPoint(page)
     expect(data.x).toBe(1)
     const preview = await fetchPreview(page)
     expect(preview).toMatchInlineSnapshot(`

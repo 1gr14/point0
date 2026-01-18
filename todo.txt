@@ -12,7 +12,7 @@ input
 page, layout, component, provider → use(query | infiniteQuery | plugin)
 use(any) ← check not conflicted input, input (new), loaders (like execute append data), ctx (as is append ctx), mapper, new middlewares
 use(query | infiniteQuery) ← set similar queryKey if not loaders before, and remove it if some loaders after
-use(layout) ← like query | infiniteQuery, but also added to layouts, check not wider input
+use(layout) ← like query | infiniteQuery, but also added to layouts, check not wider input, check if sope suitable
 use(pluginLike) ← just as any
 
 .middleware('publicdir') for early return and skipp all other middlewares

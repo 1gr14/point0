@@ -471,6 +471,17 @@ describe('html-viewer', () => {
       )
     })
 
+    it('should convert nested HTML structure to YAML with JSON stringinfyed', async () => {
+      const html = `<div id="root"><div id="page">${JSON.stringify({ x: 1, y: [{ z: 3 }] })}</div></div>`
+      const { preview } = await HtmlView.parse(html)
+      expect(preview).toMatchInlineSnapshot(
+        `
+        "#page: {"x":1,"y":[{"z":3}]}
+        "
+      `,
+      )
+    })
+
     it('should convert multiple siblings to YAML', async () => {
       const html = '<div id="root"><p>First</p><p>Second</p><p>Third</p></div>'
       const { preview } = await HtmlView.parse(html)

@@ -351,9 +351,9 @@ export const createTestThings = async ({
       return await client.fetch(input, init)
     })
   }
-  const fetchPoint = (async (point: EndPoint, ...args: [any]) => {
+  const loadPoint = (async (point: EndPoint, ...args: [any]) => {
     return await client.run(async () => {
-      return await point.fetch(...args)
+      return await point.execute(...args)
     })
   }) as unknown as FetchPoint
   const fetchView = (async (point: EndPoint, ...args: [any]) => {
@@ -453,7 +453,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     app,
     fetch,
     fetchSsr,
-    fetchPoint,
+    loadPoint,
     fetchView,
     fetchPreview,
     fetchRecorder,
