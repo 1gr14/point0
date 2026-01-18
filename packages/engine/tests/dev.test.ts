@@ -122,7 +122,7 @@ describe('dev', () => {
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           (Empty)
-
+          
           div: Hello
           "
       `)

@@ -129,7 +129,7 @@ describe('build', () => {
         expect(page.tale).toMatchInlineSnapshot(`
         "/
           (Empty)
-
+          
           div: My Cool Page
           "
       `)
@@ -194,7 +194,7 @@ describe('build', () => {
         expect(page.tale).toMatchInlineSnapshot(`
           "/3
             div: MY_SERVER_ONLY4
-
+            
             div: MY_CLIENT_ONLY5
             "
         `)
