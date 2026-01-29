@@ -436,13 +436,13 @@ export class Point0<
     TProps
   >
   X: TPointType extends 'layout'
-    ? MountableComponent<TClientInputSchema, TProps, true>
+    ? MountableComponent<TServerInputSchema, TClientInputSchema, TProps, true>
     : TPointType extends 'page'
-      ? MountableComponent<TClientInputSchema, TProps, false>
+      ? MountableComponent<TServerInputSchema, TClientInputSchema, TProps, false>
       : TPointType extends 'component'
-        ? MountableComponent<TClientInputSchema, TProps, false>
+        ? MountableComponent<TServerInputSchema, TClientInputSchema, TProps, false>
         : TPointType extends 'provider'
-          ? MountableComponent<TClientInputSchema, TProps, null>
+          ? MountableComponent<TServerInputSchema, TClientInputSchema, TProps, null>
           : null
 
   private constructor(options: {
@@ -604,7 +604,7 @@ export class Point0<
       TClientInputSchema,
       TProps
     >
-    X?: MountableComponent<any, any, any> | null
+    X?: MountableComponent<any, any, any, any> | null
     _unstableId?: number
   }) {
     this.point = this
@@ -932,7 +932,7 @@ export class Point0<
       TClientInputSchema,
       TProps
     >
-    X?: MountableComponent<any, any, any> | null
+    X?: MountableComponent<any, any, any, any> | null
   }): Point0<
     TPointType,
     TLetsEndPointType,
@@ -2634,15 +2634,15 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  input<TValidateFn extends CustomValidationFn>(
+  input<TValidateFn extends CustomValidationFn<any, any>>(
     validateFn: IsInputSchemaConflicts<
       TServerInputSchema,
       CustomValidationFnToRecordValidationSchema<TValidateFn>
     > extends false
-      ? CustomValidationFnToRecordValidationSchema<TValidateFn>
+      ? TValidateFn
       : ShowError<`Provided schema is not assignable to previous input schema`> &
           AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-          CustomValidationFnToRecordValidationSchema<TValidateFn>,
+          TValidateFn,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2658,8 +2658,12 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  input(inputSchema: InputSchema | CustomValidationFn) {
-    const schema = '~standard' in inputSchema ? inputSchema : Point0.customValidationFnToInputSchema(inputSchema)
+  input(inputSchema: InputSchema | CustomValidationFn | undefined) {
+    const schema = !inputSchema
+      ? Point0.customValidationFnToInputSchema((x) => x)
+      : '~standard' in inputSchema
+        ? inputSchema
+        : Point0.customValidationFnToInputSchema(inputSchema)
     return this._continue({
       _serverExecuteActions: [
         ...this._serverExecuteActions,
@@ -5150,7 +5154,7 @@ export class Point0<
   private _getCombinedQueryOptions({
     input,
     location,
-    queryClient,
+    queryClient = _ssItems.__POINT0_QUERY_CLIENT__.get(),
     queryOptions,
     fetchOptions,
   }: {
@@ -5165,7 +5169,6 @@ export class Point0<
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
     QueryKey
   > {
-    queryClient ??= _ssItems.__POINT0_QUERY_CLIENT__.get()
     const queryKey = this._getCombinedQueryKey({ input, outputType: 'data', isInfiniteQuery: false })
     const queryFn = async () => {
       const serverData = await (async () => {
@@ -6195,7 +6198,7 @@ export class Point0<
 
   // mountable components
 
-  Page = (props: MountableComponentProps<TClientInputSchema, TProps, false>): React.ReactNode => {
+  Page = (props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, false>): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
 
@@ -6516,7 +6519,9 @@ export class Point0<
     })
   }
 
-  Component = (props: MountableComponentProps<TClientInputSchema, TProps, false>): React.ReactNode => {
+  Component = (
+    props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, false>,
+  ): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'component' })
     const errorComponent = this._getErrorComponent({ type: 'component' })
 
@@ -6790,7 +6795,7 @@ export class Point0<
     })
   }
 
-  Layout = (props: MountableComponentProps<TClientInputSchema, TProps, true>): React.ReactNode => {
+  Layout = (props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, true>): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'layout' })
     const errorComponent = this._getErrorComponent({ type: 'layout' })
 
@@ -7126,7 +7131,9 @@ export class Point0<
     return value
   }
 
-  Provider = (props: MountableComponentProps<TClientInputSchema, TProps, null>): React.ReactNode => {
+  Provider = (
+    props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, null>,
+  ): React.ReactNode => {
     const loadingComponent = this._getLoadingComponent({ type: 'page' })
     const errorComponent = this._getErrorComponent({ type: 'page' })
 

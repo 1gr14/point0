@@ -1,11 +1,47 @@
-import type { InputParsed } from '@point0/core'
+import type { CustomValidationFnToRecordValidationSchema, InputParsed, IsInputSchemaConflicts } from '@point0/core'
 import { Point0 } from '@point0/core'
-import '@testing-library/jest-dom'
-import { describe, expect, it } from 'bun:test'
+import type { StandardSchemaV1 } from '@standard-schema/spec'
+// import '@testing-library/jest-dom'
+import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('input', () => {
+  it('types utils work', () => {
+    type X = CustomValidationFnToRecordValidationSchema<(input: { x: number }) => { x: string }>
+    expectTypeOf<X>().toEqualTypeOf<StandardSchemaV1<{ x: number }, { x: string }>>()
+    type Y = CustomValidationFnToRecordValidationSchema<(input: { x: number; y: number }) => { x: string; y: string }>
+    expectTypeOf<Y>().toEqualTypeOf<StandardSchemaV1<{ x: number; y: number }, { x: string; y: string }>>()
+    type IsConflictXY = IsInputSchemaConflicts<X, Y>
+    expectTypeOf<IsConflictXY>().toEqualTypeOf<false>()
+    type IsConflictYX = IsInputSchemaConflicts<Y, X>
+    expectTypeOf<IsConflictYX>().toEqualTypeOf<false>()
+    type Z = CustomValidationFnToRecordValidationSchema<(input: { x: boolean }) => { x: string }>
+    type IsConflictXZ = IsInputSchemaConflicts<X, Z>
+    expectTypeOf<IsConflictXZ>().toEqualTypeOf<true>()
+    type IsConflictZX = IsInputSchemaConflicts<Z, X>
+    expectTypeOf<IsConflictZX>().toEqualTypeOf<true>()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const xZod = z.object({ x: z.number().transform((x) => x.toString()) })
+    type XZod = typeof xZod
+    expectTypeOf<XZod['~standard']['types']>().toEqualTypeOf<
+      StandardSchemaV1<{ x: number }, { x: string }>['~standard']['types']
+    >()
+    type IsConflictXZodX = IsInputSchemaConflicts<XZod, X>
+    expectTypeOf<IsConflictXZodX>().toEqualTypeOf<false>()
+    type IsConflictXXZod = IsInputSchemaConflicts<X, XZod>
+    expectTypeOf<IsConflictXXZod>().toEqualTypeOf<false>()
+    type IsConflictXZodZ = IsInputSchemaConflicts<XZod, Z>
+    expectTypeOf<IsConflictXZodZ>().toEqualTypeOf<true>()
+    type IsConflictZXZod = IsInputSchemaConflicts<Z, XZod>
+    expectTypeOf<IsConflictZXZod>().toEqualTypeOf<true>()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const xZodDefault = z.object({ x: z.number().default(123) })
+    type XZodDefault = typeof xZodDefault
+    expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['input']>().toEqualTypeOf<{ x?: number }>()
+    expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['output']>().toEqualTypeOf<{ x: number }>()
+  })
+
   it('empty and available in page component by route definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     let result: InputParsed | undefined
@@ -119,6 +155,93 @@ describe('input', () => {
         "loader": {
           "input": {
             "id": "123",
+          },
+        },
+      }
+    `)
+  })
+
+  it('available in mutation loader and client loader by schema definition and function', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .input(z.object({ id: z.string() }))
+      .input(({ id, sn }: { id: string; sn: number }) => {
+        return { id: id + '_test', sn: sn * 2 }
+      })
+      .loader(({ input }) => {
+        return { loader: { input } }
+      })
+      .clientInput(z.object({ sn: z.number() }))
+      .clientLoader(({ input, data }) => {
+        return { clientLoader: { input }, ...data }
+      })
+      .mutation()
+    const { loadPoint } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPoint(mutation, { id: '123', sn: 234 })
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "clientLoader": {
+          "input": {
+            "sn": 234,
+          },
+        },
+        "loader": {
+          "input": {
+            "id": "123_test",
+            "sn": 468,
+          },
+        },
+      }
+    `)
+  })
+
+  it('correctly typed when default in schema exists in mutation', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .input(z.object({ id: z.string(), sn: z.coerce.number().default(234) }))
+      .loader(({ input }) => {
+        return { loader: { input } }
+      })
+      .mutation()
+    expectTypeOf<(typeof mutation)['Infer']['InputRaw']>().toEqualTypeOf<{ id: string; sn?: unknown }>()
+    expectTypeOf<(typeof mutation)['Infer']['ServerInputParsed']>().toEqualTypeOf<{ id: string; sn: number }>()
+    const { loadPoint } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPoint(mutation, { id: '123' })
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "loader": {
+          "input": {
+            "id": "123",
+            "sn": 234,
+          },
+        },
+      }
+    `)
+  })
+
+  it('correctly typed when default in schema exists in page', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const layout = root.lets('layout', 'layout').layout(({ children }) => {
+      return <div>{children}</div>
+    })
+    const page = root
+      .lets('page', 'test')
+      .input(z.object({ id: z.string(), sn: z.number().default(234) }))
+      .loader(({ input }) => {
+        expectTypeOf<typeof input>().toEqualTypeOf<{ id: string; sn: number }>()
+        return { loader: { input } }
+      })
+      .page()
+    const { loadPoint } = await createTestThings({ points: [root, layout, page] })
+    const result = await loadPoint(page, { id: '123' })
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "loader": {
+          "input": {
+            "id": "123",
+            "sn": 234,
           },
         },
       }

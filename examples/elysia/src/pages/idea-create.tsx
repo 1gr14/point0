@@ -13,7 +13,7 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ input, ctx, inputRaw }) => {
+  .loader(async ({ input, ctx }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })
@@ -27,7 +27,7 @@ export const createIdeaMutation = client
 
 export const generateIdeaMutation = client
   .lets('mutation', 'generateIdea')
-  .loader(async ({ input, ctx, inputRaw }) => {
+  .loader(async ({ input, ctx }) => {
     const stream = new ReadableStream({
       async start(controller) {
         const text = 'u'.repeat(100) // 100 symbols

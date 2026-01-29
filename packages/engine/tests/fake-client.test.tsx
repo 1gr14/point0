@@ -1,6 +1,6 @@
 import { CookiesStore, Point0, QueryClientProvider, env } from '@point0/core'
 import { Router } from '@point0/wouter'
-import '@testing-library/jest-dom'
+// import '@testing-library/jest-dom'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { beforeAll, afterAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'

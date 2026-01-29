@@ -46,14 +46,12 @@ export const empty = client
     },
   )
 
-export const sharedEmptyPage = sharedQuery
-  .lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2'))
-  .page(({ data }) => {
-    return (
-      <div>
-        Shared Empty
-        <br />
-        Shared Data: {data.shared1}|{data.shared2}
-      </div>
-    )
-  })
+export const sharedEmptyPage = client.lets('page', 'sharedEmpty', Route0.create('/sharedEmpty2')).page(({ data }) => {
+  return (
+    <div>
+      Shared Empty
+      <br />
+      {/* Shared Data: {data.shared1}|{data.shared2} */}
+    </div>
+  )
+})

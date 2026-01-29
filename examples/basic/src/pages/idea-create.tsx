@@ -37,7 +37,7 @@ export const createIdeaMutation = client
       description: z.string().min(1).max(100),
     }),
   )
-  .loader(async ({ input, data, inputRaw }) => {
+  .loader(async ({ input, data }) => {
     return { ...data }
   })
   .input(
@@ -45,7 +45,7 @@ export const createIdeaMutation = client
       content: z.string().min(1).max(1000),
     }),
   )
-  .loader(async ({ input, data, execute, inputRaw }) => {
+  .loader(async ({ input, data, execute }) => {
     const result = await execute(BestIdeaComponent, { x: 22, y: 2 })
     console.info('testCookie', testCookie.get())
     testCookie.set(Math.random().toString())
@@ -60,7 +60,7 @@ export const createIdeaMutation = client
     }
     return { ...data, ...result.data }
   })
-  .loader(async ({ input, ctx, inputRaw, data }) => {
+  .loader(async ({ input, ctx, data }) => {
     const idea = await ctx.prisma.idea.create({
       data: input,
     })

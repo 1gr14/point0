@@ -49,7 +49,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
     },
     "examples/elysia": {
@@ -79,7 +79,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
     },
     "examples/vite": {
@@ -108,7 +108,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
         "vite": "^7.2.2",
         "vite-bundle-analyzer": "^1.2.3",
         "vite-plugin-commonjs": "^0.10.4",
@@ -133,7 +133,7 @@
         "dedent": "^1.7.1",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
       "peerDependencies": {
         "@devp0nt/route0": "catalog:",
@@ -157,7 +157,7 @@
         "esbuild-fix-imports-plugin": "^1.0.22",
         "superjson": "^2.2.6",
         "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
       "peerDependencies": {
         "@devp0nt/error0": "catalog:",
@@ -176,7 +176,7 @@
         "@types/node": "^20.0.0",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
       "peerDependencies": {
         "@devp0nt/error0": "catalog:",
@@ -221,7 +221,7 @@
         "lodash": "^4.17.21",
         "playwright": "^1.57.0",
         "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
         "vite": "^7.3.1",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^6.0.4",
@@ -235,34 +235,6 @@
         "@unhead/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-      },
-    },
-    "packages/engine/tests/temp/test-client/test-0": {
-      "name": "@point0/test-0",
-      "version": "1.0.0",
-      "dependencies": {
-        "@devp0nt/route0": "^1.0.0-next.52",
-        "@point0/compiler": "workspace:*",
-        "@point0/core": "workspace:*",
-        "@point0/engine": "workspace:*",
-        "@point0/react-dom": "workspace:*",
-        "@point0/wouter": "workspace:*",
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0",
-        "server-only": "^0.0.1",
-        "superjson": "^2.2.5",
-      },
-      "devDependencies": {
-        "@svgr/core": "^8.1.0",
-        "@svgr/plugin-jsx": "^8.1.0",
-        "@types/bun": "^1.3.0",
-        "@types/react": "^19.2.2",
-        "@types/react-dom": "^19.2.2",
-        "concurrently": "^9.2.1",
-        "cross-env": "^10.0.0",
-        "ncp": "^2.0.0",
-        "rimraf": "^6.0.1",
-        "typescript": "^5.0.0",
       },
     },
     "packages/engine/tests/template": {
@@ -290,7 +262,7 @@
         "cross-env": "^10.0.0",
         "ncp": "^2.0.0",
         "rimraf": "^6.0.1",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
     },
     "packages/react-dom": {
@@ -301,7 +273,7 @@
         "@types/node": "^20.0.0",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
       "peerDependencies": {
         "@point0/core": "workspace:*",
@@ -317,7 +289,7 @@
         "@types/node": "^20.0.0",
         "esbuild-fix-imports-plugin": "^1.0.22",
         "tsup": "^8.0.0",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
       "peerDependencies": {
         "@devp0nt/error0": "catalog:",
@@ -598,8 +570,6 @@
     "@point0/example-vite": ["@point0/example-vite@workspace:examples/vite"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
-
-    "@point0/test-0": ["@point0/test-0@workspace:packages/engine/tests/temp/test-client/test-0"],
 
     "@point0/test-project-name": ["@point0/test-project-name@workspace:packages/engine/tests/template"],
 

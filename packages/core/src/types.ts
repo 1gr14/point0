@@ -373,6 +373,7 @@ export type RecordValidationSchemaOutput<S extends RecordValidationSchema> = Sta
 // type PickOnlyStringKeys<T extends Record<string | number | symbol, unknown>> = {
 //   [K in keyof T]: K extends string ? K : never
 // }
+
 export type RouteDefinitionToRecordValidationSchema<TRouteDefinition extends RouteDefinition> = RecordValidationSchema<
   // PickOnlyStringKeys<FlatInputStringOnly<TRouteDefinition>>,
   FlatInputStringOnly<TRouteDefinition>,
@@ -383,7 +384,7 @@ export type CustomValidationFn<
   TInput extends InputRawUnknown = InputRawUnknown,
   TOutput extends InputParsed = InputParsed,
 > = (data: TInput) => TOutput
-export type CustomValidationFnToRecordValidationSchema<TCustomValidationFn extends CustomValidationFn> =
+export type CustomValidationFnToRecordValidationSchema<TCustomValidationFn extends CustomValidationFn<any, any>> =
   TCustomValidationFn extends CustomValidationFn<infer TInput, infer TOutput>
     ? RecordValidationSchema<TInput, TOutput>
     : never
@@ -396,7 +397,8 @@ export type CustomValidationFnToRecordValidationSchema<TCustomValidationFn exten
 //       : false
 //     : false
 
-type MergeObjects<A, B> = Omit<A, keyof B> & B
+export type MergeObjects<A, B> =
+  IsEmptyObject<B> extends true ? A : IsEmptyObject<A> extends true ? B : Omit<A, keyof B> & B
 export type MergeRecordValidationSchemas<
   TSchema1 extends RecordValidationSchema | undefined,
   TSchema2 extends RecordValidationSchema | undefined,
@@ -404,7 +406,7 @@ export type MergeRecordValidationSchemas<
   ? TSchema2 extends RecordValidationSchema
     ? RecordValidationSchema<
         MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>,
-        MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>
+        MergeObjects<RecordValidationSchemaOutput<TSchema1>, RecordValidationSchemaOutput<TSchema2>>
       >
     : TSchema1
   : TSchema2 extends RecordValidationSchema
@@ -529,18 +531,23 @@ export type InputsRaw<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
+export type IsInputsSchemasDefined<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = TServerInputSchema extends InputSchema ? true : TClientInputSchema extends InputSchema ? true : false
 export type InputRawMaybeOptional<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > =
   IsInputOptional<TInputSchema> extends true
     ? // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-      InputRaw<TInputSchema> | undefined | void
+        InputRaw<TInputSchema> | undefined | void
     : InputRaw<TInputSchema>
 export type InputsRawMaybeOptional<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > = InputRawMaybeOptional<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
 export type InputRawUnknown = Record<string, unknown>
+export type InputRawAny = Record<string, unknown>
 export type InputParseResult<
   TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
 > =
@@ -1107,13 +1114,14 @@ export type ComponentComponent<
 export type UndefinedComponentComponent = undefined
 
 export type MountableComponentProps<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
   TWithChildren extends boolean | null,
-> = (TClientInputSchema extends InputSchema
-  ? IsInputOptional<TClientInputSchema> extends true
-    ? { input?: InputRaw<TClientInputSchema> } & FinalProps<TProps>
-    : { input: InputRaw<TClientInputSchema> } & FinalProps<TProps>
+> = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
+  ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+    ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
+    : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
   : FinalProps<TProps>) &
   (TWithChildren extends true
     ? { children: React.ReactNode }
@@ -1121,10 +1129,11 @@ export type MountableComponentProps<
       ? { children?: React.ReactNode }
       : Record<never, never>)
 export type MountableComponent<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TProps extends Props | UndefinedProps,
   TWithChildren extends boolean | null,
-> = React.ComponentType<MountableComponentProps<TClientInputSchema, TProps, TWithChildren>>
+> = React.ComponentType<MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, TWithChildren>>
 
 // extra components
 

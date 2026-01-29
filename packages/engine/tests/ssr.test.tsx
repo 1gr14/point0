@@ -1,5 +1,5 @@
 import { Point0 } from '@point0/core'
-import '@testing-library/jest-dom'
+// import '@testing-library/jest-dom'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 

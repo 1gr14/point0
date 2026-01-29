@@ -57,7 +57,7 @@
     "@types/node": "^20.0.0",
     "esbuild-fix-imports-plugin": "^1.0.22",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "public"

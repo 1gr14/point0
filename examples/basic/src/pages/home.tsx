@@ -63,7 +63,7 @@ export const BestIdeaComponent = client
   .loading(({ input, props }) => {
     return <div>Loading...</div>
   })
-  .outer(({ children, ErrorComponent, LoadingComponent, input, props, location, inputRaw }) => {
+  .outer(({ children, ErrorComponent, LoadingComponent, input, props, location }) => {
     return children
   })
   // .component(X)
