@@ -380,14 +380,14 @@ export type RouteDefinitionToRecordValidationSchema<TRouteDefinition extends Rou
   // Record<string, unknown>,
   FlatOutput<TRouteDefinition>
 >
-export type CustomValidationFn<
-  TInput extends InputRawUnknown = InputRawUnknown,
-  TOutput extends InputParsed = InputParsed,
-> = (data: TInput) => TOutput
-export type CustomValidationFnToRecordValidationSchema<TCustomValidationFn extends CustomValidationFn<any, any>> =
-  TCustomValidationFn extends CustomValidationFn<infer TInput, infer TOutput>
-    ? RecordValidationSchema<TInput, TOutput>
-    : never
+export type CustomValidationFn<TOutput extends InputParsed = InputParsed> = (data: InputRawUnknown) => TOutput
+export type RecordSchemaToCustomValidationFn<T extends RecordValidationSchema> = (
+  data: InputRawUnknown,
+) => RecordValidationSchemaOutput<T>
+export type CustomValidationFnToRecordValidationSchema<T extends CustomValidationFn> = RecordValidationSchema<
+  ReturnType<T>,
+  ReturnType<T>
+>
 
 // export type IsRecord<T> = T extends Record<string, unknown> ? true : false
 // export type IsRecordValidationSchema<S extends ValidationSchema> =
@@ -476,6 +476,10 @@ type HasWideningKey<Prev, New> = {
 }[OverlapKeys<Prev, New>] extends never
   ? false
   : true
+export type IsInputRawConflicts<TPrevInputRaw extends InputRaw, TNewInputRaw extends InputRaw> = HasWideningKey<
+  TPrevInputRaw,
+  TNewInputRaw
+>
 export type IsInputSchemaConflicts<
   TPrevInputSchema extends InputSchema | UndefinedInputSchema,
   TNewInputSchema extends InputSchema | UndefinedInputSchema,
@@ -540,7 +544,7 @@ export type InputRawMaybeOptional<
 > =
   IsInputOptional<TInputSchema> extends true
     ? // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-        InputRaw<TInputSchema> | undefined | void
+      InputRaw<TInputSchema> | undefined | void
     : InputRaw<TInputSchema>
 export type InputsRawMaybeOptional<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,

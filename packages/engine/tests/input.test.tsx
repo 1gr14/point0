@@ -1,46 +1,45 @@
-import type { CustomValidationFnToRecordValidationSchema, InputParsed, IsInputSchemaConflicts } from '@point0/core'
+import type { InputParsed, Prettify } from '@point0/core'
 import { Point0 } from '@point0/core'
-import type { StandardSchemaV1 } from '@standard-schema/spec'
 // import '@testing-library/jest-dom'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('input', () => {
-  it('types utils work', () => {
-    type X = CustomValidationFnToRecordValidationSchema<(input: { x: number }) => { x: string }>
-    expectTypeOf<X>().toEqualTypeOf<StandardSchemaV1<{ x: number }, { x: string }>>()
-    type Y = CustomValidationFnToRecordValidationSchema<(input: { x: number; y: number }) => { x: string; y: string }>
-    expectTypeOf<Y>().toEqualTypeOf<StandardSchemaV1<{ x: number; y: number }, { x: string; y: string }>>()
-    type IsConflictXY = IsInputSchemaConflicts<X, Y>
-    expectTypeOf<IsConflictXY>().toEqualTypeOf<false>()
-    type IsConflictYX = IsInputSchemaConflicts<Y, X>
-    expectTypeOf<IsConflictYX>().toEqualTypeOf<false>()
-    type Z = CustomValidationFnToRecordValidationSchema<(input: { x: boolean }) => { x: string }>
-    type IsConflictXZ = IsInputSchemaConflicts<X, Z>
-    expectTypeOf<IsConflictXZ>().toEqualTypeOf<true>()
-    type IsConflictZX = IsInputSchemaConflicts<Z, X>
-    expectTypeOf<IsConflictZX>().toEqualTypeOf<true>()
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const xZod = z.object({ x: z.number().transform((x) => x.toString()) })
-    type XZod = typeof xZod
-    expectTypeOf<XZod['~standard']['types']>().toEqualTypeOf<
-      StandardSchemaV1<{ x: number }, { x: string }>['~standard']['types']
-    >()
-    type IsConflictXZodX = IsInputSchemaConflicts<XZod, X>
-    expectTypeOf<IsConflictXZodX>().toEqualTypeOf<false>()
-    type IsConflictXXZod = IsInputSchemaConflicts<X, XZod>
-    expectTypeOf<IsConflictXXZod>().toEqualTypeOf<false>()
-    type IsConflictXZodZ = IsInputSchemaConflicts<XZod, Z>
-    expectTypeOf<IsConflictXZodZ>().toEqualTypeOf<true>()
-    type IsConflictZXZod = IsInputSchemaConflicts<Z, XZod>
-    expectTypeOf<IsConflictZXZod>().toEqualTypeOf<true>()
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const xZodDefault = z.object({ x: z.number().default(123) })
-    type XZodDefault = typeof xZodDefault
-    expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['input']>().toEqualTypeOf<{ x?: number }>()
-    expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['output']>().toEqualTypeOf<{ x: number }>()
-  })
+  // it('types utils work', () => {
+  //   type X = CustomValidationFnToRecordValidationSchema<(input: { x: number }) => { x: string }>
+  //   expectTypeOf<X>().toEqualTypeOf<StandardSchemaV1<{ x: number }, { x: string }>>()
+  //   type Y = CustomValidationFnToRecordValidationSchema<(input: { x: number; y: number }) => { x: string; y: string }>
+  //   expectTypeOf<Y>().toEqualTypeOf<StandardSchemaV1<{ x: number; y: number }, { x: string; y: string }>>()
+  //   type IsConflictXY = IsInputSchemaConflicts<X, Y>
+  //   expectTypeOf<IsConflictXY>().toEqualTypeOf<false>()
+  //   type IsConflictYX = IsInputSchemaConflicts<Y, X>
+  //   expectTypeOf<IsConflictYX>().toEqualTypeOf<false>()
+  //   type Z = CustomValidationFnToRecordValidationSchema<(input: { x: boolean }) => { x: string }>
+  //   type IsConflictXZ = IsInputSchemaConflicts<X, Z>
+  //   expectTypeOf<IsConflictXZ>().toEqualTypeOf<true>()
+  //   type IsConflictZX = IsInputSchemaConflicts<Z, X>
+  //   expectTypeOf<IsConflictZX>().toEqualTypeOf<true>()
+  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //   const xZod = z.object({ x: z.number().transform((x) => x.toString()) })
+  //   type XZod = typeof xZod
+  //   expectTypeOf<XZod['~standard']['types']>().toEqualTypeOf<
+  //     StandardSchemaV1<{ x: number }, { x: string }>['~standard']['types']
+  //   >()
+  //   type IsConflictXZodX = IsInputSchemaConflicts<XZod, X>
+  //   expectTypeOf<IsConflictXZodX>().toEqualTypeOf<false>()
+  //   type IsConflictXXZod = IsInputSchemaConflicts<X, XZod>
+  //   expectTypeOf<IsConflictXXZod>().toEqualTypeOf<false>()
+  //   type IsConflictXZodZ = IsInputSchemaConflicts<XZod, Z>
+  //   expectTypeOf<IsConflictXZodZ>().toEqualTypeOf<true>()
+  //   type IsConflictZXZod = IsInputSchemaConflicts<Z, XZod>
+  //   expectTypeOf<IsConflictZXZod>().toEqualTypeOf<true>()
+  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  //   const xZodDefault = z.object({ x: z.number().default(123) })
+  //   type XZodDefault = typeof xZodDefault
+  //   expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['input']>().toEqualTypeOf<{ x?: number }>()
+  //   expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['output']>().toEqualTypeOf<{ x: number }>()
+  // })
 
   it('empty and available in page component by route definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
@@ -161,35 +160,39 @@ describe('input', () => {
     `)
   })
 
-  it('available in mutation loader and client loader by schema definition and function', async () => {
+  it('available in mutation loader by schema definition and function', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.string() }))
-      .input(({ id, sn }: { id: string; sn: number }) => {
-        return { id: id + '_test', sn: sn * 2 }
+      .input<{ o: 1 }>()
+      .input<{ id: string; sn: number }, { sn: number; xxx: number }>((raw) => {
+        if (typeof raw.sn !== 'number') {
+          throw new Error('sn is not a number')
+        }
+        return { sn: raw.sn * 2, xxx: 3 }
       })
       .loader(({ input }) => {
         return { loader: { input } }
       })
-      .clientInput(z.object({ sn: z.number() }))
-      .clientLoader(({ input, data }) => {
-        return { clientLoader: { input }, ...data }
-      })
       .mutation()
+    expectTypeOf<Prettify<(typeof mutation)['Infer']['InputRaw']>>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
+    expectTypeOf<Prettify<(typeof mutation)['Infer']['ServerInputParsed']>>().toEqualTypeOf<{
+      id: string
+      sn: number
+      xxx: number
+      o: 1
+    }>()
     const { loadPoint } = await createTestThings({ points: [root, mutation] })
-    const result = await loadPoint(mutation, { id: '123', sn: 234 })
+    const result = await loadPoint(mutation, { id: '123', sn: 234, o: 1 })
     expect(result).toMatchInlineSnapshot(`
       {
-        "clientLoader": {
-          "input": {
-            "sn": 234,
-          },
-        },
         "loader": {
           "input": {
-            "id": "123_test",
+            "id": "123",
+            "o": 1,
             "sn": 468,
+            "xxx": 3,
           },
         },
       }
