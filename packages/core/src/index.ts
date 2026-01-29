@@ -3297,6 +3297,9 @@ export class Point0<
     TProps
   >
   use(point: Point0<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+    // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
+    // mypoint.use(myplugin);
+    // same as mypoint.input(1).loader(2).mapper(3).head(4).ctx(5)
     const c: Parameters<typeof this._continue>[0] = {}
     if (point.type === 'plugin') {
       // in this case plugin works like just injecting all it called methods to current point
