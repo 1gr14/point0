@@ -235,8 +235,8 @@ export class Fetcher {
           publicdirResult: { publicdir, response: staticResponse },
           pointResult: undefined,
           // middlewares: publicdir.getPointsManager()?.root._middlewares ?? [],
-          middlewares: this.engine.allPointsManagers.getPointsManagerByScope({ scope: publicdir.scope }).root
-            ._middlewares,
+          middlewares:
+            this.engine.allPointsManagers.getPointsManagerByScope({ scope: publicdir.scope }).root._middlewares ?? [],
           middlewareOptions: {
             request,
             set: response0.set,
@@ -296,7 +296,7 @@ export class Fetcher {
       response0,
       publicdirResult: undefined,
       pointResult: { suitable, task },
-      middlewares: suitable.point?._middlewares ?? suitable.pointsManager.root._middlewares,
+      middlewares: suitable.point?._middlewares ?? suitable.pointsManager.root._middlewares ?? [],
       middlewareOptions: {
         request,
         set: response0.set,

@@ -190,7 +190,7 @@ describe('FakeClient', () => {
       limit: 100,
     })
     const root = Point0.lets('root', 'root')
-      .middleware(fetchRecorder.middlleware)
+      .middleware(fetchRecorder.middleware)
       .serverurl('http://localhost:3000')
       .root()
     let counter = 0

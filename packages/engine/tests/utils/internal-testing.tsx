@@ -240,7 +240,7 @@ export const createTestThings = async ({
     limit: 100,
     enabled: true,
   })
-  points[0].point._middlewares.push(fetchRecorder.middlleware)
+  points[0].point._middlewares.push(fetchRecorder.middleware)
   const engine = await Engine.create({
     compiler: false,
     file: nodePath.resolve(__dirname, '../temp/never'),

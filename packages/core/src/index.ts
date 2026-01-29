@@ -157,7 +157,7 @@ import type {
   WrapperComponentType,
 } from './types.js'
 import {
-  blankDataTransformer,
+  blankDataTransformerExtended,
   dedupeSlashes,
   getWindowScrollPositionGetterByElementGetter,
   getWindowScrollPositionGetterBySelector,
@@ -288,7 +288,8 @@ export class Point0<
   readonly type: TPointType
   private readonly _letsEndPointType: TLetsEndPointType
   // TODO:ASAP it is false or undefined
-  readonly _tranformer: DataTransformerExtended
+  private readonly _transformer: DataTransformerExtended | undefined
+  _getTransformer = () => this._transformer ?? blankDataTransformerExtended
   readonly _ssr: boolean
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
@@ -355,12 +356,19 @@ export class Point0<
   readonly name: PointName
   private readonly _unstableId: number
   private readonly _fetchOptions: FetchOptionsFn | undefined
-  private readonly _scrollPositionGetter: ScrollPositionGetter
-  private readonly _scrollPositionSetter: ScrollPositionSetter
-  private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy
-  private readonly _prefetchPolicy: PagePrefetchPolicy
+  private readonly _scrollPositionGetter: ScrollPositionGetter | undefined
+  private readonly _getScrollPositionGetter = () => this._scrollPositionGetter ?? windowScrollPositionGetter
+  private readonly _scrollPositionSetter: ScrollPositionSetter | undefined
+  private readonly _getScrollPositionSetter = () => this._scrollPositionSetter ?? windowScrollPositionSetter
+  private readonly _scrollPositionRestorePolicy: ScrollPositionRestorePolicy | undefined
+  private readonly _getScrollPositionRestorePolicy = () => this._scrollPositionRestorePolicy ?? (() => null)
+  private readonly _prefetchPolicy: PagePrefetchPolicy | undefined
+  private readonly _getPrefetchPolicy = () => this._prefetchPolicy ?? 'everything'
   private readonly _onPrefetchFns: OnPrefetchFn[]
-  readonly polh: boolean | number
+  readonly _polh: boolean | number | undefined
+  get polh() {
+    return this._polh ?? false
+  }
   private readonly _ProviderReactContext:
     | Context<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>>
     | undefined
@@ -375,42 +383,65 @@ export class Point0<
         TProps
       >
     | undefined
-  private readonly _layoutErrorComponent: ErrorComponentType<
-    DestinationComponentType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
-  private readonly _pageErrorComponent: ErrorComponentType<
-    DestinationComponentType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
-  private readonly _componentErrorComponent: ErrorComponentType<
-    DestinationComponentType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
-  private readonly _layoutLoadingComponent: LoadingComponentType<
-    DestinationComponentType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
+  private static readonly DefaultErrorComponent: ErrorComponentType<any, any, any, any, any, any, any> = ({
+    error,
+  }) => {
+    const { stack, ...json } = error.toJSON()
+    // TODO: move console.error to .onClientError
+    console.error(error)
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement('pre', null, JSON.stringify(json, null, 2)),
+      React.createElement('pre', null, stack),
+    )
+  }
+  private readonly _layoutErrorComponent:
+    | ErrorComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TProps
+      >
+    | undefined
+  private readonly _pageErrorComponent:
+    | ErrorComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TProps
+      >
+    | undefined
+  private readonly _componentErrorComponent:
+    | ErrorComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TProps
+      >
+    | undefined
+  private readonly _layoutLoadingComponent:
+    | LoadingComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TProps
+      >
+    | undefined
+  static readonly DefaultLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any> = () =>
+    React.createElement(React.Fragment, null, 'Loading...')
   private readonly _loadingComponent:
     | LoadingComponentType<
         DestinationComponentType,
@@ -422,24 +453,30 @@ export class Point0<
         TProps
       >
     | undefined
-  private readonly _pageLoadingComponent: LoadingComponentType<
-    DestinationComponentType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
-  private readonly _componentLoadingComponent: LoadingComponentType<
-    DestinationComponentType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
+  private readonly _pageLoadingComponent:
+    | LoadingComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TProps
+      >
+    | undefined
+  private readonly _componentLoadingComponent:
+    | LoadingComponentType<
+        DestinationComponentType,
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TProps
+      >
+    | undefined
+  private readonly _getComponentLoadingComponent = () =>
+    this._componentLoadingComponent ?? Point0.DefaultLoadingComponent
   X: TPointType extends 'layout'
     ? MountableComponent<TServerInputSchema, TClientInputSchema, TProps, true>
     : TPointType extends 'page'
@@ -455,10 +492,10 @@ export class Point0<
     _letsEndPointType: TLetsEndPointType
     _base?: BasePoint | LayoutPoint | undefined
     _root?: RootPoint | undefined
-    _middlewares?: MiddlewareFn[]
+    _middlewares?: MiddlewareFn[] | undefined
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
-    _tranformer?: DataTransformerExtended | undefined
+    _transformer?: DataTransformerExtended | undefined
     _ssr?: boolean
     scope: PointsScope
     scopes: PointsScope[]
@@ -531,12 +568,12 @@ export class Point0<
     _layouts?: LayoutPoint[]
     name: PointName
     _fetchOptions?: FetchOptionsFn
-    _scrollPositionGetter?: ScrollPositionGetter
-    _scrollPositionSetter?: ScrollPositionSetter
-    _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
-    _prefetchPolicy?: PagePrefetchPolicy
+    _scrollPositionGetter?: ScrollPositionGetter | undefined
+    _scrollPositionSetter?: ScrollPositionSetter | undefined
+    _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
+    _prefetchPolicy?: PagePrefetchPolicy | undefined
     _onPrefetchFns?: OnPrefetchFn[]
-    polh?: boolean | number
+    _polh?: boolean | number | undefined
     _errorComponent?: ErrorComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -618,7 +655,7 @@ export class Point0<
     this._base = options._base ?? undefined
     this._root = options._root ?? undefined
     this._middlewares = options._middlewares ?? []
-    this._tranformer = options._tranformer ?? toExtendedTransformer(blankDataTransformer)
+    this._transformer = options._transformer ?? undefined
     this._ssr = options._ssr ?? false
     this._serverurl = options._serverurl ?? undefined
     this._baseurl = options._baseurl ?? undefined
@@ -653,110 +690,19 @@ export class Point0<
     this._layouts = options._layouts ?? []
     this.name = options.name
     this._fetchOptions = options._fetchOptions ?? (() => ({}))
-    this._scrollPositionGetter = options._scrollPositionGetter ?? windowScrollPositionGetter
-    this._scrollPositionSetter = options._scrollPositionSetter ?? windowScrollPositionSetter
-    this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? (() => null)
-    this._prefetchPolicy = options._prefetchPolicy ?? 'everything'
+    this._scrollPositionGetter = options._scrollPositionGetter ?? undefined
+    this._scrollPositionSetter = options._scrollPositionSetter ?? undefined
+    this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? undefined
+    this._prefetchPolicy = options._prefetchPolicy ?? undefined
     this._onPrefetchFns = options._onPrefetchFns ?? []
-    this.polh = options.polh ?? false
-    this._layoutErrorComponent =
-      options._layoutErrorComponent ??
-      ((({ error }) => {
-        const { stack, ...json } = error.toJSON()
-        // TODO: move console.error to .onClientError
-        console.error(error)
-        return React.createElement(
-          React.Fragment,
-          null,
-          React.createElement('pre', null, JSON.stringify(json, null, 2)),
-          React.createElement('pre', null, stack),
-        )
-      }) as ErrorComponentType<
-        DestinationComponentType,
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        TProps
-      >)
-    this._pageErrorComponent =
-      options._pageErrorComponent ??
-      ((({ error }) => {
-        const { stack, ...json } = error.toJSON()
-        // TODO: move console.error to .onClientError
-        console.error(error)
-        return React.createElement(
-          React.Fragment,
-          null,
-          React.createElement('pre', null, JSON.stringify(json, null, 2)),
-          React.createElement('pre', null, stack),
-        )
-      }) as ErrorComponentType<
-        DestinationComponentType,
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        TProps
-      >)
-    this._componentErrorComponent =
-      options._componentErrorComponent ??
-      ((({ error }) => {
-        const { stack, ...json } = error.toJSON()
-        // TODO: move console.error to .onClientError
-        console.error(error)
-        return React.createElement(
-          React.Fragment,
-          null,
-          // TODO: for react native use another element, not pre, but text or whatever
-          React.createElement('pre', null, JSON.stringify(json, null, 2)),
-          React.createElement('pre', null, stack),
-        )
-      }) as ErrorComponentType<
-        DestinationComponentType,
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        TProps
-      >)
+    this._polh = options._polh ?? undefined
+    this._layoutErrorComponent = options._layoutErrorComponent ?? undefined
+    this._pageErrorComponent = options._pageErrorComponent ?? undefined
+    this._componentErrorComponent = options._componentErrorComponent ?? undefined
     this._loadingComponent = options._loadingComponent
-    this._layoutLoadingComponent =
-      options._layoutLoadingComponent ??
-      ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
-        DestinationComponentType,
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        TProps
-      >)
-    this._pageLoadingComponent =
-      options._pageLoadingComponent ??
-      ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
-        DestinationComponentType,
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        TProps
-      >)
-    this._componentLoadingComponent =
-      options._componentLoadingComponent ??
-      ((() => React.createElement(React.Fragment, null, 'Loading...')) as LoadingComponentType<
-        DestinationComponentType,
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        TProps
-      >)
+    this._layoutLoadingComponent = options._layoutLoadingComponent ?? undefined
+    this._pageLoadingComponent = options._pageLoadingComponent ?? undefined
+    this._componentLoadingComponent = options._componentLoadingComponent ?? undefined
     this.X = (options.X ?? null) as never
     this._unstableId = options._unstableId ?? Point0._getNextUnstableId()
   }
@@ -785,7 +731,7 @@ export class Point0<
     _middlewares?: MiddlewareFn[]
     _serverurl?: string | undefined
     _baseurl?: string | null | undefined
-    _tranformer?: DataTransformerExtended | null
+    _transformer?: DataTransformerExtended | null
     _ssr?: boolean
     _headFns?: HeadFn[]
     _defaultMutationOptions?: UseMutationOptions | undefined
@@ -859,75 +805,89 @@ export class Point0<
     _layouts?: LayoutPoint[]
     name?: PointName
     _fetchOptions?: FetchOptionsFn
-    _scrollPositionGetter?: ScrollPositionGetter
-    _scrollPositionSetter?: ScrollPositionSetter
-    _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy
+    _scrollPositionGetter?: ScrollPositionGetter | undefined
+    _scrollPositionSetter?: ScrollPositionSetter | undefined
+    _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
     _prefetchPolicy?: PagePrefetchPolicy
     _onPrefetchFns?: OnPrefetchFn[]
-    polh?: boolean | number
-    _errorComponent?: ErrorComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
-    _layoutErrorComponent?: ErrorComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
-    _pageErrorComponent?: ErrorComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
-    _componentErrorComponent?: ErrorComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
-    _loadingComponent?: LoadingComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
-    _layoutLoadingComponent?: LoadingComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
-    _pageLoadingComponent?: LoadingComponentType<
-      DestinationComponentType,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TProps
-    >
+    _polh?: boolean | number | undefined
+    _errorComponent?:
+      | ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
+    _layoutErrorComponent?:
+      | ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
+    _pageErrorComponent?:
+      | ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
+    _componentErrorComponent?:
+      | ErrorComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
+    _loadingComponent?:
+      | LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
+    _layoutLoadingComponent?:
+      | LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
+    _pageLoadingComponent?:
+      | LoadingComponentType<
+          DestinationComponentType,
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TProps
+        >
+      | undefined
     _componentLoadingComponent?: LoadingComponentType<
       DestinationComponentType,
       TQueryResultType,
@@ -977,7 +937,7 @@ export class Point0<
       _middlewares: overrides._middlewares ?? this._middlewares,
       _serverurl: overrides._serverurl ?? this._serverurl,
       _baseurl: overrides._baseurl ?? this._baseurl,
-      _tranformer: overrides._tranformer ?? this._tranformer,
+      _transformer: overrides._transformer ?? this._transformer,
       _ssr: overrides._ssr ?? this._ssr,
       _wrappers: overrides._wrappers ?? this._wrappers,
       _outers: overrides._outers ?? this._outers,
@@ -1024,7 +984,7 @@ export class Point0<
       _scrollPositionRestorePolicy: overrides._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy,
       _prefetchPolicy: overrides._prefetchPolicy ?? this._prefetchPolicy,
       _onPrefetchFns: overrides._onPrefetchFns ?? this._onPrefetchFns,
-      polh: overrides.polh ?? this.polh,
+      _polh: overrides._polh ?? this._polh,
       _errorComponent: (overrides._errorComponent ?? this._errorComponent) as never,
       _layoutErrorComponent: (overrides._layoutErrorComponent ?? this._layoutErrorComponent) as never,
       _pageErrorComponent: (overrides._pageErrorComponent ?? this._pageErrorComponent) as never,
@@ -1378,8 +1338,14 @@ export class Point0<
     TQueryResultType,
     TProps
   > {
+    const newFetchOptionsFn: FetchOptionsFn = () => {
+      const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
+      const newFetchOptions: FetchOptions =
+        typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn() : fetchOptionsOrFn
+      return { ...prevFetchOptions, ...newFetchOptions }
+    }
     return this._continue({
-      _fetchOptions: typeof fetchOptionsOrFn === 'function' ? fetchOptionsOrFn : () => fetchOptionsOrFn,
+      _fetchOptions: newFetchOptionsFn,
     }) as never
   }
 
@@ -2187,7 +2153,7 @@ export class Point0<
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
-      polh: polh ?? this.polh,
+      _polh: polh ?? this._polh,
     }) as never
   }
 
@@ -2211,7 +2177,7 @@ export class Point0<
     TProps
   > {
     return this._continue({
-      _tranformer: toExtendedTransformer(transformer),
+      _transformer: toExtendedTransformer(transformer),
     }) as never
   }
 
@@ -3170,7 +3136,7 @@ export class Point0<
     TQueryResultType,
     UndefinedProps
   >
-  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout'>, TPointName extends PointName>(
+  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'plugin'>, TPointName extends PointName>(
     ...args: TPointType extends 'root' | 'base'
       ? [letsEndPointType: TNewLetsEndPointType, pointName: TPointName]
       : never[]
@@ -3264,7 +3230,7 @@ export class Point0<
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
-      polh: this._base?.polh ?? false,
+      _polh: this._base?._polh,
       _wrappers: this._base?._wrappers ?? [],
       _outers: this._base?._outers ?? [],
       _errorComponent: undefined,
@@ -3282,7 +3248,11 @@ export class Point0<
   use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     plugin: T,
   ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
+    T['Infer']['ClientMapperOutput'] extends MapperOutput
+      ? 'mapperStage'
+      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
+        ? 'clientStage'
+        : 'coreStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     AppendCtx<TRequiredCtx, T['Infer']['RequiredCtx']>,
     AppendCtx<PrependCtx<TCtx, T['Infer']['RequiredCtx']>, T['Infer']['Ctx']>,
@@ -3296,20 +3266,126 @@ export class Point0<
     T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
     TProps
   >
+
+  // UndefinedEndPointType,
+  // TRequiredCtx,
+  // TCtx,
+  // TCtxExposedKeys,
+  // TServerLoaderOutput,
+  // TClientLoaderOutput,
+  // TClientMapperOutput,
+  // TRouteDefinition,
+  // TServerInputSchema,
+  // TClientInputSchema,
+  // TQueryResultType,
+  // TProps
+  use<
+    T extends
+      | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  >(
+    point: T,
+  ): NiceStagePoint<
+    T['Infer']['ClientMapperOutput'] extends MapperOutput
+      ? 'mapperStage'
+      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
+        ? 'clientStage'
+        : 'coreStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
+    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
+    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
+    MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
+    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
+    TProps
+  >
   use(point: Point0<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
     // mypoint.use(myplugin);
     // same as mypoint.input(1).loader(2).mapper(3).head(4).ctx(5)
+    if (
+      point.type !== 'query' &&
+      point.type !== 'infiniteQuery' &&
+      point.type !== 'layout' &&
+      point.type !== 'plugin'
+    ) {
+      throw new Error(`Point type ${point.type} is not supported in use method`)
+    }
     const c: Parameters<typeof this._continue>[0] = {}
+    const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
+      const result = [...(a ?? [])]
+      for (const item of b ?? []) {
+        const index = result.indexOf(item)
+        if (index === -1) {
+          result.push(item)
+        }
+      }
+      return result
+    }
+
     if (point.type === 'plugin') {
       // in this case plugin works like just injecting all it called methods to current point
+      const mergedFetchOptionsFn: FetchOptionsFn = () => {
+        const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
+        const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
+        return { ...prevFetchOptions, ...newFetchOptions }
+      }
+      c._middlewares = [...this._middlewares, ...point._middlewares]
+      c._serverExecuteActions = [...this._serverExecuteActions, ...point._serverExecuteActions]
+      c._clientExecuteActions = [...this._clientExecuteActions, ...point._clientExecuteActions]
+      c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
+      c._headFns = [...this._headFns, ...point._headFns]
+      c._wrappers = [...this._wrappers, ...point._wrappers]
+      c._outers = [...this._outers, ...point._outers]
+      c._onPrefetchFns = [...this._onPrefetchFns, ...point._onPrefetchFns]
+      c._defaultMutationOptions = { ...this._defaultMutationOptions, ...point._defaultMutationOptions }
+      c._mutationOptions = { ...this._mutationOptions, ...point._mutationOptions }
+      c._defaultQueryOptions = { ...this._defaultQueryOptions, ...point._defaultQueryOptions }
+      c._defaultInfiniteQueryOptions = { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions }
+      c._defaultPageQueryOptions = { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions }
+      c._defaultComponentQueryOptions = {
+        ...this._defaultComponentQueryOptions,
+        ...point._defaultComponentQueryOptions,
+      }
+      c._defaultLayoutQueryOptions = { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions }
+      c._defaultProviderQueryOptions = { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions }
+      c._queryOptions = { ...this._queryOptions, ...point._queryOptions }
+      c._infiniteQueryOptions = { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions } as never
+      c._fetchOptions = mergedFetchOptionsFn
+      c._scrollPositionGetter = point._scrollPositionGetter ?? this._scrollPositionGetter
+      c._scrollPositionSetter = point._scrollPositionSetter ?? this._scrollPositionSetter
+      c._scrollPositionRestorePolicy = point._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy
+      c._prefetchPolicy = point._prefetchPolicy ?? this._prefetchPolicy
+      c._polh = point._polh ?? this._polh
+      c._transformer = point._transformer ?? this._transformer
+      c._serverurl = point._serverurl ?? this._serverurl
+      c._baseurl = point._baseurl ?? this._baseurl
+      c._layouts = mergeArraysUnique(this._layouts, point._layouts)
+      c._errorComponent = point._errorComponent ?? (this._errorComponent as never)
+      c._layoutErrorComponent = point._layoutErrorComponent ?? (this._layoutErrorComponent as never)
+      c._pageErrorComponent = point._pageErrorComponent ?? (this._pageErrorComponent as never)
+      c._componentErrorComponent = point._componentErrorComponent ?? (this._componentErrorComponent as never)
+      c._loadingComponent = point._loadingComponent ?? (this._loadingComponent as never)
+      c._layoutLoadingComponent = point._layoutLoadingComponent ?? (this._layoutLoadingComponent as never)
+      c._pageLoadingComponent = point._pageLoadingComponent ?? (this._pageLoadingComponent as never)
+      c._componentLoadingComponent = point._componentLoadingComponent ?? (this._componentLoadingComponent as never)
     }
-    if (point.type === 'query' || point.type === 'infiniteQuery') {
+
+    c._queryResultType = point._queryResultType ?? this._queryResultType
+
+    if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
       // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
       // all other as in plugin section
     }
     if (point.type === 'layout') {
       // if it is layout we need to add it to layouts
+      c._layouts = mergeArraysUnique(this._layouts, [...point._layouts, point as LayoutPoint])
     }
     return this._continue(c) as never
   }
@@ -4132,7 +4208,8 @@ export class Point0<
         page: this._pageErrorComponent,
         component: this._componentErrorComponent,
         layout: this._layoutErrorComponent,
-      }[type]) as never
+      }[type] ??
+      Point0.DefaultErrorComponent) as never
   }
 
   private _getLoadingComponent<TType extends DestinationComponentType>({
@@ -4153,7 +4230,8 @@ export class Point0<
         page: this._pageLoadingComponent,
         component: this._componentLoadingComponent,
         layout: this._layoutLoadingComponent,
-      }[type]) as never
+      }[type] ??
+      Point0.DefaultLoadingComponent) as never
   }
 
   private _withWrappers({
@@ -4840,7 +4918,7 @@ export class Point0<
         return { inputParsed: null, inputParseError: result.error } as InputParseResult<TClientInputSchema>
       }
       return { inputParsed: result.data, inputParseError: null } as InputParseResult<TClientInputSchema>
-    }, [this._tranformer.stringify(inputRaw), _clientInputParseResult])
+    }, [this._getTransformer().stringify(inputRaw), _clientInputParseResult])
 
     if (!this._hasServerLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
@@ -4939,7 +5017,7 @@ export class Point0<
     // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
     const shouldAddMultipartFormDataHeaderToFetchOptions = isContainsBinary(input)
 
-    const bodySrc = this._tranformer.serialize(input)
+    const bodySrc = this._getTransformer().serialize(input)
     const body = (() => {
       if (shouldAddMultipartFormDataHeaderToFetchOptions) {
         const formData = new FormData()
@@ -5064,7 +5142,7 @@ export class Point0<
         return { response: res, data: undefined, error: null, output: res } as FetchDetailedOutput<TServerLoaderOutput>
       }
       const json = await res.json()
-      const data = this._tranformer.deserialize(json)
+      const data = this._getTransformer().deserialize(json)
       if (res.ok) {
         return { response: res, data, error: null, output: data } as FetchDetailedOutput<TServerLoaderOutput>
       }
@@ -5215,7 +5293,7 @@ export class Point0<
       this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._tranformer.stringify(input) as string,
+      this._getTransformer().stringify(input) as string,
       outputType,
     ]
   }
@@ -5234,7 +5312,7 @@ export class Point0<
       this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._tranformer.stringify(input) as string,
+      this._getTransformer().stringify(input) as string,
       'data',
     ]
   }
@@ -5255,7 +5333,7 @@ export class Point0<
       this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
-      this._tranformer.stringify(input) as string,
+      this._getTransformer().stringify(input) as string,
       outputType,
     ]
   }
@@ -6329,7 +6407,7 @@ export class Point0<
         ]
   ): Promise<void> {
     const [input = {}, queryOptions, options = {}] = args
-    const { location: providedLocation, queryClient, fetchOptions, force, policy = this._prefetchPolicy } = options
+    const { location: providedLocation, queryClient, fetchOptions, force, policy = this._getPrefetchPolicy() } = options
     if (policy === 'none') {
       return
     }
@@ -6450,24 +6528,26 @@ export class Point0<
       if (status !== 'idle') {
         return
       }
-      const scrollPositionRestorePolicy = this._scrollPositionRestorePolicy({ prevLocation })
+      const scrollPositionRestorePolicy = this._getScrollPositionRestorePolicy()({ prevLocation })
       const prevPageScrollPosition = Point0._prevPageScrollPositions.find(
-        (p) => p.name === this.name && this._tranformer.stringify(p.input) === this._tranformer.stringify(inputRaw),
+        (p) =>
+          p.name === this.name &&
+          this._getTransformer().stringify(p.input) === this._getTransformer().stringify(inputRaw),
       )
       if (scrollPositionRestorePolicy !== false) {
         if (scrollPositionRestorePolicy === null) {
-          this._scrollPositionSetter({ x: 0, y: 0 })
+          this._getScrollPositionSetter()({ x: 0, y: 0 })
         }
         if (scrollPositionRestorePolicy === true) {
           if (!prevPageScrollPosition) {
-            this._scrollPositionSetter({ x: 0, y: 0 })
+            this._getScrollPositionSetter()({ x: 0, y: 0 })
           } else {
-            this._scrollPositionSetter({ x: prevPageScrollPosition.x, y: prevPageScrollPosition.y })
+            this._getScrollPositionSetter()({ x: prevPageScrollPosition.x, y: prevPageScrollPosition.y })
           }
         }
       }
       return () => {
-        const currentPageScrollPosition = this._scrollPositionGetter()
+        const currentPageScrollPosition = this._getScrollPositionGetter()()
         if (prevPageScrollPosition) {
           prevPageScrollPosition.x = currentPageScrollPosition?.x ?? 0
           prevPageScrollPosition.y = currentPageScrollPosition?.y ?? 0
@@ -7301,7 +7381,7 @@ export class Point0<
 
     const value = result.data
     superstore.setValue(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._tranformer.stringify(inputRaw)}`,
+      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
       value,
       'clientServerIsolated',
     )
@@ -7323,7 +7403,7 @@ export class Point0<
 
   // provider
   private getSsProviderValueKey(input?: InputsRaw<TServerInputSchema, TClientInputSchema>): string {
-    return `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._tranformer.stringify(input || {})}`
+    return `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(input || {})}`
   }
 
   getValue(

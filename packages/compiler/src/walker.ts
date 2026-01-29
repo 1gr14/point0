@@ -970,6 +970,7 @@ export class Walker {
 }
 
 export const POINT_TYPE_TO_METHOD_MAP: Record<EndPointType, EndPointType> = {
+  plugin: 'plugin',
   page: 'page',
   layout: 'layout',
   component: 'component',

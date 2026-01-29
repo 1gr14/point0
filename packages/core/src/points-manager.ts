@@ -75,7 +75,7 @@ export class PointsManager<TReady extends boolean = boolean, TRequiredCtx extend
     this.baseurl = this.root._baseurl
     this.basepath = getBasepathOrNull(this.baseurl)
     this.hostname = getHostnameOrNull(this.baseurl)
-    this.transformer = this.root._tranformer
+    this.transformer = this.root._getTransformer()
     this.ssr = this.root._ssr
     PointsManager.setPointsManager(this)
     if (_point0_env.target.is.client) {

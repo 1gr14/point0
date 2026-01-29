@@ -125,7 +125,7 @@ export class FetchRecorder {
     }
   }
 
-  get middlleware(): MiddlewareFn {
+  get middleware(): MiddlewareFn {
     return async ({ request, next }) => {
       this.recordRequest(request)
       const result = await next()
