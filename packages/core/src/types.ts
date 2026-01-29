@@ -1853,6 +1853,7 @@ export type NiceRootStagePoint<
     TProps
   >,
   | 'root'
+  | 'use'
   | 'middleware'
   | 'ssr'
   | 'transformer'
@@ -1924,6 +1925,7 @@ export type NicePluginStagePoint<
     TProps
   >,
   | 'plugin'
+  | 'use'
   | 'middleware'
   | 'ssr'
   | 'transformer'
@@ -1995,6 +1997,7 @@ export type NiceBaseStagePoint<
     TProps
   >,
   | 'base'
+  | 'use'
   | 'mutationOptions'
   | 'queryOptions'
   | 'infiniteQueryOptions'
@@ -2059,6 +2062,7 @@ export type NicePageStagePoint<
     TProps
   >,
   | 'page'
+  | 'use'
   | 'fetchOptions'
   | 'error'
   | 'loading'
@@ -2116,6 +2120,7 @@ export type NiceComponentStagePoint<
     TProps
   >,
   | 'component'
+  | 'use'
   | 'fetchOptions'
   | 'error'
   | 'loading'
@@ -2168,6 +2173,7 @@ export type NiceQueryStagePoint<
     TProps
   >,
   | 'query'
+  | 'use'
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
@@ -2212,6 +2218,7 @@ export type NiceInfiniteQueryStagePoint<
     TProps
   >,
   | 'infiniteQuery'
+  | 'use'
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
@@ -2257,6 +2264,7 @@ export type NiceMutationStagePoint<
     TProps
   >,
   | 'mutation'
+  | 'use'
   // | 'asFormData'
   | 'fetchOptions'
   | 'input'
@@ -2301,6 +2309,7 @@ export type NiceLayoutStagePoint<
     TProps
   >,
   | 'layout'
+  | 'use'
   | 'fetchOptions'
   | 'pageQueryOptions'
   | 'error'
@@ -2363,6 +2372,7 @@ export type NiceProviderStagePoint<
     TProps
   >,
   | 'provider'
+  | 'use'
   | 'fetchOptions'
   | 'input'
   | 'clientInput'
