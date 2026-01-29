@@ -53,6 +53,7 @@ import type {
   DestinationComponentType,
   EmptyCtx,
   EmptyData,
+  EndPoint,
   EndPointType,
   EndPointTypeOrNever,
   ErrorComponentType,
@@ -312,6 +313,7 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
+  readonly _sameQueryPoint: EndPoint | undefined
   // readonly _asFormData: boolean | undefined
   private readonly _wrappers: WrapperComponentType[]
   private readonly _outers: OuterComponentType[]
@@ -522,6 +524,7 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
+    _sameQueryPoint?: EndPoint | undefined
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -675,6 +678,7 @@ export class Point0<
     this._queryOptions = options._queryOptions ?? {}
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
+    this._sameQueryPoint = options._sameQueryPoint ?? undefined
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
@@ -754,6 +758,7 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
+    _sameQueryPoint?: EndPoint | undefined
     // _asFormData?: boolean | undefined
     _wrappers?: WrapperComponentType[]
     _outers?: OuterComponentType[]
@@ -966,6 +971,7 @@ export class Point0<
         unknown
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
+      _sameQueryPoint: (overrides._sameQueryPoint ?? this._sameQueryPoint) as never,
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
@@ -2325,6 +2331,7 @@ export class Point0<
   loader(loaderFn: LoaderFn<any, any, any, any, any> | boolean) {
     if (loaderFn === false) {
       return this._continue({
+        _sameQueryPoint: undefined,
         _serverExecuteActions: this._serverExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientMapperFns: [],
@@ -2340,6 +2347,7 @@ export class Point0<
       loaderFn = (o) => o.data
     }
     return this._continue({
+      _sameQueryPoint: undefined,
       _queryResultType: this._queryResultType ?? 'query',
       _serverExecuteActions: [
         ...this._serverExecuteActions,
@@ -2422,6 +2430,7 @@ export class Point0<
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
       return this._continue({
+        _sameQueryPoint: undefined,
         _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientMapperFns: [],
         _queryResultType: this._hasServerLoader()
@@ -2438,6 +2447,7 @@ export class Point0<
     }
     return this._continue({
       type: 'clientStage',
+      _sameQueryPoint: undefined,
       _queryResultType: this._queryResultType ?? 'query',
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -2495,11 +2505,13 @@ export class Point0<
   mapper(mapperFn: ClientMapperFn<any, any, any, any, any> | false) {
     if (mapperFn === false) {
       return this._continue({
+        _sameQueryPoint: undefined,
         _clientMapperFns: [],
       }) as never
     }
     return this._continue({
       type: 'mapperStage',
+      _sameQueryPoint: undefined,
       _clientMapperFns: [...this._clientMapperFns, mapperFn],
     }) as never
   }
@@ -3223,6 +3235,8 @@ export class Point0<
       _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
+      _sameQueryPoint:
+        this._hasClientLoader() || this._hasServerLoader() ? (this._sameQueryPoint ?? (this as EndPoint)) : undefined,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
@@ -3243,151 +3257,6 @@ export class Point0<
       _componentLoadingComponent: this._base?._componentLoadingComponent as never,
       X: null as never,
     }) as never
-  }
-
-  use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
-    plugin: T,
-  ): NiceStagePoint<
-    T['Infer']['ClientMapperOutput'] extends MapperOutput
-      ? 'mapperStage'
-      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
-        ? 'clientStage'
-        : 'coreStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
-    AppendCtx<TRequiredCtx, T['Infer']['RequiredCtx']>,
-    AppendCtx<PrependCtx<TCtx, T['Infer']['RequiredCtx']>, T['Infer']['Ctx']>,
-    AppendCtxExposedKeys<TCtxExposedKeys, T['Infer']['CtxExposedKeys']>,
-    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
-    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
-    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
-    MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
-    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
-    TProps
-  >
-
-  // UndefinedEndPointType,
-  // TRequiredCtx,
-  // TCtx,
-  // TCtxExposedKeys,
-  // TServerLoaderOutput,
-  // TClientLoaderOutput,
-  // TClientMapperOutput,
-  // TRouteDefinition,
-  // TServerInputSchema,
-  // TClientInputSchema,
-  // TQueryResultType,
-  // TProps
-  use<
-    T extends
-      | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-      | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-      | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
-  >(
-    point: T,
-  ): NiceStagePoint<
-    T['Infer']['ClientMapperOutput'] extends MapperOutput
-      ? 'mapperStage'
-      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
-        ? 'clientStage'
-        : 'coreStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
-    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
-    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
-    MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
-    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
-    TProps
-  >
-  use(point: Point0<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
-    // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
-    // mypoint.use(myplugin);
-    // same as mypoint.input(1).loader(2).mapper(3).head(4).ctx(5)
-    if (
-      point.type !== 'query' &&
-      point.type !== 'infiniteQuery' &&
-      point.type !== 'layout' &&
-      point.type !== 'plugin'
-    ) {
-      throw new Error(`Point type ${point.type} is not supported in use method`)
-    }
-    const c: Parameters<typeof this._continue>[0] = {}
-    const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
-      const result = [...(a ?? [])]
-      for (const item of b ?? []) {
-        const index = result.indexOf(item)
-        if (index === -1) {
-          result.push(item)
-        }
-      }
-      return result
-    }
-
-    if (point.type === 'plugin') {
-      // in this case plugin works like just injecting all it called methods to current point
-      const mergedFetchOptionsFn: FetchOptionsFn = () => {
-        const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
-        const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
-        return { ...prevFetchOptions, ...newFetchOptions }
-      }
-      c._middlewares = [...this._middlewares, ...point._middlewares]
-      c._serverExecuteActions = [...this._serverExecuteActions, ...point._serverExecuteActions]
-      c._clientExecuteActions = [...this._clientExecuteActions, ...point._clientExecuteActions]
-      c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
-      c._headFns = [...this._headFns, ...point._headFns]
-      c._wrappers = [...this._wrappers, ...point._wrappers]
-      c._outers = [...this._outers, ...point._outers]
-      c._onPrefetchFns = [...this._onPrefetchFns, ...point._onPrefetchFns]
-      c._defaultMutationOptions = { ...this._defaultMutationOptions, ...point._defaultMutationOptions }
-      c._mutationOptions = { ...this._mutationOptions, ...point._mutationOptions }
-      c._defaultQueryOptions = { ...this._defaultQueryOptions, ...point._defaultQueryOptions }
-      c._defaultInfiniteQueryOptions = { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions }
-      c._defaultPageQueryOptions = { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions }
-      c._defaultComponentQueryOptions = {
-        ...this._defaultComponentQueryOptions,
-        ...point._defaultComponentQueryOptions,
-      }
-      c._defaultLayoutQueryOptions = { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions }
-      c._defaultProviderQueryOptions = { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions }
-      c._queryOptions = { ...this._queryOptions, ...point._queryOptions }
-      c._infiniteQueryOptions = { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions } as never
-      c._fetchOptions = mergedFetchOptionsFn
-      c._scrollPositionGetter = point._scrollPositionGetter ?? this._scrollPositionGetter
-      c._scrollPositionSetter = point._scrollPositionSetter ?? this._scrollPositionSetter
-      c._scrollPositionRestorePolicy = point._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy
-      c._prefetchPolicy = point._prefetchPolicy ?? this._prefetchPolicy
-      c._polh = point._polh ?? this._polh
-      c._transformer = point._transformer ?? this._transformer
-      c._serverurl = point._serverurl ?? this._serverurl
-      c._baseurl = point._baseurl ?? this._baseurl
-      c._layouts = mergeArraysUnique(this._layouts, point._layouts)
-      c._errorComponent = point._errorComponent ?? (this._errorComponent as never)
-      c._layoutErrorComponent = point._layoutErrorComponent ?? (this._layoutErrorComponent as never)
-      c._pageErrorComponent = point._pageErrorComponent ?? (this._pageErrorComponent as never)
-      c._componentErrorComponent = point._componentErrorComponent ?? (this._componentErrorComponent as never)
-      c._loadingComponent = point._loadingComponent ?? (this._loadingComponent as never)
-      c._layoutLoadingComponent = point._layoutLoadingComponent ?? (this._layoutLoadingComponent as never)
-      c._pageLoadingComponent = point._pageLoadingComponent ?? (this._pageLoadingComponent as never)
-      c._componentLoadingComponent = point._componentLoadingComponent ?? (this._componentLoadingComponent as never)
-    }
-
-    c._queryResultType = point._queryResultType ?? this._queryResultType
-
-    if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
-      // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
-      // all other as in plugin section
-    }
-    if (point.type === 'layout') {
-      // if it is layout we need to add it to layouts
-      c._layouts = mergeArraysUnique(this._layouts, [...point._layouts, point as LayoutPoint])
-    }
-    return this._continue(c) as never
   }
 
   root(): NiceRootEndPoint<
@@ -3910,6 +3779,186 @@ export class Point0<
   //     },
   //   }) as never
   // }
+
+  use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+    plugin: T,
+  ): NiceStagePoint<
+    T['Infer']['ClientMapperOutput'] extends MapperOutput
+      ? 'mapperStage'
+      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
+        ? 'clientStage'
+        : 'coreStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    AppendCtx<TRequiredCtx, T['Infer']['RequiredCtx']>,
+    AppendCtx<PrependCtx<TCtx, T['Infer']['RequiredCtx']>, T['Infer']['Ctx']>,
+    AppendCtxExposedKeys<TCtxExposedKeys, T['Infer']['CtxExposedKeys']>,
+    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
+    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
+    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
+    MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
+    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
+    TProps
+  >
+  use<
+    T extends
+      | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  >(
+    point: T,
+  ): NiceStagePoint<
+    T['Infer']['ClientMapperOutput'] extends MapperOutput
+      ? 'mapperStage'
+      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
+        ? 'clientStage'
+        : 'coreStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
+    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
+    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
+    TProps
+  >
+  use(point: Point0<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+    // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
+    // mypoint.use(myplugin);
+    // same as mypoint.input(1).loader(2).mapper(3).head(4).ctx(5)
+    if (
+      point.type !== 'query' &&
+      point.type !== 'infiniteQuery' &&
+      point.type !== 'layout' &&
+      point.type !== 'plugin'
+    ) {
+      throw new Error(`Point type ${point.type} is not supported in use method`)
+    }
+
+    if (
+      (this._hasMapperFns() || this._hasClientLoader()) &&
+      (point._hasClientLoader() || point._hasServerLoader() || point._hasMapperFns())
+    ) {
+      throw new Error(
+        `Point ${this.toString()} has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`,
+      )
+    }
+
+    const c: Parameters<typeof this._continue>[0] = {}
+
+    const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
+      const result = [...(a ?? [])]
+      for (const item of b ?? []) {
+        const index = result.indexOf(item)
+        if (index === -1) {
+          result.push(item)
+        }
+      }
+      return result
+    }
+
+    if (point.type === 'plugin') {
+      // in this case plugin works like just injecting all it called methods to current point
+      const mergedFetchOptionsFn: FetchOptionsFn = () => {
+        const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
+        const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
+        return { ...prevFetchOptions, ...newFetchOptions }
+      }
+      c._middlewares = [...this._middlewares, ...point._middlewares]
+      c._serverExecuteActions = [...this._serverExecuteActions, ...point._serverExecuteActions]
+      c._clientExecuteActions = [...this._clientExecuteActions, ...point._clientExecuteActions]
+      c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
+      c._headFns = [...this._headFns, ...point._headFns]
+      c._wrappers = [...this._wrappers, ...point._wrappers]
+      c._outers = [...this._outers, ...point._outers]
+      c._onPrefetchFns = [...this._onPrefetchFns, ...point._onPrefetchFns]
+      c._defaultMutationOptions = { ...this._defaultMutationOptions, ...point._defaultMutationOptions }
+      c._mutationOptions = { ...this._mutationOptions, ...point._mutationOptions }
+      c._defaultQueryOptions = { ...this._defaultQueryOptions, ...point._defaultQueryOptions }
+      c._defaultInfiniteQueryOptions = { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions }
+      c._defaultPageQueryOptions = { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions }
+      c._defaultComponentQueryOptions = {
+        ...this._defaultComponentQueryOptions,
+        ...point._defaultComponentQueryOptions,
+      }
+      c._defaultLayoutQueryOptions = { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions }
+      c._defaultProviderQueryOptions = { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions }
+      c._queryOptions = { ...this._queryOptions, ...point._queryOptions }
+      c._infiniteQueryOptions = { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions } as never
+      c._fetchOptions = mergedFetchOptionsFn
+      c._scrollPositionGetter = point._scrollPositionGetter ?? this._scrollPositionGetter
+      c._scrollPositionSetter = point._scrollPositionSetter ?? this._scrollPositionSetter
+      c._scrollPositionRestorePolicy = point._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy
+      c._prefetchPolicy = point._prefetchPolicy ?? this._prefetchPolicy
+      c._polh = point._polh ?? this._polh
+      c._transformer = point._transformer ?? this._transformer
+      c._serverurl = point._serverurl ?? this._serverurl
+      c._baseurl = point._baseurl ?? this._baseurl
+      c._layouts = mergeArraysUnique(this._layouts, point._layouts)
+      c._errorComponent = point._errorComponent ?? (this._errorComponent as never)
+      c._layoutErrorComponent = point._layoutErrorComponent ?? (this._layoutErrorComponent as never)
+      c._pageErrorComponent = point._pageErrorComponent ?? (this._pageErrorComponent as never)
+      c._componentErrorComponent = point._componentErrorComponent ?? (this._componentErrorComponent as never)
+      c._loadingComponent = point._loadingComponent ?? (this._loadingComponent as never)
+      c._layoutLoadingComponent = point._layoutLoadingComponent ?? (this._layoutLoadingComponent as never)
+      c._pageLoadingComponent = point._pageLoadingComponent ?? (this._pageLoadingComponent as never)
+      c._componentLoadingComponent = point._componentLoadingComponent ?? (this._componentLoadingComponent as never)
+    }
+
+    c._queryResultType = point._queryResultType ?? this._queryResultType
+
+    if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
+      // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
+      if (point._hasServerLoader() || point._hasClientLoader()) {
+        if (!this._hasServerLoader() && !this._hasClientLoader()) {
+          c._sameQueryPoint = point._sameQueryPoint ?? point
+        }
+        if (point._hasServerLoader()) {
+          c._serverExecuteActions = [
+            ...this._serverExecuteActions,
+            {
+              type: 'loader',
+              fn: async ({ data, input }) => ({
+                ...(data instanceof Response ? {} : data),
+                ...(await point.fetch(input)),
+              }),
+              unstableId: Point0._getNextUnstableId(),
+            },
+          ]
+        }
+        if (point._hasClientLoader()) {
+          c._clientExecuteActions = [
+            ...this._clientExecuteActions,
+            {
+              type: 'loader',
+              fn: async ({ data, input, response, location, serverData }) => ({
+                ...(data instanceof Response ? {} : data),
+                ...(await point._executeClientAsync({
+                  serverData,
+                  serverResponse: response,
+                  input,
+                  skipClientMapperFns: false,
+                  location,
+                })),
+              }),
+              unstableId: Point0._getNextUnstableId(),
+            },
+          ]
+        }
+        c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
+      }
+    }
+    if (point.type === 'layout') {
+      // if it is layout we need to add it to layouts
+      c._layouts = mergeArraysUnique(this._layouts, [...point._layouts, point as LayoutPoint])
+    }
+    return this._continue(c) as never
+  }
 
   query(
     ...args: TLetsEndPointType extends 'query'
@@ -4553,6 +4602,7 @@ export class Point0<
             location,
             response: serverResponse,
             input: currentInputParsed,
+            serverData,
           })
           if (result instanceof Response) {
             currentClientResponse = result
@@ -5000,6 +5050,9 @@ export class Point0<
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
       'X-Point0-From-Scope': fromScope,
+      'X-Point0-Same-Point': this._sameQueryPoint
+        ? `${this._sameQueryPoint.scope}.${this._sameQueryPoint.type}.${this._sameQueryPoint.name}`
+        : '',
     })
     const serverurl = this.getServerUrl()
     if (!serverurl) {
@@ -5052,7 +5105,7 @@ export class Point0<
     }
   }
 
-  private readonly nativeFetch = async (request: Request): Promise<Response> => await fetch(request)
+  private static readonly nativeFetch = async (request: Request): Promise<Response> => await fetch(request)
 
   getFetchFn = (): FetchFn => {
     if (_point0_env.target.is.server) {
@@ -5064,7 +5117,7 @@ export class Point0<
       }
       return __POINT0_FETCH_FN__
     }
-    return superstore.getFakeClient()?.fetch ?? this.nativeFetch
+    return superstore.getFakeClient()?.fetch ?? Point0.nativeFetch
   }
 
   private modifyFetchRequestForServerIfRequired(fetchOptions: ReturnType<typeof this.getFetchOptions>): Request {
@@ -5288,9 +5341,9 @@ export class Point0<
   }): QueryKey {
     return [
       'point0',
-      this.scope,
-      this.type,
-      this.name,
+      this._sameQueryPoint?.scope ?? this.scope,
+      this._sameQueryPoint?.type ?? this.type,
+      this._sameQueryPoint?.name ?? this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -5307,9 +5360,9 @@ export class Point0<
   }): QueryKey {
     return [
       'point0',
-      this.scope,
-      this.type,
-      this.name,
+      this._sameQueryPoint?.scope ?? this.scope,
+      this._sameQueryPoint?.type ?? this.type,
+      this._sameQueryPoint?.name ?? this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -5328,9 +5381,9 @@ export class Point0<
   }): QueryKey {
     return [
       'point0',
-      this.scope,
-      this.type,
-      this.name,
+      this._sameQueryPoint?.scope ?? this.scope,
+      this._sameQueryPoint?.type ?? this.type,
+      this._sameQueryPoint?.name ?? this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,

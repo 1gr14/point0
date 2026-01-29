@@ -1536,6 +1536,7 @@ export type ClientLoaderFnOptions<
     : TClientLoaderOutput
   location: ClientExecuteActionLocation<TLetsEndPointType, TRouteDefinition>
   input: InputParsed<TClientInputSchema>
+  serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
 }
 export type ClientLoaderFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
