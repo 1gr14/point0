@@ -141,6 +141,7 @@ export type Infer<
 
 export type PointType =
   | 'root'
+  | 'plugin'
   | 'base'
   | 'page'
   | 'component'
@@ -155,7 +156,7 @@ export type PointType =
   | 'renderStage'
 export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'renderStage'
 export type EndPointType = Exclude<PointType, StagePointType>
-export type RequestableEndPointType = Exclude<EndPointType, 'root' | 'base'>
+export type RequestableEndPointType = Exclude<EndPointType, 'root' | 'base' | 'plugin'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
 export type RenderablePointType = 'page' | 'component' | 'layout'
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
@@ -200,34 +201,6 @@ export type AnyPoint<
   TProps
 >
 
-export type BasePoint<
-  TRequiredCtx extends RequiredCtx = any,
-  TCtx extends Ctx = any,
-  TCtxExposedKeys extends CtxExposedKeys = any,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
-  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-> = AnyPoint<
-  'base',
-  UndefinedEndPointType,
-  TRequiredCtx,
-  TCtx,
-  TCtxExposedKeys,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TRouteDefinition,
-  TServerInputSchema,
-  TClientInputSchema,
-  TQueryResultType,
-  TProps
->
-
 export type RootPoint<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TCtx extends Ctx = any,
@@ -242,6 +215,62 @@ export type RootPoint<
   TProps extends Props | UndefinedProps = any,
 > = AnyPoint<
   'root',
+  UndefinedEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TClientMapperOutput,
+  TRouteDefinition,
+  TServerInputSchema,
+  TClientInputSchema,
+  TQueryResultType,
+  TProps
+>
+
+export type PluginPoint<
+  TRequiredCtx extends RequiredCtx = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TProps extends Props | UndefinedProps = any,
+> = AnyPoint<
+  'plugin',
+  UndefinedEndPointType,
+  TRequiredCtx,
+  TCtx,
+  TCtxExposedKeys,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TClientMapperOutput,
+  TRouteDefinition,
+  TServerInputSchema,
+  TClientInputSchema,
+  TQueryResultType,
+  TProps
+>
+
+export type BasePoint<
+  TRequiredCtx extends RequiredCtx = any,
+  TCtx extends Ctx = any,
+  TCtxExposedKeys extends CtxExposedKeys = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TProps extends Props | UndefinedProps = any,
+> = AnyPoint<
+  'base',
   UndefinedEndPointType,
   TRequiredCtx,
   TCtx,
@@ -592,6 +621,32 @@ export type Prettify<T extends object> = {
   [K in keyof T]: T[K]
 }
 export type PrettifyOrUndefined<T> = T extends object ? Prettify<T> : undefined
+export type AppendLoaderOutput<
+  TPrevLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TAppend extends LoaderOutput | UndefinedLoaderOutput,
+> = TAppend extends UndefinedLoaderOutput
+  ? TPrevLoaderOutput
+  : TAppend extends Response
+    ? TAppend
+    : TPrevLoaderOutput extends UndefinedLoaderOutput
+      ? TAppend
+      : TPrevLoaderOutput extends Data
+        ? IsNever<keyof TPrevLoaderOutput> extends true
+          ? TAppend
+          : Omit<TPrevLoaderOutput, keyof TAppend> & TAppend
+        : TAppend
+export type AppendMapperOutput<
+  TPrevMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TAppend extends MapperOutput | UndefinedMapperOutput,
+> = TAppend extends UndefinedMapperOutput
+  ? TPrevMapperOutput
+  : TPrevMapperOutput extends UndefinedMapperOutput
+    ? TAppend
+    : TPrevMapperOutput extends Data
+      ? IsNever<keyof TPrevMapperOutput> extends true
+        ? TAppend
+        : Omit<TPrevMapperOutput, keyof TAppend> & TAppend
+      : TAppend
 export type AppendCtx<TCtx extends UnknownCtx | UndefinedCtx, TAppend extends UnknownCtx> = TCtx extends Ctx
   ? IsNever<keyof TCtx> extends true
     ? TAppend
@@ -1837,6 +1892,77 @@ export type NiceRootStagePoint<
   | 'Infer'
 >
 
+export type NicePluginStagePoint<
+  TPointType extends StagePointType,
+  TLetsEndPointType extends 'plugin',
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TProps
+  >,
+  | 'plugin'
+  | 'middleware'
+  | 'ssr'
+  | 'transformer'
+  // | 'fetchFn'
+  // | 'requireCtx'
+  | 'serverurl'
+  | 'baseurl'
+  | 'mutationOptions'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'componentQueryOptions'
+  | 'providerQueryOptions'
+  | 'layoutQueryOptions'
+  | 'fetchOptions'
+  | 'layoutError'
+  | 'pageError'
+  | 'componentError'
+  | 'error'
+  | 'layoutLoading'
+  | 'pageLoading'
+  | 'componentLoading'
+  | 'loading'
+  | 'input'
+  | 'clientInput'
+  | 'ctx'
+  | 'loader'
+  | 'clientLoader'
+  | 'mapper'
+  | 'head'
+  | 'scrollPosition'
+  | 'scrollRestore'
+  | 'prefetchPolicy'
+  | 'onPrefetch'
+  | 'prefetchOnLinkHover'
+  | 'point'
+  | 'type'
+  | 'Infer'
+>
+
 export type NiceBaseStagePoint<
   TPointType extends StagePointType,
   TLetsEndPointType extends 'base',
@@ -2285,8 +2411,8 @@ export type NiceStagePoint<
       TQueryResultType,
       TProps
     >
-  : TLetsEndPointType extends 'base'
-    ? NiceBaseStagePoint<
+  : TLetsEndPointType extends 'plugin'
+    ? NicePluginStagePoint<
         TPointType,
         TLetsEndPointType,
         TRequiredCtx,
@@ -2301,8 +2427,8 @@ export type NiceStagePoint<
         TQueryResultType,
         TProps
       >
-    : TLetsEndPointType extends 'page'
-      ? NicePageStagePoint<
+    : TLetsEndPointType extends 'base'
+      ? NiceBaseStagePoint<
           TPointType,
           TLetsEndPointType,
           TRequiredCtx,
@@ -2317,8 +2443,8 @@ export type NiceStagePoint<
           TQueryResultType,
           TProps
         >
-      : TLetsEndPointType extends 'component'
-        ? NiceComponentStagePoint<
+      : TLetsEndPointType extends 'page'
+        ? NicePageStagePoint<
             TPointType,
             TLetsEndPointType,
             TRequiredCtx,
@@ -2333,8 +2459,8 @@ export type NiceStagePoint<
             TQueryResultType,
             TProps
           >
-        : TLetsEndPointType extends 'query'
-          ? NiceQueryStagePoint<
+        : TLetsEndPointType extends 'component'
+          ? NiceComponentStagePoint<
               TPointType,
               TLetsEndPointType,
               TRequiredCtx,
@@ -2349,8 +2475,8 @@ export type NiceStagePoint<
               TQueryResultType,
               TProps
             >
-          : TLetsEndPointType extends 'infiniteQuery'
-            ? NiceInfiniteQueryStagePoint<
+          : TLetsEndPointType extends 'query'
+            ? NiceQueryStagePoint<
                 TPointType,
                 TLetsEndPointType,
                 TRequiredCtx,
@@ -2365,8 +2491,8 @@ export type NiceStagePoint<
                 TQueryResultType,
                 TProps
               >
-            : TLetsEndPointType extends 'mutation'
-              ? NiceMutationStagePoint<
+            : TLetsEndPointType extends 'infiniteQuery'
+              ? NiceInfiniteQueryStagePoint<
                   TPointType,
                   TLetsEndPointType,
                   TRequiredCtx,
@@ -2381,8 +2507,8 @@ export type NiceStagePoint<
                   TQueryResultType,
                   TProps
                 >
-              : TLetsEndPointType extends 'layout'
-                ? NiceLayoutStagePoint<
+              : TLetsEndPointType extends 'mutation'
+                ? NiceMutationStagePoint<
                     TPointType,
                     TLetsEndPointType,
                     TRequiredCtx,
@@ -2397,8 +2523,8 @@ export type NiceStagePoint<
                     TQueryResultType,
                     TProps
                   >
-                : TLetsEndPointType extends 'provider'
-                  ? NiceProviderStagePoint<
+                : TLetsEndPointType extends 'layout'
+                  ? NiceLayoutStagePoint<
                       TPointType,
                       TLetsEndPointType,
                       TRequiredCtx,
@@ -2413,7 +2539,23 @@ export type NiceStagePoint<
                       TQueryResultType,
                       TProps
                     >
-                  : never
+                  : TLetsEndPointType extends 'provider'
+                    ? NiceProviderStagePoint<
+                        TPointType,
+                        TLetsEndPointType,
+                        TRequiredCtx,
+                        TCtx,
+                        TCtxExposedKeys,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TClientMapperOutput,
+                        TRouteDefinition,
+                        TServerInputSchema,
+                        TClientInputSchema,
+                        TQueryResultType,
+                        TProps
+                      >
+                    : never
 
 // nice end point
 
@@ -2482,6 +2624,39 @@ export type NiceRootEndPoint<
     TProps
   >,
   'lets' | 'point' | 'type' | 'Infer'
+>
+
+export type NicePluginEndPoint<
+  TPointType extends 'plugin',
+  TLetsEndPointType extends UndefinedEndPointType,
+  TRequiredCtx extends RequiredCtx,
+  TCtx extends Ctx,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TProps extends Props | UndefinedProps,
+> = Pick<
+  Point0<
+    TPointType,
+    TLetsEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TProps
+  >,
+  'point' | 'type' | 'Infer'
 >
 
 export type NiceBaseEndPoint<
@@ -2848,8 +3023,8 @@ export type NiceEndPoint<
       TQueryResultType,
       TProps
     >
-  : TPointType extends 'base'
-    ? NiceBaseEndPoint<
+  : TPointType extends 'plugin'
+    ? NicePluginEndPoint<
         TPointType,
         TLetsEndPointType,
         TRequiredCtx,
@@ -2864,8 +3039,8 @@ export type NiceEndPoint<
         TQueryResultType,
         TProps
       >
-    : TPointType extends 'page'
-      ? NicePageEndPoint<
+    : TPointType extends 'base'
+      ? NiceBaseEndPoint<
           TPointType,
           TLetsEndPointType,
           TRequiredCtx,
@@ -2880,8 +3055,8 @@ export type NiceEndPoint<
           TQueryResultType,
           TProps
         >
-      : TPointType extends 'component'
-        ? NiceComponentEndPoint<
+      : TPointType extends 'page'
+        ? NicePageEndPoint<
             TPointType,
             TLetsEndPointType,
             TRequiredCtx,
@@ -2896,8 +3071,8 @@ export type NiceEndPoint<
             TQueryResultType,
             TProps
           >
-        : TPointType extends 'query'
-          ? NiceQueryEndPoint<
+        : TPointType extends 'component'
+          ? NiceComponentEndPoint<
               TPointType,
               TLetsEndPointType,
               TRequiredCtx,
@@ -2912,8 +3087,8 @@ export type NiceEndPoint<
               TQueryResultType,
               TProps
             >
-          : TPointType extends 'infiniteQuery'
-            ? NiceInfiniteQueryEndPoint<
+          : TPointType extends 'query'
+            ? NiceQueryEndPoint<
                 TPointType,
                 TLetsEndPointType,
                 TRequiredCtx,
@@ -2928,8 +3103,8 @@ export type NiceEndPoint<
                 TQueryResultType,
                 TProps
               >
-            : TPointType extends 'mutation'
-              ? NiceMutationEndPoint<
+            : TPointType extends 'infiniteQuery'
+              ? NiceInfiniteQueryEndPoint<
                   TPointType,
                   TLetsEndPointType,
                   TRequiredCtx,
@@ -2944,8 +3119,8 @@ export type NiceEndPoint<
                   TQueryResultType,
                   TProps
                 >
-              : TPointType extends 'layout'
-                ? NiceLayoutEndPoint<
+              : TPointType extends 'mutation'
+                ? NiceMutationEndPoint<
                     TPointType,
                     TLetsEndPointType,
                     TRequiredCtx,
@@ -2960,8 +3135,8 @@ export type NiceEndPoint<
                     TQueryResultType,
                     TProps
                   >
-                : TPointType extends 'provider'
-                  ? NiceProviderEndPoint<
+                : TPointType extends 'layout'
+                  ? NiceLayoutEndPoint<
                       TPointType,
                       TLetsEndPointType,
                       TRequiredCtx,
@@ -2976,7 +3151,23 @@ export type NiceEndPoint<
                       TQueryResultType,
                       TProps
                     >
-                  : never
+                  : TPointType extends 'provider'
+                    ? NiceProviderEndPoint<
+                        TPointType,
+                        TLetsEndPointType,
+                        TRequiredCtx,
+                        TCtx,
+                        TCtxExposedKeys,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TClientMapperOutput,
+                        TRouteDefinition,
+                        TServerInputSchema,
+                        TClientInputSchema,
+                        TQueryResultType,
+                        TProps
+                      >
+                    : never
 
 export type AnyNiceEndPoint<
   TPointType extends EndPointType = any,

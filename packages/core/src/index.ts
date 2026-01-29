@@ -31,6 +31,8 @@ import type {
   AnyUseLoaderResult,
   AppendCtx,
   AppendCtxExposedKeys,
+  AppendLoaderOutput,
+  AppendMapperOutput,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   BasePoint,
@@ -101,6 +103,8 @@ import type {
   NiceLayoutEndPoint,
   NiceMutationEndPoint,
   NicePageEndPoint,
+  NicePluginEndPoint,
+  NicePluginStagePoint,
   NiceProviderEndPoint,
   NiceQueryEndPoint,
   NiceRootEndPoint,
@@ -1051,14 +1055,46 @@ export class Point0<
     UndefinedQueryResultType,
     UndefinedProps
   >
-  static lets(pointType: 'root', pointName: string) {
-    return new Point0({
-      type: 'coreStage',
-      scope: pointName,
-      scopes: [pointName],
-      _letsEndPointType: 'root',
-      name: pointName,
-    }) as never
+  static lets(
+    pointType: 'plugin',
+    pointName: string,
+  ): NicePluginStagePoint<
+    'coreStage',
+    'plugin',
+    UndefinedCtx,
+    EmptyCtx,
+    UndefinedCtxExposedKeys,
+    UndefinedLoaderOutput,
+    UndefinedLoaderOutput,
+    UndefinedMapperOutput,
+    UndefinedRoute,
+    UndefinedRoute,
+    UndefinedInputSchema,
+    UndefinedQueryResultType,
+    UndefinedProps
+  >
+  static lets(pointType: 'root' | 'plugin', pointName: string) {
+    if (pointType === 'root') {
+      return new Point0({
+        type: 'coreStage',
+        scope: pointName,
+        scopes: [pointName],
+        _letsEndPointType: 'root',
+        name: pointName,
+      }) as never
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    } else if (pointType === 'plugin') {
+      return new Point0({
+        type: 'coreStage',
+        scope: 'plugin',
+        scopes: ['plugin'],
+        _letsEndPointType: 'plugin',
+        name: pointName,
+      }) as never
+    } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Invalid point type: ${pointType}`)
+    }
   }
 
   // root settings
@@ -3243,6 +3279,38 @@ export class Point0<
     }) as never
   }
 
+  use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+    plugin: T,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    AppendCtx<TRequiredCtx, T['Infer']['RequiredCtx']>,
+    AppendCtx<PrependCtx<TCtx, T['Infer']['RequiredCtx']>, T['Infer']['Ctx']>,
+    AppendCtxExposedKeys<TCtxExposedKeys, T['Infer']['CtxExposedKeys']>,
+    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
+    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
+    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
+    MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
+    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
+    TProps
+  >
+  use(point: Point0<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+    const c: Parameters<typeof this._continue>[0] = {}
+    if (point.type === 'plugin') {
+      // in this case plugin works like just injecting all it called methods to current point
+    }
+    if (point.type === 'query' || point.type === 'infiniteQuery') {
+      // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
+      // all other as in plugin section
+    }
+    if (point.type === 'layout') {
+      // if it is layout we need to add it to layouts
+    }
+    return this._continue(c) as never
+  }
+
   root(): NiceRootEndPoint<
     'root',
     UndefinedEndPointType,
@@ -3265,6 +3333,27 @@ export class Point0<
       name: this.scope,
       _letsEndPointType: undefined,
     })
+  }
+
+  plugin(): NicePluginEndPoint<
+    'plugin',
+    UndefinedEndPointType,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TProps
+  > {
+    return this._continue({
+      type: 'plugin',
+      _letsEndPointType: undefined,
+    }) as never
   }
 
   base(): NiceBaseEndPoint<
