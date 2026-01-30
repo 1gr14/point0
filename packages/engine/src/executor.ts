@@ -697,7 +697,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
           // ...I think better use prefetchQuery.
           // console.log(123123, _ssItems.__POINT0_REQUEST0__.getWeak())
           // await suitable.point.prefetchQuery(suitableMarker.input)
-          console.log('prefetch in executore', suitable.point.name)
           if (suitable.point._queryResultType === 'infiniteQuery') {
             await suitable.point.prefetchInfiniteQuery(suitableMarker.input, undefined, { force: true, mode: 'server' })
           } else {

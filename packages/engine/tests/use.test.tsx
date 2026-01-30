@@ -3,6 +3,26 @@ import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
 
 describe('use', () => {
+  it('without use(query)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ page: 2 }))
+      .page()
+
+    const { loadPoint, fetchesTale } = await createTestThings({ points: [root, page] })
+    const data = await loadPoint(page)
+    expect(data).toMatchInlineSnapshot(`
+      {
+        "page": 2,
+      }
+    `)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) < {}
+      "
+    `)
+  })
+
   it('use(query) executes query loader', async () => {
     const root = Point0.lets('root', 'root').root()
     const query = root
@@ -23,6 +43,8 @@ describe('use', () => {
         "query": 1,
       }
     `)
+    // Yes, it is ok, we do like we have SPA but on server
+    // so client requests page, then on page we found query and prefetch it
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "page.home (client) < {}
       query.stats (server) < {}
@@ -94,7 +116,7 @@ describe('use', () => {
     `)
   })
 
-  it.only('use(query1).use(query2) not use same query key on page, but prefetch it with ssr', async () => {
+  it('use(query1).use(query2) not use same query key on page, but prefetch it with ssr', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const query1 = root
       .lets('query', 'query1')
@@ -121,11 +143,7 @@ describe('use', () => {
     const result = await fetchSsr(page)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "page.home (client) (page) < {}
-      query.query1 (server) < {}
-      query.query2 (server) < {}
       page.home (server) < {}
-      query.query1 (server) < {}
-      query.query2 (server) < {}
       query.query1 (server) < {}
       query.query2 (server) < {}
       "
@@ -133,14 +151,8 @@ describe('use', () => {
     expect(result.queryClientQueriesPreview).toMatchInlineSnapshot(`
       "point0|root|page|home|server|finite|{}|data
       {"x":1,"y":2}
-      point0|root|query|query1|server|finite|{}|data
-      {"x":1}
-      point0|root|query|query2|server|finite|{}|data
-      {"y":2}
       "
     `)
-    console.log(page.point._sameQueryPoint?.name)
-    console.log(page.point._relatedQueryPoints?.map((p) => p.name))
     expect(result.preview).toMatchInlineSnapshot(`
       "#page: x=1 y=2
       "

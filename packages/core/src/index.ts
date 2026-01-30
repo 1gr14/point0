@@ -3957,11 +3957,9 @@ export class Point0<
         const newRelatedQueryPoint = point._getSameQueryPoint() ?? point
         c._relatedQueryPoints = mergeArraysUnique(this._relatedQueryPoints, [newRelatedQueryPoint])
         if (!this._hasServerLoader() && !this._hasClientLoader()) {
-          console.log('add same query point', newRelatedQueryPoint.name)
           c._sameQueryPoint = newRelatedQueryPoint
         } else {
           if (this._getSameQueryPoint() !== newRelatedQueryPoint) {
-            console.log('remove same query point', point.name)
             c._sameQueryPoint = null
           }
         }
@@ -3971,9 +3969,12 @@ export class Point0<
             {
               type: 'loader',
               fn: async ({ data, input }) => {
+                const prevData = data instanceof Response ? {} : data
+                const newData =
+                  point.type === 'infiniteQuery' ? await point.fetchInfiniteQuery(input) : await point.fetchQuery(input)
                 return {
-                  ...(data instanceof Response ? {} : data),
-                  ...(await point.fetch(input)),
+                  ...prevData,
+                  ...newData,
                 }
               },
               unstableId: Point0._getNextUnstableId(),
@@ -6393,23 +6394,23 @@ export class Point0<
     return (await queryClient.fetchQuery(queryOptions)) as never
   }
 
-  async _prefetchRelatedQueryPoints({
+  static async _prefetchRelatedQueryPoints({
     input,
+    relatedQueryPoints,
     queryClient,
     fetchOptions,
     mode,
-    preventPrefetchRelatedQueryPoints = false,
+    preventPrefetchFns,
+    preventPrefetchRelatedQueryPoints,
   }: {
     input: InputsRaw<any, any>
+    relatedQueryPoints: AnyPoint[]
     queryClient?: QueryClient
     fetchOptions?: FetchOptions
     mode: QueryMode
+    preventPrefetchFns?: boolean | OnPrefetchFn[]
     preventPrefetchRelatedQueryPoints?: boolean
   }): Promise<void> {
-    if (preventPrefetchRelatedQueryPoints) {
-      return undefined
-    }
-    const relatedQueryPoints = this._relatedQueryPoints.filter((point) => point !== this._sameQueryPoint)
     await Promise.all(
       relatedQueryPoints.map(async (point) =>
         point._queryResultType === 'infiniteQuery'
@@ -6417,16 +6418,45 @@ export class Point0<
               queryClient,
               fetchOptions,
               mode,
-              preventPrefetchFns: true,
+              preventPrefetchFns,
+              preventPrefetchRelatedQueryPoints,
             })
           : await point.prefetchQuery(input, undefined, {
               queryClient,
               fetchOptions,
               mode,
-              preventPrefetchFns: true,
+              preventPrefetchFns,
+              preventPrefetchRelatedQueryPoints,
             }),
       ),
     )
+  }
+
+  async _prefetchRelatedQueryPoints({
+    input,
+    queryClient,
+    fetchOptions,
+    mode,
+    preventPrefetchRelatedQueryPoints = false,
+    preventPrefetchFns = false,
+  }: {
+    input: InputsRaw<any, any>
+    queryClient?: QueryClient
+    fetchOptions?: FetchOptions
+    mode: QueryMode
+    preventPrefetchRelatedQueryPoints?: boolean
+    preventPrefetchFns?: boolean | OnPrefetchFn[]
+  }): Promise<void> {
+    const relatedQueryPoints = this._relatedQueryPoints.filter((point) => point !== this._sameQueryPoint)
+    await Point0._prefetchRelatedQueryPoints({
+      input,
+      relatedQueryPoints,
+      queryClient,
+      fetchOptions,
+      mode,
+      preventPrefetchFns,
+      preventPrefetchRelatedQueryPoints,
+    })
   }
 
   async prefetchQuery(
@@ -6490,13 +6520,15 @@ export class Point0<
     await Promise.all([
       this._callPrefetchFns({ preventPrefetchFns }),
       queryClient.prefetchQuery(queryOptions as never),
-      this._prefetchRelatedQueryPoints({
-        input,
-        queryClient,
-        fetchOptions,
-        mode,
-        preventPrefetchRelatedQueryPoints,
-      }),
+      preventPrefetchRelatedQueryPoints
+        ? this._prefetchRelatedQueryPoints({
+            input,
+            queryClient,
+            fetchOptions,
+            mode,
+            preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
+          })
+        : undefined,
     ])
   }
 
@@ -6725,13 +6757,15 @@ export class Point0<
     await Promise.all([
       this._callPrefetchFns({ preventPrefetchFns }),
       queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
-      this._prefetchRelatedQueryPoints({
-        input,
-        queryClient,
-        fetchOptions,
-        mode,
-        preventPrefetchRelatedQueryPoints,
-      }),
+      preventPrefetchRelatedQueryPoints
+        ? this._prefetchRelatedQueryPoints({
+            input,
+            queryClient,
+            fetchOptions,
+            mode,
+            preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
+          })
+        : undefined,
     ])
   }
 
@@ -6858,36 +6892,48 @@ export class Point0<
       return
     }
 
-    const pageWithLayouts = [this, ...this._layouts]
-
-    const uniqPrefetchFns = [...new Set<OnPrefetchFn>(pageWithLayouts.flatMap((p) => p._onPrefetchFns))]
-
-    const prefetchRelatedQueryPointsMode =
-      policy === 'onPrefetchOnly'
-        ? false
-        : policy === 'everything'
-          ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
-            queryClientDehydratedStateWasPrefetched
-            ? 'client'
-            : 'serverAndClient'
-          : {
-              serverQuery: 'server' as const,
-              clientQuery: 'client' as const,
-              serverClientQuery: 'serverAndClient' as const,
-            }[policy]
-
-    const relatedQueryPointsSelfPrefetchPromise = Promise.all(
-      prefetchRelatedQueryPointsMode
-        ? pageWithLayouts.map(async (p) => {
-            return await p._prefetchRelatedQueryPoints({
-              input,
-              queryClient,
-              fetchOptions,
-              mode: prefetchRelatedQueryPointsMode,
-            })
-          })
-        : [],
+    const allRelatedPoints = [this as EndPoint, ...this._layouts, ...this._relatedQueryPoints].map(
+      (p) => p._getSameQueryPoint() ?? p,
     )
+    const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
+    const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
+
+    // const pageWithLayouts = [this, ...this._layouts]
+
+    // const uniqueRelatedQueryPoints = [...new Set<AnyPoint>(pageWithLayouts.flatMap((p) => p._relatedQueryPoints))]
+
+    // const uniqPrefetchFns = [
+    //   ...new Set<OnPrefetchFn>([
+    //     ...pageWithLayouts.flatMap((p) => p._onPrefetchFns),
+    //     ...uniqueRelatedQueryPoints.flatMap((p) => p._onPrefetchFns),
+    //   ]),
+    // ]
+
+    // const prefetchRelatedQueryPointsMode =
+    //   policy === 'onPrefetchOnly'
+    //     ? false
+    //     : policy === 'everything'
+    //       ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+    //         queryClientDehydratedStateWasPrefetched
+    //         ? 'client'
+    //         : 'serverAndClient'
+    //       : {
+    //           serverQuery: 'server' as const,
+    //           clientQuery: 'client' as const,
+    //           serverClientQuery: 'serverAndClient' as const,
+    //         }[policy]
+
+    // const relatedQueryPointsSelfPrefetchPromise = prefetchRelatedQueryPointsMode
+    //   ? Point0._prefetchRelatedQueryPoints({
+    //       input,
+    //       relatedQueryPoints: uniqueRelatedQueryPoints,
+    //       queryClient,
+    //       fetchOptions,
+    //       mode: prefetchRelatedQueryPointsMode,
+    //       preventPrefetchFns: true,
+    //       preventPrefetchRelatedQueryPoints: true,
+    //     })
+    //   : undefined
 
     const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
@@ -6896,7 +6942,7 @@ export class Point0<
     )
 
     const queriesPrefetching = Promise.all(
-      pageWithLayouts.flatMap(async (p) => {
+      uniqRelatedPoints.flatMap(async (p) => {
         if (policy === 'onPrefetchOnly') {
           return []
         }
@@ -6926,6 +6972,7 @@ export class Point0<
             force,
             mode,
             preventPrefetchFns: true,
+            preventPrefetchRelatedQueryPoints: true,
           })
         } else {
           return await p.prefetchQuery(inputHere as never, queryOptions, {
@@ -6935,12 +6982,15 @@ export class Point0<
             force,
             mode,
             preventPrefetchFns: true,
+            preventPrefetchRelatedQueryPoints: true,
           })
         }
       }),
     )
 
-    await Promise.all([queriesPrefetching, onPrefetchFnsPromise, relatedQueryPointsSelfPrefetchPromise])
+    await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
+
+    // await Promise.all([queriesPrefetching, onPrefetchFnsPromise, relatedQueryPointsSelfPrefetchPromise])
   }
 
   // mountable components
