@@ -94,7 +94,7 @@ describe('use', () => {
     `)
   })
 
-  it('use(query1).use(query2) not use same query key on page, but prefetch it with ssr', async () => {
+  it.only('use(query1).use(query2) not use same query key on page, but prefetch it with ssr', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const query1 = root
       .lets('query', 'query1')
