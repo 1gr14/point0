@@ -118,9 +118,9 @@ export type Infer<
   Props: TProps
   QueryResultType: TQueryResultType
   FetchOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
-  QueriedData: FinalLoaderUnmappedOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-    ? FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
-    : never
+  ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
+  ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
+  QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   FinalOutput: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   ClientExecuteResult: FinalLoaderMappedOutput<
     TQueryResultType,
@@ -518,6 +518,53 @@ export type IsInputSchemaConflicts<
     : false
   : false
 
+export type IsInputSchemaAssignable<
+  TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
+  TUsedInputSchema extends InputSchema | UndefinedInputSchema,
+> = InputRaw<TUsedInputSchema> extends InputRaw<TCurrentInputSchema> ? true : false
+
+export type AssertInputSchemaNotWider<
+  TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
+  TUsedInputSchema extends InputSchema | UndefinedInputSchema,
+  TMessage extends string,
+> = IsInputSchemaConflicts<TCurrentInputSchema, TUsedInputSchema> extends false ? unknown : ShowError<TMessage>
+
+export type AssertInputSchemaAssignable<
+  TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
+  TUsedInputSchema extends InputSchema | UndefinedInputSchema,
+  TMessage extends string,
+> = IsInputSchemaAssignable<TCurrentInputSchema, TUsedInputSchema> extends true ? unknown : ShowError<TMessage>
+
+export type HasLoaderOrMapper<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = TServerLoaderOutput extends LoaderOutput
+  ? true
+  : TClientLoaderOutput extends LoaderOutput
+    ? true
+    : TClientMapperOutput extends MapperOutput
+      ? true
+      : false
+
+export type HasClientLoaderOrMapper<
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = TClientLoaderOutput extends LoaderOutput ? true : TClientMapperOutput extends MapperOutput ? true : false
+
+export type AssertUseNoLoaderMapperConflict<
+  TCurrentClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TCurrentClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TUsedServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TUsedClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TUsedClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> =
+  HasClientLoaderOrMapper<TCurrentClientLoaderOutput, TCurrentClientMapperOutput> extends true
+    ? HasLoaderOrMapper<TUsedServerLoaderOutput, TUsedClientLoaderOutput, TUsedClientMapperOutput> extends true
+      ? ShowError<`Point has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`>
+      : unknown
+    : unknown
+
 export type IsRouteDefinitionConflicts<
   TRouteDefinition extends RouteDefinition,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
@@ -709,15 +756,21 @@ export type FinalLoaderUnmappedOutput<
   : TServerLoaderOutput extends LoaderOutput
     ? TServerLoaderOutput
     : undefined
+export type QueriedData<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = TLoaderOutput extends Data
+  ? TQueryResultType extends 'infiniteQuery'
+    ? InfiniteData<TLoaderOutput>
+    : TQueryResultType extends 'query'
+      ? TLoaderOutput
+      : undefined
+  : undefined
 export type FinalQueriedData<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-> = TQueryResultType extends 'infiniteQuery'
-  ? InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
-  : TQueryResultType extends 'query'
-    ? FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
-    : undefined
+> = QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
 export type FinalLoaderMappedOutput<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2720,6 +2773,7 @@ export type WithExecuteEndLiteralsIfSuitable<
       | 'useQuery'
       | 'getQueryKey'
       | 'getQueryOptions'
+      | 'fetchQuery'
       | 'prefetchQuery'
       | 'execute'
       | 'executeDetailed'
@@ -2732,6 +2786,7 @@ export type WithExecuteEndLiteralsIfSuitable<
         | 'useInfiniteQuery'
         | 'getQueryKey'
         | 'getInfiniteQueryOptions'
+        | 'fetchInfiniteQuery'
         | 'prefetchInfiniteQuery'
         | 'execute'
         | 'executeDetailed'

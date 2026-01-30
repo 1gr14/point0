@@ -1,5 +1,5 @@
 import type { AnyNiceRequestableEndPoint, AppComponent, EndPoint, PointsDefinition } from '@point0/core'
-import { QueryClientProvider } from '@point0/core'
+import { queryClient as point0QueryClient, QueryClientProvider } from '@point0/core'
 import { Router } from '@point0/wouter'
 import { Window } from 'happy-dom'
 import assert from 'node:assert'
@@ -9,7 +9,7 @@ import { FakeClient } from '../../src/fake-client.js'
 import { ElementViewer } from './element-viewer.js'
 import { HtmlView } from './html-view.js'
 // import { AsyncLocalStorage } from 'node:async_hooks'
-import type { DehydratedState } from '@tanstack/react-query'
+import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react'
 import { FetchRecorder } from './fetch-recorder.js'
 
@@ -194,6 +194,8 @@ type TestThingsState = {
   viewer: ElementViewer
   preview: ElementViewer['preview']
   tale: ElementViewer['tale']
+  queryClient: QueryClient
+  getQueryClientPreview: () => string
   waitContent: ElementViewer['waitContent']
   click: (selector: string) => Promise<void>
   _locationCleanup: () => void
@@ -348,6 +350,32 @@ export const createTestThings = async ({
           window.history.pushState = originalPushState
           window.history.replaceState = originalReplaceState
           clearInterval(locationCheckInterval)
+        }
+
+        state.queryClient = point0QueryClient.get()
+        state.getQueryClientPreview = () => {
+          const queryClientState = state.queryClient.getQueryCache().findAll()
+          // const queryClientQueriesKeys = queryClientState.map((query) =>
+          //   query.queryKey.join('|'),
+          // )
+          const queryClientQueriesState = Object.fromEntries(
+            queryClientState.map((query) => [
+              query.queryKey.join('|'),
+              {
+                status: query.state.status,
+                data: query.state.data ? JSON.stringify(query.state.data) : undefined,
+                error: query.state.error?.message,
+              },
+            ]),
+          )
+          const queryClientQueriesPreview =
+            Object.entries(queryClientQueriesState)
+              .map(([key, value]) => {
+                return `${key}
+    ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${value.status}`}`
+              })
+              .join('\n') + '\n'
+          return queryClientQueriesPreview
         }
       },
     })

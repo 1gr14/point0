@@ -33,8 +33,11 @@ import type {
   AppendCtxExposedKeys,
   AppendLoaderOutput,
   AppendMapperOutput,
+  AssertInputSchemaAssignable,
+  AssertInputSchemaNotWider,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
+  AssertUseNoLoaderMapperConflict,
   BasePoint,
   ClientExecuteAction,
   ClientExecuteDetailedResult,
@@ -121,6 +124,7 @@ import type {
   PointsScope,
   PrependCtx,
   Props,
+  QueriedData,
   QueryKey,
   QueryMode,
   QueryResultType,
@@ -313,7 +317,9 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
-  readonly _sameQueryPoint: EndPoint | undefined
+  readonly _sameQueryPoint: EndPoint | null | undefined
+  readonly _getSameQueryPoint = () => this._sameQueryPoint ?? null
+  readonly _relatedQueryPoints: EndPoint[]
   // readonly _asFormData: boolean | undefined
   private readonly _wrappers: WrapperComponentType[]
   private readonly _outers: OuterComponentType[]
@@ -524,7 +530,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    _sameQueryPoint?: EndPoint | undefined
+    _sameQueryPoint?: EndPoint | null | undefined
+    _relatedQueryPoints?: EndPoint[]
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -679,6 +686,7 @@ export class Point0<
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
     this._sameQueryPoint = options._sameQueryPoint ?? undefined
+    this._relatedQueryPoints = options._relatedQueryPoints ?? []
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
@@ -758,7 +766,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    _sameQueryPoint?: EndPoint | undefined
+    _sameQueryPoint?: EndPoint | null | undefined
+    _relatedQueryPoints?: EndPoint[]
     // _asFormData?: boolean | undefined
     _wrappers?: WrapperComponentType[]
     _outers?: OuterComponentType[]
@@ -971,7 +980,10 @@ export class Point0<
         unknown
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
-      _sameQueryPoint: (overrides._sameQueryPoint ?? this._sameQueryPoint) as never,
+      _sameQueryPoint: (typeof overrides._sameQueryPoint === 'undefined'
+        ? this._sameQueryPoint
+        : overrides._sameQueryPoint) as never,
+      _relatedQueryPoints: (overrides._relatedQueryPoints ?? this._relatedQueryPoints) as never,
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
@@ -2135,7 +2147,7 @@ export class Point0<
       TQueryResultType,
       TProps
     >({
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for serve
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchFns: [...this._onPrefetchFns, fn ?? (() => undefined)],
     }) as never
   }
@@ -2331,7 +2343,7 @@ export class Point0<
   loader(loaderFn: LoaderFn<any, any, any, any, any> | boolean) {
     if (loaderFn === false) {
       return this._continue({
-        _sameQueryPoint: undefined,
+        _sameQueryPoint: null,
         _serverExecuteActions: this._serverExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientMapperFns: [],
@@ -2347,7 +2359,7 @@ export class Point0<
       loaderFn = (o) => o.data
     }
     return this._continue({
-      _sameQueryPoint: undefined,
+      _sameQueryPoint: null,
       _queryResultType: this._queryResultType ?? 'query',
       _serverExecuteActions: [
         ...this._serverExecuteActions,
@@ -2430,7 +2442,7 @@ export class Point0<
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
       return this._continue({
-        _sameQueryPoint: undefined,
+        _sameQueryPoint: null,
         _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientMapperFns: [],
         _queryResultType: this._hasServerLoader()
@@ -2447,7 +2459,7 @@ export class Point0<
     }
     return this._continue({
       type: 'clientStage',
-      _sameQueryPoint: undefined,
+      _sameQueryPoint: null,
       _queryResultType: this._queryResultType ?? 'query',
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -2505,13 +2517,13 @@ export class Point0<
   mapper(mapperFn: ClientMapperFn<any, any, any, any, any> | false) {
     if (mapperFn === false) {
       return this._continue({
-        _sameQueryPoint: undefined,
+        _sameQueryPoint: null,
         _clientMapperFns: [],
       }) as never
     }
     return this._continue({
       type: 'mapperStage',
-      _sameQueryPoint: undefined,
+      _sameQueryPoint: null,
       _clientMapperFns: [...this._clientMapperFns, mapperFn],
     }) as never
   }
@@ -3236,7 +3248,7 @@ export class Point0<
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
       _sameQueryPoint:
-        this._hasClientLoader() || this._hasServerLoader() ? (this._sameQueryPoint ?? (this as EndPoint)) : undefined,
+        this._hasClientLoader() || this._hasServerLoader() ? this._sameQueryPoint || (this as EndPoint) : null,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
@@ -3781,7 +3793,24 @@ export class Point0<
   // }
 
   use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
-    plugin: T,
+    plugin: T &
+      AssertUseNoLoaderMapperConflict<
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        T['Infer']['ServerLoaderOutput'],
+        T['Infer']['ClientLoaderOutput'],
+        T['Infer']['ClientMapperOutput']
+      > &
+      AssertInputSchemaNotWider<
+        TServerInputSchema,
+        T['Infer']['ServerInputSchema'],
+        `Plugin server input schema is not assignable to current point input schema`
+      > &
+      AssertInputSchemaNotWider<
+        TClientInputSchema,
+        T['Infer']['ClientInputSchema'],
+        `Plugin client input schema is not assignable to current point input schema`
+      >,
   ): NiceStagePoint<
     T['Infer']['ClientMapperOutput'] extends MapperOutput
       ? 'mapperStage'
@@ -3807,7 +3836,24 @@ export class Point0<
       | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
       | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
   >(
-    point: T,
+    point: T &
+      AssertUseNoLoaderMapperConflict<
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        T['Infer']['ServerLoaderOutput'],
+        T['Infer']['ClientLoaderOutput'],
+        T['Infer']['ClientMapperOutput']
+      > &
+      AssertInputSchemaAssignable<
+        TServerInputSchema,
+        T['Infer']['ServerInputSchema'],
+        `Used point server input schema is not compatible with current point input schema`
+      > &
+      AssertInputSchemaAssignable<
+        TClientInputSchema,
+        T['Infer']['ClientInputSchema'],
+        `Used point client input schema is not compatible with current point input schema`
+      >,
   ): NiceStagePoint<
     T['Infer']['ClientMapperOutput'] extends MapperOutput
       ? 'mapperStage'
@@ -3852,14 +3898,7 @@ export class Point0<
     const c: Parameters<typeof this._continue>[0] = {}
 
     const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
-      const result = [...(a ?? [])]
-      for (const item of b ?? []) {
-        const index = result.indexOf(item)
-        if (index === -1) {
-          result.push(item)
-        }
-      }
-      return result
+      return [...new Set([...(a ?? []), ...(b ?? [])])]
     }
 
     if (point.type === 'plugin') {
@@ -3915,18 +3954,28 @@ export class Point0<
     if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
       // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
       if (point._hasServerLoader() || point._hasClientLoader()) {
+        const newRelatedQueryPoint = point._getSameQueryPoint() ?? point
+        c._relatedQueryPoints = mergeArraysUnique(this._relatedQueryPoints, [newRelatedQueryPoint])
         if (!this._hasServerLoader() && !this._hasClientLoader()) {
-          c._sameQueryPoint = point._sameQueryPoint ?? point
+          console.log('add same query point', newRelatedQueryPoint.name)
+          c._sameQueryPoint = newRelatedQueryPoint
+        } else {
+          if (this._getSameQueryPoint() !== newRelatedQueryPoint) {
+            console.log('remove same query point', point.name)
+            c._sameQueryPoint = null
+          }
         }
         if (point._hasServerLoader()) {
           c._serverExecuteActions = [
             ...this._serverExecuteActions,
             {
               type: 'loader',
-              fn: async ({ data, input }) => ({
-                ...(data instanceof Response ? {} : data),
-                ...(await point.fetch(input)),
-              }),
+              fn: async ({ data, input }) => {
+                return {
+                  ...(data instanceof Response ? {} : data),
+                  ...(await point.fetch(input)),
+                }
+              },
               unstableId: Point0._getNextUnstableId(),
             },
           ]
@@ -5047,11 +5096,12 @@ export class Point0<
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
+    const sameQueryPoint = this._getSameQueryPoint()
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
       'X-Point0-From-Scope': fromScope,
-      'X-Point0-Same-Point': this._sameQueryPoint
-        ? `${this._sameQueryPoint.scope}.${this._sameQueryPoint.type}.${this._sameQueryPoint.name}`
+      'X-Point0-Same-Point': sameQueryPoint
+        ? `${sameQueryPoint.scope}.${sameQueryPoint.type}.${sameQueryPoint.name}`
         : '',
     })
     const serverurl = this.getServerUrl()
@@ -5339,11 +5389,12 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
+    const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      this._sameQueryPoint?.scope ?? this.scope,
-      this._sameQueryPoint?.type ?? this.type,
-      this._sameQueryPoint?.name ?? this.name,
+      sameQueryPoint.scope,
+      sameQueryPoint.type,
+      sameQueryPoint.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -5358,11 +5409,12 @@ export class Point0<
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     isInfiniteQuery: boolean
   }): QueryKey {
+    const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      this._sameQueryPoint?.scope ?? this.scope,
-      this._sameQueryPoint?.type ?? this.type,
-      this._sameQueryPoint?.name ?? this.name,
+      sameQueryPoint.scope,
+      sameQueryPoint.type,
+      sameQueryPoint.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -5379,11 +5431,12 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
+    const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      this._sameQueryPoint?.scope ?? this.scope,
-      this._sameQueryPoint?.type ?? this.type,
-      this._sameQueryPoint?.name ?? this.name,
+      sameQueryPoint.scope,
+      sameQueryPoint.type,
+      sameQueryPoint.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -6212,6 +6265,170 @@ export class Point0<
     )
   }
 
+  private _prepareFetchQuery({
+    input,
+    mode,
+    queryClient: providedQueryClient,
+    queryOptions: providedQueryOptions,
+    fetchOptions,
+    outputType,
+    location,
+  }: {
+    input: InputsRaw<any, any>
+    mode: QueryMode
+    queryClient?: QueryClient
+    queryOptions?: ExtraUseQueryOptions
+    fetchOptions?: FetchOptions
+    outputType?: FetchOutputType
+    location?: AnyLocation
+  }):
+    | false
+    | {
+        cacheData: QueriedData<any, any>
+        queryOptions: UseQueryOptions<any, any, any, any>
+        queryClient: QueryClient
+      } {
+    if (!this._hasServerLoader() && !this._hasClientLoader()) {
+      return false
+    }
+    if (!this._hasClientLoader() && mode === 'client') {
+      return false
+    }
+    if (!this._hasServerLoader() && mode === 'server') {
+      return false
+    }
+    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
+    if (!suitablePointTypes.includes(this.type)) {
+      return false
+    }
+    const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
+    const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, {
+      location,
+      queryClient,
+      fetchOptions,
+      outputType,
+      mode,
+    })
+    const cache = queryClient.getQueryCache()
+    const query = cache.find({ queryKey: queryOptions.queryKey as never })
+    return { cacheData: query?.state.data, queryOptions, queryClient }
+  }
+
+  async fetchQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
+    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+      ? [
+          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          queryOptions?: ExtraUseQueryOptions | undefined,
+          options?: {
+            location?: AnyLocation
+            queryClient?: QueryClient
+            fetchOptions?: FetchOptions
+            force?: boolean
+            cacheOnly?: TCacheOnly
+            mode?: TMode
+            outputType?: FetchOutputType
+          },
+        ]
+      : [
+          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          queryOptions?: ExtraUseQueryOptions | undefined,
+          options?: {
+            location?: AnyLocation
+            queryClient?: QueryClient
+            fetchOptions?: FetchOptions
+            force?: boolean
+            cacheOnly?: boolean
+            mode?: TMode
+            outputType?: FetchOutputType
+          },
+        ]
+  ): Promise<
+    TCacheOnly extends false
+      ? TMode extends 'server'
+        ? QueriedData<TQueryResultType, TServerLoaderOutput>
+        : TMode extends 'client'
+          ? QueriedData<TQueryResultType, TClientLoaderOutput>
+          : TMode extends 'serverAndClient'
+            ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+            : never
+      :
+          | (TMode extends 'server'
+              ? QueriedData<TQueryResultType, TServerLoaderOutput>
+              : TMode extends 'client'
+                ? QueriedData<TQueryResultType, TClientLoaderOutput>
+                : TMode extends 'serverAndClient'
+                  ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+                  : never)
+          | undefined
+  > {
+    const [input, providedQueryOptions, options = {}] = args
+    const {
+      location,
+      queryClient: providedQueryClient,
+      fetchOptions,
+      outputType,
+      force,
+      cacheOnly = false,
+      mode = 'serverAndClient',
+    } = options
+    const preparedFetch = this._prepareFetchQuery({
+      input,
+      mode,
+      queryClient: providedQueryClient,
+      queryOptions: providedQueryOptions,
+      fetchOptions,
+      outputType,
+      location,
+    })
+    if (!preparedFetch) {
+      return undefined as never
+    }
+    const { cacheData, queryOptions, queryClient } = preparedFetch
+    if (cacheData && !force) {
+      return cacheData as never
+    }
+    if (cacheOnly) {
+      return undefined as never
+    }
+    return (await queryClient.fetchQuery(queryOptions)) as never
+  }
+
+  async _prefetchRelatedQueryPoints({
+    input,
+    queryClient,
+    fetchOptions,
+    mode,
+    preventPrefetchRelatedQueryPoints = false,
+  }: {
+    input: InputsRaw<any, any>
+    queryClient?: QueryClient
+    fetchOptions?: FetchOptions
+    mode: QueryMode
+    preventPrefetchRelatedQueryPoints?: boolean
+  }): Promise<void> {
+    if (preventPrefetchRelatedQueryPoints) {
+      return undefined
+    }
+    const relatedQueryPoints = this._relatedQueryPoints.filter((point) => point !== this._sameQueryPoint)
+    await Promise.all(
+      relatedQueryPoints.map(async (point) =>
+        point._queryResultType === 'infiniteQuery'
+          ? await point.prefetchInfiniteQuery(input, undefined, {
+              queryClient,
+              fetchOptions,
+              mode,
+              preventPrefetchFns: true,
+            })
+          : await point.prefetchQuery(input, undefined, {
+              queryClient,
+              fetchOptions,
+              mode,
+              preventPrefetchFns: true,
+            }),
+      ),
+    )
+  }
+
   async prefetchQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
@@ -6225,6 +6442,7 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
+            preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
       : [
@@ -6238,9 +6456,10 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
+            preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
-  ): Promise<undefined | QueryKey> {
+  ): Promise<void> {
     const [input, providedQueryOptions, options = {}] = args
     const {
       location,
@@ -6249,23 +6468,76 @@ export class Point0<
       outputType,
       force,
       mode = 'serverAndClient',
-      preventPrefetchFns,
+      preventPrefetchFns = false,
+      preventPrefetchRelatedQueryPoints = false,
     } = options
-    if (!this._hasServerLoader() && !this._hasClientLoader()) {
+    const preparedFetch = this._prepareFetchQuery({
+      input,
+      mode,
+      queryClient: providedQueryClient,
+      queryOptions: providedQueryOptions,
+      fetchOptions,
+      outputType,
+      location,
+    })
+    if (!preparedFetch) {
       return
+    }
+    const { cacheData, queryOptions, queryClient } = preparedFetch
+    if (cacheData && !force) {
+      return
+    }
+    await Promise.all([
+      this._callPrefetchFns({ preventPrefetchFns }),
+      queryClient.prefetchQuery(queryOptions as never),
+      this._prefetchRelatedQueryPoints({
+        input,
+        queryClient,
+        fetchOptions,
+        mode,
+        preventPrefetchRelatedQueryPoints,
+      }),
+    ])
+  }
+
+  private _prepareFetchInfiniteQuery({
+    input,
+    mode,
+    queryClient: providedQueryClient,
+    infiniteQueryOptions: providedInfiniteQueryOptions,
+    fetchOptions,
+    outputType,
+    location,
+  }: {
+    input: InputsRaw<any, any>
+    mode: QueryMode
+    queryClient?: QueryClient
+    infiniteQueryOptions?: ExtraUseInfiniteQueryOptions<any, any, any, any, any, any>
+    fetchOptions?: FetchOptions
+    outputType?: FetchOutputType
+    location?: AnyLocation
+  }):
+    | false
+    | {
+        cacheData: QueriedData<any, any>
+        infiniteQueryOptions: UseInfiniteQueryOptions<any, any, any, any>
+        queryClient: QueryClient
+      } {
+    if (!this._hasServerLoader() && !this._hasClientLoader()) {
+      return false
     }
     if (!this._hasClientLoader() && mode === 'client') {
-      return
+      return false
     }
     if (!this._hasServerLoader() && mode === 'server') {
-      return
+      return false
     }
     const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
     if (!suitablePointTypes.includes(this.type)) {
-      return
+      return false
     }
     const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
-    const queryOptions = this.getQueryOptions(input as never, providedQueryOptions, {
+    const infiniteQueryOptions = this.getInfiniteQueryOptions(input as never, providedInfiniteQueryOptions, {
       location,
       queryClient,
       fetchOptions,
@@ -6273,12 +6545,105 @@ export class Point0<
       mode,
     })
     const cache = queryClient.getQueryCache()
-    const query = cache.find({ queryKey: queryOptions.queryKey as never })
-    if (query && !force) {
-      return
+    const query = cache.find({ queryKey: infiniteQueryOptions.queryKey as never })
+    return { cacheData: query?.state.data, infiniteQueryOptions, queryClient }
+  }
+
+  async fetchInfiniteQuery<TMode extends QueryMode = 'serverAndClient', TCacheOnly extends boolean = false>(
+    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+      ? [
+          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          infiniteQueryOptions?:
+            | ExtraUseInfiniteQueryOptions<
+                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                Error0,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
+          options?: {
+            location?: AnyLocation
+            queryClient?: QueryClient
+            fetchOptions?: FetchOptions
+            force?: boolean
+            cacheOnly?: TCacheOnly
+            mode?: TMode
+            outputType?: FetchOutputType
+          },
+        ]
+      : [
+          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          infiniteQueryOptions?:
+            | ExtraUseInfiniteQueryOptions<
+                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                Error0,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                QueryKey,
+                unknown
+              >
+            | undefined,
+          options?: {
+            location?: AnyLocation
+            queryClient?: QueryClient
+            fetchOptions?: FetchOptions
+            force?: boolean
+            cacheOnly?: TCacheOnly
+            mode?: TMode
+            outputType?: FetchOutputType
+          },
+        ]
+  ): Promise<
+    TCacheOnly extends false
+      ? TMode extends 'server'
+        ? QueriedData<TQueryResultType, TServerLoaderOutput>
+        : TMode extends 'client'
+          ? QueriedData<TQueryResultType, TClientLoaderOutput>
+          : TMode extends 'serverAndClient'
+            ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+            : never
+      :
+          | (TMode extends 'server'
+              ? QueriedData<TQueryResultType, TServerLoaderOutput>
+              : TMode extends 'client'
+                ? QueriedData<TQueryResultType, TClientLoaderOutput>
+                : TMode extends 'serverAndClient'
+                  ? QueriedData<TQueryResultType, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+                  : never)
+          | undefined
+  > {
+    const [input, providedInfiniteQueryOptions, options = {}] = args
+    const {
+      location,
+      queryClient: providedQueryClient,
+      fetchOptions,
+      outputType,
+      force,
+      cacheOnly = false,
+      mode = 'serverAndClient',
+    } = options
+    const preparedFetch = this._prepareFetchInfiniteQuery({
+      input,
+      mode,
+      queryClient: providedQueryClient,
+      infiniteQueryOptions: providedInfiniteQueryOptions,
+      fetchOptions,
+      outputType,
+      location,
+    })
+    if (!preparedFetch) {
+      return undefined as never
     }
-    await Promise.all([this._callPrefetchFns({ preventPrefetchFns }), queryClient.prefetchQuery(queryOptions as never)])
-    return queryOptions.queryKey
+    const { cacheData, infiniteQueryOptions, queryClient } = preparedFetch
+    if (cacheData && !force) {
+      return cacheData as never
+    }
+    if (cacheOnly) {
+      return undefined as never
+    }
+    return (await queryClient.fetchInfiniteQuery(infiniteQueryOptions as never)) as never
   }
 
   async prefetchInfiniteQuery(
@@ -6303,6 +6668,7 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
+            preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
       : [
@@ -6325,10 +6691,11 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
+            preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
-  ): Promise<undefined | QueryKey> {
-    const [input, infiniteQueryOptions, options = {}] = args
+  ): Promise<void> {
+    const [input, providedInfiniteQueryOptions, options = {}] = args
     const {
       location,
       queryClient: providedQueryClient,
@@ -6336,39 +6703,36 @@ export class Point0<
       outputType,
       force,
       mode = 'serverAndClient',
-      preventPrefetchFns,
+      preventPrefetchFns = false,
+      preventPrefetchRelatedQueryPoints = false,
     } = options
-    if (!this._hasServerLoader() && !this._hasClientLoader()) {
-      return
-    }
-    if (!this._hasClientLoader() && mode === 'client') {
-      return
-    }
-    if (!this._hasServerLoader() && mode === 'server') {
-      return
-    }
-    const suitablePointTypes = ['page', 'query', 'infiniteQuery', 'component', 'layout', 'provider']
-    if (!suitablePointTypes.includes(this.type)) {
-      return
-    }
-    const queryClient = providedQueryClient ?? _ssItems.__POINT0_QUERY_CLIENT__.get()
-    const queryOptions = this.getInfiniteQueryOptions(input as never, infiniteQueryOptions, {
-      location,
-      queryClient,
+    const preparedFetch = this._prepareFetchInfiniteQuery({
+      input,
+      mode,
+      queryClient: providedQueryClient,
+      infiniteQueryOptions: providedInfiniteQueryOptions,
       fetchOptions,
       outputType,
-      mode,
+      location,
     })
-    const cache = queryClient.getQueryCache()
-    const query = cache.find({ queryKey: queryOptions.queryKey as never })
-    if (query && !force) {
+    if (!preparedFetch) {
+      return
+    }
+    const { cacheData, infiniteQueryOptions, queryClient } = preparedFetch
+    if (cacheData && !force) {
       return
     }
     await Promise.all([
       this._callPrefetchFns({ preventPrefetchFns }),
-      queryClient.prefetchInfiniteQuery(queryOptions as never),
+      queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
+      this._prefetchRelatedQueryPoints({
+        input,
+        queryClient,
+        fetchOptions,
+        mode,
+        preventPrefetchRelatedQueryPoints,
+      }),
     ])
-    return queryOptions.queryKey
   }
 
   private async _prefetchPageQueryClientDehydratedState({
@@ -6497,6 +6861,34 @@ export class Point0<
     const pageWithLayouts = [this, ...this._layouts]
 
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>(pageWithLayouts.flatMap((p) => p._onPrefetchFns))]
+
+    const prefetchRelatedQueryPointsMode =
+      policy === 'onPrefetchOnly'
+        ? false
+        : policy === 'everything'
+          ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step
+            queryClientDehydratedStateWasPrefetched
+            ? 'client'
+            : 'serverAndClient'
+          : {
+              serverQuery: 'server' as const,
+              clientQuery: 'client' as const,
+              serverClientQuery: 'serverAndClient' as const,
+            }[policy]
+
+    const relatedQueryPointsSelfPrefetchPromise = Promise.all(
+      prefetchRelatedQueryPointsMode
+        ? pageWithLayouts.map(async (p) => {
+            return await p._prefetchRelatedQueryPoints({
+              input,
+              queryClient,
+              fetchOptions,
+              mode: prefetchRelatedQueryPointsMode,
+            })
+          })
+        : [],
+    )
+
     const onPrefetchFnsPromise = Promise.all(
       uniqPrefetchFns.map(async (fn) => {
         return await fn()
@@ -6548,7 +6940,7 @@ export class Point0<
       }),
     )
 
-    await Promise.all([queriesPrefetching, onPrefetchFnsPromise])
+    await Promise.all([queriesPrefetching, onPrefetchFnsPromise, relatedQueryPointsSelfPrefetchPromise])
   }
 
   // mountable components

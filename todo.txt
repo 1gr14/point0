@@ -3,6 +3,10 @@
 --------------------------
 
 use
+Юз переписывающего кверя также добавляет его в он префетч при сбросе
+Перепроверить методы используемые в лпгине, прямо скопировать из континью
+В компиелере подерзать нужное для плагина
+В плагине на уровне рантайма проверять что если он не сср то и куда он инжектится тоже должен быть не сср
 
 action (as TSpecial)
 init (as TSpecial)
@@ -101,6 +105,7 @@ mount()
 Причесать суперстор, вынести гет эктивфейк клиент в фейк клиент
 В проджект тестах рут вручную везде прописывать, и реоганизовать папки
 Не энд поинт а реди поинт
+Логгер может принимать как готовый логгер, так и функцию разруливающую логи принимающую левел категорию аргументы
 Кукистор сделать как плагин и сделать респонс эффектс и реквест0 публичными суперстор штучками чтобы все их могли использовать
 Дев процесс разрешить запускать через функцию в отдельном процессе
 Фетч рекордер пусть записывает в том числе и эффектсы полученные из ответа
@@ -118,6 +123,8 @@ clientServerTransferred → ssr (clientServerTransferredSsr)
 Ффетч это всегда просто энжин фетч после первого запроса, только первый запрос идёт от клиента
 fix points so it should not define by itslef __POINT0_CLIENT_SCOPE__ it should be done via superstore in mount
 fix init and create engine input types
+Добавить дефайн, он такой же как инит, но может объявить что угодно нужен для мсп
+В поинтах сделать проверку в момент летс или криэйт, либо энжина должна быть инициализирована, либо это должен быть клиент
 superstore getStates just return all states, but everywhere we can just use getState(policy)
 Фетч рекордер также запоминает какой фейк клиент делал запоос
 Фейкбраузер создаётся где в глобалзыс всё бразуерное это геттеры доступные только для клиента
@@ -165,6 +172,7 @@ TestEngne - Энжина как энжина, просто разрешает в
 Энжина не должна требовать скоуп передать если есть поинты
 Индексхтмл при значении тест отдаёт пустое содержимое при сср штучках
 Хмр тест проверяет не потерю стейта
+Сср по умолчанию андефайнед и после того как его именно выключили он не может быть включён опять, иначе всё сломается
 а раз серверов много то ипабликдиры надо как-то перемерживать по честному между серверами, нов ероятно что просто мы же по скоупу и так знаем какой клиент какому серверу принадлежит
 Компонент-стори отдаёт стори, а там стори тчк тэйл, хтмлс, превью, хэзКонтент (если это ещё не в самом хтмл-вью, надо исправить)
 Даже функцию фетчер метод этот надо переименовать на реплейсФетч это прямое название
@@ -403,6 +411,8 @@ all point middlewares call only on points
 ? .onError, .onClientError (on any point or root) (after middleware and listener, будет понятно как надо правильно это сделать)
 
 INIT
+одноимённые попадают на первый уровень, разноимённые распределяются по сервер и клиент, в реалтайме такая же ерунда будет
+Инишиалайзер даже асунк может быть вызван все равно на верхнем уровне
 ? root shoul have no loaders, and its ctx fns, should have no access to request, so we can assign root to things like "init" and "mcp"
 .lets('init', 'db', {dep1, dep2}).loader().clientLoader(), and rename current TInit to TLoad, it has no context at all, it just return data, here deps will be just added to ctx. Returns {...value,_:{value, client: clientValue, server: serverValue, init}}; 
 Депенденсы инита перед словом сервер или клиент
@@ -554,6 +564,7 @@ redirect (as option in loader and clientLoader for page)
 redirect as point method which will be applied to both client and server
 
 MCP
+Метафайл надо статически генерировать и мсп по нему не нужно, оно просто существует и всё мсп через команды терминала
 .inspect() с положением каждого отдельного компонента
 cli list page, cli get page pageName
 mcp server for point0, so when it is in dev mode it provides info about all points
@@ -578,6 +589,7 @@ Route0.create('>+zxc') → will be rewritten () => Route0.create('>currentfilepa
 
 STATIC
 static site generator; 
+Свойство сервера для пабликдира что индексхтмлы мы респектим все как страницу и респектим ли главный
 Префетч мод хтмл, просто тупо грузит новую страницу и открывает
 .navigationPolicy('hard' | 'soft') or somehow or maybe not needed;
 .static([input1, input2, ...]) then .loader() run on build static phase and not run on prod env; 

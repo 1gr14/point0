@@ -1,14 +1,11 @@
 {
-  "extends": "./tsconfig.build.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
     "noEmit": false,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
-    "paths": {
-      "@point0/core": ["../core/src/index.ts"]
-    }
+    "sourceMap": true
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["dist/**/*", "node_modules/**/*", "tests/template/**/*", "tests/temp/**/*"]
