@@ -66,7 +66,7 @@ describe('page', () => {
     `)
   })
 
-  it.only('loader error', async () => {
+  it('loader error', async () => {
     const page = root
       .lets('page', 'home', '/')
       .loader(() => {
