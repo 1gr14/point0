@@ -144,6 +144,10 @@ export const waitReturn = async <T,>(value: T, timeout = 100): Promise<T> => {
   return value
 }
 
+export const ymlify = (result: any) => {
+  return '\n' + YAML.stringify(result, undefined, 2) + '\n'
+}
+
 const createFilteredConsole = () => {
   const originalConsole = console
   const shouldFilterMessage = (...args: any[]): boolean => {
@@ -394,7 +398,7 @@ export const createTestThings = async ({
   const loadPointYml = (async (point: EndPoint, ...args: [any]) => {
     return await client.run(async () => {
       const result = await point.execute(...args)
-      return '\n' + YAML.stringify(result, undefined, 2) + '\n'
+      return ymlify(result)
     })
   }) as unknown as FetchPoint
   const fetchView = (async (point: EndPoint, ...args: [any]) => {

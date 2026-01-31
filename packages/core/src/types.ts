@@ -517,6 +517,27 @@ export type IsInputSchemaConflicts<
     ? HasWideningKey<InputRaw<TPrevInputSchema>, InputRaw<TNewInputSchema>>
     : false
   : false
+export type IsInputSchemaExtends<
+  TPrevInputSchema extends InputSchema | UndefinedInputSchema,
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
+> = TPrevInputSchema extends InputSchema
+  ? TNewInputSchema extends InputSchema
+    ? InputRaw<TNewInputSchema> extends InputRaw<TPrevInputSchema>
+      ? true
+      : false
+    : false
+  : false
+
+export type IsRouteDefinitionInputExtends<
+  TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TNewRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+> = TCurrentRouteDefinition extends RouteDefinition
+  ? TNewRouteDefinition extends RouteDefinition
+    ? RouteDefinitionToRecordValidationSchema<TNewRouteDefinition> extends RouteDefinitionToRecordValidationSchema<TCurrentRouteDefinition>
+      ? true
+      : false
+    : false
+  : true
 
 // export type IsInputSchemaAssignable<
 //   TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
@@ -539,6 +560,25 @@ export type AssertInputSchemaNotWider<
     : IsInputSchemaConflicts<TClientInputSchema, TNewInputSchema> extends true
       ? ShowError<`Provided input schema is not assignable to current point client input schema`>
       : unknown
+
+export type AssertRouteDefinitionInputExtends<
+  TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TNewRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+> =
+  IsRouteDefinitionInputExtends<TCurrentRouteDefinition, TNewRouteDefinition> extends true
+    ? unknown
+    : ShowError<`Provided route definition is not assignable to current point route definition`>
+
+// export type IsRouteDefinitionConflicts<
+//   TRouteDefinition extends RouteDefinition,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+// > =
+//   IsInputSchemaConflicts<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
+//     ? true
+//     : IsInputSchemaConflicts<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
+//       ? true
+//       : false
 
 // export type AssertInputSchemaAssignable<
 //   TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
@@ -575,17 +615,6 @@ export type AssertInputSchemaNotWider<
 //       ? ShowError<`Point has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`>
 //       : unknown
 //     : unknown
-
-// export type IsRouteDefinitionConflicts<
-//   TRouteDefinition extends RouteDefinition,
-//   TServerInputSchema extends InputSchema | UndefinedInputSchema,
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-// > =
-//   IsInputSchemaConflicts<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
-//     ? true
-//     : IsInputSchemaConflicts<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
-//       ? true
-//       : false
 
 // export type IsFinalInputOptional<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -843,6 +872,7 @@ export type RichFetchFn = (input: string | URL | Request, init?: RequestInit) =>
 export type ShowError<Message extends string> = {
   readonly __error__: Message
 }
+export type WithError<TError, T> = unknown extends TError ? T : TError
 // export type ShowError<Message extends string> =
 //   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 //   { readonly __error__: Message } & never

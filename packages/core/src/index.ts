@@ -34,6 +34,7 @@ import type {
   AssertInputSchemaNotWider,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
+  AssertRouteDefinitionInputExtends,
   BasePoint,
   ClientExecuteAction,
   ClientExecuteDetailedResult,
@@ -153,6 +154,7 @@ import type {
   UseInfiniteQueryOptions,
   UsePointQueryResult,
   UseQueryOptions,
+  WithError,
   WrapperComponentType,
 } from './types.js'
 import {
@@ -2667,13 +2669,26 @@ export class Point0<
     //   : ShowError<`Provided schema is not assignable to previous input schema`> &
     //       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
     //       CustomValidationFn<TInputParsed>,
-    validateFn: CustomValidationFn<TInputParsed> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-      AssertInputSchemaNotWider<
-        RecordValidationSchema<TInputRaw, TInputParsed>,
-        TServerInputSchema,
-        TClientInputSchema
-      >,
+
+    // validateFn: CustomValidationFn<TInputParsed> &
+    //   AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    //   AssertInputSchemaNotWider<
+    //     RecordValidationSchema<TInputRaw, TInputParsed>,
+    //     TServerInputSchema,
+    //     TClientInputSchema
+    //   >,
+
+    ...args: TInputParsed extends InputSchema
+      ? never[]
+      : [
+          validateFn: CustomValidationFn<TInputParsed> &
+            AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+            AssertInputSchemaNotWider<
+              RecordValidationSchema<TInputRaw, TInputParsed>,
+              TServerInputSchema,
+              TClientInputSchema
+            >,
+        ]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2729,9 +2744,8 @@ export class Point0<
     //   : ShowError<`Provided schema is not assignable to previous input schema`>,
     TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
-  >(
-    ...args: unknown extends TError ? [] : [TError]
-  ): NiceStagePoint<
+  >(): NiceStagePoint<
+    // ...args: TInput extends ShowError<infer TMessage> ? [ShowError<TMessage>] : unknown extends TError ? [] : [TError] // ...args: unknown extends TError ? [] : [TError]
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
@@ -2745,7 +2759,8 @@ export class Point0<
     TClientInputSchema,
     TQueryResultType,
     TProps
-  >
+  > &
+    TError
   input(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
     const schema = !inputSchema
@@ -3043,85 +3058,91 @@ export class Point0<
   //   TQueryResultType,
   //   UndefinedProps
   // >
-  lets<TPointName extends PointName, TProvidedRoute extends RouteDefinition = TPointName>(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [
-          letsEndPointType: 'page',
-          pointName: TPointName,
-          route?: TProvidedRoute &
-            AssertInputSchemaNotWider<
-              RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-              TServerInputSchema,
-              TClientInputSchema
-            >,
-        ]
-      : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'page',
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    // IsRouteDefinitionConflicts<
-    //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-    //   TServerInputSchema,
-    //   TClientInputSchema
-    // > extends false
-    //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
-    //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
-    //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-    ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-    MergeRecordValidationSchemas<
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends RouteDefinition = TPointName,
+    TError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
       TServerInputSchema,
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-    >,
-    MergeRecordValidationSchemas<
-      TClientInputSchema,
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-    >,
-    TQueryResultType,
-    UndefinedProps
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsEndPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      'coreStage',
+      'page',
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      // IsRouteDefinitionConflicts<
+      //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      //   TServerInputSchema,
+      //   TClientInputSchema
+      // > extends false
+      //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
+      //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
+      //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      TQueryResultType,
+      UndefinedProps
+    >
   >
-  lets<TPointName extends PointName, TProvidedRoute extends AnyRoute>(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [
-          letsEndPointType: 'page',
-          pointName: TPointName,
-          route: TProvidedRoute &
-            AssertInputSchemaNotWider<
-              RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-              TServerInputSchema,
-              TClientInputSchema
-            >,
-        ]
-      : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'page',
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
-    //   ? TProvidedRoute['definition']
-    //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-    //       TProvidedRoute['definition'],
-    TProvidedRoute['definition'],
-    MergeRecordValidationSchemas<
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends AnyRoute,
+    TError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
       TServerInputSchema,
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-    >,
-    MergeRecordValidationSchemas<
-      TClientInputSchema,
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-    >,
-    TQueryResultType,
-    UndefinedProps
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsEndPointType: 'page', pointName: TPointName, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      'coreStage',
+      'page',
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
+      //   ? TProvidedRoute['definition']
+      //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
+      //       TProvidedRoute['definition'],
+      TProvidedRoute['definition'],
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      TQueryResultType,
+      UndefinedProps
+    >
   >
   // lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = '/'>(
   //   ...args: TPointType extends 'root' | 'base' | 'layout'
@@ -3152,85 +3173,91 @@ export class Point0<
   //   TQueryResultType,
   //   UndefinedProps
   // >
-  lets<TPointName extends PointName, TProvidedRoute extends RouteDefinition = '/'>(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [
-          letsEndPointType: 'layout',
-          pointName: TPointName,
-          route?: TProvidedRoute &
-            AssertInputSchemaNotWider<
-              RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
-              TServerInputSchema,
-              TClientInputSchema
-            >,
-        ]
-      : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'layout',
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    // IsRouteDefinitionConflicts<
-    //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-    //   TServerInputSchema,
-    //   TClientInputSchema
-    // > extends false
-    //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
-    //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
-    //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-    ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-    MergeRecordValidationSchemas<
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends RouteDefinition = '/',
+    TError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
       TServerInputSchema,
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-    >,
-    MergeRecordValidationSchemas<
-      TClientInputSchema,
-      RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
-    >,
-    TQueryResultType,
-    UndefinedProps
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsEndPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      'coreStage',
+      'layout',
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      // IsRouteDefinitionConflicts<
+      //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      //   TServerInputSchema,
+      //   TClientInputSchema
+      // > extends false
+      //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
+      //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
+      //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+      >,
+      TQueryResultType,
+      UndefinedProps
+    >
   >
-  lets<TPointName extends PointName, TProvidedRoute extends AnyRoute>(
-    ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [
-          letsEndPointType: 'layout',
-          pointName: TPointName,
-          route: TProvidedRoute &
-            AssertInputSchemaNotWider<
-              RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
-              TServerInputSchema,
-              TClientInputSchema
-            >,
-        ]
-      : never[]
-  ): NiceStagePoint<
-    'coreStage',
-    'layout',
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
-    //   ? TProvidedRoute['definition']
-    //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-    //       TProvidedRoute['definition'],
-    TProvidedRoute['definition'],
-    MergeRecordValidationSchemas<
+  lets<
+    TPointName extends PointName,
+    TProvidedRoute extends AnyRoute,
+    TError = AssertInputSchemaNotWider<
+      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
       TServerInputSchema,
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-    >,
-    MergeRecordValidationSchemas<
-      TClientInputSchema,
-      RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
-    >,
-    TQueryResultType,
-    UndefinedProps
+      TClientInputSchema
+    > &
+      AssertRouteDefinitionInputExtends<TRouteDefinition, TProvidedRoute['definition']>,
+  >(
+    ...args: TPointType extends 'root' | 'base' | 'layout'
+      ? [letsEndPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
+      : never[]
+  ): WithError<
+    TError,
+    NiceStagePoint<
+      'coreStage',
+      'layout',
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
+      //   ? TProvidedRoute['definition']
+      //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
+      //       TProvidedRoute['definition'],
+      TProvidedRoute['definition'],
+      MergeRecordValidationSchemas<
+        TServerInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      MergeRecordValidationSchemas<
+        TClientInputSchema,
+        RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
+      >,
+      TQueryResultType,
+      UndefinedProps
+    >
   >
   lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'plugin'>, TPointName extends PointName>(
     ...args: TPointType extends 'root' | 'base'
@@ -4329,6 +4356,43 @@ export class Point0<
     })
     return point as never
   }
+
+  // readonly mutation: FinalLoaderMappedOutput<
+  //   TQueryResultType,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TClientMapperOutput
+  // > extends LoaderOutput
+  //   ? (
+  //       mutationOptions?: UseMutationOptions<
+  //         FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
+  //         Error0,
+  //         InputsRawMaybeOptional<TServerInputSchema, TClientInputSchema>
+  //       >,
+  //     ) => NiceMutationEndPoint<
+  //       'mutation',
+  //       UndefinedEndPointType,
+  //       TRequiredCtx,
+  //       TCtx,
+  //       TCtxExposedKeys,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TClientMapperOutput,
+  //       TRouteDefinition,
+  //       TServerInputSchema,
+  //       TClientInputSchema,
+  //       TQueryResultType,
+  //       TProps
+  //     >
+  //   : ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .mutation()`>  = ((...args: any) => {
+  //   const [mutationOptions = {}] = args
+  //   const point = this._continue({
+  //     type: 'mutation',
+  //     _mutationOptions: mutationOptions as UseMutationOptions,
+  //     _letsEndPointType: undefined,
+  //   })
+  //   return point as never
+  // }) as never
 
   _hmr(component: React.Component): typeof this {
     // TODO: do not clone here, just assign to existing

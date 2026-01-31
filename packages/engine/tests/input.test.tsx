@@ -3,7 +3,8 @@ import { Point0 } from '@point0/core'
 // import '@testing-library/jest-dom'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
-import { createTestThings } from './utils/internal-testing.js'
+import { createTestThings, ymlify } from './utils/internal-testing.js'
+import { Route0 } from '@devp0nt/route0'
 
 describe('input', () => {
   // it('types utils work', () => {
@@ -92,20 +93,20 @@ describe('input', () => {
     await render(page.route({ id: '123' }), async ({ waitContent }) => {
       await waitContent('#page')
     })
-    expect(loaderResult).toMatchInlineSnapshot(`
-      {
-        "id": "123",
-      }
+    expect(ymlify(loaderResult)).toMatchInlineSnapshot(`
+      "
+      id: "123"
+      "
     `)
-    expect(clientLoaderResult).toMatchInlineSnapshot(`
-      {
-        "id": "123",
-      }
+    expect(ymlify(clientLoaderResult)).toMatchInlineSnapshot(`
+      "
+      id: "123"
+      "
     `)
-    expect(pageResult).toMatchInlineSnapshot(`
-      {
-        "id": "123",
-      }
+    expect(ymlify(pageResult)).toMatchInlineSnapshot(`
+      "
+      id: "123"
+      "
     `)
   })
 
@@ -118,14 +119,13 @@ describe('input', () => {
         return { input }
       })
       .mutation()
-    const { loadPoint } = await createTestThings({ points: [root, mutation] })
-    const result = await loadPoint(mutation, { id: 123 })
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: 123 })
     expect(result).toMatchInlineSnapshot(`
-      {
-        "input": {
-          "id": 123,
-        },
-      }
+      "
+      input: 
+        id: 123
+      "
     `)
   })
 
@@ -142,21 +142,17 @@ describe('input', () => {
         return { clientLoader: { input }, ...data }
       })
       .mutation()
-    const { loadPoint } = await createTestThings({ points: [root, mutation] })
-    const result = await loadPoint(mutation, { id: '123', sn: 234 })
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: '123', sn: 234 })
     expect(result).toMatchInlineSnapshot(`
-      {
-        "clientLoader": {
-          "input": {
-            "sn": 234,
-          },
-        },
-        "loader": {
-          "input": {
-            "id": "123",
-          },
-        },
-      }
+      "
+      clientLoader: 
+        input: 
+          sn: 234
+      loader: 
+        input: 
+          id: "123"
+      "
     `)
   })
 
@@ -183,19 +179,17 @@ describe('input', () => {
       xxx: number
       o: 1
     }>()
-    const { loadPoint } = await createTestThings({ points: [root, mutation] })
-    const result = await loadPoint(mutation, { id: '123', sn: 234, o: 1 })
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: '123', sn: 234, o: 1 })
     expect(result).toMatchInlineSnapshot(`
-      {
-        "loader": {
-          "input": {
-            "id": "123",
-            "o": 1,
-            "sn": 468,
-            "xxx": 3,
-          },
-        },
-      }
+      "
+      loader: 
+        input: 
+          id: "123"
+          o: 1
+          sn: 468
+          xxx: 3
+      "
     `)
   })
 
@@ -210,17 +204,15 @@ describe('input', () => {
       .mutation()
     expectTypeOf<(typeof mutation)['Infer']['InputRaw']>().toEqualTypeOf<{ id: string; sn?: unknown }>()
     expectTypeOf<(typeof mutation)['Infer']['ServerInputParsed']>().toEqualTypeOf<{ id: string; sn: number }>()
-    const { loadPoint } = await createTestThings({ points: [root, mutation] })
-    const result = await loadPoint(mutation, { id: '123' })
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: '123' })
     expect(result).toMatchInlineSnapshot(`
-      {
-        "loader": {
-          "input": {
-            "id": "123",
-            "sn": 234,
-          },
-        },
-      }
+      "
+      loader: 
+        input: 
+          id: "123"
+          sn: 234
+      "
     `)
   })
 
@@ -237,17 +229,41 @@ describe('input', () => {
         return { loader: { input } }
       })
       .page()
-    const { loadPoint } = await createTestThings({ points: [root, layout, page] })
-    const result = await loadPoint(page, { id: '123' })
+    const { loadPointYml } = await createTestThings({ points: [root, layout, page] })
+    const result = await loadPointYml(page, { id: '123' })
     expect(result).toMatchInlineSnapshot(`
-      {
-        "loader": {
-          "input": {
-            "id": "123",
-            "sn": 234,
-          },
-        },
-      }
+      "
+      loader: 
+        input: 
+          id: "123"
+          sn: 234
+      "
     `)
+  })
+
+  it('do not allow conflicted schema by route', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const layout = root
+      .lets('layout', 'layout', '/:x')
+      .input(z.object({ x: z.string(), z: z.number() })) // it is ok
+      .layout(({ children }) => {
+        return <div>{children}</div>
+      })
+    // @ts-expect-error - it is bad
+    layout.lets('page', 'test', '/:y').input(z.object({ y: z.number() }))
+  })
+
+  it('do not allow conflicted schema by schema', async () => {
+    const root = Point0.lets('root', 'root').root()
+    root
+      .lets('mutation', 'test')
+      .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
+      .input(z.object({ x: z.string(), z: z.number() })) // it is ok
+      // @ts-expect-error - it is bad
+      .input(z.object({ x: z.number(), z: z.number() }))
+      .loader(({ input }) => {
+        return { input }
+      })
+      .mutation()
   })
 })
