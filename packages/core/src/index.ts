@@ -2639,9 +2639,6 @@ export class Point0<
   }
 
   input<TNextServerInputSchema extends InputSchema>(
-    // inputSchema: IsInputSchemaConflicts<TServerInputSchema, TNextServerInputSchema> extends false
-    //   ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> & TNextServerInputSchema
-    //   : ShowError<`Provided schema is not assignable to previous input schema`> & TNextServerInputSchema,
     inputSchema: TNextServerInputSchema &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
@@ -2661,23 +2658,6 @@ export class Point0<
     TProps
   >
   input<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    // validateFn: IsInputSchemaConflicts<
-    //   TServerInputSchema,
-    //   RecordValidationSchema<TInputRaw, TInputParsed>
-    // > extends false
-    //   ? CustomValidationFn<TInputParsed>
-    //   : ShowError<`Provided schema is not assignable to previous input schema`> &
-    //       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-    //       CustomValidationFn<TInputParsed>,
-
-    // validateFn: CustomValidationFn<TInputParsed> &
-    //   AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-    //   AssertInputSchemaNotWider<
-    //     RecordValidationSchema<TInputRaw, TInputParsed>,
-    //     TServerInputSchema,
-    //     TClientInputSchema
-    //   >,
-
     ...args: TInputParsed extends InputSchema
       ? never[]
       : [
@@ -2705,14 +2685,6 @@ export class Point0<
     TProps
   >
   input<TValidateFn extends CustomValidationFn<any>>(
-    // validateFn: IsInputSchemaConflicts<
-    //   TServerInputSchema,
-    //   CustomValidationFnToRecordValidationSchema<TValidateFn>
-    // > extends false
-    //   ? TValidateFn
-    //   : ShowError<`Provided schema is not assignable to previous input schema`> &
-    //       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-    //       TValidateFn,
     validateFn: TValidateFn &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<
@@ -2737,30 +2709,26 @@ export class Point0<
   >
   input<
     TInput extends InputRaw,
-    // TError = IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInput, TInput>> extends false
-    //   ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'>
-    //     ? false
-    //     : AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'>
-    //   : ShowError<`Provided schema is not assignable to previous input schema`>,
     TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
-  >(): NiceStagePoint<
-    // ...args: TInput extends ShowError<infer TMessage> ? [ShowError<TMessage>] : unknown extends TError ? [] : [TError] // ...args: unknown extends TError ? [] : [TError]
-    StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
-    TClientInputSchema,
-    TQueryResultType,
-    TProps
-  > &
-    TError
+  >(): WithError<
+    TError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      EndPointTypeOrNever<TLetsEndPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TClientInputSchema,
+      TQueryResultType,
+      TProps
+    >
+  >
   input(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
     const schema = !inputSchema
@@ -2777,11 +2745,6 @@ export class Point0<
   }
 
   clientInput<TNextClientInputSchema extends InputSchema>(
-    // inputSchema: IsInputSchemaConflicts<TClientInputSchema, TNextClientInputSchema> extends false
-    //   ? IsInputSchemaConflicts<TServerInputSchema, TNextClientInputSchema> extends false
-    //     ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & TNextClientInputSchema
-    //     : ShowError<`Provided schema is not assignable to previous input schema`> & TNextClientInputSchema
-    //   : ShowError<`Provided schema is not assignable to previous input schema`> & TNextClientInputSchema,
     inputSchema: TNextClientInputSchema &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
@@ -2801,14 +2764,6 @@ export class Point0<
     TProps
   >
   clientInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    // validateFn: IsInputSchemaConflicts<
-    //   TClientInputSchema,
-    //   RecordValidationSchema<TInputRaw, TInputParsed>
-    // > extends false
-    //   ? IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>> extends false
-    //     ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & CustomValidationFn<TInputParsed>
-    //     : ShowError<`Provided schema is not assignable to previous input schema`> & CustomValidationFn<TInputParsed>
-    //   : ShowError<`Provided schema is not assignable to previous input schema`> & CustomValidationFn<TInputParsed>,
     validateFn: CustomValidationFn<TInputParsed> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<
@@ -2832,17 +2787,6 @@ export class Point0<
     TProps
   >
   clientInput<TValidateFn extends CustomValidationFn<any>>(
-    // validateFn: IsInputSchemaConflicts<
-    //   TClientInputSchema,
-    //   CustomValidationFnToRecordValidationSchema<TValidateFn>
-    // > extends false
-    //   ? IsInputSchemaConflicts<
-    //       TServerInputSchema,
-    //       CustomValidationFnToRecordValidationSchema<TValidateFn>
-    //     > extends false
-    //     ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & TValidateFn
-    //     : ShowError<`Provided schema is not assignable to previous input schema`> & TValidateFn
-    //   : ShowError<`Provided schema is not assignable to previous input schema`> & TValidateFn,
     validateFn: TValidateFn &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<
@@ -2867,13 +2811,6 @@ export class Point0<
   >
   clientInput<
     TInput extends InputRaw,
-    // TError = IsInputSchemaConflicts<TClientInputSchema, RecordValidationSchema<TInput, TInput>> extends false
-    //   ? IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInput, TInput>> extends false
-    //     ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'>
-    //       ? never[]
-    //       : AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'>
-    //     : ShowError<`Provided schema is not assignable to previous input schema`>
-    //   : ShowError<`Provided schema is not assignable to previous input schema`>,
     TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
       AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
@@ -2893,36 +2830,6 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  // clientInput<TInputRaw extends InputRaw, TValidateFn extends (input: InputRawUnknown) => any>(
-  //   validateFn: IsInputSchemaConflicts<
-  //     TClientInputSchema,
-  //     RecordValidationSchema<TInputRaw, ReturnType<TValidateFn>>
-  //   > extends false
-  //     ? IsInputSchemaConflicts<
-  //         TServerInputSchema,
-  //         RecordValidationSchema<TInputRaw, ReturnType<TValidateFn>>
-  //       > extends false
-  //       ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
-  //           RecordValidationSchema<TInputRaw, ReturnType<TValidateFn>>
-  //       : ShowError<`Provided schema is not assignable to previous input schema`> &
-  //           RecordValidationSchema<TInputRaw, ReturnType<TValidateFn>>
-  //     : ShowError<`Provided schema is not assignable to previous input schema`> &
-  //         RecordValidationSchema<TInputRaw, ReturnType<TValidateFn>>,
-  // ): NiceStagePoint<
-  //   'clientStage',
-  //   EndPointTypeOrNever<TLetsEndPointType>,
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TClientMapperOutput,
-  //   TRouteDefinition,
-  //   TServerInputSchema,
-  //   MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, ReturnType<TValidateFn>>>,
-  //   TQueryResultType,
-  //   TProps
-  // >
   clientInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
     const schema = !inputSchema
@@ -2931,6 +2838,111 @@ export class Point0<
         ? inputSchema
         : Point0.customValidationFnToInputSchema(inputSchema)
     return this._continue({
+      _clientExecuteActions: [
+        ...this._clientExecuteActions,
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  combinedInput<TNextInputSchema extends InputSchema>(
+    inputSchema: TNextInputSchema &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<TNextInputSchema, TServerInputSchema, TClientInputSchema>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, TNextInputSchema>,
+    MergeRecordValidationSchemas<TClientInputSchema, TNextInputSchema>,
+    TQueryResultType,
+    TProps
+  >
+  combinedInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
+    validateFn: CustomValidationFn<TInputParsed> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+    MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+    TQueryResultType,
+    TProps
+  >
+  combinedInput<TValidateFn extends CustomValidationFn<any>>(
+    validateFn: TValidateFn &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+    MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+    TQueryResultType,
+    TProps
+  >
+  combinedInput<
+    TInput extends InputRaw,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
+  >(
+    ...args: unknown extends TError ? [] : [TError]
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
+    MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
+    TQueryResultType,
+    TProps
+  >
+  combinedInput(...args: any[]) {
+    const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
+    const schema = !inputSchema
+      ? Point0.customValidationFnToInputSchema((x) => x)
+      : '~standard' in inputSchema
+        ? inputSchema
+        : Point0.customValidationFnToInputSchema(inputSchema)
+    return this._continue({
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+      ],
       _clientExecuteActions: [
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
@@ -3029,35 +3041,6 @@ export class Point0<
   //   }) as never
   // }
 
-  // lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = TPointName>(
-  //   ...args: TPointType extends 'root' | 'base' | 'layout'
-  //     ? [letsEndPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
-  //     : never[]
-  // ): NiceStagePoint<
-  //   'coreStage',
-  //   'page',
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TClientMapperOutput,
-  //   TProvidedRoute extends AnyRoute
-  //     ? FlatInputStringOnly<TProvidedRoute> extends InputRaw<TRouteDefinition, TInputSchema>
-  //       ? TProvidedRoute['definition']
-  //       : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-  //           TProvidedRoute['definition']
-  //     : TProvidedRoute extends RouteDefinition
-  //       ? Extended<
-  //           StandaloneSlashIfUndefined<TRouteDefinition>,
-  //           EmptyStringIfStandaloneSlash<TProvidedRoute>
-  //         >['definition']
-  //       : never,
-  //   TRouteDefinition,
-  //   TInputSchema,
-  //   TQueryResultType,
-  //   UndefinedProps
-  // >
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = TPointName,
@@ -3082,14 +3065,6 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      // IsRouteDefinitionConflicts<
-      //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      //   TServerInputSchema,
-      //   TClientInputSchema
-      // > extends false
-      //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
-      //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
-      //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3127,10 +3102,6 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
-      //   ? TProvidedRoute['definition']
-      //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-      //       TProvidedRoute['definition'],
       TProvidedRoute['definition'],
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3144,35 +3115,6 @@ export class Point0<
       UndefinedProps
     >
   >
-  // lets<TPointName extends PointName, TProvidedRoute extends AnyRoute | RouteDefinition = '/'>(
-  //   ...args: TPointType extends 'root' | 'base' | 'layout'
-  //     ? [letsEndPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
-  //     : never[]
-  // ): NiceStagePoint<
-  //   'coreStage',
-  //   'layout',
-  //   TRequiredCtx,
-  //   TCtx,
-  //   TCtxExposedKeys,
-  //   TServerLoaderOutput,
-  //   TClientLoaderOutput,
-  //   TClientMapperOutput,
-  //   TProvidedRoute extends AnyRoute
-  //     ? FlatInputStringOnly<TProvidedRoute> extends InputRaw<TRouteDefinition, TInputSchema>
-  //       ? TProvidedRoute['definition']
-  //       : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-  //           TProvidedRoute['definition']
-  //     : TProvidedRoute extends RouteDefinition
-  //       ? Extended<
-  //           StandaloneSlashIfUndefined<TRouteDefinition>,
-  //           EmptyStringIfStandaloneSlash<TProvidedRoute>
-  //         >['definition']
-  //       : never,
-  //   TRouteDefinition,
-  //   TInputSchema,
-  //   TQueryResultType,
-  //   UndefinedProps
-  // >
   lets<
     TPointName extends PointName,
     TProvidedRoute extends RouteDefinition = '/',
@@ -3197,14 +3139,6 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      // IsRouteDefinitionConflicts<
-      //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      //   TServerInputSchema,
-      //   TClientInputSchema
-      // > extends false
-      //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
-      //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
-      //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3242,10 +3176,6 @@ export class Point0<
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
-      // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
-      //   ? TProvidedRoute['definition']
-      //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-      //       TProvidedRoute['definition'],
       TProvidedRoute['definition'],
       MergeRecordValidationSchemas<
         TServerInputSchema,

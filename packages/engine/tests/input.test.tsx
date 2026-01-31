@@ -4,44 +4,8 @@ import { Point0 } from '@point0/core'
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import { z } from 'zod'
 import { createTestThings, ymlify } from './utils/internal-testing.js'
-import { Route0 } from '@devp0nt/route0'
 
 describe('input', () => {
-  // it('types utils work', () => {
-  //   type X = CustomValidationFnToRecordValidationSchema<(input: { x: number }) => { x: string }>
-  //   expectTypeOf<X>().toEqualTypeOf<StandardSchemaV1<{ x: number }, { x: string }>>()
-  //   type Y = CustomValidationFnToRecordValidationSchema<(input: { x: number; y: number }) => { x: string; y: string }>
-  //   expectTypeOf<Y>().toEqualTypeOf<StandardSchemaV1<{ x: number; y: number }, { x: string; y: string }>>()
-  //   type IsConflictXY = IsInputSchemaConflicts<X, Y>
-  //   expectTypeOf<IsConflictXY>().toEqualTypeOf<false>()
-  //   type IsConflictYX = IsInputSchemaConflicts<Y, X>
-  //   expectTypeOf<IsConflictYX>().toEqualTypeOf<false>()
-  //   type Z = CustomValidationFnToRecordValidationSchema<(input: { x: boolean }) => { x: string }>
-  //   type IsConflictXZ = IsInputSchemaConflicts<X, Z>
-  //   expectTypeOf<IsConflictXZ>().toEqualTypeOf<true>()
-  //   type IsConflictZX = IsInputSchemaConflicts<Z, X>
-  //   expectTypeOf<IsConflictZX>().toEqualTypeOf<true>()
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //   const xZod = z.object({ x: z.number().transform((x) => x.toString()) })
-  //   type XZod = typeof xZod
-  //   expectTypeOf<XZod['~standard']['types']>().toEqualTypeOf<
-  //     StandardSchemaV1<{ x: number }, { x: string }>['~standard']['types']
-  //   >()
-  //   type IsConflictXZodX = IsInputSchemaConflicts<XZod, X>
-  //   expectTypeOf<IsConflictXZodX>().toEqualTypeOf<false>()
-  //   type IsConflictXXZod = IsInputSchemaConflicts<X, XZod>
-  //   expectTypeOf<IsConflictXXZod>().toEqualTypeOf<false>()
-  //   type IsConflictXZodZ = IsInputSchemaConflicts<XZod, Z>
-  //   expectTypeOf<IsConflictXZodZ>().toEqualTypeOf<true>()
-  //   type IsConflictZXZod = IsInputSchemaConflicts<Z, XZod>
-  //   expectTypeOf<IsConflictZXZod>().toEqualTypeOf<true>()
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //   const xZodDefault = z.object({ x: z.number().default(123) })
-  //   type XZodDefault = typeof xZodDefault
-  //   expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['input']>().toEqualTypeOf<{ x?: number }>()
-  //   expectTypeOf<NonNullable<XZodDefault['~standard']['types']>['output']>().toEqualTypeOf<{ x: number }>()
-  // })
-
   it('empty and available in page component by route definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     let result: InputParsed | undefined
@@ -70,7 +34,7 @@ describe('input', () => {
     `)
   })
 
-  it('available in page component and loader and client loader by route definition', async () => {
+  it('available in page component and loader and clientLoader by route definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     let loaderResult: InputParsed | undefined
     let clientLoaderResult: InputParsed | undefined
@@ -110,26 +74,34 @@ describe('input', () => {
     `)
   })
 
-  it('available in mutation loader by schema definition', async () => {
+  it('available in mutation loader by input schema definition, and unknown in clientLoader', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
       .input(z.object({ id: z.number() }))
       .loader(({ input }) => {
-        return { input }
+        return { loader: { input } }
+      })
+      .clientLoader(({ input, data }) => {
+        expectTypeOf<typeof input>().toEqualTypeOf<Record<never, never>>()
+        return { clientLoader: { input }, ...data }
       })
       .mutation()
     const { loadPointYml } = await createTestThings({ points: [root, mutation] })
     const result = await loadPointYml(mutation, { id: 123 })
     expect(result).toMatchInlineSnapshot(`
       "
-      input: 
-        id: 123
+      clientLoader: 
+        input: 
+          {}
+      loader: 
+        input: 
+          id: 123
       "
     `)
   })
 
-  it('available in mutation loader and client loader by schema definition', async () => {
+  it('available in mutation loader and clientLoader by schema definition', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
@@ -156,7 +128,7 @@ describe('input', () => {
     `)
   })
 
-  it('available in mutation loader by schema definition and function', async () => {
+  it('available in mutation loader by schema definition and function and generic', async () => {
     const root = Point0.lets('root', 'root').ssr(true).root()
     const mutation = root
       .lets('mutation', 'test')
@@ -188,6 +160,43 @@ describe('input', () => {
           id: "123"
           o: 1
           sn: 468
+          xxx: 3
+      "
+    `)
+  })
+
+  it('available in mutation clientLoader by schema definition and function and generic', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .clientInput(z.object({ id: z.string() }))
+      .clientInput<{ o: 1 }>()
+      .clientInput<{ id: string; sn: number }, { sn: number; xxx: number }>((raw) => {
+        if (typeof raw.sn !== 'number') {
+          throw new Error('sn is not a number')
+        }
+        return { sn: raw.sn * 2, xxx: 3 }
+      })
+      .clientLoader(({ input }) => {
+        return { clientLoader: { input } }
+      })
+      .mutation()
+    expectTypeOf<Prettify<(typeof mutation)['Infer']['InputRaw']>>().toEqualTypeOf<{ id: string; sn: number; o: 1 }>()
+    expectTypeOf<Prettify<(typeof mutation)['Infer']['ClientInputParsed']>>().toEqualTypeOf<{
+      id: string
+      sn: number
+      xxx: number
+      o: 1
+    }>()
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { id: '123', sn: 234, o: 1 })
+    expect(result).toMatchInlineSnapshot(`
+      "
+      clientLoader: 
+        input: 
+          id: "123"
+          sn: 468
+          o: 1
           xxx: 3
       "
     `)
@@ -241,6 +250,42 @@ describe('input', () => {
     `)
   })
 
+  it('can be combined in different ways', async () => {
+    const root = Point0.lets('root', 'root').ssr(true).root()
+    const mutation = root
+      .lets('mutation', 'test')
+      .input(z.object({ a: z.string() }))
+      .clientInput(z.object({ b: z.number() }))
+      .combinedInput(z.object({ c: z.number() }))
+      .clientInput(z.object({ d: z.boolean() }))
+      .input(z.object({ e: z.number() }))
+      .loader(({ input }) => {
+        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ a: string; c: number; e: number }>()
+        return { loader: { input } }
+      })
+      .clientLoader(({ input, data }) => {
+        expectTypeOf<Prettify<typeof input>>().toEqualTypeOf<{ b: number; c: number; d: boolean }>()
+        return { clientLoader: { input }, ...data }
+      })
+      .mutation()
+    const { loadPointYml } = await createTestThings({ points: [root, mutation] })
+    const result = await loadPointYml(mutation, { a: '123', b: 234, c: 345, d: true, e: 456 })
+    expect(result).toMatchInlineSnapshot(`
+      "
+      clientLoader: 
+        input: 
+          b: 234
+          c: 345
+          d: true
+      loader: 
+        input: 
+          a: "123"
+          c: 345
+          e: 456
+      "
+    `)
+  })
+
   it('do not allow conflicted schema by route', async () => {
     const root = Point0.lets('root', 'root').root()
     const layout = root
@@ -261,6 +306,50 @@ describe('input', () => {
       .input(z.object({ x: z.string(), z: z.number() })) // it is ok
       // @ts-expect-error - it is bad
       .input(z.object({ x: z.number(), z: z.number() }))
+      .loader(({ input }) => {
+        return { input }
+      })
+      .mutation()
+  })
+
+  it('do not allow conflicted schema by generic', async () => {
+    const root = Point0.lets('root', 'root').root()
+    root
+      .lets('mutation', 'test')
+      .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
+      .input<{ x: string; z: number }>() // it is ok
+      .input<{ x: number; z: number }>()
+      // @ts-expect-error - it is bad
+      .loader(({ input }) => {
+        return { input }
+      })
+      .mutation()
+  })
+
+  it('do not allow conflicted schema by function', async () => {
+    const root = Point0.lets('root', 'root').root()
+    root
+      .lets('mutation', 'test')
+      .input(z.object({ x: z.union([z.string(), z.number()]), z: z.number() })) // it is ok
+      .input<{ x: string; z: number }>((raw) => {
+        if (typeof raw.x !== 'string') {
+          throw new Error('x is not a string')
+        }
+        if (typeof raw.z !== 'number') {
+          throw new Error('z is not a number')
+        }
+        return { x: raw.x, z: raw.z }
+      }) // it is ok
+      // @ts-expect-error - it is bad
+      .input<{ x: number; z: number }>((raw) => {
+        if (typeof raw.x !== 'number') {
+          throw new Error('x is not a number')
+        }
+        if (typeof raw.z !== 'number') {
+          throw new Error('z is not a number')
+        }
+        return { x: raw.x, z: raw.z }
+      })
       .loader(({ input }) => {
         return { input }
       })
