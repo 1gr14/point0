@@ -518,63 +518,74 @@ export type IsInputSchemaConflicts<
     : false
   : false
 
-export type IsInputSchemaAssignable<
-  TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
-  TUsedInputSchema extends InputSchema | UndefinedInputSchema,
-> = InputRaw<TUsedInputSchema> extends InputRaw<TCurrentInputSchema> ? true : false
+// export type IsInputSchemaAssignable<
+//   TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
+//   TUsedInputSchema extends InputSchema | UndefinedInputSchema,
+// > = InputRaw<TUsedInputSchema> extends InputRaw<TCurrentInputSchema> ? true : false
+
+// export type AssertInputSchemaNotWider<
+//   TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
+//   TUsedInputSchema extends InputSchema | UndefinedInputSchema,
+//   TMessage extends string,
+// > = IsInputSchemaConflicts<TCurrentInputSchema, TUsedInputSchema> extends false ? unknown : ShowError<TMessage>
 
 export type AssertInputSchemaNotWider<
-  TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
-  TUsedInputSchema extends InputSchema | UndefinedInputSchema,
-  TMessage extends string,
-> = IsInputSchemaConflicts<TCurrentInputSchema, TUsedInputSchema> extends false ? unknown : ShowError<TMessage>
-
-export type AssertInputSchemaAssignable<
-  TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
-  TUsedInputSchema extends InputSchema | UndefinedInputSchema,
-  TMessage extends string,
-> = IsInputSchemaAssignable<TCurrentInputSchema, TUsedInputSchema> extends true ? unknown : ShowError<TMessage>
-
-export type HasLoaderOrMapper<
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = TServerLoaderOutput extends LoaderOutput
-  ? true
-  : TClientLoaderOutput extends LoaderOutput
-    ? true
-    : TClientMapperOutput extends MapperOutput
-      ? true
-      : false
-
-export type HasClientLoaderOrMapper<
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = TClientLoaderOutput extends LoaderOutput ? true : TClientMapperOutput extends MapperOutput ? true : false
-
-export type AssertUseNoLoaderMapperConflict<
-  TCurrentClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TCurrentClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TUsedServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TUsedClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TUsedClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> =
-  HasClientLoaderOrMapper<TCurrentClientLoaderOutput, TCurrentClientMapperOutput> extends true
-    ? HasLoaderOrMapper<TUsedServerLoaderOutput, TUsedClientLoaderOutput, TUsedClientMapperOutput> extends true
-      ? ShowError<`Point has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`>
-      : unknown
-    : unknown
-
-export type IsRouteDefinitionConflicts<
-  TRouteDefinition extends RouteDefinition,
+  TNewInputSchema extends InputSchema | UndefinedInputSchema,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
 > =
-  IsInputSchemaConflicts<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
-    ? true
-    : IsInputSchemaConflicts<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
-      ? true
-      : false
+  IsInputSchemaConflicts<TServerInputSchema, TNewInputSchema> extends true
+    ? ShowError<`Provided input schema is not assignable to current point server input schema`>
+    : IsInputSchemaConflicts<TClientInputSchema, TNewInputSchema> extends true
+      ? ShowError<`Provided input schema is not assignable to current point client input schema`>
+      : unknown
+
+// export type AssertInputSchemaAssignable<
+//   TCurrentInputSchema extends InputSchema | UndefinedInputSchema,
+//   TUsedInputSchema extends InputSchema | UndefinedInputSchema,
+//   TMessage extends string,
+// > = IsInputSchemaAssignable<TCurrentInputSchema, TUsedInputSchema> extends true ? unknown : ShowError<TMessage>
+
+// export type HasLoaderOrMapper<
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > = TServerLoaderOutput extends LoaderOutput
+//   ? true
+//   : TClientLoaderOutput extends LoaderOutput
+//     ? true
+//     : TClientMapperOutput extends MapperOutput
+//       ? true
+//       : false
+
+// export type HasClientLoaderOrMapper<
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > = TClientLoaderOutput extends LoaderOutput ? true : TClientMapperOutput extends MapperOutput ? true : false
+
+// export type AssertUseNoLoaderMapperConflict<
+//   TCurrentClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TCurrentClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TUsedServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TUsedClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TUsedClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > =
+//   HasClientLoaderOrMapper<TCurrentClientLoaderOutput, TCurrentClientMapperOutput> extends true
+//     ? HasLoaderOrMapper<TUsedServerLoaderOutput, TUsedClientLoaderOutput, TUsedClientMapperOutput> extends true
+//       ? ShowError<`Point has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`>
+//       : unknown
+//     : unknown
+
+// export type IsRouteDefinitionConflicts<
+//   TRouteDefinition extends RouteDefinition,
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+// > =
+//   IsInputSchemaConflicts<TServerInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
+//     ? true
+//     : IsInputSchemaConflicts<TClientInputSchema, RouteDefinitionToRecordValidationSchema<TRouteDefinition>> extends true
+//       ? true
+//       : false
 
 // export type IsFinalInputOptional<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -1836,27 +1847,44 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 // nice middle point
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends 'ctx' | 'loader' | 'clientLoader' | 'mapper' | 'props' | 'input' | 'clientInput',
+  TMethod extends
+    | 'ctx'
+    | 'loader'
+    | 'use'
+    | 'clientLoader'
+    | 'mapper'
+    | 'props'
+    | 'input'
+    | 'clientInput'
+    | 'combinedInput',
 > = TPointType extends 'clientStage'
   ? TMethod extends 'loader'
-    ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add you .loader() before last .clientLoader()`>
+    ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add your.loader() before last .clientLoader()`>
     : TMethod extends 'ctx'
-      ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add you .ctx() before last .clientLoader()`>
+      ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add your .ctx() before last .clientLoader()`>
       : TMethod extends 'input'
-        ? ShowError<`You can not use input() in client stage. Please, drop client loader via .clientLoader(false) or add you .ctx() before last .clientLoader()`>
-        : unknown
+        ? ShowError<`You can not use input() in client stage. Please, drop client loader via .clientLoader(false) or add your .input() before last .clientLoader()`>
+        : TMethod extends 'combinedInput'
+          ? ShowError<`You can not use combinedInput() in client stage. Please, drop client loader via .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
+          : TMethod extends 'use'
+            ? ShowError<`You can not use use() in client stage. Please, drop client loader via .clientLoader(false) or add your.use() before last .clientLoader()`>
+            : unknown
   : TPointType extends 'mapperStage'
     ? TMethod extends 'loader'
-      ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .loader() before last .clientLoader()`>
+      ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.loader() before last .clientLoader()`>
       : TMethod extends 'ctx'
-        ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .ctx() before last .clientLoader()`>
+        ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.ctx() before last .clientLoader()`>
         : TMethod extends 'input'
-          ? ShowError<`You can not use input() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add you .loader() before last .clientLoader()`>
-          : TMethod extends 'clientLoader'
-            ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add you .clientLoader() before last .mapper()`>
-            : TMethod extends 'clientInput'
-              ? ShowError<`You can not use clientInput() in mapper stage. Please, drop mappers via .mapper(false) or add you .clientLoader() before last .mapper()`>
-              : unknown
+          ? ShowError<`You can not use input() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .input() before last .clientLoader()`>
+          : TMethod extends 'combinedInput'
+            ? ShowError<`You can not use combinedInput() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
+            : TMethod extends 'use'
+              ? ShowError<`You can not use use() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.use() before last .clientLoader()`>
+              : TMethod extends 'clientLoader'
+                ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
+                : TMethod extends 'clientInput'
+                  ? ShowError<`You can not use clientInput() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
+                  : unknown
     : TPointType extends 'renderStage'
       ? TMethod extends 'loader'
         ? ShowError<`You can not use loader() in render stage. Call it before any render methods`>
@@ -1864,15 +1892,19 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
           ? ShowError<`You can not use ctx() in render stage. Call it before any render methods`>
           : TMethod extends 'input'
             ? ShowError<`You can not use input() in render stage. Call it before any render methods`>
-            : TMethod extends 'clientLoader'
-              ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
-              : TMethod extends 'clientInput'
-                ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
-                : TMethod extends 'mapper'
-                  ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
-                  : TMethod extends 'props'
-                    ? ShowError<`You can not use props() in render stage. Call it before any render methods`>
-                    : unknown
+            : TMethod extends 'combinedInput'
+              ? ShowError<`You can not use combinedInput() in render stage. Call it before any render methods`>
+              : TMethod extends 'use'
+                ? ShowError<`You can not use use() in render stage. Call it before any render methods`>
+                : TMethod extends 'clientLoader'
+                  ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
+                  : TMethod extends 'clientInput'
+                    ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
+                    : TMethod extends 'mapper'
+                      ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
+                      : TMethod extends 'props'
+                        ? ShowError<`You can not use props() in render stage. Call it before any render methods`>
+                        : unknown
       : unknown
 
 export type NiceRootStagePoint<
@@ -2005,10 +2037,12 @@ export type NicePluginStagePoint<
   | 'input'
   | 'clientInput'
   | 'ctx'
-  | 'loader'
-  | 'clientLoader'
-  | 'mapper'
+  // | 'loader'
+  // | 'clientLoader'
+  // | 'mapper'
   | 'head'
+  // | 'wrapper'
+  | 'outer'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'prefetchPolicy'

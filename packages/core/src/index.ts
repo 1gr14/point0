@@ -31,13 +31,9 @@ import type {
   AnyUseLoaderResult,
   AppendCtx,
   AppendCtxExposedKeys,
-  AppendLoaderOutput,
-  AppendMapperOutput,
-  AssertInputSchemaAssignable,
   AssertInputSchemaNotWider,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
-  AssertUseNoLoaderMapperConflict,
   BasePoint,
   ClientExecuteAction,
   ClientExecuteDetailedResult,
@@ -86,9 +82,7 @@ import type {
   InputsRaw,
   InputsRawMaybeOptional,
   IsInputOptional,
-  IsInputSchemaConflicts,
   IsInputsOptional,
-  IsRouteDefinitionConflicts,
   LayoutComponent,
   LayoutPoint,
   LoaderFn,
@@ -317,9 +311,9 @@ export class Point0<
     unknown
   >
   readonly _queryResultType: TQueryResultType
-  readonly _sameQueryPoint: EndPoint | null | undefined
-  readonly _getSameQueryPoint = () => this._sameQueryPoint ?? null
-  readonly _relatedQueryPoints: EndPoint[]
+  // readonly _sameQueryPoint: EndPoint | null | undefined
+  // readonly _getSameQueryPoint = () => this._sameQueryPoint ?? null
+  // readonly _relatedQueryPoints: EndPoint[]
   // readonly _asFormData: boolean | undefined
   private readonly _wrappers: WrapperComponentType[]
   private readonly _outers: OuterComponentType[]
@@ -530,8 +524,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    _sameQueryPoint?: EndPoint | null | undefined
-    _relatedQueryPoints?: EndPoint[]
+    // _sameQueryPoint?: EndPoint | null | undefined
+    // _relatedQueryPoints?: EndPoint[]
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
@@ -685,8 +679,8 @@ export class Point0<
     this._queryOptions = options._queryOptions ?? {}
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
-    this._sameQueryPoint = options._sameQueryPoint ?? undefined
-    this._relatedQueryPoints = options._relatedQueryPoints ?? []
+    // this._sameQueryPoint = options._sameQueryPoint ?? undefined
+    // this._relatedQueryPoints = options._relatedQueryPoints ?? []
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
@@ -766,8 +760,8 @@ export class Point0<
         >
       | undefined
     _queryResultType?: TQueryResultType
-    _sameQueryPoint?: EndPoint | null | undefined
-    _relatedQueryPoints?: EndPoint[]
+    // _sameQueryPoint?: EndPoint | null | undefined
+    // _relatedQueryPoints?: EndPoint[]
     // _asFormData?: boolean | undefined
     _wrappers?: WrapperComponentType[]
     _outers?: OuterComponentType[]
@@ -980,10 +974,10 @@ export class Point0<
         unknown
       >,
       _queryResultType: (overrides._queryResultType ?? this._queryResultType) as TQueryResultType,
-      _sameQueryPoint: (typeof overrides._sameQueryPoint === 'undefined'
-        ? this._sameQueryPoint
-        : overrides._sameQueryPoint) as never,
-      _relatedQueryPoints: (overrides._relatedQueryPoints ?? this._relatedQueryPoints) as never,
+      // _sameQueryPoint: (typeof overrides._sameQueryPoint === 'undefined'
+      //   ? this._sameQueryPoint
+      //   : overrides._sameQueryPoint) as never,
+      // _relatedQueryPoints: (overrides._relatedQueryPoints ?? this._relatedQueryPoints) as never,
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
@@ -2343,7 +2337,7 @@ export class Point0<
   loader(loaderFn: LoaderFn<any, any, any, any, any> | boolean) {
     if (loaderFn === false) {
       return this._continue({
-        _sameQueryPoint: null,
+        // _sameQueryPoint: null,
         _serverExecuteActions: this._serverExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientMapperFns: [],
@@ -2359,7 +2353,7 @@ export class Point0<
       loaderFn = (o) => o.data
     }
     return this._continue({
-      _sameQueryPoint: null,
+      // _sameQueryPoint: null,
       _queryResultType: this._queryResultType ?? 'query',
       _serverExecuteActions: [
         ...this._serverExecuteActions,
@@ -2442,7 +2436,7 @@ export class Point0<
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
       return this._continue({
-        _sameQueryPoint: null,
+        // _sameQueryPoint: null,
         _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
         _clientMapperFns: [],
         _queryResultType: this._hasServerLoader()
@@ -2459,7 +2453,7 @@ export class Point0<
     }
     return this._continue({
       type: 'clientStage',
-      _sameQueryPoint: null,
+      // _sameQueryPoint: null,
       _queryResultType: this._queryResultType ?? 'query',
       _clientExecuteActions: [
         ...this._clientExecuteActions,
@@ -2517,13 +2511,13 @@ export class Point0<
   mapper(mapperFn: ClientMapperFn<any, any, any, any, any> | false) {
     if (mapperFn === false) {
       return this._continue({
-        _sameQueryPoint: null,
+        // _sameQueryPoint: null,
         _clientMapperFns: [],
       }) as never
     }
     return this._continue({
       type: 'mapperStage',
-      _sameQueryPoint: null,
+      // _sameQueryPoint: null,
       _clientMapperFns: [...this._clientMapperFns, mapperFn],
     }) as never
   }
@@ -2643,9 +2637,12 @@ export class Point0<
   }
 
   input<TNextServerInputSchema extends InputSchema>(
-    inputSchema: IsInputSchemaConflicts<TServerInputSchema, TNextServerInputSchema> extends false
-      ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> & TNextServerInputSchema
-      : ShowError<`Provided schema is not assignable to previous input schema`> & TNextServerInputSchema,
+    // inputSchema: IsInputSchemaConflicts<TServerInputSchema, TNextServerInputSchema> extends false
+    //   ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> & TNextServerInputSchema
+    //   : ShowError<`Provided schema is not assignable to previous input schema`> & TNextServerInputSchema,
+    inputSchema: TNextServerInputSchema &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+      AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2662,14 +2659,21 @@ export class Point0<
     TProps
   >
   input<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    validateFn: IsInputSchemaConflicts<
-      TServerInputSchema,
-      RecordValidationSchema<TInputRaw, TInputParsed>
-    > extends false
-      ? CustomValidationFn<TInputParsed>
-      : ShowError<`Provided schema is not assignable to previous input schema`> &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-          CustomValidationFn<TInputParsed>,
+    // validateFn: IsInputSchemaConflicts<
+    //   TServerInputSchema,
+    //   RecordValidationSchema<TInputRaw, TInputParsed>
+    // > extends false
+    //   ? CustomValidationFn<TInputParsed>
+    //   : ShowError<`Provided schema is not assignable to previous input schema`> &
+    //       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    //       CustomValidationFn<TInputParsed>,
+    validateFn: CustomValidationFn<TInputParsed> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+      AssertInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2686,14 +2690,21 @@ export class Point0<
     TProps
   >
   input<TValidateFn extends CustomValidationFn<any>>(
-    validateFn: IsInputSchemaConflicts<
-      TServerInputSchema,
-      CustomValidationFnToRecordValidationSchema<TValidateFn>
-    > extends false
-      ? TValidateFn
-      : ShowError<`Provided schema is not assignable to previous input schema`> &
-          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
-          TValidateFn,
+    // validateFn: IsInputSchemaConflicts<
+    //   TServerInputSchema,
+    //   CustomValidationFnToRecordValidationSchema<TValidateFn>
+    // > extends false
+    //   ? TValidateFn
+    //   : ShowError<`Provided schema is not assignable to previous input schema`> &
+    //       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+    //       TValidateFn,
+    validateFn: TValidateFn &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+      AssertInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2711,13 +2722,15 @@ export class Point0<
   >
   input<
     TInput extends InputRaw,
-    TError = IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInput, TInput>> extends false
-      ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'>
-        ? false
-        : AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'>
-      : ShowError<`Provided schema is not assignable to previous input schema`>,
+    // TError = IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInput, TInput>> extends false
+    //   ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'>
+    //     ? false
+    //     : AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'>
+    //   : ShowError<`Provided schema is not assignable to previous input schema`>,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
-    ...args: TError extends false ? [] : [TError]
+    ...args: unknown extends TError ? [] : [TError]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2749,13 +2762,16 @@ export class Point0<
   }
 
   clientInput<TNextClientInputSchema extends InputSchema>(
-    inputSchema: IsInputSchemaConflicts<TClientInputSchema, TNextClientInputSchema> extends false
-      ? IsInputSchemaConflicts<TServerInputSchema, TNextClientInputSchema> extends false
-        ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & TNextClientInputSchema
-        : ShowError<`Provided schema is not assignable to previous input schema`> & TNextClientInputSchema
-      : ShowError<`Provided schema is not assignable to previous input schema`> & TNextClientInputSchema,
+    // inputSchema: IsInputSchemaConflicts<TClientInputSchema, TNextClientInputSchema> extends false
+    //   ? IsInputSchemaConflicts<TServerInputSchema, TNextClientInputSchema> extends false
+    //     ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & TNextClientInputSchema
+    //     : ShowError<`Provided schema is not assignable to previous input schema`> & TNextClientInputSchema
+    //   : ShowError<`Provided schema is not assignable to previous input schema`> & TNextClientInputSchema,
+    inputSchema: TNextClientInputSchema &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
-    'clientStage',
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2770,16 +2786,23 @@ export class Point0<
     TProps
   >
   clientInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
-    validateFn: IsInputSchemaConflicts<
-      TClientInputSchema,
-      RecordValidationSchema<TInputRaw, TInputParsed>
-    > extends false
-      ? IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>> extends false
-        ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & CustomValidationFn<TInputParsed>
-        : ShowError<`Provided schema is not assignable to previous input schema`> & CustomValidationFn<TInputParsed>
-      : ShowError<`Provided schema is not assignable to previous input schema`> & CustomValidationFn<TInputParsed>,
+    // validateFn: IsInputSchemaConflicts<
+    //   TClientInputSchema,
+    //   RecordValidationSchema<TInputRaw, TInputParsed>
+    // > extends false
+    //   ? IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>> extends false
+    //     ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & CustomValidationFn<TInputParsed>
+    //     : ShowError<`Provided schema is not assignable to previous input schema`> & CustomValidationFn<TInputParsed>
+    //   : ShowError<`Provided schema is not assignable to previous input schema`> & CustomValidationFn<TInputParsed>,
+    validateFn: CustomValidationFn<TInputParsed> &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
   ): NiceStagePoint<
-    'clientStage',
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2794,19 +2817,26 @@ export class Point0<
     TProps
   >
   clientInput<TValidateFn extends CustomValidationFn<any>>(
-    validateFn: IsInputSchemaConflicts<
-      TClientInputSchema,
-      CustomValidationFnToRecordValidationSchema<TValidateFn>
-    > extends false
-      ? IsInputSchemaConflicts<
-          TServerInputSchema,
-          CustomValidationFnToRecordValidationSchema<TValidateFn>
-        > extends false
-        ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & TValidateFn
-        : ShowError<`Provided schema is not assignable to previous input schema`> & TValidateFn
-      : ShowError<`Provided schema is not assignable to previous input schema`> & TValidateFn,
+    // validateFn: IsInputSchemaConflicts<
+    //   TClientInputSchema,
+    //   CustomValidationFnToRecordValidationSchema<TValidateFn>
+    // > extends false
+    //   ? IsInputSchemaConflicts<
+    //       TServerInputSchema,
+    //       CustomValidationFnToRecordValidationSchema<TValidateFn>
+    //     > extends false
+    //     ? AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> & TValidateFn
+    //     : ShowError<`Provided schema is not assignable to previous input schema`> & TValidateFn
+    //   : ShowError<`Provided schema is not assignable to previous input schema`> & TValidateFn,
+    validateFn: TValidateFn &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
   ): NiceStagePoint<
-    'clientStage',
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2822,17 +2852,19 @@ export class Point0<
   >
   clientInput<
     TInput extends InputRaw,
-    TError = IsInputSchemaConflicts<TClientInputSchema, RecordValidationSchema<TInput, TInput>> extends false
-      ? IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInput, TInput>> extends false
-        ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'>
-          ? never[]
-          : AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'>
-        : ShowError<`Provided schema is not assignable to previous input schema`>
-      : ShowError<`Provided schema is not assignable to previous input schema`>,
+    // TError = IsInputSchemaConflicts<TClientInputSchema, RecordValidationSchema<TInput, TInput>> extends false
+    //   ? IsInputSchemaConflicts<TServerInputSchema, RecordValidationSchema<TInput, TInput>> extends false
+    //     ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'>
+    //       ? never[]
+    //       : AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'>
+    //     : ShowError<`Provided schema is not assignable to previous input schema`>
+    //   : ShowError<`Provided schema is not assignable to previous input schema`>,
+    TError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
   >(
-    ...args: TError extends false ? [] : [TError]
+    ...args: unknown extends TError ? [] : [TError]
   ): NiceStagePoint<
-    'clientStage',
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -3013,7 +3045,16 @@ export class Point0<
   // >
   lets<TPointName extends PointName, TProvidedRoute extends RouteDefinition = TPointName>(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'page', pointName: TPointName, route?: TProvidedRoute]
+      ? [
+          letsEndPointType: 'page',
+          pointName: TPointName,
+          route?: TProvidedRoute &
+            AssertInputSchemaNotWider<
+              RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+              TServerInputSchema,
+              TClientInputSchema
+            >,
+        ]
       : never[]
   ): NiceStagePoint<
     'coreStage',
@@ -3024,14 +3065,15 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    IsRouteDefinitionConflicts<
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema
-    > extends false
-      ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
-      : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
-          ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+    // IsRouteDefinitionConflicts<
+    //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+    //   TServerInputSchema,
+    //   TClientInputSchema
+    // > extends false
+    //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
+    //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
+    //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+    ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
     MergeRecordValidationSchemas<
       TServerInputSchema,
       RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
@@ -3045,7 +3087,16 @@ export class Point0<
   >
   lets<TPointName extends PointName, TProvidedRoute extends AnyRoute>(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'page', pointName: TPointName, route: TProvidedRoute]
+      ? [
+          letsEndPointType: 'page',
+          pointName: TPointName,
+          route: TProvidedRoute &
+            AssertInputSchemaNotWider<
+              RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
+              TServerInputSchema,
+              TClientInputSchema
+            >,
+        ]
       : never[]
   ): NiceStagePoint<
     'coreStage',
@@ -3056,10 +3107,11 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
-      ? TProvidedRoute['definition']
-      : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-          TProvidedRoute['definition'],
+    // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
+    //   ? TProvidedRoute['definition']
+    //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
+    //       TProvidedRoute['definition'],
+    TProvidedRoute['definition'],
     MergeRecordValidationSchemas<
       TServerInputSchema,
       RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
@@ -3102,7 +3154,16 @@ export class Point0<
   // >
   lets<TPointName extends PointName, TProvidedRoute extends RouteDefinition = '/'>(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'layout', pointName: TPointName, route?: TProvidedRoute]
+      ? [
+          letsEndPointType: 'layout',
+          pointName: TPointName,
+          route?: TProvidedRoute &
+            AssertInputSchemaNotWider<
+              RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>,
+              TServerInputSchema,
+              TClientInputSchema
+            >,
+        ]
       : never[]
   ): NiceStagePoint<
     'coreStage',
@@ -3113,14 +3174,15 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    IsRouteDefinitionConflicts<
-      ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
-      TServerInputSchema,
-      TClientInputSchema
-    > extends false
-      ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
-      : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
-          ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+    // IsRouteDefinitionConflicts<
+    //   ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+    //   TServerInputSchema,
+    //   TClientInputSchema
+    // > extends false
+    //   ? ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>
+    //   : ShowError<`Route ${ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>} is not assignable to previous input schema`> &
+    //       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
+    ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
     MergeRecordValidationSchemas<
       TServerInputSchema,
       RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
@@ -3134,7 +3196,16 @@ export class Point0<
   >
   lets<TPointName extends PointName, TProvidedRoute extends AnyRoute>(
     ...args: TPointType extends 'root' | 'base' | 'layout'
-      ? [letsEndPointType: 'layout', pointName: TPointName, route: TProvidedRoute]
+      ? [
+          letsEndPointType: 'layout',
+          pointName: TPointName,
+          route: TProvidedRoute &
+            AssertInputSchemaNotWider<
+              RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>,
+              TServerInputSchema,
+              TClientInputSchema
+            >,
+        ]
       : never[]
   ): NiceStagePoint<
     'coreStage',
@@ -3145,10 +3216,11 @@ export class Point0<
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
-      ? TProvidedRoute['definition']
-      : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
-          TProvidedRoute['definition'],
+    // IsRouteDefinitionConflicts<TProvidedRoute['definition'], TServerInputSchema, TClientInputSchema> extends false
+    //   ? TProvidedRoute['definition']
+    //   : ShowError<`Route ${TProvidedRoute['definition']} is not assignable to previous input schema`> &
+    //       TProvidedRoute['definition'],
+    TProvidedRoute['definition'],
     MergeRecordValidationSchemas<
       TServerInputSchema,
       RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
@@ -3247,8 +3319,8 @@ export class Point0<
       _defaultProviderQueryOptions: this._base?._defaultProviderQueryOptions,
       _defaultLayoutQueryOptions: this._base?._defaultLayoutQueryOptions,
       _queryOptions: {},
-      _sameQueryPoint:
-        this._hasClientLoader() || this._hasServerLoader() ? this._sameQueryPoint || (this as EndPoint) : null,
+      // _sameQueryPoint:
+      //   this._hasClientLoader() || this._hasServerLoader() ? this._sameQueryPoint || (this as EndPoint) : null,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
@@ -3794,220 +3866,270 @@ export class Point0<
 
   use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     plugin: T &
-      AssertUseNoLoaderMapperConflict<
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        T['Infer']['ServerLoaderOutput'],
-        T['Infer']['ClientLoaderOutput'],
-        T['Infer']['ClientMapperOutput']
-      > &
-      AssertInputSchemaNotWider<
-        TServerInputSchema,
-        T['Infer']['ServerInputSchema'],
-        `Plugin server input schema is not assignable to current point input schema`
-      > &
-      AssertInputSchemaNotWider<
-        TClientInputSchema,
-        T['Infer']['ClientInputSchema'],
-        `Plugin client input schema is not assignable to current point input schema`
-      >,
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
+      AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
+      AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema>,
   ): NiceStagePoint<
-    T['Infer']['ClientMapperOutput'] extends MapperOutput
-      ? 'mapperStage'
-      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
-        ? 'clientStage'
-        : 'coreStage',
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
-    AppendCtx<TRequiredCtx, T['Infer']['RequiredCtx']>,
-    AppendCtx<PrependCtx<TCtx, T['Infer']['RequiredCtx']>, T['Infer']['Ctx']>,
+    TRequiredCtx,
+    AppendCtx<TCtx, T['Infer']['Ctx']>,
     AppendCtxExposedKeys<TCtxExposedKeys, T['Infer']['CtxExposedKeys']>,
-    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
-    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
-    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
     TRouteDefinition,
     MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
     T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
     TProps
   >
-  use<
-    T extends
-      | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-      | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
-      | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
-  >(
-    point: T &
-      AssertUseNoLoaderMapperConflict<
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        T['Infer']['ServerLoaderOutput'],
-        T['Infer']['ClientLoaderOutput'],
-        T['Infer']['ClientMapperOutput']
-      > &
-      AssertInputSchemaAssignable<
-        TServerInputSchema,
-        T['Infer']['ServerInputSchema'],
-        `Used point server input schema is not compatible with current point input schema`
-      > &
-      AssertInputSchemaAssignable<
-        TClientInputSchema,
-        T['Infer']['ClientInputSchema'],
-        `Used point client input schema is not compatible with current point input schema`
-      >,
-  ): NiceStagePoint<
-    T['Infer']['ClientMapperOutput'] extends MapperOutput
-      ? 'mapperStage'
-      : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
-        ? 'clientStage'
-        : 'coreStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
-    AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
-    AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
-    TProps
-  >
-  use(point: Point0<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+  // use<
+  //   T extends
+  //     | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+  //     | NiceInfiniteQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>
+  //     | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  // >(
+  //   point: T &
+  //     AssertUseNoLoaderMapperConflict<
+  //       TClientLoaderOutput,
+  //       TClientMapperOutput,
+  //       T['Infer']['ServerLoaderOutput'],
+  //       T['Infer']['ClientLoaderOutput'],
+  //       T['Infer']['ClientMapperOutput']
+  //     > &
+  //     AssertInputSchemaAssignable<
+  //       TServerInputSchema,
+  //       T['Infer']['ServerInputSchema'],
+  //       `Used point server input schema is not compatible with current point input schema`
+  //     > &
+  //     AssertInputSchemaAssignable<
+  //       TClientInputSchema,
+  //       T['Infer']['ClientInputSchema'],
+  //       `Used point client input schema is not compatible with current point input schema`
+  //     >,
+  // ): NiceStagePoint<
+  //   T['Infer']['ClientMapperOutput'] extends MapperOutput
+  //     ? 'mapperStage'
+  //     : T['Infer']['ClientLoaderOutput'] extends LoaderOutput
+  //       ? 'clientStage'
+  //       : 'coreStage',
+  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   AppendLoaderOutput<TServerLoaderOutput, T['Infer']['ServerLoaderOutput']>,
+  //   AppendLoaderOutput<TClientLoaderOutput, T['Infer']['ClientLoaderOutput']>,
+  //   AppendMapperOutput<TClientMapperOutput, T['Infer']['ClientMapperOutput']>,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
+  //   TProps
+  // >
+  use(plugin: NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+    const point = plugin.point
     // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
     // mypoint.use(myplugin);
     // same as mypoint.input(1).loader(2).mapper(3).head(4).ctx(5)
-    if (
-      point.type !== 'query' &&
-      point.type !== 'infiniteQuery' &&
-      point.type !== 'layout' &&
-      point.type !== 'plugin'
-    ) {
-      throw new Error(`Point type ${point.type} is not supported in use method`)
+    // if (
+    //   point.type !== 'query' &&
+    //   point.type !== 'infiniteQuery' &&
+    //   point.type !== 'layout' &&
+    //   point.type !== 'plugin'
+    // ) {
+    //   throw new Error(`Point type ${point.type} is not supported in use method`)
+    // }
+
+    // if (
+    //   (this._hasMapperFns() || this._hasClientLoader()) &&
+    //   (point._hasClientLoader() || point._hasServerLoader() || point._hasMapperFns())
+    // ) {
+    //   throw new Error(
+    //     `Point ${this.toString()} has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`,
+    //   )
+    // }
+
+    // const c: Parameters<typeof this._continue>[0] = {}
+
+    // const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
+    //   return [...new Set([...(a ?? []), ...(b ?? [])])]
+    // }
+
+    // if (point.type === 'plugin') {
+    // in this case plugin works like just injecting all it called methods to current point
+    // const mergedFetchOptionsFn: FetchOptionsFn = () => {
+    //   const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
+    //   const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
+    //   return { ...prevFetchOptions, ...newFetchOptions }
+    // }
+
+    if (this._ssr !== point._ssr) {
+      throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
     }
 
-    if (
-      (this._hasMapperFns() || this._hasClientLoader()) &&
-      (point._hasClientLoader() || point._hasServerLoader() || point._hasMapperFns())
-    ) {
-      throw new Error(
-        `Point ${this.toString()} has mapper or clientLoader functions. You can not use on it something with loader, clientLoader or mapper`,
-      )
-    }
-
-    const c: Parameters<typeof this._continue>[0] = {}
-
-    const mergeArraysUnique = <T>(a: T[] | undefined, b: T[] | undefined): T[] => {
-      return [...new Set([...(a ?? []), ...(b ?? [])])]
-    }
-
-    if (point.type === 'plugin') {
-      // in this case plugin works like just injecting all it called methods to current point
-      const mergedFetchOptionsFn: FetchOptionsFn = () => {
+    return this._continue({
+      // type
+      // scope
+      // scopes
+      // _letsEndPointType
+      // _base
+      // _root
+      _middlewares: [...this._middlewares, ...point._middlewares],
+      _serverurl: point._serverurl,
+      _baseurl: point._baseurl,
+      _transformer: point._transformer,
+      // _ssr
+      _headFns: [...this._headFns, ...point._headFns],
+      _defaultMutationOptions: { ...this._defaultMutationOptions, ...point._defaultMutationOptions },
+      _mutationOptions: { ...this._mutationOptions, ...point._mutationOptions },
+      _defaultInfiniteQueryOptions: { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions },
+      _defaultQueryOptions: { ...this._defaultQueryOptions, ...point._defaultQueryOptions },
+      _defaultPageQueryOptions: { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions },
+      _defaultComponentQueryOptions: { ...this._defaultComponentQueryOptions, ...point._defaultComponentQueryOptions },
+      _defaultLayoutQueryOptions: { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions },
+      _defaultProviderQueryOptions: { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions },
+      // _queryOptions: { ...this._queryOptions, ...point._queryOptions },
+      // _infiniteQueryOptions: { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions },
+      _queryResultType: point._queryResultType,
+      // _sameQueryPoint: point._sameQueryPoint,
+      // _relatedQueryPoints: [...this._relatedQueryPoints, ...point._relatedQueryPoints],
+      // _asFormData: this._asFormData,
+      // _wrappers: [...this._wrappers, ...point._wrappers],
+      _outers: [...this._outers, ...point._outers],
+      _serverExecuteActions: [...this._serverExecuteActions, ...point._serverExecuteActions],
+      _clientExecuteActions: [...this._clientExecuteActions, ...point._clientExecuteActions],
+      // _clientMapperFns: [...this._clientMapperFns, ...point._clientMapperFns],
+      // _ProviderReactContext: point._ProviderReactContext,
+      // _useValue: point._useValue,
+      // route: point.route,
+      // _page: point._page,
+      // _component: point._component,
+      // _layout: point._layout,
+      _layouts: [...this._layouts, ...point._layouts],
+      // name
+      _fetchOptions: () => {
         const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
         const newFetchOptions: FetchOptions = point._fetchOptions?.() || {}
         return { ...prevFetchOptions, ...newFetchOptions }
-      }
-      c._middlewares = [...this._middlewares, ...point._middlewares]
-      c._serverExecuteActions = [...this._serverExecuteActions, ...point._serverExecuteActions]
-      c._clientExecuteActions = [...this._clientExecuteActions, ...point._clientExecuteActions]
-      c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
-      c._headFns = [...this._headFns, ...point._headFns]
-      c._wrappers = [...this._wrappers, ...point._wrappers]
-      c._outers = [...this._outers, ...point._outers]
-      c._onPrefetchFns = [...this._onPrefetchFns, ...point._onPrefetchFns]
-      c._defaultMutationOptions = { ...this._defaultMutationOptions, ...point._defaultMutationOptions }
-      c._mutationOptions = { ...this._mutationOptions, ...point._mutationOptions }
-      c._defaultQueryOptions = { ...this._defaultQueryOptions, ...point._defaultQueryOptions }
-      c._defaultInfiniteQueryOptions = { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions }
-      c._defaultPageQueryOptions = { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions }
-      c._defaultComponentQueryOptions = {
-        ...this._defaultComponentQueryOptions,
-        ...point._defaultComponentQueryOptions,
-      }
-      c._defaultLayoutQueryOptions = { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions }
-      c._defaultProviderQueryOptions = { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions }
-      c._queryOptions = { ...this._queryOptions, ...point._queryOptions }
-      c._infiniteQueryOptions = { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions } as never
-      c._fetchOptions = mergedFetchOptionsFn
-      c._scrollPositionGetter = point._scrollPositionGetter ?? this._scrollPositionGetter
-      c._scrollPositionSetter = point._scrollPositionSetter ?? this._scrollPositionSetter
-      c._scrollPositionRestorePolicy = point._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy
-      c._prefetchPolicy = point._prefetchPolicy ?? this._prefetchPolicy
-      c._polh = point._polh ?? this._polh
-      c._transformer = point._transformer ?? this._transformer
-      c._serverurl = point._serverurl ?? this._serverurl
-      c._baseurl = point._baseurl ?? this._baseurl
-      c._layouts = mergeArraysUnique(this._layouts, point._layouts)
-      c._errorComponent = point._errorComponent ?? (this._errorComponent as never)
-      c._layoutErrorComponent = point._layoutErrorComponent ?? (this._layoutErrorComponent as never)
-      c._pageErrorComponent = point._pageErrorComponent ?? (this._pageErrorComponent as never)
-      c._componentErrorComponent = point._componentErrorComponent ?? (this._componentErrorComponent as never)
-      c._loadingComponent = point._loadingComponent ?? (this._loadingComponent as never)
-      c._layoutLoadingComponent = point._layoutLoadingComponent ?? (this._layoutLoadingComponent as never)
-      c._pageLoadingComponent = point._pageLoadingComponent ?? (this._pageLoadingComponent as never)
-      c._componentLoadingComponent = point._componentLoadingComponent ?? (this._componentLoadingComponent as never)
-    }
+      },
+      _scrollPositionGetter: point._scrollPositionGetter,
+      _scrollPositionSetter: point._scrollPositionSetter,
+      _scrollPositionRestorePolicy: point._scrollPositionRestorePolicy,
+      _prefetchPolicy: point._prefetchPolicy,
+      _onPrefetchFns: [...this._onPrefetchFns, ...point._onPrefetchFns],
+      _polh: point._polh,
+      _errorComponent: point._errorComponent,
+      _layoutErrorComponent: point._layoutErrorComponent,
+      _pageErrorComponent: point._pageErrorComponent,
+      _componentErrorComponent: point._componentErrorComponent,
+      _loadingComponent: point._loadingComponent,
+      _layoutLoadingComponent: point._layoutLoadingComponent,
+      _pageLoadingComponent: point._pageLoadingComponent,
+      _componentLoadingComponent: point._componentLoadingComponent,
+      // X
+    }) as never
+    // c._middlewares = [...this._middlewares, ...point._middlewares]
+    // c._serverExecuteActions = [...this._serverExecuteActions, ...point._serverExecuteActions]
+    // c._clientExecuteActions = [...this._clientExecuteActions, ...point._clientExecuteActions]
+    // c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
+    // c._headFns = [...this._headFns, ...point._headFns]
+    // c._wrappers = [...this._wrappers, ...point._wrappers]
+    // c._outers = [...this._outers, ...point._outers]
+    // c._onPrefetchFns = [...this._onPrefetchFns, ...point._onPrefetchFns]
+    // c._defaultMutationOptions = { ...this._defaultMutationOptions, ...point._defaultMutationOptions }
+    // c._mutationOptions = { ...this._mutationOptions, ...point._mutationOptions }
+    // c._defaultQueryOptions = { ...this._defaultQueryOptions, ...point._defaultQueryOptions }
+    // c._defaultInfiniteQueryOptions = { ...this._defaultInfiniteQueryOptions, ...point._defaultInfiniteQueryOptions }
+    // c._defaultPageQueryOptions = { ...this._defaultPageQueryOptions, ...point._defaultPageQueryOptions }
+    // c._defaultComponentQueryOptions = {
+    //   ...this._defaultComponentQueryOptions,
+    //   ...point._defaultComponentQueryOptions,
+    // }
+    // c._defaultLayoutQueryOptions = { ...this._defaultLayoutQueryOptions, ...point._defaultLayoutQueryOptions }
+    // c._defaultProviderQueryOptions = { ...this._defaultProviderQueryOptions, ...point._defaultProviderQueryOptions }
+    // c._queryOptions = { ...this._queryOptions, ...point._queryOptions }
+    // c._infiniteQueryOptions = { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions } as never
+    // c._fetchOptions = mergedFetchOptionsFn
+    // c._scrollPositionGetter = point._scrollPositionGetter ?? this._scrollPositionGetter
+    // c._scrollPositionSetter = point._scrollPositionSetter ?? this._scrollPositionSetter
+    // c._scrollPositionRestorePolicy = point._scrollPositionRestorePolicy ?? this._scrollPositionRestorePolicy
+    // c._prefetchPolicy = point._prefetchPolicy ?? this._prefetchPolicy
+    // c._polh = point._polh ?? this._polh
+    // c._transformer = point._transformer ?? this._transformer
+    // c._serverurl = point._serverurl ?? this._serverurl
+    // c._baseurl = point._baseurl ?? this._baseurl
+    // c._layouts = mergeArraysUnique(this._layouts, point._layouts)
+    // c._errorComponent = point._errorComponent ?? (this._errorComponent as never)
+    // c._layoutErrorComponent = point._layoutErrorComponent ?? (this._layoutErrorComponent as never)
+    // c._pageErrorComponent = point._pageErrorComponent ?? (this._pageErrorComponent as never)
+    // c._componentErrorComponent = point._componentErrorComponent ?? (this._componentErrorComponent as never)
+    // c._loadingComponent = point._loadingComponent ?? (this._loadingComponent as never)
+    // c._layoutLoadingComponent = point._layoutLoadingComponent ?? (this._layoutLoadingComponent as never)
+    // c._pageLoadingComponent = point._pageLoadingComponent ?? (this._pageLoadingComponent as never)
+    // c._componentLoadingComponent = point._componentLoadingComponent ?? (this._componentLoadingComponent as never)
 
-    c._queryResultType = point._queryResultType ?? this._queryResultType
+    // }
 
-    if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
-      // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
-      if (point._hasServerLoader() || point._hasClientLoader()) {
-        const newRelatedQueryPoint = point._getSameQueryPoint() ?? point
-        c._relatedQueryPoints = mergeArraysUnique(this._relatedQueryPoints, [newRelatedQueryPoint])
-        if (!this._hasServerLoader() && !this._hasClientLoader()) {
-          c._sameQueryPoint = newRelatedQueryPoint
-        } else {
-          if (this._getSameQueryPoint() !== newRelatedQueryPoint) {
-            c._sameQueryPoint = null
-          }
-        }
-        if (point._hasServerLoader()) {
-          c._serverExecuteActions = [
-            ...this._serverExecuteActions,
-            {
-              type: 'loader',
-              fn: async ({ data, input }) => {
-                const prevData = data instanceof Response ? {} : data
-                const newData =
-                  point.type === 'infiniteQuery' ? await point.fetchInfiniteQuery(input) : await point.fetchQuery(input)
-                return {
-                  ...prevData,
-                  ...newData,
-                }
-              },
-              unstableId: Point0._getNextUnstableId(),
-            },
-          ]
-        }
-        if (point._hasClientLoader()) {
-          c._clientExecuteActions = [
-            ...this._clientExecuteActions,
-            {
-              type: 'loader',
-              fn: async ({ data, input, response, location, serverData }) => ({
-                ...(data instanceof Response ? {} : data),
-                ...(await point._executeClientAsync({
-                  serverData,
-                  serverResponse: response,
-                  input,
-                  skipClientMapperFns: false,
-                  location,
-                })),
-              }),
-              unstableId: Point0._getNextUnstableId(),
-            },
-          ]
-        }
-        c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
-      }
-    }
-    if (point.type === 'layout') {
-      // if it is layout we need to add it to layouts
-      c._layouts = mergeArraysUnique(this._layouts, [...point._layouts, point as LayoutPoint])
-    }
-    return this._continue(c) as never
+    // c._queryResultType = point._queryResultType ?? this._queryResultType
+
+    // if (point.type === 'query' || point.type === 'infiniteQuery' || point.type === 'layout') {
+    //   // if it is query or infiniteQuery we get from there queryKey, and to execute actions we add special type pointExecution, so we need respect it in executor to store in queryClient state
+    //   if (point._hasServerLoader() || point._hasClientLoader()) {
+    //     const newRelatedQueryPoint = point._getSameQueryPoint() ?? point
+    //     c._relatedQueryPoints = mergeArraysUnique(this._relatedQueryPoints, [newRelatedQueryPoint])
+    //     if (!this._hasServerLoader() && !this._hasClientLoader()) {
+    //       c._sameQueryPoint = newRelatedQueryPoint
+    //     } else {
+    //       if (this._getSameQueryPoint() !== newRelatedQueryPoint) {
+    //         c._sameQueryPoint = null
+    //       }
+    //     }
+    //     if (point._hasServerLoader()) {
+    //       c._serverExecuteActions = [
+    //         ...this._serverExecuteActions,
+    //         {
+    //           type: 'loader',
+    //           fn: async ({ data, input }) => {
+    //             const prevData = data instanceof Response ? {} : data
+    //             const newData =
+    //               point.type === 'infiniteQuery' ? await point.fetchInfiniteQuery(input) : await point.fetchQuery(input)
+    //             return {
+    //               ...prevData,
+    //               ...newData,
+    //             }
+    //           },
+    //           unstableId: Point0._getNextUnstableId(),
+    //         },
+    //       ]
+    //     }
+    //     if (point._hasClientLoader()) {
+    //       c._clientExecuteActions = [
+    //         ...this._clientExecuteActions,
+    //         {
+    //           type: 'loader',
+    //           fn: async ({ data, input, response, location, serverData }) => ({
+    //             ...(data instanceof Response ? {} : data),
+    //             ...(await point._executeClientAsync({
+    //               serverData,
+    //               serverResponse: response,
+    //               input,
+    //               skipClientMapperFns: false,
+    //               location,
+    //             })),
+    //           }),
+    //           unstableId: Point0._getNextUnstableId(),
+    //         },
+    //       ]
+    //     }
+    //     c._clientMapperFns = [...this._clientMapperFns, ...point._clientMapperFns]
+    //   }
+    // }
+    // if (point.type === 'layout') {
+    //   // if it is layout we need to add it to layouts
+    //   c._layouts = mergeArraysUnique(this._layouts, [...point._layouts, point as LayoutPoint])
+    // }
+    // return this._continue(c) as never
   }
 
   query(
@@ -5097,13 +5219,13 @@ export class Point0<
     if (!fromScope || typeof fromScope !== 'string') {
       throw new Error('Scope is not set. You forget to call PointsManager.create()?')
     }
-    const sameQueryPoint = this._getSameQueryPoint()
+    // const sameQueryPoint = this._getSameQueryPoint()
     const headers = mergeHeaders(fetchOptions.headers, options?.headers, {
       Accept: 'application/json',
       'X-Point0-From-Scope': fromScope,
-      'X-Point0-Same-Point': sameQueryPoint
-        ? `${sameQueryPoint.scope}.${sameQueryPoint.type}.${sameQueryPoint.name}`
-        : '',
+      // 'X-Point0-Same-Point': sameQueryPoint
+      //   ? `${sameQueryPoint.scope}.${sameQueryPoint.type}.${sameQueryPoint.name}`
+      //   : '',
     })
     const serverurl = this.getServerUrl()
     if (!serverurl) {
@@ -5390,12 +5512,15 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    const sameQueryPoint = this._getSameQueryPoint() || this
+    // const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      sameQueryPoint.scope,
-      sameQueryPoint.type,
-      sameQueryPoint.name,
+      // sameQueryPoint.scope,
+      // sameQueryPoint.type,
+      // sameQueryPoint.name,
+      this.scope,
+      this.type,
+      this.name,
       'server',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -5410,12 +5535,15 @@ export class Point0<
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     isInfiniteQuery: boolean
   }): QueryKey {
-    const sameQueryPoint = this._getSameQueryPoint() || this
+    // const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      sameQueryPoint.scope,
-      sameQueryPoint.type,
-      sameQueryPoint.name,
+      // sameQueryPoint.scope,
+      // sameQueryPoint.type,
+      // sameQueryPoint.name,
+      this.scope,
+      this.type,
+      this.name,
       'client',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -5432,12 +5560,15 @@ export class Point0<
     outputType?: FetchOutputType
     isInfiniteQuery: boolean
   }): QueryKey {
-    const sameQueryPoint = this._getSameQueryPoint() || this
+    // const sameQueryPoint = this._getSameQueryPoint() || this
     return [
       'point0',
-      sameQueryPoint.scope,
-      sameQueryPoint.type,
-      sameQueryPoint.name,
+      // sameQueryPoint.scope,
+      // sameQueryPoint.type,
+      // sameQueryPoint.name,
+      this.scope,
+      this.type,
+      this.name,
       'combined',
       isInfiniteQuery ? 'infinite' : 'finite',
       this._getTransformer().stringify(input) as string,
@@ -6394,70 +6525,70 @@ export class Point0<
     return (await queryClient.fetchQuery(queryOptions)) as never
   }
 
-  static async _prefetchRelatedQueryPoints({
-    input,
-    relatedQueryPoints,
-    queryClient,
-    fetchOptions,
-    mode,
-    preventPrefetchFns,
-    preventPrefetchRelatedQueryPoints,
-  }: {
-    input: InputsRaw<any, any>
-    relatedQueryPoints: AnyPoint[]
-    queryClient?: QueryClient
-    fetchOptions?: FetchOptions
-    mode: QueryMode
-    preventPrefetchFns?: boolean | OnPrefetchFn[]
-    preventPrefetchRelatedQueryPoints?: boolean
-  }): Promise<void> {
-    await Promise.all(
-      relatedQueryPoints.map(async (point) =>
-        point._queryResultType === 'infiniteQuery'
-          ? await point.prefetchInfiniteQuery(input, undefined, {
-              queryClient,
-              fetchOptions,
-              mode,
-              preventPrefetchFns,
-              preventPrefetchRelatedQueryPoints,
-            })
-          : await point.prefetchQuery(input, undefined, {
-              queryClient,
-              fetchOptions,
-              mode,
-              preventPrefetchFns,
-              preventPrefetchRelatedQueryPoints,
-            }),
-      ),
-    )
-  }
+  // static async _prefetchRelatedQueryPoints({
+  //   input,
+  //   relatedQueryPoints,
+  //   queryClient,
+  //   fetchOptions,
+  //   mode,
+  //   preventPrefetchFns,
+  //   preventPrefetchRelatedQueryPoints,
+  // }: {
+  //   input: InputsRaw<any, any>
+  //   relatedQueryPoints: AnyPoint[]
+  //   queryClient?: QueryClient
+  //   fetchOptions?: FetchOptions
+  //   mode: QueryMode
+  //   preventPrefetchFns?: boolean | OnPrefetchFn[]
+  //   preventPrefetchRelatedQueryPoints?: boolean
+  // }): Promise<void> {
+  //   await Promise.all(
+  //     relatedQueryPoints.map(async (point) =>
+  //       point._queryResultType === 'infiniteQuery'
+  //         ? await point.prefetchInfiniteQuery(input, undefined, {
+  //             queryClient,
+  //             fetchOptions,
+  //             mode,
+  //             preventPrefetchFns,
+  //             preventPrefetchRelatedQueryPoints,
+  //           })
+  //         : await point.prefetchQuery(input, undefined, {
+  //             queryClient,
+  //             fetchOptions,
+  //             mode,
+  //             preventPrefetchFns,
+  //             preventPrefetchRelatedQueryPoints,
+  //           }),
+  //     ),
+  //   )
+  // }
 
-  async _prefetchRelatedQueryPoints({
-    input,
-    queryClient,
-    fetchOptions,
-    mode,
-    preventPrefetchRelatedQueryPoints = false,
-    preventPrefetchFns = false,
-  }: {
-    input: InputsRaw<any, any>
-    queryClient?: QueryClient
-    fetchOptions?: FetchOptions
-    mode: QueryMode
-    preventPrefetchRelatedQueryPoints?: boolean
-    preventPrefetchFns?: boolean | OnPrefetchFn[]
-  }): Promise<void> {
-    const relatedQueryPoints = this._relatedQueryPoints.filter((point) => point !== this._sameQueryPoint)
-    await Point0._prefetchRelatedQueryPoints({
-      input,
-      relatedQueryPoints,
-      queryClient,
-      fetchOptions,
-      mode,
-      preventPrefetchFns,
-      preventPrefetchRelatedQueryPoints,
-    })
-  }
+  // async _prefetchRelatedQueryPoints({
+  //   input,
+  //   queryClient,
+  //   fetchOptions,
+  //   mode,
+  //   preventPrefetchRelatedQueryPoints = false,
+  //   preventPrefetchFns = false,
+  // }: {
+  //   input: InputsRaw<any, any>
+  //   queryClient?: QueryClient
+  //   fetchOptions?: FetchOptions
+  //   mode: QueryMode
+  //   preventPrefetchRelatedQueryPoints?: boolean
+  //   preventPrefetchFns?: boolean | OnPrefetchFn[]
+  // }): Promise<void> {
+  //   const relatedQueryPoints = this._relatedQueryPoints.filter((point) => point !== this._sameQueryPoint)
+  //   await Point0._prefetchRelatedQueryPoints({
+  //     input,
+  //     relatedQueryPoints,
+  //     queryClient,
+  //     fetchOptions,
+  //     mode,
+  //     preventPrefetchFns,
+  //     preventPrefetchRelatedQueryPoints,
+  //   })
+  // }
 
   async prefetchQuery(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
@@ -6472,7 +6603,7 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            preventPrefetchRelatedQueryPoints?: boolean
+            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
       : [
@@ -6486,7 +6617,7 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            preventPrefetchRelatedQueryPoints?: boolean
+            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
   ): Promise<void> {
@@ -6499,7 +6630,7 @@ export class Point0<
       force,
       mode = 'serverAndClient',
       preventPrefetchFns = false,
-      preventPrefetchRelatedQueryPoints = false,
+      // preventPrefetchRelatedQueryPoints = false,
     } = options
     const preparedFetch = this._prepareFetchQuery({
       input,
@@ -6520,15 +6651,15 @@ export class Point0<
     await Promise.all([
       this._callPrefetchFns({ preventPrefetchFns }),
       queryClient.prefetchQuery(queryOptions as never),
-      preventPrefetchRelatedQueryPoints
-        ? this._prefetchRelatedQueryPoints({
-            input,
-            queryClient,
-            fetchOptions,
-            mode,
-            preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
-          })
-        : undefined,
+      // preventPrefetchRelatedQueryPoints
+      //   ? this._prefetchRelatedQueryPoints({
+      //       input,
+      //       queryClient,
+      //       fetchOptions,
+      //       mode,
+      //       preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
+      //     })
+      //   : undefined,
     ])
   }
 
@@ -6700,7 +6831,7 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            preventPrefetchRelatedQueryPoints?: boolean
+            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
       : [
@@ -6723,7 +6854,7 @@ export class Point0<
             mode?: QueryMode
             outputType?: FetchOutputType
             preventPrefetchFns?: boolean | OnPrefetchFn[]
-            preventPrefetchRelatedQueryPoints?: boolean
+            // preventPrefetchRelatedQueryPoints?: boolean
           },
         ]
   ): Promise<void> {
@@ -6736,7 +6867,7 @@ export class Point0<
       force,
       mode = 'serverAndClient',
       preventPrefetchFns = false,
-      preventPrefetchRelatedQueryPoints = false,
+      // preventPrefetchRelatedQueryPoints = false,
     } = options
     const preparedFetch = this._prepareFetchInfiniteQuery({
       input,
@@ -6757,15 +6888,15 @@ export class Point0<
     await Promise.all([
       this._callPrefetchFns({ preventPrefetchFns }),
       queryClient.prefetchInfiniteQuery(infiniteQueryOptions as never),
-      preventPrefetchRelatedQueryPoints
-        ? this._prefetchRelatedQueryPoints({
-            input,
-            queryClient,
-            fetchOptions,
-            mode,
-            preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
-          })
-        : undefined,
+      // preventPrefetchRelatedQueryPoints
+      //   ? this._prefetchRelatedQueryPoints({
+      //       input,
+      //       queryClient,
+      //       fetchOptions,
+      //       mode,
+      //       preventPrefetchRelatedQueryPoints: true, // if we prefetch it, then we already prefetch all related query points
+      //     })
+      //   : undefined,
     ])
   }
 
@@ -6892,9 +7023,10 @@ export class Point0<
       return
     }
 
-    const allRelatedPoints = [this as EndPoint, ...this._layouts, ...this._relatedQueryPoints].map(
-      (p) => p._getSameQueryPoint() ?? p,
-    )
+    // const allRelatedPoints = [this as EndPoint, ...this._layouts, ...this._relatedQueryPoints].map(
+    //   (p) => p._getSameQueryPoint() ?? p,
+    // )
+    const allRelatedPoints = [this as EndPoint, ...this._layouts]
     const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
 
@@ -6972,7 +7104,7 @@ export class Point0<
             force,
             mode,
             preventPrefetchFns: true,
-            preventPrefetchRelatedQueryPoints: true,
+            // preventPrefetchRelatedQueryPoints: true,
           })
         } else {
           return await p.prefetchQuery(inputHere as never, queryOptions, {
@@ -6982,7 +7114,7 @@ export class Point0<
             force,
             mode,
             preventPrefetchFns: true,
-            preventPrefetchRelatedQueryPoints: true,
+            // preventPrefetchRelatedQueryPoints: true,
           })
         }
       }),

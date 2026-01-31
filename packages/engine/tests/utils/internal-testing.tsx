@@ -12,6 +12,7 @@ import { HtmlView } from './html-view.js'
 import type { DehydratedState, QueryClient } from '@tanstack/react-query'
 import * as rtl from '@testing-library/react'
 import { FetchRecorder } from './fetch-recorder.js'
+import { YAML } from 'bun'
 
 // export const getFakeBrowserGlobals = (options: { url?: string } = {}) => {
 //   const url = options.url ?? 'http://localhost/'
@@ -390,6 +391,12 @@ export const createTestThings = async ({
       return await point.execute(...args)
     })
   }) as unknown as FetchPoint
+  const loadPointYml = (async (point: EndPoint, ...args: [any]) => {
+    return await client.run(async () => {
+      const result = await point.execute(...args)
+      return '\n' + YAML.stringify(result, undefined, 2) + '\n'
+    })
+  }) as unknown as FetchPoint
   const fetchView = (async (point: EndPoint, ...args: [any]) => {
     return await client.run(async () => {
       const response = await client.fetch(point.route.flat(args[0] || {}, true), ...args.slice(1))
@@ -488,6 +495,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
     fetch,
     fetchSsr,
     loadPoint,
+    loadPointYml,
     fetchView,
     fetchPreview,
     fetchRecorder,
