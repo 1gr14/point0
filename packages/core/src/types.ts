@@ -130,6 +130,7 @@ export type Infer<
   >
   ClientExecuteDetailedResult: ClientExecuteDetailedResult<
     TQueryResultType,
+    TClientInputSchema,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput
@@ -887,6 +888,7 @@ export type WithError<TError, T> = unknown extends TError ? T : TError
 
 export type ClientExecuteDetailedResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
@@ -897,6 +899,7 @@ export type ClientExecuteDetailedResult<
   clientData: TClientLoaderOutput extends Data ? TClientLoaderOutput : undefined
   clientResponse: TClientLoaderOutput extends Response ? Response : undefined
   clientOutput: TClientLoaderOutput
+  clientInput: InputParsed<TClientInputSchema>
   output: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
 }
 export type UseQueryOptions<
@@ -1651,6 +1654,7 @@ export type ClientLoaderFn<
 
 export type ClientMapperFnOptions<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
@@ -1658,15 +1662,23 @@ export type ClientMapperFnOptions<
   data: PrettifyOrUndefined<
     FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   >
+  input: InputParsed<TClientInputSchema>
 }
 export type ClientMapperFn<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TNewClientMapperOutput extends MapperOutput = MapperOutput,
 > = (
-  options: ClientMapperFnOptions<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
+  options: ClientMapperFnOptions<
+    TQueryResultType,
+    TClientInputSchema,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput
+  >,
 ) => TNewClientMapperOutput
 
 // head

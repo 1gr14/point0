@@ -25,21 +25,49 @@ describe('layout', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/home
-          #layout:
+          "/home
+            #layout:
+              #page: x=nothing
+          "
+        `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        "
+      `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+        "#layout:
+          #page: x=nothing
+        "
+      `)
+  })
+
+  it('layout in layout', async () => {
+    const layout1 = root.lets('layout', 'layout1').layout(({ children }) => <div id="layout1">{children}</div>)
+    const layout2 = layout1.lets('layout', 'layout2').layout(({ children }) => <div id="layout2">{children}</div>)
+    const page = layout2.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout1, layout2, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+          "/home
+            #layout1:
+              #layout2:
+                #page: x=nothing
+          "
+        `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        "
+      `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+        "#layout1:
+          #layout2:
             #page: x=nothing
         "
       `)
-    })
-    expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "
-      "
-    `)
-    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#layout:
-        #page: x=nothing
-      "
-    `)
   })
 
   it('loader', async () => {
@@ -52,10 +80,9 @@ describe('layout', () => {
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home').page(() => <div id="page">x=nothing</div>)
+    const page = layout.lets('page', 'home').page(() => <div id="page">x={layout.getValue().x}</div>)
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
-    // TODO:ASAP here should not be loading, becouse layout now is just provider and on letsPage it removes it loaders
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#page')
       expect(await tale()).toMatchInlineSnapshot(`
@@ -64,23 +91,18 @@ describe('layout', () => {
 
           #layout:
             #layout-content: x=1
-            #loading: ...
-
-          #layout:
-            #layout-content: x=1
-            #page: x=nothing
+            #page: x=1
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "layout.app (client) < {}
-      page.home (client) < {}
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#layout:
         #layout-content: x=1
-        #page: x=nothing
+        #page: x=1
       "
     `)
   })
@@ -126,7 +148,6 @@ describe('layout', () => {
   it('loader with input', async () => {
     const layout = root
       .lets('layout', 'app', '/:id')
-      .input<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
       .layout(({ data, children }) => (
         <div id="layout">
@@ -134,7 +155,10 @@ describe('layout', () => {
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home', '/page').page(() => <div id="page">x=nothing</div>)
+    const page = layout.lets('page', 'home', '/page').page(() => {
+      const value = layout.useValue()
+      return <div id="page">x={value.x}</div>
+    })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
@@ -145,23 +169,18 @@ describe('layout', () => {
 
           #layout:
             #layout-input: x=zxc
-            #loading: ...
-
-          #layout:
-            #layout-input: x=zxc
-            #page: x=nothing
+            #page: x=zxc
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "layout.app (client) < {"id":"zxc"}
-      page.home (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
       "#layout:
         #layout-input: x=zxc
-        #page: x=nothing
+        #page: x=zxc
       "
     `)
   })
@@ -169,15 +188,21 @@ describe('layout', () => {
   it('layout input includes page params', async () => {
     const layout = root
       .lets('layout', 'app', '/:id')
-      .input<{ id: string; sn: string }>()
-      .loader(({ input }) => ({ x: `${input.id}-${input.sn}` }))
+      .loader(({ input }) => ({ x: input.id }))
       .layout(({ data, children }) => (
         <div id="layout">
           <div id="layout-input">x={data.x}</div>
           {children}
         </div>
       ))
-    const page = layout.lets('page', 'home', '/:sn').page(() => <div id="page">x=nothing</div>)
+    const page = layout.lets('page', 'home', '/:sn').page(({ input }) => {
+      const value = layout.useValue()
+      return (
+        <div id="page">
+          x={value.x} sn={input.sn}
+        </div>
+      )
+    })
 
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route({ id: 'zxc', sn: 'qwe' }), async ({ waitContent, tale }) => {
@@ -187,24 +212,19 @@ describe('layout', () => {
           #loading: ...
 
           #layout:
-            #layout-input: x=zxc-undefined
-            #loading: ...
-
-          #layout:
-            #layout-input: x=zxc-undefined
-            #page: x=nothing
+            #layout-input: x=zxc
+            #page: x=zxc sn=qwe
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "layout.app (client) < {"id":"zxc"}
-      page.home (client) < {"id":"zxc","sn":"qwe"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc', sn: 'qwe' })).toMatchInlineSnapshot(`
       "#layout:
-        #layout-input: x=zxc-undefined
-        #page: x=nothing
+        #layout-input: x=zxc
+        #page: x=zxc sn=qwe
       "
     `)
   })
@@ -212,7 +232,6 @@ describe('layout', () => {
   it('wrapper', async () => {
     const layout = root
       .lets('layout', 'app', '/:id')
-      .input<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
       .wrapper(({ children, query, input }) => (
         <div id="wrapper">
@@ -229,6 +248,7 @@ describe('layout', () => {
       ))
     const page = layout.lets('page', 'home', '/page').page(() => <div id="page">x=nothing</div>)
 
+    // TODO:ASAP here is error place, why wrapper in wrapper?
     const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, layout, page] })
     await render(page.route({ id: 'zxc' }), async ({ waitContent, tale }) => {
       await waitContent('#page')
@@ -246,24 +266,13 @@ describe('layout', () => {
               #layout-input: x=zxc
               #wrapper:
                 #input: zxc
-                #query-status: pending
-                #loading: ...
-
-          #wrapper:
-            #input: zxc
-            #query-status: success
-            #layout:
-              #layout-input: x=zxc
-              #wrapper:
-                #input: zxc
-                #query-status: success
+                #query-status:
                 #page: x=nothing
         "
       `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
       "layout.app (client) < {"id":"zxc"}
-      page.home (client) < {"id":"zxc"}
       "
     `)
     expect(await fetchPreview(page, { id: 'zxc' })).toMatchInlineSnapshot(`
@@ -274,7 +283,7 @@ describe('layout', () => {
           #layout-input: x=zxc
           #wrapper:
             #input: zxc
-            #query-status: success
+            #query-status:
             #page: x=nothing
       "
     `)
@@ -283,7 +292,6 @@ describe('layout', () => {
   it('outer can block query', async () => {
     const layout = root
       .lets('layout', 'app', '/:id')
-      .input<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
       .outer(({ children, input }) => {
         if (input.id.length > 2) {

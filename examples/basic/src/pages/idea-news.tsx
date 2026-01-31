@@ -4,9 +4,14 @@ import { useEffect } from 'react'
 export const ideaNewsPage = ideaLayout
   .lets('page', 'ideaNews', 'news')
   .prefetchOnLinkHover(2000)
+  .mapper(({ input }) => {
+    return {
+      idea: ideaLayout.getValue({ id: input.id }).idea,
+    }
+  })
   .page(
-    ({ data: { idea }, input }) => `${idea.news.length} news for idea "${idea.title}"`,
-    ({ data: { idea }, query }) => {
+    ({ data: { idea } }) => `${idea.news.length} news for idea "${idea.title}"`,
+    ({ data: { idea } }) => {
       // const navigate = useNavigate0()
       useEffect(() => {
         // navigate('home').catch(console.error)

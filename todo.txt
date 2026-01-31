@@ -10,6 +10,8 @@
 
 кобинация кверей это чисто фишка маунтоблов, квери и прочие это не могут
 
+return back sameQueryKey, it needed for extend page from layout, who want can drop all loaders and mappers, via .dropLoaders()
+
 clientCtx + clientMountActions
 
 Можно если тут только серверные лоадеры, тогда там любые лоадеры

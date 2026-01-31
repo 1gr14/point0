@@ -321,7 +321,7 @@ export class Point0<
   private readonly _outers: OuterComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
-  private readonly _clientMapperFns: Array<ClientMapperFn<any, any, any, any, any>>
+  private readonly _clientMapperFns: Array<ClientMapperFn<any, any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
   private readonly _page:
@@ -2472,6 +2472,7 @@ export class Point0<
   mapper<TNewClientMapperOutput extends MapperOutput = MapperOutput>(
     mapperFn: ClientMapperFn<
       TQueryResultType,
+      TClientInputSchema,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
@@ -2510,7 +2511,7 @@ export class Point0<
     TQueryResultType,
     TProps
   >
-  mapper(mapperFn: ClientMapperFn<any, any, any, any, any> | false) {
+  mapper(mapperFn: ClientMapperFn<any, any, any, any, any, any> | false) {
     if (mapperFn === false) {
       return this._continue({
         // _sameQueryPoint: null,
@@ -3062,9 +3063,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TServerLoaderOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TClientLoaderOutput,
+      TPointType extends 'layout' ? UndefinedMapperOutput : TClientMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3099,9 +3100,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TServerLoaderOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TClientLoaderOutput,
+      TPointType extends 'layout' ? UndefinedMapperOutput : TClientMapperOutput,
       TProvidedRoute['definition'],
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3136,9 +3137,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TServerLoaderOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TClientLoaderOutput,
+      TPointType extends 'layout' ? UndefinedMapperOutput : TClientMapperOutput,
       ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>,
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3173,9 +3174,9 @@ export class Point0<
       TRequiredCtx,
       TCtx,
       TCtxExposedKeys,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TServerLoaderOutput,
+      TPointType extends 'layout' ? UndefinedLoaderOutput : TClientLoaderOutput,
+      TPointType extends 'layout' ? UndefinedMapperOutput : TClientMapperOutput,
       TProvidedRoute['definition'],
       MergeRecordValidationSchemas<
         TServerInputSchema,
@@ -3189,7 +3190,7 @@ export class Point0<
       UndefinedProps
     >
   >
-  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout' | 'plugin'>, TPointName extends PointName>(
+  lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout'>, TPointName extends PointName>(
     ...args: TPointType extends 'root' | 'base'
       ? [letsEndPointType: TNewLetsEndPointType, pointName: TPointName]
       : never[]
@@ -3245,15 +3246,30 @@ export class Point0<
             unstableId: 0,
           }
 
+    const serverExecuteActionsAll = newInputExecuteAction
+      ? [...this._serverExecuteActions, newInputExecuteAction]
+      : this._serverExecuteActions
+    const serverExecuteActionsSuitable =
+      this.type === 'layout'
+        ? serverExecuteActionsAll.filter((action) => action.type !== 'loader')
+        : serverExecuteActionsAll
+
+    const clientExecuteActionsAll = newInputExecuteAction
+      ? [...this._clientExecuteActions, newInputExecuteAction]
+      : this._clientExecuteActions
+    const clientExecuteActionsSuitable =
+      this.type === 'layout'
+        ? clientExecuteActionsAll.filter((action) => action.type !== 'loader')
+        : clientExecuteActionsAll
+
+    const clientMapperFnsSuitable = this.type === 'layout' ? [] : this._clientMapperFns
+
     return this._continue({
       scope,
       scopes,
-      _serverExecuteActions: newInputExecuteAction
-        ? [...this._serverExecuteActions, newInputExecuteAction]
-        : this._serverExecuteActions,
-      _clientExecuteActions: newInputExecuteAction
-        ? [...this._clientExecuteActions, newInputExecuteAction]
-        : this._clientExecuteActions,
+      _serverExecuteActions: serverExecuteActionsSuitable,
+      _clientExecuteActions: clientExecuteActionsSuitable,
+      _clientMapperFns: clientMapperFnsSuitable,
       type: 'coreStage',
       _letsEndPointType: letsEndPointType,
       name: pointName,
@@ -3675,6 +3691,7 @@ export class Point0<
   provider<TNewClientMapperOutput extends MapperOutput = MapperOutput>(
     mapperFn: ClientMapperFn<
       TQueryResultType,
+      TClientInputSchema,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
@@ -3722,6 +3739,7 @@ export class Point0<
   provider(
     mapperFn?: ClientMapperFn<
       TQueryResultType,
+      TClientInputSchema,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
@@ -4728,6 +4746,7 @@ export class Point0<
     clientMappedData: Data | undefined
     clientResponse: Response | undefined
     clientOutput: Data | Response | undefined
+    clientInput: InputParsed<TClientInputSchema>
   }> {
     let currentClientData: Data | undefined = serverData
     let currentClientMappedData: Data | undefined = serverData
@@ -4790,7 +4809,7 @@ export class Point0<
     if (!skipClientMapperFns) {
       for (const clientMapperFn of this._clientMapperFns) {
         // here we always send data only, becouse if last loader return response, then mapper can not exists by design
-        currentClientMappedData = clientMapperFn({ data: currentClientMappedData })
+        currentClientMappedData = clientMapperFn({ data: currentClientMappedData, input: currentInputParsed })
         currentClientOutput = currentClientMappedData
       }
     }
@@ -4799,6 +4818,7 @@ export class Point0<
       clientMappedData: currentClientMappedData,
       clientResponse: currentClientResponse,
       clientOutput: currentClientOutput,
+      clientInput: currentInputParsed,
     }
   }
 
@@ -5138,7 +5158,15 @@ export class Point0<
 
     if (!this._hasServerLoader() && !this._hasClientLoader()) {
       const result = React.useMemo(() => {
-        const data = this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), undefined as never) as never
+        // const data = (
+        //   clientInputParseResult.inputParsed
+        //     ? this._clientMapperFns.reduce(
+        //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
+        //         undefined as never,
+        //       )
+        //     : undefined
+        // ) as never
+        const data = undefined as never
         return {
           data,
           loading: false as const,
@@ -5162,7 +5190,13 @@ export class Point0<
       if (!this._clientMapperFns.length) {
         return query.data
       }
-      return this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data }), query.data)
+      if (!clientInputParseResult.inputParsed) {
+        return undefined
+      }
+      return this._clientMapperFns.reduce(
+        (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
+        query.data,
+      )
     }, [query.data])
     const result = React.useMemo(() => {
       const dataOrLastInfiteData =
@@ -5413,7 +5447,13 @@ export class Point0<
         ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
         : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
   ): Promise<
-    ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+    ClientExecuteDetailedResult<
+      TQueryResultType,
+      TClientInputSchema,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    >
   > {
     if (_point0_env.target.is.server) {
       // throw new Error0(
@@ -5432,56 +5472,64 @@ export class Point0<
       }
       return { serverData: undefined, serverResponse: undefined, serverOutput: undefined }
     })()
-    if (this._hasClientLoader()) {
-      //   if (this._hasClientAsyncLoader()) {
-      const { clientOutput, clientData, clientResponse } = await this._executeClientAsync({
-        serverData,
-        serverResponse,
-        input: input as never,
-        skipClientMapperFns: false,
-      })
-      return {
-        serverData,
-        serverResponse,
-        serverOutput,
-        clientData,
-        clientResponse,
-        clientOutput,
-        output: clientOutput ?? serverOutput,
-      } as ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-      //   } else {
-      //     const { clientOutput, clientData, clientResponse } = this._executeClientSync({
-      //       data: serverData || {},
-      //       response: serverResponse,
-      //       input: input as never,
-      //     })
-      //     return {
-      //       serverData,
-      //       serverResponse,
-      //       serverOutput,
-      //       clientData,
-      //       clientResponse,
-      //       clientOutput,
-      //       output: clientOutput ?? serverOutput,
-      //     } as ClientExecuteDetailedResult<
-      //       TData,
-      //       TResponse,
-      //       TClientData,
-      //       TClientResponse,
-      //       TLastServerOutput,
-      //       TLastClientOutput
-      //     >
-      //   }
-    }
+    // if (this._hasClientLoader()) {
+    //   if (this._hasClientAsyncLoader()) {
+    const { clientOutput, clientData, clientResponse, clientInput } = await this._executeClientAsync({
+      serverData,
+      serverResponse,
+      input: input as never,
+      skipClientMapperFns: false,
+    })
     return {
       serverData,
       serverResponse,
       serverOutput,
-      clientData: undefined,
-      clientResponse: undefined,
-      clientOutput: undefined,
-      output: serverOutput,
-    } as ClientExecuteDetailedResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+      clientData,
+      clientResponse,
+      clientOutput,
+      clientInput,
+      output: clientOutput ?? serverOutput,
+    } as ClientExecuteDetailedResult<
+      TQueryResultType,
+      TClientInputSchema,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    >
+    //   } else {
+    //     const { clientOutput, clientData, clientResponse } = this._executeClientSync({
+    //       data: serverData || {},
+    //       response: serverResponse,
+    //       input: input as never,
+    //     })
+    //     return {
+    //       serverData,
+    //       serverResponse,
+    //       serverOutput,
+    //       clientData,
+    //       clientResponse,
+    //       clientOutput,
+    //       output: clientOutput ?? serverOutput,
+    //     } as ClientExecuteDetailedResult<
+    //       TData,
+    //       TResponse,
+    //       TClientData,
+    //       TClientResponse,
+    //       TLastServerOutput,
+    //       TLastClientOutput
+    //     >
+    //   }
+    // }
+    // return {
+    //   serverData,
+    //   serverResponse,
+    //   serverOutput,
+    //   clientData: undefined,
+    //   clientResponse: undefined,
+    //   clientOutput: undefined,
+    //   clientInput: undefined,
+    //   output: serverOutput,
+    // } as ClientExecuteDetailedResult<TQueryResultType, TClientInputSchema, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   }
 
   async execute(
@@ -6314,29 +6362,40 @@ export class Point0<
         if (serverFetchResult?.error) {
           throw serverFetchResult.error
         }
-        if (this._hasClientLoader()) {
-          // if (this._hasClientAsyncLoader()) {
-          const { clientOutput } = await this._executeClientAsync({
-            serverData: serverFetchResult?.data,
-            serverResponse: serverFetchResult?.response,
-            input: input as never,
-            skipClientMapperFns: false,
-          })
-          return clientOutput
-          //   } else {
-          //     const { clientOutput } = this._executeClientSync({
-          //       data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
-          //       response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
-          //       input: input as never,
-          //     })
-          //     return clientOutput
-          //   }
-        }
+        // if (this._hasClientLoader()) {
+        // if (this._hasClientAsyncLoader()) {
+        const { clientOutput, clientInput } = await this._executeClientAsync({
+          serverData: serverFetchResult?.data,
+          serverResponse: serverFetchResult?.response,
+          input: input as never,
+          skipClientMapperFns: true,
+        })
+        // return clientOutput
+        //   } else {
+        //     const { clientOutput } = this._executeClientSync({
+        //       data: serverDataOrResponse instanceof Response ? {} : (serverDataOrResponse ?? {}),
+        //       response: serverDataOrResponse instanceof Response ? serverDataOrResponse : undefined,
+        //       input: input as never,
+        //     })
+        //     return clientOutput
+        //   }
+        // }
         if (this._hasMapperFns()) {
           return this._clientMapperFns.reduce(
-            (data, mapperFn) => mapperFn({ data }),
+            (data, mapperFn) => mapperFn({ data: clientOutput, input: clientInput }),
             serverFetchResult?.output,
           ) as FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        }
+        if (this._hasClientLoader()) {
+          if (!clientOutput) {
+            throw new Error('Client output is not set')
+          }
+          return clientOutput as FinalLoaderMappedOutput<
+            TQueryResultType,
+            TServerLoaderOutput,
+            TClientLoaderOutput,
+            TClientMapperOutput
+          >
         }
         if (!serverFetchResult?.output) {
           throw new Error('Server output is not set')
