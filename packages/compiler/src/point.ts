@@ -661,6 +661,34 @@ export class CompilerPoint<TValid extends boolean = any> {
     this.file.modified = true
   }
 
+  private replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
+    nodePath.node.arguments = []
+    const replacementArg = {
+      type: 'ArrowFunctionExpression' as const,
+      id: null,
+      generator: false,
+      async: false,
+      expression: true,
+      params: [],
+      // () => ({})
+      body: {
+        type: 'ObjectExpression' as const,
+        properties: [],
+      },
+    } as any
+    nodePath.node.arguments.push(replacementArg)
+    this.file.modified = true
+  }
+
   private shakeMethodsForClient(): void {
     for (const method of this.getSelfRichMethods()) {
       if (method.name === 'ctx') {
@@ -668,6 +696,9 @@ export class CompilerPoint<TValid extends boolean = any> {
       }
       if (method.name === 'loader') {
         this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
+      }
+      if (method.name === 'input') {
+        this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
       }
     }
   }
@@ -679,11 +710,16 @@ export class CompilerPoint<TValid extends boolean = any> {
       if (method.name === 'clientLoader') {
         this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
       }
-      if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchOnLinkHover', 'mutation'].includes(method.name)) {
+      if (method.name === 'clientInput') {
+        this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
+      }
+      if (['scrollPosition', 'scrollRestore', 'onPrefetch', 'prefetchOnLinkHover'].includes(method.name)) {
         this.removeMethodArgs({ nodePath: method.nodePath })
       } else if (!method.underSsr) {
         if (method.name === 'page') {
           this.replaceLastArgWithArrowFnReturnNull({ nodePath: method.nodePath })
+        } else if (method.name === 'provider') {
+          this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
         } else if (
           [
             'error',
