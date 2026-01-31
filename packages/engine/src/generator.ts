@@ -465,7 +465,10 @@ export class FilesGenerator {
       exports: Array<{ originalExportName: string; renamedExportName: string; root: boolean }>
     }> = []
 
-    const importedPoints = points.map((point, index) => {
+    const importedPoints = points.flatMap((point, index) => {
+      if (point.exportName === undefined) {
+        return []
+      }
       const importPath = FilesGenerator.toRelativeJsImportPath(outputAbs, point.file.abs)
       const importPathAndExportNames = importPathsAndExportNames.find((p) => p.importPath === importPath)
       const renamedExportName =
@@ -617,6 +620,10 @@ export class FilesGenerator {
   //   return lines.join('\n')
   // }
 
+  private static shouldExistsInPointsFile(point: CompilerPoint): boolean {
+    return point.type !== 'plugin' && point.type !== 'base' && point.exportName !== undefined && point.valid
+  }
+
   private emitLazyPointCollectionRecord({
     imported,
     targetAbs,
@@ -655,7 +662,9 @@ export class FilesGenerator {
     if (!target.outputPointsLazyAbs) {
       throw new Error('outputPointsLazyAbs is not set')
     }
-    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
+    const points = this.points.filter(
+      (p) => p.scope === target.scope && FilesGenerator.shouldExistsInPointsFile(p),
+    ) as Array<CompilerPoint<true>>
     const lines: string[] = []
     if (target.banner) {
       lines.push(target.banner)
@@ -703,7 +712,9 @@ export class FilesGenerator {
       throw new Error('outputReadyAbs is not set')
     }
 
-    const points = this.points.filter((p) => p.scope === target.scope && p.valid) as Array<CompilerPoint<true>>
+    const points = this.points.filter(
+      (p) => p.scope === target.scope && FilesGenerator.shouldExistsInPointsFile(p),
+    ) as Array<CompilerPoint<true>>
 
     const lines: string[] = []
     if (target.banner) {

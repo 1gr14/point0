@@ -419,6 +419,7 @@ export const createTestThings = async ({
       const view = await HtmlView.parse(await response.text())
       const scriptMatch = /<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">([\s\S]+?)<\/script>/.exec(view.html)
       if (!scriptMatch) {
+        console.error(view.html)
         throw new Error('Dehydrated super store script not found')
       }
       const scriptContent = scriptMatch[1]

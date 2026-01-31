@@ -44,7 +44,9 @@ import type { Walker } from './walker.js'
 export class CompilerPoint<TValid extends boolean = any> {
   readonly walker: Walker
   file: CompilerFile<true>
-  readonly exportName: TValid extends true ? string : string | undefined
+  // readonly exportName: TValid extends true ? string : string | undefined
+  // plugins can be not exported, and bases can be not exported
+  readonly exportName: string | undefined
   readonly baseNodePath: NodePath<Node> // Point0.lets('page', 'name') ← "Point0" | root.lets('page', 'name') ← "root"
   readonly letsNodePath: NodePath<Node>
   readonly isBasePoint0: boolean // Point0.lets('page', 'name') ← true | root.lets('page', 'name') ← false
@@ -456,11 +458,14 @@ export class CompilerPoint<TValid extends boolean = any> {
       this.parents = parentsResult.parents
 
       this.scopes = this.getScopes()
-      this.scope = this.scopes.at(-1) as TValid extends true ? PointsScope : PointsScope | undefined
+      this.scope =
+        this.type === 'plugin'
+          ? 'plugin'
+          : (this.scopes.at(-1) as TValid extends true ? PointsScope : PointsScope | undefined)
       if (!this.scope) {
         this.errors.push(new Error('Scope not found. Looks like point not attached to any scope.'))
       }
-      if (!this.exportName) {
+      if (!this.exportName && this.type !== 'plugin' && this.type !== 'base') {
         this.errors.push(new Error('Point not exported. Please, add export to the point.'))
       }
 

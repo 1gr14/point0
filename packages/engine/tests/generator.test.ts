@@ -113,6 +113,7 @@ describe('FilesGenerator', () => {
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
+export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
         const generator = FilesGenerator.create({
@@ -144,7 +145,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
-        expect(getLastLogFirstArg()).toBe('2 points processed')
+        expect(getLastLogFirstArg()).toBe('3 points processed')
         expect(getLogs()).toHaveLength(1)
       }),
     )
@@ -155,6 +156,7 @@ export const page = root.lets('page', 'mypage').page(() => <div>Hello</div>)
         await rootFile.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'myroot').root()
 export const page = root.lets('page', 'mypage')
+const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
         `)
 
         const generator = FilesGenerator.create({
@@ -179,7 +181,7 @@ export const page = root.lets('page', 'mypage')
           ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx']>
           "
         `)
-        expect(getLogs()[0][0]).toBe('1 points processed')
+        expect(getLogs()[0][0]).toBe('2 points processed')
         expect(getLogs()[1][0]).toBe(
           `page.mypage: Last called method name 'undefined' does not match point type 'page'. Please, use .page() in end of point chain in ${rootFile.path}:3:20`,
         )
