@@ -15,8 +15,8 @@ import type {
   UseInfiniteQueryResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import type { ResolvableHead } from 'unhead/types'
 import type { Point0 } from './index.js'
+import type { ExtraQueries, UndefinedExtraQueries } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
@@ -94,6 +94,7 @@ export type Infer<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = {
   PointType: TPointType
   LetsEndPointType: TLetsEndPointType
@@ -117,27 +118,21 @@ export type Infer<
   ServerInputOptional: IsInputOptional<TServerInputSchema>
   Props: TProps
   QueryResultType: TQueryResultType
-  UseQueryOptions: TQueryResultType extends 'infiniteQuery'
-    ? ExtraUseInfiniteQueryOptions<
-        InputsRaw<TServerInputSchema, TClientInputSchema>,
-        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-        Error0,
-        InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-        QueryKey,
-        unknown
-      >
-    : TQueryResultType extends 'query'
-      ? ExtraUseQueryOptions<
-          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          Error0,
-          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-          QueryKey
-        >
-      : never
+  ExtraQueries: TExtraQueries
+  UseQueryOptions: UsePointQueryOptions<
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TServerLoaderOutput,
+    TClientLoaderOutput
+  >
+  UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>
   FetchOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
   ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
+
+  // TODO:ASAP remove client execute things
   FinalOutput: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   ClientExecuteResult: FinalLoaderMappedOutput<
     TQueryResultType,
@@ -203,6 +198,7 @@ export type AnyPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = Point0<
   TPointType,
   TLetsEndPointType,
@@ -216,7 +212,8 @@ export type AnyPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 export type RootPoint<
@@ -231,6 +228,7 @@ export type RootPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'root',
   UndefinedEndPointType,
@@ -244,7 +242,8 @@ export type RootPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 export type PluginPoint<
@@ -259,6 +258,7 @@ export type PluginPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'plugin',
   UndefinedEndPointType,
@@ -272,7 +272,8 @@ export type PluginPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 export type BasePoint<
@@ -287,6 +288,7 @@ export type BasePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'base',
   UndefinedEndPointType,
@@ -300,7 +302,8 @@ export type BasePoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 export type PagePoint<
@@ -315,6 +318,7 @@ export type PagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'page',
   UndefinedEndPointType,
@@ -328,7 +332,8 @@ export type PagePoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 export type LayoutPoint<
@@ -343,6 +348,7 @@ export type LayoutPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'layout',
   UndefinedEndPointType,
@@ -356,7 +362,8 @@ export type LayoutPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 export type EndPoint<
@@ -372,6 +379,7 @@ export type EndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   TPointType,
   UndefinedEndPointType,
@@ -385,7 +393,8 @@ export type EndPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 // input
@@ -1018,97 +1027,121 @@ export type UsePointQueryResult<
   : TClientLoaderOutput extends Data
     ? UseClientQueryResult<TQueryResultType, TClientLoaderOutput, TStatus>
     : never
-
-export type AnyUseLoaderResult<
-  TStatus extends 'pending' | 'error' | 'success',
+export type UsePointQueryOptions<
+  TServerInputSchema extends InputSchema | UndefinedInputSchema,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation,
-> = IfAnyThenElse<
-  TStatus,
-  | UseLoaderResult<
-      'success',
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TLocation
+> = TQueryResultType extends 'infiniteQuery'
+  ? ExtraUseInfiniteQueryOptions<
+      InputsRaw<TServerInputSchema, TClientInputSchema>,
+      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+      Error0,
+      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+      QueryKey,
+      unknown
     >
-  | UseLoaderResult<
-      'error',
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TLocation
-    >
-  | UseLoaderResult<
-      'pending',
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      TLocation
-    >,
-  UseLoaderResult<
-    TStatus,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TLocation
-  >
->
+  : TQueryResultType extends 'query'
+    ? ExtraUseQueryOptions<
+        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+        Error0,
+        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+        QueryKey
+      >
+    : never
 
-export type UseLoaderResult<
-  TStatus extends 'pending' | 'error' | 'success',
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation,
-> = TStatus extends 'success'
-  ? {
-      data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-      error: null
-      loading: false
-      query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> // TODO: to undefined
-        : null
-      input: InputParsed<TClientInputSchema>
-      location: TLocation
-    }
-  : TStatus extends 'pending'
-    ? {
-        data: undefined
-        error: null
-        loading: true
-        query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-          ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
-          : null
-        input: InputParsed<TClientInputSchema>
-        location: TLocation
-      }
-    : TStatus extends 'error'
-      ? {
-          data: undefined
-          error: Error0
-          loading: false
-          query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-            ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
-            : null
-          input: InputParsed<TClientInputSchema> | null
-          location: TLocation
-        }
-      : never
+// export type AnyUseLoaderResult<
+//   TStatus extends 'pending' | 'error' | 'success',
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation,
+// > = IfAnyThenElse<
+//   TStatus,
+//   | UseLoaderResult<
+//       'success',
+//       TQueryResultType,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TClientInputSchema,
+//       TLocation
+//     >
+//   | UseLoaderResult<
+//       'error',
+//       TQueryResultType,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TClientInputSchema,
+//       TLocation
+//     >
+//   | UseLoaderResult<
+//       'pending',
+//       TQueryResultType,
+//       TServerLoaderOutput,
+//       TClientLoaderOutput,
+//       TClientMapperOutput,
+//       TClientInputSchema,
+//       TLocation
+//     >,
+//   UseLoaderResult<
+//     TStatus,
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TLocation
+//   >
+// >
+
+// export type UseLoaderResult<
+//   TStatus extends 'pending' | 'error' | 'success',
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation,
+// > = TStatus extends 'success'
+//   ? {
+//       data: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+//       error: null
+//       loading: false
+//       query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
+//         ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> // TODO: to undefined
+//         : null
+//       input: InputParsed<TClientInputSchema>
+//       location: TLocation
+//     }
+//   : TStatus extends 'pending'
+//     ? {
+//         data: undefined
+//         error: null
+//         loading: true
+//         query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
+//           ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
+//           : null
+//         input: InputParsed<TClientInputSchema>
+//         location: TLocation
+//       }
+//     : TStatus extends 'error'
+//       ? {
+//           data: undefined
+//           error: Error0
+//           loading: false
+//           query: HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
+//             ? UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus> | null
+//             : null
+//           input: InputParsed<TClientInputSchema> | null
+//           location: TLocation
+//         }
+//       : never
+
 // export type UnqueriedLoaderResult<
 //   TStatus extends 'pending' | 'error' | 'success',
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1175,277 +1208,290 @@ export type UseLoaderResult<
 
 // endpoint components
 
-export type PageComponentProps<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-> = UseLoaderResult<
-  'success',
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
-> & { props: FinalProps<TProps> }
-export type PageComponent<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-> = React.ComponentType<
-  PageComponentProps<
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TClientInputSchema,
-    TProps
-  >
->
-export type UndefinedPageComponent = undefined
+// export type PageSuccessComponentProps<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TExtraQueries extends ExtraQueries,
+// > = SuccessComponentProps<
+//   TClientInputSchema,
+//   TProps,
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TExtraQueries
+// > & { location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>> }
+// export type PageSuccessComponentType<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TExtraQueries extends ExtraQueries,
+// > = React.ComponentType<
+//   PageSuccessComponentProps<
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TRouteDefinition,
+//     TClientInputSchema,
+//     TProps,
+//     TExtraQueries
+//   >
+// >
+// export type UndefinedSuccessPageComponent = undefined
 
-export type LayoutComponentProps<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-> = UseLoaderResult<
-  'success',
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  ExactLocation<CurrentRouteDefinition<TRouteDefinition>> | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
-> & { props: FinalProps<TProps>; children: React.ReactNode }
-export type LayoutComponent<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-> = React.ComponentType<
-  LayoutComponentProps<
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TRouteDefinition,
-    TClientInputSchema,
-    TProps
-  >
->
-export type UndefinedLayoutComponent = undefined
+// export type LayoutSuccessComponentProps<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TExtraQueries extends ExtraQueries,
+// > = SuccessComponentProps<
+//   TClientInputSchema,
+//   TProps,
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TExtraQueries
+// > & {
+//   location:
+//     | ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
+//     | ChildrenLocation<CurrentRouteDefinition<TRouteDefinition>>
+// }
+// export type LayoutSuccessComponentType<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TExtraQueries extends ExtraQueries,
+// > = React.ComponentType<
+//   LayoutSuccessComponentProps<
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TRouteDefinition,
+//     TClientInputSchema,
+//     TProps,
+//     TExtraQueries
+//   >
+// >
+// export type UndefinedLayoutSuccessComponent = undefined
 
-export type ComponentComponentProps<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-> = UseLoaderResult<
-  'success',
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  AnyLocation
-> & { props: FinalProps<TProps> }
-export type ComponentComponent<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-> = React.ComponentType<
-  ComponentComponentProps<
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TInputSchema,
-    TProps
-  >
->
-export type UndefinedComponentComponent = undefined
+// export type ComponentSuccessComponentProps<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TExtraQueries extends ExtraQueries,
+// > = SuccessComponentProps<
+//   TClientInputSchema,
+//   TProps,
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TExtraQueries
+// >
+// export type ComponentSuccessComponentType<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+//   TInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TExtraQueries extends ExtraQueries,
+// > = React.ComponentType<
+//   ComponentSuccessComponentProps<
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TInputSchema,
+//     TProps,
+//     TExtraQueries
+//   >
+// >
+// export type UndefinedComponentSuccessComponent = undefined
 
-export type MountableComponentProps<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TWithChildren extends boolean | null,
-> = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
-  ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-    ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
-    : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
-  : FinalProps<TProps>) &
-  (TWithChildren extends true
-    ? { children: React.ReactNode }
-    : TWithChildren extends null
-      ? { children?: React.ReactNode }
-      : Record<never, never>)
-export type MountableComponent<
-  TServerInputSchema extends InputSchema | UndefinedInputSchema,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TWithChildren extends boolean | null,
-> = React.ComponentType<MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, TWithChildren>>
+// export type MountableComponentProps<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TWithChildren extends boolean | null,
+// > = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
+//   ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+//     ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
+//     : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
+//   : FinalProps<TProps>) &
+//   (TWithChildren extends true
+//     ? { children: React.ReactNode }
+//     : TWithChildren extends null
+//       ? { children?: React.ReactNode }
+//       : Record<never, never>)
+// export type MountableComponentType<
+//   TServerInputSchema extends InputSchema | UndefinedInputSchema,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps,
+//   TWithChildren extends boolean | null,
+// > = React.ComponentType<MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, TWithChildren>>
 
 // extra components
 
-export type DestinationComponentType = 'page' | 'component' | 'layout'
-export type LoadingComponentProps<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = {
-  type: TType
-  props: FinalProps<TProps>
-} & UseLoaderResult<
-  'pending',
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  AnyLocation
->
-export type LoadingComponentType<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = React.ComponentType<
-  LoadingComponentProps<
-    TType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
->
+// export type DestinationComponentType = 'page' | 'component' | 'layout'
+// export type LoadingComponentProps<
+//   TType extends DestinationComponentType = DestinationComponentType,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+// > = {
+//   type: TType
+//   props: FinalProps<TProps>
+// } & UseLoaderResult<
+//   'pending',
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TClientInputSchema,
+//   AnyLocation
+// >
+// export type LoadingComponentType<
+//   TType extends DestinationComponentType = DestinationComponentType,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+// > = React.ComponentType<
+//   LoadingComponentProps<
+//     TType,
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TProps
+//   >
+// >
 
-export type ErrorComponentProps<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = {
-  type: TType
-  props: FinalProps<TProps>
-} & UseLoaderResult<
-  'error',
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  AnyLocation
->
-export type ErrorComponentType<
-  TType extends DestinationComponentType = DestinationComponentType,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = React.ComponentType<
-  ErrorComponentProps<
-    TType,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
->
+// export type ErrorComponentProps<
+//   TType extends DestinationComponentType = DestinationComponentType,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+// > = {
+//   type: TType
+//   props: FinalProps<TProps>
+// } & UseLoaderResult<
+//   'error',
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TClientInputSchema,
+//   AnyLocation
+// >
+// export type ErrorComponentType<
+//   TType extends DestinationComponentType = DestinationComponentType,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+// > = React.ComponentType<
+//   ErrorComponentProps<
+//     TType,
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TProps
+//   >
+// >
 
-export type WrapperComponentProps<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = AnyUseLoaderResult<
-  any,
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  AnyLocation
-> & {
-  props: FinalProps<TProps>
-  children: React.ReactNode
-}
-export type WrapperComponentType<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-> = React.ComponentType<
-  WrapperComponentProps<
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TProps
-  >
->
+// export type WrapperComponentProps<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+// > = AnyUseLoaderResult<
+//   any,
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TClientInputSchema,
+//   AnyLocation
+// > & {
+//   props: FinalProps<TProps>
+//   children: React.ReactNode
+// }
+// export type WrapperComponentType<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+// > = React.ComponentType<
+//   WrapperComponentProps<
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TProps
+//   >
+// >
 
-export type OuterComponentProps<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-  TLocation extends AnyLocation = AnyLocation,
-> = {
-  input: InputParsed<TClientInputSchema>
-  props: FinalProps<TProps>
-  location: TLocation
-  children: Exclude<React.ReactNode, Promise<any>>
-  LoadingComponent: React.ComponentType
-  ErrorComponent: React.ComponentType<{ error: Error }>
-}
+// export type OuterComponentProps<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = {
+//   input: InputParsed<TClientInputSchema>
+//   props: FinalProps<TProps>
+//   location: TLocation
+//   children: Exclude<React.ReactNode, Promise<any>>
+//   LoadingComponent: React.ComponentType
+//   ErrorComponent: React.ComponentType<{ error: Error }>
+// }
 
-export type OuterComponentType<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps = Props | UndefinedProps,
-  TLocation extends AnyLocation = AnyLocation,
-> = React.ComponentType<OuterComponentProps<TClientInputSchema, TProps, TLocation>>
+// export type OuterComponentType<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = React.ComponentType<OuterComponentProps<TClientInputSchema, TProps, TLocation>>
 
 // export type BeforeClientHookOptions<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
@@ -1494,7 +1540,7 @@ export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
 
 export type ServerExecuteFn = <
-  TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
   ...args: TPoint['Infer']['ServerInputOptional'] extends true
@@ -1700,99 +1746,99 @@ export type ClientMapperFn<
 
 // head
 
-export type SuccessHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation = AnyLocation,
-> = (
-  options: HeadFnOptions<
-    'success',
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TLocation
-  >,
-) => ResolvableHead | string
+// export type SuccessHeadFn<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = (
+//   options: HeadFnOptions<
+//     'success',
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TLocation
+//   >,
+// ) => ResolvableHead | string
 
-export type ErrorHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation = AnyLocation,
-> = (
-  options: HeadFnOptions<
-    'error',
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TLocation
-  >,
-) => ResolvableHead | string
+// export type ErrorHeadFn<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = (
+//   options: HeadFnOptions<
+//     'error',
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TLocation
+//   >,
+// ) => ResolvableHead | string
 
-export type LoadingHeadFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation = AnyLocation,
-> = (
-  options: HeadFnOptions<
-    'pending',
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TLocation
-  >,
-) => ResolvableHead | string
+// export type LoadingHeadFn<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = (
+//   options: HeadFnOptions<
+//     'pending',
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TLocation
+//   >,
+// ) => ResolvableHead | string
 
-export type HeadFnOptions<
-  TStatus extends 'pending' | 'error' | 'success',
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation = AnyLocation,
-> = AnyUseLoaderResult<
-  TStatus,
-  TQueryResultType,
-  TServerLoaderOutput,
-  TClientLoaderOutput,
-  TClientMapperOutput,
-  TClientInputSchema,
-  TLocation
->
-export type HeadFn<
-  TStatus extends 'pending' | 'error' | 'success' = any,
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TLocation extends AnyLocation = AnyLocation,
-> = (
-  options: HeadFnOptions<
-    TStatus,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    TLocation
-  >,
-) => ResolvableHead | string
+// export type HeadFnOptions<
+//   TStatus extends 'pending' | 'error' | 'success',
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = AnyUseLoaderResult<
+//   TStatus,
+//   TQueryResultType,
+//   TServerLoaderOutput,
+//   TClientLoaderOutput,
+//   TClientMapperOutput,
+//   TClientInputSchema,
+//   TLocation
+// >
+// export type HeadFn<
+//   TStatus extends 'pending' | 'error' | 'success' = any,
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+//   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+//   TLocation extends AnyLocation = AnyLocation,
+// > = (
+//   options: HeadFnOptions<
+//     TStatus,
+//     TQueryResultType,
+//     TServerLoaderOutput,
+//     TClientLoaderOutput,
+//     TClientMapperOutput,
+//     TClientInputSchema,
+//     TLocation
+//   >,
+// ) => ResolvableHead | string
 
 export type FetchOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> = TServerLoaderOutput
 export type FetchDetailedOutput<TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput> =
@@ -1980,6 +2026,7 @@ export type NiceRootStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -1994,7 +2041,8 @@ export type NiceRootStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'root'
   | 'use'
@@ -2053,6 +2101,7 @@ export type NicePluginStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2067,7 +2116,8 @@ export type NicePluginStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'plugin'
   | 'use'
@@ -2128,6 +2178,7 @@ export type NiceBaseStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2142,7 +2193,8 @@ export type NiceBaseStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'base'
   | 'use'
@@ -2194,6 +2246,7 @@ export type NicePageStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2208,7 +2261,8 @@ export type NicePageStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'page'
   | 'use'
@@ -2253,6 +2307,7 @@ export type NiceComponentStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2267,7 +2322,8 @@ export type NiceComponentStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'component'
   | 'use'
@@ -2307,6 +2363,7 @@ export type NiceQueryStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2321,7 +2378,8 @@ export type NiceQueryStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'query'
   | 'use'
@@ -2353,6 +2411,7 @@ export type NiceInfiniteQueryStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2367,7 +2426,8 @@ export type NiceInfiniteQueryStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'infiniteQuery'
   | 'use'
@@ -2400,6 +2460,7 @@ export type NiceMutationStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2414,7 +2475,8 @@ export type NiceMutationStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'mutation'
   | 'use'
@@ -2446,6 +2508,7 @@ export type NiceLayoutStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2460,7 +2523,8 @@ export type NiceLayoutStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'layout'
   | 'use'
@@ -2510,6 +2574,7 @@ export type NiceProviderStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2524,7 +2589,8 @@ export type NiceProviderStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   | 'provider'
   | 'use'
@@ -2562,6 +2628,7 @@ export type NiceStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = TLetsEndPointType extends 'root'
   ? NiceRootStagePoint<
       TPointType,
@@ -2576,7 +2643,8 @@ export type NiceStagePoint<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >
   : TLetsEndPointType extends 'plugin'
     ? NicePluginStagePoint<
@@ -2592,7 +2660,8 @@ export type NiceStagePoint<
         TServerInputSchema,
         TClientInputSchema,
         TQueryResultType,
-        TProps
+        TProps,
+        TExtraQueries
       >
     : TLetsEndPointType extends 'base'
       ? NiceBaseStagePoint<
@@ -2608,7 +2677,8 @@ export type NiceStagePoint<
           TServerInputSchema,
           TClientInputSchema,
           TQueryResultType,
-          TProps
+          TProps,
+          TExtraQueries
         >
       : TLetsEndPointType extends 'page'
         ? NicePageStagePoint<
@@ -2624,7 +2694,8 @@ export type NiceStagePoint<
             TServerInputSchema,
             TClientInputSchema,
             TQueryResultType,
-            TProps
+            TProps,
+            TExtraQueries
           >
         : TLetsEndPointType extends 'component'
           ? NiceComponentStagePoint<
@@ -2640,7 +2711,8 @@ export type NiceStagePoint<
               TServerInputSchema,
               TClientInputSchema,
               TQueryResultType,
-              TProps
+              TProps,
+              TExtraQueries
             >
           : TLetsEndPointType extends 'query'
             ? NiceQueryStagePoint<
@@ -2656,7 +2728,8 @@ export type NiceStagePoint<
                 TServerInputSchema,
                 TClientInputSchema,
                 TQueryResultType,
-                TProps
+                TProps,
+                TExtraQueries
               >
             : TLetsEndPointType extends 'infiniteQuery'
               ? NiceInfiniteQueryStagePoint<
@@ -2672,7 +2745,8 @@ export type NiceStagePoint<
                   TServerInputSchema,
                   TClientInputSchema,
                   TQueryResultType,
-                  TProps
+                  TProps,
+                  TExtraQueries
                 >
               : TLetsEndPointType extends 'mutation'
                 ? NiceMutationStagePoint<
@@ -2688,7 +2762,8 @@ export type NiceStagePoint<
                     TServerInputSchema,
                     TClientInputSchema,
                     TQueryResultType,
-                    TProps
+                    TProps,
+                    TExtraQueries
                   >
                 : TLetsEndPointType extends 'layout'
                   ? NiceLayoutStagePoint<
@@ -2704,7 +2779,8 @@ export type NiceStagePoint<
                       TServerInputSchema,
                       TClientInputSchema,
                       TQueryResultType,
-                      TProps
+                      TProps,
+                      TExtraQueries
                     >
                   : TLetsEndPointType extends 'provider'
                     ? NiceProviderStagePoint<
@@ -2720,7 +2796,8 @@ export type NiceStagePoint<
                         TServerInputSchema,
                         TClientInputSchema,
                         TQueryResultType,
-                        TProps
+                        TProps,
+                        TExtraQueries
                       >
                     : never
 
@@ -2774,6 +2851,7 @@ export type NiceRootEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2788,7 +2866,8 @@ export type NiceRootEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -2807,6 +2886,7 @@ export type NicePluginEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2821,7 +2901,8 @@ export type NicePluginEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   'point' | 'type' | 'Infer'
 >
@@ -2840,6 +2921,7 @@ export type NiceBaseEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2854,7 +2936,8 @@ export type NiceBaseEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   'lets' | 'point' | 'type' | 'Infer'
 >
@@ -2912,6 +2995,7 @@ export type NicePageEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2926,7 +3010,8 @@ export type NicePageEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithExecuteEndLiteralsIfSuitable<
     TServerLoaderOutput,
@@ -2950,6 +3035,7 @@ export type NiceComponentEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -2964,7 +3050,8 @@ export type NiceComponentEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithExecuteEndLiteralsIfSuitable<
     TServerLoaderOutput,
@@ -2988,6 +3075,7 @@ export type NiceLayoutEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -3002,7 +3090,8 @@ export type NiceLayoutEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithExecuteEndLiteralsIfSuitable<
     TServerLoaderOutput,
@@ -3026,6 +3115,7 @@ export type NiceQueryEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -3040,7 +3130,8 @@ export type NiceQueryEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithExecuteEndLiteralsIfSuitable<
     TServerLoaderOutput,
@@ -3064,6 +3155,7 @@ export type NiceInfiniteQueryEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -3078,7 +3170,8 @@ export type NiceInfiniteQueryEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithExecuteEndLiteralsIfSuitable<
     TServerLoaderOutput,
@@ -3102,6 +3195,7 @@ export type NiceMutationEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -3116,7 +3210,8 @@ export type NiceMutationEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
@@ -3138,6 +3233,7 @@ export type NiceProviderEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
     TPointType,
@@ -3152,7 +3248,8 @@ export type NiceProviderEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >,
   WithExecuteEndLiteralsIfSuitable<
     TServerLoaderOutput,
@@ -3176,6 +3273,7 @@ export type NiceEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = TPointType extends 'root'
   ? NiceRootEndPoint<
       TPointType,
@@ -3190,7 +3288,8 @@ export type NiceEndPoint<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >
   : TPointType extends 'plugin'
     ? NicePluginEndPoint<
@@ -3206,7 +3305,8 @@ export type NiceEndPoint<
         TServerInputSchema,
         TClientInputSchema,
         TQueryResultType,
-        TProps
+        TProps,
+        TExtraQueries
       >
     : TPointType extends 'base'
       ? NiceBaseEndPoint<
@@ -3222,7 +3322,8 @@ export type NiceEndPoint<
           TServerInputSchema,
           TClientInputSchema,
           TQueryResultType,
-          TProps
+          TProps,
+          TExtraQueries
         >
       : TPointType extends 'page'
         ? NicePageEndPoint<
@@ -3238,7 +3339,8 @@ export type NiceEndPoint<
             TServerInputSchema,
             TClientInputSchema,
             TQueryResultType,
-            TProps
+            TProps,
+            TExtraQueries
           >
         : TPointType extends 'component'
           ? NiceComponentEndPoint<
@@ -3254,7 +3356,8 @@ export type NiceEndPoint<
               TServerInputSchema,
               TClientInputSchema,
               TQueryResultType,
-              TProps
+              TProps,
+              TExtraQueries
             >
           : TPointType extends 'query'
             ? NiceQueryEndPoint<
@@ -3270,7 +3373,8 @@ export type NiceEndPoint<
                 TServerInputSchema,
                 TClientInputSchema,
                 TQueryResultType,
-                TProps
+                TProps,
+                TExtraQueries
               >
             : TPointType extends 'infiniteQuery'
               ? NiceInfiniteQueryEndPoint<
@@ -3286,7 +3390,8 @@ export type NiceEndPoint<
                   TServerInputSchema,
                   TClientInputSchema,
                   TQueryResultType,
-                  TProps
+                  TProps,
+                  TExtraQueries
                 >
               : TPointType extends 'mutation'
                 ? NiceMutationEndPoint<
@@ -3302,7 +3407,8 @@ export type NiceEndPoint<
                     TServerInputSchema,
                     TClientInputSchema,
                     TQueryResultType,
-                    TProps
+                    TProps,
+                    TExtraQueries
                   >
                 : TPointType extends 'layout'
                   ? NiceLayoutEndPoint<
@@ -3318,7 +3424,8 @@ export type NiceEndPoint<
                       TServerInputSchema,
                       TClientInputSchema,
                       TQueryResultType,
-                      TProps
+                      TProps,
+                      TExtraQueries
                     >
                   : TPointType extends 'provider'
                     ? NiceProviderEndPoint<
@@ -3334,7 +3441,8 @@ export type NiceEndPoint<
                         TServerInputSchema,
                         TClientInputSchema,
                         TQueryResultType,
-                        TProps
+                        TProps,
+                        TExtraQueries
                       >
                     : never
 
@@ -3352,6 +3460,7 @@ export type AnyNiceEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = NiceEndPoint<
   TPointType,
   TLetsEndPointType,
@@ -3365,7 +3474,8 @@ export type AnyNiceEndPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 export type AnyNiceRequestableEndPoint<
   TPointType extends RequestableEndPointType = RequestableEndPointType,
@@ -3381,6 +3491,7 @@ export type AnyNiceRequestableEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = NiceEndPoint<
   TPointType,
   TLetsEndPointType,
@@ -3394,7 +3505,8 @@ export type AnyNiceRequestableEndPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps
+  TProps,
+  TExtraQueries
 >
 
 // export type AnyNiceEndPoint<

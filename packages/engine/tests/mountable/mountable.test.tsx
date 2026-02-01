@@ -1,4 +1,4 @@
-import { Mountable, Point0 } from '@point0/core'
+import { _Mountable, Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from '../utils/internal-testing.js'
 
@@ -20,7 +20,7 @@ describe('mountable', () => {
   it('simple', async () => {
     const page = root.lets('page', 'home', '/').page(() => (
       <div id="page">
-        <Mountable>{({ data }) => <div id="component">x=undefined</div>}</Mountable>
+        <_Mountable>{({ data }) => <div id="component">x=undefined</div>}</_Mountable>
       </div>
     ))
 
@@ -52,7 +52,7 @@ describe('mountable', () => {
       .query()
     const page = root.lets('page', 'home', '/').page(() => (
       <div id="page">
-        <Mountable query={q.getQueryOptions()}>
+        <_Mountable query={q.getQueryOptions()}>
           {({ data, queries, query }) => (
             <>
               <div id="data">{JSON.stringify(data)}</div>
@@ -60,7 +60,7 @@ describe('mountable', () => {
               <div id="queries-length">{queries.length}</div>
             </>
           )}
-        </Mountable>
+        </_Mountable>
       </div>
     ))
 
