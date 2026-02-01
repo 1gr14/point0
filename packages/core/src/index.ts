@@ -8265,6 +8265,7 @@ export class Point0<
 export * from './cookies-store.js'
 export * from './env.js'
 export * from './internals.js'
+export * from './mountable.js'
 export * from './points-manager.js'
 export * from './query-client.js'
 export * from './request0.js'

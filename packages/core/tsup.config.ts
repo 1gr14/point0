@@ -9,6 +9,7 @@ const general = {
     'src/env.utils.ts',
     'src/index.ts',
     'src/internals.ts',
+    'src/mountable.ts',
     'src/points-manager.ts',
     'src/query-client.tsx',
     'src/request0.ts',

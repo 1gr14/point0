@@ -117,6 +117,23 @@ export type Infer<
   ServerInputOptional: IsInputOptional<TServerInputSchema>
   Props: TProps
   QueryResultType: TQueryResultType
+  UseQueryOptions: TQueryResultType extends 'infiniteQuery'
+    ? ExtraUseInfiniteQueryOptions<
+        InputsRaw<TServerInputSchema, TClientInputSchema>,
+        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+        Error0,
+        InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+        QueryKey,
+        unknown
+      >
+    : TQueryResultType extends 'query'
+      ? ExtraUseQueryOptions<
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          Error0,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          QueryKey
+        >
+      : never
   FetchOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
   ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
