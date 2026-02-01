@@ -187,6 +187,22 @@ export type WithExtraQueries<
       ? TExtraQueries
       : []
 
+export type AppendExtraQueries<
+  TQueries extends ExtraQueries | UndefinedExtraQueries,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
+> = TQueries extends [infer Q1, ...infer Rest]
+  ? [
+      Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never,
+      ...AppendExtraQueries<Extract<Rest, ExtraQueries>, TExtraQueries>,
+    ]
+  : TExtraQueries extends ExtraQueries
+    ? TExtraQueries
+    : TQueries extends undefined
+      ? TExtraQueries extends undefined
+        ? undefined
+        : []
+      : []
+
 // export type QueryWithQueries<
 //   TQuery extends UseQueryOrInfiniteQueryResult | undefined = undefined,
 //   TQueries extends UseQueryOrInfiniteQueryResult[] | undefined = undefined,
@@ -532,7 +548,7 @@ export type MountableWrapperComponentType<
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TProps extends Props | undefined = any,
-  TExtraQueries extends ExtraQueries = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = React.ComponentType<
   MountableWrapperComponentProps<
     TQueryResultType,

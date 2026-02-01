@@ -154,6 +154,7 @@ import {
   windowScrollPositionSetter,
 } from './utils.js'
 import type {
+  AppendExtraQueries,
   ComponentSuccessComponentType,
   DestinationComponentType,
   ErrorComponentType,
@@ -753,6 +754,7 @@ export class Point0<
     TClientInputSchema extends InputSchema | UndefinedInputSchema,
     TQueryResultType extends QueryResultType | UndefinedQueryResultType,
     TProps extends Props | UndefinedProps,
+    TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
   >(overrides: {
     type?: TPointType
     scope?: PointsScope
@@ -956,7 +958,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return new Point0<
       TPointType,
@@ -971,7 +974,8 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >({
       scope: overrides.scope ?? this.scope,
       scopes: overrides.scopes ?? this.scopes,
@@ -1062,7 +1066,8 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedQueryResultType,
-    UndefinedProps
+    UndefinedProps,
+    UndefinedExtraQueries
   >
   static lets(
     pointType: 'plugin',
@@ -1080,7 +1085,8 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedQueryResultType,
-    UndefinedProps
+    UndefinedProps,
+    UndefinedExtraQueries
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
     if (pointType === 'root') {
@@ -1121,7 +1127,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({}) as never
   }
@@ -1141,7 +1148,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _serverurl: serverurl,
@@ -1163,7 +1171,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _baseurl: baseurl,
@@ -1209,7 +1218,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _ssr: ssr,
@@ -1231,7 +1241,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultMutationOptions: mutationOptions,
@@ -1253,7 +1264,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultQueryOptions: queryOptions,
@@ -1275,7 +1287,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultInfiniteQueryOptions: infiniteQueryOptions,
@@ -1297,7 +1310,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultPageQueryOptions: pageQueryOptions,
@@ -1319,7 +1333,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultComponentQueryOptions: componentQueryOptions,
@@ -1341,7 +1356,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultProviderQueryOptions: providerQueryOptions,
@@ -1363,7 +1379,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _defaultLayoutQueryOptions: layoutQueryOptions,
@@ -1385,7 +1402,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     const newFetchOptionsFn: FetchOptionsFn = () => {
       const prevFetchOptions: FetchOptions = this._fetchOptions?.() || {}
@@ -1416,9 +1434,10 @@ export class Point0<
             TClientLoaderOutput,
             TClientMapperOutput,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >
-      : ErrorComponentType,
+      : ErrorComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     TLetsEndPointType extends MountablePointType ? 'renderStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1432,7 +1451,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   error(
     ...args: TLetsEndPointType extends 'page'
@@ -1444,7 +1464,8 @@ export class Point0<
         > extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: ErrorHeadFn<
+            head: HeadFn<
+              'error',
               TQueryResultType,
               TServerLoaderOutput,
               TClientLoaderOutput,
@@ -1459,7 +1480,8 @@ export class Point0<
               TClientLoaderOutput,
               TClientMapperOutput,
               TClientInputSchema,
-              TProps
+              TProps,
+              TExtraQueries
             >,
           ]
       : never
@@ -1476,13 +1498,14 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   error(...args: [head: any, errorComponent: any] | [errorComponent: any]) {
     // in case if we shake pageError for serverNoSsr target
     const [head, errorComponent = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
-      ErrorHeadFn | undefined,
-      ErrorComponentType<any, any, any, any, any, any, any>,
+      HeadFn<'error'> | undefined,
+      ErrorComponentType<any, any, any, any, any, any, any, any>,
     ]
     // this._applyComponentDisplayName(errorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Error',
@@ -1514,7 +1537,7 @@ export class Point0<
   }
 
   layoutError(
-    layoutErrorComponent: ErrorComponentType,
+    layoutErrorComponent: ErrorComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1528,7 +1551,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutError for serverNoSsr target
@@ -1540,8 +1564,8 @@ export class Point0<
   }
 
   pageError(
-    head: ErrorHeadFn,
-    pageErrorComponent: ErrorComponentType,
+    head: HeadFn<'error'>,
+    pageErrorComponent: ErrorComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1555,10 +1579,11 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   pageError(
-    pageErrorComponent: ErrorComponentType,
+    pageErrorComponent: ErrorComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1572,10 +1597,13 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   pageError(
-    ...args: [head: ErrorHeadFn, pageErrorComponent: ErrorComponentType] | [pageErrorComponent: ErrorComponentType]
+    ...args:
+      | [head: HeadFn<'error'>, pageErrorComponent: ErrorComponentType<any, any, any, any, any, any, any, any>]
+      | [pageErrorComponent: ErrorComponentType<any, any, any, any, any, any, any, any>]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1589,7 +1617,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     // in case if we shake pageError for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
     const [head, pageErrorComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
@@ -1607,7 +1636,7 @@ export class Point0<
   }
 
   componentError(
-    componentErrorComponent: ErrorComponentType,
+    componentErrorComponent: ErrorComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1621,7 +1650,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentError for serverNoSsr target
@@ -1633,7 +1663,7 @@ export class Point0<
   }
 
   layoutLoading(
-    layoutLoadingComponent: LoadingComponentType,
+    layoutLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1647,7 +1677,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake layoutLoading for serverNoSsr target
@@ -1659,8 +1690,8 @@ export class Point0<
   }
 
   pageLoading(
-    head: LoadingHeadFn,
-    pageLoadingComponent: LoadingComponentType,
+    head: HeadFn<'pending'>,
+    pageLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1674,10 +1705,11 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   pageLoading(
-    pageLoadingComponent: LoadingComponentType,
+    pageLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1691,12 +1723,13 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   pageLoading(
     ...args:
-      | [head: LoadingHeadFn, pageLoadingComponent: LoadingComponentType]
-      | [pageLoadingComponent: LoadingComponentType]
+      | [head: HeadFn<'pending'>, pageLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any, any>]
+      | [pageLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any, any>]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1710,7 +1743,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     // in case if we shake pageLoading for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
     const [head, pageLoadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
@@ -1728,7 +1762,7 @@ export class Point0<
   }
 
   componentLoading(
-    componentLoadingComponent: LoadingComponentType,
+    componentLoadingComponent: LoadingComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1742,7 +1776,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake componentLoading for serverNoSsr target
@@ -1773,9 +1808,10 @@ export class Point0<
             TClientLoaderOutput,
             TClientMapperOutput,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >
-      : LoadingComponentType,
+      : LoadingComponentType<any, any, any, any, any, any, any, any>,
   ): NiceStagePoint<
     TLetsEndPointType extends RenderablePointType ? 'renderStage' : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1789,7 +1825,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   loading(
     ...args: TLetsEndPointType extends 'page'
@@ -1801,7 +1838,8 @@ export class Point0<
         > extends Response
         ? [ShowError<`Page can not accept response. Last loader should provide plain object data, not response.`>]
         : [
-            head: LoadingHeadFn<
+            head: HeadFn<
+              'pending',
               TQueryResultType,
               TServerLoaderOutput,
               TClientLoaderOutput,
@@ -1816,7 +1854,8 @@ export class Point0<
               TClientLoaderOutput,
               TClientMapperOutput,
               TClientInputSchema,
-              TProps
+              TProps,
+              TExtraQueries
             >,
           ]
       : never
@@ -1833,7 +1872,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   loading(...args: [head: any, pageLoadingComponent: any] | [pageLoadingComponent: any]) {
     // in case if we shake pageLoading for serverNoSsr target
@@ -1876,21 +1916,23 @@ export class Point0<
           TClientMapperOutput
         > extends Response
         ? ShowError<`${Capitalize<TLetsEndPointType>} can not accept response. Last loader should provide plain object data, not response.`>
-        : WrapperComponentType<
+        : MountableWrapperComponentType<
             TQueryResultType,
             TServerLoaderOutput,
             TClientLoaderOutput,
             TClientMapperOutput,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >
-      : WrapperComponentType<
+      : MountableWrapperComponentType<
           TQueryResultType,
           TServerLoaderOutput,
           TClientLoaderOutput,
           TClientMapperOutput,
           TClientInputSchema,
-          TProps
+          TProps,
+          TExtraQueries
         >,
   ): NiceStagePoint<
     'renderStage',
@@ -1905,7 +1947,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _wrappers: [
@@ -1920,7 +1963,7 @@ export class Point0<
   }
 
   outer(
-    outerComponent: OuterComponentType<TClientInputSchema, TProps, AnyLocation>,
+    outerComponent: MountableOuterComponentType<TClientInputSchema, TProps>,
   ): NiceStagePoint<
     'renderStage',
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1934,7 +1977,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _outers: [
@@ -1965,7 +2009,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   scrollPosition(
     selector: string,
@@ -1982,7 +2027,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   scrollPosition(
     getter: ScrollPositionGetter,
@@ -2000,7 +2046,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   scrollPosition(...args: [() => HTMLElement | null] | [string] | [ScrollPositionGetter, ScrollPositionSetter] | []) {
     // [] in case if it was shaked for serverNoSsr
@@ -2038,7 +2085,8 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >({
       _scrollPositionGetter: getter,
       _scrollPositionSetter: setter,
@@ -2061,7 +2109,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue<
       TPointType,
@@ -2076,7 +2125,8 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
@@ -2101,7 +2151,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _middlewares: [...this._middlewares, middlewareFn],
@@ -2124,7 +2175,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue<
       TPointType,
@@ -2139,7 +2191,8 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for serverNoSsr
       _prefetchPolicy: policy ?? this._prefetchPolicy,
@@ -2161,7 +2214,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue<
       TPointType,
@@ -2176,7 +2230,8 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
       _onPrefetchFns: [...this._onPrefetchFns, fn ?? (() => undefined)],
@@ -2198,7 +2253,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if it was shaked for server
@@ -2223,7 +2279,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       _transformer: toExtendedTransformer(transformer),
@@ -2249,7 +2306,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: [TAppendCtx] &
@@ -2268,7 +2326,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: [TAppendCtx, ...TAppendCtxExposedKeys[]] &
@@ -2287,7 +2346,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'ctx'>,
@@ -2304,7 +2364,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   ctx(ctxOrFn: CtxFn | Ctx | [Ctx, ...CtxExposedKeys[]]) {
     const ctxFn =
@@ -2337,7 +2398,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   loader(
     enableServerLoader: false,
@@ -2354,7 +2416,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     UndefinedQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   loader(enableServerLoader: true & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
@@ -2369,7 +2432,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     UndefinedQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   loader(loaderFn: LoaderFn<any, any, any, any, any> | boolean) {
     if (loaderFn === false) {
@@ -2423,7 +2487,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   clientLoader(
     enableClientLoader: false,
@@ -2446,7 +2511,8 @@ export class Point0<
         : TLetsEndPointType extends 'infiniteQuery'
           ? 'infiniteQuery'
           : UndefinedQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   // client loader true means that we do not want server do ssr here
   clientLoader(
@@ -2468,7 +2534,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
     if (clientLoaderFn === false) {
@@ -2527,7 +2594,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   mapper(
     enableMapper: false,
@@ -2544,7 +2612,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   mapper(mapperFn: ClientMapperFn<any, any, any, any, any, any> | false) {
     if (mapperFn === false) {
@@ -2639,7 +2708,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     if (typeof head === 'function') {
       return this._continue({
@@ -2669,7 +2739,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TNewProps
+    TNewProps,
+    TExtraQueries
   > {
     return this._continue({}) as never
   }
@@ -2691,7 +2762,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   input<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
     ...args: TInputParsed extends InputSchema
@@ -2718,7 +2790,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   input<TValidateFn extends CustomValidationFn<any>>(
     validateFn: TValidateFn &
@@ -2741,7 +2814,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   input<
     TInput extends InputRaw,
@@ -2762,7 +2836,8 @@ export class Point0<
       MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
       TClientInputSchema,
       TQueryResultType,
-      TProps
+      TProps,
+      TExtraQueries
     >
   >
   input(...args: any[]) {
@@ -2797,7 +2872,8 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, TNextClientInputSchema>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   clientInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
     validateFn: CustomValidationFn<TInputParsed> &
@@ -2820,7 +2896,8 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   clientInput<TValidateFn extends CustomValidationFn<any>>(
     validateFn: TValidateFn &
@@ -2843,7 +2920,8 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   clientInput<
     TInput extends InputRaw,
@@ -2864,7 +2942,8 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   clientInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
@@ -2898,7 +2977,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, TNextInputSchema>,
     MergeRecordValidationSchemas<TClientInputSchema, TNextInputSchema>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   combinedInput<TInputRaw extends InputRaw, TInputParsed extends InputParsed = TInputRaw>(
     validateFn: CustomValidationFn<TInputParsed> &
@@ -2921,7 +3001,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   combinedInput<TValidateFn extends CustomValidationFn<any>>(
     validateFn: TValidateFn &
@@ -2944,7 +3025,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   combinedInput<
     TInput extends InputRaw,
@@ -2965,7 +3047,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   combinedInput(...args: any[]) {
     const inputSchema = args[0] as InputSchema | CustomValidationFn | undefined
@@ -3111,7 +3194,8 @@ export class Point0<
         RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
       >,
       TQueryResultType,
-      UndefinedProps
+      UndefinedProps,
+      UndefinedExtraQueries
     >
   >
   lets<
@@ -3148,7 +3232,8 @@ export class Point0<
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
       >,
       TQueryResultType,
-      UndefinedProps
+      UndefinedProps,
+      UndefinedExtraQueries
     >
   >
   lets<
@@ -3185,7 +3270,8 @@ export class Point0<
         RouteDefinitionToRecordValidationSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
       >,
       TQueryResultType,
-      UndefinedProps
+      UndefinedProps,
+      UndefinedExtraQueries
     >
   >
   lets<
@@ -3222,7 +3308,8 @@ export class Point0<
         RouteDefinitionToRecordValidationSchema<TProvidedRoute['definition']>
       >,
       TQueryResultType,
-      UndefinedProps
+      UndefinedProps,
+      UndefinedExtraQueries
     >
   >
   lets<TNewLetsEndPointType extends Exclude<EndPointType, 'page' | 'layout'>, TPointName extends PointName>(
@@ -3242,7 +3329,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    UndefinedProps
+    UndefinedProps,
+    UndefinedExtraQueries
   >
   lets(...args: any[]) {
     const [letsEndPointType, pointName, route] = args as [EndPointType, PointName, AnyRoute | string | undefined]
@@ -3364,7 +3452,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       type: 'root',
@@ -3388,7 +3477,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       type: 'plugin',
@@ -3409,7 +3499,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return this._continue({
       type: 'base',
@@ -3440,7 +3531,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   page(
     ...args: FinalLoaderMappedOutput<
@@ -3458,7 +3550,8 @@ export class Point0<
             TClientMapperOutput,
             TRouteDefinition,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >,
         ]
   ): NicePageEndPoint<
@@ -3474,7 +3567,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   page(
     ...args: FinalLoaderMappedOutput<
@@ -3489,7 +3583,8 @@ export class Point0<
         ]
       : [
           head:
-            | SuccessHeadFn<
+            | HeadFn<
+                'success',
                 TQueryResultType,
                 TServerLoaderOutput,
                 TClientLoaderOutput,
@@ -3506,7 +3601,8 @@ export class Point0<
             TClientMapperOutput,
             TRouteDefinition,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >,
         ]
   ): NicePageEndPoint<
@@ -3522,11 +3618,12 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   page(...args: any[]) {
     const [head, page = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
-      SuccessHeadFn | undefined,
+      HeadFn<'success'> | undefined,
       (
         | PageSuccessComponentType<
             TQueryResultType,
@@ -3535,7 +3632,8 @@ export class Point0<
             TClientMapperOutput,
             TRouteDefinition,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >
         | undefined
       ),
@@ -3575,7 +3673,8 @@ export class Point0<
             TClientLoaderOutput,
             TClientMapperOutput,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >,
         ]
   ): NiceComponentEndPoint<
@@ -3591,7 +3690,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     const [component = () => null] = args as [
       | ComponentSuccessComponentType<
@@ -3600,7 +3700,8 @@ export class Point0<
           TClientLoaderOutput,
           TClientMapperOutput,
           TClientInputSchema,
-          TProps
+          TProps,
+          TExtraQueries
         >
       | undefined,
     ]
@@ -3635,7 +3736,8 @@ export class Point0<
             TClientMapperOutput,
             TRouteDefinition,
             TClientInputSchema,
-            TProps
+            TProps,
+            TExtraQueries
           >,
         ]
   ): NiceLayoutEndPoint<
@@ -3651,7 +3753,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     const [layout = ({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) => children] = args as [
       | LayoutSuccessComponentType<
@@ -3661,7 +3764,8 @@ export class Point0<
           TClientMapperOutput,
           TRouteDefinition,
           TClientInputSchema,
-          TProps
+          TProps,
+          TExtraQueries
         >
       | undefined,
     ]
@@ -3744,7 +3848,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   provider(
     ...args: FinalLoaderMappedOutput<
@@ -3768,7 +3873,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   >
   provider(
     mapperFn?: ClientMapperFn<
@@ -3873,7 +3979,7 @@ export class Point0<
   //   }) as never
   // }
 
-  use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  use<T extends NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     plugin: T &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
@@ -3891,7 +3997,8 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
     T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
-    TProps
+    TProps,
+    AppendExtraQueries<TExtraQueries, T['Infer']['ExtraQueries']>
   >
   // use<
   //   T extends
@@ -3936,7 +4043,7 @@ export class Point0<
   //   T['Infer']['QueryResultType'] extends undefined ? TQueryResultType : T['Infer']['QueryResultType'],
   //   TProps
   // >
-  use(plugin: NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any>) {
+  use(plugin: NicePluginEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>) {
     const point = plugin.point
     // myplugin.input(1).loader(2).mapper(3).head(4).ctx(5)
     // mypoint.use(myplugin);
@@ -4179,7 +4286,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     'query',
-    TProps
+    TProps,
+    TExtraQueries
   >
   query(
     ...args: TLetsEndPointType extends 'query'
@@ -4205,7 +4313,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     'query',
-    TProps
+    TProps,
+    TExtraQueries
   >
   query(...args: any) {
     const [queryOptions = {}] = args as [ExtraUseQueryOptions]
@@ -4265,7 +4374,8 @@ export class Point0<
         TServerInputSchema,
         TClientInputSchema,
         'infiniteQuery',
-        TProps
+        TProps,
+        TExtraQueries
       >
     : NiceStagePoint<
         StagePointTypeOrNever<TPointType>,
@@ -4280,7 +4390,8 @@ export class Point0<
         TServerInputSchema,
         TClientInputSchema,
         'infiniteQuery',
-        TProps
+        TProps,
+        TExtraQueries
       > {
     const [infiniteQueryOptions = {}] = args
     return this._continue({
@@ -4328,7 +4439,8 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     const [mutationOptions = {}] = args
     const point = this._continue({
@@ -4468,7 +4580,8 @@ export class Point0<
     TClientLoaderOutput,
     TClientMapperOutput,
     TClientInputSchema,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return (this._errorComponent ??
       {
@@ -4490,7 +4603,8 @@ export class Point0<
     TClientLoaderOutput,
     TClientMapperOutput,
     TClientInputSchema,
-    TProps
+    TProps,
+    TExtraQueries
   > {
     return (this._loadingComponent ??
       {
