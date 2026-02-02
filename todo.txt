@@ -2,6 +2,21 @@
 ------ before start0 -----
 --------------------------
 
+
+Fix types of FinalLoaderOutput, it is now XData
+XData should be mapped output or fiest query data
+move mountable types to types ts
+remove mapper from all execpt mountables
+remove Provider Page Component from public api X is enough
+tests for head
+tests for withQuery
+figure out of samePoint or adding to page layout query as likw iwthQuery, or what
+add withLayout
+withProps
+pass queries one by one to withQuery (after call withQuery we in render stage, but it is ok after layout also, becous elayout query becomes first in previous withQueries and everythoing still ok)
+
+wrapper point type
+
 Генерик квериес, оутер порождает разруленную кверю, врапер любую, но в Пейджу компонент или прочее попадают все разруленные, а также сама реди квери имеет Враппер Оутер, и их и надо использовать в пейдже лэйоуте провайдере компоненте
 А лэйоут в пейджу добавляется через слово лэйоут
 Квери врапер и провайдер они также принимают лоадинг и эррор компоненты
