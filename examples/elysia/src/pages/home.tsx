@@ -30,13 +30,12 @@ const someStable = superstore.define('someStable', () => 123, 'clientServerTrans
 const someVar = superstore.define('someVar', () => 0, 'clientServerTransferred')
 
 export const BestIdeaComponent = client
-  .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
+  .lets<{ cta: string }>('component', 'bestIdea') // TODO: route and id may be right inside lets?
   .input(z.object({ x: z.coerce.number() }))
   .loader(async ({ ctx, input }) => ({
     bestIdea: await ctx.prisma.idea.findUniqueOrThrow({ where: { id: 2 } }),
     y: input.x * 2,
   }))
-  .props<{ cta: string }>()
   .component(({ data, props }) => {
     return (
       <div>

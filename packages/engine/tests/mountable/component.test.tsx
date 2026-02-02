@@ -123,9 +123,8 @@ describe('component', () => {
 
   it('props and input', async () => {
     const component = root
-      .lets('component', 'stats')
+      .lets<{ x: number; y: number }>('component', 'stats')
       .combinedInput<{ id: string; mult: number }>()
-      .props<{ x: number; y: number }>()
       .loader(({ input }) => ({ value: `${input.id}-${input.mult}` }))
       .component(({ data, props }) => (
         <div id="component">

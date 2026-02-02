@@ -269,7 +269,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   //   return result.data
   // }
 
-  async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
+  async execute<TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>>(
     point: TPoint,
     ...args: TPoint['Infer']['ServerInputOptional'] extends true
       ? [input?: TPoint['Infer']['ServerInputRaw'], response0?: Response0]
@@ -277,7 +277,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
   ): Promise<ServerExecuteResult<TPoint['Infer']['Ctx'], TPoint['Infer']['ServerLoaderOutput']>>
   async execute<
     TPoint extends
-      | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
       | EndPoint
       | undefined,
   >({
@@ -286,10 +286,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
     response0,
   }: ExecuteOptions<TPoint>): Promise<
     ServerExecuteResult<
-      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['Ctx']
         : UnknownCtx,
-      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+      TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
         ? TPoint['Infer']['ServerLoaderOutput']
         : UnknownData
     >
@@ -300,7 +300,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
       | [
           point:
             | EndPoint
-            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+            | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
             | undefined,
           input?: InputRaw,
           response0?: Response0,
@@ -950,7 +950,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
 export type ExecuteOptions<
   TPoint extends
     | EndPoint
-    | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>
+    | NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>
     | undefined,
 > = {
   point?: TPoint | undefined

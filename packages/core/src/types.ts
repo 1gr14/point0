@@ -99,6 +99,7 @@ export type Infer<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = {
   PointType: TPointType
@@ -122,6 +123,7 @@ export type Infer<
   ServerInputRaw: InputRaw<TServerInputSchema>
   ServerInputOptional: IsInputOptional<TServerInputSchema>
   Props: TProps
+  InnerProps: TInnerProps
   QueryResultType: TQueryResultType
   ExtraQueries: TExtraQueries
   UseQueryOptions: UsePointQueryOptions<
@@ -176,7 +178,6 @@ export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'rend
 export type EndPointType = Exclude<PointType, StagePointType>
 export type RequestableEndPointType = Exclude<EndPointType, 'root' | 'base' | 'plugin'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
-export type RenderablePointType = 'page' | 'component' | 'layout'
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
 export type EndPointTypeOrNever<TPointType extends PointType | UndefinedEndPointType> = TPointType extends EndPointType
@@ -203,6 +204,7 @@ export type AnyPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = Point0<
   TPointType,
@@ -218,6 +220,7 @@ export type AnyPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -233,6 +236,7 @@ export type RootPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'root',
@@ -248,6 +252,7 @@ export type RootPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -263,6 +268,7 @@ export type PluginPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'plugin',
@@ -278,6 +284,7 @@ export type PluginPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -293,6 +300,7 @@ export type BasePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'base',
@@ -308,6 +316,7 @@ export type BasePoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -323,6 +332,7 @@ export type PagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'page',
@@ -338,6 +348,7 @@ export type PagePoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -353,6 +364,7 @@ export type LayoutPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   'layout',
@@ -368,6 +380,7 @@ export type LayoutPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -384,6 +397,7 @@ export type EndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = AnyPoint<
   TPointType,
@@ -399,6 +413,7 @@ export type EndPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 
@@ -1545,7 +1560,7 @@ export type UndefinedClientResponse = undefined
 export type UndefinedLastDataOrResponse = undefined
 
 export type ServerExecuteFn = <
-  TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
+  TPoint extends NiceEndPoint<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>,
 >(
   point: TPoint,
   ...args: TPoint['Infer']['ServerInputOptional'] extends true
@@ -1971,16 +1986,7 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 // nice middle point
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends
-    | 'ctx'
-    | 'loader'
-    | 'use'
-    | 'clientLoader'
-    | 'mapper'
-    | 'props'
-    | 'input'
-    | 'clientInput'
-    | 'combinedInput',
+  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'mapper' | 'input' | 'clientInput' | 'combinedInput',
 > = TPointType extends 'clientStage'
   ? TMethod extends 'loader'
     ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add your.loader() before last .clientLoader()`>
@@ -2026,9 +2032,7 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
                     ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
                     : TMethod extends 'mapper'
                       ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
-                      : TMethod extends 'props'
-                        ? ShowError<`You can not use props() in render stage. Call it before any render methods`>
-                        : unknown
+                      : unknown
       : unknown
 
 export type NiceRootStagePoint<
@@ -2045,6 +2049,7 @@ export type NiceRootStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2061,6 +2066,7 @@ export type NiceRootStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'root'
@@ -2092,9 +2098,9 @@ export type NiceRootStagePoint<
   | 'clientInput'
   | 'combinedInput'
   | 'ctx'
-  | 'loader'
-  | 'clientLoader'
-  | 'mapper'
+  // | 'loader'
+  // | 'clientLoader'
+  // | 'mapper'
   | 'head'
   | 'scrollPosition'
   | 'scrollRestore'
@@ -2120,6 +2126,7 @@ export type NicePluginStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2136,6 +2143,7 @@ export type NicePluginStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'plugin'
@@ -2197,6 +2205,7 @@ export type NiceBaseStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2213,6 +2222,7 @@ export type NiceBaseStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'base'
@@ -2265,6 +2275,7 @@ export type NicePageStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2281,6 +2292,7 @@ export type NicePageStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'page'
@@ -2299,7 +2311,6 @@ export type NicePageStagePoint<
   | 'mapper'
   // | 'flatter'
   | 'head'
-  | 'props'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'prefetchPolicy'
@@ -2326,6 +2337,7 @@ export type NiceComponentStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2342,6 +2354,7 @@ export type NiceComponentStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'component'
@@ -2359,7 +2372,6 @@ export type NiceComponentStagePoint<
   | 'clientLoader'
   | 'mapper'
   // | 'flatter'
-  | 'props'
   | 'onPrefetch'
   | 'point'
   | 'type'
@@ -2382,6 +2394,7 @@ export type NiceQueryStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2398,6 +2411,7 @@ export type NiceQueryStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'query'
@@ -2409,7 +2423,6 @@ export type NiceQueryStagePoint<
   | 'ctx'
   | 'loader'
   | 'clientLoader'
-  | 'mapper'
   | 'onPrefetch'
   | 'point'
   | 'type'
@@ -2430,6 +2443,7 @@ export type NiceInfiniteQueryStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2446,6 +2460,7 @@ export type NiceInfiniteQueryStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'infiniteQuery'
@@ -2457,7 +2472,6 @@ export type NiceInfiniteQueryStagePoint<
   | 'ctx'
   | 'loader'
   | 'clientLoader'
-  | 'mapper'
   // | 'flatter'
   | 'onPrefetch'
   | 'point'
@@ -2479,6 +2493,7 @@ export type NiceMutationStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2495,6 +2510,7 @@ export type NiceMutationStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'mutation'
@@ -2507,7 +2523,6 @@ export type NiceMutationStagePoint<
   | 'ctx'
   | 'loader'
   | 'clientLoader'
-  | 'mapper'
   | 'point'
   | 'type'
   | 'Infer'
@@ -2527,6 +2542,7 @@ export type NiceLayoutStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2543,6 +2559,7 @@ export type NiceLayoutStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'layout'
@@ -2566,7 +2583,6 @@ export type NiceLayoutStagePoint<
   | 'mapper'
   // | 'flatter'
   | 'head'
-  | 'props'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'prefetchPolicy'
@@ -2593,6 +2609,7 @@ export type NiceProviderStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2609,6 +2626,7 @@ export type NiceProviderStagePoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   | 'provider'
@@ -2647,6 +2665,7 @@ export type NiceStagePoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = TLetsEndPointType extends 'root'
   ? NiceRootStagePoint<
@@ -2663,6 +2682,7 @@ export type NiceStagePoint<
       TClientInputSchema,
       TQueryResultType,
       TProps,
+      TInnerProps,
       TExtraQueries
     >
   : TLetsEndPointType extends 'plugin'
@@ -2680,6 +2700,7 @@ export type NiceStagePoint<
         TClientInputSchema,
         TQueryResultType,
         TProps,
+        TInnerProps,
         TExtraQueries
       >
     : TLetsEndPointType extends 'base'
@@ -2697,6 +2718,7 @@ export type NiceStagePoint<
           TClientInputSchema,
           TQueryResultType,
           TProps,
+          TInnerProps,
           TExtraQueries
         >
       : TLetsEndPointType extends 'page'
@@ -2714,6 +2736,7 @@ export type NiceStagePoint<
             TClientInputSchema,
             TQueryResultType,
             TProps,
+            TInnerProps,
             TExtraQueries
           >
         : TLetsEndPointType extends 'component'
@@ -2731,6 +2754,7 @@ export type NiceStagePoint<
               TClientInputSchema,
               TQueryResultType,
               TProps,
+              TInnerProps,
               TExtraQueries
             >
           : TLetsEndPointType extends 'query'
@@ -2748,6 +2772,7 @@ export type NiceStagePoint<
                 TClientInputSchema,
                 TQueryResultType,
                 TProps,
+                TInnerProps,
                 TExtraQueries
               >
             : TLetsEndPointType extends 'infiniteQuery'
@@ -2765,6 +2790,7 @@ export type NiceStagePoint<
                   TClientInputSchema,
                   TQueryResultType,
                   TProps,
+                  TInnerProps,
                   TExtraQueries
                 >
               : TLetsEndPointType extends 'mutation'
@@ -2782,6 +2808,7 @@ export type NiceStagePoint<
                     TClientInputSchema,
                     TQueryResultType,
                     TProps,
+                    TInnerProps,
                     TExtraQueries
                   >
                 : TLetsEndPointType extends 'layout'
@@ -2799,6 +2826,7 @@ export type NiceStagePoint<
                       TClientInputSchema,
                       TQueryResultType,
                       TProps,
+                      TInnerProps,
                       TExtraQueries
                     >
                   : TLetsEndPointType extends 'provider'
@@ -2816,6 +2844,7 @@ export type NiceStagePoint<
                         TClientInputSchema,
                         TQueryResultType,
                         TProps,
+                        TInnerProps,
                         TExtraQueries
                       >
                     : never
@@ -2870,6 +2899,7 @@ export type NiceRootEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2886,6 +2916,7 @@ export type NiceRootEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   'lets' | 'point' | 'type' | 'Infer'
@@ -2905,6 +2936,7 @@ export type NicePluginEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2921,6 +2953,7 @@ export type NicePluginEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   'point' | 'type' | 'Infer'
@@ -2940,6 +2973,7 @@ export type NiceBaseEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -2956,6 +2990,7 @@ export type NiceBaseEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   'lets' | 'point' | 'type' | 'Infer'
@@ -3000,6 +3035,7 @@ export type NicePageEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3016,6 +3052,7 @@ export type NicePageEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithQueryIfSuitable<
@@ -3039,6 +3076,7 @@ export type NiceComponentEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3055,6 +3093,7 @@ export type NiceComponentEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X' | 'useX'>
@@ -3074,6 +3113,7 @@ export type NiceLayoutEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3090,6 +3130,7 @@ export type NiceLayoutEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithQueryIfSuitable<
@@ -3113,6 +3154,7 @@ export type NiceQueryEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3129,6 +3171,7 @@ export type NiceQueryEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
@@ -3148,6 +3191,7 @@ export type NiceInfiniteQueryEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3164,6 +3208,7 @@ export type NiceInfiniteQueryEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
@@ -3183,6 +3228,7 @@ export type NiceMutationEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3199,6 +3245,7 @@ export type NiceMutationEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithFetchIfHasServerLoader<
@@ -3221,6 +3268,7 @@ export type NiceProviderEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = Pick<
   Point0<
@@ -3237,6 +3285,7 @@ export type NiceProviderEndPoint<
     TClientInputSchema,
     TQueryResultType,
     TProps,
+    TInnerProps,
     TExtraQueries
   >,
   WithQueryIfSuitable<
@@ -3260,6 +3309,7 @@ export type NiceEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TProps extends Props | UndefinedProps,
+  TInnerProps extends Props | UndefinedProps,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = TPointType extends 'root'
   ? NiceRootEndPoint<
@@ -3276,6 +3326,7 @@ export type NiceEndPoint<
       TClientInputSchema,
       TQueryResultType,
       TProps,
+      TInnerProps,
       TExtraQueries
     >
   : TPointType extends 'plugin'
@@ -3293,6 +3344,7 @@ export type NiceEndPoint<
         TClientInputSchema,
         TQueryResultType,
         TProps,
+        TInnerProps,
         TExtraQueries
       >
     : TPointType extends 'base'
@@ -3310,6 +3362,7 @@ export type NiceEndPoint<
           TClientInputSchema,
           TQueryResultType,
           TProps,
+          TInnerProps,
           TExtraQueries
         >
       : TPointType extends 'page'
@@ -3327,6 +3380,7 @@ export type NiceEndPoint<
             TClientInputSchema,
             TQueryResultType,
             TProps,
+            TInnerProps,
             TExtraQueries
           >
         : TPointType extends 'component'
@@ -3344,6 +3398,7 @@ export type NiceEndPoint<
               TClientInputSchema,
               TQueryResultType,
               TProps,
+              TInnerProps,
               TExtraQueries
             >
           : TPointType extends 'query'
@@ -3361,6 +3416,7 @@ export type NiceEndPoint<
                 TClientInputSchema,
                 TQueryResultType,
                 TProps,
+                TInnerProps,
                 TExtraQueries
               >
             : TPointType extends 'infiniteQuery'
@@ -3378,6 +3434,7 @@ export type NiceEndPoint<
                   TClientInputSchema,
                   TQueryResultType,
                   TProps,
+                  TInnerProps,
                   TExtraQueries
                 >
               : TPointType extends 'mutation'
@@ -3395,6 +3452,7 @@ export type NiceEndPoint<
                     TClientInputSchema,
                     TQueryResultType,
                     TProps,
+                    TInnerProps,
                     TExtraQueries
                   >
                 : TPointType extends 'layout'
@@ -3412,6 +3470,7 @@ export type NiceEndPoint<
                       TClientInputSchema,
                       TQueryResultType,
                       TProps,
+                      TInnerProps,
                       TExtraQueries
                     >
                   : TPointType extends 'provider'
@@ -3429,6 +3488,7 @@ export type NiceEndPoint<
                         TClientInputSchema,
                         TQueryResultType,
                         TProps,
+                        TInnerProps,
                         TExtraQueries
                       >
                     : never
@@ -3447,6 +3507,7 @@ export type AnyNiceEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = NiceEndPoint<
   TPointType,
@@ -3462,6 +3523,7 @@ export type AnyNiceEndPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 export type AnyNiceRequestableEndPoint<
@@ -3478,6 +3540,7 @@ export type AnyNiceRequestableEndPoint<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
   TProps extends Props | UndefinedProps = any,
+  TInnerProps extends Props | UndefinedProps = any,
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
 > = NiceEndPoint<
   TPointType,
@@ -3493,6 +3556,7 @@ export type AnyNiceRequestableEndPoint<
   TClientInputSchema,
   TQueryResultType,
   TProps,
+  TInnerProps,
   TExtraQueries
 >
 

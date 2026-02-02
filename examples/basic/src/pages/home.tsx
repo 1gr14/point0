@@ -30,7 +30,7 @@ const someStable = superstore.define('someStable', () => 123, 'clientServerTrans
 const someVar = superstore.define('someVar', () => 0, 'clientServerTransferred')
 
 export const BestIdeaComponent = client
-  .lets('component', 'bestIdea') // TODO: route and id may be right inside lets?
+  .lets<{ cta: string }>('component', 'bestIdea') // TODO: route and id may be right inside lets?
   .input(z.object({ x: z.number() }))
   .input(z.object({ y: z.number() }))
   .loader(async ({ ctx, input }) => {
@@ -44,7 +44,6 @@ export const BestIdeaComponent = client
     // clDD: ctx.clC,
     slDate: new Date(),
   }))
-  .props<{ cta: string }>()
   .clientLoader(async (o) => {
     await new Promise((resolve) => setTimeout(resolve, 1))
     return {
