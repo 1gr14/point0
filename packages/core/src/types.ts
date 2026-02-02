@@ -16,7 +16,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { Point0 } from './index.js'
-import type { ExtraQueries, UndefinedExtraQueries, UseQueryOrInfiniteQueryResult } from './mountable.js'
+import type { ExtraQueries, UndefinedExtraQueries } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
@@ -1674,18 +1674,6 @@ export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'i
   ? {
       type: 'loader'
       fn: ClientLoaderFn
-      unstableId: number
-    }
-  : TType extends 'input'
-    ? { type: 'input'; schema: InputSchema; unstableId: number }
-    : never
-
-export type ClientMountAction<TType extends 'query' | 'input' = 'query' | 'input'> = TType extends 'query'
-  ? {
-      type: 'query'
-      fn: (
-        options: { input: InputParsed; enabled: true } | { input: unknown; enabled: false },
-      ) => UseQueryOrInfiniteQueryResult
       unstableId: number
     }
   : TType extends 'input'

@@ -754,3 +754,60 @@ export type MountableComponentType<
   TProps extends Props | UndefinedProps,
   TWithChildren extends boolean | null,
 > = React.ComponentType<MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, TWithChildren>>
+
+export type MountableWrapperFnOptions<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props | undefined,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
+> = {
+  props: TInnerProps
+  LoadingComponent: React.ComponentType
+  ErrorComponent: React.ComponentType<{ error: Error }>
+} & UseMountableResult<
+  any,
+  TQueryResultType,
+  TServerLoaderOutput,
+  TClientLoaderOutput,
+  TClientMapperOutput,
+  TClientInputSchema,
+  TExtraQueries
+>
+export type MountableWrapperFn<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
+  TInnerProps extends Props | undefined = any,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = any,
+  TNewInnerProps extends Props | undefined = TInnerProps,
+> = (
+  options: MountableWrapperComponentProps<
+    TQueryResultType,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TClientInputSchema,
+    TInnerProps,
+    TExtraQueries
+  >,
+) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>>
+
+export type ClientMountAction<TType extends 'query' | 'input' | 'wrapper' = 'query' | 'input' | 'wrapper'> =
+  TType extends 'query'
+    ? {
+        type: 'query'
+        fn: (
+          options: { input: InputParsed; enabled: true } | { input: unknown; enabled: false },
+        ) => UseQueryOrInfiniteQueryResult
+        unstableId: number
+      }
+    : TType extends 'wrapper'
+      ? { type: 'wrapper'; fn: MountableWrapperFn }
+      : TType extends 'input'
+        ? { type: 'input'; schema: InputSchema; unstableId: number }
+        : never
