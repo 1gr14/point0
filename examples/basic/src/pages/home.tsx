@@ -11,7 +11,6 @@ import { ExternalHelperComponent, ExternalHelperComponent2, ExternalHelperCompon
 import iconUrl from '../assets/icon-1.svg'
 import iconRaw from '../assets/icon.svg' with { type: 'text' }
 import { Svg } from '../lib/svg.js'
-import { clientFnMutation } from './idea-create.js'
 // import { Svg } from '../lib/svg.js'
 
 // const IconText = ``
@@ -63,11 +62,11 @@ export const BestIdeaComponent = client
   .loading(({ input, props }) => {
     return <div>Loading...</div>
   })
-  .outer(({ children, ErrorComponent, LoadingComponent, input, props, location }) => {
+  .outer(({ children, ErrorComponent, LoadingComponent, input, props }) => {
     return children
   })
   // .component(X)
-  .component(({ data, props, location }) => {
+  .component(({ data, props }) => {
     return (
       <div>
         <h1>Best Idea {data.mult}</h1>
@@ -132,21 +131,21 @@ export default generalLayout
           onClick={() => {
             setState(state + 1)
             setState2(state2 + 1)
-            BestIdeaComponent.executeDetailed({ x: 10, y: 20 })
-              .then((result) => {
-                console.info(result)
-              })
-              .catch((error: unknown) => {
-                console.error(error)
-              })
-            clientFnMutation
-              .executeDetailed()
-              .then((result) => {
-                console.info(1, result)
-              })
-              .catch((error: unknown) => {
-                console.error(error)
-              })
+            // BestIdeaComponent.fetchQuery({ x: 10, y: 20 })
+            //   .then((result) => {
+            //     console.info(result)
+            //   })
+            //   .catch((error: unknown) => {
+            //     console.error(error)
+            //   })
+            // clientFnMutation
+            //   .executeDetailed()
+            //   .then((result) => {
+            //     console.info(1, result)
+            //   })
+            //   .catch((error: unknown) => {
+            //     console.error(error)
+            //   })
           }}
         >
           Click mexzzx

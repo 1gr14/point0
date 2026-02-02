@@ -177,7 +177,7 @@ describe('FakeClient', () => {
     expect(env.target.name).toBe('server')
     await fakeClient.run(async () => {
       expect(env.target.name).toBe('client')
-      const data = await page.execute()
+      const data = await page.fetchQuery()
       expect(env.target.name).toBe('client')
       expect(data.serverLoaderTargetName).toBe('server')
       expect(data.clientLoaderTargetName).toBe('client')

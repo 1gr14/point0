@@ -116,7 +116,7 @@ describe('component', () => {
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "#page:
-        #loading: ...
+        #error: test error
       "
     `)
   })
@@ -167,10 +167,10 @@ describe('component', () => {
       .lets('component', 'stats')
       .combinedInput<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, query, input }) => (
+      .wrapper(({ children, queries, input }) => (
         <div id="wrapper">
           <div id="input">{input?.id}</div>
-          <div id="query-status">{query?.status}</div>
+          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -220,7 +220,7 @@ describe('component', () => {
       .combinedInput<{ id: string }>()
       .loader(({ input }) => ({ x: input.id }))
       .outer(({ children, input }) => {
-        if (input.id.length > 2) {
+        if (!input || input.id.length > 2) {
           return <div id="outer">you shell not pass</div>
         }
         return children

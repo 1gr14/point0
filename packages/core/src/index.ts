@@ -69,7 +69,6 @@ import type {
   Infer,
   InferCtxFnOutputCtxAppend,
   InferCtxFnOutputCtxExposedKeys,
-  InputParseResult,
   InputParsed,
   InputRaw,
   InputSchema,
@@ -166,6 +165,7 @@ import type {
   MountableOuterComponentType,
   MountableWrapperComponentType,
   PageSuccessComponentType,
+  SuccessComponentType,
   UndefinedComponentSuccessComponent,
   UndefinedExtraQueries,
   UndefinedLayoutSuccessComponent,
@@ -3580,8 +3580,8 @@ export class Point0<
       _prefetchPolicy: this._base?._prefetchPolicy,
       _onPrefetchFns: this._base?._onPrefetchFns,
       _polh: this._base?._polh,
-      _wrappers: this._base?._wrappers ?? [],
-      _outers: this._base?._outers ?? [],
+      _wrappers: this.type === 'base' ? this._wrappers : [],
+      _outers: this.type === 'base' ? this._outers : [],
       _errorComponent: undefined,
       _layoutErrorComponent: this._base?._layoutErrorComponent as never,
       _pageErrorComponent: this._base?._pageErrorComponent as never,
@@ -4684,6 +4684,9 @@ export class Point0<
       // execute: point.execute.bind(point),
       // executeDetailed: point.executeDetailed.bind(point),
       fetch: point.fetch.bind(point),
+      fetchQuery: point.fetchQuery.bind(point),
+      fetchInfiniteQuery: point.fetchInfiniteQuery.bind(point),
+      fetchMutation: point.fetchMutation.bind(point),
       // Component: Object.assign(point.Component.bind(point), { displayName: (point.Component as any).displayName }),
       // Page: Object.assign(point.Page.bind(point), { displayName: (point.Page as any).displayName }),
       // Layout: Object.assign(point.Layout.bind(point), { displayName: (point.Layout as any).displayName }),
@@ -5225,6 +5228,9 @@ export class Point0<
     >,
     props: FinalProps<TProps>,
   ): void {
+    if (this.type !== 'page') {
+      return
+    }
     for (const headItem of this._executeHead(useMountableResult, props)) {
       useHead(headItem)
     }
@@ -5507,7 +5513,7 @@ export class Point0<
   //   return result
   // }
 
-  useMountable(
+  useX(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
       ? [
           input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -5568,17 +5574,17 @@ export class Point0<
       let currentInputParsed: InputParsed = {}
       let error: Error0 | undefined = undefined
       const queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult> = []
-      if (this._hasServerLoader() && !this._hasClientLoader()) {
+      if (this._hasServerLoader() || this._hasClientLoader()) {
         queriesFns.push((enabled: false | undefined) => {
           return this._queryResultType === 'infiniteQuery'
             ? this.useInfiniteQuery(
                 inputRaw as never,
-                { ...queryOptions, enabled: enabled ?? true } as never,
+                { ...queryOptions, enabled: enabled ?? globallyEnabled } as never,
                 fetchOptions as never,
               )
             : this.useQuery(
                 inputRaw as never,
-                { ...queryOptions, enabled: enabled ?? true } as never,
+                { ...queryOptions, enabled: enabled ?? globallyEnabled } as never,
                 fetchOptions as never,
               )
         })
@@ -5598,7 +5604,7 @@ export class Point0<
         } else if (action.type === 'query') {
           // eslint-disable-next-line @typescript-eslint/no-loop-func
           queriesFns.push((enabled: false | undefined) =>
-            action.fn({ input: { ...currentInputParsed }, enabled: enabled ?? true }),
+            action.fn({ input: { ...currentInputParsed }, enabled: enabled ?? globallyEnabled }),
           )
         } else {
           throw new Error(`Unknown client mount action type: ${(action as any).type}`)
@@ -5633,11 +5639,10 @@ export class Point0<
         input: currentInputParsed,
         queriesFns,
       }
-    }, [inputRawString])
+    }, [inputRawString, globallyEnabled])
 
     const queries = prepare.queriesFns.map((fn) => fn(globallyEnabled ? undefined : false))
 
-    // return React.useMemo<UseMountableResult<any, any, any, any, any, any, any>>(() => {
     if (prepare.error) {
       return {
         data: undefined,
@@ -5648,14 +5653,17 @@ export class Point0<
         status: 'error',
       } satisfies UseMountableResult<any, any, any, any, any, any, any>
     }
-    const anyOriginalError = queries.find((query) => query.error)
+    const anyOriginalError = queries.find((query) => query.error)?.error
     const error = anyOriginalError ? Error0.from(anyOriginalError) : undefined
-    const loading = queries.some((query) => query.isLoading)
-    const firstData = queries.find((query) => query.data)
+    const loading = queries.some((query) => query.status === 'pending')
+    const firstData = queries.find((query) => query.data)?.data
     const status = error ? 'error' : loading ? 'pending' : 'success'
     const mappedData =
       status === 'success'
-        ? this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data, input: prepare.input, queries }), firstData)
+        ? this._clientMapperFns.reduce(
+            (data, mapperFn) => mapperFn({ data: data as never, input: prepare.input, queries }),
+            firstData as never,
+          )
         : undefined
     return {
       data: mappedData,
@@ -6889,6 +6897,31 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, fetchOptions))
   }
 
+  fetchMutation = async (
+    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+      ? [
+          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          mutationOptions?: MutationOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+        ]
+      : [
+          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+          mutationOptions?: MutationOptions | undefined,
+          fetchOptions?: FetchOptions | undefined,
+        ]
+  ): Promise<
+    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  > => {
+    const [input, mutationOptionsProvided, fetchOptions] = args
+    const mutationOptions = this.getMutationOptions(mutationOptionsProvided, fetchOptions)
+    return (await (mutationOptions as any).mutationFn(input)) as FinalLoaderMappedOutput<
+      TQueryResultType,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TClientMapperOutput
+    >
+  }
+
   async _callPrefetchFns({ preventPrefetchFns }: { preventPrefetchFns?: boolean | OnPrefetchFn[] }): Promise<void> {
     const prefetchFns =
       preventPrefetchFns === true ? new Set<OnPrefetchFn>() : new Set<OnPrefetchFn>([...this._onPrefetchFns])
@@ -7636,11 +7669,14 @@ export class Point0<
 
   // mountable components
 
-  private readonly _Mountable = (props: {
+  private readonly _getMountable = (props: {
     input: InputsRaw<TServerInputSchema, TClientInputSchema>
     props: FinalProps<TProps>
-    extraChildrenProps: Record<string, any>
+    mountComponent: SuccessComponentType<any, any, any, any, any, any, any> | undefined
+    extraProps: (useMountableResult: UseMountableResult<any, any, any, any, any, any, any>) => Record<string, any>
   }): React.ReactNode => {
+    const { input, props: restProps, extraProps, mountComponent } = props
+
     const componentType: DestinationComponentType =
       this.type === 'page'
         ? 'page'
@@ -7654,11 +7690,200 @@ export class Point0<
     })
     const errorComponent = this._getErrorComponent({ type: componentType })
 
-    const useMountableResult = this.useMountable(props.input)
+    const [isOuterPassed, setIsOuterPassed] = React.useState(false)
 
-    if (this.type === 'page') {
-      this._useHead(useMountableResult, props.props)
+    const useMountableResult = this.useX(input, undefined, undefined, isOuterPassed)
+
+    // const [actualUseMountableResult, setActualUseMountableResult] = React.useState<UseMountableResult<any, any, any, any, any, any, any>>(useMountableResult)
+
+    // if (this.type === 'page') {
+    //   this._useHead(actualUseMountableResult, restProps)
+    // }
+
+    const LoadingComponent = React.useCallback(() => {
+      const result = {
+        data: undefined,
+        error: undefined,
+        input: useMountableResult.input,
+        loading: true,
+        queries: useMountableResult.queries as never,
+        status: 'pending',
+      } satisfies UseMountableResult<
+        'pending',
+        TQueryResultType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TClientMapperOutput,
+        TClientInputSchema,
+        TExtraQueries
+      >
+      this._useHead(result, restProps)
+      return React.createElement(loadingComponent, {
+        ...result,
+        props: restProps as TProps,
+        type: componentType,
+      })
+    }, [componentType, loadingComponent, useMountableResult, restProps])
+
+    const ErrorComponent = React.useCallback(
+      ({ error }: { error: Error }) => {
+        const result = {
+          data: undefined,
+          error: Error0.from(error),
+          input: useMountableResult.input,
+          loading: false,
+          queries: useMountableResult.queries as never,
+          status: 'error',
+        } satisfies UseMountableResult<
+          'error',
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TExtraQueries
+        >
+        this._useHead(result, restProps)
+        return React.createElement(errorComponent, {
+          ...result,
+          props: restProps as TProps,
+          type: componentType,
+        })
+      },
+      [componentType, errorComponent, useMountableResult, restProps],
+    )
+
+    const withWrappers = (
+      innerChildren: React.ReactNode,
+      useMountableResult: UseMountableResult<any, any, any, any, any, any, any>,
+    ): Exclude<React.ReactNode, Promise<any>> => {
+      if (this._wrappers.length === 0) {
+        return innerChildren as Exclude<React.ReactNode, Promise<any>>
+      }
+      return [...this._wrappers].reverse().reduce((acc, Wrapper) => {
+        return React.createElement(Wrapper, {
+          children: acc,
+          ...useMountableResult,
+          props: restProps as TProps,
+          LoadingComponent,
+          ErrorComponent,
+        } as never)
+      }, innerChildren) as Exclude<React.ReactNode, Promise<any>>
     }
+
+    const withOuters = (innerChildren: React.ReactNode): Exclude<React.ReactNode, Promise<any>> => {
+      if (this._outers.length === 0) {
+        return innerChildren as Exclude<React.ReactNode, Promise<any>>
+      }
+      return [...this._outers].reverse().reduce(
+        (acc, Outer) => {
+          return React.createElement(Outer, {
+            children: acc,
+            input: useMountableResult.input,
+            props: restProps as TProps,
+            LoadingComponent,
+            ErrorComponent,
+          })
+        },
+        innerChildren as Exclude<React.ReactNode, Promise<any>>,
+      )
+    }
+
+    // const withProvider = (
+    //   innerChildren: React.ReactNode,
+    //   value: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>,
+    // ): Exclude<React.ReactNode, Promise<any>> => {
+    //   if (!withProvider) {
+    //     return innerChildren as Exclude<React.ReactNode, Promise<any>>
+    //   }
+    //   if (!this._ProviderReactContext) {
+    //     throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+    //   }
+    //   superstore.setValue(
+    //     `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(input)}`,
+    //     value,
+    //     'clientServerIsolated',
+    //   )
+
+    //   return React.createElement(this._ProviderReactContext.Provider, {
+    //     value,
+    //     children: innerChildren,
+    //   })
+    // }
+
+    const MountableInner = React.useCallback((): React.ReactNode => {
+      React.useEffect(() => {
+        setIsOuterPassed(true)
+        return () => {
+          setIsOuterPassed(false)
+        }
+      }, [])
+
+      if (!mountComponent) {
+        const result = {
+          data: undefined,
+          error: new Error0(`Mountable component not found`),
+          input: useMountableResult.input,
+          loading: false,
+          queries: undefined,
+          status: 'error',
+        } satisfies UseMountableResult<
+          'error',
+          TQueryResultType,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TClientMapperOutput,
+          TClientInputSchema,
+          TExtraQueries
+        >
+        this._useHead(result, restProps)
+        return withWrappers(
+          React.createElement(errorComponent, {
+            ...result,
+            props: restProps as TProps,
+            type: componentType,
+          }),
+          result,
+        )
+      }
+
+      this._useHead(useMountableResult, restProps)
+
+      if (useMountableResult.status === 'error') {
+        return withWrappers(
+          React.createElement(errorComponent, {
+            ...useMountableResult,
+            props: restProps as TProps,
+            type: componentType,
+          }),
+          useMountableResult,
+        )
+      }
+
+      if (useMountableResult.status === 'pending') {
+        return withWrappers(
+          React.createElement(loadingComponent, {
+            ...useMountableResult,
+            props: restProps as TProps,
+            type: componentType,
+          }),
+          useMountableResult,
+        )
+      }
+
+      return withWrappers(
+        React.createElement(mountComponent as React.ComponentType<any>, {
+          ...extraProps(useMountableResult),
+          props: restProps as TProps,
+          input: useMountableResult.input,
+          queries: useMountableResult.queries,
+          data: useMountableResult.data,
+        }),
+        useMountableResult,
+      )
+    }, [componentType, errorComponent, useMountableResult, restProps, extraProps])
+
+    return withOuters(React.createElement(MountableInner))
   }
 
   Page = (props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, false>): React.ReactNode => {
@@ -7723,7 +7948,14 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    // return <Mountable point={this} props={restProps} input={inputRaw} />
+    return this._getMountable({
+      input: inputRaw,
+      props: restProps,
+      extraProps: () => {
+        return { location }
+      },
+      mountComponent: this._page as never,
+    })
 
     // if (clientInputParseResult.inputParseError) {
     //   const result = {
@@ -7908,91 +8140,91 @@ export class Point0<
     // })
   }
 
-  _PageLoader = (props: {
-    location: AnyLocation
-    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-    clientInputParseResult: InputParseResult<TClientInputSchema>
-    restProps: FinalProps<TProps>
-  }): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
+  // _PageLoader = (props: {
+  //   location: AnyLocation
+  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  //   clientInputParseResult: InputParseResult<TClientInputSchema>
+  //   restProps: FinalProps<TProps>
+  // }): React.ReactNode => {
+  //   const loadingComponent = this._getLoadingComponent({ type: 'page' })
+  //   const errorComponent = this._getErrorComponent({ type: 'page' })
 
-    const { location, inputRaw, clientInputParseResult, restProps } = props
+  //   const { location, inputRaw, clientInputParseResult, restProps } = props
 
-    const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
+  //   const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
 
-    if (!this._page) {
-      const result = {
-        data: undefined,
-        error: new Error0('No page component'),
-        input: clientInputParseResult.inputParsed,
-        location,
-        loading: false,
-        query: null,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      this._useHead(result)
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'page',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
+  //   if (!this._page) {
+  //     const result = {
+  //       data: undefined,
+  //       error: new Error0('No page component'),
+  //       input: clientInputParseResult.inputParsed,
+  //       location,
+  //       loading: false,
+  //       query: null,
+  //     } satisfies AnyUseLoaderResult<
+  //       'error',
+  //       TQueryResultType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TClientMapperOutput,
+  //       TClientInputSchema,
+  //       AnyLocation
+  //     >
+  //     this._useHead(result)
+  //     return this._withWrappers({
+  //       children: React.createElement(errorComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'page',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
 
-    this._useHead(result)
+  //   this._useHead(result)
 
-    if (result.error) {
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'page',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
-    if (result.loading) {
-      return this._withWrappers({
-        children: React.createElement(loadingComponent, {
-          ...result,
-          props: restProps,
-          type: 'page',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
+  //   if (result.error) {
+  //     return this._withWrappers({
+  //       children: React.createElement(errorComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'page',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
+  //   if (result.loading) {
+  //     return this._withWrappers({
+  //       children: React.createElement(loadingComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'page',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
 
-    return this._withWrappers({
-      children: React.createElement(this._page, {
-        ...result,
-        location: result.location as never,
-        props: restProps,
-      }),
-      useLoaderResult: result,
-      props: restProps,
-    })
-  }
+  //   return this._withWrappers({
+  //     children: React.createElement(this._page, {
+  //       ...result,
+  //       location: result.location as never,
+  //       props: restProps,
+  //     }),
+  //     useLoaderResult: result,
+  //     props: restProps,
+  //   })
+  // }
 
   Component = (
     props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, false>,
   ): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'component' })
-    const errorComponent = this._getErrorComponent({ type: 'component' })
+    // const loadingComponent = this._getLoadingComponent({ type: 'component' })
+    // const errorComponent = this._getErrorComponent({ type: 'component' })
 
-    const location = useLocation()
+    // const location = useLocation()
 
     const { inputRaw, restProps } = React.useMemo<{
       inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
@@ -8003,268 +8235,277 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props])
 
-    const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-      const result = this.parseClientInputSafe(inputRaw as never)
-      if (!result.success) {
-        return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-      }
-      return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    }, [inputRaw])
-
-    if (clientInputParseResult.inputParseError) {
-      const result = {
-        data: undefined,
-        error: clientInputParseResult.inputParseError,
-        input: clientInputParseResult.inputParsed,
-        query: null,
-        location,
-        loading: false,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'component',
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
-
-    const LoadingComponent = React.useMemo(
-      () => () => {
-        const result = {
-          data: undefined,
-          error: null,
-          input: clientInputParseResult.inputParsed,
-          location,
-          loading: true,
-          query: null,
-        } satisfies AnyUseLoaderResult<
-          'pending',
-          TQueryResultType,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TClientMapperOutput,
-          TClientInputSchema,
-          AnyLocation
-        >
-        return this._withWrappers({
-          children: React.createElement(loadingComponent, {
-            ...result,
-            props: restProps,
-            type: 'component',
-          }),
-          useLoaderResult: result,
-          props: restProps,
-        })
+    return this._getMountable({
+      input: inputRaw,
+      props: restProps,
+      extraProps: () => {
+        return {}
       },
-      [loadingComponent, clientInputParseResult],
-    )
-
-    const ErrorComponent = React.useMemo(
-      () =>
-        ({ error }: { error: Error }) => {
-          const result = {
-            data: undefined,
-            error: Error0.from(error),
-            input: clientInputParseResult.inputParsed,
-            location,
-            loading: false,
-            query: null,
-          } satisfies AnyUseLoaderResult<
-            'error',
-            TQueryResultType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TClientMapperOutput,
-            TClientInputSchema,
-            AnyLocation
-          >
-          return this._withWrappers({
-            children: React.createElement(errorComponent, {
-              ...result,
-              props: restProps,
-              type: 'component',
-            }),
-            props: restProps,
-            useLoaderResult: result,
-          })
-        },
-      [errorComponent, clientInputParseResult],
-    )
-
-    if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
-      return this._withOuters({
-        children: React.createElement(this._ComponentLoader, {
-          location,
-          inputRaw,
-          clientInputParseResult,
-          restProps,
-        }),
-        input: clientInputParseResult.inputParsed,
-        props: restProps,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }
-
-    if (!this._component) {
-      // impossible error
-      const result = {
-        data: undefined,
-        error: new Error0('No component component'),
-        input: clientInputParseResult.inputParsed,
-        location,
-        loading: false,
-        query: null,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      return this._withOuters({
-        children: this._withWrappers({
-          children: React.createElement(errorComponent, {
-            ...result,
-            props: restProps,
-            type: 'component',
-          }),
-          useLoaderResult: result,
-          props: restProps,
-        }),
-        input: clientInputParseResult.inputParsed,
-        props: restProps,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }
-
-    const result = {
-      data: undefined as never,
-      error: null,
-      input: clientInputParseResult.inputParsed,
-      location,
-      loading: false,
-      query: null as never,
-    } satisfies AnyUseLoaderResult<
-      'success',
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      AnyLocation
-    >
-
-    return this._withOuters({
-      children: this._withWrappers({
-        children: React.createElement(this._component, {
-          ...result,
-          props: restProps,
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      }),
-      input: clientInputParseResult.inputParsed,
-      props: restProps,
-      location,
-      LoadingComponent,
-      ErrorComponent,
+      mountComponent: this._component as never,
     })
+
+    // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+    //   const result = this.parseClientInputSafe(inputRaw as never)
+    //   if (!result.success) {
+    //     return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
+    //   }
+    //   return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
+    // }, [inputRaw])
+
+    // if (clientInputParseResult.inputParseError) {
+    //   const result = {
+    //     data: undefined,
+    //     error: clientInputParseResult.inputParseError,
+    //     input: clientInputParseResult.inputParsed,
+    //     query: null,
+    //     location,
+    //     loading: false,
+    //   } satisfies AnyUseLoaderResult<
+    //     'error',
+    //     TQueryResultType,
+    //     TServerLoaderOutput,
+    //     TClientLoaderOutput,
+    //     TClientMapperOutput,
+    //     TClientInputSchema,
+    //     AnyLocation
+    //   >
+    //   return this._withWrappers({
+    //     children: React.createElement(errorComponent, {
+    //       ...result,
+    //       props: restProps,
+    //       type: 'component',
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
+
+    // const LoadingComponent = React.useMemo(
+    //   () => () => {
+    //     const result = {
+    //       data: undefined,
+    //       error: null,
+    //       input: clientInputParseResult.inputParsed,
+    //       location,
+    //       loading: true,
+    //       query: null,
+    //     } satisfies AnyUseLoaderResult<
+    //       'pending',
+    //       TQueryResultType,
+    //       TServerLoaderOutput,
+    //       TClientLoaderOutput,
+    //       TClientMapperOutput,
+    //       TClientInputSchema,
+    //       AnyLocation
+    //     >
+    //     return this._withWrappers({
+    //       children: React.createElement(loadingComponent, {
+    //         ...result,
+    //         props: restProps,
+    //         type: 'component',
+    //       }),
+    //       useLoaderResult: result,
+    //       props: restProps,
+    //     })
+    //   },
+    //   [loadingComponent, clientInputParseResult],
+    // )
+
+    // const ErrorComponent = React.useMemo(
+    //   () =>
+    //     ({ error }: { error: Error }) => {
+    //       const result = {
+    //         data: undefined,
+    //         error: Error0.from(error),
+    //         input: clientInputParseResult.inputParsed,
+    //         location,
+    //         loading: false,
+    //         query: null,
+    //       } satisfies AnyUseLoaderResult<
+    //         'error',
+    //         TQueryResultType,
+    //         TServerLoaderOutput,
+    //         TClientLoaderOutput,
+    //         TClientMapperOutput,
+    //         TClientInputSchema,
+    //         AnyLocation
+    //       >
+    //       return this._withWrappers({
+    //         children: React.createElement(errorComponent, {
+    //           ...result,
+    //           props: restProps,
+    //           type: 'component',
+    //         }),
+    //         props: restProps,
+    //         useLoaderResult: result,
+    //       })
+    //     },
+    //   [errorComponent, clientInputParseResult],
+    // )
+
+    // if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
+    //   return this._withOuters({
+    //     children: React.createElement(this._ComponentLoader, {
+    //       location,
+    //       inputRaw,
+    //       clientInputParseResult,
+    //       restProps,
+    //     }),
+    //     input: clientInputParseResult.inputParsed,
+    //     props: restProps,
+    //     location,
+    //     LoadingComponent,
+    //     ErrorComponent,
+    //   })
+    // }
+
+    // if (!this._component) {
+    //   // impossible error
+    //   const result = {
+    //     data: undefined,
+    //     error: new Error0('No component component'),
+    //     input: clientInputParseResult.inputParsed,
+    //     location,
+    //     loading: false,
+    //     query: null,
+    //   } satisfies AnyUseLoaderResult<
+    //     'error',
+    //     TQueryResultType,
+    //     TServerLoaderOutput,
+    //     TClientLoaderOutput,
+    //     TClientMapperOutput,
+    //     TClientInputSchema,
+    //     AnyLocation
+    //   >
+    //   return this._withOuters({
+    //     children: this._withWrappers({
+    //       children: React.createElement(errorComponent, {
+    //         ...result,
+    //         props: restProps,
+    //         type: 'component',
+    //       }),
+    //       useLoaderResult: result,
+    //       props: restProps,
+    //     }),
+    //     input: clientInputParseResult.inputParsed,
+    //     props: restProps,
+    //     location,
+    //     LoadingComponent,
+    //     ErrorComponent,
+    //   })
+    // }
+
+    // const result = {
+    //   data: undefined as never,
+    //   error: null,
+    //   input: clientInputParseResult.inputParsed,
+    //   location,
+    //   loading: false,
+    //   query: null as never,
+    // } satisfies AnyUseLoaderResult<
+    //   'success',
+    //   TQueryResultType,
+    //   TServerLoaderOutput,
+    //   TClientLoaderOutput,
+    //   TClientMapperOutput,
+    //   TClientInputSchema,
+    //   AnyLocation
+    // >
+
+    // return this._withOuters({
+    //   children: this._withWrappers({
+    //     children: React.createElement(this._component, {
+    //       ...result,
+    //       props: restProps,
+    //     }),
+    //     useLoaderResult: result,
+    //     props: restProps,
+    //   }),
+    //   input: clientInputParseResult.inputParsed,
+    //   props: restProps,
+    //   location,
+    //   LoadingComponent,
+    //   ErrorComponent,
+    // })
   }
 
-  _ComponentLoader = (props: {
-    location: AnyLocation
-    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-    clientInputParseResult: InputParseResult<TClientInputSchema>
-    restProps: FinalProps<TProps>
-  }): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'component' })
-    const errorComponent = this._getErrorComponent({ type: 'component' })
+  // _ComponentLoader = (props: {
+  //   location: AnyLocation
+  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  //   clientInputParseResult: InputParseResult<TClientInputSchema>
+  //   restProps: FinalProps<TProps>
+  // }): React.ReactNode => {
+  //   const loadingComponent = this._getLoadingComponent({ type: 'component' })
+  //   const errorComponent = this._getErrorComponent({ type: 'component' })
 
-    const { location, inputRaw, clientInputParseResult, restProps } = props
+  //   const { location, inputRaw, clientInputParseResult, restProps } = props
 
-    const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
+  //   const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
 
-    if (!this._component) {
-      const result = {
-        data: undefined,
-        error: new Error0('No component component'),
-        input: clientInputParseResult.inputParsed,
-        location,
-        loading: false,
-        query: null,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'component',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
+  //   if (!this._component) {
+  //     const result = {
+  //       data: undefined,
+  //       error: new Error0('No component component'),
+  //       input: clientInputParseResult.inputParsed,
+  //       location,
+  //       loading: false,
+  //       query: null,
+  //     } satisfies AnyUseLoaderResult<
+  //       'error',
+  //       TQueryResultType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TClientMapperOutput,
+  //       TClientInputSchema,
+  //       AnyLocation
+  //     >
+  //     return this._withWrappers({
+  //       children: React.createElement(errorComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'component',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
 
-    if (result.error) {
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'component',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
-    if (result.loading) {
-      return this._withWrappers({
-        children: React.createElement(loadingComponent, {
-          ...result,
-          props: restProps,
-          type: 'component',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
+  //   if (result.error) {
+  //     return this._withWrappers({
+  //       children: React.createElement(errorComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'component',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
+  //   if (result.loading) {
+  //     return this._withWrappers({
+  //       children: React.createElement(loadingComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'component',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
 
-    return this._withWrappers({
-      children: React.createElement(this._component, {
-        ...(result as any),
-        props: restProps as never,
-      }),
-      useLoaderResult: result,
-      props: restProps,
-    })
-  }
+  //   return this._withWrappers({
+  //     children: React.createElement(this._component, {
+  //       ...(result as any),
+  //       props: restProps as never,
+  //     }),
+  //     useLoaderResult: result,
+  //     props: restProps,
+  //   })
+  // }
 
   Layout = (props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, true>): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'layout' })
-    const errorComponent = this._getErrorComponent({ type: 'layout' })
+    // const loadingComponent = this._getLoadingComponent({ type: 'layout' })
+    // const errorComponent = this._getErrorComponent({ type: 'layout' })
 
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
@@ -8278,291 +8519,316 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props, location])
 
-    const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-      const result = this.parseClientInputSafe(inputRaw as never)
-      if (!result.success) {
-        return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-      }
-      return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    }, [inputRaw])
-
-    if (clientInputParseResult.inputParseError) {
-      const result = {
-        data: undefined,
-        error: clientInputParseResult.inputParseError,
-        input: clientInputParseResult.inputParsed,
-        query: null,
-        location,
-        loading: false,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      this._useHead(result)
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'layout',
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
-
-    const LoadingComponent = React.useMemo(
-      () => () => {
-        const result = {
-          data: undefined,
-          error: null,
-          input: clientInputParseResult.inputParsed,
-          location,
-          loading: true,
-          query: null,
-        } satisfies AnyUseLoaderResult<
-          'pending',
-          TQueryResultType,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TClientMapperOutput,
-          TClientInputSchema,
-          AnyLocation
-        >
-        this._useHead(result)
-        return this._withWrappers({
-          children: React.createElement(loadingComponent, {
-            ...result,
-            props: restProps,
-            type: 'layout',
+    return this._getMountable({
+      input: inputRaw,
+      props: restProps,
+      extraProps: (useMountableResult: UseMountableResult<any, any, any, any, any, any, any>) => {
+        if (!this._ProviderReactContext) {
+          throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+        }
+        if (useMountableResult.data) {
+          superstore.setValue(
+            `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
+            useMountableResult.data,
+            'clientServerIsolated',
+          )
+        }
+        return {
+          children: React.createElement(this._ProviderReactContext.Provider, {
+            value: useMountableResult.data,
+            children,
           }),
-          useLoaderResult: result,
-          props: restProps,
-        })
+          location,
+        }
       },
-      [loadingComponent, clientInputParseResult],
-    )
-
-    const ErrorComponent = React.useMemo(
-      () =>
-        ({ error }: { error: Error }) => {
-          const result = {
-            data: undefined,
-            error: Error0.from(error),
-            input: clientInputParseResult.inputParsed,
-            location,
-            loading: false,
-            query: null,
-          } satisfies AnyUseLoaderResult<
-            'error',
-            TQueryResultType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TClientMapperOutput,
-            TClientInputSchema,
-            AnyLocation
-          >
-          this._useHead(result)
-          return this._withWrappers({
-            children: React.createElement(errorComponent, {
-              ...result,
-              props: restProps,
-              type: 'layout',
-            }),
-            props: restProps,
-            useLoaderResult: result,
-          })
-        },
-      [errorComponent, clientInputParseResult],
-    )
-
-    if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
-      return this._withOuters({
-        children: React.createElement(this._LayoutLoader, {
-          location,
-          inputRaw,
-          clientInputParseResult,
-          restProps,
-          children,
-        }),
-        input: clientInputParseResult.inputParsed,
-        props: restProps,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }
-
-    if (!this._layout) {
-      // impossible error
-      const result = {
-        data: undefined,
-        error: new Error0('No layout component'),
-        input: clientInputParseResult.inputParsed,
-        location,
-        loading: false,
-        query: null,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      this._useHead(result)
-      return this._withOuters({
-        children: this._withWrappers({
-          children: React.createElement(errorComponent, {
-            ...result,
-            props: restProps,
-            type: 'layout',
-          }),
-          useLoaderResult: result,
-          props: restProps,
-        }),
-        input: clientInputParseResult.inputParsed,
-        props: restProps,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }
-
-    const result = {
-      data: undefined as never,
-      error: null,
-      input: clientInputParseResult.inputParsed,
-      location,
-      loading: false,
-      query: null as never,
-    } satisfies AnyUseLoaderResult<
-      'success',
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      AnyLocation
-    >
-
-    return this._withOuters({
-      children: this._withWrappers({
-        children: React.createElement(this._layout, {
-          ...result,
-          location: result.location as never,
-          children,
-          props: restProps,
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      }),
-      input: clientInputParseResult.inputParsed,
-      props: restProps,
-      location,
-      LoadingComponent,
-      ErrorComponent,
+      mountComponent: this._layout as never,
     })
+
+    // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+    //   const result = this.parseClientInputSafe(inputRaw as never)
+    //   if (!result.success) {
+    //     return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
+    //   }
+    //   return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
+    // }, [inputRaw])
+
+    // if (clientInputParseResult.inputParseError) {
+    //   const result = {
+    //     data: undefined,
+    //     error: clientInputParseResult.inputParseError,
+    //     input: clientInputParseResult.inputParsed,
+    //     query: null,
+    //     location,
+    //     loading: false,
+    //   } satisfies AnyUseLoaderResult<
+    //     'error',
+    //     TQueryResultType,
+    //     TServerLoaderOutput,
+    //     TClientLoaderOutput,
+    //     TClientMapperOutput,
+    //     TClientInputSchema,
+    //     AnyLocation
+    //   >
+    //   this._useHead(result)
+    //   return this._withWrappers({
+    //     children: React.createElement(errorComponent, {
+    //       ...result,
+    //       props: restProps,
+    //       type: 'layout',
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
+
+    // const LoadingComponent = React.useMemo(
+    //   () => () => {
+    //     const result = {
+    //       data: undefined,
+    //       error: null,
+    //       input: clientInputParseResult.inputParsed,
+    //       location,
+    //       loading: true,
+    //       query: null,
+    //     } satisfies AnyUseLoaderResult<
+    //       'pending',
+    //       TQueryResultType,
+    //       TServerLoaderOutput,
+    //       TClientLoaderOutput,
+    //       TClientMapperOutput,
+    //       TClientInputSchema,
+    //       AnyLocation
+    //     >
+    //     this._useHead(result)
+    //     return this._withWrappers({
+    //       children: React.createElement(loadingComponent, {
+    //         ...result,
+    //         props: restProps,
+    //         type: 'layout',
+    //       }),
+    //       useLoaderResult: result,
+    //       props: restProps,
+    //     })
+    //   },
+    //   [loadingComponent, clientInputParseResult],
+    // )
+
+    // const ErrorComponent = React.useMemo(
+    //   () =>
+    //     ({ error }: { error: Error }) => {
+    //       const result = {
+    //         data: undefined,
+    //         error: Error0.from(error),
+    //         input: clientInputParseResult.inputParsed,
+    //         location,
+    //         loading: false,
+    //         query: null,
+    //       } satisfies AnyUseLoaderResult<
+    //         'error',
+    //         TQueryResultType,
+    //         TServerLoaderOutput,
+    //         TClientLoaderOutput,
+    //         TClientMapperOutput,
+    //         TClientInputSchema,
+    //         AnyLocation
+    //       >
+    //       this._useHead(result)
+    //       return this._withWrappers({
+    //         children: React.createElement(errorComponent, {
+    //           ...result,
+    //           props: restProps,
+    //           type: 'layout',
+    //         }),
+    //         props: restProps,
+    //         useLoaderResult: result,
+    //       })
+    //     },
+    //   [errorComponent, clientInputParseResult],
+    // )
+
+    // if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
+    //   return this._withOuters({
+    //     children: React.createElement(this._LayoutLoader, {
+    //       location,
+    //       inputRaw,
+    //       clientInputParseResult,
+    //       restProps,
+    //       children,
+    //     }),
+    //     input: clientInputParseResult.inputParsed,
+    //     props: restProps,
+    //     location,
+    //     LoadingComponent,
+    //     ErrorComponent,
+    //   })
+    // }
+
+    // if (!this._layout) {
+    //   // impossible error
+    //   const result = {
+    //     data: undefined,
+    //     error: new Error0('No layout component'),
+    //     input: clientInputParseResult.inputParsed,
+    //     location,
+    //     loading: false,
+    //     query: null,
+    //   } satisfies AnyUseLoaderResult<
+    //     'error',
+    //     TQueryResultType,
+    //     TServerLoaderOutput,
+    //     TClientLoaderOutput,
+    //     TClientMapperOutput,
+    //     TClientInputSchema,
+    //     AnyLocation
+    //   >
+    //   this._useHead(result)
+    //   return this._withOuters({
+    //     children: this._withWrappers({
+    //       children: React.createElement(errorComponent, {
+    //         ...result,
+    //         props: restProps,
+    //         type: 'layout',
+    //       }),
+    //       useLoaderResult: result,
+    //       props: restProps,
+    //     }),
+    //     input: clientInputParseResult.inputParsed,
+    //     props: restProps,
+    //     location,
+    //     LoadingComponent,
+    //     ErrorComponent,
+    //   })
+    // }
+
+    // const result = {
+    //   data: undefined as never,
+    //   error: null,
+    //   input: clientInputParseResult.inputParsed,
+    //   location,
+    //   loading: false,
+    //   query: null as never,
+    // } satisfies AnyUseLoaderResult<
+    //   'success',
+    //   TQueryResultType,
+    //   TServerLoaderOutput,
+    //   TClientLoaderOutput,
+    //   TClientMapperOutput,
+    //   TClientInputSchema,
+    //   AnyLocation
+    // >
+
+    // return this._withOuters({
+    //   children: this._withWrappers({
+    //     children: React.createElement(this._layout, {
+    //       ...result,
+    //       location: result.location as never,
+    //       children,
+    //       props: restProps,
+    //     }),
+    //     useLoaderResult: result,
+    //     props: restProps,
+    //   }),
+    //   input: clientInputParseResult.inputParsed,
+    //   props: restProps,
+    //   location,
+    //   LoadingComponent,
+    //   ErrorComponent,
+    // })
   }
 
-  _LayoutLoader = (props: {
-    location: AnyLocation
-    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
-    clientInputParseResult: InputParseResult<TClientInputSchema>
-    restProps: FinalProps<TProps>
-    children: React.ReactNode
-  }): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'layout' })
-    const errorComponent = this._getErrorComponent({ type: 'layout' })
+  // _LayoutLoader = (props: {
+  //   location: AnyLocation
+  //   inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+  //   clientInputParseResult: InputParseResult<TClientInputSchema>
+  //   restProps: FinalProps<TProps>
+  //   children: React.ReactNode
+  // }): React.ReactNode => {
+  //   const loadingComponent = this._getLoadingComponent({ type: 'layout' })
+  //   const errorComponent = this._getErrorComponent({ type: 'layout' })
 
-    if (!this._ProviderReactContext) {
-      throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-    }
+  //   if (!this._ProviderReactContext) {
+  //     throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+  //   }
 
-    const { location, inputRaw, clientInputParseResult, restProps, children } = props
+  //   const { location, inputRaw, clientInputParseResult, restProps, children } = props
 
-    const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
+  //   const result = this.useLoader(inputRaw, undefined, undefined, clientInputParseResult)
 
-    if (!this._layout) {
-      const result = {
-        data: undefined,
-        error: new Error0('No layout component'),
-        input: clientInputParseResult.inputParsed,
-        location,
-        loading: false,
-        query: null,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      this._useHead(result)
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'layout',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
+  //   if (!this._layout) {
+  //     const result = {
+  //       data: undefined,
+  //       error: new Error0('No layout component'),
+  //       input: clientInputParseResult.inputParsed,
+  //       location,
+  //       loading: false,
+  //       query: null,
+  //     } satisfies AnyUseLoaderResult<
+  //       'error',
+  //       TQueryResultType,
+  //       TServerLoaderOutput,
+  //       TClientLoaderOutput,
+  //       TClientMapperOutput,
+  //       TClientInputSchema,
+  //       AnyLocation
+  //     >
+  //     this._useHead(result)
+  //     return this._withWrappers({
+  //       children: React.createElement(errorComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'layout',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
 
-    if (result.error) {
-      this._useHead(result)
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'layout',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
-    if (result.loading) {
-      this._useHead(result)
-      return this._withWrappers({
-        children: React.createElement(loadingComponent, {
-          ...result,
-          props: restProps,
-          type: 'layout',
-        }),
-        useLoaderResult: result,
-        props: restProps,
-      })
-    }
+  //   if (result.error) {
+  //     this._useHead(result)
+  //     return this._withWrappers({
+  //       children: React.createElement(errorComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'layout',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
+  //   if (result.loading) {
+  //     this._useHead(result)
+  //     return this._withWrappers({
+  //       children: React.createElement(loadingComponent, {
+  //         ...result,
+  //         props: restProps,
+  //         type: 'layout',
+  //       }),
+  //       useLoaderResult: result,
+  //       props: restProps,
+  //     })
+  //   }
 
-    const value = result.data
-    superstore.setValue(
-      `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
-      value,
-      'clientServerIsolated',
-    )
+  //   const value = result.data
+  //   superstore.setValue(
+  //     `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
+  //     value,
+  //     'clientServerIsolated',
+  //   )
 
-    return this._withWrappers({
-      children: React.createElement(this._layout, {
-        ...result,
-        location: result.location as never,
-        children: React.createElement(this._ProviderReactContext.Provider, {
-          value,
-          children,
-        }),
-        props: restProps,
-      }),
-      useLoaderResult: result,
-      props: restProps,
-    })
-  }
+  //   return this._withWrappers({
+  //     children: React.createElement(this._layout, {
+  //       ...result,
+  //       location: result.location as never,
+  //       children: React.createElement(this._ProviderReactContext.Provider, {
+  //         value,
+  //         children,
+  //       }),
+  //       props: restProps,
+  //     }),
+  //     useLoaderResult: result,
+  //     props: restProps,
+  //   })
+  // }
 
   // provider
   private getSsProviderValueKey(input?: InputsRaw<TServerInputSchema, TClientInputSchema>): string {
@@ -8601,12 +8867,12 @@ export class Point0<
   Provider = (
     props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, null>,
   ): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
+    // const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    // const errorComponent = this._getErrorComponent({ type: 'page' })
 
-    if (!this._ProviderReactContext) {
-      throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-    }
+    // if (!this._ProviderReactContext) {
+    //   throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+    // }
 
     const { inputRaw, children, restProps } = React.useMemo<{
       inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
@@ -8616,54 +8882,78 @@ export class Point0<
       const { input: providedInput = {}, children, ...restProps } = props as any
       const inputRaw = { ...providedInput }
       return { inputRaw, children, restProps }
-    }, [props, location])
+    }, [props])
 
-    const result = this.useLoader(inputRaw, this._defaultProviderQueryOptions)
+    return this._getMountable({
+      input: inputRaw,
+      props: restProps,
+      extraProps: (useMountableResult: UseMountableResult<any, any, any, any, any, any, any>) => {
+        if (!this._ProviderReactContext) {
+          throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+        }
+        if (useMountableResult.data) {
+          superstore.setValue(
+            `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
+            useMountableResult.data,
+            'clientServerIsolated',
+          )
+        }
+        return {
+          children: React.createElement(this._ProviderReactContext.Provider, {
+            value: useMountableResult.data,
+            children,
+          }),
+        }
+      },
+      mountComponent: this._layout as never,
+    })
 
-    if (result.error) {
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'page',
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
-    if (result.loading) {
-      return this._withWrappers({
-        children: React.createElement(loadingComponent, {
-          ...result,
-          props: restProps,
-          type: 'page',
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
+    // const result = this.useLoader(inputRaw, this._defaultProviderQueryOptions)
 
-    // if (!result.data) {
+    // if (result.error) {
     //   return this._withWrappers({
-    //     component: React.createElement(errorComponent, {
-    //       ...(result as any),
+    //     children: React.createElement(errorComponent, {
+    //       ...result,
+    //       props: restProps,
     //       type: 'page',
-    //       error: new Error0('No data'),
     //     }),
     //     useLoaderResult: result,
     //     props,
     //   })
     // }
-    const value = result.data
-    superstore.setValue(this.getSsProviderValueKey(inputRaw), value, 'clientServerIsolated')
-    return this._withWrappers({
-      children: React.createElement(this._ProviderReactContext.Provider, {
-        value,
-        children,
-      }),
-      useLoaderResult: result,
-      props,
-    })
+    // if (result.loading) {
+    //   return this._withWrappers({
+    //     children: React.createElement(loadingComponent, {
+    //       ...result,
+    //       props: restProps,
+    //       type: 'page',
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
+
+    // // if (!result.data) {
+    // //   return this._withWrappers({
+    // //     component: React.createElement(errorComponent, {
+    // //       ...(result as any),
+    // //       type: 'page',
+    // //       error: new Error0('No data'),
+    // //     }),
+    // //     useLoaderResult: result,
+    // //     props,
+    // //   })
+    // // }
+    // const value = result.data
+    // superstore.setValue(this.getSsProviderValueKey(inputRaw), value, 'clientServerIsolated')
+    // return this._withWrappers({
+    //   children: React.createElement(this._ProviderReactContext.Provider, {
+    //     value,
+    //     children,
+    //   }),
+    //   useLoaderResult: result,
+    //   props,
+    // })
   }
 
   useValue<

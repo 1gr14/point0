@@ -66,6 +66,65 @@ describe('page', () => {
     `)
   })
 
+  it('clientLoader', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .clientLoader(() => ({ x: 1 }))
+      .page(({ data }) => <div id="page">x={data.x}</div>)
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #page: x=1
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#loading: ...
+      "
+    `)
+  })
+
+  it('loader and clientLoader', async () => {
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ x: 1 }))
+      .clientLoader(({ data }) => ({ y: 2, ...data }))
+      .page(({ data }) => (
+        <div id="page">
+          x={data.x}, y={data.y}
+        </div>
+      ))
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "/
+          #loading: ...
+
+          #page: x=1, y=2
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "page.home (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "#loading: ...
+      "
+    `)
+  })
+
   it('loader error', async () => {
     const page = root
       .lets('page', 'home', '/')
@@ -93,7 +152,7 @@ describe('page', () => {
       "
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#loading: ...
+      "#error: test error
       "
     `)
   })
@@ -129,10 +188,10 @@ describe('page', () => {
     const page = root
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
-      .wrapper(({ children, query, input }) => (
+      .wrapper(({ children, queries, input }) => (
         <div id="wrapper">
           <div id="input">{input?.id}</div>
-          <div id="query-status">{query?.status}</div>
+          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
@@ -173,7 +232,7 @@ describe('page', () => {
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
       .outer(({ children, input }) => {
-        if (input.id.length > 2) {
+        if (!input || input.id.length > 2) {
           return <div id="outer">you shell not pass</div>
         }
         return children
@@ -204,20 +263,20 @@ describe('page', () => {
       .lets('page', 'home', '/:id')
       .loader(({ input }) => ({ x: input.id }))
       .outer(({ children, input }) => {
-        if (input.id.length < 2) {
+        if (!input || input.id.length < 2) {
           return <div id="outer">you shell not pass</div>
         }
         return <div id="outer">{children}</div>
       })
-      .wrapper(({ children, query }) => (
+      .wrapper(({ children, queries }) => (
         <div id="wrapper1">
-          <div id="query-status">{query?.status}</div>
+          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))
-      .wrapper(({ children, query }) => (
+      .wrapper(({ children, queries }) => (
         <div id="wrapper2">
-          <div id="query-status">{query?.status}</div>
+          <div id="query-status">{queries?.map((q) => q.status).join(', ') || 'undefined'}</div>
           {children}
         </div>
       ))

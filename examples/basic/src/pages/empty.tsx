@@ -30,7 +30,7 @@ export const empty = client
   })
   .page(
     ({ data }) => `${data.ideasCountX3} ideas`,
-    ({ data, query }) => {
+    ({ data }) => {
       const qr = sharedQuery.useQuery()
       return (
         <div>

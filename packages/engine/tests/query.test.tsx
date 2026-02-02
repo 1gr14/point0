@@ -23,7 +23,7 @@ describe('query', () => {
       .loader(() => ({ x: 1 }))
       .query()
     const page = root.lets('page', 'home', '/').page(() => {
-      const query = q.useLoader()
+      const query = q.useQuery()
       return (
         <div id="page">
           <div id="data">{query.data?.x ?? 'nothing'}</div>

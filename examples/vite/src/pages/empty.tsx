@@ -14,7 +14,7 @@ export const empty = client
       ideasCountX3: 27,
     }
   })
-  .page(({ data, query }) => {
+  .page(({ data }) => {
     return (
       <div>
         Empty

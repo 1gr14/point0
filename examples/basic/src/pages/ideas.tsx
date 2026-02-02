@@ -34,7 +34,7 @@ export const ideasPage = generalLayout
     (o) => {
       return `${o.data.original.pages[0].ideasCount} ideas x`
     },
-    ({ data, query }) => {
+    ({ data, queries: [query] }) => {
       const [count, setCount] = useState(() => 0)
       return (
         <div>

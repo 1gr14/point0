@@ -392,14 +392,21 @@ export const createTestThings = async ({
   }
   const loadPoint = (async (point: EndPoint, ...args: [any]) => {
     return await client.run(async () => {
-      return await point.execute(...args)
+      if (point.type === 'query') {
+        return await point.fetchQuery(...args)
+      }
+      if (point.type === 'infiniteQuery') {
+        return await point.fetchInfiniteQuery(...args)
+      }
+      if (point.type === 'mutation') {
+        return await point.fetchMutation(...args)
+      }
+      throw new Error(`Unsupported point type to: ${point.type}`)
     })
   }) as unknown as FetchPoint
   const loadPointYml = (async (point: EndPoint, ...args: [any]) => {
-    return await client.run(async () => {
-      const result = await point.execute(...args)
-      return ymlify(result)
-    })
+    const result = await loadPoint(point as any, ...args)
+    return ymlify(result)
   }) as unknown as FetchPoint
   const fetchView = (async (point: EndPoint, ...args: [any]) => {
     return await client.run(async () => {

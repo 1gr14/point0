@@ -2965,40 +2965,26 @@ export type WithFetchIfHasServerLoader<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TLiteral extends string,
 > = TServerLoaderOutput extends LoaderOutput ? TLiteral | 'getFetchOptions' | 'fetch' | 'fetchDetailed' : TLiteral
-export type WithExecuteEndLiteralsIfSuitable<
+export type WithQueryIfSuitable<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TLiteral extends string,
 > = TQueryResultType extends 'query'
   ? WithFetchIfHasServerLoader<
       TServerLoaderOutput,
-      | TLiteral
-      | 'useLoader'
-      | 'useQuery'
-      | 'getQueryKey'
-      | 'getQueryOptions'
-      | 'fetchQuery'
-      | 'prefetchQuery'
-      | 'execute'
-      | 'executeDetailed'
+      TLiteral | 'useQuery' | 'getQueryKey' | 'getQueryOptions' | 'fetchQuery' | 'prefetchQuery'
     >
   : TQueryResultType extends 'infiniteQuery'
     ? WithFetchIfHasServerLoader<
         TServerLoaderOutput,
         | TLiteral
-        | 'useLoader'
         | 'useInfiniteQuery'
         | 'getQueryKey'
         | 'getInfiniteQueryOptions'
         | 'fetchInfiniteQuery'
         | 'prefetchInfiniteQuery'
-        | 'execute'
-        | 'executeDetailed'
       >
-    : TClientMapperOutput extends MapperOutput
-      ? TLiteral | 'useLoader' | 'execute' | 'executeDetailed'
-      : TLiteral
+    : TLiteral
 
 export type NicePageEndPoint<
   TPointType extends 'page',
@@ -3032,11 +3018,10 @@ export type NicePageEndPoint<
     TProps,
     TExtraQueries
   >,
-  WithExecuteEndLiteralsIfSuitable<
+  WithQueryIfSuitable<
     TServerLoaderOutput,
-    TClientMapperOutput,
     TQueryResultType,
-    'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'
+    'point' | 'type' | 'Infer' | 'Page' | 'X' | 'useX' | 'route'
   >
 >
 
@@ -3072,12 +3057,7 @@ export type NiceComponentEndPoint<
     TProps,
     TExtraQueries
   >,
-  WithExecuteEndLiteralsIfSuitable<
-    TServerLoaderOutput,
-    TClientMapperOutput,
-    TQueryResultType,
-    'point' | 'type' | 'Infer' | 'Component' | 'X'
-  >
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X' | 'useX'>
 >
 
 export type NiceLayoutEndPoint<
@@ -3112,11 +3092,10 @@ export type NiceLayoutEndPoint<
     TProps,
     TExtraQueries
   >,
-  WithExecuteEndLiteralsIfSuitable<
+  WithQueryIfSuitable<
     TServerLoaderOutput,
-    TClientMapperOutput,
     TQueryResultType,
-    'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
+    'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'useX' | 'route'
   >
 >
 
@@ -3152,12 +3131,7 @@ export type NiceQueryEndPoint<
     TProps,
     TExtraQueries
   >,
-  WithExecuteEndLiteralsIfSuitable<
-    TServerLoaderOutput,
-    TClientMapperOutput,
-    TQueryResultType,
-    'point' | 'type' | 'Infer'
-  >
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
 
 export type NiceInfiniteQueryEndPoint<
@@ -3192,12 +3166,7 @@ export type NiceInfiniteQueryEndPoint<
     TProps,
     TExtraQueries
   >,
-  WithExecuteEndLiteralsIfSuitable<
-    TServerLoaderOutput,
-    TClientMapperOutput,
-    TQueryResultType,
-    'point' | 'type' | 'Infer'
-  >
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer'>
 >
 
 export type NiceMutationEndPoint<
@@ -3234,7 +3203,7 @@ export type NiceMutationEndPoint<
   >,
   WithFetchIfHasServerLoader<
     TServerLoaderOutput,
-    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'Infer' | 'execute' | 'executeDetailed'
+    'point' | 'type' | 'getMutationOptions' | 'useMutation' | 'fetchMutation' | 'Infer'
   >
 >
 
@@ -3270,11 +3239,10 @@ export type NiceProviderEndPoint<
     TProps,
     TExtraQueries
   >,
-  WithExecuteEndLiteralsIfSuitable<
+  WithQueryIfSuitable<
     TServerLoaderOutput,
-    TClientMapperOutput,
     TQueryResultType,
-    'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
+    'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'useX' | 'Infer'
   >
 >
 

@@ -9,7 +9,7 @@ export const ideasNewsPage = ideaLayout
   })
   .page(
     ({ data: { idea }, input }) => `${idea.news.length},${input.id} news for idea "${idea.title}"`,
-    ({ data: { idea }, query }) => {
+    ({ data: { idea } }) => {
       return (
         <div>
           <h3>News</h3>
