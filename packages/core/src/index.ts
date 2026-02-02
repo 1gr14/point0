@@ -15,7 +15,6 @@ import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from
 import { useHead } from '@unhead/react'
 import { flatten } from 'flat'
 import * as React from 'react'
-import { useMemo } from 'react'
 import type { ResolvableHead } from 'unhead/types'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
@@ -36,9 +35,9 @@ import type {
   AssertRouteDefinitionInputExtends,
   BasePoint,
   ClientExecuteAction,
-  ClientExecuteDetailedResult,
   ClientLoaderFn,
   ClientMapperFn,
+  ClientMountAction,
   Ctx,
   CtxExposedKeys,
   CtxFn,
@@ -162,6 +161,7 @@ import type {
   HeadFn,
   LayoutSuccessComponentType,
   LoadingComponentType,
+  MountableComponentProps,
   MountableComponentType,
   MountableOuterComponentType,
   MountableWrapperComponentType,
@@ -171,7 +171,9 @@ import type {
   UndefinedLayoutSuccessComponent,
   UndefinedSuccessPageComponent,
   UseMountableResult,
+  UseQueryOrInfiniteQueryResult,
 } from './mountable.js'
+import stringify from 'safe-stable-stringify'
 
 // known stage fns
 
@@ -324,6 +326,7 @@ export class Point0<
   private readonly _outers: MountableOuterComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
+  private readonly _clientMountActions: ClientMountAction[]
   private readonly _clientMapperFns: Array<ClientMapperFn<any, any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
@@ -545,6 +548,7 @@ export class Point0<
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
+    _clientMountActions?: ClientMountAction[]
     _clientMapperFns?: ClientMapperFn[]
     _ProviderReactContext?:
       | Context<
@@ -711,6 +715,7 @@ export class Point0<
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
+    this._clientMountActions = options._clientMountActions ?? []
     this._clientMapperFns = options._clientMapperFns ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
@@ -795,6 +800,7 @@ export class Point0<
     _outers?: MountableOuterComponentType[]
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
+    _clientMountActions?: ClientMountAction[]
     _clientMapperFns?: ClientMapperFn[]
     _ProviderReactContext?:
       | Context<
@@ -1022,6 +1028,7 @@ export class Point0<
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
+      _clientMountActions: overrides._clientMountActions ?? this._clientMountActions,
       _clientMapperFns: overrides._clientMapperFns ?? this._clientMapperFns,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
@@ -2957,6 +2964,10 @@ export class Point0<
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
+      _clientMountActions: [
+        ...this._clientMountActions,
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+      ],
     }) as never
   }
 
@@ -3065,6 +3076,145 @@ export class Point0<
       _clientExecuteActions: [
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+      _clientMountActions: [
+        ...this._clientMountActions,
+        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  withQuery<
+    TPoint extends
+      | NiceLayoutEndPoint<any, any, any, any, any, any, any, any, any, any, any, 'infiniteQuery' | 'query', any, any>
+      | NicePageEndPoint<any, any, any, any, any, any, any, any, any, any, any, 'infiniteQuery' | 'query', any, any>
+      | NiceQueryEndPoint<any, any, any, any, any, any, any, any, any, any, any, 'infiniteQuery' | 'query', any, any>
+      | NiceInfiniteQueryEndPoint<
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          'infiniteQuery' | 'query',
+          any,
+          any
+        >
+      | NiceProviderEndPoint<any, any, any, any, any, any, any, any, any, any, any, 'infiniteQuery' | 'query', any, any>
+      | NiceComponentEndPoint<
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          'infiniteQuery' | 'query',
+          any,
+          any
+        >,
+  >(
+    point: TPoint,
+    ...args: IsInputOptional<TPoint['Infer']['InputRaw']> extends true
+      ? [
+          input?:
+            | TPoint['Infer']['InputRaw']
+            | ((options: { input: InputParsed<TClientInputSchema> }) => TPoint['Infer']['InputRaw']),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'],
+        ]
+      : [
+          input:
+            | TPoint['Infer']['InputRaw']
+            | ((options: { input: InputParsed<TClientInputSchema> }) => TPoint['Infer']['InputRaw']),
+          queryOptions?: TPoint['Infer']['UseQueryOptions'],
+        ]
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TProps,
+    AppendExtraQueries<TExtraQueries, [TPoint['Infer']['UseQueryResult']]>
+  >
+  withQuery<TUseQueryResult extends UseQueryOrInfiniteQueryResult>(
+    queryFn: (options: { input: InputParsed<TClientInputSchema> }) => TUseQueryResult,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TProps,
+    AppendExtraQueries<TExtraQueries, [TUseQueryResult]>
+  >
+  withQuery(
+    drop: false,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TQueryResultType,
+    TProps,
+    []
+  >
+  withQuery(...args: any[]) {
+    if (args[0] === false || args.length === 0) {
+      return this._continue({
+        _clientMountActions: this._clientMountActions.filter((action) => action.type !== 'query'),
+      }) as never
+    }
+    const extraQueryFn = (() => {
+      if ('point' in args[0]) {
+        const point = args[0].point as AnyPoint
+        const getInputFn =
+          typeof args[1] === 'function' ? args[1] : typeof args[1] === 'object' ? () => args[1] : () => ({})
+        const queryOptions = typeof args[2] === 'object' ? args[2] : {}
+        return (options: { input: InputParsed<TClientInputSchema> }) => {
+          const input = getInputFn(options)
+          return point.withQuery(input, queryOptions)
+        }
+      } else if (typeof args[0] === 'function') {
+        return args[0]
+      } else {
+        throw new Error('Invalid arguments')
+      }
+    })()
+    return this._continue({
+      _clientMountActions: [
+        ...this._clientMountActions,
+        { type: 'query', fn: extraQueryFn, unstableId: Point0._getNextUnstableId() },
       ],
     }) as never
   }
@@ -3387,11 +3537,16 @@ export class Point0<
 
     const clientMapperFnsSuitable = this.type === 'layout' ? [] : this._clientMapperFns
 
+    const clientMountActionsAll = newInputExecuteAction
+      ? [...this._clientMountActions, newInputExecuteAction]
+      : this._clientMountActions
+
     return this._continue({
       scope,
       scopes,
       _serverExecuteActions: serverExecuteActionsSuitable,
       _clientExecuteActions: clientExecuteActionsSuitable,
+      _clientMountActions: clientMountActionsAll,
       _clientMapperFns: clientMapperFnsSuitable,
       type: 'coreStage',
       _letsEndPointType: letsEndPointType,
@@ -4115,6 +4270,7 @@ export class Point0<
       _outers: [...this._outers, ...point._outers],
       _serverExecuteActions: [...this._serverExecuteActions, ...point._serverExecuteActions],
       _clientExecuteActions: [...this._clientExecuteActions, ...point._clientExecuteActions],
+      _clientMountActions: [...this._clientMountActions, ...point._clientMountActions],
       // _clientMapperFns: [...this._clientMapperFns, ...point._clientMapperFns],
       // _ProviderReactContext: point._ProviderReactContext,
       // _useValue: point._useValue,
@@ -4525,8 +4681,8 @@ export class Point0<
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
       getMutationOptions: point.getMutationOptions.bind(point),
       useMutation: point.useMutation.bind(point),
-      execute: point.execute.bind(point),
-      executeDetailed: point.executeDetailed.bind(point),
+      // execute: point.execute.bind(point),
+      // executeDetailed: point.executeDetailed.bind(point),
       fetch: point.fetch.bind(point),
       // Component: Object.assign(point.Component.bind(point), { displayName: (point.Component as any).displayName }),
       // Page: Object.assign(point.Page.bind(point), { displayName: (point.Page as any).displayName }),
@@ -4615,67 +4771,67 @@ export class Point0<
       Point0.DefaultLoadingComponent) as never
   }
 
-  private _withWrappers({
-    children,
-    useLoaderResult,
-    props,
-  }: {
-    props: FinalProps<TProps>
-    children: React.ReactNode
-    useLoaderResult: AnyUseLoaderResult<
-      any,
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      AnyLocation
-    >
-  }): Exclude<React.ReactNode, Promise<any>> {
-    if (this._wrappers.length === 0) {
-      return children as Exclude<React.ReactNode, Promise<any>>
-    }
-    return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
-      return React.createElement(Wrapper, {
-        children: acc,
-        ...useLoaderResult,
-        props,
-      } as never)
-    }, children) as Exclude<React.ReactNode, Promise<any>>
-  }
+  // private _withWrappers({
+  //   children,
+  //   useLoaderResult,
+  //   props,
+  // }: {
+  //   props: FinalProps<TProps>
+  //   children: React.ReactNode
+  //   useLoaderResult: AnyUseLoaderResult<
+  //     any,
+  //     TQueryResultType,
+  //     TServerLoaderOutput,
+  //     TClientLoaderOutput,
+  //     TClientMapperOutput,
+  //     TClientInputSchema,
+  //     AnyLocation
+  //   >
+  // }): Exclude<React.ReactNode, Promise<any>> {
+  //   if (this._wrappers.length === 0) {
+  //     return children as Exclude<React.ReactNode, Promise<any>>
+  //   }
+  //   return [...this._wrappers].reverse().reduce((acc, Wrapper, index) => {
+  //     return React.createElement(Wrapper, {
+  //       children: acc,
+  //       ...useLoaderResult,
+  //       props,
+  //     } as never)
+  //   }, children) as Exclude<React.ReactNode, Promise<any>>
+  // }
 
-  private _withOuters({
-    children,
-    input,
-    props,
-    location,
-    LoadingComponent,
-    ErrorComponent,
-  }: {
-    children: React.ReactNode
-    input: InputParsed<TClientInputSchema>
-    props: FinalProps<TProps>
-    location: AnyLocation
-    LoadingComponent: React.ComponentType
-    ErrorComponent: React.ComponentType<{ error: Error }>
-  }): Exclude<React.ReactNode, Promise<any>> {
-    if (this._outers.length === 0) {
-      return children as Exclude<React.ReactNode, Promise<any>>
-    }
-    return [...this._outers].reverse().reduce(
-      (acc, Outer, index) => {
-        return React.createElement(Outer, {
-          children: acc,
-          input,
-          props,
-          location,
-          LoadingComponent,
-          ErrorComponent,
-        })
-      },
-      children as Exclude<React.ReactNode, Promise<any>>,
-    )
-  }
+  // private _withOuters({
+  //   children,
+  //   input,
+  //   props,
+  //   location,
+  //   LoadingComponent,
+  //   ErrorComponent,
+  // }: {
+  //   children: React.ReactNode
+  //   input: InputParsed<TClientInputSchema>
+  //   props: FinalProps<TProps>
+  //   location: AnyLocation
+  //   LoadingComponent: React.ComponentType
+  //   ErrorComponent: React.ComponentType<{ error: Error }>
+  // }): Exclude<React.ReactNode, Promise<any>> {
+  //   if (this._outers.length === 0) {
+  //     return children as Exclude<React.ReactNode, Promise<any>>
+  //   }
+  //   return [...this._outers].reverse().reduce(
+  //     (acc, Outer, index) => {
+  //       return React.createElement(Outer, {
+  //         children: acc,
+  //         input,
+  //         props,
+  //         location,
+  //         LoadingComponent,
+  //         ErrorComponent,
+  //       })
+  //     },
+  //     children as Exclude<React.ReactNode, Promise<any>>,
+  //   )
+  // }
 
   _hasServerLoader(): boolean {
     return this._serverExecuteActions.some((fn) => fn.type === 'loader')
@@ -4882,22 +5038,18 @@ export class Point0<
     serverResponse,
     location,
     input,
-    skipClientMapperFns,
   }: {
     serverData: Data | undefined
     serverResponse: Response | undefined
     location?: AnyLocation
     input: InputRaw<TClientInputSchema>
-    skipClientMapperFns: boolean
   }): Promise<{
     clientData: Data | undefined
-    clientMappedData: Data | undefined
     clientResponse: Response | undefined
     clientOutput: Data | Response | undefined
     clientInput: InputParsed<TClientInputSchema>
   }> {
     let currentClientData: Data | undefined = serverData
-    let currentClientMappedData: Data | undefined = serverData
     let currentClientResponse: Response | undefined = serverResponse
     let currentClientOutput: Data | Response | undefined = serverResponse ?? serverData
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we parse input step by step, so we do not need initial parse result
@@ -4943,7 +5095,6 @@ export class Point0<
           } else {
             currentClientResponse = undefined
             currentClientData = result
-            currentClientMappedData = result
             currentClientOutput = result
           }
           break
@@ -4954,16 +5105,8 @@ export class Point0<
         }
       }
     }
-    if (!skipClientMapperFns) {
-      for (const clientMapperFn of this._clientMapperFns) {
-        // here we always send data only, becouse if last loader return response, then mapper can not exists by design
-        currentClientMappedData = clientMapperFn({ data: currentClientMappedData, input: currentInputParsed })
-        currentClientOutput = currentClientMappedData
-      }
-    }
     return {
       clientData: currentClientData,
-      clientMappedData: currentClientMappedData,
       clientResponse: currentClientResponse,
       clientOutput: currentClientOutput,
       clientInput: currentInputParsed,
@@ -5049,20 +5192,21 @@ export class Point0<
   //   }
   // }
 
-  _executeHead(
-    useLoaderResult: AnyUseLoaderResult<
+  private _executeHead(
+    useMountableResult: UseMountableResult<
       any,
       TQueryResultType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
       TClientInputSchema,
-      AnyLocation
+      TExtraQueries
     >,
+    props: FinalProps<TProps>,
   ): ResolvableHead[] {
     const head: ResolvableHead[] = []
     for (const headFn of this._headFns) {
-      const headFnResult = headFn(useLoaderResult as never)
+      const headFnResult = headFn({ ...useMountableResult, props })
       const headFnResultResolvable = typeof headFnResult === 'string' ? { title: headFnResult } : headFnResult
       head.push(headFnResultResolvable)
     }
@@ -5070,18 +5214,19 @@ export class Point0<
   }
 
   private _useHead(
-    unqueriedLoaderResult: AnyUseLoaderResult<
+    useMountableResult: UseMountableResult<
       any,
       TQueryResultType,
       TServerLoaderOutput,
       TClientLoaderOutput,
       TClientMapperOutput,
       TClientInputSchema,
-      AnyLocation
+      TExtraQueries
     >,
+    props: FinalProps<TProps>,
   ): void {
-    for (const headItem of this._executeHead(unqueriedLoaderResult as never)) {
-      useHead(headItem as never)
+    for (const headItem of this._executeHead(useMountableResult, props)) {
+      useHead(headItem)
     }
   }
 
@@ -5247,120 +5392,120 @@ export class Point0<
     return query as never
   }
 
-  useLoader(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? [
-          input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
-          queryOptions?:
-            | ExtraUseQueryOptions
-            | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
-                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                QueryKey,
-                unknown
-              >
-            | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _clientInputParseResult?: InputParseResult<TClientInputSchema>,
-        ]
-      : [
-          input: InputsRaw<TServerInputSchema, TClientInputSchema>,
-          queryOptions?:
-            | ExtraUseQueryOptions
-            | ExtraUseInfiniteQueryOptions<
-                InputsRaw<TServerInputSchema, TClientInputSchema>,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                Error0,
-                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                QueryKey,
-                unknown
-              >
-            | undefined,
-          fetchOptions?: FetchOptions | undefined,
-          _clientInputParseResult?: InputParseResult<TClientInputSchema>,
-        ]
-  ): AnyUseLoaderResult<
-    any,
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput,
-    TClientInputSchema,
-    AnyLocation
-  > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const [inputRaw = {}, queryOptions, fetchOptions, _clientInputParseResult] = args
+  // useLoader(
+  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+  //     ? [
+  //         input?: InputsRaw<TServerInputSchema, TClientInputSchema>,
+  //         queryOptions?:
+  //           | ExtraUseQueryOptions
+  //           | ExtraUseInfiniteQueryOptions<
+  //               InputsRaw<TServerInputSchema, TClientInputSchema>,
+  //               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+  //               Error0,
+  //               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+  //               QueryKey,
+  //               unknown
+  //             >
+  //           | undefined,
+  //         fetchOptions?: FetchOptions | undefined,
+  //         _clientInputParseResult?: InputParseResult<TClientInputSchema>,
+  //       ]
+  //     : [
+  //         input: InputsRaw<TServerInputSchema, TClientInputSchema>,
+  //         queryOptions?:
+  //           | ExtraUseQueryOptions
+  //           | ExtraUseInfiniteQueryOptions<
+  //               InputsRaw<TServerInputSchema, TClientInputSchema>,
+  //               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+  //               Error0,
+  //               InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+  //               QueryKey,
+  //               unknown
+  //             >
+  //           | undefined,
+  //         fetchOptions?: FetchOptions | undefined,
+  //         _clientInputParseResult?: InputParseResult<TClientInputSchema>,
+  //       ]
+  // ): AnyUseLoaderResult<
+  //   any,
+  //   TQueryResultType,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TClientMapperOutput,
+  //   TClientInputSchema,
+  //   AnyLocation
+  // > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } {
+  //   const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
+  //   const [inputRaw = {}, queryOptions, fetchOptions, _clientInputParseResult] = args
 
-    const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-      if (_clientInputParseResult) {
-        return _clientInputParseResult
-      }
-      const result = this.parseClientInputSafe(inputRaw as never)
-      if (!result.success) {
-        return { inputParsed: null, inputParseError: result.error } as InputParseResult<TClientInputSchema>
-      }
-      return { inputParsed: result.data, inputParseError: null } as InputParseResult<TClientInputSchema>
-    }, [this._getTransformer().stringify(inputRaw), _clientInputParseResult])
+  //   const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+  //     if (_clientInputParseResult) {
+  //       return _clientInputParseResult
+  //     }
+  //     const result = this.parseClientInputSafe(inputRaw as never)
+  //     if (!result.success) {
+  //       return { inputParsed: null, inputParseError: result.error } as InputParseResult<TClientInputSchema>
+  //     }
+  //     return { inputParsed: result.data, inputParseError: null } as InputParseResult<TClientInputSchema>
+  //   }, [this._getTransformer().stringify(inputRaw), _clientInputParseResult])
 
-    if (!this._hasServerLoader() && !this._hasClientLoader()) {
-      const result = React.useMemo(() => {
-        // const data = (
-        //   clientInputParseResult.inputParsed
-        //     ? this._clientMapperFns.reduce(
-        //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-        //         undefined as never,
-        //       )
-        //     : undefined
-        // ) as never
-        const data = undefined as never
-        return {
-          data,
-          loading: false as const,
-          error: (clientInputParseResult.inputParseError ?? null) as never,
-          query: null,
-          location,
-          input: clientInputParseResult.inputParsed,
-          dataOrLastInfiteData: data,
-        }
-      }, [clientInputParseResult, inputRaw, location])
-      return result
-    }
-    const query =
-      this._queryResultType === 'infiniteQuery'
-        ? this.useInfiniteQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-        : this.useQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-    const mappedData = useMemo(() => {
-      if (!query.data) {
-        return undefined
-      }
-      if (!this._clientMapperFns.length) {
-        return query.data
-      }
-      if (!clientInputParseResult.inputParsed) {
-        return undefined
-      }
-      return this._clientMapperFns.reduce(
-        (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-        query.data,
-      )
-    }, [query.data])
-    const result = React.useMemo(() => {
-      const dataOrLastInfiteData =
-        this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(-1) : query.data
-      return {
-        data: mappedData as never,
-        loading: query.isLoading as never,
-        error: (query.error ? Error0.from(query.error) : null) as never,
-        query: query as never,
-        location,
-        input: clientInputParseResult.inputParsed,
-        dataOrLastInfiteData,
-      }
-    }, [query, query.data, query.error, query.isLoading, clientInputParseResult, location, mappedData])
-    return result
-  }
+  //   if (!this._hasServerLoader() && !this._hasClientLoader()) {
+  //     const result = React.useMemo(() => {
+  //       // const data = (
+  //       //   clientInputParseResult.inputParsed
+  //       //     ? this._clientMapperFns.reduce(
+  //       //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
+  //       //         undefined as never,
+  //       //       )
+  //       //     : undefined
+  //       // ) as never
+  //       const data = undefined as never
+  //       return {
+  //         data,
+  //         loading: false as const,
+  //         error: (clientInputParseResult.inputParseError ?? null) as never,
+  //         query: null,
+  //         location,
+  //         input: clientInputParseResult.inputParsed,
+  //         dataOrLastInfiteData: data,
+  //       }
+  //     }, [clientInputParseResult, inputRaw, location])
+  //     return result
+  //   }
+  //   const query =
+  //     this._queryResultType === 'infiniteQuery'
+  //       ? this.useInfiniteQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
+  //       : this.useQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
+  //   const mappedData = useMemo(() => {
+  //     if (!query.data) {
+  //       return undefined
+  //     }
+  //     if (!this._clientMapperFns.length) {
+  //       return query.data
+  //     }
+  //     if (!clientInputParseResult.inputParsed) {
+  //       return undefined
+  //     }
+  //     return this._clientMapperFns.reduce(
+  //       (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
+  //       query.data,
+  //     )
+  //   }, [query.data])
+  //   const result = React.useMemo(() => {
+  //     const dataOrLastInfiteData =
+  //       this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(-1) : query.data
+  //     return {
+  //       data: mappedData as never,
+  //       loading: query.isLoading as never,
+  //       error: (query.error ? Error0.from(query.error) : null) as never,
+  //       query: query as never,
+  //       location,
+  //       input: clientInputParseResult.inputParsed,
+  //       dataOrLastInfiteData,
+  //     }
+  //   }, [query, query.data, query.error, query.isLoading, clientInputParseResult, location, mappedData])
+  //   return result
+  // }
 
   useMountable(
     ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
@@ -5378,7 +5523,7 @@ export class Point0<
               >
             | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _clientInputParseResult?: InputParseResult<TClientInputSchema>,
+          enabled?: boolean | undefined,
         ]
       : [
           input: InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -5394,86 +5539,133 @@ export class Point0<
               >
             | undefined,
           fetchOptions?: FetchOptions | undefined,
-          _clientInputParseResult?: InputParseResult<TClientInputSchema>,
+          enabled?: boolean | undefined,
         ]
   ): UseMountableResult<
     any,
-    TClientInputSchema,
+    TQueryResultType,
     TServerLoaderOutput,
     TClientLoaderOutput,
     TClientMapperOutput,
-    AnyLocation
-  > & { dataOrLastInfiteData: FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> } {
-    const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
-    const [inputRaw = {}, queryOptions, fetchOptions, _clientInputParseResult] = args
+    TClientInputSchema,
+    TExtraQueries
+  > {
+    const [inputRaw = {}, queryOptions, fetchOptions, globallyEnabled = true] = args
+    const inputRawString = stringify(this._getTransformer().stringify(inputRaw))
 
-    const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-      if (_clientInputParseResult) {
-        return _clientInputParseResult
-      }
-      const result = this.parseClientInputSafe(inputRaw as never)
-      if (!result.success) {
-        return { inputParsed: null, inputParseError: result.error } as InputParseResult<TClientInputSchema>
-      }
-      return { inputParsed: result.data, inputParseError: null } as InputParseResult<TClientInputSchema>
-    }, [this._getTransformer().stringify(inputRaw), _clientInputParseResult])
-
-    if (!this._hasServerLoader() && !this._hasClientLoader()) {
-      const result = React.useMemo(() => {
-        // const data = (
-        //   clientInputParseResult.inputParsed
-        //     ? this._clientMapperFns.reduce(
-        //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-        //         undefined as never,
-        //       )
-        //     : undefined
-        // ) as never
-        const data = undefined as never
-        return {
-          data,
-          loading: false as const,
-          error: (clientInputParseResult.inputParseError ?? null) as never,
-          query: null,
-          location,
-          input: clientInputParseResult.inputParsed,
-          dataOrLastInfiteData: data,
+    const prepare = React.useMemo<
+      | {
+          error: undefined
+          input: InputParsed
+          queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult>
         }
-      }, [clientInputParseResult, inputRaw, location])
-      return result
-    }
-    const query =
-      this._queryResultType === 'infiniteQuery'
-        ? this.useInfiniteQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-        : this.useQuery(inputRaw as never, queryOptions as never, fetchOptions as never)
-    const mappedData = useMemo(() => {
-      if (!query.data) {
-        return undefined
+      | {
+          error: Error0
+          input: undefined
+          queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult>
+        }
+    >(() => {
+      let currentInputParsed: InputParsed = {}
+      let error: Error0 | undefined = undefined
+      const queriesFns: Array<(enabled: false | undefined) => UseQueryOrInfiniteQueryResult> = []
+      if (this._hasServerLoader() && !this._hasClientLoader()) {
+        queriesFns.push((enabled: false | undefined) => {
+          return this._queryResultType === 'infiniteQuery'
+            ? this.useInfiniteQuery(
+                inputRaw as never,
+                { ...queryOptions, enabled: enabled ?? true } as never,
+                fetchOptions as never,
+              )
+            : this.useQuery(
+                inputRaw as never,
+                { ...queryOptions, enabled: enabled ?? true } as never,
+                fetchOptions as never,
+              )
+        })
       }
-      if (!this._clientMapperFns.length) {
-        return query.data
+      for (const action of this._clientMountActions) {
+        if (action.type === 'input') {
+          const result = Point0.parseInputSafeSync(action.schema, inputRaw)
+          if (result.error) {
+            error = result.error
+            break
+          }
+          currentInputParsed = {
+            ...currentInputParsed,
+            ...result.data,
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        } else if (action.type === 'query') {
+          // eslint-disable-next-line @typescript-eslint/no-loop-func
+          queriesFns.push((enabled: false | undefined) =>
+            action.fn({ input: { ...currentInputParsed }, enabled: enabled ?? true }),
+          )
+        } else {
+          throw new Error(`Unknown client mount action type: ${(action as any).type}`)
+        }
       }
-      if (!clientInputParseResult.inputParsed) {
-        return undefined
+      if (error) {
+        const skippedQueryFns: Array<() => UseQueryOrInfiniteQueryResult> = []
+        if (this._hasServerLoader() && !this._hasClientLoader()) {
+          skippedQueryFns.push(() => {
+            return this._queryResultType === 'infiniteQuery'
+              ? this.useInfiniteQuery(
+                  inputRaw as never,
+                  { ...queryOptions, enabled: false } as never,
+                  fetchOptions as never,
+                )
+              : this.useQuery(inputRaw as never, { ...queryOptions, enabled: false } as never, fetchOptions as never)
+          })
+        }
+        return {
+          error,
+          input: undefined,
+          queriesFns: this._clientMountActions.flatMap((action) => {
+            if (action.type === 'query') {
+              return [() => action.fn({ input: undefined, enabled: false })]
+            }
+            return []
+          }),
+        }
       }
-      return this._clientMapperFns.reduce(
-        (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
-        query.data,
-      )
-    }, [query.data])
-    const result = React.useMemo(() => {
-      const dataOrLastInfiteData =
-        this._queryResultType === 'infiniteQuery' ? (query.data as any)?.pages?.at(-1) : query.data
       return {
-        data: mappedData as never,
-        loading: query.isLoading as never,
-        error: (query.error ? Error0.from(query.error) : null) as never,
-        query: query as never,
-        location,
-        input: clientInputParseResult.inputParsed,
-        dataOrLastInfiteData,
+        error: undefined,
+        input: currentInputParsed,
+        queriesFns,
       }
-    }, [query, query.data, query.error, query.isLoading, clientInputParseResult, location, mappedData])
-    return result
+    }, [inputRawString])
+
+    const queries = prepare.queriesFns.map((fn) => fn(globallyEnabled ? undefined : false))
+
+    // return React.useMemo<UseMountableResult<any, any, any, any, any, any, any>>(() => {
+    if (prepare.error) {
+      return {
+        data: undefined,
+        error: prepare.error,
+        loading: false,
+        queries: queries as never,
+        input: undefined,
+        status: 'error',
+      } satisfies UseMountableResult<any, any, any, any, any, any, any>
+    }
+    const anyOriginalError = queries.find((query) => query.error)
+    const error = anyOriginalError ? Error0.from(anyOriginalError) : undefined
+    const loading = queries.some((query) => query.isLoading)
+    const firstData = queries.find((query) => query.data)
+    const status = error ? 'error' : loading ? 'pending' : 'success'
+    const mappedData =
+      status === 'success'
+        ? this._clientMapperFns.reduce((data, mapperFn) => mapperFn({ data, input: prepare.input, queries }), firstData)
+        : undefined
+    return {
+      data: mappedData,
+      loading,
+      error,
+      input: prepare.input,
+      queries,
+      status,
+    } as UseMountableResult<any, any, any, any, any, any, any>
+    // }, [prepare, queries]) as never
   }
 
   private getServerUrl(): string | undefined {
@@ -5700,112 +5892,112 @@ export class Point0<
     return detailedResult.output as FetchOutput<TServerLoaderOutput>
   }
 
-  async executeDetailed(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? TServerLoaderOutput extends LoaderOutput
-        ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-        : [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-      : TServerLoaderOutput extends LoaderOutput
-        ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-        : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  ): Promise<
-    ClientExecuteDetailedResult<
-      TQueryResultType,
-      TClientInputSchema,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput
-    >
-  > {
-    if (_point0_env.target.is.server) {
-      // throw new Error0(
-      //   'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
-      // )
-      // lets not throw to be able fullstack tests
-    }
-    const [input = {}, fetchOptions] = args
-    const { serverData, serverResponse, serverOutput } = await (async () => {
-      if (this._hasServerLoader()) {
-        const serverDataOrResponse = await this.fetch(input as never, fetchOptions)
-        if (serverDataOrResponse instanceof Response) {
-          return { serverData: undefined, serverResponse: serverDataOrResponse, serverOutput: serverDataOrResponse }
-        }
-        return { serverData: serverDataOrResponse, serverResponse: undefined, serverOutput: serverDataOrResponse }
-      }
-      return { serverData: undefined, serverResponse: undefined, serverOutput: undefined }
-    })()
-    // if (this._hasClientLoader()) {
-    //   if (this._hasClientAsyncLoader()) {
-    const { clientOutput, clientData, clientResponse, clientInput } = await this._executeClientAsync({
-      serverData,
-      serverResponse,
-      input: input as never,
-      skipClientMapperFns: false,
-    })
-    return {
-      serverData,
-      serverResponse,
-      serverOutput,
-      clientData,
-      clientResponse,
-      clientOutput,
-      clientInput,
-      output: clientOutput ?? serverOutput,
-    } as ClientExecuteDetailedResult<
-      TQueryResultType,
-      TClientInputSchema,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput
-    >
-    //   } else {
-    //     const { clientOutput, clientData, clientResponse } = this._executeClientSync({
-    //       data: serverData || {},
-    //       response: serverResponse,
-    //       input: input as never,
-    //     })
-    //     return {
-    //       serverData,
-    //       serverResponse,
-    //       serverOutput,
-    //       clientData,
-    //       clientResponse,
-    //       clientOutput,
-    //       output: clientOutput ?? serverOutput,
-    //     } as ClientExecuteDetailedResult<
-    //       TData,
-    //       TResponse,
-    //       TClientData,
-    //       TClientResponse,
-    //       TLastServerOutput,
-    //       TLastClientOutput
-    //     >
-    //   }
-    // }
-    // return {
-    //   serverData,
-    //   serverResponse,
-    //   serverOutput,
-    //   clientData: undefined,
-    //   clientResponse: undefined,
-    //   clientOutput: undefined,
-    //   clientInput: undefined,
-    //   output: serverOutput,
-    // } as ClientExecuteDetailedResult<TQueryResultType, TClientInputSchema, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-  }
+  // async executeDetailed(
+  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+  //     ? TServerLoaderOutput extends LoaderOutput
+  //       ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
+  //       : [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
+  //     : TServerLoaderOutput extends LoaderOutput
+  //       ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
+  //       : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
+  // ): Promise<
+  //   ClientExecuteDetailedResult<
+  //     TQueryResultType,
+  //     TClientInputSchema,
+  //     TServerLoaderOutput,
+  //     TClientLoaderOutput,
+  //     TClientMapperOutput
+  //   >
+  // > {
+  //   if (_point0_env.target.is.server) {
+  //     // throw new Error0(
+  //     //   'If you want to execute data on server, use engine.execute, or Executor.execute, or get execute fn from loader|ctx options. point.execute is for client only and use fetch under the hood to retrieve server data',
+  //     // )
+  //     // lets not throw to be able fullstack tests
+  //   }
+  //   const [input = {}, fetchOptions] = args
+  //   const { serverData, serverResponse, serverOutput } = await (async () => {
+  //     if (this._hasServerLoader()) {
+  //       const serverDataOrResponse = await this.fetch(input as never, fetchOptions)
+  //       if (serverDataOrResponse instanceof Response) {
+  //         return { serverData: undefined, serverResponse: serverDataOrResponse, serverOutput: serverDataOrResponse }
+  //       }
+  //       return { serverData: serverDataOrResponse, serverResponse: undefined, serverOutput: serverDataOrResponse }
+  //     }
+  //     return { serverData: undefined, serverResponse: undefined, serverOutput: undefined }
+  //   })()
+  //   // if (this._hasClientLoader()) {
+  //   //   if (this._hasClientAsyncLoader()) {
+  //   const { clientOutput, clientData, clientResponse, clientInput } = await this._executeClientAsync({
+  //     serverData,
+  //     serverResponse,
+  //     input: input as never,
+  //     skipClientMapperFns: false,
+  //   })
+  //   return {
+  //     serverData,
+  //     serverResponse,
+  //     serverOutput,
+  //     clientData,
+  //     clientResponse,
+  //     clientOutput,
+  //     clientInput,
+  //     output: clientOutput ?? serverOutput,
+  //   } as ClientExecuteDetailedResult<
+  //     TQueryResultType,
+  //     TClientInputSchema,
+  //     TServerLoaderOutput,
+  //     TClientLoaderOutput,
+  //     TClientMapperOutput
+  //   >
+  //   //   } else {
+  //   //     const { clientOutput, clientData, clientResponse } = this._executeClientSync({
+  //   //       data: serverData || {},
+  //   //       response: serverResponse,
+  //   //       input: input as never,
+  //   //     })
+  //   //     return {
+  //   //       serverData,
+  //   //       serverResponse,
+  //   //       serverOutput,
+  //   //       clientData,
+  //   //       clientResponse,
+  //   //       clientOutput,
+  //   //       output: clientOutput ?? serverOutput,
+  //   //     } as ClientExecuteDetailedResult<
+  //   //       TData,
+  //   //       TResponse,
+  //   //       TClientData,
+  //   //       TClientResponse,
+  //   //       TLastServerOutput,
+  //   //       TLastClientOutput
+  //   //     >
+  //   //   }
+  //   // }
+  //   // return {
+  //   //   serverData,
+  //   //   serverResponse,
+  //   //   serverOutput,
+  //   //   clientData: undefined,
+  //   //   clientResponse: undefined,
+  //   //   clientOutput: undefined,
+  //   //   clientInput: undefined,
+  //   //   output: serverOutput,
+  //   // } as ClientExecuteDetailedResult<TQueryResultType, TClientInputSchema, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  // }
 
-  async execute(
-    ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-      ? TServerLoaderOutput extends LoaderOutput
-        ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-        : [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
-      : TServerLoaderOutput extends LoaderOutput
-        ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
-        : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
-  ): Promise<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>> {
-    const detailedResult = await this.executeDetailed(...args)
-    return detailedResult.output
-  }
+  // async execute(
+  //   ...args: IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
+  //     ? TServerLoaderOutput extends LoaderOutput
+  //       ? [input?: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
+  //       : [input?: InputsRaw<TServerInputSchema, TClientInputSchema>]
+  //     : TServerLoaderOutput extends LoaderOutput
+  //       ? [input: InputsRaw<TServerInputSchema, TClientInputSchema>, fetchOptions?: FetchOptions]
+  //       : [input: InputsRaw<TServerInputSchema, TClientInputSchema>]
+  // ): Promise<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>> {
+  //   const detailedResult = await this.executeDetailed(...args)
+  //   return detailedResult.output
+  // }
 
   _getServerQueryKey({
     input = {} as never,
@@ -5970,7 +6162,6 @@ export class Point0<
           location,
           input: input as InputRaw<TClientInputSchema>,
           serverResponse: undefined,
-          skipClientMapperFns: true,
         })
         return clientData
       }
@@ -6203,7 +6394,6 @@ export class Point0<
               ...input,
               [pageParamFromInput]: pageParam ?? this._infiniteQueryOptions.initialPageParam,
             } as InputRaw<TClientInputSchema>,
-            skipClientMapperFns: true,
           })
           return clientData
         } catch (error) {
@@ -6626,12 +6816,11 @@ export class Point0<
         }
         // if (this._hasClientLoader()) {
         // if (this._hasClientAsyncLoader()) {
-        const { clientOutput, clientInput } = await this._executeClientAsync({
-          serverData: serverFetchResult?.data,
-          serverResponse: serverFetchResult?.response,
-          input: input as never,
-          skipClientMapperFns: true,
-        })
+        // const { clientOutput, clientInput } = await this._executeClientAsync({
+        //   serverData: serverFetchResult?.data,
+        //   serverResponse: serverFetchResult?.response,
+        //   input: input as never,
+        // })
         // return clientOutput
         //   } else {
         //     const { clientOutput } = this._executeClientSync({
@@ -6642,13 +6831,18 @@ export class Point0<
         //     return clientOutput
         //   }
         // }
-        if (this._hasMapperFns()) {
-          return this._clientMapperFns.reduce(
-            (data, mapperFn) => mapperFn({ data: clientOutput, input: clientInput }),
-            serverFetchResult?.output,
-          ) as FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-        }
+        // if (this._hasMapperFns()) {
+        //   return this._clientMapperFns.reduce(
+        //     (data, mapperFn) => mapperFn({ data: clientOutput, input: clientInput }),
+        //     serverFetchResult?.output,
+        //   ) as FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+        // }
         if (this._hasClientLoader()) {
+          const { clientOutput } = await this._executeClientAsync({
+            serverData: serverFetchResult?.data,
+            serverResponse: serverFetchResult?.response,
+            input: input as never,
+          })
           if (!clientOutput) {
             throw new Error('Client output is not set')
           }
@@ -7442,9 +7636,34 @@ export class Point0<
 
   // mountable components
 
+  private readonly _Mountable = (props: {
+    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    props: FinalProps<TProps>
+    extraChildrenProps: Record<string, any>
+  }): React.ReactNode => {
+    const componentType: DestinationComponentType =
+      this.type === 'page'
+        ? 'page'
+        : this.type === 'layout'
+          ? 'layout'
+          : this.type === 'component'
+            ? 'component'
+            : 'page'
+    const loadingComponent = this._getLoadingComponent({
+      type: componentType,
+    })
+    const errorComponent = this._getErrorComponent({ type: componentType })
+
+    const useMountableResult = this.useMountable(props.input)
+
+    if (this.type === 'page') {
+      this._useHead(useMountableResult, props.props)
+    }
+  }
+
   Page = (props: MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, false>): React.ReactNode => {
-    const loadingComponent = this._getLoadingComponent({ type: 'page' })
-    const errorComponent = this._getErrorComponent({ type: 'page' })
+    // const loadingComponent = this._getLoadingComponent({ type: 'page' })
+    // const errorComponent = this._getErrorComponent({ type: 'page' })
 
     const location = useLocation<CurrentRouteDefinition<TRouteDefinition>>()
 
@@ -7457,13 +7676,13 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props, location])
 
-    const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
-      const result = this.parseClientInputSafe(inputRaw as never)
-      if (!result.success) {
-        return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
-      }
-      return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
-    }, [inputRaw])
+    // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
+    //   const result = this.parseClientInputSafe(inputRaw as never)
+    //   if (!result.success) {
+    //     return { inputParsed: null, inputParseError: result.error } satisfies InputParseResult<TClientInputSchema>
+    //   }
+    //   return { inputParsed: result.data, inputParseError: null } satisfies InputParseResult<TClientInputSchema>
+    // }, [inputRaw])
 
     const { prevLocation, status } = useRouterContext()
     React.useEffect(() => {
@@ -7506,187 +7725,187 @@ export class Point0<
 
     // return <Mountable point={this} props={restProps} input={inputRaw} />
 
-    if (clientInputParseResult.inputParseError) {
-      const result = {
-        data: undefined,
-        error: clientInputParseResult.inputParseError,
-        input: clientInputParseResult.inputParsed,
-        query: null,
-        location,
-        loading: false,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      this._useHead(result)
-      return this._withWrappers({
-        children: React.createElement(errorComponent, {
-          ...result,
-          props: restProps,
-          type: 'page',
-        }),
-        useLoaderResult: result,
-        props,
-      })
-    }
+    // if (clientInputParseResult.inputParseError) {
+    //   const result = {
+    //     data: undefined,
+    //     error: clientInputParseResult.inputParseError,
+    //     input: clientInputParseResult.inputParsed,
+    //     query: null,
+    //     location,
+    //     loading: false,
+    //   } satisfies AnyUseLoaderResult<
+    //     'error',
+    //     TQueryResultType,
+    //     TServerLoaderOutput,
+    //     TClientLoaderOutput,
+    //     TClientMapperOutput,
+    //     TClientInputSchema,
+    //     AnyLocation
+    //   >
+    //   this._useHead(result)
+    //   return this._withWrappers({
+    //     children: React.createElement(errorComponent, {
+    //       ...result,
+    //       props: restProps,
+    //       type: 'page',
+    //     }),
+    //     useLoaderResult: result,
+    //     props,
+    //   })
+    // }
 
-    const LoadingComponent = React.useMemo(
-      () => () => {
-        const result = {
-          data: undefined,
-          error: null,
-          input: clientInputParseResult.inputParsed,
-          location,
-          loading: true,
-          query: null,
-        } satisfies AnyUseLoaderResult<
-          'pending',
-          TQueryResultType,
-          TServerLoaderOutput,
-          TClientLoaderOutput,
-          TClientMapperOutput,
-          TClientInputSchema,
-          AnyLocation
-        >
-        this._useHead(result)
-        return this._withWrappers({
-          children: React.createElement(loadingComponent, {
-            ...result,
-            props: restProps,
-            type: 'page',
-          }),
-          useLoaderResult: result,
-          props: restProps,
-        })
-      },
-      [loadingComponent, clientInputParseResult],
-    )
+    // const LoadingComponent = React.useMemo(
+    //   () => () => {
+    //     const result = {
+    //       data: undefined,
+    //       error: null,
+    //       input: clientInputParseResult.inputParsed,
+    //       location,
+    //       loading: true,
+    //       query: null,
+    //     } satisfies AnyUseLoaderResult<
+    //       'pending',
+    //       TQueryResultType,
+    //       TServerLoaderOutput,
+    //       TClientLoaderOutput,
+    //       TClientMapperOutput,
+    //       TClientInputSchema,
+    //       AnyLocation
+    //     >
+    //     this._useHead(result)
+    //     return this._withWrappers({
+    //       children: React.createElement(loadingComponent, {
+    //         ...result,
+    //         props: restProps,
+    //         type: 'page',
+    //       }),
+    //       useLoaderResult: result,
+    //       props: restProps,
+    //     })
+    //   },
+    //   [loadingComponent, clientInputParseResult],
+    // )
 
-    const ErrorComponent = React.useMemo(
-      () =>
-        ({ error }: { error: Error }) => {
-          const result = {
-            data: undefined,
-            error: Error0.from(error),
-            input: clientInputParseResult.inputParsed,
-            location,
-            loading: false,
-            query: null,
-          } satisfies AnyUseLoaderResult<
-            'error',
-            TQueryResultType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TClientMapperOutput,
-            TClientInputSchema,
-            AnyLocation
-          >
-          this._useHead(result)
-          return this._withWrappers({
-            children: React.createElement(errorComponent, {
-              ...result,
-              props: restProps,
-              type: 'page',
-            }),
-            props: restProps,
-            useLoaderResult: result,
-          })
-        },
-      [errorComponent, clientInputParseResult],
-    )
+    // const ErrorComponent = React.useMemo(
+    //   () =>
+    //     ({ error }: { error: Error }) => {
+    //       const result = {
+    //         data: undefined,
+    //         error: Error0.from(error),
+    //         input: clientInputParseResult.inputParsed,
+    //         location,
+    //         loading: false,
+    //         query: null,
+    //       } satisfies AnyUseLoaderResult<
+    //         'error',
+    //         TQueryResultType,
+    //         TServerLoaderOutput,
+    //         TClientLoaderOutput,
+    //         TClientMapperOutput,
+    //         TClientInputSchema,
+    //         AnyLocation
+    //       >
+    //       this._useHead(result)
+    //       return this._withWrappers({
+    //         children: React.createElement(errorComponent, {
+    //           ...result,
+    //           props: restProps,
+    //           type: 'page',
+    //         }),
+    //         props: restProps,
+    //         useLoaderResult: result,
+    //       })
+    //     },
+    //   [errorComponent, clientInputParseResult],
+    // )
 
-    if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
-      return this._withOuters({
-        children: React.createElement(this._PageLoader, {
-          location,
-          inputRaw,
-          clientInputParseResult,
-          restProps,
-        }),
-        input: clientInputParseResult.inputParsed,
-        props: restProps,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }
+    // if (this._hasClientLoader() || this._hasServerLoader() || this._hasMapperFns()) {
+    //   return this._withOuters({
+    //     children: React.createElement(this._PageLoader, {
+    //       location,
+    //       inputRaw,
+    //       clientInputParseResult,
+    //       restProps,
+    //     }),
+    //     input: clientInputParseResult.inputParsed,
+    //     props: restProps,
+    //     location,
+    //     LoadingComponent,
+    //     ErrorComponent,
+    //   })
+    // }
 
-    if (!this._page) {
-      // impossible error
-      const result = {
-        data: undefined,
-        error: new Error0('No page component'),
-        input: clientInputParseResult.inputParsed,
-        location,
-        loading: false,
-        query: null,
-      } satisfies AnyUseLoaderResult<
-        'error',
-        TQueryResultType,
-        TServerLoaderOutput,
-        TClientLoaderOutput,
-        TClientMapperOutput,
-        TClientInputSchema,
-        AnyLocation
-      >
-      this._useHead(result)
-      return this._withOuters({
-        children: this._withWrappers({
-          children: React.createElement(errorComponent, {
-            ...result,
-            props: restProps,
-            type: 'page',
-          }),
-          useLoaderResult: result,
-          props: restProps,
-        }),
-        input: clientInputParseResult.inputParsed,
-        props: restProps,
-        location,
-        LoadingComponent,
-        ErrorComponent,
-      })
-    }
+    // if (!this._page) {
+    //   // impossible error
+    //   const result = {
+    //     data: undefined,
+    //     error: new Error0('No page component'),
+    //     input: clientInputParseResult.inputParsed,
+    //     location,
+    //     loading: false,
+    //     query: null,
+    //   } satisfies AnyUseLoaderResult<
+    //     'error',
+    //     TQueryResultType,
+    //     TServerLoaderOutput,
+    //     TClientLoaderOutput,
+    //     TClientMapperOutput,
+    //     TClientInputSchema,
+    //     AnyLocation
+    //   >
+    //   this._useHead(result)
+    //   return this._withOuters({
+    //     children: this._withWrappers({
+    //       children: React.createElement(errorComponent, {
+    //         ...result,
+    //         props: restProps,
+    //         type: 'page',
+    //       }),
+    //       useLoaderResult: result,
+    //       props: restProps,
+    //     }),
+    //     input: clientInputParseResult.inputParsed,
+    //     props: restProps,
+    //     location,
+    //     LoadingComponent,
+    //     ErrorComponent,
+    //   })
+    // }
 
-    const result = {
-      data: undefined as never,
-      error: null,
-      input: clientInputParseResult.inputParsed,
-      location,
-      loading: false,
-      query: null as never,
-    } satisfies AnyUseLoaderResult<
-      'success',
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TClientMapperOutput,
-      TClientInputSchema,
-      AnyLocation
-    >
+    // const result = {
+    //   data: undefined as never,
+    //   error: null,
+    //   input: clientInputParseResult.inputParsed,
+    //   location,
+    //   loading: false,
+    //   query: null as never,
+    // } satisfies AnyUseLoaderResult<
+    //   'success',
+    //   TQueryResultType,
+    //   TServerLoaderOutput,
+    //   TClientLoaderOutput,
+    //   TClientMapperOutput,
+    //   TClientInputSchema,
+    //   AnyLocation
+    // >
 
-    this._useHead(result as never)
+    // this._useHead(result as never)
 
-    return this._withOuters({
-      children: this._withWrappers({
-        children: React.createElement(this._page, {
-          ...(result as any),
-          props: restProps,
-        }),
-        useLoaderResult: result as never,
-        props: restProps,
-      }),
-      input: clientInputParseResult.inputParsed,
-      props: restProps,
-      location,
-      LoadingComponent,
-      ErrorComponent,
-    })
+    // return this._withOuters({
+    //   children: this._withWrappers({
+    //     children: React.createElement(this._page, {
+    //       ...(result as any),
+    //       props: restProps,
+    //     }),
+    //     useLoaderResult: result as never,
+    //     props: restProps,
+    //   }),
+    //   input: clientInputParseResult.inputParsed,
+    //   props: restProps,
+    //   location,
+    //   LoadingComponent,
+    //   ErrorComponent,
+    // })
   }
 
   _PageLoader = (props: {

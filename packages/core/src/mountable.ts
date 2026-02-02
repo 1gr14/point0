@@ -286,7 +286,7 @@ export type UseMountableResultError<
   TExtraQueries extends ExtraQueries | UndefinedExtraQueries,
 > = {
   input: InputParsed<TClientInputSchema> | undefined
-  queries: WithExtraQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TExtraQueries>
+  queries: undefined | WithExtraQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TExtraQueries>
   data:
     | undefined
     | FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>

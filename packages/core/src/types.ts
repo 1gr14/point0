@@ -16,7 +16,12 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { Point0 } from './index.js'
-import type { ExtraQueries, UndefinedExtraQueries } from './mountable.js'
+import type {
+  ExtraQueries,
+  UndefinedExtraQueries,
+  UseQueryOrInfiniteQueryResult,
+  WithExtraQueries,
+} from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
@@ -1665,6 +1670,18 @@ export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'i
     ? { type: 'input'; schema: InputSchema; unstableId: number }
     : never
 
+export type ClientMountAction<TType extends 'query' | 'input' = 'query' | 'input'> = TType extends 'query'
+  ? {
+      type: 'query'
+      fn: (
+        options: { input: InputParsed; enabled: true } | { input: unknown; enabled: false },
+      ) => UseQueryOrInfiniteQueryResult
+      unstableId: number
+    }
+  : TType extends 'input'
+    ? { type: 'input'; schema: InputSchema; unstableId: number }
+    : never
+
 export type ClientExecuteActionLocation<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
@@ -1721,11 +1738,13 @@ export type ClientMapperFnOptions<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = ExtraQueries | UndefinedExtraQueries,
 > = {
   data: PrettifyOrUndefined<
     FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
   >
   input: InputParsed<TClientInputSchema>
+  queries: WithExtraQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TExtraQueries>
 }
 export type ClientMapperFn<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
