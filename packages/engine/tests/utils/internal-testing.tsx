@@ -392,16 +392,13 @@ export const createTestThings = async ({
   }
   const loadPoint = (async (point: EndPoint, ...args: [any]) => {
     return await client.run(async () => {
-      if (point.type === 'query') {
-        return await point.fetchQuery(...args)
-      }
       if (point.type === 'infiniteQuery') {
         return await point.fetchInfiniteQuery(...args)
       }
       if (point.type === 'mutation') {
         return await point.fetchMutation(...args)
       }
-      throw new Error(`Unsupported point type to: ${point.type}`)
+      return await point.fetchQuery(...args)
     })
   }) as unknown as FetchPoint
   const loadPointYml = (async (point: EndPoint, ...args: [any]) => {
