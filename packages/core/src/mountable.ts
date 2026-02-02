@@ -131,6 +131,7 @@ import type {
   IsInputsSchemasDefined,
   LoaderOutput,
   MapperOutput,
+  PrettifyOrUndefined,
   Props,
   QueryResultType,
   RouteDefinition,
@@ -476,6 +477,37 @@ export type SuccessComponentType<
     TExtraQueries
   >
 >
+
+export type ClientMapperFnOptions<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = ExtraQueries | UndefinedExtraQueries,
+> = {
+  data: PrettifyOrUndefined<
+    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
+  >
+  input: InputParsed<TClientInputSchema>
+  queries: WithExtraQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TExtraQueries>
+}
+export type ClientMapperFn<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
+  TNewClientMapperOutput extends MapperOutput = MapperOutput,
+> = (
+  options: ClientMapperFnOptions<
+    TQueryResultType,
+    TClientInputSchema,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TClientMapperOutput
+  >,
+) => TNewClientMapperOutput
 
 export type HeadFnOptions<
   TStatus extends 'pending' | 'error' | 'success',

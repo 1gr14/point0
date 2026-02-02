@@ -16,12 +16,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { Point0 } from './index.js'
-import type {
-  ExtraQueries,
-  UndefinedExtraQueries,
-  UseQueryOrInfiniteQueryResult,
-  WithExtraQueries,
-} from './mountable.js'
+import type { ExtraQueries, UndefinedExtraQueries, UseQueryOrInfiniteQueryResult } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
@@ -1746,37 +1741,6 @@ export type ClientLoaderFn<
     TClientLoaderOutput
   >,
 ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
-
-export type ClientMapperFnOptions<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TExtraQueries extends ExtraQueries | UndefinedExtraQueries = ExtraQueries | UndefinedExtraQueries,
-> = {
-  data: PrettifyOrUndefined<
-    FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TClientMapperOutput>
-  >
-  input: InputParsed<TClientInputSchema>
-  queries: WithExtraQueries<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TExtraQueries>
-}
-export type ClientMapperFn<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
-  TClientMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
-  TNewClientMapperOutput extends MapperOutput = MapperOutput,
-> = (
-  options: ClientMapperFnOptions<
-    TQueryResultType,
-    TClientInputSchema,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TClientMapperOutput
-  >,
-) => TNewClientMapperOutput
 
 // head
 

@@ -36,7 +36,6 @@ import type {
   BasePoint,
   ClientExecuteAction,
   ClientLoaderFn,
-  ClientMapperFn,
   ClientMountAction,
   Ctx,
   CtxExposedKeys,
@@ -172,6 +171,7 @@ import type {
   UndefinedSuccessPageComponent,
   UseMountableResult,
   UseQueryOrInfiniteQueryResult,
+  ClientMapperFn,
 } from './mountable.js'
 import stringify from 'safe-stable-stringify'
 
@@ -404,7 +404,6 @@ export class Point0<
   }) => {
     const { stack, ...json } = error.toJSON()
     // TODO: move console.error to .onClientError
-    console.error(error)
     return React.createElement(
       React.Fragment,
       null,
