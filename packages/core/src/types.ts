@@ -16,7 +16,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query'
 import type { Point0 } from './index.js'
-import type { Props, Queries, UndefinedProps } from './mountable.js'
+import type { Props, Queries } from './mountable.js'
 import type { PointsManager } from './points-manager.js'
 import type { Request0 } from './request0.js'
 import type { ResponseEffects, ResponseEffectsSetHelper } from './response0.js'
@@ -88,8 +88,8 @@ export type Infer<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = {
   PointType: TPointType
@@ -112,7 +112,7 @@ export type Infer<
   ServerInputParsed: InputParsed<TServerInputSchema>
   ServerInputRaw: InputRaw<TServerInputSchema>
   ServerInputOptional: IsInputOptional<TServerInputSchema>
-  Props: TProps
+  OuterProps: TOuterProps
   InnerProps: TInnerProps
   QueryResultType: TQueryResultType
   Queries: TQueries
@@ -161,10 +161,10 @@ export type PointType =
   | 'layout'
   | 'provider'
   | 'coreStage'
+  | 'serverStage'
   | 'clientStage'
-  | 'mapperStage'
-  | 'renderStage'
-export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'renderStage'
+  | 'finalStage'
+export type StagePointType = 'coreStage' | 'serverStage' | 'clientStage' | 'finalStage'
 export type EndPointType = Exclude<PointType, StagePointType>
 export type RequestableEndPointType = Exclude<EndPointType, 'root' | 'base' | 'plugin'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
@@ -203,8 +203,8 @@ export type AnyPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = Point0<
   TPointType,
@@ -219,7 +219,7 @@ export type AnyPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -235,8 +235,8 @@ export type RootPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = AnyPoint<
   'root',
@@ -251,7 +251,7 @@ export type RootPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -267,8 +267,8 @@ export type PluginPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = AnyPoint<
   'plugin',
@@ -283,7 +283,7 @@ export type PluginPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -299,8 +299,8 @@ export type BasePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = AnyPoint<
   'base',
@@ -315,7 +315,7 @@ export type BasePoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -331,8 +331,8 @@ export type PagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = AnyPoint<
   'page',
@@ -347,7 +347,7 @@ export type PagePoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -363,8 +363,8 @@ export type LayoutPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = AnyPoint<
   'layout',
@@ -379,7 +379,7 @@ export type LayoutPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -396,8 +396,8 @@ export type EndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = AnyPoint<
   TPointType,
@@ -412,7 +412,7 @@ export type EndPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -888,8 +888,8 @@ export type HasAnyLoader<
 // TLetsEndPointType extends EndPointType | UndefinedEndPointType,
 // TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 // TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-export type HasLoadersAndNotInMountStage<
-    TPointType extends PointType,
+// export type HasLoadersAndNotInMountStage<
+//     TPointType extends PointType,
 
 // export type HasAnyOutput<
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -1241,11 +1241,11 @@ export type UsePointQueryOptions<
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = SuccessComponentProps<
 //   TClientInputSchema,
-//   TProps,
+//   TOuterProps,
 //   TQueryResultType,
 //   TServerLoaderOutput,
 //   TClientLoaderOutput,
@@ -1259,7 +1259,7 @@ export type UsePointQueryOptions<
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = React.ComponentType<
 //   PageSuccessComponentProps<
@@ -1269,7 +1269,7 @@ export type UsePointQueryOptions<
 //     TMapperOutput,
 //     TRouteDefinition,
 //     TClientInputSchema,
-//     TProps,
+//     TOuterProps,
 //     TQueries
 //   >
 // >
@@ -1282,11 +1282,11 @@ export type UsePointQueryOptions<
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = SuccessComponentProps<
 //   TClientInputSchema,
-//   TProps,
+//   TOuterProps,
 //   TQueryResultType,
 //   TServerLoaderOutput,
 //   TClientLoaderOutput,
@@ -1304,7 +1304,7 @@ export type UsePointQueryOptions<
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = React.ComponentType<
 //   LayoutSuccessComponentProps<
@@ -1314,7 +1314,7 @@ export type UsePointQueryOptions<
 //     TMapperOutput,
 //     TRouteDefinition,
 //     TClientInputSchema,
-//     TProps,
+//     TOuterProps,
 //     TQueries
 //   >
 // >
@@ -1326,11 +1326,11 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = SuccessComponentProps<
 //   TClientInputSchema,
-//   TProps,
+//   TOuterProps,
 //   TQueryResultType,
 //   TServerLoaderOutput,
 //   TClientLoaderOutput,
@@ -1343,7 +1343,7 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = React.ComponentType<
 //   ComponentSuccessComponentProps<
@@ -1352,7 +1352,7 @@ export type UsePointQueryOptions<
 //     TClientLoaderOutput,
 //     TMapperOutput,
 //     TInputSchema,
-//     TProps,
+//     TOuterProps,
 //     TQueries
 //   >
 // >
@@ -1361,13 +1361,13 @@ export type UsePointQueryOptions<
 // export type MountableComponentProps<
 //   TServerInputSchema extends InputSchema | UndefinedInputSchema,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TWithChildren extends boolean | null,
 // > = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
 //   ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-//     ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
-//     : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
-//   : FinalProps<TProps>) &
+//     ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TOuterProps>
+//     : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TOuterProps>
+//   : FinalProps<TOuterProps>) &
 //   (TWithChildren extends true
 //     ? { children: React.ReactNode }
 //     : TWithChildren extends null
@@ -1376,9 +1376,9 @@ export type UsePointQueryOptions<
 // export type MountableComponentType<
 //   TServerInputSchema extends InputSchema | UndefinedInputSchema,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps,
+//   TOuterProps extends Props,
 //   TWithChildren extends boolean | null,
-// > = React.ComponentType<MountableComponentProps<TServerInputSchema, TClientInputSchema, TProps, TWithChildren>>
+// > = React.ComponentType<MountableComponentProps<TServerInputSchema, TClientInputSchema, TOuterProps, TWithChildren>>
 
 // extra components
 
@@ -1390,10 +1390,10 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 // > = {
 //   type: TType
-//   props: FinalProps<TProps>
+//   props: FinalProps<TOuterProps>
 // } & UseLoaderResult<
 //   'pending',
 //   TQueryResultType,
@@ -1410,7 +1410,7 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 // > = React.ComponentType<
 //   LoadingComponentProps<
 //     TType,
@@ -1419,7 +1419,7 @@ export type UsePointQueryOptions<
 //     TClientLoaderOutput,
 //     TMapperOutput,
 //     TClientInputSchema,
-//     TProps
+//     TOuterProps
 //   >
 // >
 
@@ -1430,10 +1430,10 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 // > = {
 //   type: TType
-//   props: FinalProps<TProps>
+//   props: FinalProps<TOuterProps>
 // } & UseLoaderResult<
 //   'error',
 //   TQueryResultType,
@@ -1450,7 +1450,7 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 // > = React.ComponentType<
 //   ErrorComponentProps<
 //     TType,
@@ -1459,7 +1459,7 @@ export type UsePointQueryOptions<
 //     TClientLoaderOutput,
 //     TMapperOutput,
 //     TClientInputSchema,
-//     TProps
+//     TOuterProps
 //   >
 // >
 
@@ -1469,7 +1469,7 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 // > = AnyUseLoaderResult<
 //   any,
 //   TQueryResultType,
@@ -1479,7 +1479,7 @@ export type UsePointQueryOptions<
 //   TClientInputSchema,
 //   AnyLocation
 // > & {
-//   props: FinalProps<TProps>
+//   props: FinalProps<TOuterProps>
 //   children: React.ReactNode
 // }
 // export type WrapperComponentType<
@@ -1488,7 +1488,7 @@ export type UsePointQueryOptions<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 // > = React.ComponentType<
 //   WrapperComponentProps<
 //     TQueryResultType,
@@ -1496,17 +1496,17 @@ export type UsePointQueryOptions<
 //     TClientLoaderOutput,
 //     TMapperOutput,
 //     TClientInputSchema,
-//     TProps
+//     TOuterProps
 //   >
 // >
 
 // export type OuterComponentProps<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 //   TLocation extends AnyLocation = AnyLocation,
 // > = {
 //   input: InputParsed<TClientInputSchema>
-//   props: FinalProps<TProps>
+//   props: FinalProps<TOuterProps>
 //   location: TLocation
 //   children: Exclude<React.ReactNode, Promise<any>>
 //   LoadingComponent: React.ComponentType
@@ -1515,9 +1515,9 @@ export type UsePointQueryOptions<
 
 // export type OuterComponentType<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
-//   TProps extends Props | UndefinedProps = Props | UndefinedProps,
+//   TOuterProps extends Props = Props,
 //   TLocation extends AnyLocation = AnyLocation,
-// > = React.ComponentType<OuterComponentProps<TClientInputSchema, TProps, TLocation>>
+// > = React.ComponentType<OuterComponentProps<TClientInputSchema, TOuterProps, TLocation>>
 
 // export type BeforeClientHookOptions<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
@@ -1947,55 +1947,71 @@ export type MiddlewareFnOptionsBase = Omit<MiddlewareFnOptions, 'next'>
 export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | FetcherFetchDetailedResult>
 
 // nice middle point
+// export type AssertNoForbiddenMethodsIfNotSuitableStage<
+//   TPointType extends PointType,
+//   TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'mapper' | 'input' | 'clientInput' | 'combinedInput',
+// > = TPointType extends 'clientStage'
+//   ? TMethod extends 'loader'
+//     ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add your.loader() before last .clientLoader()`>
+//     : TMethod extends 'ctx'
+//       ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add your .ctx() before last .clientLoader()`>
+//       : TMethod extends 'input'
+//         ? ShowError<`You can not use input() in client stage. Please, drop client loader via .clientLoader(false) or add your .input() before last .clientLoader()`>
+//         : TMethod extends 'combinedInput'
+//           ? ShowError<`You can not use combinedInput() in client stage. Please, drop client loader via .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
+//           : TMethod extends 'use'
+//             ? ShowError<`You can not use use() in client stage. Please, drop client loader via .clientLoader(false) or add your.use() before last .clientLoader()`>
+//             : unknown
+//   : TPointType extends 'mapperStage'
+//     ? TMethod extends 'loader'
+//       ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.loader() before last .clientLoader()`>
+//       : TMethod extends 'ctx'
+//         ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.ctx() before last .clientLoader()`>
+//         : TMethod extends 'input'
+//           ? ShowError<`You can not use input() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .input() before last .clientLoader()`>
+//           : TMethod extends 'combinedInput'
+//             ? ShowError<`You can not use combinedInput() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
+//             : TMethod extends 'use'
+//               ? ShowError<`You can not use use() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.use() before last .clientLoader()`>
+//               : TMethod extends 'clientLoader'
+//                 ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
+//                 : TMethod extends 'clientInput'
+//                   ? ShowError<`You can not use clientInput() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
+//                   : unknown
+//     : TPointType extends 'renderStage'
+//       ? TMethod extends 'loader'
+//         ? ShowError<`You can not use loader() in render stage. Call it before any render methods`>
+//         : TMethod extends 'ctx'
+//           ? ShowError<`You can not use ctx() in render stage. Call it before any render methods`>
+//           : TMethod extends 'input'
+//             ? ShowError<`You can not use input() in render stage. Call it before any render methods`>
+//             : TMethod extends 'combinedInput'
+//               ? ShowError<`You can not use combinedInput() in render stage. Call it before any render methods`>
+//               : TMethod extends 'use'
+//                 ? ShowError<`You can not use use() in render stage. Call it before any render methods`>
+//                 : TMethod extends 'clientLoader'
+//                   ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
+//                   : TMethod extends 'clientInput'
+//                     ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
+//                     : TMethod extends 'mapper'
+//                       ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
+//                       : unknown
+//       : unknown
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
   TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'mapper' | 'input' | 'clientInput' | 'combinedInput',
-> = TPointType extends 'clientStage'
-  ? TMethod extends 'loader'
-    ? ShowError<`You can not use loader() in client stage. Please, drop client loader via .clientLoader(false) or add your.loader() before last .clientLoader()`>
-    : TMethod extends 'ctx'
-      ? ShowError<`You can not use ctx() in client stage. Please, drop client loader via .clientLoader(false) or add your .ctx() before last .clientLoader()`>
-      : TMethod extends 'input'
-        ? ShowError<`You can not use input() in client stage. Please, drop client loader via .clientLoader(false) or add your .input() before last .clientLoader()`>
-        : TMethod extends 'combinedInput'
-          ? ShowError<`You can not use combinedInput() in client stage. Please, drop client loader via .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
-          : TMethod extends 'use'
-            ? ShowError<`You can not use use() in client stage. Please, drop client loader via .clientLoader(false) or add your.use() before last .clientLoader()`>
-            : unknown
-  : TPointType extends 'mapperStage'
-    ? TMethod extends 'loader'
-      ? ShowError<`You can not use loader() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.loader() before last .clientLoader()`>
-      : TMethod extends 'ctx'
-        ? ShowError<`You can not use ctx() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.ctx() before last .clientLoader()`>
-        : TMethod extends 'input'
-          ? ShowError<`You can not use input() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .input() before last .clientLoader()`>
-          : TMethod extends 'combinedInput'
-            ? ShowError<`You can not use combinedInput() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your .combinedInput() before last .clientLoader()`>
-            : TMethod extends 'use'
-              ? ShowError<`You can not use use() in mapper stage. Please, drop mappers via .mapper(false) or .clientLoader(false) or add your.use() before last .clientLoader()`>
-              : TMethod extends 'clientLoader'
-                ? ShowError<`You can not use clientLoader() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
-                : TMethod extends 'clientInput'
-                  ? ShowError<`You can not use clientInput() in mapper stage. Please, drop mappers via .mapper(false) or add your.clientLoader() before last .mapper()`>
-                  : unknown
-    : TPointType extends 'renderStage'
-      ? TMethod extends 'loader'
-        ? ShowError<`You can not use loader() in render stage. Call it before any render methods`>
-        : TMethod extends 'ctx'
-          ? ShowError<`You can not use ctx() in render stage. Call it before any render methods`>
-          : TMethod extends 'input'
-            ? ShowError<`You can not use input() in render stage. Call it before any render methods`>
-            : TMethod extends 'combinedInput'
-              ? ShowError<`You can not use combinedInput() in render stage. Call it before any render methods`>
-              : TMethod extends 'use'
-                ? ShowError<`You can not use use() in render stage. Call it before any render methods`>
-                : TMethod extends 'clientLoader'
-                  ? ShowError<`You can not use clientLoader() in render stage. Call it before any render methods`>
-                  : TMethod extends 'clientInput'
-                    ? ShowError<`You can not use clientInput() in render stage. Call it before any render methods`>
-                    : TMethod extends 'mapper'
-                      ? ShowError<`You can not use mapper() in render stage. Call it before any render methods`>
-                      : unknown
+> = TPointType extends 'serverStage'
+  ? TMethod extends never // nothing is forbiden
+    ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
+    : unknown
+  : TPointType extends 'clientStage'
+    ? TMethod extends 'loader' | 'ctx'
+      ? ShowError<`You can not use ${TMethod}() after calling .clientStage()`>
+      : unknown
+    : TPointType extends 'finalStage'
+      ? TMethod extends 'loader' | 'ctx' | 'clientLoader'
+        ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
+        : unknown
       : unknown
 
 export type NiceRootStagePoint<
@@ -2011,8 +2027,8 @@ export type NiceRootStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2028,7 +2044,7 @@ export type NiceRootStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2089,8 +2105,8 @@ export type NicePluginStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2106,7 +2122,7 @@ export type NicePluginStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2170,8 +2186,8 @@ export type NiceBaseStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2187,7 +2203,7 @@ export type NiceBaseStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2242,8 +2258,8 @@ export type NicePageStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2259,7 +2275,7 @@ export type NicePageStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2305,8 +2321,8 @@ export type NiceComponentStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2322,7 +2338,7 @@ export type NiceComponentStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2363,8 +2379,8 @@ export type NiceQueryStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2380,7 +2396,7 @@ export type NiceQueryStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2412,8 +2428,8 @@ export type NiceInfiniteQueryStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2429,7 +2445,7 @@ export type NiceInfiniteQueryStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2462,8 +2478,8 @@ export type NiceMutationStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2479,7 +2495,7 @@ export type NiceMutationStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2511,8 +2527,8 @@ export type NiceLayoutStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2528,7 +2544,7 @@ export type NiceLayoutStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2579,8 +2595,8 @@ export type NiceProviderStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2596,7 +2612,7 @@ export type NiceProviderStagePoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2636,8 +2652,8 @@ export type NiceStagePoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = TLetsEndPointType extends 'root'
   ? NiceRootStagePoint<
@@ -2653,7 +2669,7 @@ export type NiceStagePoint<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >
@@ -2671,7 +2687,7 @@ export type NiceStagePoint<
         TServerInputSchema,
         TClientInputSchema,
         TQueryResultType,
-        TProps,
+        TOuterProps,
         TInnerProps,
         TQueries
       >
@@ -2689,7 +2705,7 @@ export type NiceStagePoint<
           TServerInputSchema,
           TClientInputSchema,
           TQueryResultType,
-          TProps,
+          TOuterProps,
           TInnerProps,
           TQueries
         >
@@ -2707,7 +2723,7 @@ export type NiceStagePoint<
             TServerInputSchema,
             TClientInputSchema,
             TQueryResultType,
-            TProps,
+            TOuterProps,
             TInnerProps,
             TQueries
           >
@@ -2725,7 +2741,7 @@ export type NiceStagePoint<
               TServerInputSchema,
               TClientInputSchema,
               TQueryResultType,
-              TProps,
+              TOuterProps,
               TInnerProps,
               TQueries
             >
@@ -2743,7 +2759,7 @@ export type NiceStagePoint<
                 TServerInputSchema,
                 TClientInputSchema,
                 TQueryResultType,
-                TProps,
+                TOuterProps,
                 TInnerProps,
                 TQueries
               >
@@ -2761,7 +2777,7 @@ export type NiceStagePoint<
                   TServerInputSchema,
                   TClientInputSchema,
                   TQueryResultType,
-                  TProps,
+                  TOuterProps,
                   TInnerProps,
                   TQueries
                 >
@@ -2779,7 +2795,7 @@ export type NiceStagePoint<
                     TServerInputSchema,
                     TClientInputSchema,
                     TQueryResultType,
-                    TProps,
+                    TOuterProps,
                     TInnerProps,
                     TQueries
                   >
@@ -2797,7 +2813,7 @@ export type NiceStagePoint<
                       TServerInputSchema,
                       TClientInputSchema,
                       TQueryResultType,
-                      TProps,
+                      TOuterProps,
                       TInnerProps,
                       TQueries
                     >
@@ -2815,7 +2831,7 @@ export type NiceStagePoint<
                         TServerInputSchema,
                         TClientInputSchema,
                         TQueryResultType,
-                        TProps,
+                        TOuterProps,
                         TInnerProps,
                         TQueries
                       >
@@ -2870,8 +2886,8 @@ export type NiceRootEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2887,7 +2903,7 @@ export type NiceRootEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2907,8 +2923,8 @@ export type NicePluginEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2924,7 +2940,7 @@ export type NicePluginEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -2944,8 +2960,8 @@ export type NiceBaseEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -2961,7 +2977,7 @@ export type NiceBaseEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3006,8 +3022,8 @@ export type NicePageEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3023,7 +3039,7 @@ export type NicePageEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3047,8 +3063,8 @@ export type NiceComponentEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3064,7 +3080,7 @@ export type NiceComponentEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3084,8 +3100,8 @@ export type NiceLayoutEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3101,7 +3117,7 @@ export type NiceLayoutEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3125,8 +3141,8 @@ export type NiceQueryEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3142,7 +3158,7 @@ export type NiceQueryEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3162,8 +3178,8 @@ export type NiceInfiniteQueryEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3179,7 +3195,7 @@ export type NiceInfiniteQueryEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3199,8 +3215,8 @@ export type NiceMutationEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3216,7 +3232,7 @@ export type NiceMutationEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3239,8 +3255,8 @@ export type NiceProviderEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = Pick<
   Point0<
@@ -3256,7 +3272,7 @@ export type NiceProviderEndPoint<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >,
@@ -3280,8 +3296,8 @@ export type NiceEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = TPointType extends 'root'
   ? NiceRootEndPoint<
@@ -3297,7 +3313,7 @@ export type NiceEndPoint<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >
@@ -3315,7 +3331,7 @@ export type NiceEndPoint<
         TServerInputSchema,
         TClientInputSchema,
         TQueryResultType,
-        TProps,
+        TOuterProps,
         TInnerProps,
         TQueries
       >
@@ -3333,7 +3349,7 @@ export type NiceEndPoint<
           TServerInputSchema,
           TClientInputSchema,
           TQueryResultType,
-          TProps,
+          TOuterProps,
           TInnerProps,
           TQueries
         >
@@ -3351,7 +3367,7 @@ export type NiceEndPoint<
             TServerInputSchema,
             TClientInputSchema,
             TQueryResultType,
-            TProps,
+            TOuterProps,
             TInnerProps,
             TQueries
           >
@@ -3369,7 +3385,7 @@ export type NiceEndPoint<
               TServerInputSchema,
               TClientInputSchema,
               TQueryResultType,
-              TProps,
+              TOuterProps,
               TInnerProps,
               TQueries
             >
@@ -3387,7 +3403,7 @@ export type NiceEndPoint<
                 TServerInputSchema,
                 TClientInputSchema,
                 TQueryResultType,
-                TProps,
+                TOuterProps,
                 TInnerProps,
                 TQueries
               >
@@ -3405,7 +3421,7 @@ export type NiceEndPoint<
                   TServerInputSchema,
                   TClientInputSchema,
                   TQueryResultType,
-                  TProps,
+                  TOuterProps,
                   TInnerProps,
                   TQueries
                 >
@@ -3423,7 +3439,7 @@ export type NiceEndPoint<
                     TServerInputSchema,
                     TClientInputSchema,
                     TQueryResultType,
-                    TProps,
+                    TOuterProps,
                     TInnerProps,
                     TQueries
                   >
@@ -3441,7 +3457,7 @@ export type NiceEndPoint<
                       TServerInputSchema,
                       TClientInputSchema,
                       TQueryResultType,
-                      TProps,
+                      TOuterProps,
                       TInnerProps,
                       TQueries
                     >
@@ -3459,7 +3475,7 @@ export type NiceEndPoint<
                         TServerInputSchema,
                         TClientInputSchema,
                         TQueryResultType,
-                        TProps,
+                        TOuterProps,
                         TInnerProps,
                         TQueries
                       >
@@ -3478,8 +3494,8 @@ export type AnyNiceEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = NiceEndPoint<
   TPointType,
@@ -3494,7 +3510,7 @@ export type AnyNiceEndPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -3511,8 +3527,8 @@ export type AnyNiceRequestableEndPoint<
   TServerInputSchema extends InputSchema | UndefinedInputSchema = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-  TProps extends Props | UndefinedProps = any,
-  TInnerProps extends Props | UndefinedProps = any,
+  TOuterProps extends Props = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
 > = NiceEndPoint<
   TPointType,
@@ -3527,7 +3543,7 @@ export type AnyNiceRequestableEndPoint<
   TServerInputSchema,
   TClientInputSchema,
   TQueryResultType,
-  TProps,
+  TOuterProps,
   TInnerProps,
   TQueries
 >
@@ -3545,7 +3561,7 @@ export type AnyNiceRequestableEndPoint<
 //   TPrevRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = any,
 //   TInputSchema extends InputSchema | UndefinedInputSchema = any,
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = any,
-//   TProps extends Props | UndefinedProps = any,
+//   TOuterProps extends Props = any,
 // > = IfAnyThenElse<
 //   TPointType,
 //   | _AnyNiceEndPoint<
@@ -3561,7 +3577,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'base',
@@ -3576,7 +3592,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'page',
@@ -3591,7 +3607,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'component',
@@ -3606,7 +3622,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'query',
@@ -3621,7 +3637,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'infiniteQuery',
@@ -3636,7 +3652,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'mutation',
@@ -3651,7 +3667,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'layout',
@@ -3666,7 +3682,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >
 //   | _AnyNiceEndPoint<
 //       'provider',
@@ -3681,7 +3697,7 @@ export type AnyNiceRequestableEndPoint<
 //       TPrevRouteDefinition,
 //       TInputSchema,
 //       TQueryResultType,
-//       TProps
+//       TOuterProps
 //     >,
 //   _AnyNiceEndPoint<
 //     TPointType,
@@ -3696,7 +3712,7 @@ export type AnyNiceRequestableEndPoint<
 //     TPrevRouteDefinition,
 //     TInputSchema,
 //     TQueryResultType,
-//     TProps
+//     TOuterProps
 //   >
 // >
 

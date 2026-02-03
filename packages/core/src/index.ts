@@ -247,8 +247,8 @@ export class Point0<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | UndefinedProps,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > {
   Infer: Infer<
@@ -264,7 +264,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > = null as never
@@ -385,21 +385,21 @@ export class Point0<
   private readonly _getComponentLoadingComponent = () =>
     this._componentLoadingComponent ?? Point0.DefaultLoadingComponent
   X: TPointType extends 'layout'
-    ? LayoutSelfType<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
+    ? LayoutSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
     : TPointType extends 'page'
       ? PageSelfType<
           TServerInputSchema,
           TClientInputSchema,
-          TProps,
+          TOuterProps,
           TInnerProps,
           TQueries,
           TMapperOutput,
           TRouteDefinition
         >
       : TPointType extends 'component'
-        ? ComponentSelfType<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
+        ? ComponentSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
         : TPointType extends 'provider'
-          ? ProviderSelfType<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
+          ? ProviderSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
           : null
 
   private constructor(options: {
@@ -550,7 +550,7 @@ export class Point0<
     TServerInputSchema extends InputSchema | UndefinedInputSchema,
     TClientInputSchema extends InputSchema | UndefinedInputSchema,
     TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-    TProps extends Props | UndefinedProps,
+    TOuterProps extends Props | UndefinedProps,
     TInnerProps extends Props | UndefinedProps,
     TQueries extends Queries,
   >(overrides: {
@@ -641,7 +641,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -658,7 +658,7 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >({

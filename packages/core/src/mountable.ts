@@ -170,20 +170,19 @@ import type {
 export type Props = Record<string, any>
 export type UndefinedProps = undefined
 export type EmptyProps = Record<never, never>
-export type FinalProps<TProps extends Props | UndefinedProps> = TProps extends UndefinedProps ? EmptyProps : TProps
-export type IsPropsOptional<TProps extends Props | UndefinedProps = Props | UndefinedProps> = TProps extends undefined
-  ? true
-  : keyof TProps extends never // no keys at all
-    ? true
-    : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-      {} extends TProps // all keys optional
-      ? true
-      : false
-export type AppendProps<TProps extends Props | UndefinedProps, TAppend extends Props> = TProps extends Props
-  ? IsNever<keyof TProps> extends true
-    ? TAppend
-    : Omit<TProps, keyof TAppend> & TAppend
-  : TAppend
+// export type IsPropsOptional<TOuterProps extends Props = Props> = TOuterProps extends undefined
+//   ? true
+//   : keyof TOuterProps extends never // no keys at all
+//     ? true
+//     : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+//       {} extends TOuterProps // all keys optional
+//       ? true
+//       : false
+export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = TPrevProps extends Props
+  ? IsNever<keyof TPrevProps> extends true
+    ? TAppendProps
+    : Omit<TPrevProps, keyof TAppendProps> & TAppendProps
+  : TAppendProps
 
 // export type WithQueries<
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -433,11 +432,11 @@ export type MountableSuccessData<
 
 export type MountableStateError<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = {
   input: InputParsed<TClientInputSchema>
-  props: FinalProps<TInnerProps>
+  props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
   queries: TQueries
   data: undefined
@@ -449,11 +448,11 @@ export type MountableStateError<
 }
 export type MountableStatePending<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
 > = {
   input: InputParsed<TClientInputSchema>
-  props: FinalProps<TInnerProps>
+  props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
   queries: TQueries
   data: undefined
@@ -465,12 +464,12 @@ export type MountableStatePending<
 }
 export type MountableStateSuccess<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   input: InputParsed<TClientInputSchema>
-  props: FinalProps<TInnerProps>
+  props: TInnerProps
   queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
   error: undefined
@@ -482,7 +481,7 @@ export type MountableStateSuccess<
 export type MountableState<
   TStatus extends 'loading' | 'error' | 'success',
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = IfAnyThenElse<
@@ -515,36 +514,36 @@ export type LoadingComponentType<TType extends DestinationComponentType> = React
 
 export type SuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   input: InputParsed<TClientInputSchema>
-  props: FinalProps<TInnerProps>
+  props: TInnerProps
   queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
 }
 export type SuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
 
 export type MapperFnOptions<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   input: InputParsed<TClientInputSchema>
-  props: FinalProps<TInnerProps>
+  props: TInnerProps
   queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
 }
 export type MapperFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewMapperOutput extends MapperOutput,
@@ -552,16 +551,16 @@ export type MapperFn<
 
 export type WrapperFnOptions<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableState<any, TClientInputSchema, TInnerProps, [...TQueries, ...Queries], TMapperOutput>
 export type WrapperFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-  TNewInnerProps extends Props | undefined = TInnerProps,
+  TNewInnerProps extends Props = TInnerProps,
 > = (
   options: WrapperFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
 ) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>> | undefined
@@ -569,7 +568,7 @@ export type WrapperFn<
 export type HeadFnOptions<
   TStatus extends 'loading' | 'error' | 'success',
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = Omit<
@@ -579,7 +578,7 @@ export type HeadFnOptions<
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
-  TInnerProps extends Props | undefined = any,
+  TInnerProps extends Props = any,
   TQueries extends Queries = any,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
 > = (
@@ -592,10 +591,10 @@ export type HeadFn<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | undefined,
+//   TOuterProps extends Props,
 //   TQueries extends Queries,
 // > = {
-//   props: TProps
+//   props: TOuterProps
 //   children: Exclude<React.ReactNode, Promise<any>>
 //   LoadingComponent: React.ComponentType
 //   ErrorComponent: React.ComponentType<{ error: Error }>
@@ -614,7 +613,7 @@ export type HeadFn<
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = any,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
-//   TProps extends Props | undefined = any,
+//   TOuterProps extends Props = any,
 //   TQueries extends Queries = any,
 // > = React.ComponentType<
 //   MountableWrapperComponentProps<
@@ -623,16 +622,16 @@ export type HeadFn<
 //     TClientLoaderOutput,
 //     TMapperOutput,
 //     TClientInputSchema,
-//     TProps,
+//     TOuterProps,
 //     TQueries
 //   >
 // >
 
 // export type MountableOuterComponentProps<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TProps extends Props | undefined,
+//   TOuterProps extends Props,
 // > = {
-//   props: TProps
+//   props: TOuterProps
 //   input: InputParsed<TClientInputSchema> | undefined
 //   children: Exclude<React.ReactNode, Promise<any>>
 //   LoadingComponent: React.ComponentType
@@ -640,15 +639,15 @@ export type HeadFn<
 // }
 // export type MountableOuterComponentType<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
-//   TProps extends Props | undefined = any,
-// > = React.ComponentType<MountableOuterComponentProps<TClientInputSchema, TProps>>
+//   TOuterProps extends Props = any,
+// > = React.ComponentType<MountableOuterComponentProps<TClientInputSchema, TOuterProps>>
 
 export type PageExtraInnerProps<TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition> = {
   location: ExactLocation<CurrentRouteDefinition<TRouteDefinition>>
 }
 export type PageSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
@@ -656,7 +655,7 @@ export type PageSuccessComponentProps<
   PageExtraInnerProps<TRouteDefinition>
 export type PageSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
@@ -671,13 +670,13 @@ export type LayoutExtraInnerProps = {
 }
 export type LayoutSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & LayoutExtraInnerProps
 export type LayoutSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<LayoutSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
@@ -687,13 +686,13 @@ export type UndefinedLayoutSuccessComponent = undefined
 export type ComponentExtraInnerProps = {}
 export type ComponentSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & ComponentExtraInnerProps
 export type ComponentSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<ComponentSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
@@ -704,13 +703,13 @@ export type ProviderExtraInnerProps = {}
 // it is impossible, it has no self render things
 // export type ProviderSuccessComponentProps<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TInnerProps extends Props | undefined,
+//   TInnerProps extends Props,
 //   TQueries extends Queries,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 // > = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & ProviderExtraInnerProps
 // export type ProviderSuccessComponentType<
 //   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TInnerProps extends Props | undefined,
+//   TInnerProps extends Props,
 //   TQueries extends Queries,
 //   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 // > = React.ComponentType<LayoutSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
@@ -718,7 +717,7 @@ export type ProviderExtraInnerProps = {}
 
 export type MountableSelfChildrenFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
+  TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
@@ -729,17 +728,17 @@ export type MountableSelfChildrenFn<
 export type MountableSelfProps<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
 > = (IsInputsSchemasDefined<TServerInputSchema, TClientInputSchema> extends true
   ? IsInputsOptional<TServerInputSchema, TClientInputSchema> extends true
-    ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
-    : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & FinalProps<TProps>
-  : FinalProps<TProps>) &
+    ? { input?: InputsRaw<TServerInputSchema, TClientInputSchema> } & TOuterProps
+    : { input: InputsRaw<TServerInputSchema, TClientInputSchema> } & TOuterProps
+  : TOuterProps) &
   (TWithChildren extends true
     ? {
         children:
@@ -756,8 +755,8 @@ export type MountableSelfProps<
 export type MountableSelfType<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
@@ -766,7 +765,7 @@ export type MountableSelfType<
   MountableSelfProps<
     TServerInputSchema,
     TClientInputSchema,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TExtraInnerProps,
     TQueries,
@@ -776,25 +775,25 @@ export type MountableSelfType<
 >
 
 // X: TPointType extends 'layout'
-// ? MountableSelfType<TServerInputSchema, TClientInputSchema, TProps, true>
+// ? MountableSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, true>
 // : TPointType extends 'page'
-//   ? MountableSelfType<TServerInputSchema, TClientInputSchema, TProps, false>
+//   ? MountableSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, false>
 //   : TPointType extends 'component'
-//     ? MountableSelfType<TServerInputSchema, TClientInputSchema, TProps, false>
+//     ? MountableSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, false>
 //     : TPointType extends 'provider'
-//       ? MountableSelfType<TServerInputSchema, TClientInputSchema, TProps, null>
+//       ? MountableSelfType<TServerInputSchema, TClientInputSchema, TOuterProps, null>
 //       : null
 export type LayoutSelfProps<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   TServerInputSchema,
   TClientInputSchema,
-  TProps,
+  TOuterProps,
   TInnerProps,
   LayoutExtraInnerProps,
   TQueries,
@@ -804,26 +803,26 @@ export type LayoutSelfProps<
 export type LayoutSelfType<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
-  LayoutSelfProps<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
+  LayoutSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
 >
 
 export type PageSelfProps<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = MountableSelfProps<
   TServerInputSchema,
   TClientInputSchema,
-  TProps,
+  TOuterProps,
   TInnerProps,
   PageExtraInnerProps<TRouteDefinition>,
   TQueries,
@@ -833,26 +832,34 @@ export type PageSelfProps<
 export type PageSelfType<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
 > = React.ComponentType<
-  PageSelfProps<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput, TRouteDefinition>
+  PageSelfProps<
+    TServerInputSchema,
+    TClientInputSchema,
+    TOuterProps,
+    TInnerProps,
+    TQueries,
+    TMapperOutput,
+    TRouteDefinition
+  >
 >
 
 export type ComponentSelfProps<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   TServerInputSchema,
   TClientInputSchema,
-  TProps,
+  TOuterProps,
   TInnerProps,
   ComponentExtraInnerProps,
   TQueries,
@@ -862,25 +869,25 @@ export type ComponentSelfProps<
 export type ComponentSelfType<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
-  ComponentSelfProps<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
+  ComponentSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
 >
 
 export type ProviderSelfProps<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   TServerInputSchema,
   TClientInputSchema,
-  TProps,
+  TOuterProps,
   TInnerProps,
   ProviderExtraInnerProps,
   TQueries,
@@ -890,12 +897,12 @@ export type ProviderSelfProps<
 export type ProviderSelfType<
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TProps extends Props | UndefinedProps,
-  TInnerProps extends Props | undefined,
+  TOuterProps extends Props,
+  TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
-  ProviderSelfProps<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
+  ProviderSelfProps<TServerInputSchema, TClientInputSchema, TOuterProps, TInnerProps, TQueries, TMapperOutput>
 >
 
 export type MountAction<
