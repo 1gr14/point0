@@ -59,7 +59,7 @@
 //     const result = React.useMemo(() => {
 //       // const data = (
 //       //   clientInputParseResult.inputParsed
-//       //     ? this._clientMapperFns.reduce(
+//       //     ? this._mapperFns.reduce(
 //       //         (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
 //       //         undefined as never,
 //       //       )
@@ -86,13 +86,13 @@
 //     if (!query.data) {
 //       return undefined
 //     }
-//     if (!this._clientMapperFns.length) {
+//     if (!this._mapperFns.length) {
 //       return query.data
 //     }
 //     if (!clientInputParseResult.inputParsed) {
 //       return undefined
 //     }
-//     return this._clientMapperFns.reduce(
+//     return this._mapperFns.reduce(
 //       (data, mapperFn) => mapperFn({ data, input: clientInputParseResult.inputParsed }),
 //       query.data,
 //     )
@@ -438,7 +438,8 @@ export type MountableStateError<
 > = {
   input: InputParsed<TClientInputSchema>
   props: FinalProps<TInnerProps>
-  queries: QueriesUnknownStatus<TQueries>
+  // queries: QueriesUnknownStatus<TQueries>
+  queries: TQueries
   data: undefined
   error: Error0
   loading: false
@@ -453,7 +454,8 @@ export type MountableStatePending<
 > = {
   input: InputParsed<TClientInputSchema>
   props: FinalProps<TInnerProps>
-  queries: QueriesUnknownStatus<TQueries>
+  // queries: QueriesUnknownStatus<TQueries>
+  queries: TQueries
   data: undefined
   error: undefined
   loading: true
@@ -478,7 +480,7 @@ export type MountableStateSuccess<
   ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableState<
-  TStatus extends 'pending' | 'error' | 'success',
+  TStatus extends 'loading' | 'error' | 'success',
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props | undefined,
   TQueries extends Queries,
@@ -490,7 +492,7 @@ export type MountableState<
   | MountableStateError<TClientInputSchema, TInnerProps, TQueries>,
   TStatus extends 'success'
     ? MountableStateSuccess<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
-    : TStatus extends 'pending'
+    : TStatus extends 'loading'
       ? MountableStatePending<TClientInputSchema, TInnerProps, TQueries>
       : TStatus extends 'error'
         ? MountableStateError<TClientInputSchema, TInnerProps, TQueries>
@@ -565,7 +567,7 @@ export type WrapperFn<
 ) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>> | undefined
 
 export type HeadFnOptions<
-  TStatus extends 'pending' | 'error' | 'success',
+  TStatus extends 'loading' | 'error' | 'success',
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props | undefined,
   TQueries extends Queries,
@@ -575,7 +577,7 @@ export type HeadFnOptions<
   'ErrorComponent' | 'LoadingComponent'
 >
 export type HeadFn<
-  TStatus extends 'pending' | 'error' | 'success' = any,
+  TStatus extends 'loading' | 'error' | 'success' = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TInnerProps extends Props | undefined = any,
   TQueries extends Queries = any,
@@ -896,19 +898,29 @@ export type ProviderSelfType<
   ProviderSelfProps<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
 >
 
-export type MountAction<TType extends 'query' | 'input' | 'wrapper' = 'query' | 'input' | 'wrapper'> =
-  TType extends 'query'
-    ? {
-        type: 'query'
-        fn: (
-          options: { input: InputParsed; enabled: true } | { input: unknown; enabled: false },
-        ) => UseQueryOrInfiniteQueryResult
-        unstableId: number
-      }
-    : TType extends 'wrapper'
-      ? { type: 'wrapper'; fn: WrapperFn<any, any, any, any> }
+export type MountAction<
+  TType extends 'query' | 'input' | 'wrapper' | 'head' | 'selfProps' =
+    | 'query'
+    | 'input'
+    | 'wrapper'
+    | 'head'
+    | 'selfProps',
+> = TType extends 'query'
+  ? {
+      type: 'query'
+      fn: (
+        options: { input: InputParsed; enabled: true } | { input: unknown; enabled: false },
+      ) => UseQueryOrInfiniteQueryResult
+      unstableId: number
+    }
+  : TType extends 'wrapper'
+    ? { type: 'wrapper'; fn: WrapperFn<any, any, any, any>; unstableId: number }
+    : TType extends 'selfProps'
+      ? { type: 'selfProps'; unstableId: number }
       : TType extends 'mapper'
-        ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any> }
-        : TType extends 'input'
-          ? { type: 'input'; schema: InputSchema; unstableId: number }
-          : never
+        ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
+        : TType extends 'head'
+          ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
+          : TType extends 'input'
+            ? { type: 'input'; schema: InputSchema; unstableId: number }
+            : never

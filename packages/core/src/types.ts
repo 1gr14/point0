@@ -168,6 +168,7 @@ export type StagePointType = 'coreStage' | 'clientStage' | 'mapperStage' | 'rend
 export type EndPointType = Exclude<PointType, StagePointType>
 export type RequestableEndPointType = Exclude<EndPointType, 'root' | 'base' | 'plugin'>
 export type MountablePointType = 'page' | 'component' | 'layout' | 'provider'
+export type QueryableEndPointType = MountablePointType | 'query' | 'infiniteQuery'
 export type IsEndPointType<TPointType extends PointType> = TPointType extends EndPointType ? true : false
 export type UndefinedEndPointType = undefined
 export type EndPointTypeOrNever<TPointType extends PointType | UndefinedEndPointType> = TPointType extends EndPointType
@@ -179,6 +180,15 @@ export type StagePointTypeOrNever<TPointType extends PointType | UndefinedEndPoi
   TPointType extends StagePointType ? TPointType : never
 // export type StagePointTypeOrUndefinedOrNever<TPointType extends PointType | UndefinedEndPointType> =
 //   TPointType extends StagePointType ? TPointType : TPointType extends UndefinedEndPointType ? undefined : never
+export type NormalizeQueryResultType<
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TCurrentQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TNewQueryResultType extends QueryResultType,
+> = TCurrentQueryResultType extends QueryResultType
+  ? TCurrentQueryResultType
+  : TLetsEndPointType extends QueryableEndPointType
+    ? TNewQueryResultType
+    : UndefinedQueryResultType
 
 export type AnyPoint<
   TPointType extends PointType = PointType,
@@ -606,6 +616,13 @@ export type AssertRouteDefinitionInputExtends<
     ? unknown
     : ShowError<`Provided route definition is not assignable to current point route definition`>
 
+export type IsLastLoaderOutputResponse<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response ? true : false
+
+export type ShowErrorLastLoaderOutputResponse = ShowError<`Last loader should provide plain object data, not response`>
+
 // export type IsRouteDefinitionConflicts<
 //   TRouteDefinition extends RouteDefinition,
 //   TServerInputSchema extends InputSchema | UndefinedInputSchema,
@@ -863,10 +880,17 @@ export type FinalQueriedData<
 //       ? Response
 //       : undefined
 
-// export type HasAnyLoader<
-//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-// > = TServerLoaderOutput extends LoaderOutput ? true : TClientLoaderOutput extends LoaderOutput ? true : false
+export type HasAnyLoader<
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = TServerLoaderOutput extends LoaderOutput ? true : TClientLoaderOutput extends LoaderOutput ? true : false
+// export type NormalizeMountableStage<
+// TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+// TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+// TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+export type HasLoadersAndNotInMountStage<
+    TPointType extends PointType,
+
 // export type HasAnyOutput<
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
@@ -2041,6 +2065,7 @@ export type NiceRootStagePoint<
   // | 'clientLoader'
   // | 'mapper'
   | 'head'
+  | 'wrapper'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'prefetchPolicy'
@@ -2105,6 +2130,8 @@ export type NicePluginStagePoint<
   | 'layoutError'
   | 'pageError'
   | 'componentError'
+  | 'query'
+  | 'layout'
   | 'error'
   | 'layoutLoading'
   | 'pageLoading'
@@ -2118,8 +2145,8 @@ export type NicePluginStagePoint<
   // | 'clientLoader'
   // | 'mapper'
   | 'head'
-  // | 'wrapper'
-  | 'outer'
+  | 'wrapper'
+  // | 'outer'
   | 'scrollPosition'
   | 'scrollRestore'
   | 'prefetchPolicy'
@@ -2178,6 +2205,8 @@ export type NiceBaseStagePoint<
   | 'pageError'
   | 'componentError'
   | 'error'
+  | 'query'
+  | 'layout'
   | 'layoutLoading'
   | 'pageLoading'
   | 'componentLoading'
@@ -2240,7 +2269,7 @@ export type NicePageStagePoint<
   | 'error'
   | 'loading'
   | 'wrapper'
-  | 'outer'
+  // | 'outer'
   | 'input'
   | 'clientInput'
   | 'combinedInput'
@@ -2259,7 +2288,8 @@ export type NicePageStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'infiniteQuery'
+  | 'infiniteQueryOptions'
+  | 'queryOptions'
 >
 
 export type NiceComponentStagePoint<
@@ -2302,7 +2332,7 @@ export type NiceComponentStagePoint<
   | 'error'
   | 'loading'
   | 'wrapper'
-  | 'outer'
+  // | 'outer'
   | 'input'
   | 'clientInput'
   | 'combinedInput'
@@ -2316,7 +2346,8 @@ export type NiceComponentStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'infiniteQuery'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
 >
 
 export type NiceQueryStagePoint<
@@ -2512,7 +2543,7 @@ export type NiceLayoutStagePoint<
   | 'pageLoading'
   | 'layoutLoading'
   | 'wrapper'
-  | 'outer'
+  // | 'outer'
   | 'input'
   | 'clientInput'
   | 'combinedInput'
@@ -2531,7 +2562,8 @@ export type NiceLayoutStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'infiniteQuery'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
 >
 
 export type NiceProviderStagePoint<
@@ -2584,7 +2616,8 @@ export type NiceProviderStagePoint<
   | 'type'
   | 'Infer'
   | 'query'
-  | 'infiniteQuery'
+  | 'queryOptions'
+  | 'infiniteQueryOptions'
   | 'error'
   | 'loading'
   | 'wrapper'
