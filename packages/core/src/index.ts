@@ -162,7 +162,7 @@ import type {
   UndefinedSuccessPageComponent,
   UseQueryOrInfiniteQueryResult,
   MapperFn,
-  ClientMountAction,
+  MountAction,
   Props,
   UndefinedProps,
 } from './mountable.js'
@@ -321,7 +321,7 @@ export class Point0<
   private readonly _outers: MountableOuterComponentType[]
   readonly _serverExecuteActions: ServerExecuteAction[]
   private readonly _clientExecuteActions: ClientExecuteAction[]
-  private readonly _clientMountActions: ClientMountAction[]
+  private readonly _mountActions: MountAction[]
   private readonly _clientMapperFns: Array<MapperFn<any, any, any, any, any, any>>
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
   readonly route: TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute
@@ -542,7 +542,7 @@ export class Point0<
     // _asFormData?: boolean | undefined
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
-    _clientMountActions?: ClientMountAction[]
+    _mountActions?: MountAction[]
     _clientMapperFns?: MapperFn[]
     _ProviderReactContext?:
       | Context<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>>
@@ -707,7 +707,7 @@ export class Point0<
     // this._asFormData = options._asFormData
     this._serverExecuteActions = options._serverExecuteActions ?? []
     this._clientExecuteActions = options._clientExecuteActions ?? []
-    this._clientMountActions = options._clientMountActions ?? []
+    this._mountActions = options._mountActions ?? []
     this._clientMapperFns = options._clientMapperFns ?? []
     this._ProviderReactContext = options._ProviderReactContext ?? undefined
     this._useValue = options._useValue ? options._useValue.bind(this) : undefined
@@ -793,7 +793,7 @@ export class Point0<
     _outers?: MountableOuterComponentType[]
     _serverExecuteActions?: ServerExecuteAction[]
     _clientExecuteActions?: ClientExecuteAction[]
-    _clientMountActions?: ClientMountAction[]
+    _mountActions?: MountAction[]
     _clientMapperFns?: MapperFn[]
     _ProviderReactContext?:
       | Context<FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>>
@@ -1021,7 +1021,7 @@ export class Point0<
       // _asFormData: overrides._asFormData ?? this._asFormData,
       _serverExecuteActions: overrides._serverExecuteActions ?? this._serverExecuteActions,
       _clientExecuteActions: overrides._clientExecuteActions ?? this._clientExecuteActions,
-      _clientMountActions: overrides._clientMountActions ?? this._clientMountActions,
+      _mountActions: overrides._mountActions ?? this._mountActions,
       _clientMapperFns: overrides._clientMapperFns ?? this._clientMapperFns,
       _ProviderReactContext: (overrides._ProviderReactContext ?? this._ProviderReactContext) as never,
       _useValue: overrides._useValue ?? this._useValue,
@@ -3021,10 +3021,7 @@ export class Point0<
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
-      _clientMountActions: [
-        ...this._clientMountActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
-      ],
+      _mountActions: [...this._mountActions, { type: 'input', schema, unstableId: Point0._getNextUnstableId() }],
     }) as never
   }
 
@@ -3138,10 +3135,7 @@ export class Point0<
         ...this._clientExecuteActions,
         { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
       ],
-      _clientMountActions: [
-        ...this._clientMountActions,
-        { type: 'input', schema, unstableId: Point0._getNextUnstableId() },
-      ],
+      _mountActions: [...this._mountActions, { type: 'input', schema, unstableId: Point0._getNextUnstableId() }],
     }) as never
   }
 
@@ -3237,7 +3231,7 @@ export class Point0<
     if (args.length === 0) {
       return this._continue({
         // in case if we prune it for server with no ssr
-        // _clientMountActions: this._clientMountActions.filter((action) => action.type !== 'query'),
+        // _mountActions: this._mountActions.filter((action) => action.type !== 'query'),
       }) as never
     }
     const extraQueryFn = (() => {
@@ -3257,8 +3251,8 @@ export class Point0<
       }
     })()
     return this._continue({
-      _clientMountActions: [
-        ...this._clientMountActions,
+      _mountActions: [
+        ...this._mountActions,
         { type: 'query', fn: extraQueryFn, unstableId: Point0._getNextUnstableId() },
       ],
     }) as never
@@ -3606,16 +3600,14 @@ export class Point0<
 
     const clientMapperFnsSuitable = this.type === 'layout' ? [] : this._clientMapperFns
 
-    const clientMountActionsAll = newInputExecuteAction
-      ? [...this._clientMountActions, newInputExecuteAction]
-      : this._clientMountActions
+    const mountActionsAll = newInputExecuteAction ? [...this._mountActions, newInputExecuteAction] : this._mountActions
 
     return this._continue({
       scope,
       scopes,
       _serverExecuteActions: serverExecuteActionsSuitable,
       _clientExecuteActions: clientExecuteActionsSuitable,
-      _clientMountActions: clientMountActionsAll,
+      _mountActions: mountActionsAll,
       _clientMapperFns: clientMapperFnsSuitable,
       type: 'coreStage',
       _letsEndPointType: letsEndPointType,
@@ -4350,7 +4342,7 @@ export class Point0<
       _outers: [...this._outers, ...point._outers],
       _serverExecuteActions: [...this._serverExecuteActions, ...point._serverExecuteActions],
       _clientExecuteActions: [...this._clientExecuteActions, ...point._clientExecuteActions],
-      _clientMountActions: [...this._clientMountActions, ...point._clientMountActions],
+      _mountActions: [...this._mountActions, ...point._mountActions],
       // _clientMapperFns: [...this._clientMapperFns, ...point._clientMapperFns],
       // _ProviderReactContext: point._ProviderReactContext,
       // _useValue: point._useValue,
@@ -5683,7 +5675,7 @@ export class Point0<
               )
         })
       }
-      for (const action of this._clientMountActions) {
+      for (const action of this._mountActions) {
         if (action.type === 'input') {
           const result = Point0.parseInputSafeSync(action.schema, inputRaw)
           if (result.error) {
@@ -5719,7 +5711,7 @@ export class Point0<
         return {
           error,
           input: undefined,
-          queriesFns: this._clientMountActions.flatMap((action) => {
+          queriesFns: this._mountActions.flatMap((action) => {
             if (action.type === 'query') {
               return [() => action.fn({ input: undefined, enabled: false })]
             }

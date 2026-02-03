@@ -30,7 +30,7 @@ wrapper point type
 
 return back sameQueryKey, it needed for extend page from layout, who want can drop all loaders and mappers, via .dropLoaders()
 
-clientCtx + clientMountActions
+clientCtx + mountActions
 
 Можно если тут только серверные лоадеры, тогда там любые лоадеры
 Можно если тут только серверные лоадеры, а там только клиентские и маперы

@@ -441,6 +441,7 @@ export type MountableStateError<
   queries: QueriesUnknownStatus<TQueries>
   data: undefined
   error: Error0
+  loading: false
   status: 'error'
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
@@ -455,6 +456,7 @@ export type MountableStatePending<
   queries: QueriesUnknownStatus<TQueries>
   data: undefined
   error: undefined
+  loading: true
   status: 'pending'
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
@@ -470,6 +472,7 @@ export type MountableStateSuccess<
   queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
   error: undefined
+  loading: false
   status: 'success'
   LoadingComponent: React.ComponentType
   ErrorComponent: React.ComponentType<{ error: Error }>
@@ -534,7 +537,7 @@ export type MapperFnOptions<
 > = {
   input: InputParsed<TClientInputSchema>
   props: FinalProps<TInnerProps>
-  queries: TQueries
+  queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
 }
 export type MapperFn<
@@ -544,6 +547,22 @@ export type MapperFn<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewMapperOutput extends MapperOutput,
 > = (options: MapperFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>) => TNewMapperOutput
+
+export type WrapperFnOptions<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props | undefined,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = MountableState<any, TClientInputSchema, TInnerProps, [...TQueries, ...Queries], TMapperOutput>
+export type WrapperFn<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props | undefined,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+  TNewInnerProps extends Props | undefined = TInnerProps,
+> = (
+  options: WrapperFnOptions<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
+) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>> | undefined
 
 export type HeadFnOptions<
   TStatus extends 'pending' | 'error' | 'success',
@@ -877,21 +896,7 @@ export type ProviderSelfType<
   ProviderSelfProps<TServerInputSchema, TClientInputSchema, TProps, TInnerProps, TQueries, TMapperOutput>
 >
 
-export type MountableWrapperFnOptions<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
-  TQueries extends Queries,
-> = Omit<MountableState<any, TClientInputSchema, TInnerProps, [...TQueries, ...Queries], undefined>, 'data'>
-export type MountableWrapperFn<
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TInnerProps extends Props | undefined,
-  TQueries extends Queries,
-  TNewInnerProps extends Props | undefined = TInnerProps,
-> = (
-  options: MountableWrapperFnOptions<TClientInputSchema, TInnerProps, TQueries>,
-) => TNewInnerProps | Exclude<React.ReactNode, Promise<any>> | undefined
-
-export type ClientMountAction<TType extends 'query' | 'input' | 'wrapper' = 'query' | 'input' | 'wrapper'> =
+export type MountAction<TType extends 'query' | 'input' | 'wrapper' = 'query' | 'input' | 'wrapper'> =
   TType extends 'query'
     ? {
         type: 'query'
@@ -901,7 +906,9 @@ export type ClientMountAction<TType extends 'query' | 'input' | 'wrapper' = 'que
         unstableId: number
       }
     : TType extends 'wrapper'
-      ? { type: 'wrapper'; fn: MountableWrapperFn<any, any, any> }
-      : TType extends 'input'
-        ? { type: 'input'; schema: InputSchema; unstableId: number }
-        : never
+      ? { type: 'wrapper'; fn: WrapperFn<any, any, any, any> }
+      : TType extends 'mapper'
+        ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any> }
+        : TType extends 'input'
+          ? { type: 'input'; schema: InputSchema; unstableId: number }
+          : never
