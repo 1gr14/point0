@@ -623,6 +623,8 @@ export type IsLastLoaderOutputResponse<
 
 export type ShowErrorLastLoaderOutputResponse = ShowError<`Last loader should provide plain object data, not response`>
 
+// export type AssertQ
+
 // export type IsRouteDefinitionConflicts<
 //   TRouteDefinition extends RouteDefinition,
 //   TServerInputSchema extends InputSchema | UndefinedInputSchema,
@@ -1999,20 +2001,58 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 //       : unknown
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'mapper' | 'input' | 'clientInput' | 'combinedInput',
+  TMethod extends
+    | 'ctx'
+    | 'loader'
+    | 'use'
+    | 'clientLoader'
+    | 'input'
+    | 'combinedInput'
+    | 'queryOptions'
+    | 'infiniteQueryOptions',
 > = TPointType extends 'serverStage'
   ? TMethod extends never // nothing is forbiden
     ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
     : unknown
   : TPointType extends 'clientStage'
-    ? TMethod extends 'loader' | 'ctx'
+    ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput'
       ? ShowError<`You can not use ${TMethod}() after calling .clientStage()`>
       : unknown
     : TPointType extends 'finalStage'
-      ? TMethod extends 'loader' | 'ctx' | 'clientLoader'
+      ? TMethod extends 'loader' | 'ctx' | 'input' | 'clientLoader'
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown
+
+// export type AssertMountableQueryCanBeFinalized<
+//   TPointType extends PointType,
+//   TLetsEndPointType extends EndPointType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+// > = TLetsEndPointType extends MountablePointType
+//   ? TPointType extends 'finalStage'
+//     ? ShowError<`You can not use queryOptions() or infiniteQueryOptions() in final stage, add it somewhere earlier`>
+//     : unknown
+//   : unknown
+
+// > = TLetsEndPointType extends MountablePointType
+//   ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+//     ? unknown extends AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, TLetsEndPointType, 'queryOptions'>
+//       ? [
+//           queryOptions?: ExtraUseQueryOptions<
+//             FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+//             Error0,
+//             FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+//             QueryKey
+//           >,
+//         ]
+//       : [AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, TLetsEndPointType, 'queryOptions'>]
+//     : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+//       ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+//       : [
+//           ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .queryOptions() to finalize query.`>,
+//         ]
+//   : unknown
 
 export type NiceRootStagePoint<
   TPointType extends StagePointType,
@@ -2580,6 +2620,8 @@ export type NiceLayoutStagePoint<
   | 'query'
   | 'queryOptions'
   | 'infiniteQueryOptions'
+  | 'pageQueryOptions'
+  | 'layoutQueryOptions'
 >
 
 export type NiceProviderStagePoint<

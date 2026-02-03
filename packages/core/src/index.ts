@@ -60,6 +60,7 @@ import type {
   FetchOutput,
   FetchOutputType,
   FinalLoaderData,
+  FinalLoaderOutput,
   HasAnyLoader,
   IfAnyThenElse,
   Infer,
@@ -550,8 +551,8 @@ export class Point0<
     TServerInputSchema extends InputSchema | UndefinedInputSchema,
     TClientInputSchema extends InputSchema | UndefinedInputSchema,
     TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-    TOuterProps extends Props | UndefinedProps,
-    TInnerProps extends Props | UndefinedProps,
+    TOuterProps extends Props,
+    TInnerProps extends Props,
     TQueries extends Queries,
   >(overrides: {
     type?: TPointType
@@ -752,8 +753,8 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedQueryResultType,
-    UndefinedProps,
-    UndefinedProps,
+    EmptyProps,
+    EmptyProps,
     Queries
   >
   static lets(
@@ -772,8 +773,8 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedQueryResultType,
-    UndefinedProps,
-    UndefinedProps,
+    EmptyProps,
+    EmptyProps,
     Queries
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
@@ -815,7 +816,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -837,7 +838,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -861,7 +862,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -909,7 +910,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -933,7 +934,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -942,8 +943,11 @@ export class Point0<
     }) as never
   }
 
+  // setting default query options in not mountable point
   queryOptions(
-    queryOptions: ExtraUseQueryOptions,
+    ...args: TLetsEndPointType extends Exclude<PointType, MountablePointType>
+      ? [queryOptions: ExtraUseQueryOptions]
+      : never
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -957,17 +961,73 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
-  > {
-    return this._continue({
-      _defaultQueryOptions: queryOptions,
-    }) as never
+  >
+  // finalize query in mountable component
+  queryOptions(
+    ...args: TLetsEndPointType extends MountablePointType
+      ? TPointType extends 'finalStage'
+        ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              queryOptions?: ExtraUseQueryOptions<
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                Error0,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                QueryKey
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [
+                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .queryOptions() to finalize query.`>,
+              ]
+        : [ShowError<`You can not use queryOptions() to finalize yout query, becouse it is already finalized`>]
+      : never
+  ): NiceStagePoint<
+    'finalStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'query',
+    TOuterProps,
+    TInnerProps,
+    TQueries
+  >
+  queryOptions(...args: any[]) {
+    const queryOptions = (args[0] || {}) as ExtraUseQueryOptions
+    if (this._isMountableEndPoint()) {
+      if (this.type === 'finalStage') {
+        throw new Error(
+          `You can not use queryOptions() in ${this.toString()} becouse this point query already finalized`,
+        )
+      }
+      return this._continue({
+        type: 'finalStage',
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
+    } else {
+      return this._continue({
+        _defaultQueryOptions: { ...this._defaultQueryOptions, ...queryOptions },
+      }) as never
+    }
   }
 
+  // setting default infinite query options in not mountable point
   infiniteQueryOptions(
-    infiniteQueryOptions: PartialUseInfiniteQueryOptions,
+    // infiniteQueryOptions: PartialUseInfiniteQueryOptions,
+    ...args: TLetsEndPointType extends Exclude<PointType, MountablePointType>
+      ? [infiniteQueryOptions: PartialUseInfiniteQueryOptions]
+      : never
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -981,13 +1041,70 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
-  > {
-    return this._continue({
-      _defaultInfiniteQueryOptions: infiniteQueryOptions,
-    }) as never
+  >
+  // finalize infinite query in mountable point
+  infiniteQueryOptions(
+    ...args: TLetsEndPointType extends MountablePointType
+      ? TPointType extends 'finalStage'
+        ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          ? [
+              infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                InputsRaw<TServerInputSchema, TClientInputSchema>,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                Error0,
+                InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                QueryKey,
+                unknown
+              >,
+            ]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
+            : [
+                ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQueryOptions() to finalize query.`>,
+              ]
+        : [ShowError<`You can not use infiniteQueryOptions() to finalize yout query, becouse it is already finalized`>]
+      : never // ...args: TLetsEndPointType extends MountablePointType
+  ): NiceStagePoint<
+    'finalStage',
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    'infiniteQuery',
+    TOuterProps,
+    TInnerProps,
+    TQueries
+  >
+  infiniteQueryOptions(...args: any[]) {
+    const infiniteQueryOptions = (args[0] || {}) as ExtraUseInfiniteQueryOptions<any> | PartialUseInfiniteQueryOptions
+    if (this._isMountableEndPoint()) {
+      if (this.type === 'finalStage') {
+        throw new Error(
+          `You can not use infiniteQueryOptions() in ${this.toString()} becouse this point query already finalized`,
+        )
+      }
+      return this._continue({
+        type: 'finalStage',
+        _queryResultType: 'infiniteQuery',
+        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
+      }) as never
+    } else {
+      return this._continue({
+        _defaultInfiniteQueryOptions: {
+          ...this._defaultInfiniteQueryOptions,
+          ...infiniteQueryOptions,
+        } as PartialUseInfiniteQueryOptions,
+      }) as never
+    }
   }
 
   pageQueryOptions(
@@ -1005,7 +1122,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1029,7 +1146,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1053,7 +1170,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1077,7 +1194,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1101,7 +1218,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1125,10 +1242,7 @@ export class Point0<
         : ErrorComponentType<any>
       : ErrorComponentType<any>,
   ): NiceStagePoint<
-    // TLetsEndPointType extends MountablePointType ? 'renderStage' : StagePointTypeOrNever<TPointType>,
-    HasAnyLoader<TServerLoaderOutput, TClientLoaderOutput> extends true
-      ? 'renderStage'
-      : StagePointTypeOrNever<TPointType>,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1140,7 +1254,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1166,7 +1280,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1223,7 +1337,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1252,7 +1366,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1271,7 +1385,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1292,7 +1406,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1326,7 +1440,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1354,7 +1468,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1383,7 +1497,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1402,7 +1516,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1423,7 +1537,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1457,7 +1571,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1493,7 +1607,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1519,7 +1633,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1646,7 +1760,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1665,7 +1779,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1685,7 +1799,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1725,7 +1839,7 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >({
@@ -1750,7 +1864,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1767,7 +1881,7 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >({
@@ -1794,7 +1908,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1819,7 +1933,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1836,7 +1950,7 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >({
@@ -1860,7 +1974,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1877,7 +1991,7 @@ export class Point0<
       TServerInputSchema,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >({
@@ -1901,7 +2015,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1928,7 +2042,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -1956,7 +2070,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1977,7 +2091,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -1998,7 +2112,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2017,7 +2131,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2052,7 +2166,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2144,7 +2258,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2254,7 +2368,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2273,7 +2387,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2370,7 +2484,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -2430,7 +2544,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2459,7 +2573,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2484,7 +2598,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2507,7 +2621,7 @@ export class Point0<
       MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
       TClientInputSchema,
       TQueryResultType,
-      TProps,
+      TOuterProps,
       TInnerProps,
       TQueries
     >
@@ -2544,7 +2658,7 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, TNextClientInputSchema>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2569,7 +2683,7 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2594,7 +2708,7 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2617,7 +2731,7 @@ export class Point0<
     TServerInputSchema,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2654,7 +2768,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, TNextInputSchema>,
     MergeRecordValidationSchemas<TClientInputSchema, TNextInputSchema>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2679,7 +2793,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2704,7 +2818,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2727,7 +2841,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
     MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -2797,7 +2911,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     [...TQueries, TPoint['Infer']['UseQueryResult']]
   >
@@ -2816,7 +2930,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     [...TQueries, TUseQueryResult]
   >
@@ -3285,7 +3399,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -3311,7 +3425,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -3334,7 +3448,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -3367,7 +3481,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -3404,7 +3518,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -3456,7 +3570,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -3529,7 +3643,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -3593,7 +3707,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -3689,7 +3803,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -3715,7 +3829,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -3840,7 +3954,7 @@ export class Point0<
     MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
     MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
     TQueryResultType, // we have no loaders in plugin, so ok
-    TProps,
+    TOuterProps,
     TInnerProps,
     [...TQueries, ...T['Infer']['Queries']]
   >
@@ -4093,9 +4207,10 @@ export class Point0<
     // return this._continue(c) as never
   }
 
+  // usual query finish
   query(
     ...args: TLetsEndPointType extends 'query'
-      ? FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput> extends Data
+      ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
         ? [
             queryOptions?: ExtraUseQueryOptions<
               FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
@@ -4104,12 +4219,7 @@ export class Point0<
               QueryKey
             >,
           ]
-        : FinalLoaderMappedOutput<
-              TQueryResultType,
-              TServerLoaderOutput,
-              TClientLoaderOutput,
-              TMapperOutput
-            > extends Response
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
           ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
           : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .query()`>]
       : never
@@ -4126,10 +4236,11 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     'query',
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
+  // mountable component query injection
   query(
     ...args: TLetsEndPointType extends 'query'
       ? never
@@ -4155,7 +4266,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     'query',
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   >
@@ -4177,12 +4288,7 @@ export class Point0<
   }
 
   infiniteQuery(
-    ...args: FinalLoaderMappedOutput<
-      TQueryResultType,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TMapperOutput
-    > extends Data
+    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
       ? [
           infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
             InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -4193,12 +4299,7 @@ export class Point0<
             unknown
           >,
         ]
-      : FinalLoaderMappedOutput<
-            TQueryResultType,
-            TServerLoaderOutput,
-            TClientLoaderOutput,
-            TMapperOutput
-          > extends Response
+      : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
         ? [
             ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
           ]
@@ -4217,7 +4318,7 @@ export class Point0<
         TServerInputSchema,
         TClientInputSchema,
         'infiniteQuery',
-        TProps,
+        TOuterProps,
         TInnerProps,
         TQueries
       >
@@ -4234,7 +4335,7 @@ export class Point0<
         TServerInputSchema,
         TClientInputSchema,
         'infiniteQuery',
-        TProps,
+        TOuterProps,
         TInnerProps,
         TQueries
       > {
@@ -4296,7 +4397,7 @@ export class Point0<
     TServerInputSchema,
     TClientInputSchema,
     TQueryResultType,
-    TProps,
+    TOuterProps,
     TInnerProps,
     TQueries
   > {
@@ -4441,6 +4542,12 @@ export class Point0<
   }
   private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
     return this._isQueryableEndPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
+  }
+  private static _isMountableEndPointType(pointType: PointType): boolean {
+    return pointType === 'page' || pointType === 'layout' || pointType === 'component' || pointType === 'provider'
+  }
+  private _isMountableEndPoint(): boolean {
+    return Point0._isMountableEndPointType(this.type)
   }
 
   _isRoot(): boolean {
