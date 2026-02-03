@@ -130,20 +130,20 @@ export type Infer<
   QueriedData: FinalQueriedData<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
 
   // TODO:ASAP remove client execute things
-  FinalOutput: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-  ClientExecuteResult: FinalLoaderMappedOutput<
-    TQueryResultType,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput
-  >
-  ClientExecuteDetailedResult: ClientExecuteDetailedResult<
-    TQueryResultType,
-    TClientInputSchema,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput
-  >
+  // FinalOutput: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
+  // ClientExecuteResult: FinalLoaderMappedOutput<
+  //   TQueryResultType,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput
+  // >
+  // ClientExecuteDetailedResult: ClientExecuteDetailedResult<
+  //   TQueryResultType,
+  //   TClientInputSchema,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   TMapperOutput
+  // >
   ServerExecuteResult: ServerExecuteResult<TCtx, TServerLoaderOutput>
 }
 
@@ -914,22 +914,22 @@ export type WithError<TError, T> = unknown extends TError ? T : TError
 
 // fetching and queries
 
-export type ClientExecuteDetailedResult<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TClientInputSchema extends InputSchema | UndefinedInputSchema,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = {
-  serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
-  serverResponse: TServerLoaderOutput extends undefined ? undefined : Response
-  serverOutput: TServerLoaderOutput
-  clientData: TClientLoaderOutput extends Data ? TClientLoaderOutput : undefined
-  clientResponse: TClientLoaderOutput extends Response ? Response : undefined
-  clientOutput: TClientLoaderOutput
-  clientInput: InputParsed<TClientInputSchema>
-  output: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
-}
+// export type ClientExecuteDetailedResult<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > = {
+//   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
+//   serverResponse: TServerLoaderOutput extends undefined ? undefined : Response
+//   serverOutput: TServerLoaderOutput
+//   clientData: TClientLoaderOutput extends Data ? TClientLoaderOutput : undefined
+//   clientResponse: TClientLoaderOutput extends Response ? Response : undefined
+//   clientOutput: TClientLoaderOutput
+//   clientInput: InputParsed<TClientInputSchema>
+//   output: FinalLoaderMappedOutput<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TMapperOutput>
+// }
 export type UseQueryOptions<
   TQueryFnData = any,
   TError = any,

@@ -695,7 +695,7 @@ export type ProviderExtraInnerProps = {}
 // > = React.ComponentType<LayoutSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
 // export type UndefinedProviderSuccessComponent = undefined
 
-export type MountableChildrenFn<
+export type MountableSelfChildrenFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props | undefined,
   TExtraInnerProps extends Props,
@@ -723,13 +723,13 @@ export type MountableSelfProps<
     ? {
         children:
           | React.ReactNode
-          | MountableChildrenFn<TClientInputSchema, TInnerProps, TExtraInnerProps, TQueries, TMapperOutput>
+          | MountableSelfChildrenFn<TClientInputSchema, TInnerProps, TExtraInnerProps, TQueries, TMapperOutput>
       }
     : TWithChildren extends null
       ? {
           children?:
             | React.ReactNode
-            | MountableChildrenFn<TClientInputSchema, TInnerProps, TExtraInnerProps, TQueries, TMapperOutput>
+            | MountableSelfChildrenFn<TClientInputSchema, TInnerProps, TExtraInnerProps, TQueries, TMapperOutput>
         }
       : Record<never, never>)
 export type MountableSelfType<
