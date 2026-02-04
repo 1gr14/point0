@@ -1399,9 +1399,9 @@ export type UsePointQueryOptions<
 
 // extra components
 
-// export type DestinationComponentType = 'page' | 'component' | 'layout'
+// export type DestinationComponentVariant = 'page' | 'component' | 'layout'
 // export type LoadingComponentProps<
-//   TType extends DestinationComponentType = DestinationComponentType,
+//   TDestinationComponentVariant extends DestinationComponentVariant = DestinationComponentVariant,
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1421,7 +1421,7 @@ export type UsePointQueryOptions<
 //   AnyLocation
 // >
 // export type LoadingComponentType<
-//   TType extends DestinationComponentType = DestinationComponentType,
+//   TDestinationComponentVariant extends DestinationComponentVariant = DestinationComponentVariant,
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1441,7 +1441,7 @@ export type UsePointQueryOptions<
 // >
 
 // export type ErrorComponentProps<
-//   TType extends DestinationComponentType = DestinationComponentType,
+//   TDestinationComponentVariant extends DestinationComponentVariant = DestinationComponentVariant,
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1461,7 +1461,7 @@ export type UsePointQueryOptions<
 //   AnyLocation
 // >
 // export type ErrorComponentType<
-//   TType extends DestinationComponentType = DestinationComponentType,
+//   TDestinationComponentVariant extends DestinationComponentVariant = DestinationComponentVariant,
 //   TQueryResultType extends QueryResultType | UndefinedQueryResultType = QueryResultType | UndefinedQueryResultType,
 //   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
 //   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,

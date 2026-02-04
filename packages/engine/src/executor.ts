@@ -470,7 +470,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
               //     }
               //   }
               // } else {
-              const result: [number, Data | Response] | Data | Response = await serverExecuteAction.fn({
+              const promise = serverExecuteAction.fn({
                 ...currentCtxExposed,
                 ctx: { ...currentCtx },
                 data: { ...currentData },
@@ -480,6 +480,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx> {
                 set: response0.set,
                 point,
               })
+              const result = (await (promise as any)) as [number, Data | Response] | Data | Response
               if (Array.isArray(result)) {
                 response0.set.status(result[0])
                 if (result[1] instanceof Response) {

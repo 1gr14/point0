@@ -150,7 +150,7 @@ import {
 } from './utils.js'
 import type {
   ComponentSuccessComponentType,
-  DestinationComponentType,
+  DestinationComponentVariant,
   ErrorComponentType,
   Queries,
   HeadFn,
@@ -185,6 +185,7 @@ import type {
   WrapperComponentType,
   WithFn,
   MountableState,
+  ProviderSuccessComponentType,
 } from './mountable.js'
 // import stringify from 'safe-stable-stringify'
 
@@ -372,7 +373,7 @@ export class Point0<
     return this._polh ?? false
   }
   private readonly _ProviderReactContext: Context<MountableSuccessData<TQueries, TMapperOutput>> | undefined
-  private readonly _errorComponent: ErrorComponentType<DestinationComponentType> | undefined
+  private readonly _errorComponent: ErrorComponentType<DestinationComponentVariant> | undefined
   private static readonly DefaultErrorComponent: ErrorComponentType<any> = ({ error }) => {
     const { stack, ...json } = error.toJSON()
     // TODO: move console.error to .onClientError
@@ -1255,9 +1256,12 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: ErrorComponentType<any>,
+    errorComponent: ErrorComponentType<any> &
+      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
   ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1268,27 +1272,41 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
-  > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr target
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+  >
+  error(errorComponent: ErrorComponentType<any> | undefined) {
     errorComponent ||= () => null
     // this._applyComponentDisplayName(errorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Error',
     // })
-    if (this._isMountableEndPoint()) {
-      return this._continue({
-        _errorComponent: errorComponent,
-      }) as never
-    } else {
-      return this._continue({
-        _layoutErrorComponent: errorComponent,
-        _pageErrorComponent: errorComponent,
-        _componentErrorComponent: errorComponent,
-      }) as never
-    }
+    const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+    const selfQueryAction: MountAction[] = queryShouldBeFinalized
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      : []
+    return this._continue({
+      _mountActions: [
+        ...this._mountActions,
+        ...selfQueryAction,
+        {
+          type: 'errorComponent',
+          Component: errorComponent,
+          variant: this._getDestinationComponentVariant(),
+          unstableId: Point0._getNextUnstableId(),
+        },
+      ],
+      ...(this._isMountableEndPoint()
+        ? {
+            _errorComponent: errorComponent,
+          }
+        : {
+            _layoutErrorComponent: errorComponent,
+            _pageErrorComponent: errorComponent,
+            _componentErrorComponent: errorComponent,
+          }),
+    }) as never
   }
 
   layoutError(
@@ -1466,9 +1484,12 @@ export class Point0<
   }
 
   loading(
-    loadingComponent: LoadingComponentType<any>,
+    loadingComponent: LoadingComponentType<any> &
+      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
   ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1479,27 +1500,41 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
-  > {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr target
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+  >
+  loading(loadingComponent: LoadingComponentType<any> | undefined) {
     loadingComponent ||= () => null
     // this._applyComponentDisplayName(loadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Loading',
     // })
-    if (this._isMountableEndPoint()) {
-      return this._continue({
-        _loadingComponent: loadingComponent,
-      }) as never
-    } else {
-      return this._continue({
-        _layoutLoadingComponent: loadingComponent,
-        _pageLoadingComponent: loadingComponent,
-        _componentLoadingComponent: loadingComponent,
-      }) as never
-    }
+    const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+    const selfQueryAction: MountAction[] = queryShouldBeFinalized
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      : []
+    return this._continue({
+      _mountActions: [
+        ...this._mountActions,
+        ...selfQueryAction,
+        {
+          type: 'loadingComponent',
+          Component: loadingComponent,
+          variant: this._getDestinationComponentVariant(),
+          unstableId: Point0._getNextUnstableId(),
+        },
+      ],
+      ...(this._isMountableEndPoint()
+        ? {
+            _loadingComponent: loadingComponent,
+          }
+        : {
+            _layoutLoadingComponent: loadingComponent,
+            _pageLoadingComponent: loadingComponent,
+            _componentLoadingComponent: loadingComponent,
+          }),
+    }) as never
   }
 
   wrapper(
@@ -4722,32 +4757,41 @@ export class Point0<
     return this.name === this.scope && this.type === 'root'
   }
 
-  private _getErrorComponent<TType extends DestinationComponentType>({
-    type,
-  }: {
-    type: TType
-  }): ErrorComponentType<TType> {
-    return (this._errorComponent ??
-      {
-        page: this._pageErrorComponent,
-        component: this._componentErrorComponent,
-        layout: this._layoutErrorComponent,
-      }[type] ??
-      Point0.DefaultErrorComponent) as never
-  }
+  // private _getErrorComponent<TDestinationComponentVariant extends DestinationComponentVariant>({
+  //   type,
+  // }: {
+  //   type: TDestinationComponentVariant
+  // }): ErrorComponentType<TDestinationComponentVariant> {
+  //   return (this._errorComponent ??
+  //     {
+  //       page: this._pageErrorComponent,
+  //       component: this._componentErrorComponent,
+  //       layout: this._layoutErrorComponent,
+  //     }[type] ??
+  //     Point0.DefaultErrorComponent) as never
+  // }
 
-  private _getLoadingComponent<TType extends DestinationComponentType>({
-    type,
-  }: {
-    type: TType
-  }): LoadingComponentType<TType> {
-    return (this._loadingComponent ??
-      {
-        page: this._pageLoadingComponent,
-        component: this._componentLoadingComponent,
-        layout: this._layoutLoadingComponent,
-      }[type] ??
-      Point0.DefaultLoadingComponent) as never
+  // private _getLoadingComponent<TDestinationComponentVariant extends DestinationComponentVariant>({
+  //   type,
+  // }: {
+  //   type: TDestinationComponentVariant
+  // }): LoadingComponentType<TDestinationComponentVariant> {
+  //   return (this._loadingComponent ??
+  //     {
+  //       page: this._pageLoadingComponent,
+  //       component: this._componentLoadingComponent,
+  //       layout: this._layoutLoadingComponent,
+  //     }[type] ??
+  //     Point0.DefaultLoadingComponent) as never
+  // }
+
+  private _getDestinationComponentVariant(): DestinationComponentVariant | undefined {
+    return {
+      page: 'page' as const,
+      component: 'component' as const,
+      layout: 'layout' as const,
+      provider: 'page' as const,
+    }[this.type as MountablePointType]
   }
 
   // private _withWrappers({
@@ -7633,7 +7677,7 @@ export class Point0<
 
   private readonly _getMountablePart = ({
     action,
-    innerProps,
+    stepState,
     statusState,
   }: {
     action: MountAction
@@ -7642,9 +7686,34 @@ export class Point0<
       'input' | 'props' | 'queries' | 'data' | 'LoadingComponent' | 'ErrorComponent'
     >
     statusState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
-  }) => {
-    const [x, setX] = React.useState(0)
+  }): {
+    nextStepState: Pick<
+      MountableState<any, any, any, any, any>,
+      'input' | 'props' | 'queries' | 'data' | 'LoadingComponent' | 'ErrorComponent'
+    >
+  } => {
+    return {
+      nextStepState: {
+        input: stepState.input,
+        props: stepState.props,
+        queries: stepState.queries,
+        data: stepState.data,
+        LoadingComponent: stepState.LoadingComponent,
+        ErrorComponent: stepState.ErrorComponent,
+      },
+    }
   }
+
+  private readonly _getMountable = (props: {
+    input: InputsRaw<TServerInputSchema, TClientInputSchema>
+    outerProps: TOuterProps
+    mountComponent:
+      | LayoutSuccessComponentType<any, any, any, any>
+      | PageSuccessComponentType<any, any, any, any, any>
+      | ComponentSuccessComponentType<any, any, any, any>
+      | ProviderSuccessComponentType<any, any, any, any>
+    extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
+  }): React.ReactNode => {}
 
   // private readonly _getMountable = (props: {
   //   input: InputsRaw<TServerInputSchema, TClientInputSchema>
@@ -7654,7 +7723,7 @@ export class Point0<
   // }): React.ReactNode => {
   //   const { input, props: restProps, extraProps, mountComponent } = props
 
-  //   const componentType: DestinationComponentType =
+  //   const componentType: DestinationComponentVariant =
   //     this.type === 'page'
   //       ? 'page'
   //       : this.type === 'layout'

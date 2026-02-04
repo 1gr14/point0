@@ -571,19 +571,20 @@ export type MountableState<
         : never
 >
 
-export type DestinationComponentType = 'page' | 'component' | 'layout'
-export type ErrorComponentProps<TType extends DestinationComponentType> = {
-  type: TType
+export type DestinationComponentVariant = 'page' | 'component' | 'layout'
+export type ErrorComponentProps<TDestinationComponentVariant extends DestinationComponentVariant> = {
+  type: TDestinationComponentVariant
   error: Error0
 }
-export type ErrorComponentType<TType extends DestinationComponentType> = React.ComponentType<ErrorComponentProps<TType>>
-
-export type LoadingComponentProps<TType extends DestinationComponentType> = {
-  type: TType
-}
-export type LoadingComponentType<TType extends DestinationComponentType> = React.ComponentType<
-  LoadingComponentProps<TType>
+export type ErrorComponentType<TDestinationComponentVariant extends DestinationComponentVariant> = React.ComponentType<
+  ErrorComponentProps<TDestinationComponentVariant>
 >
+
+export type LoadingComponentProps<TDestinationComponentVariant extends DestinationComponentVariant> = {
+  type: TDestinationComponentVariant
+}
+export type LoadingComponentType<TDestinationComponentVariant extends DestinationComponentVariant> =
+  React.ComponentType<LoadingComponentProps<TDestinationComponentVariant>>
 
 export type SuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -795,19 +796,19 @@ export type UndefinedLayoutSuccessComponent = undefined
 export type ProviderExtraInnerProps = {
   children: Exclude<React.ReactNode, Promise<any>>
 }
-// export type ProviderSuccessComponentProps<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TInnerProps extends Props,
-//   TQueries extends Queries,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-// > = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & ProviderExtraInnerProps
-// export type ProviderSuccessComponentType<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TInnerProps extends Props,
-//   TQueries extends Queries,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-// > = React.ComponentType<ProviderSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
-// export type UndefinedProviderSuccessComponent = undefined
+export type ProviderSuccessComponentProps<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & ProviderExtraInnerProps
+export type ProviderSuccessComponentType<
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TInnerProps extends Props,
+  TQueries extends Queries,
+  TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+> = React.ComponentType<ProviderSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
+export type UndefinedProviderSuccessComponent = undefined
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type ComponentExtraInnerProps = {}
@@ -1056,9 +1057,19 @@ export type MountAction<
             : TType extends 'head'
               ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
               : TType extends 'errorComponent'
-                ? { type: 'errorComponent'; Component: ErrorComponentType<any>; unstableId: number }
+                ? {
+                    type: 'errorComponent'
+                    Component: ErrorComponentType<any>
+                    variant: DestinationComponentVariant | undefined
+                    unstableId: number
+                  }
                 : TType extends 'loadingComponent'
-                  ? { type: 'loadingComponent'; Component: LoadingComponentType<any>; unstableId: number }
+                  ? {
+                      type: 'loadingComponent'
+                      Component: LoadingComponentType<any>
+                      variant: DestinationComponentVariant | undefined
+                      unstableId: number
+                    }
                   : TType extends 'input'
                     ? { type: 'input'; schema: InputSchema; unstableId: number }
                     : never
@@ -1096,6 +1107,7 @@ export type AppendQueries<TQueries extends Queries, TNewQuery extends UseQueryOr
   [...TQueries, TNewQuery]
 >
 
+// TODO:ASAP cancel it, in mountable we have no response loaders
 export type AssertMountableQueryFinalization<
   TPointType extends PointType,
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
