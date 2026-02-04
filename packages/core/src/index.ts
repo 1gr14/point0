@@ -61,7 +61,6 @@ import type {
   FetchOutputType,
   FinalLoaderData,
   FinalLoaderOutput,
-  HasAnyLoader,
   IfAnyThenElse,
   Infer,
   InferCtxFnOutputCtxAppend,
@@ -73,7 +72,6 @@ import type {
   InputsRawMaybeOptional,
   IsInputOptional,
   IsInputsOptional,
-  IsLastLoaderOutputResponse,
   LayoutPoint,
   LoaderFn,
   LoaderOutput,
@@ -118,7 +116,6 @@ import type {
   ScrollPositionSetter,
   ServerExecuteAction,
   ShowError,
-  ShowErrorLastLoaderOutputResponse,
   StagePointTypeOrNever,
   UndefinedCtx,
   UndefinedCtxExposedKeys,
@@ -176,6 +173,9 @@ import type {
   WrapperFn,
   AppendProps,
   EmptyProps,
+  AssertMountableQueryFinalization,
+  IsQueryShouldBeFinalized,
+  WithSelfQueryIfShouldBeFinalized,
 } from './mountable.js'
 import stringify from 'safe-stable-stringify'
 
@@ -755,7 +755,7 @@ export class Point0<
     UndefinedQueryResultType,
     EmptyProps,
     EmptyProps,
-    Queries
+    []
   >
   static lets(
     pointType: 'plugin',
@@ -775,7 +775,7 @@ export class Point0<
     UndefinedQueryResultType,
     EmptyProps,
     EmptyProps,
-    Queries
+    []
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
     if (pointType === 'root') {
@@ -1000,7 +1000,7 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    TQueries
+    [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
   >
   queryOptions(...args: any[]) {
     const queryOptions = (args[0] || {}) as ExtraUseQueryOptions
@@ -1014,6 +1014,7 @@ export class Point0<
         type: 'finalStage',
         _queryResultType: 'query',
         _queryOptions: queryOptions,
+        _mountActions: [...this._mountActions, { type: 'selfQuery', unstableId: Point0._getNextUnstableId() }],
       }) as never
     } else {
       return this._continue({
@@ -1066,7 +1067,7 @@ export class Point0<
                 ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQueryOptions() to finalize query.`>,
               ]
         : [ShowError<`You can not use infiniteQueryOptions() to finalize yout query, becouse it is already finalized`>]
-      : never // ...args: TLetsEndPointType extends MountablePointType
+      : never
   ): NiceStagePoint<
     'finalStage',
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1082,7 +1083,7 @@ export class Point0<
     'infiniteQuery',
     TOuterProps,
     TInnerProps,
-    TQueries
+    [...TQueries, UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput>]
   >
   infiniteQueryOptions(...args: any[]) {
     const infiniteQueryOptions = (args[0] || {}) as ExtraUseInfiniteQueryOptions<any> | PartialUseInfiniteQueryOptions
@@ -1096,6 +1097,13 @@ export class Point0<
         type: 'finalStage',
         _queryResultType: 'infiniteQuery',
         _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
+        _mountActions: [
+          ...this._mountActions,
+          {
+            type: 'selfQuery',
+            unstableId: Point0._getNextUnstableId(),
+          },
+        ],
       }) as never
     } else {
       return this._continue({
@@ -1236,11 +1244,7 @@ export class Point0<
   // extra components
 
   error(
-    errorComponent: TLetsEndPointType extends MountablePointType
-      ? IsLastLoaderOutputResponse<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? ShowErrorLastLoaderOutputResponse
-        : ErrorComponentType<any>
-      : ErrorComponentType<any>,
+    errorComponent: ErrorComponentType<any>,
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1257,59 +1261,13 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueries
-  >
-  error(
-    ...args: TLetsEndPointType extends 'page'
-      ? IsLastLoaderOutputResponse<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? [ShowErrorLastLoaderOutputResponse]
-        : [
-            head: HeadFn<'error', TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
-            pageErrorComponent: ErrorComponentType<any>,
-          ]
-      : never
-  ): NiceStagePoint<
-    TLetsEndPointType extends 'page' ? 'renderStage' : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  error(...args: [head: any, errorComponent: any] | [errorComponent: any]) {
-    // in case if we shake pageError for serverNoSsr target
-    const [head, errorComponent = () => null] = (args.length === 2 ? args : [undefined, args[0]]) as [
-      HeadFn<'error'> | undefined,
-      ErrorComponentType<any>,
-    ]
+  > {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr target
+    errorComponent ||= () => null
     // this._applyComponentDisplayName(errorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Error',
     // })
-    if (this._letsEndPointType === 'page') {
-      const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
-      const errorHeadFn: HeadFn | undefined = !headFn
-        ? undefined
-        : (options) => (!options.error ? {} : headFn(options as never))
-      return this._continue({
-        // _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
-        _mountActions: !errorHeadFn
-          ? this._mountActions
-          : [...this._mountActions, { type: 'head', fn: errorHeadFn, unstableId: Point0._getNextUnstableId() }],
-        _errorComponent: errorComponent as never,
-      }) as never
-    } else if (
-      this._letsEndPointType === 'layout' ||
-      this._letsEndPointType === 'component' ||
-      this._letsEndPointType === 'provider'
-    ) {
+    if (this._isMountableEndPoint()) {
       return this._continue({
         _errorComponent: errorComponent,
       }) as never
@@ -1351,48 +1309,7 @@ export class Point0<
   }
 
   pageError(
-    head: HeadFn<'error'>,
     pageErrorComponent: ErrorComponentType<any>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  pageError(
-    pageErrorComponent: ErrorComponentType<any>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  pageError(
-    ...args:
-      | [head: HeadFn<'error'>, pageErrorComponent: ErrorComponentType<any>]
-      | [pageErrorComponent: ErrorComponentType<any>]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1410,17 +1327,12 @@ export class Point0<
     TInnerProps,
     TQueries
   > {
-    // in case if we shake pageError for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
-    const [head, pageErrorComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
-    const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageError for serverNoSsr target
+    pageErrorComponent ||= () => null
     // this._applyComponentDisplayName(pageErrorComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageError',
     // })
-    const errorHeadFn: HeadFn | undefined = !headFn
-      ? undefined
-      : (options) => (!options.error ? {} : headFn(options as never))
     return this._continue({
-      _headFns: !errorHeadFn ? this._headFns : [...this._headFns, errorHeadFn],
       _pageErrorComponent: pageErrorComponent as never,
     }) as never
   }
@@ -1482,48 +1394,7 @@ export class Point0<
   }
 
   pageLoading(
-    head: HeadFn<'loading'>,
     pageLoadingComponent: LoadingComponentType<any>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  pageLoading(
-    pageLoadingComponent: LoadingComponentType<any>,
-  ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  pageLoading(
-    ...args:
-      | [head: HeadFn<'loading'>, pageLoadingComponent: LoadingComponentType<any>]
-      | [pageLoadingComponent: LoadingComponentType<any>]
   ): NiceStagePoint<
     StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -1541,17 +1412,12 @@ export class Point0<
     TInnerProps,
     TQueries
   > {
-    // in case if we shake pageLoading for serverNoSsr target, but as I know we replace it with () => null, but it is safer to keep it
-    const [head, pageLoadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
-    const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr target
+    pageLoadingComponent ||= () => null
     // this._applyComponentDisplayName(pageLoadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'PageLoading',
     // })
-    const loadingHeadFn: HeadFn | undefined = !headFn
-      ? undefined
-      : (options) => (!options.loading ? {} : headFn(options as never))
     return this._continue({
-      _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
       _pageLoadingComponent: pageLoadingComponent as never,
     }) as never
   }
@@ -1589,13 +1455,9 @@ export class Point0<
   }
 
   loading(
-    pageLoadingComponent: TLetsEndPointType extends MountablePointType
-      ? IsLastLoaderOutputResponse<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? ShowErrorLastLoaderOutputResponse
-        : LoadingComponentType<any>
-      : LoadingComponentType<any>,
+    loadingComponent: LoadingComponentType<any>,
   ): NiceStagePoint<
-    TLetsEndPointType extends MountablePointType ? 'renderStage' : StagePointTypeOrNever<TPointType>,
+    StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1610,53 +1472,13 @@ export class Point0<
     TOuterProps,
     TInnerProps,
     TQueries
-  >
-  loading(
-    ...args: TLetsEndPointType extends 'page'
-      ? IsLastLoaderOutputResponse<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? [ShowErrorLastLoaderOutputResponse]
-        : [
-            head: HeadFn<'pending', TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
-            pageLoadingComponent: LoadingComponentType<any>,
-          ]
-      : never
-  ): NiceStagePoint<
-    TLetsEndPointType extends 'page' ? 'renderStage' : StagePointTypeOrNever<TPointType>,
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    TMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  loading(...args: [head: any, pageLoadingComponent: any] | [pageLoadingComponent: any]) {
-    // in case if we shake pageLoading for serverNoSsr target
-    const [head, loadingComponent = () => null] = args.length === 2 ? args : [undefined, args[0]]
+  > {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake pageLoading for serverNoSsr target
+    loadingComponent ||= () => null
     // this._applyComponentDisplayName(loadingComponent, {
     //   suffix: toCapitalizedCamelCase(this._letsEndPointType || 'unknown') + 'Loading',
     // })
-    if (this._letsEndPointType === 'page') {
-      const headFn = !head ? undefined : typeof head === 'function' ? head : () => head
-      const loadingHeadFn: HeadFn | undefined = !headFn
-        ? undefined
-        : (options) => (!options.error ? {} : headFn(options as never))
-      return this._continue({
-        _headFns: !loadingHeadFn ? this._headFns : [...this._headFns, loadingHeadFn],
-        _loadingComponent: loadingComponent,
-      }) as never
-    } else if (
-      this._letsEndPointType === 'layout' ||
-      this._letsEndPointType === 'component' ||
-      this._letsEndPointType === 'provider'
-    ) {
+    if (this._isMountableEndPoint()) {
       return this._continue({
         _loadingComponent: loadingComponent,
       }) as never
@@ -1669,14 +1491,25 @@ export class Point0<
     }
   }
 
-  wrapper<TNewInnerProps extends Props | undefined>(
-    wrapperFn: TLetsEndPointType extends MountablePointType
-      ? IsLastLoaderOutputResponse<TServerLoaderOutput, TClientLoaderOutput> extends true
-        ? ShowErrorLastLoaderOutputResponse
-        : WrapperFn<TClientInputSchema, TInnerProps, TQueries, TMapperOutput, TNewInnerProps>
-      : WrapperFn<TClientInputSchema, TInnerProps, TQueries, TMapperOutput, TNewInnerProps>,
+  wrapper<TNewInnerProps extends Props>(
+    wrapperFn: WrapperFn<
+      TClientInputSchema,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsEndPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueries
+      >,
+      TMapperOutput,
+      TNewInnerProps
+    > &
+      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
   ): NiceStagePoint<
-    'renderStage',
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -1687,20 +1520,26 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
-    TProps,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    TOuterProps,
     TNewInnerProps,
-    TQueries
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
   > {
+    const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+    const selfQueryAction: MountAction[] = queryShouldBeFinalized
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      : []
     return this._continue({
       _mountActions: [
         ...this._mountActions,
+        ...selfQueryAction,
         {
           type: 'wrapper',
-          fn: wrapperFn as WrapperFn<TClientInputSchema, TInnerProps, TQueries, TMapperOutput, TNewInnerProps>,
+          fn: wrapperFn,
           unstableId: Point0._getNextUnstableId(),
         },
       ],
+      ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
       // _wrappers: [
       //   ...this._wrappers,
       //   wrapperComponent as never,
@@ -2154,7 +1993,7 @@ export class Point0<
     loaderFn: LoaderFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
   ): NiceStagePoint<
-    TNewServerLoaderOutput extends Response ? 'clientStage' : StagePointTypeOrNever<TPointType>,
+    TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2227,6 +2066,7 @@ export class Point0<
     return this._continue({
       // _sameQueryPoint: null,
       // _queryResultType: this._queryResultType ?? 'query',
+      type: 'serverStage', // it should be clientStage if loader returns response, but we know it only by types, we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
       _queryResultType: this._normalizeQueryResultType('query'),
       _serverExecuteActions: [
         ...this._serverExecuteActions,
@@ -2246,7 +2086,7 @@ export class Point0<
     > &
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
   ): NiceStagePoint<
-    TNewClientLoaderOutput extends Response ? 'mapperStage' : 'clientStage',
+    TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2257,10 +2097,16 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType extends UndefinedQueryResultType ? 'query' : TQueryResultType,
+    NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
     TOuterProps,
     TInnerProps,
-    TQueries
+    WithSelfQueryIfShouldBeFinalized<
+      TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TNewClientLoaderOutput,
+      TQueries
+    >
   >
   // clientLoader(
   //   enableClientLoader: false,
@@ -2311,28 +2157,32 @@ export class Point0<
   //   TInnerProps,
   //   TQueries
   // >
-  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | boolean) {
-    if (clientLoaderFn === false) {
-      return this._continue({
-        // _sameQueryPoint: null,
-        _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
-        // _mapperFns: [],
-        _queryResultType: this._hasServerLoader()
-          ? this._queryResultType
-          : this._letsEndPointType === 'query'
-            ? 'query'
-            : this._letsEndPointType === 'infiniteQuery'
-              ? 'infiniteQuery'
-              : undefined,
-      }) as never
-    }
-    if (clientLoaderFn === true) {
-      clientLoaderFn = (o) => o.data
-    }
+  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | undefined) {
+    // if (clientLoaderFn === false) {
+    //   return this._continue({
+    //     // _sameQueryPoint: null,
+    //     _clientExecuteActions: this._clientExecuteActions.filter((fn) => fn.type !== 'loader'),
+    //     // _mapperFns: [],
+    //     _queryResultType: this._hasServerLoader()
+    //       ? this._queryResultType
+    //       : this._letsEndPointType === 'query'
+    //         ? 'query'
+    //         : this._letsEndPointType === 'infiniteQuery'
+    //           ? 'infiniteQuery'
+    //           : undefined,
+    //   }) as never
+    // }
+    // if (clientLoaderFn === true) {
+    //   clientLoaderFn = (o) => o.data
+    // }
+    clientLoaderFn ||= (o: any) => o.data
     return this._continue({
+      // it should be finalStage if loader returns response, but we know it only by types,
+      // we do not know it in runtime, bu it is ok to have here for runtime serverStage. Not good, but ok.
+      // it will be really finalized in runtime in one of next methods
       type: 'clientStage',
       // _sameQueryPoint: null,
-      _queryResultType: this._queryResultType ?? 'query',
+      _queryResultType: this._normalizeQueryResultType('query'),
       _clientExecuteActions: [
         ...this._clientExecuteActions,
         {
@@ -2347,16 +2197,23 @@ export class Point0<
 
   mapper<TNewMapperOutput extends MapperOutput = MapperOutput>(
     mapperFn: MapperFn<
-      TQueryResultType,
       TClientInputSchema,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
+      TInnerProps,
+      WithSelfQueryIfShouldBeFinalized<
+        TPointType,
+        TLetsEndPointType,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TQueries
+      >,
       TMapperOutput,
       TNewMapperOutput
     > &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'mapper'>,
+      AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
   ): NiceStagePoint<
-    'mapperStage',
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2367,41 +2224,51 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
   >
-  mapper(
-    enableMapper: false,
-  ): NiceStagePoint<
-    TClientLoaderOutput extends LoaderOutput ? 'clientStage' : 'coreStage',
-    EndPointTypeOrNever<TLetsEndPointType>,
-    TRequiredCtx,
-    TCtx,
-    TCtxExposedKeys,
-    TServerLoaderOutput,
-    TClientLoaderOutput,
-    UndefinedMapperOutput,
-    TRouteDefinition,
-    TServerInputSchema,
-    TClientInputSchema,
-    TQueryResultType,
-    TOuterProps,
-    TInnerProps,
-    TQueries
-  >
-  mapper(mapperFn: MapperFn<any, any, any, any, any, any> | false) {
-    if (mapperFn === false) {
-      return this._continue({
-        // _sameQueryPoint: null,
-        _mapperFns: [],
-      }) as never
-    }
+  // mapper(
+  //   enableMapper: false,
+  // ): NiceStagePoint<
+  //   TClientLoaderOutput extends LoaderOutput ? 'clientStage' : 'coreStage',
+  //   EndPointTypeOrNever<TLetsEndPointType>,
+  //   TRequiredCtx,
+  //   TCtx,
+  //   TCtxExposedKeys,
+  //   TServerLoaderOutput,
+  //   TClientLoaderOutput,
+  //   UndefinedMapperOutput,
+  //   TRouteDefinition,
+  //   TServerInputSchema,
+  //   TClientInputSchema,
+  //   TQueryResultType,
+  //   TOuterProps,
+  //   TInnerProps,
+  //   TQueries
+  // >
+  mapper(mapperFn: MapperFn<any, any, any, any, any> | undefined) {
+    // if (mapperFn === false) {
+    //   return this._continue({
+    //     // _sameQueryPoint: null,
+    //     _mapperFns: [],
+    //   }) as never
+    // }
+    // in case if we shake mapper for server without ssr target
+    mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any>
+    const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+    const selfQueryAction: MountAction[] = queryShouldBeFinalized
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      : []
     return this._continue({
-      type: 'mapperStage',
       // _sameQueryPoint: null,
-      _mapperFns: [...this._mapperFns, mapperFn],
+      _mountActions: [
+        ...this._mountActions,
+        ...selfQueryAction,
+        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId() },
+      ],
+      ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
   }
 
@@ -2470,9 +2337,33 @@ export class Point0<
   // }
 
   head(
-    head: HeadFn | ResolvableHead | string,
+    head: unknown extends AssertMountableQueryFinalization<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput
+    >
+      ?
+          | HeadFn<
+              any,
+              TClientInputSchema,
+              TInnerProps,
+              WithSelfQueryIfShouldBeFinalized<
+                TPointType,
+                TLetsEndPointType,
+                TServerLoaderOutput,
+                TClientLoaderOutput,
+                TQueries
+              >,
+              TMapperOutput
+            >
+          | ResolvableHead
+          | string
+      : AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
   ): NiceStagePoint<
-    StagePointTypeOrNever<TPointType>,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2483,25 +2374,105 @@ export class Point0<
     TRouteDefinition,
     TServerInputSchema,
     TClientInputSchema,
-    TQueryResultType,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueries
-  > {
-    if (typeof head === 'function') {
-      return this._continue({
-        // _headFns: [...this._headFns, head],
-        _mountActions: [...this._mountActions, { type: 'head', fn: head, unstableId: Point0._getNextUnstableId() }],
-      }) as never
-    } else {
-      return this._continue({
-        // _headFns: [...this._headFns, () => head],
-        _mountActions: [
-          ...this._mountActions,
-          { type: 'head', fn: () => head, unstableId: Point0._getNextUnstableId() },
-        ],
-      }) as never
-    }
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+  >
+  head<TStatus extends 'loading' | 'error' | 'success'>(
+    status: TStatus,
+    head: unknown extends AssertMountableQueryFinalization<
+      TPointType,
+      TLetsEndPointType,
+      TServerLoaderOutput,
+      TClientLoaderOutput
+    >
+      ?
+          | HeadFn<
+              TStatus,
+              TClientInputSchema,
+              TInnerProps,
+              WithSelfQueryIfShouldBeFinalized<
+                TPointType,
+                TLetsEndPointType,
+                TServerLoaderOutput,
+                TClientLoaderOutput,
+                TQueries
+              >,
+              TMapperOutput
+            >
+          | ResolvableHead
+          | string
+      : AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
+  ): NiceStagePoint<
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+      ? 'finalStage'
+      : StagePointTypeOrNever<TPointType>,
+    EndPointTypeOrNever<TLetsEndPointType>,
+    TRequiredCtx,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true ? 'query' : TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
+  >
+  head(
+    ...args:
+      | [
+          status: 'loading' | 'error' | 'success',
+          head: HeadFn<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput> | ResolvableHead | string,
+        ]
+      | [head: HeadFn<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput> | ResolvableHead | string]
+  ) {
+    const [providedStatus, providedHead] =
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr target
+      args.length === 2 ? args : args.length === 1 ? [undefined, args[0]] : [undefined, () => ({})]
+    const headFn = (() => {
+      if (typeof providedHead === 'function') {
+        if (providedStatus === undefined) {
+          return providedHead
+        } else {
+          return ((options) => {
+            if (options.status !== providedStatus) {
+              return {}
+            } else {
+              return providedHead(options)
+            }
+          }) as HeadFn<any>
+        }
+      } else {
+        if (providedStatus === undefined) {
+          return () => providedHead
+        } else {
+          return ((options) => {
+            if (options.status !== providedStatus) {
+              return {}
+            } else {
+              return providedHead
+            }
+          }) as HeadFn<any>
+        }
+      }
+    })()
+    const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
+    const selfQueryAction: MountAction[] = queryShouldBeFinalized
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
+      : []
+    return this._continue({
+      _mountActions: [
+        ...this._mountActions,
+        ...selfQueryAction,
+        { type: 'head', fn: headFn, unstableId: Point0._getNextUnstableId() },
+      ],
+      ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+    }) as never
   }
 
   // props<TNewProps extends Props>(
@@ -4538,7 +4509,7 @@ export class Point0<
     )
   }
   private _isQueryableEndPoint(): boolean {
-    return Point0._isQueryableEndPointType(this.type)
+    return Point0._isQueryableEndPointType(this._letsEndPointType || this.type)
   }
   private _normalizeQueryResultType(newQueryResultType: QueryResultType): QueryResultType | UndefinedQueryResultType {
     return this._isQueryableEndPoint() ? (this._queryResultType ?? newQueryResultType) : this._queryResultType
@@ -4547,7 +4518,10 @@ export class Point0<
     return pointType === 'page' || pointType === 'layout' || pointType === 'component' || pointType === 'provider'
   }
   private _isMountableEndPoint(): boolean {
-    return Point0._isMountableEndPointType(this.type)
+    return Point0._isMountableEndPointType(this._letsEndPointType || this.type)
+  }
+  private _isMountableQueryShouldBeFinalized(): boolean {
+    return this._isMountableEndPoint() && (this.type === 'serverStage' || this.type === 'clientStage')
   }
 
   _isRoot(): boolean {

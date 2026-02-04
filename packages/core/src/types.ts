@@ -123,7 +123,7 @@ export type Infer<
     TServerLoaderOutput,
     TClientLoaderOutput
   >
-  UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>
+  UseQueryResult: UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput>
   FetchOutput: TServerLoaderOutput extends LoaderOutput ? TServerLoaderOutput : never
   ServerQueryData: QueriedData<TQueryResultType, TServerLoaderOutput>
   ClientQueryData: QueriedData<TQueryResultType, TClientLoaderOutput>
@@ -1047,7 +1047,7 @@ export type UsePointQueryResult<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TStatus extends 'pending' | 'error' | 'success',
+  TStatus extends 'pending' | 'error' | 'success' = any,
 > = TServerLoaderOutput extends Data
   ? TClientLoaderOutput extends Data
     ? UseCombinedQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, TStatus>
@@ -2001,15 +2001,7 @@ export type MiddlewareFn = (options: MiddlewareFnOptions) => Promise<Response | 
 //       : unknown
 export type AssertNoForbiddenMethodsIfNotSuitableStage<
   TPointType extends PointType,
-  TMethod extends
-    | 'ctx'
-    | 'loader'
-    | 'use'
-    | 'clientLoader'
-    | 'input'
-    | 'combinedInput'
-    | 'queryOptions'
-    | 'infiniteQueryOptions',
+  TMethod extends 'ctx' | 'loader' | 'use' | 'clientLoader' | 'input' | 'combinedInput',
 > = TPointType extends 'serverStage'
   ? TMethod extends never // nothing is forbiden
     ? ShowError<`You can not use ${TMethod}() after calling .loader()`>
@@ -2019,7 +2011,7 @@ export type AssertNoForbiddenMethodsIfNotSuitableStage<
       ? ShowError<`You can not use ${TMethod}() after calling .clientStage()`>
       : unknown
     : TPointType extends 'finalStage'
-      ? TMethod extends 'loader' | 'ctx' | 'input' | 'clientLoader'
+      ? TMethod extends 'loader' | 'ctx' | 'input' | 'combinedInput' | 'clientLoader'
         ? ShowError<`You can not use ${TMethod}() in final stage, add it somewhere earlier`>
         : unknown
       : unknown

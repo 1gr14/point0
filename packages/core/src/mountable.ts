@@ -121,6 +121,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type {
   CurrentRouteDefinition,
   Data,
+  EndPointType,
   FinalLoaderOutput,
   IfAnyThenElse,
   // IfAnyThenElse,
@@ -132,8 +133,13 @@ import type {
   IsNever,
   LoaderOutput,
   MapperOutput,
+  MountablePointType,
+  PointType,
+  QueryableEndPointType,
   QueryResultType,
   RouteDefinition,
+  ShowError,
+  UndefinedEndPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
@@ -906,12 +912,14 @@ export type ProviderSelfType<
 >
 
 export type MountAction<
-  TType extends 'query' | 'input' | 'wrapper' | 'head' | 'selfProps' =
+  TType extends 'query' | 'input' | 'wrapper' | 'mapper' | 'head' | 'selfProps' | 'selfQuery' =
     | 'query'
     | 'input'
     | 'wrapper'
+    | 'mapper'
     | 'head'
-    | 'selfProps',
+    | 'selfProps'
+    | 'selfQuery',
 > = TType extends 'query'
   ? {
       type: 'query'
@@ -920,14 +928,51 @@ export type MountAction<
       ) => UseQueryOrInfiniteQueryResult
       unstableId: number
     }
-  : TType extends 'wrapper'
-    ? { type: 'wrapper'; fn: WrapperFn<any, any, any, any>; unstableId: number }
-    : TType extends 'selfProps'
-      ? { type: 'selfProps'; unstableId: number }
+  : TType extends 'selfQuery'
+    ? { type: 'selfQuery'; unstableId: number }
+    : TType extends 'wrapper'
+      ? { type: 'wrapper'; fn: WrapperFn<any, any, any, any>; unstableId: number }
       : TType extends 'mapper'
         ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
-        : TType extends 'head'
-          ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
-          : TType extends 'input'
-            ? { type: 'input'; schema: InputSchema; unstableId: number }
-            : never
+        : TType extends 'selfProps'
+          ? { type: 'selfProps'; unstableId: number }
+          : TType extends 'mapper'
+            ? { type: 'mapper'; fn: MapperFn<any, any, any, any, any>; unstableId: number }
+            : TType extends 'head'
+              ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
+              : TType extends 'input'
+                ? { type: 'input'; schema: InputSchema; unstableId: number }
+                : never
+
+export type IsQueryShouldBeFinalized<
+  TPointType extends PointType,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+> = TPointType extends 'serverStage' | 'clientStage'
+  ? TLetsEndPointType extends QueryableEndPointType
+    ? true
+    : false
+  : false
+
+export type WithSelfQueryIfShouldBeFinalized<
+  TPointType extends PointType,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TQueries extends Queries,
+> =
+  IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
+    ? [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
+    : TQueries
+
+export type AssertMountableQueryFinalization<
+  TPointType extends PointType,
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = TLetsEndPointType extends MountablePointType
+  ? TPointType extends 'serverStage' | 'clientStage'
+    ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+      ? ShowError<`Check this point last loader. It should return plain object data, not response. You see this message, becouse current method will finalize your query, so you should fix your loader before it`>
+      : unknown
+    : unknown
+  : unknown
