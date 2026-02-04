@@ -15,6 +15,7 @@ import { hydrate, useInfiniteQuery, useMutation, useQuery, useQueryClient } from
 import { flatten } from 'flat'
 import * as React from 'react'
 import type { ResolvableHead } from 'unhead/types'
+import { useHead } from '@unhead/react'
 import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { CookiesStore } from './cookies-store.js'
@@ -7679,28 +7680,217 @@ export class Point0<
     action,
     stepState,
     statusState,
+    inputRaw,
+    outerProps,
+    componentVariant,
+    inputHasError,
+    errorVariant,
+    loadingVariant,
   }: {
     action: MountAction
-    stepState: Pick<
-      MountableState<any, any, any, any, any>,
-      'input' | 'props' | 'queries' | 'data' | 'LoadingComponent' | 'ErrorComponent'
-    >
-    statusState: Pick<MountableState<any, any, any, any, any>, 'status' | 'error' | 'loading'>
+    stepState: {
+      input: InputParsed<TClientInputSchema>
+      props: TInnerProps
+      queries: TQueries
+      data: any
+      LoadingComponent: React.ComponentType<any>
+      ErrorComponent: React.ComponentType<any>
+    }
+    statusState: {
+      status: 'success' | 'pending' | 'error'
+      error: Error0 | undefined
+      loading: boolean
+    }
+    inputRaw: InputsRaw<TServerInputSchema, TClientInputSchema>
+    outerProps: TOuterProps
+    componentVariant: DestinationComponentVariant
+    inputHasError: boolean
+    errorVariant: DestinationComponentVariant
+    loadingVariant: DestinationComponentVariant
   }): {
-    nextStepState: Pick<
-      MountableState<any, any, any, any, any>,
-      'input' | 'props' | 'queries' | 'data' | 'LoadingComponent' | 'ErrorComponent'
-    >
+    nextStepState: {
+      input: InputParsed<TClientInputSchema>
+      props: TInnerProps
+      queries: TQueries
+      data: any
+      LoadingComponent: React.ComponentType<any>
+      ErrorComponent: React.ComponentType<any>
+    }
+    nextStatusState: {
+      status: 'success' | 'pending' | 'error'
+      error: Error0 | undefined
+      loading: boolean
+    }
+    forcedStatus: 'error' | 'pending' | null
+    forcedError: Error0 | undefined
+    addedWrappers: Array<WrapperComponentType<any, any, any, any>>
+    errorVariant: DestinationComponentVariant
+    loadingVariant: DestinationComponentVariant
   } => {
+    let nextStepState = { ...stepState }
+    let nextStatusState = { ...statusState }
+    let forcedStatus: 'error' | 'pending' | null = null
+    let forcedError: Error0 | undefined = undefined
+    const addedWrappers: Array<WrapperComponentType<any, any, any, any>> = []
+    let nextErrorVariant = errorVariant
+    let nextLoadingVariant = loadingVariant
+
+    const updateStatusFromQueries = () => {
+      const queries = nextStepState.queries as UseQueryOrInfiniteQueryResult[]
+      const anyError = queries.find((query) => query.error)?.error
+      const error = anyError ? Error0.from(anyError) : undefined
+      const loading = queries.some((query) => query.status === 'pending')
+      const status = error ? 'error' : loading ? 'pending' : 'success'
+      nextStatusState = { status, error, loading }
+      nextStepState = {
+        ...nextStepState,
+        data: status === 'success' ? queries.find((query) => query.data)?.data : undefined,
+      }
+    }
+
+    switch (action.type) {
+      case 'input': {
+        const result = Point0.parseInputSafeSync(action.schema, inputRaw)
+        if (result.error) {
+          forcedStatus = 'error'
+          forcedError = result.error
+        } else {
+          nextStepState = {
+            ...nextStepState,
+            input: {
+              ...nextStepState.input,
+              ...result.data,
+            },
+          }
+        }
+        break
+      }
+      case 'selfProps': {
+        nextStepState = {
+          ...nextStepState,
+          props: {
+            ...nextStepState.props,
+            ...(outerProps as unknown as TInnerProps),
+          },
+        }
+        break
+      }
+      case 'query': {
+        const queryResult = action.fn({
+          input: nextStepState.input,
+          props: nextStepState.props,
+          queries: nextStepState.queries,
+          data: nextStepState.data,
+          error: nextStatusState.error,
+          loading: nextStatusState.loading,
+          status: nextStatusState.status,
+          ...(inputHasError ? { enabled: false } : {}),
+        } as never)
+        const nextQueries = Array.isArray(queryResult) ? queryResult : [queryResult]
+        nextStepState = {
+          ...nextStepState,
+          queries: [
+            ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
+            ...nextQueries,
+          ] as unknown as TQueries,
+        }
+        updateStatusFromQueries()
+        break
+      }
+      case 'selfQuery': {
+        const options = inputHasError ? { enabled: false } : {}
+        const query =
+          this._queryResultType === 'infiniteQuery'
+            ? this.useInfiniteQuery(inputRaw as never, options as never)
+            : this.useQuery(inputRaw as never, options as never)
+        nextStepState = {
+          ...nextStepState,
+          queries: [
+            ...(nextStepState.queries as unknown as UseQueryOrInfiniteQueryResult[]),
+            query,
+          ] as unknown as TQueries,
+        }
+        updateStatusFromQueries()
+        break
+      }
+      case 'wrapper': {
+        addedWrappers.push(action.Component)
+        break
+      }
+      case 'with': {
+        const result = action.fn({
+          input: nextStepState.input,
+          props: nextStepState.props,
+          queries: nextStepState.queries,
+          data: nextStepState.data,
+          error: nextStatusState.error,
+          loading: nextStatusState.loading,
+          status: nextStatusState.status,
+        } as never)
+        if (result === 'loading') {
+          forcedStatus = 'pending'
+          forcedError = undefined
+        } else if (result instanceof Error) {
+          forcedStatus = 'error'
+          forcedError = Error0.from(result)
+        } else if (result && typeof result === 'object') {
+          nextStepState = {
+            ...nextStepState,
+            props: { ...nextStepState.props, ...(result as TInnerProps) },
+          }
+        }
+        break
+      }
+      case 'mapper': {
+        if (nextStatusState.status === 'success') {
+          nextStepState = {
+            ...nextStepState,
+            data: action.fn({
+              input: nextStepState.input,
+              props: nextStepState.props,
+              queries: nextStepState.queries as never,
+              data: nextStepState.data as never,
+            } as never),
+          }
+        }
+        break
+      }
+      case 'head': {
+        if (this.type === 'page' || this._letsEndPointType === 'page') {
+          const headResult = action.fn({
+            input: nextStepState.input,
+            props: nextStepState.props,
+            queries: nextStepState.queries as never,
+            data: nextStepState.data,
+            error: nextStatusState.error,
+            loading: nextStatusState.loading,
+            status: nextStatusState.status,
+          } as never)
+          const resolvable = typeof headResult === 'string' ? { title: headResult } : headResult
+          useHead(resolvable)
+        }
+        break
+      }
+      case 'errorComponent': {
+        nextStepState = { ...nextStepState, ErrorComponent: action.Component }
+        nextErrorVariant = action.variant ?? componentVariant
+        break
+      }
+      case 'loadingComponent': {
+        nextStepState = { ...nextStepState, LoadingComponent: action.Component }
+        nextLoadingVariant = action.variant ?? componentVariant
+        break
+      }
+    }
+
     return {
-      nextStepState: {
-        input: stepState.input,
-        props: stepState.props,
-        queries: stepState.queries,
-        data: stepState.data,
-        LoadingComponent: stepState.LoadingComponent,
-        ErrorComponent: stepState.ErrorComponent,
-      },
+      nextStepState,
+      nextStatusState,
+      forcedStatus,
+      forcedError,
+      addedWrappers,
+      errorVariant: nextErrorVariant,
+      loadingVariant: nextLoadingVariant,
     }
   }
 
@@ -7714,19 +7904,161 @@ export class Point0<
       | ProviderSuccessComponentType<any, any, any, any>
     extraProps: (mountableState: MountableState<any, any, any, any, any>) => Record<string, any>
   }): React.ReactNode => {
-    // loop or recursion over calling _getMountable action by action
-    // 'query' add query to queries array, pass current queries array to next action, do not create new component around, just hooks
-    // 'input' adds component around, parsing input, if error return current error component
-    // 'wrapper' adds component around
-    // 'with' if returns 'loading' show current loading component, if return Error show error component, else if undefined or record returned it is innerProps to extend
-    // 'mapper' updates data in case if all queries passed (do not creates wrapping component)
-    // 'head' call useHead
-    // 'selfProps' adding outerProps to inner props (mountState props)
-    // 'selfQuery' calling self component query
-    // 'errorComponent' changes current error component to new one (do not creates wrapping component)
-    // 'loadingComponent' changes current loading component to new one (do not creates wrapping component)
-    // so it is not just components recursion, it is clever loop, which breaks to wrapping component only in case if it is needed
-    // we strongly know that count of actions not chacnged in runtime, so we can call hooks etc in this loop safely
+    const { input: inputRaw, outerProps, mountComponent, extraProps } = props
+
+    const componentVariant = this._getDestinationComponentVariant() ?? 'page'
+
+    const baseLoadingComponent = (this._loadingComponent ??
+      {
+        page: this._pageLoadingComponent,
+        component: this._componentLoadingComponent,
+        layout: this._layoutLoadingComponent,
+      }[componentVariant] ??
+      Point0.DefaultLoadingComponent) as React.ComponentType<any>
+    const baseErrorComponent = (this._errorComponent ??
+      {
+        page: this._pageErrorComponent,
+        component: this._componentErrorComponent,
+        layout: this._layoutErrorComponent,
+      }[componentVariant] ??
+      Point0.DefaultErrorComponent) as React.ComponentType<any>
+
+    const hasSelfProps = this._mountActions.some((action) => action.type === 'selfProps')
+    let stepState: {
+      input: InputParsed<TClientInputSchema>
+      props: TInnerProps
+      queries: TQueries
+      data: any
+      LoadingComponent: React.ComponentType<any>
+      ErrorComponent: React.ComponentType<any>
+    } = {
+      input: {} as InputParsed<TClientInputSchema>,
+      props: hasSelfProps ? ({} as TInnerProps) : (outerProps as unknown as TInnerProps),
+      queries: [] as unknown as TQueries,
+      data: undefined,
+      LoadingComponent: baseLoadingComponent,
+      ErrorComponent: baseErrorComponent,
+    }
+    let statusState: { status: 'success' | 'pending' | 'error'; error: Error0 | undefined; loading: boolean } = {
+      status: 'success',
+      error: undefined,
+      loading: false,
+    }
+    let forcedStatus: 'error' | 'pending' | null = null
+    let forcedError: Error0 | undefined = undefined
+    let inputHasError = false
+    let errorVariant = componentVariant
+    let loadingVariant = componentVariant
+    const wrappers: Array<WrapperComponentType<any, any, any, any>> = []
+
+    for (const action of this._mountActions) {
+      const part = this._getMountablePart({
+        action,
+        stepState,
+        statusState,
+        inputRaw,
+        outerProps,
+        componentVariant,
+        inputHasError,
+        errorVariant,
+        loadingVariant,
+      })
+      stepState = part.nextStepState
+      statusState = part.nextStatusState
+      if (part.forcedStatus) {
+        forcedStatus = part.forcedStatus
+        forcedError = part.forcedError
+        statusState = {
+          status: forcedStatus,
+          error: forcedError,
+          loading: forcedStatus === 'pending',
+        }
+        if (forcedStatus === 'error') {
+          inputHasError = true
+        }
+      } else if (forcedStatus) {
+        statusState = {
+          status: forcedStatus,
+          error: forcedError,
+          loading: forcedStatus === 'pending',
+        }
+      }
+      if (part.addedWrappers.length) {
+        wrappers.push(...part.addedWrappers)
+      }
+      errorVariant = part.errorVariant
+      loadingVariant = part.loadingVariant
+    }
+
+    if (forcedStatus) {
+      statusState = {
+        status: forcedStatus,
+        error: forcedError,
+        loading: forcedStatus === 'pending',
+      }
+    }
+
+    if (statusState.status !== 'success') {
+      stepState = { ...stepState, data: undefined }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!mountComponent && statusState.status === 'success') {
+      statusState = {
+        status: 'error',
+        error: new Error0('No success component'),
+        loading: false,
+      }
+    }
+
+    const LoadingComponent = React.useCallback(() => {
+      return React.createElement(stepState.LoadingComponent, {
+        type: loadingVariant,
+      })
+    }, [stepState.LoadingComponent, loadingVariant])
+    const ErrorComponent = React.useCallback(
+      ({ error }: { error: Error }) => {
+        return React.createElement(stepState.ErrorComponent, {
+          type: errorVariant,
+          error: Error0.from(error),
+        })
+      },
+      [stepState.ErrorComponent, errorVariant],
+    )
+
+    const mountableState = {
+      ...(stepState as Record<string, unknown>),
+      status: statusState.status,
+      error: statusState.error as never,
+      loading: statusState.loading,
+      LoadingComponent,
+      ErrorComponent,
+    } as unknown as MountableState<any, any, any, any, any>
+
+    const inner = (() => {
+      if (statusState.status === 'error') {
+        return React.createElement(ErrorComponent, {
+          error: statusState.error ?? new Error('Unknown error'),
+        })
+      }
+      if (statusState.status === 'pending') {
+        return React.createElement(LoadingComponent, null)
+      }
+      return React.createElement(mountComponent as never, {
+        input: stepState.input,
+        props: stepState.props,
+        queries: stepState.queries,
+        data: stepState.data,
+        ...extraProps(mountableState),
+      })
+    })()
+
+    return wrappers.reduceRight<React.ReactNode>((acc, Wrapper) => {
+      return React.createElement(Wrapper as React.ComponentType<any>, {
+        ...(mountableState as Record<string, unknown>),
+        children: acc,
+      })
+    }, inner as React.ReactNode)
   }
 
   // private readonly _getMountable = (props: {
@@ -8018,16 +8350,14 @@ export class Point0<
       }
     }, [this.name, inputRaw, prevLocation, status])
 
-    // return this._getMountable({
-    //   input: inputRaw,
-    //   props: restProps,
-    //   extraProps: () => {
-    //     return { location }
-    //   },
-    //   mountComponent: this._page as never,
-    // })
-
-    return null
+    return this._getMountable({
+      input: inputRaw,
+      outerProps: restProps,
+      extraProps: () => {
+        return { location }
+      },
+      mountComponent: this._page as never,
+    })
 
     // if (clientInputParseResult.inputParseError) {
     //   const result = {
@@ -8314,16 +8644,14 @@ export class Point0<
       return { inputRaw, restProps }
     }, [props])
 
-    // return this._getMountable({
-    //   input: inputRaw,
-    //   props: restProps,
-    //   extraProps: () => {
-    //     return {}
-    //   },
-    //   mountComponent: this._component as never,
-    // })
-
-    return null
+    return this._getMountable({
+      input: inputRaw,
+      outerProps: restProps,
+      extraProps: () => {
+        return {}
+      },
+      mountComponent: this._component as never,
+    })
 
     // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
     //   const result = this.parseClientInputSafe(inputRaw as never)
@@ -8602,32 +8930,32 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props, location])
 
-    // return this._getMountable({
-    //   input: inputRaw,
-    //   props: restProps,
-    //   extraProps: (useMountableResult: UseMountableResult<any, any, any, any, any, any, any>) => {
-    //     if (!this._ProviderReactContext) {
-    //       throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-    //     }
-    //     if (useMountableResult.data) {
-    //       superstore.setValue(
-    //         `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
-    //         useMountableResult.data,
-    //         'clientServerIsolated',
-    //       )
-    //     }
-    //     return {
-    //       children: React.createElement(this._ProviderReactContext.Provider, {
-    //         value: useMountableResult.data,
-    //         children,
-    //       }),
-    //       location,
-    //     }
-    //   },
-    //   mountComponent: this._layout as never,
-    // })
-
-    return null
+    return this._getMountable({
+      input: inputRaw,
+      outerProps: restProps,
+      extraProps: (mountableState: MountableState<any, any, any, any, any>) => {
+        if (!this._ProviderReactContext) {
+          throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+        }
+        if (mountableState.data) {
+          superstore.setValue(
+            `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(
+              inputRaw,
+            )}`,
+            mountableState.data,
+            'clientServerIsolated',
+          )
+        }
+        return {
+          children: React.createElement(this._ProviderReactContext.Provider, {
+            value: mountableState.data,
+            children,
+          }),
+          location,
+        }
+      },
+      mountComponent: this._layout as never,
+    })
 
     // const clientInputParseResult = React.useMemo<InputParseResult<TClientInputSchema>>(() => {
     //   const result = this.parseClientInputSafe(inputRaw as never)
@@ -8969,31 +9297,34 @@ export class Point0<
       return { inputRaw, children, restProps }
     }, [props])
 
-    // return this._getMountable({
-    //   input: inputRaw,
-    //   props: restProps,
-    //   extraProps: (useMountableResult: UseMountableResult<any, any, any, any, any, any, any>) => {
-    //     if (!this._ProviderReactContext) {
-    //       throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
-    //     }
-    //     if (useMountableResult.data) {
-    //       superstore.setValue(
-    //         `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(inputRaw)}`,
-    //         useMountableResult.data,
-    //         'clientServerIsolated',
-    //       )
-    //     }
-    //     return {
-    //       children: React.createElement(this._ProviderReactContext.Provider, {
-    //         value: useMountableResult.data,
-    //         children,
-    //       }),
-    //     }
-    //   },
-    //   mountComponent: this._layout as never,
-    // })
+    const providerComponent = (({ children }: { children: Exclude<React.ReactNode, Promise<any>> }) =>
+      children) as ProviderSuccessComponentType<any, any, any, any>
 
-    return null
+    return this._getMountable({
+      input: inputRaw,
+      outerProps: restProps,
+      extraProps: (mountableState: MountableState<any, any, any, any, any>) => {
+        if (!this._ProviderReactContext) {
+          throw new Error(`ProviderReactContext not found on point: ${this.scope}.${this.type}.${this.name}`)
+        }
+        if (mountableState.data) {
+          superstore.setValue(
+            `__POINT0_PROVIDER_VALUE_${this.scope}_${this.type}_${this.name}_${this._getTransformer().stringify(
+              inputRaw,
+            )}`,
+            mountableState.data,
+            'clientServerIsolated',
+          )
+        }
+        return {
+          children: React.createElement(this._ProviderReactContext.Provider, {
+            value: mountableState.data,
+            children,
+          }),
+        }
+      },
+      mountComponent: providerComponent,
+    })
 
     // const result = this.useLoader(inputRaw, this._defaultProviderQueryOptions)
 
