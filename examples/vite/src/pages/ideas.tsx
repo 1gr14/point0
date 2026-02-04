@@ -19,12 +19,12 @@ export const ideasPage = generalLayout
   .clientLoader(async ({ data }) => {
     return { ...data, amazing: '123', ideas: data.ideas.map((idea) => ({ ...idea, amazing: '234' })) }
   })
-  .Infer.Queries.infiniteQueryOptions({
+  .infiniteQueryOptions({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
     pageParamFromInput: 'page',
   })
-  .Infer.Queries.head('success', ({ data, queries }) => {
+  .head('success', ({ data, queries }) => {
     return `${data.pages[0].ideasCount} ideas`
   })
   .page(({ data, queries: [query] }) => {

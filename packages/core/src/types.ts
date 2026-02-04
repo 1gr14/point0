@@ -612,14 +612,14 @@ export type AssertInputSchemaNotWider<
       ? ShowError<`Provided input schema is not assignable to current point client input schema`>
       : unknown
 
-export type AssertCurrentCtxExtendsPluginCtx<
+export type AssertCurrentCtxExtendsPluginRequiredCtx<
   TCurrentCtx extends Ctx,
-  TPluginCtx extends Ctx,
-> = TCurrentCtx extends TPluginCtx ? unknown : ShowError<`Plugin ctx is not assignable to current point ctx`>
-export type AssertCurrentInnerPropsExtendsPluginInnerProps<
+  TPluginRequiredCtx extends Ctx,
+> = TCurrentCtx extends TPluginRequiredCtx ? unknown : ShowError<`Plugin ctx is not assignable to current point ctx`>
+export type AssertCurrentInnerPropsExtendsPluginOuterProps<
   TCurrentInnerProps extends Props,
-  TPluginInnerProps extends Props,
-> = TCurrentInnerProps extends TPluginInnerProps
+  TPluginOuterProps extends Props,
+> = TCurrentInnerProps extends TPluginOuterProps
   ? unknown
   : ShowError<`Plugin inner props is not assignable to current point inner props`>
 
@@ -1653,7 +1653,7 @@ export type InferCtxFnOutputCtxExposedKeys<TCtxFn extends CtxFn<any, any, any, a
       ? TCtxExposedKeys[number]
       : undefined
 
-export type LoaderFnOptions<
+export type LoaderResponseFnOptions<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
@@ -1667,14 +1667,42 @@ export type LoaderFnOptions<
   execute: ServerExecuteFn
   ctx: TCtx
 }
-export type LoaderFn<
+export type LoaderResponseFn<
   TCtx extends Ctx = Ctx,
   TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TNewServerLoaderOutput extends LoaderOutput = LoaderOutput,
 > = (
-  options: LoaderFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
+  options: LoaderResponseFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
+) =>
+  | Promise<[number, TNewServerLoaderOutput]>
+  | [number, TNewServerLoaderOutput]
+  | Promise<TNewServerLoaderOutput>
+  | TNewServerLoaderOutput
+
+export type LoaderDataFnOptions<
+  TCtx extends Ctx = Ctx,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+> = ExposedCtxOrEmpty<TCtx, TCtxExposedKeys> & {
+  request: Request0<true, TServerInputSchema>
+  point: EndPoint | undefined
+  input: InputParsed<TServerInputSchema>
+  data: DataOrUndefinedData<TServerLoaderOutput>
+  set: ResponseEffectsSetHelper
+  execute: ServerExecuteFn
+  ctx: TCtx
+}
+export type LoaderDataFn<
+  TCtx extends Ctx = Ctx,
+  TCtxExposedKeys extends CtxExposedKeys | UndefinedCtxExposedKeys = CtxExposedKeys | UndefinedCtxExposedKeys,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TServerInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TNewServerLoaderOutput extends Data = Data,
+> = (
+  options: LoaderDataFnOptions<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema>,
 ) =>
   | Promise<[number, TNewServerLoaderOutput]>
   | [number, TNewServerLoaderOutput]
@@ -1691,7 +1719,7 @@ export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx'
     : TType extends 'loader'
       ? {
           type: 'loader'
-          fn: LoaderFn
+          fn: LoaderResponseFn | LoaderDataFn
           unstableId: number
         }
       : TType extends 'input'
@@ -1701,7 +1729,7 @@ export type ServerExecuteAction<TType extends 'ctx' | 'loader' | 'input' = 'ctx'
 export type ClientExecuteAction<TType extends 'loader' | 'input' = 'loader' | 'input'> = TType extends 'loader'
   ? {
       type: 'loader'
-      fn: ClientLoaderFn
+      fn: ClientLoaderResponseFn | ClientLoaderDataFn
       unstableId: number
     }
   : TType extends 'input'
@@ -1721,7 +1749,7 @@ export type ClientExecuteActionLocation<
       ? AnyLocation
       : AnyLocation
 
-export type ClientLoaderFnOptions<
+export type ClientLoaderResponseFnOptions<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -1741,7 +1769,7 @@ export type ClientLoaderFnOptions<
   input: InputParsed<TClientInputSchema>
   serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
 }
-export type ClientLoaderFn<
+export type ClientLoaderResponseFn<
   TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
@@ -1749,7 +1777,44 @@ export type ClientLoaderFn<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TNewClientLoaderOutput extends LoaderOutput = LoaderOutput,
 > = (
-  options: ClientLoaderFnOptions<
+  options: ClientLoaderResponseFnOptions<
+    TLetsEndPointType,
+    TRouteDefinition,
+    TClientInputSchema,
+    TServerLoaderOutput,
+    TClientLoaderOutput
+  >,
+) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
+
+export type ClientLoaderDataFnOptions<
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+> = {
+  // server can return to client only data or response
+  response: TServerLoaderOutput extends LoaderOutput ? Response : undefined
+  data: TClientLoaderOutput extends undefined
+    ? TServerLoaderOutput extends Response
+      ? UndefinedData
+      : TServerLoaderOutput extends Data
+        ? TServerLoaderOutput
+        : undefined
+    : TClientLoaderOutput
+  location: ClientExecuteActionLocation<TLetsEndPointType, TRouteDefinition>
+  input: InputParsed<TClientInputSchema>
+  serverData: TServerLoaderOutput extends Data ? TServerLoaderOutput : undefined
+}
+export type ClientLoaderDataFn<
+  TLetsEndPointType extends EndPointType | UndefinedEndPointType = EndPointType | UndefinedEndPointType,
+  TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition = RouteDefinition | UndefinedRouteDefinition,
+  TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
+  TNewClientLoaderOutput extends Data = Data,
+> = (
+  options: ClientLoaderDataFnOptions<
     TLetsEndPointType,
     TRouteDefinition,
     TClientInputSchema,

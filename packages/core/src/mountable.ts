@@ -137,14 +137,12 @@ import type {
   MountablePointType,
   PointType,
   QueryableEndPointType,
-  QueryResultType,
   RouteDefinition,
   ShowError,
   UndefinedEndPointType,
   UndefinedInputSchema,
   UndefinedLoaderOutput,
   UndefinedMapperOutput,
-  UndefinedQueryResultType,
   UndefinedRouteDefinition,
   UsePointQueryResult,
 } from './types.js'
@@ -273,24 +271,25 @@ export type QueryUnknownStatus<TQuery extends UseQueryOrInfiniteQueryResult> =
     : TQuery extends UseInfiniteQueryResult<infer TData, infer TError>
       ? UseInfiniteQueryResult<TData, TError>
       : never
-export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = TQueries extends [
-  infer Q1,
-  ...infer Rest,
-]
-  ? [
-      QuerySuccess<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
-      ...QueriesSuccess<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
-    ]
-  : []
-export type QueriesUnknownStatus<TQueries extends UseQueryOrInfiniteQueryResult[]> = TQueries extends [
-  infer Q1,
-  ...infer Rest,
-]
-  ? [
-      QueryUnknownStatus<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
-      ...QueriesUnknownStatus<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
-    ]
-  : []
+export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+  TQueries,
+  any,
+  TQueries extends [infer Q1, ...infer Rest]
+    ? [
+        QuerySuccess<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
+        ...QueriesSuccess<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
+      ]
+    : []
+>
+// export type QueriesUnknownStatus<TQueries extends UseQueryOrInfiniteQueryResult[]> = TQueries extends [
+//   infer Q1,
+//   ...infer Rest,
+// ]
+//   ? [
+//       QueryUnknownStatus<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
+//       ...QueriesUnknownStatus<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
+//     ]
+//   : []
 type CleanQueryData<TData> =
   Exclude<TData, undefined> extends infer TClean
     ? [TClean] extends [never]
@@ -517,8 +516,6 @@ export type MountableStateError<
   error: Error0
   loading: false
   status: 'error'
-  LoadingComponent: React.ComponentType
-  ErrorComponent: React.ComponentType<{ error: Error }>
 }
 export type MountableStatePending<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -585,6 +582,10 @@ export type LoadingComponentProps<TType extends DestinationComponentType> = {
 export type LoadingComponentType<TType extends DestinationComponentType> = React.ComponentType<
   LoadingComponentProps<TType>
 >
+type WithErrorAndLoadingComponent = {
+  LoadingComponent: React.ComponentType
+  ErrorComponent: React.ComponentType<{ error: Error }>
+}
 
 export type SuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
@@ -596,7 +597,7 @@ export type SuccessComponentProps<
   props: TInnerProps
   queries: QueriesSuccess<TQueries>
   data: MountableSuccessData<TQueries, TMapperOutput>
-}
+} & WithErrorAndLoadingComponent
 export type SuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
@@ -628,7 +629,9 @@ export type WrapperFnOptions<
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
+> = MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & {
+  children: Exclude<React.ReactNode, Promise<any>> | undefined
+} & WithErrorAndLoadingComponent
 export type WrapperFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
@@ -644,10 +647,7 @@ export type QueryFnOptions<
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<
-  MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
-  'ErrorComponent' | 'LoadingComponent'
->
+> = MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
 export type QueryFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
@@ -662,10 +662,7 @@ export type HeadFnOptions<
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = Omit<
-  MountableState<TStatus, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
-  'ErrorComponent' | 'LoadingComponent'
->
+> = MountableState<TStatus, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
 export type HeadFn<
   TStatus extends 'loading' | 'error' | 'success' = any,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,

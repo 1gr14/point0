@@ -51,7 +51,6 @@ export const BestIdeaComponent = client
       cllll: new Date(),
     }
   })
-  .clientLoader(false)
   .wrapper(({ children }) => {
     return <div style={{ padding: '10px', border: '1px solid #000' }}>{children}</div>
   })
@@ -61,7 +60,7 @@ export const BestIdeaComponent = client
   .loading(({ input, props }) => {
     return <div>Loading...</div>
   })
-  .outer(({ children, ErrorComponent, LoadingComponent, input, props }) => {
+  .wrapper(({ children, ErrorComponent, LoadingComponent, input, props }) => {
     return children
   })
   // .component(X)

@@ -1,3 +1,4 @@
+import type { EndPoint } from '@point0/core'
 import { Point0 } from '@point0/core'
 // import '@testing-library/jest-dom'
 import { describe, expect, it } from 'bun:test'

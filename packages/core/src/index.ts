@@ -28,15 +28,16 @@ import type {
   AnyPoint,
   AppendCtx,
   AppendCtxExposedKeys,
-  AssertCurrentCtxExtendsPluginCtx,
-  AssertCurrentInnerPropsExtendsPluginInnerProps,
+  AssertCurrentCtxExtendsPluginRequiredCtx,
+  AssertCurrentInnerPropsExtendsPluginOuterProps,
   AssertInputSchemaNotWider,
   AssertNoForbiddenCtxExposedKeys,
   AssertNoForbiddenMethodsIfNotSuitableStage,
   AssertRouteDefinitionInputExtends,
   BasePoint,
   ClientExecuteAction,
-  ClientLoaderFn,
+  ClientLoaderDataFn,
+  ClientLoaderResponseFn,
   Ctx,
   CtxExposedKeys,
   CtxFn,
@@ -74,7 +75,8 @@ import type {
   IsInputOptional,
   IsInputsOptional,
   LayoutPoint,
-  LoaderFn,
+  LoaderDataFn,
+  LoaderResponseFn,
   LoaderOutput,
   MapperOutput,
   MergeRecordValidationSchemas,
@@ -762,14 +764,14 @@ export class Point0<
     EmptyProps,
     []
   >
-  static lets<TCtx extends Ctx = EmptyCtx, TInnerProps extends Props = EmptyProps>(
+  static lets<TRequiredCtx extends Ctx = EmptyCtx, TOuterProps extends Props = EmptyProps>(
     pointType: 'plugin',
     pointName: string,
   ): NicePluginStagePoint<
     'coreStage',
     'plugin',
-    UndefinedCtx,
-    TCtx,
+    TRequiredCtx,
+    TRequiredCtx,
     UndefinedCtxExposedKeys,
     UndefinedLoaderOutput,
     UndefinedLoaderOutput,
@@ -778,8 +780,8 @@ export class Point0<
     UndefinedRoute,
     UndefinedInputSchema,
     UndefinedQueryResultType,
-    EmptyProps,
-    TInnerProps,
+    TOuterProps,
+    TOuterProps,
     []
   >
   static lets(pointType: 'root' | 'plugin', pointName: string) {
@@ -1997,8 +1999,11 @@ export class Point0<
   }
 
   loader<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
-    loaderFn: LoaderFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
+    loaderFn: TLetsEndPointType extends 'mutation'
+      ? LoaderResponseFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
+      : LoaderDataFn<TCtx, TCtxExposedKeys, TServerLoaderOutput, TServerInputSchema, TNewServerLoaderOutput> &
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>,
   ): NiceStagePoint<
     TNewServerLoaderOutput extends Response ? 'clientStage' : 'serverStage',
     EndPointTypeOrNever<TLetsEndPointType>,
@@ -2052,7 +2057,7 @@ export class Point0<
   //   TInnerProps,
   //   TQueries
   // >
-  loader(loaderFn: LoaderFn<any, any, any, any, any> | boolean) {
+  loader(loaderFn: LoaderDataFn<any, any, any, any, any> | LoaderResponseFn<any, any, any, any, any> | boolean) {
     // if (loaderFn === false) {
     //   return this._continue({
     //     // _sameQueryPoint: null,
@@ -2083,17 +2088,27 @@ export class Point0<
   }
 
   clientLoader<TNewClientLoaderOutput extends LoaderOutput = LoaderOutput>(
-    clientLoaderFn: ClientLoaderFn<
-      TLetsEndPointType,
-      TRouteDefinition,
-      TClientInputSchema,
-      TServerLoaderOutput,
-      TClientLoaderOutput,
-      TNewClientLoaderOutput
-    > &
-      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
+    clientLoaderFn: TLetsEndPointType extends 'mutation'
+      ? ClientLoaderResponseFn<
+          TLetsEndPointType,
+          TRouteDefinition,
+          TClientInputSchema,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TNewClientLoaderOutput
+        > &
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>
+      : ClientLoaderDataFn<
+          TLetsEndPointType,
+          TRouteDefinition,
+          TClientInputSchema,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TNewClientLoaderOutput
+        > &
+          AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientLoader'>,
   ): NiceStagePoint<
-    TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
+    TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage', // response can happen only in mutation, so we not care about this happen in mountable
     EndPointTypeOrNever<TLetsEndPointType>,
     TRequiredCtx,
     TCtx,
@@ -2107,13 +2122,14 @@ export class Point0<
     NormalizeQueryResultType<TLetsEndPointType, TQueryResultType, 'query'>,
     TOuterProps,
     TInnerProps,
-    WithSelfQueryIfShouldBeFinalized<
-      TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
-      TLetsEndPointType,
-      TServerLoaderOutput,
-      TNewClientLoaderOutput,
-      TQueries
-    >
+    TQueries // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    // WithSelfQueryIfShouldBeFinalized<
+    //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
+    //   TLetsEndPointType,
+    //   TServerLoaderOutput,
+    //   TNewClientLoaderOutput,
+    //   TQueries
+    // >
   >
   // clientLoader(
   //   enableClientLoader: false,
@@ -2164,7 +2180,12 @@ export class Point0<
   //   TInnerProps,
   //   TQueries
   // >
-  clientLoader(clientLoaderFn: ClientLoaderFn<any, any, any, any, any, any> | undefined) {
+  clientLoader(
+    clientLoaderFn:
+      | ClientLoaderDataFn<any, any, any, any, any, any>
+      | ClientLoaderResponseFn<any, any, any, any, any, any>
+      | undefined,
+  ) {
     // if (clientLoaderFn === false) {
     //   return this._continue({
     //     // _sameQueryPoint: null,
@@ -2352,7 +2373,7 @@ export class Point0<
     >
       ?
           | HeadFn<
-              any,
+              'success',
               TClientInputSchema,
               TInnerProps,
               WithSelfQueryIfShouldBeFinalized<
@@ -2386,7 +2407,7 @@ export class Point0<
     TInnerProps,
     WithSelfQueryIfShouldBeFinalized<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput, TQueries>
   >
-  head<TStatus extends 'loading' | 'error' | 'success'>(
+  head<TStatus extends 'loading' | 'error' | 'success' | 'universal'>(
     status: TStatus,
     head: unknown extends AssertMountableQueryFinalization<
       TPointType,
@@ -2396,7 +2417,7 @@ export class Point0<
     >
       ?
           | HeadFn<
-              TStatus,
+              TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
               TClientInputSchema,
               TInnerProps,
               WithSelfQueryIfShouldBeFinalized<
@@ -2437,12 +2458,22 @@ export class Point0<
           head: HeadFn<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput> | ResolvableHead | string,
         ]
       | [head: HeadFn<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput> | ResolvableHead | string]
-    const [providedStatus, providedHead] =
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr target
-      args.length === 2 ? args : args.length === 1 ? [undefined, args[0]] : [undefined, () => ({})]
+    // const [providedStatus, providedHead] =
+    //
+    //   args.length === 2 ? args : args.length === 1 ? [undefined, args[0]] : [undefined, () => ({})]
+    const [providedStatus, providedHead] = (() => {
+      if (args.length === 2) {
+        return args
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case if we shake head for server without ssr target
+      } else if (args.length === 1) {
+        return ['success', args[0]]
+      } else {
+        return ['universal', () => ({})]
+      }
+    })()
     const headFn = (() => {
       if (typeof providedHead === 'function') {
-        if (providedStatus === undefined) {
+        if (providedStatus === 'universal') {
           return providedHead
         } else {
           return ((options) => {
@@ -2454,7 +2485,7 @@ export class Point0<
           }) as HeadFn<any>
         }
       } else {
-        if (providedStatus === undefined) {
+        if (providedStatus === 'universal') {
           return () => providedHead
         } else {
           return ((options) => {
@@ -3831,8 +3862,8 @@ export class Point0<
       AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'use'> &
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
       AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema> &
-      AssertCurrentCtxExtendsPluginCtx<TCtx, T['Infer']['Ctx']> &
-      AssertCurrentInnerPropsExtendsPluginInnerProps<TInnerProps, T['Infer']['InnerProps']> &
+      AssertCurrentCtxExtendsPluginRequiredCtx<TCtx, T['Infer']['RequiredCtx']> &
+      AssertCurrentInnerPropsExtendsPluginOuterProps<TOuterProps, T['Infer']['OuterProps']> &
       AssertMountableQueryFinalization<TPointType, TLetsEndPointType, TServerLoaderOutput, TClientLoaderOutput>,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
