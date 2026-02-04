@@ -94,8 +94,8 @@ describe('PointsManager', () => {
 
     it('two layouts two pages', () => {
       const base = Point0.lets('root', 'base').root()
-      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC()).point
-      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC()).point
+      const layout1 = base.lets('layout', 'layout1', '/layout1').layout(getFC())
+      const layout2 = layout1.lets('layout', 'layout2', '/layout2').layout(getFC())
       const points = PointsManager.create([
         base,
         base.lets('page', '0', '/0').page(getFC()),

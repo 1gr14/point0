@@ -177,7 +177,7 @@ export type EndPointTypeOrNever<TPointType extends PointType | UndefinedEndPoint
 // export type EndPointTypeOrUndefinedOrNever<TPointType extends PointType | UndefinedEndPointType> =
 //   TPointType extends EndPointType ? TPointType : TPointType extends UndefinedEndPointType ? undefined : never
 export type StagePointTypeOrNever<TPointType extends PointType | UndefinedEndPointType> =
-  TPointType extends StagePointType ? TPointType : never
+  TPointType extends StagePointType ? TPointType : StagePointType
 // export type StagePointTypeOrUndefinedOrNever<TPointType extends PointType | UndefinedEndPointType> =
 //   TPointType extends StagePointType ? TPointType : TPointType extends UndefinedEndPointType ? undefined : never
 export type NormalizeQueryResultType<
@@ -478,16 +478,20 @@ export type MergeObjects<A, B> =
 export type MergeRecordValidationSchemas<
   TSchema1 extends RecordValidationSchema | undefined,
   TSchema2 extends RecordValidationSchema | undefined,
-> = TSchema1 extends RecordValidationSchema
-  ? TSchema2 extends RecordValidationSchema
-    ? RecordValidationSchema<
-        MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>,
-        MergeObjects<RecordValidationSchemaOutput<TSchema1>, RecordValidationSchemaOutput<TSchema2>>
-      >
-    : TSchema1
-  : TSchema2 extends RecordValidationSchema
-    ? TSchema2
-    : undefined
+> = IfAnyThenElse<
+  TSchema1 | TSchema2,
+  any,
+  TSchema1 extends RecordValidationSchema
+    ? TSchema2 extends RecordValidationSchema
+      ? RecordValidationSchema<
+          MergeObjects<RecordValidationSchemaInput<TSchema1>, RecordValidationSchemaInput<TSchema2>>,
+          MergeObjects<RecordValidationSchemaOutput<TSchema1>, RecordValidationSchemaOutput<TSchema2>>
+        >
+      : TSchema1
+    : TSchema2 extends RecordValidationSchema
+      ? TSchema2
+      : undefined
+>
 
 // export type MergeRouteDefinitionAndInputSchema<
 //   TRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,

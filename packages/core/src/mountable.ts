@@ -208,17 +208,18 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
 export type Queries = UseQueryOrInfiniteQueryResult[]
 
-export type AppendQueries<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TQueries extends Queries,
-> =
-  FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
-    ? TQueryResultType extends QueryResultType
-      ? [...TQueries, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-      : TQueries
-    : TQueries
+// export type AppendQueries<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TQueries extends Queries,
+// > =
+//   FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+//     ? TQueryResultType extends QueryResultType
+//       ? [...TQueries, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
+//       : TQueries
+//     : TQueries
+
 // export type RemoveLastQuery<TQueries extends Queries> = TQueries extends [...infer Rest, any]
 //   ? Extract<Rest, Queries>
 //   : []
@@ -290,15 +291,23 @@ export type QueriesUnknownStatus<TQueries extends UseQueryOrInfiniteQueryResult[
       ...QueriesUnknownStatus<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
     ]
   : []
-export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = TQuery extends { data?: infer TData }
-  ? Exclude<TData, undefined> extends infer TClean
+type CleanQueryData<TData> =
+  Exclude<TData, undefined> extends infer TClean
     ? [TClean] extends [never]
-      ? Data
+      ? never
       : unknown extends TClean
-        ? Data
+        ? never
         : TClean
-    : Data
-  : Data
+    : never
+export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
+  TQuery,
+  any,
+  TQuery extends UseQueryResult<infer TData, any>
+    ? CleanQueryData<TData>
+    : TQuery extends UseInfiniteQueryResult<infer TData, any>
+      ? CleanQueryData<TData>
+      : Data
+>
 
 //   export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
 //   TQueries,
@@ -337,13 +346,17 @@ export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = TQuery ext
 export type MountableSuccessData<
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = TMapperOutput extends MapperOutput
-  ? TMapperOutput
-  : TQueries extends [infer Q1, ...any[]]
-    ? Q1 extends UseQueryOrInfiniteQueryResult
-      ? QueryData<Q1>
+> = IfAnyThenElse<
+  TQueries | TMapperOutput,
+  any,
+  TMapperOutput extends MapperOutput
+    ? TMapperOutput
+    : TQueries extends [infer Q1, ...any[]]
+      ? Q1 extends UseQueryOrInfiniteQueryResult
+        ? QueryData<Q1>
+        : EmptyData
       : EmptyData
-    : EmptyData
+>
 
 //     export type MountableSuccessData<
 //   TQueries extends Queries,
@@ -615,7 +628,7 @@ export type WrapperFnOptions<
   TInnerProps extends Props,
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-> = MountableState<any, TClientInputSchema, TInnerProps, [...TQueries, ...Queries], TMapperOutput>
+> = MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>
 export type WrapperFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
@@ -632,7 +645,7 @@ export type QueryFnOptions<
   TQueries extends Queries,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = Omit<
-  MountableState<any, TClientInputSchema, TInnerProps, [...TQueries, ...Queries], TMapperOutput>,
+  MountableState<any, TClientInputSchema, TInnerProps, TQueries, TMapperOutput>,
   'ErrorComponent' | 'LoadingComponent'
 >
 export type QueryFn<
@@ -1029,10 +1042,23 @@ export type WithSelfQueryIfShouldBeFinalized<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TQueries extends Queries,
-> =
+> = IfAnyThenElse<
+  TQueries | TPointType | TServerLoaderOutput | TClientLoaderOutput | TPointType,
+  any,
   IsQueryShouldBeFinalized<TPointType, TLetsEndPointType> extends true
     ? [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
     : TQueries
+>
+export type MergeQueries<TQueries extends Queries, TNewQueries extends Queries> = IfAnyThenElse<
+  TQueries | TNewQueries,
+  any,
+  [...TQueries, ...TNewQueries]
+>
+export type AppendQueries<TQueries extends Queries, TNewQuery extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
+  TQueries | TNewQuery,
+  any,
+  [...TQueries, TNewQuery]
+>
 
 export type AssertMountableQueryFinalization<
   TPointType extends PointType,

@@ -180,6 +180,7 @@ import type {
   ComponentSelfProps,
   LayoutSelfProps,
   ProviderSelfProps,
+  AppendQueries,
 } from './mountable.js'
 // import stringify from 'safe-stable-stringify'
 
@@ -973,7 +974,8 @@ export class Point0<
   queryOptions(
     ...args: TLetsEndPointType extends MountablePointType
       ? TPointType extends 'finalStage'
-        ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+        ? [ShowError<`You can not use queryOptions() to finalize yout query, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
           ? [
               queryOptions?: ExtraUseQueryOptions<
                 FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
@@ -987,7 +989,6 @@ export class Point0<
             : [
                 ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .queryOptions() to finalize query.`>,
               ]
-        : [ShowError<`You can not use queryOptions() to finalize yout query, becouse it is already finalized`>]
       : never
   ): NiceStagePoint<
     'finalStage',
@@ -1004,7 +1005,8 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
+    // [...TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>]
+    AppendQueries<TQueries, UsePointQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput>>
   >
   queryOptions(...args: any[]) {
     const queryOptions = (args[0] || {}) as ExtraUseQueryOptions
@@ -1054,7 +1056,8 @@ export class Point0<
   infiniteQueryOptions(
     ...args: TLetsEndPointType extends MountablePointType
       ? TPointType extends 'finalStage'
-        ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+        ? [ShowError<`You can not use infiniteQueryOptions() to finalize yout query, becouse it is already finalized`>]
+        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
           ? [
               infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
                 InputsRaw<TServerInputSchema, TClientInputSchema>,
@@ -1070,7 +1073,6 @@ export class Point0<
             : [
                 ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQueryOptions() to finalize query.`>,
               ]
-        : [ShowError<`You can not use infiniteQueryOptions() to finalize yout query, becouse it is already finalized`>]
       : never
   ): NiceStagePoint<
     'finalStage',
@@ -1087,7 +1089,8 @@ export class Point0<
     'infiniteQuery',
     TOuterProps,
     TInnerProps,
-    [...TQueries, UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput>]
+    // [...TQueries, UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput>]
+    AppendQueries<TQueries, UsePointQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput>>
   >
   infiniteQueryOptions(...args: any[]) {
     const infiniteQueryOptions = (args[0] || {}) as ExtraUseInfiniteQueryOptions<any> | PartialUseInfiniteQueryOptions
@@ -7434,8 +7437,8 @@ export class Point0<
     // const allRelatedPoints = [this as EndPoint, ...this._layouts, ...this._relatedQueryPoints].map(
     //   (p) => p._getSameQueryPoint() ?? p,
     // )
-    const allRelatedPoints = [this as unknown as EndPoint, ...this._layouts]
-    const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints as never)]
+    const allRelatedPoints = [this as never as EndPoint, ...this._layouts]
+    const uniqRelatedPoints = [...new Set<AnyPoint>(allRelatedPoints)]
     const uniqPrefetchFns = [...new Set<OnPrefetchFn>([...uniqRelatedPoints.flatMap((p) => p._onPrefetchFns)])]
 
     // const pageWithLayouts = [this, ...this._layouts]
@@ -7492,7 +7495,7 @@ export class Point0<
         if (policy === 'clientQuery' && !p._hasClientLoader()) {
           return []
         }
-        const inputHere = p === (this as unknown as EndPoint) ? input : p._getUnsafeInputRawByLocation(location)
+        const inputHere = p === (this as never as EndPoint) ? input : p._getUnsafeInputRawByLocation(location)
         const mode =
           policy === 'everything'
             ? // server queries was prefetched on prefetchPageQueryClientDehydratedState step

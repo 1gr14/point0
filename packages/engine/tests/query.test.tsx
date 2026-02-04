@@ -1,6 +1,7 @@
 import { Point0 } from '@point0/core'
 import { describe, expect, it } from 'bun:test'
 import { createTestThings } from './utils/internal-testing.js'
+import { z } from 'zod'
 
 describe('query', () => {
   const root = Point0.lets('root', 'root')
@@ -35,29 +36,81 @@ describe('query', () => {
     await render(page.route(), async ({ waitContent, tale }) => {
       await waitContent('#data')
       expect(await tale()).toMatchInlineSnapshot(`
-        "/
-          #page:
-            #data: nothing
-
-          #page:
-            #data: 1
-        "
-      `)
+          "/
+            #page:
+              #data: nothing
+  
+            #page:
+              #data: 1
+          "
+        `)
     })
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "query.test (client) < {}
-      "
-    `)
+        "query.test (client) < {}
+        "
+      `)
     fetchRecorder.prune()
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-      "#page:
-        #data: 1
-      "
-    `)
+        "#page:
+          #data: 1
+        "
+      `)
     expect(await fetchesTale()).toMatchInlineSnapshot(`
-      "page.home (client) (page) < {}
-      query.test (server) < {}
-      "
-    `)
+        "page.home (client) (page) < {}
+        query.test (server) < {}
+        "
+      `)
+  })
+
+  it('simple2', async () => {
+    const q = root
+      .lets('infiniteQuery', 'test')
+      .input(z.object({ cursor: z.string().default('0') }))
+      .loader(() => ({ x: 1, nextCursor: '1' }))
+      .infiniteQuery({
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+        pageParamFromInput: 'cursor',
+      })
+    const page = root
+      .lets('page', 'home', '/')
+      .query(q)
+      .page(({ data }) => {
+        const query = q.useInfiniteQuery()
+        return (
+          <div id="page">
+            <div id="data">{query.data?.x ?? 'nothing'}</div>
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale, fetchRecorder } = await createTestThings({ points: [root, q, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#data')
+      expect(await tale()).toMatchInlineSnapshot(`
+          "/
+            #page:
+              #data: nothing
+  
+            #page:
+              #data: 1
+          "
+        `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "query.test (client) < {}
+        "
+      `)
+    fetchRecorder.prune()
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+        "#page:
+          #data: 1
+        "
+      `)
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "page.home (client) (page) < {}
+        query.test (server) < {}
+        "
+      `)
   })
 })
