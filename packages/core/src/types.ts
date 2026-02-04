@@ -612,6 +612,12 @@ export type AssertCurrentCtxExtendsPluginCtx<
   TCurrentCtx extends Ctx,
   TPluginCtx extends Ctx,
 > = TCurrentCtx extends TPluginCtx ? unknown : ShowError<`Plugin ctx is not assignable to current point ctx`>
+export type AssertCurrentInnerPropsExtendsPluginInnerProps<
+  TCurrentInnerProps extends Props,
+  TPluginInnerProps extends Props,
+> = TCurrentInnerProps extends TPluginInnerProps
+  ? unknown
+  : ShowError<`Plugin inner props is not assignable to current point inner props`>
 
 export type AssertRouteDefinitionInputExtends<
   TCurrentRouteDefinition extends RouteDefinition | UndefinedRouteDefinition,
@@ -3082,11 +3088,7 @@ export type NicePageEndPoint<
     TInnerProps,
     TQueries
   >,
-  WithQueryIfSuitable<
-    TServerLoaderOutput,
-    TQueryResultType,
-    'point' | 'type' | 'Infer' | 'Page' | 'X' | 'useX' | 'route'
-  >
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Page' | 'X' | 'route'>
 >
 
 export type NiceComponentEndPoint<
@@ -3123,7 +3125,7 @@ export type NiceComponentEndPoint<
     TInnerProps,
     TQueries
   >,
-  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X' | 'useX'>
+  WithQueryIfSuitable<TServerLoaderOutput, TQueryResultType, 'point' | 'type' | 'Infer' | 'Component' | 'X'>
 >
 
 export type NiceLayoutEndPoint<
@@ -3163,7 +3165,7 @@ export type NiceLayoutEndPoint<
   WithQueryIfSuitable<
     TServerLoaderOutput,
     TQueryResultType,
-    'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'useX' | 'route'
+    'point' | 'type' | 'lets' | 'useValue' | 'getValue' | 'getValueWeak' | 'Infer' | 'Layout' | 'X' | 'route'
   >
 >
 
@@ -3318,7 +3320,7 @@ export type NiceProviderEndPoint<
   WithQueryIfSuitable<
     TServerLoaderOutput,
     TQueryResultType,
-    'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'useX' | 'Infer'
+    'point' | 'type' | 'useValue' | 'getValue' | 'getValueWeak' | 'Provider' | 'X' | 'Infer'
   >
 >
 

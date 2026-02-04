@@ -19,7 +19,7 @@ export const ideasPage = generalLayout
   .clientLoader(async ({ data }) => {
     return { ...data, amazing: '123', ideas: data.ideas.map((idea) => ({ ...idea, amazing: '234' })) }
   })
-  .infiniteQuery({
+  .infiniteQueryOptions({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
     pageParamFromInput: 'page',

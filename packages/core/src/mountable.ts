@@ -121,6 +121,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type {
   CurrentRouteDefinition,
   Data,
+  EmptyData,
   EndPointType,
   FinalLoaderOutput,
   IfAnyThenElse,
@@ -206,7 +207,6 @@ export type AppendProps<TPrevProps extends Props, TAppendProps extends Props> = 
 
 export type UseQueryOrInfiniteQueryResult = UseInfiniteQueryResult | UseQueryResult
 export type Queries = UseQueryOrInfiniteQueryResult[]
-export type UndefinedQueries = undefined
 
 export type AppendQueries<
   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
@@ -219,26 +219,26 @@ export type AppendQueries<
       ? [...TQueries, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
       : TQueries
     : TQueries
-export type RemoveLastQuery<TQueries extends Queries> = TQueries extends [...infer Rest, any]
-  ? Extract<Rest, Queries>
-  : []
-export type ReplaceLastQuery<
-  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
-  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
-  TQueries extends Queries,
-> = TServerLoaderOutput extends UndefinedLoaderOutput
-  ? TClientLoaderOutput extends UndefinedLoaderOutput
-    ? RemoveLastQuery<TQueries>
-    : TQueries extends [...infer Rest, any]
-      ? [
-          ...Extract<Rest, Queries>,
-          UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>,
-        ]
-      : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-  : TQueries extends [...infer Rest, any]
-    ? [...Extract<Rest, Queries>, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
-    : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
+// export type RemoveLastQuery<TQueries extends Queries> = TQueries extends [...infer Rest, any]
+//   ? Extract<Rest, Queries>
+//   : []
+// export type ReplaceLastQuery<
+//   TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+//   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+//   TQueries extends Queries,
+// > = TServerLoaderOutput extends UndefinedLoaderOutput
+//   ? TClientLoaderOutput extends UndefinedLoaderOutput
+//     ? RemoveLastQuery<TQueries>
+//     : TQueries extends [...infer Rest, any]
+//       ? [
+//           ...Extract<Rest, Queries>,
+//           UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>,
+//         ]
+//       : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
+//   : TQueries extends [...infer Rest, any]
+//     ? [...Extract<Rest, Queries>, UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
+//     : [UsePointQueryResult<TQueryResultType, TServerLoaderOutput, TClientLoaderOutput, any>]
 // export type AppendQueries<
 //   TQueries extends Queries,
 //   TQueries extends Queries,
@@ -291,8 +291,48 @@ export type QueriesUnknownStatus<TQueries extends UseQueryOrInfiniteQueryResult[
     ]
   : []
 export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = TQuery extends { data?: infer TData }
-  ? Exclude<TData, undefined>
-  : undefined
+  ? Exclude<TData, undefined> extends infer TClean
+    ? [TClean] extends [never]
+      ? Data
+      : unknown extends TClean
+        ? Data
+        : TClean
+    : Data
+  : Data
+
+//   export type QueriesSuccess<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+//   TQueries,
+//   TQueries,
+//   TQueries extends [infer Q1, ...infer Rest]
+//     ? [
+//         QuerySuccess<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
+//         ...QueriesSuccess<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
+//       ]
+//     : []
+// >
+// export type QueriesUnknownStatus<TQueries extends UseQueryOrInfiniteQueryResult[]> = IfAnyThenElse<
+//   TQueries,
+//   TQueries,
+//   TQueries extends [infer Q1, ...infer Rest]
+//     ? [
+//         QueryUnknownStatus<Q1 extends UseQueryOrInfiniteQueryResult ? Q1 : never>,
+//         ...QueriesUnknownStatus<Extract<Rest, UseQueryOrInfiniteQueryResult[]>>,
+//       ]
+//     : []
+// >
+// export type QueryData<TQuery extends UseQueryOrInfiniteQueryResult> = IfAnyThenElse<
+//   TQuery,
+//   any,
+//   TQuery extends { data?: infer TData }
+//     ? Exclude<TData, undefined> extends infer TClean
+//       ? [TClean] extends [never]
+//         ? Data
+//         : unknown extends TClean
+//           ? Data
+//           : TClean
+//       : Data
+//     : Data
+// >
 
 export type MountableSuccessData<
   TQueries extends Queries,
@@ -302,8 +342,23 @@ export type MountableSuccessData<
   : TQueries extends [infer Q1, ...any[]]
     ? Q1 extends UseQueryOrInfiniteQueryResult
       ? QueryData<Q1>
-      : undefined
-    : undefined
+      : EmptyData
+    : EmptyData
+
+//     export type MountableSuccessData<
+//   TQueries extends Queries,
+//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > = IfAnyThenElse<
+//   TQueries,
+//   Data,
+//   TMapperOutput extends MapperOutput
+//     ? TMapperOutput
+//     : TQueries extends [infer Q1, ...any[]]
+//       ? Q1 extends UseQueryOrInfiniteQueryResult
+//         ? QueryData<Q1>
+//         : EmptyData
+//       : EmptyData
+// >
 
 // export type QueryDataOrUndefined<TQuery extends UseQueryOrInfiniteQueryResult | undefined = undefined> =
 //   TQuery extends UseQueryOrInfiniteQueryResult ? TQuery['data'] : undefined
@@ -705,6 +760,23 @@ export type LayoutSuccessComponentType<
 > = React.ComponentType<LayoutSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
 export type UndefinedLayoutSuccessComponent = undefined
 
+export type ProviderExtraInnerProps = {
+  children: Exclude<React.ReactNode, Promise<any>>
+}
+// export type ProviderSuccessComponentProps<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TInnerProps extends Props,
+//   TQueries extends Queries,
+//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & ProviderExtraInnerProps
+// export type ProviderSuccessComponentType<
+//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
+//   TInnerProps extends Props,
+//   TQueries extends Queries,
+//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
+// > = React.ComponentType<ProviderSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
+// export type UndefinedProviderSuccessComponent = undefined
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type ComponentExtraInnerProps = {}
 export type ComponentSuccessComponentProps<
@@ -720,23 +792,6 @@ export type ComponentSuccessComponentType<
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<ComponentSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
 export type UndefinedComponentSuccessComponent = undefined
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type ProviderExtraInnerProps = {}
-// it is impossible, it has no self render things
-// export type ProviderSuccessComponentProps<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TInnerProps extends Props,
-//   TQueries extends Queries,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-// > = SuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput> & ProviderExtraInnerProps
-// export type ProviderSuccessComponentType<
-//   TClientInputSchema extends InputSchema | UndefinedInputSchema,
-//   TInnerProps extends Props,
-//   TQueries extends Queries,
-//   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
-// > = React.ComponentType<LayoutSuccessComponentProps<TClientInputSchema, TInnerProps, TQueries, TMapperOutput>>
-// export type UndefinedProviderSuccessComponent = undefined
 
 export type MountableSelfChildrenFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
